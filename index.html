@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.07';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6128,7 +6128,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.07').trim() || 'V2026.08.12.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.08').trim() || 'V2026.08.12.08';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7598,7 +7598,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25736,7 +25736,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kayla Knepp","Kevin Effinger","Molly Dixon","Nate Douglas","Rudy Martinez","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
         const PRIVILEGED_MANAGER_USER_KEYS = Object.freeze(['dylan_collyge', 'jd_jones', 'megan_kelly']);
         const PRIVILEGED_MANAGER_USER_TOKENS = new Set([...PRIVILEGED_MANAGER_USER_KEYS, 'dylan', 'jd', 'jdjones', 'jd jones', 'megan', 'megankelly', 'megan kelly']);
-        const SALES_CREDIT_REVIEW_USERS = new Set(['dylan_collyge', 'jd_jones']);
+        const SALES_CREDIT_REVIEW_USERS = new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']);
         const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono','kayla_knepp','kayla knepp','kaylaknepp']);
         const REQUEST_GLOBAL_ACCESS_TOKENS = new Set(['kayla_knepp','kayla knepp','kaylaknepp']);
         const REQUEST_ROW_ARCHIVE_USERS = new Set(['kayla_knepp','kayla knepp','kaylaknepp','kayla','knepp','kayla_knepp@greenleafnursery.com','kayla.knepp@greenleafnursery.com']);
@@ -26761,7 +26761,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW = 'av-blanks-photo-bypass';
         const AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY = 'av_blanks_photo_bypass_users';
         const AV_BLANKS_PHOTO_BYPASS_STORAGE_KEY = 'gnc_av_blanks_photo_bypass_v1';
-        const AV_BLANKS_PHOTO_BYPASS_MANAGER_USERS = Object.freeze(['dylan_collyge', 'jd_jones']);
+        const AV_BLANKS_PHOTO_BYPASS_MANAGER_USERS = Object.freeze(['dylan_collyge', 'jd_jones', 'megan_kelly']);
         const APP_CURRENT_SEASON_OPTIONS = Object.freeze(['S1', 'F1']);
         const APP_SEASON_DISPLAY_ORDER = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         let appSeasonSettingsCache = null;
@@ -26771,7 +26771,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.07').trim() || 'V2026.08.12.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.08').trim() || 'V2026.08.12.08';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35161,7 +35161,7 @@ let avTopControlsRenderToken = 0;
             return !!(canAccessView('drive') && (access.isForeman || canUseDriveQuickRequest()));
         }
 
-        const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge']));
+        const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge', 'megan_kelly']));
 
         function getCurrentDriveCardOptionUserKeys(userOverride = '', displayOverride = '') {
             return [userOverride, displayOverride, currentUser, currentUserDisplay]
@@ -98610,7 +98610,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return getCropRollActorKey() === 'dylan_collyge';
         }
 
-        const CROP_ROLL_EVAL_FILTER_ADMIN_USERS = new Set(['dylan_collyge', 'jd_jones']);
+        const CROP_ROLL_EVAL_FILTER_ADMIN_USERS = new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']);
 
         function canUseCropRollEvalUserFilter() {
             return CROP_ROLL_EVAL_FILTER_ADMIN_USERS.has(getCropRollActorKey());

@@ -26,6 +26,7 @@ const LEGACY_TABLE_ALIASES: Record<string, string> = {
 };
 const AV_OPTION_EVAL_REQUESTS_TABLE = "ph_av_option_eval_requests";
 const AV_OPTION_EVAL_MANAGER_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
+const FULL_ACCESS_USER_KEYS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
 const AV_OPTION_EVAL_STATUS_VALUES = new Set(["open", "in_progress", "complete", "cancelled"]);
 const AV_OPTION_EVAL_INSERT_FIELDS = new Set([
   "status",
@@ -386,7 +387,9 @@ function sanitizeStorageFileName(value = "") {
 
 function hasTableReadAccess(role = "", table = "", username = "") {
   if (!READABLE_TABLES.has(table)) return false;
-  if (table === "ph_hl_po") return normalizeUsername(username) === "dylan_collyge";
+  const userKey = normalizeUsername(username);
+  if (FULL_ACCESS_USER_KEYS.has(userKey)) return true;
+  if (table === "ph_hl_po") return userKey === "dylan_collyge";
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return true;
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
@@ -404,8 +407,10 @@ function hasTableReadAccess(role = "", table = "", username = "") {
   return false;
 }
 
-function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null) {
+function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null, username = "") {
   if (!WRITABLE_TABLES.has(table)) return false;
+  const userKey = normalizeUsername(username);
+  if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
@@ -656,7 +661,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) return errorResponse("Unsupported method.", 400);
   if (method === "GET") {
     if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
-  } else if (!hasTableWriteAccess(session.role, table, method, body)) {
+  } else if (!hasTableWriteAccess(session.role, table, method, body, session.username)) {
     return errorResponse("Forbidden", 403);
   }
 
