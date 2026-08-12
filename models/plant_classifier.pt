@@ -1,0 +1,7 @@
+{
+  "created_by": "Codex",
+  "created_for": "GNC Sales Command PRO",
+  "fallback_type": "manual_review",
+  "manual_review_fallback": true,
+  "reason": "No trained plant classifier checkpoint was available when this file was created. The ML worker should route plant predictions to manual review until a real TorchScript plant_classifier.pt is synced."
+}

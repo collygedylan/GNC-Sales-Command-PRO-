@@ -1,0 +1,14 @@
+[
+  {
+    "common_name": "Manual Review Fallback",
+    "diagnosis": "Manual review required",
+    "fallback": true,
+    "genus": "",
+    "grade": "",
+    "label": "manual_review_fallback",
+    "manual_review": true,
+    "reason": "No trained plant classifier labels were available when this file was created.",
+    "sample_count": 0,
+    "treatment": "Review the photo manually and replace plant_classifier.pt plus labels.json with trained plant classifier files when they are ready."
+  }
+]
