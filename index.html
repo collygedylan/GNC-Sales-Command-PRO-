@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.27';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.28';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -678,6 +678,9 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-drive-card-headline-meta-group{margin-left:auto;display:flex;min-width:0;flex:0 1 auto;align-items:baseline;justify-content:flex-end;gap:.46rem;white-space:nowrap}
 .app-drive-card-headline-meta{flex:0 0 auto;font-size:.86rem;font-weight:900;line-height:1.05;color:#1f2937}
 .app-drive-card-meta-pills{margin-top:.28rem;display:flex;min-width:0;flex-wrap:wrap;align-items:center;gap:.34rem}
+.app-drive-card-under-main{grid-column:2;min-width:0;display:flex;flex-direction:column;gap:.32rem}
+.app-drive-card-under-main>.mt-3{margin-top:0!important}
+.app-drive-card-under-main>.mt-2{margin-top:0!important}
 .app-drive-card-quantity-row{display:grid;width:100%;grid-template-columns:repeat(4,minmax(0,1fr));gap:.34rem}
 .app-drive-card-quantity-row>span{display:flex;min-width:0;min-height:1.78rem;align-items:center;justify-content:center;gap:.12rem;overflow:hidden;padding:.26rem .26rem!important;text-align:center;font-size:.58rem;font-weight:900;letter-spacing:.07em;line-height:1.04;text-transform:uppercase;white-space:nowrap}
 .app-drive-card-quantity-row>span>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -908,6 +911,7 @@ body.viewport-compact .app-drive-card-headline-name{min-width:6rem;font-size:cla
 body.viewport-compact .app-drive-card-headline-meta-group{width:100%;margin-left:0;justify-content:flex-start;gap:.28rem}
 body.viewport-compact .app-drive-card-headline-meta{font-size:.64rem}
 body.viewport-compact .app-drive-card-meta-pills{margin-top:.2rem;gap:.26rem}
+body.viewport-compact .app-drive-card-under-main{gap:.24rem}
 body.viewport-compact .app-drive-card-quantity-row{gap:.18rem}
 body.viewport-compact .app-drive-card-quantity-row>span{min-height:1.55rem;padding:.18rem .08rem!important;font-size:.4rem;letter-spacing:.03em}
 body.viewport-compact .app-drive-card-action-column .app-card-side-action-rail{gap:.18rem}
@@ -6173,7 +6177,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.27').trim() || 'V2026.08.11.27';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.28').trim() || 'V2026.08.11.28';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7617,7 +7621,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.27';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.28';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -27563,7 +27567,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.27').trim() || 'V2026.08.11.27';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.28').trim() || 'V2026.08.11.28';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -120841,9 +120845,10 @@ C.14.043 C.15.000
                 const driveEarlyABadgeHtml = buildDriveEarlyABadgeHtml(item);
                 const driveMetaPillsHtml = (driveTopTagColorHtml || driveSourceChipHtml || driveEarlyABadgeHtml) ? `<div class="app-drive-card-meta-pills">${driveTopTagColorHtml}${driveSourceChipHtml}${driveEarlyABadgeHtml}</div>` : '';
                 const driveHeadlineMetaHtml = `<span class="app-drive-card-headline-meta-group"><span class="app-drive-card-headline-meta">${esc(item.LOCATIONCODE || 'No Loc')}</span><span class="app-drive-card-headline-meta">${esc(item.LOTCODE || '-')}</span><span class="app-drive-card-headline-meta">PRI ${esc(item.PRIORITY||'-')}</span></span>`;
+                const driveUnderMainHtml = `${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}<div class="app-drive-card-quantity-row">${driveQuantityRowHtml}</div>${driveLocPhotoMatchRowHtml}${cardDesignChipRowHtml}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}`;
                 const driveActionColumnHtml = driveSideActionRailHtml ? `<div class="app-drive-card-action-column">${driveSideActionRailHtml}</div>` : '';
                 const driveFrameClass = driveSideActionRailHtml ? 'app-drive-card-frame' : 'app-drive-card-frame app-drive-card-frame--no-actions';
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-inventory-card ${cropRollCardClass} ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}<div class="app-drive-card-body"><div class="${driveFrameClass}"><div class="app-drive-card-thumb-column">${inlineThumbHtml}</div><div class="app-card-main app-drive-card-main"><div class="app-drive-card-itemcode-line"><span class="app-drive-card-itemcode-value">${esc(item.ITEMCODE||'-')}</span></div><div class="app-drive-card-headline"><span class="app-drive-card-headline-size">${esc(item.CONTSIZE||'-')}</span><span class="app-drive-card-headline-name">${esc(item.COMMONNAME || 'Unknown')}</span>${driveHeadlineMetaHtml}</div>${driveMetaPillsHtml}</div>${driveActionColumnHtml}</div>${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}<div class="app-drive-card-quantity-row">${driveQuantityRowHtml}</div>${driveLocPhotoMatchRowHtml}${cardDesignChipRowHtml}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}${quickRequestBtn}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-inventory-card ${cropRollCardClass} ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}<div class="app-drive-card-body"><div class="${driveFrameClass}"><div class="app-drive-card-thumb-column">${inlineThumbHtml}</div><div class="app-card-main app-drive-card-main"><div class="app-drive-card-itemcode-line"><span class="app-drive-card-itemcode-value">${esc(item.ITEMCODE||'-')}</span></div><div class="app-drive-card-headline"><span class="app-drive-card-headline-size">${esc(item.CONTSIZE||'-')}</span><span class="app-drive-card-headline-name">${esc(item.COMMONNAME || 'Unknown')}</span>${driveHeadlineMetaHtml}</div>${driveMetaPillsHtml}</div>${driveActionColumnHtml}<div class="app-drive-card-under-main">${driveUnderMainHtml}</div></div>${quickRequestBtn}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
