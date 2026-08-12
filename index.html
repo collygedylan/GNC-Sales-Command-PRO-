@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.03').trim() || 'V2026.08.12.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.04').trim() || 'V2026.08.12.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25369,7 +25369,7 @@ let bloomShiftReportFormat='report'; let bloomShiftReportColumnMode='custom'; le
 let appAdminRecipientUsers=[]; let appAdminRecipientUsersPromise=null; let appAdminRecipientUsersLoaded=false; let appAdminRecipientUsersSignature=''; let appAdminRecipientEmailByToken=new Map(); let appEvalRecipientUsersSignature=''; let appEmailRecipientUsers=[]; let appEmailRecipientUsersPromise=null; let appEmailRecipientUsersLoaded=false; let appEmailRecipientUsersSignature=''; let appEmailRecipientEmailByToken=new Map();
 let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertisement: '', request: '' }; let emailRecipientSearchByContext={ bloom: '', av: '', drive: '', advertisement: '', request: '' };
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
-        let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
+        let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false; let dockTeamStatusRenderVersion=0;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssuePhotoSchemaReady=null; let dockIssuePhotoSchemaPromise=null; let dockIssueMeasurementSchemaReady=null; let dockIssueMeasurementSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockIssuePhotoSchemaWarningShown=false; let dockIssueMeasurementSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let selectedDockIssueAllocationId=''; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map(); let dockMistakeSelectionUids=new Set(); let dockMistakeCandidateRows=[]; let dockMistakeModalSourceUid=''; let dockMistakeModalStep='details'; let dockMistakeIssuePhotoLink=''; let dockMistakeIssuePhotoName=''; let dockMistakeIssuePhotoPreviewUrl=''; let dockMistakeIssuePhotoPromise=null; let dockMistakeIssuePhotoUploading=false; let dockMistakeDetailPhotoIssueUid='';
         let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set(); let takeBackDoneConfirmResolve=null; let markDoneConfirmResolve=null;
@@ -26764,7 +26764,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.03').trim() || 'V2026.08.12.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.04').trim() || 'V2026.08.12.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -47161,6 +47161,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!dockKey) return getDefaultDockTeamInfo();
             const normalized = normalizeDockTeamInfo(info);
             dockTeamStatusByDock.set(dockKey, normalized);
+            dockTeamStatusRenderVersion += 1;
             localStorage.setItem('gnc_dock_team_' + dockKey, JSON.stringify(normalized));
             invalidateDockWorkflowResolvedState();
             return normalized;
@@ -47237,6 +47238,7 @@ function toggleDriveQuickRequestItem(domId) {
                     nextMap.set(dockKey, normalizeDockTeamInfo(row));
                 });
                 dockTeamStatusByDock = nextMap;
+                dockTeamStatusRenderVersion += 1;
                 dockTeamStatusLoaded = true;
                 return dockTeamStatusByDock;
             })().catch(() => dockTeamStatusByDock).finally(() => {
@@ -75112,7 +75114,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (appliedLocalDockInfo) return;
                 appliedLocalDockInfo = true;
                 cacheDockTeamInfo(dockNum, info);
-                scheduleDocksRender(16);
+                scheduleDocksRender(0, 0, true);
             };
             document.getElementById('dock-info-modal').classList.add('hidden');
             if (navigator.onLine === false) {
@@ -75123,7 +75125,7 @@ function toggleDriveQuickRequestItem(domId) {
             ensureDockTeamSchemaReady().then((schemaReady) => {
                 if (!schemaReady) {
                     dockTeamStatusLoaded = false;
-                    scheduleDocksRender(16);
+                    scheduleDocksRender(0, 0, true);
                     showToast('Schema Required', 'Run dock_team_status_migration.sql in Supabase to share dock team assignments across users.', true);
                     return false;
                 }
@@ -75141,7 +75143,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (result === false) return;
                 dockTeamStatusLoaded = true;
                 showToast("Saved", "Dock updated.");
-                scheduleDocksRender(16);
+                scheduleDocksRender(0, 0, true);
             }).catch(() => {
                 applyLocalDockInfo();
                 showToast("Error", "Dock team saved on this device, but the shared dock assignment update failed.", true);
@@ -76667,7 +76669,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (savedInfo.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
                     else if (savedInfo.status === 'Palletize') statusColor = 'text-purple-600 bg-purple-50';
                     else if (savedInfo.status === 'Complete') statusColor = 'text-green-600 bg-green-50';
-                    return { dockNum, dockLabel: formatDockViewDockLabel(dockNum), count: entry.count, savedInfo, statusColor, borderCls: entry.hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: entry.hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: entry.hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
+                    return { dockNum, dockLabel: formatDockViewDockLabel(dockNum), count: entry.count, savedInfo, dockTeamRenderVersion: dockTeamStatusRenderVersion, dockTeamChecker: savedInfo.checker || '', dockTeamInspector: savedInfo.inspector || '', dockTeamMistake: savedInfo.mistake || '', dockTeamStatus: savedInfo.status || '', statusColor, borderCls: entry.hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: entry.hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: entry.hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
                 });
                 renderMarkupChunkedByKey('docks-main', container, crumb, dockCards, 'Select a Dock', (dockCard) => {
                     const editDockButton = canEditDockConfig ? `<button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(dockCard.dockNum)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>` : '';
