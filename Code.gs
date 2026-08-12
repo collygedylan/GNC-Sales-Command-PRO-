@@ -323,7 +323,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'disease', 'hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'hl_po_parsed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -527,8 +527,25 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
   warehouse_assigned_items: { label: 'Warehouse Assigned Items', run: runWarehouseAssignedItemsOnly },
   cav: { label: 'CAV', run: runCavOnly },
+  disease: { label: 'Retired Disease Sync', run: runRetiredManualSyncStage_ },
+  lab: { label: 'Retired Lab Sync', run: runRetiredManualSyncStage_ },
+  lab_reports: { label: 'Retired Lab Reports Sync', run: runRetiredManualSyncStage_ },
   hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly }
 });
+
+function runRetiredManualSyncStage_() {
+  console.log('[MANUAL SYNC] Retired AgSight disease/lab sync stage skipped.');
+  return {
+    filesProcessed: 0,
+    tempFilesRemoved: 0,
+    failedFiles: 0,
+    failedFileNames: [],
+    failedFileErrors: [],
+    skipped: true,
+    retired: true,
+    message: 'Retired AgSight disease/lab sync stage skipped.'
+  };
+}
 
 function runDriveSocReservesSequence() {
   const requestedBy = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || 'Apps Script Editor';
