@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.35';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -684,6 +684,52 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-card-bottom-btn--argos-qty:disabled,
 .app-card-bottom-btn--argos-transfer:disabled,
 .app-card-bottom-btn--argos-reclass:disabled{opacity:.72;box-shadow:none}
+.app-smart-card--inventory.app-drive-compact-card{padding:.82rem .95rem !important}
+.app-smart-card--inventory.app-drive-compact-card.app-card-with-bottom-rail{padding-bottom:.82rem !important}
+.app-drive-card-grid{display:grid;grid-template-columns:minmax(5.65rem,7.7rem) minmax(0,1fr) minmax(4.85rem,5.45rem);grid-template-areas:"photo main actions" "qty qty actions" "bottom bottom bottom";align-items:start;gap:.65rem .85rem;width:100%;min-width:0}
+.app-drive-card-grid--no-actions{grid-template-columns:minmax(5.65rem,7.7rem) minmax(0,1fr);grid-template-areas:"photo main" "qty qty" "bottom bottom"}
+.app-drive-card-grid--no-photo{grid-template-columns:minmax(0,1fr) minmax(4.85rem,5.45rem);grid-template-areas:"main actions" "qty actions" "bottom bottom"}
+.app-drive-card-grid--no-photo.app-drive-card-grid--no-actions{grid-template-columns:minmax(0,1fr);grid-template-areas:"main" "qty" "bottom"}
+.app-drive-card-photo{grid-area:photo;min-width:0}
+.app-drive-card-photo>*{margin:0 !important;max-width:100% !important}
+.app-drive-card-photo .app-inline-thumb-column{width:100% !important;min-width:0 !important;margin-left:0 !important}
+.app-drive-card-photo .app-inline-thumb-box{width:100%;height:auto;aspect-ratio:1 / 1;border-radius:1rem}
+.app-drive-card-photo .app-smart-thumb{width:100% !important;min-width:0;height:clamp(4.9rem,10vw,6.9rem) !important;border-radius:1rem !important}
+.app-drive-card-photo img{width:100%;height:100%;object-fit:cover}
+.app-drive-card-main{grid-area:main;min-width:0;padding-right:0 !important}
+.app-drive-card-itemcode{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:clamp(.8rem,1.32vw,1.05rem);font-weight:900;line-height:1.05;letter-spacing:.035em;color:#111827;word-break:break-word}
+.app-drive-card-title-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.7rem;align-items:start;margin-top:.28rem}
+.app-drive-card-title{min-width:0;color:#007a4d;font-size:clamp(1.16rem,2.55vw,1.7rem);font-weight:900;line-height:1.05;letter-spacing:0;overflow-wrap:anywhere}
+.app-drive-card-meta{flex:0 0 auto;max-width:min(30vw,18rem);padding-top:.18rem;color:#111827;font-size:clamp(.82rem,1.42vw,1.08rem);font-weight:900;line-height:1.06;text-align:right;white-space:normal;overflow-wrap:anywhere}
+.app-drive-card-chip-row{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .42rem;margin-top:.45rem;min-width:0}
+.app-drive-card-chip-row .app-card-topline-tag{max-width:9rem}
+.app-drive-card-source-chip{display:inline-flex;align-items:center;justify-content:center;min-height:1.35rem;border-radius:999px;border:1px solid #dbe4ee;background:#f8fafc;padding:.18rem .58rem;color:#64748b;font-size:clamp(.56rem,.9vw,.68rem);line-height:1;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.app-drive-card-quantity-band{grid-area:qty;min-width:0;align-self:end}
+.app-card-qty-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;width:100%;min-width:0}
+.app-card-qty-row .app-card-qty-chip{display:inline-flex;align-items:center;justify-content:center;gap:.32rem;min-height:2.18rem;padding:.34rem .5rem;font-size:clamp(.62rem,1.02vw,.82rem);line-height:1.05;letter-spacing:.12em;white-space:normal}
+.app-card-qty-row>span:not(.app-card-qty-chip){display:inline-flex;align-items:center;justify-content:center;min-height:2.18rem;padding:.34rem .5rem;font-size:clamp(.62rem,1.02vw,.82rem);line-height:1.05;letter-spacing:.1em;text-align:center}
+.app-drive-card-actions{grid-area:actions;display:flex;flex-direction:column;gap:.42rem;align-self:start;position:relative;z-index:2;min-width:0}
+.app-drive-card-actions .app-card-bottom-btn{width:100%;min-height:3.05rem;border-radius:1rem;padding:.42rem .3rem;flex-direction:column;gap:.14rem;font-size:.56rem;line-height:1.05;letter-spacing:.08em;text-align:center}
+.app-drive-card-actions .app-card-bottom-btn i{font-size:1.24rem;line-height:1}
+.app-drive-card-actions .app-card-bottom-btn span{display:block}
+.app-drive-card-bottom{grid-area:bottom;min-width:0}
+.app-drive-card-bottom .app-card-bottom-rail{margin-top:.55rem;padding:.62rem 0 0}
+.app-drive-card-bottom .app-card-bottom-rail-row--primary .app-card-bottom-btn{min-height:3.05rem;border-radius:999px;font-size:.82rem}
+@media(max-width:720px){
+    .app-smart-card--inventory.app-drive-compact-card{padding:.68rem .72rem !important}
+    .app-drive-card-grid{grid-template-columns:clamp(4.3rem,21vw,5.15rem) minmax(0,1fr) clamp(3.95rem,18vw,4.55rem);gap:.48rem .55rem}
+    .app-drive-card-title-row{display:block;margin-top:.22rem}
+    .app-drive-card-title{font-size:clamp(1.05rem,4.8vw,1.35rem);line-height:1.06}
+    .app-drive-card-meta{max-width:none;margin-top:.28rem;padding-top:0;text-align:left;font-size:.78rem;line-height:1.08}
+    .app-drive-card-chip-row{margin-top:.36rem;gap:.28rem}
+    .app-drive-card-photo .app-smart-thumb{height:clamp(4.4rem,18vw,5.25rem) !important;border-radius:.82rem !important}
+    .app-card-qty-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:.35rem}
+    .app-card-qty-row .app-card-qty-chip{min-height:2.05rem;padding:.3rem .38rem;font-size:.58rem;letter-spacing:.08em}
+    .app-drive-card-actions{gap:.34rem}
+    .app-drive-card-actions .app-card-bottom-btn{min-height:2.62rem;border-radius:.82rem;font-size:.48rem;letter-spacing:.06em}
+    .app-drive-card-actions .app-card-bottom-btn i{font-size:1.05rem}
+    .app-drive-card-bottom .app-card-bottom-rail-row--primary .app-card-bottom-btn{min-height:2.8rem;font-size:.66rem}
+}
 .argos-tx-panel{display:flex;max-height:calc(100dvh - 1rem);min-height:0;flex-direction:column;overflow:hidden;border-radius:1.1rem;background:#fff;box-shadow:0 28px 70px rgba(15,23,42,.34)}
 .argos-tx-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:.75rem;border-bottom:1px solid #e2e8f0;padding:.78rem .92rem}
 .argos-tx-title{font-size:clamp(1.05rem,4.8vw,1.45rem);font-weight:900;line-height:1.08;color:#0f172a}
@@ -6075,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.35').trim() || 'V2026.08.09.35';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.01').trim() || 'V2026.08.12.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7545,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.35';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14210,6 +14256,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             ];
             const openStockChip = ['Open Stock', getCardOpenStockValue(row)];
             const trailingChipsHtml = String(safeOptions.trailingChipsHtml || '').trim();
+            if (safeOptions.layout === 'row') {
+                const gridGapClass = safeOptions.compact ? 'gap-1.5' : 'gap-2';
+                return `<div class="app-card-qty-row grid ${gridGapClass} text-[9px] font-black uppercase">${[...primaryChips, openStockChip].map((chip, index) => buildStackedChip(chip, index)).join('')}${trailingChipsHtml}</div>`;
+            }
             if (safeOptions.layout === 'stacked') {
                 const gridGapClass = safeOptions.compact ? 'gap-1.5' : 'gap-2';
                 const openStockClass = safeOptions.compact ? 'mt-1.5' : 'mt-2';
@@ -26714,7 +26764,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.35').trim() || 'V2026.08.09.35';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.01').trim() || 'V2026.08.12.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -120021,7 +120071,7 @@ C.14.043 C.15.000
                 if(evalTaskHtml) noteHtml += evalTaskHtml;
                 const hasLocPhotoMatchQty = !!(displayLocMatchQty && String(displayLocMatchQty).trim() !== '' && Number(displayLocMatchQty) > 0);
                 const locPhotoMatchChipHtml = hasLocPhotoMatchQty ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900">${esc(normalizeCardQuantityValue(displayLocMatchQty))}</span></span>` : '';
-                const driveQuantityStackHtml = buildInventoryQuantityChipsHtml(item, { layout: 'stacked', trailingChipsHtml: locPhotoMatchChipHtml });
+                const driveQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, trailingChipsHtml: locPhotoMatchChipHtml });
                 const driveAvNoteHtml = displayAvNote && String(displayAvNote).trim() !== '' ? `<div class="rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${esc(displayAvNote)}</div>` : '';
                 const driveSalesNoteText = String(firstNonEmptyValue(salesNoteText, '') || '').trim();
                 const driveSalesNoteHtml = driveSalesNoteText ? `<div class="rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${esc(driveSalesNoteText)}</div>` : '';
@@ -120033,15 +120083,25 @@ C.14.043 C.15.000
                 const driveHoldReleaseBtn = canUseDriveOptions ? getDriveHoldReleaseButtonHtml(item) : '';
                 const driveReverseRailBtn = canUseDriveOptions ? buildNcrApprovalReverseRailButtonHtml(item, 'drive') : '';
                 const driveArgosRailHtml = canUseDriveOptions ? buildArgosInventoryTransactionRailHtml(item, 'drive') : '';
+                const driveSideActionRailHtml = driveArgosRailHtml ? `<div class="app-drive-card-actions" onclick="event.stopPropagation();">${driveArgosRailHtml}</div>` : '';
                 const includeDriveBloomPickerBtn = canUseDriveOptions && (canUseDriveBloomPickerForTakeBack() || isWarehouseAssignedDriveCardForCurrentUser(item));
+                const driveBottomExtraHtml = `${driveNewCropReleaseBtn}${driveHoldReleaseBtn}${driveReverseRailBtn}`.trim();
                 let quickRequestBtn = '';
-                if(includeDriveBloomPickerBtn || driveNewCropReleaseBtn || driveHoldReleaseBtn || driveReverseRailBtn || driveArgosRailHtml){
-                    quickRequestBtn = getInventoryCardBottomRailHtml(item.DOM_ID, `${driveArgosRailHtml}${driveNewCropReleaseBtn}${driveHoldReleaseBtn}${driveReverseRailBtn}`, { includeCart: includeDriveBloomPickerBtn, sourceView });
+                if(includeDriveBloomPickerBtn || driveBottomExtraHtml){
+                    quickRequestBtn = getInventoryCardBottomRailHtml(item.DOM_ID, driveBottomExtraHtml, { includeCart: includeDriveBloomPickerBtn, sourceView });
                 }
                 const customerOutreachHtml = canUseDriveOptions ? buildCustomerConsigneeOutreachCardAction(item, displaySourceView) : '';
                 const cropRollCardClass = sourceView === 'crop-roll' ? 'app-smart-card--crop-roll' : '';
                 const driveCheckboxHtml = canUseDriveOptions ? `<div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>` : '';
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${cropRollCardClass} ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}<div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource, { locationSuffixHtml: buildDriveEarlyABadgeHtml(item) })}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div>${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}<div class="mt-3">${driveQuantityStackHtml}</div>${cardDesignChipRowHtml}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
+                const driveTagColorHtml = buildInventoryCardTopTagColorHtml(item);
+                const driveSourceChipHtml = displaySource ? `<span class="app-drive-card-source-chip">${esc(displaySource)}</span>` : '';
+                const driveFieldChipsHtml = buildInventoryCardFieldChipsHtml(item, { compact: true });
+                const driveChipRowHtml = `${driveTagColorHtml}${driveSourceChipHtml}${buildDriveEarlyABadgeHtml(item)}${driveFieldChipsHtml}`.trim();
+                const drivePhotoCellHtml = inlineThumbHtml ? `<div class="app-drive-card-photo">${inlineThumbHtml}</div>` : '';
+                const driveCardGridClass = `${driveSideActionRailHtml ? '' : 'app-drive-card-grid--no-actions'} ${inlineThumbHtml ? '' : 'app-drive-card-grid--no-photo'}`.trim();
+                const driveCardActionClass = `${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} ${driveSideActionRailHtml ? 'app-drive-card-with-side-rail' : ''}`.trim();
+                const drivePriorityText = String(firstNonEmptyValue(item.PRIORITY, item.priority, '-') || '-').trim() || '-';
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card ${cropRollCardClass} ${seasonCardShellClass} ${driveCardActionClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}<div class="app-drive-card-grid ${driveCardGridClass} flex-grow">${drivePhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.CONTSIZE || '-')} ${esc(item.COMMONNAME || 'Unknown')}</div><div class="app-drive-card-meta">${esc(item.LOCATIONCODE || 'No Loc')} ${esc(item.LOTCODE || '-')} PRI ${esc(drivePriorityText)}</div></div>${driveChipRowHtml ? `<div class="app-drive-card-chip-row">${driveChipRowHtml}</div>` : ''}${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}</div>${driveSideActionRailHtml}<div class="app-drive-card-quantity-band">${driveQuantityRowHtml}</div>${quickRequestBtn ? `<div class="app-drive-card-bottom">${quickRequestBtn}</div>` : ''}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
