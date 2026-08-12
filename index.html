@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.04').trim() || 'V2026.08.12.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.05').trim() || 'V2026.08.12.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26764,7 +26764,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.04').trim() || 'V2026.08.12.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.05').trim() || 'V2026.08.12.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35115,6 +35115,7 @@ let avTopControlsRenderToken = 0;
         function canCurrentUserArchiveRequestRows() {
             const tokens = getProtectedUserTokens();
             if (hasPrivilegedManagerAccess(tokens) || canUseGlobalRequestAccess()) return true;
+            if (canAccessView('request')) return true;
             for (const token of tokens) {
                 if (REQUEST_ROW_ARCHIVE_USERS.has(token)) return true;
             }
@@ -96998,6 +96999,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         let requestSwipeState = createRequestSwipeState();
         let requestSwipeMoveBound = false;
         let requestSwipePointerTouchGuardUntil = 0;
+        let requestSwipeDesktopClickTimer = null;
+        let requestSwipeDesktopClickRow = null;
         let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let flyerSwipeMoveBound = false;
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
@@ -117612,10 +117615,71 @@ C.14.043 C.15.000
             return false;
         }
 
+        function openRequestSwipeRemoveAction(row = null, event = null) {
+            if (!row) return false;
+            closeAllRequestSwipes(row);
+            row.classList.add('swipe-open');
+            const surface = row.querySelector('.request-swipe-surface');
+            setRequestSwipeSurfaceOffset(surface, REQUEST_SWIPE_OPEN_OFFSET);
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+            }
+            return false;
+        }
+
+        function handleRequestSwipeSurfaceClick(row = null, event = null) {
+            if (!row) return true;
+            const pointerType = String(event && event.pointerType || '').toLowerCase();
+            const isFinePointer = !!(window.matchMedia && window.matchMedia('(pointer: fine)').matches);
+            const isMouseLike = pointerType === 'mouse' || (event && event.detail > 0 && isFinePointer);
+            if (!isMouseLike) return openRequestSwipeRowDetail(row, event);
+            if (row.classList.contains('swipe-open')) {
+                closeRequestSwipe(row);
+                if (event) {
+                    if (typeof event.preventDefault === 'function') event.preventDefault();
+                    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+                }
+                return false;
+            }
+            if (event && event.detail >= 2) {
+                if (requestSwipeDesktopClickTimer) {
+                    clearTimeout(requestSwipeDesktopClickTimer);
+                    requestSwipeDesktopClickTimer = null;
+                }
+                requestSwipeDesktopClickRow = null;
+                return openRequestSwipeRemoveAction(row, event);
+            }
+            if (requestSwipeDesktopClickTimer) {
+                clearTimeout(requestSwipeDesktopClickTimer);
+                requestSwipeDesktopClickTimer = null;
+                if (requestSwipeDesktopClickRow === row) {
+                    requestSwipeDesktopClickRow = null;
+                    return openRequestSwipeRemoveAction(row, event);
+                }
+            }
+            requestSwipeDesktopClickRow = row;
+            requestSwipeDesktopClickTimer = setTimeout(() => {
+                const pendingRow = requestSwipeDesktopClickRow;
+                requestSwipeDesktopClickTimer = null;
+                requestSwipeDesktopClickRow = null;
+                if (pendingRow && pendingRow.isConnected) openRequestSwipeRowDetail(pendingRow, null);
+            }, 210);
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+            }
+            return false;
+        }
+
         function decorateRequestRows() {
             const container = document.getElementById('request-content');
             if (!container) return;
             if (!canCurrentUserArchiveRequestRows()) return;
+            if (activeReqTab !== 'pending') return;
             if (!container.__requestSwipeDelegated) {
                 container.__requestSwipeDelegated = true;
                 container.addEventListener('touchstart', (event) => {
@@ -117686,7 +117750,7 @@ C.14.043 C.15.000
                 surface.setAttribute('role', 'button');
                 surface.setAttribute('tabindex', '0');
                 surface.setAttribute('aria-label', row.getAttribute('aria-label') || 'Open request row');
-                surface.addEventListener('click', (event) => openRequestSwipeRowDetail(row, event));
+                surface.addEventListener('click', (event) => handleRequestSwipeSurfaceClick(row, event));
                 surface.addEventListener('keydown', (event) => {
                     const key = String(event && event.key || '').trim();
                     if (key !== 'Enter' && key !== ' ') return true;
