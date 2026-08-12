@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.11';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -192,6 +192,30 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .app-smart-card.app-card-planstart-wednesday,.request-swipe-row.app-card-planstart-wednesday,.request-swipe-surface.app-card-planstart-wednesday{border-left:8px solid #16a34a !important;background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important;border-color:#22c55e !important;box-shadow:0 0 0 2px rgba(22,163,74,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
         .app-smart-card.app-card-planstart-thursday,.request-swipe-row.app-card-planstart-thursday,.request-swipe-surface.app-card-planstart-thursday{border-left:8px solid #2563eb !important;background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important;border-color:#3b82f6 !important;box-shadow:0 0 0 2px rgba(37,99,235,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
         .app-smart-card.app-card-planstart-friday,.request-swipe-row.app-card-planstart-friday,.request-swipe-surface.app-card-planstart-friday{border-left:8px solid #64748b !important;background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important;border-color:#64748b !important;box-shadow:0 0 0 2px rgba(100,116,139,.22),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        #view-request .request-card-list--suspend-tag .app-planstart-monday,
+        #view-request .request-card-list--suspend-tag .request-swipe-row.app-planstart-monday,
+        #view-request .request-card-list--suspend-tag .request-swipe-surface.app-planstart-monday{border-left:8px solid #9333ea !important;background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important;border-color:#a855f7 !important;box-shadow:0 0 0 2px rgba(147,51,234,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        #view-request .request-card-list--suspend-tag .app-planstart-tuesday,
+        #view-request .request-card-list--suspend-tag .app-planstart-unknown,
+        #view-request .request-card-list--suspend-tag .request-swipe-row.app-planstart-tuesday,
+        #view-request .request-card-list--suspend-tag .request-swipe-row.app-planstart-unknown,
+        #view-request .request-card-list--suspend-tag .request-swipe-surface.app-planstart-tuesday,
+        #view-request .request-card-list--suspend-tag .request-swipe-surface.app-planstart-unknown{border-left:8px solid #ef4444 !important;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important;border-color:#fb7185 !important;box-shadow:0 0 0 2px rgba(239,68,68,.28),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        #view-request .request-card-list--suspend-tag .app-planstart-wednesday,
+        #view-request .request-card-list--suspend-tag .request-swipe-row.app-planstart-wednesday,
+        #view-request .request-card-list--suspend-tag .request-swipe-surface.app-planstart-wednesday{border-left:8px solid #16a34a !important;background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important;border-color:#22c55e !important;box-shadow:0 0 0 2px rgba(22,163,74,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        #view-request .request-card-list--suspend-tag .app-planstart-thursday,
+        #view-request .request-card-list--suspend-tag .request-swipe-row.app-planstart-thursday,
+        #view-request .request-card-list--suspend-tag .request-swipe-surface.app-planstart-thursday{border-left:8px solid #2563eb !important;background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important;border-color:#3b82f6 !important;box-shadow:0 0 0 2px rgba(37,99,235,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        #view-request .request-card-list--suspend-tag .app-planstart-friday,
+        #view-request .request-card-list--suspend-tag .request-swipe-row.app-planstart-friday,
+        #view-request .request-card-list--suspend-tag .request-swipe-surface.app-planstart-friday{border-left:8px solid #64748b !important;background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important;border-color:#64748b !important;box-shadow:0 0 0 2px rgba(100,116,139,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        #view-request .request-card-list--suspend-tag .app-planstart-monday .request-swipe-surface,
+        #view-request .request-card-list--suspend-tag .app-planstart-tuesday .request-swipe-surface,
+        #view-request .request-card-list--suspend-tag .app-planstart-wednesday .request-swipe-surface,
+        #view-request .request-card-list--suspend-tag .app-planstart-thursday .request-swipe-surface,
+        #view-request .request-card-list--suspend-tag .app-planstart-friday .request-swipe-surface,
+        #view-request .request-card-list--suspend-tag .app-planstart-unknown .request-swipe-surface{background:inherit !important;border-radius:inherit}
         .app-card-note{border-radius:12px}
         .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
         .app-card-shell img,.inv-card img{display:block}
@@ -6128,7 +6152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.11').trim() || 'V2026.08.12.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.12').trim() || 'V2026.08.12.12';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7598,7 +7622,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26772,7 +26796,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.11').trim() || 'V2026.08.12.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.12').trim() || 'V2026.08.12.12';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -93686,10 +93710,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 || null;
         }
 
-        const DOCK_SUSPEND_PLANSTART_ALIASES = ['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate'];
+        const DOCK_SUSPEND_PLANSTART_ALIASES = Object.freeze(['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate', 'PLAN_START_DATE', 'plan_start_date']);
 
         function getDockSuspendDcRequestPlanstartValue(item = null) {
-            const sourceRow = isDockSuspendDcRequestMirrorRow(item) ? findDockSuspendDcRequestSourceRow(item) : null;
+            const sourceRow = findDockSuspendDcRequestSourceRow(item);
             const getAliasValue = (row = null) => {
                 if (!row || typeof row !== 'object') return '';
                 const snapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : null;
@@ -93749,7 +93773,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 weekday,
                 tone,
                 valid: !!toneByWeekday[weekday],
-                className: `app-card-planstart-${tone}`
+                className: `app-planstart-${tone}`,
+                legacyClassName: `app-card-planstart-${tone}`
             };
         }
 
@@ -93759,6 +93784,53 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function getDockSuspendDcRequestPlanstartToneClass(item = null) {
             return getDockSuspendDcRequestPlanstartInfo(item).className;
+        }
+
+        function applyDockSuspendDcPlanstartToneToCardElement(card = null, item = null) {
+            if (!card || !item) return false;
+            const info = getDockSuspendDcRequestPlanstartInfo(item);
+            const toneClasses = [
+                'app-planstart-monday', 'app-planstart-tuesday', 'app-planstart-wednesday',
+                'app-planstart-thursday', 'app-planstart-friday', 'app-planstart-unknown',
+                'app-card-planstart-monday', 'app-card-planstart-tuesday', 'app-card-planstart-wednesday',
+                'app-card-planstart-thursday', 'app-card-planstart-friday', 'app-card-planstart-unknown'
+            ];
+            const targets = [card];
+            if (card.classList && card.classList.contains('request-swipe-row')) {
+                const surface = Array.from(card.children || []).find((child) => child && child.classList && child.classList.contains('request-swipe-surface'));
+                if (surface) targets.push(surface);
+            }
+            const parentSwipeRow = card.closest ? card.closest('.request-swipe-row') : null;
+            if (parentSwipeRow && !targets.includes(parentSwipeRow)) targets.push(parentSwipeRow);
+            const parentSurface = parentSwipeRow ? Array.from(parentSwipeRow.children || []).find((child) => child && child.classList && child.classList.contains('request-swipe-surface')) : null;
+            if (parentSurface && !targets.includes(parentSurface)) targets.push(parentSurface);
+            targets.forEach((target) => {
+                if (!target || !target.classList) return;
+                toneClasses.forEach((className) => target.classList.remove(className));
+                target.classList.add(info.className, info.legacyClassName);
+                if (target.dataset) {
+                    target.dataset.planstartValue = info.value;
+                    target.dataset.planstartTone = info.tone;
+                    target.dataset.planstartValid = info.valid ? 'true' : 'false';
+                }
+            });
+            return true;
+        }
+
+        function repairVisibleDockSuspendDcPlanstartCardTones(root = null) {
+            const container = root || document.getElementById('request-content');
+            if (!container || activeReqTab !== 'suspend-tag') return;
+            const list = (container.matches && container.matches('.request-card-list--suspend-tag'))
+                ? container
+                : (container.querySelector ? container.querySelector('.request-card-list--suspend-tag') : null);
+            const cards = list
+                ? Array.from(list.querySelectorAll('[data-request-uid]'))
+                : Array.from(container.querySelectorAll ? container.querySelectorAll('.request-card-list--suspend-tag [data-request-uid]') : []);
+            cards.forEach((card) => {
+                const uid = String(card.dataset && card.dataset.requestUid || '').trim();
+                const item = uid ? findDockSuspendDcRequestMirrorRowByUniqueId(uid) : null;
+                if (item) applyDockSuspendDcPlanstartToneToCardElement(card, item);
+            });
         }
 
         function syncDockSuspendDcRequestQuantityAliases(row = null, sourceRow = null) {
@@ -93922,6 +93994,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
             if (!row.MASTER_ID) row.MASTER_ID = firstNonEmptyValue(item.MASTER_UNIQUE_ID, item.master_unique_id, '');
             if (!row.MASTER_UNIQUE_ID) row.MASTER_UNIQUE_ID = firstNonEmptyValue(item.MASTER_ID, item.master_id, '');
+            const planstartValue = getDockSuspendDcRequestPlanstartValue(row);
+            if (planstartValue !== null && planstartValue !== undefined && String(planstartValue).trim() !== '') {
+                row.PLANSTART = planstartValue;
+                row.planstart = planstartValue;
+                row.PLAN_START = planstartValue;
+            }
             syncDockSuspendDcRequestPhotoAliases(row, item);
             syncDockSuspendDcRequestQuantityAliases(row, item);
             normalizeRowPhotoFields(row);
@@ -96804,13 +96882,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }
                 const searchKey = normalizeSearchValue(requestSuspendTagCommonNameSearchTerm);
                 const assignedKey = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
-                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${assignedKey}:${requestSuspendTagDockFilter}:${searchKey}`, `${crumbText}|${assignedKey}|${requestSuspendTagDockFilter}|${searchKey}`, suspendTagItems);
+                const planstartSignature = suspendTagItems.map((item) => {
+                    const info = getDockSuspendDcRequestPlanstartInfo(item);
+                    return `${String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim()}:${info.value}:${info.tone}:${info.valid ? 1 : 0}`;
+                }).join('|');
+                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${assignedKey}:${requestSuspendTagDockFilter}:${searchKey}:${planstartSignature}`, `${crumbText}|${assignedKey}|${requestSuspendTagDockFilter}|${searchKey}|${planstartSignature}`, suspendTagItems);
                 const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allSuspendTagItems, searchSuspendTagItems, assignedSuspendTagItems, suspendTagItems);
                 renderMarkupChunkedByKey('request-main', resultsContainer, crumb, suspendTagItems, crumbText, (item) => generateCard(item, 'request', 'status-red'), {
                     approxCardHeight: 360,
                     renderSignature: renderKey,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows for this dock.'}</div>`,
-                    onComplete: decorateRequestRows,
+                    onComplete: () => {
+                        repairVisibleDockSuspendDcPlanstartCardTones(resultsContainer);
+                        decorateRequestRows();
+                    },
                     onCompleteAfterInteractive: true,
                     onCompleteDelayMs: 140
                 });
@@ -117756,7 +117841,7 @@ C.14.043 C.15.000
                 row.classList.add('request-swipe-row');
                 const isSeasonSwipeRow = row.classList.contains('app-smart-card--season');
                 if (isSeasonSwipeRow) row.classList.add('request-swipe-row--season');
-                const planstartClass = Array.from(row.classList || []).find((className) => /^app-card-planstart-/.test(className));
+                const planstartClasses = Array.from(row.classList || []).filter((className) => /^app-(?:card-)?planstart-/.test(className));
                 const planstartTone = row.dataset ? String(row.dataset.planstartTone || '').trim() : '';
                 const planstartValue = row.dataset ? String(row.dataset.planstartValue || '').trim() : '';
                 const planstartValid = row.dataset ? String(row.dataset.planstartValid || '').trim() : '';
@@ -117777,10 +117862,10 @@ C.14.043 C.15.000
                 const surface = document.createElement('div');
                 surface.className = 'request-swipe-surface';
                 if (isSeasonSwipeRow) surface.classList.add('request-swipe-surface--season');
-                if (planstartClass) {
+                planstartClasses.forEach((planstartClass) => {
                     row.classList.add(planstartClass);
                     surface.classList.add(planstartClass);
-                }
+                });
                 if (planstartTone) surface.dataset.planstartTone = planstartTone;
                 if (planstartValue) surface.dataset.planstartValue = planstartValue;
                 if (planstartValid) surface.dataset.planstartValid = planstartValid;
@@ -119863,11 +119948,13 @@ C.14.043 C.15.000
                 || String(firstNonEmptyValue(item.REQUEST_SOURCE, item.request_source, '') || '').trim().toLowerCase() === 'docks'
             );
             const isSuspendTagRequestCard = String(sourceView || '').trim().toLowerCase() === 'request'
-                && isDockSuspendDcRequestMirrorRow(item);
+                && activeReqTab === 'suspend-tag'
+                && (isDockSuspendDcRequestMirrorRow(item) || isDocksRequestCard);
             const suspendTagPlanstartInfo = isSuspendTagRequestCard ? getDockSuspendDcRequestPlanstartInfo(item) : null;
             const suspendTagPlanstartToneClass = suspendTagPlanstartInfo ? suspendTagPlanstartInfo.className : '';
+            const suspendTagLegacyPlanstartToneClass = suspendTagPlanstartInfo ? suspendTagPlanstartInfo.legacyClassName : '';
             const suspendTagPlanstartToneDataAttr = suspendTagPlanstartInfo ? ` data-planstart-value="${escJsAttrValue(suspendTagPlanstartInfo.value)}" data-planstart-tone="${escJsAttrValue(suspendTagPlanstartInfo.tone)}" data-planstart-valid="${suspendTagPlanstartInfo.valid ? 'true' : 'false'}"` : '';
-            const requestCardToneClass = suspendTagPlanstartToneClass || (isDocksRequestCard
+            const requestCardToneClass = suspendTagPlanstartToneClass ? `${suspendTagPlanstartToneClass} ${suspendTagLegacyPlanstartToneClass}` : (isDocksRequestCard
                 ? 'bg-red-50 border-red-300 ring-1 ring-red-200'
                 : (isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'));
             const requestBorderClass = suspendTagPlanstartToneClass ? '' : (isDocksRequestCard ? 'app-card-stop' : holdBorderClass);
