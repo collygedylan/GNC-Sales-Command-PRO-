@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.09';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6128,7 +6128,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.09').trim() || 'V2026.08.12.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.10').trim() || 'V2026.08.12.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7598,7 +7598,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26772,7 +26772,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.09').trim() || 'V2026.08.12.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.10').trim() || 'V2026.08.12.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -36787,7 +36787,7 @@ let avTopControlsRenderToken = 0;
             };
         }
 
-        const ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
+        const ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         const ARGOS_INVENTORY_TRANSACTION_MOVE_SEASON_REQUEST_ACTIONS = Object.freeze(['move_up', 'move_down']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'priority_change', 'move_up', 'move_down']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS = Object.freeze({
@@ -36859,6 +36859,10 @@ let avTopControlsRenderToken = 0;
         }
 
         function shouldArgosInventoryTransactionExcludeCurrentLotSeason() {
+            return false;
+        }
+
+        function shouldArgosInventoryTransactionUseDestinationSeasonPicker() {
             const stateAction = normalizeArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'qty');
             return stateAction === 'reclass' && isArgosInventoryTransactionMoveSeasonRequestAction(getArgosInventoryTransactionRequestAction());
         }
@@ -36870,7 +36874,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function getArgosInventoryTransactionLotPlaceholder(options = {}) {
-            if (options && options.excludeCurrentSeason) return `Choose season (not ${getArgosInventoryTransactionCurrentSeasonCode()})`;
+            if (options && (options.seasonOnly || options.excludeCurrentSeason)) return 'Choose season';
             return 'Lot';
         }
 
@@ -36883,7 +36887,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function getArgosInventoryTransactionLotOptionLabel(lotCode = '', options = {}) {
-            if (options && options.excludeCurrentSeason) {
+            if (options && (options.seasonOnly || options.excludeCurrentSeason)) {
                 return getArgosInventoryTransactionLotSeason(lotCode) || String(lotCode || '').trim().toUpperCase();
             }
             return String(lotCode || '').trim().toUpperCase();
@@ -36892,7 +36896,7 @@ let avTopControlsRenderToken = 0;
         function buildArgosInventoryTransactionLotOptions(item = null, options = {}) {
             const lotOptions = [];
             const allowedSeasons = getArgosInventoryTransactionAllowedLotSeasons(options);
-            if (options && options.excludeCurrentSeason) {
+            if (options && (options.seasonOnly || options.excludeCurrentSeason)) {
                 const year = getArgosInventoryTransactionMoveSeasonYear();
                 return allowedSeasons.map((season) => `${year}.${season}`);
             }
@@ -36910,7 +36914,10 @@ let avTopControlsRenderToken = 0;
             const lotSelect = document.getElementById('argos-inventory-transaction-new-lot');
             if (!lotSelect) return;
             const currentValue = String(lotSelect.value || getArgosInventoryField(item, ['LOTCODE', 'lotcode'], '') || '').trim().toUpperCase();
-            const modeOptions = { excludeCurrentSeason: shouldArgosInventoryTransactionExcludeCurrentLotSeason() };
+            const modeOptions = {
+                seasonOnly: shouldArgosInventoryTransactionUseDestinationSeasonPicker(),
+                excludeCurrentSeason: shouldArgosInventoryTransactionExcludeCurrentLotSeason()
+            };
             const options = buildArgosInventoryTransactionLotOptions(item, modeOptions);
             lotSelect.innerHTML = [
                 `<option value="">${escapeHtml(getArgosInventoryTransactionLotPlaceholder(modeOptions))}</option>`,
@@ -37295,7 +37302,7 @@ let avTopControlsRenderToken = 0;
             if (note && requestOnly) {
                 note.hidden = false;
                 note.textContent = needsDestinationSeasonLot
-                    ? `Choose the destination season for ${requestLabel}. Current season ${getArgosInventoryTransactionCurrentSeasonCode()} is not available.`
+                    ? `Choose the destination season for ${requestLabel}.`
                     : `This opens the ${requestLabel} request and email flow only. It does not write to inventory.`;
             } else if (note) {
                 note.hidden = true;
@@ -37788,13 +37795,8 @@ let avTopControlsRenderToken = 0;
             if (requiresDestinationSeasonLot) {
                 const destinationLotCode = getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot').toUpperCase();
                 const destinationSeason = getArgosInventoryTransactionLotSeason(destinationLotCode);
-                const currentSeason = getArgosInventoryTransactionCurrentSeasonCode();
                 if (!destinationLotCode || !destinationSeason) {
                     showToast('Choose Season', `Choose a destination season for ${requestLabel}.`, true);
-                    return false;
-                }
-                if (destinationSeason === currentSeason) {
-                    showToast('Choose Different Season', `Current season ${currentSeason} cannot be used for ${requestLabel}.`, true);
                     return false;
                 }
                 requestInitialValues = {
@@ -82683,17 +82685,12 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getBloomActionMoveSeasonOptions() {
-            const configuredOrder = Array.isArray(APP_SEASON_DISPLAY_ORDER) && APP_SEASON_DISPLAY_ORDER.length
-                ? APP_SEASON_DISPLAY_ORDER
-                : ['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
-            const currentSeason = typeof getConfiguredCurrentSeasonCode === 'function'
-                ? normalizeAppCurrentSeasonCode(getConfiguredCurrentSeasonCode())
-                : 'F1';
+            const configuredOrder = ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
             const seen = new Set();
             return configuredOrder
                 .map((season) => normalizeAppCurrentSeasonCode(season))
                 .filter((season) => {
-                    if (!season || season === currentSeason || seen.has(season)) return false;
+                    if (!season || seen.has(season)) return false;
                     seen.add(season);
                     return true;
                 });
