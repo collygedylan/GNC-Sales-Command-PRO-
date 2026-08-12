@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.26';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.27';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6173,7 +6173,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.26').trim() || 'V2026.08.11.26';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.27').trim() || 'V2026.08.11.27';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7617,7 +7617,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.26';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.27';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20386,6 +20386,61 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return buildFastPressAttrs('invoke', actionName, args, label);
         }
 
+        function buildDriveDrillDirectAttrs(actionName = '', value = '', label = 'Open') {
+            const safeActionName = escJsAttrValue(actionName);
+            const safeValue = escJsAttrValue(value);
+            const safeLabel = escapeHtml(label);
+            const dataActionName = escapeHtml(actionName);
+            const dataValue = escapeHtml(value);
+            return `role="button" tabindex="0" aria-label="${safeLabel}" data-drive-drill-action="${dataActionName}" data-drive-drill-value="${dataValue}" onclick="return handleDriveDrillDirectActivate(event, '${safeActionName}', '${safeValue}')" onkeydown="return handleDriveDrillDirectKeydown(event, '${safeActionName}', '${safeValue}')"`;
+        }
+
+        function clearDriveDrillPressGuards() {
+            try { clearActiveFastPress(); } catch (error) {}
+            try { clearFastPressGhostClickSuppression(); } catch (error) {}
+            try {
+                driveDrillCardClickSuppressCount = 0;
+                driveDrillCardClickSuppressUntil = 0;
+                driveDrillCardClickArmedAt = 0;
+                driveDrillCardClickSuppressSessionId = 0;
+            } catch (error) {}
+        }
+
+        let lastDriveDrillDirectActivationKey = '';
+        let lastDriveDrillDirectActivationAt = 0;
+        function handleDriveDrillDirectActivate(event = null, actionName = '', value = '') {
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+            }
+            const safeActionName = String(actionName || '').trim();
+            const safeValue = String(value || '').trim();
+            if (!safeActionName) return false;
+            const activationKey = `${safeActionName}|${safeValue}`;
+            const now = Date.now();
+            if (activationKey === lastDriveDrillDirectActivationKey && now - lastDriveDrillDirectActivationAt < 280) return false;
+            lastDriveDrillDirectActivationKey = activationKey;
+            lastDriveDrillDirectActivationAt = now;
+            beginDirectNavigationActivity();
+            clearDriveDrillPressGuards();
+            cancelDriveSearchRenderWork();
+            cancelDriveChunkedRenders();
+            if (safeActionName === 'selectDriveName') return selectDriveName(safeValue);
+            if (safeActionName === 'selectDriveSize') return selectDriveSize(safeValue);
+            if (safeActionName === 'selectDriveSeason') return selectDriveSeason(safeValue);
+            if (safeActionName === 'selectDriveProgram') return selectDriveProgram(safeValue);
+            if (safeActionName === 'selectDriveBlock') return selectDriveBlock(safeValue);
+            if (safeActionName === 'selectDriveLoc') return selectDriveLoc(safeValue);
+            return false;
+        }
+
+        function handleDriveDrillDirectKeydown(event = null, actionName = '', value = '') {
+            const key = String(event && event.key || '').trim();
+            if (key !== 'Enter' && key !== ' ') return true;
+            return handleDriveDrillDirectActivate(event, actionName, value);
+        }
+
         function buildRequestFolderOpenAttrs(folderName = '', label = 'Open request folder') {
             const safeFolderName = escJsAttrValue(folderName);
             const safeLabel = escapeHtml(label);
@@ -27508,7 +27563,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.26').trim() || 'V2026.08.11.26';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.27').trim() || 'V2026.08.11.27';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -128512,6 +128567,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function selectDriveName(name) {
             cancelDriveSearchRenderWork();
+            cancelDriveChunkedRenders();
             rememberNavigationScrollPosition('drive:name:names');
             return runDirectTrackedNavigation('drive', `drive-name:${String(name || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
@@ -128524,6 +128580,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function selectDriveSize(size) {
             cancelDriveSearchRenderWork();
+            cancelDriveChunkedRenders();
             rememberNavigationScrollPosition(`drive:name:${selectedDriveName || ''}:sizes`);
             return runDirectTrackedNavigation('drive', `drive-size:${String(size || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
@@ -128535,6 +128592,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function selectDriveSeason(season) {
             cancelDriveSearchRenderWork();
+            cancelDriveChunkedRenders();
             rememberNavigationScrollPosition(`drive:name:${selectedDriveName || ''}:${selectedDriveSize || ''}:seasons`);
             return runDirectTrackedNavigation('drive', `drive-season:${String(season || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
@@ -128547,6 +128605,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeProgram = normalizeDriveItemProgram(program);
             if (!safeProgram) return false;
             cancelDriveSearchRenderWork();
+            cancelDriveChunkedRenders();
             rememberNavigationScrollPosition(`drive:name:${selectedDriveName || ''}:${selectedDriveSize || ''}:${selectedDriveSeason || ''}:programs`);
             return runDirectTrackedNavigation('drive', `drive-program:${safeProgram}`, () => {
                 setDriveSearchManualSelectionLock(false);
@@ -129075,37 +129134,34 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDriveCommonNameGroupCard(group) {
-            const safeNameJs = esc(group.name);
-            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveName', [group.name], `Open ${group.name}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.name)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildDriveDrillDirectAttrs('selectDriveName', group.name, `Open ${group.name}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.name)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveContSizeGroupCard(group) {
             const label = String(firstNonEmptyValue(group.displaySize, getDriveDrillDisplayValue(group.size), '-') || '-').trim();
             const toneClass = group.isAll ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-green-200';
-            return `<div class="drive-drill-card drive-drill-card--contsize ${toneClass} border rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveSize', [group.size], `Open ${label}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.seasonCount} Seasons</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="drive-drill-card drive-drill-card--contsize ${toneClass} border rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildDriveDrillDirectAttrs('selectDriveSize', group.size, `Open ${label}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.seasonCount} Seasons</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveSeasonGroupCard(group) {
             const label = String(firstNonEmptyValue(group.displaySeason, getDriveDrillDisplayValue(group.season, 'Unknown'), 'Unknown') || 'Unknown').trim();
             const toneClass = group.isAll ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-green-200';
-            return `<div class="drive-drill-card ${toneClass} border rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveSeason', [group.season], `Open season ${label}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="drive-drill-card ${toneClass} border rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildDriveDrillDirectAttrs('selectDriveSeason', group.season, `Open season ${label}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveItemProgramGroupCard(group) {
             const label = String(firstNonEmptyValue(group && group.label, '') || '').trim() || 'Item Code';
             const rowCount = Number(group && group.rowCount) || 0;
             const itemCodeCount = Number(group && group.itemCodeCount) || 0;
-            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveProgram', [group.program], `Open ${label}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${rowCount} Rows &bull; ${itemCodeCount} Item Code${itemCodeCount === 1 ? '' : 's'}</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildDriveDrillDirectAttrs('selectDriveProgram', group.program, `Open ${label}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${rowCount} Rows &bull; ${itemCodeCount} Item Code${itemCodeCount === 1 ? '' : 's'}</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveBlockGroupCard(group) {
-            const safeBlockJs = esc(group.block);
-            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveBlock', [group.block], `Open block ${group.block}`)}><div class="flex items-center gap-3 min-w-0"><div class="rounded-lg bg-green-100 px-3 py-1.5 text-lg font-black text-[#007a4d]">${esc(group.block)}</div><div class="min-w-0"><div class="drive-drill-card-title text-base font-black text-slate-800">Block ${esc(group.block)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildDriveDrillDirectAttrs('selectDriveBlock', group.block, `Open block ${group.block}`)}><div class="flex items-center gap-3 min-w-0"><div class="rounded-lg bg-green-100 px-3 py-1.5 text-lg font-black text-[#007a4d]">${esc(group.block)}</div><div class="min-w-0"><div class="drive-drill-card-title text-base font-black text-slate-800">Block ${esc(group.block)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveLocationGroupCard(group) {
-            const safeLocationJs = esc(group.location);
-            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveLoc', [group.location], `Open location ${group.location}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.location)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="drive-drill-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildDriveDrillDirectAttrs('selectDriveLoc', group.location, `Open location ${group.location}`)}><div class="min-w-0"><div class="drive-drill-card-title text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.location)}</div><div class="drive-drill-card-meta mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveQuickCardResultsOnly() {
