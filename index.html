@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.13';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5408,6 +5408,52 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.outdoor-mode #view-sales-office > .freeze-panel{
             background:linear-gradient(180deg,#f8fdf9 0%,rgba(248,253,249,.99) 86%,rgba(248,253,249,.96) 100%) !important;
         }
+        #view-detail.detail-photo-update-mode{
+            min-height:0 !important;
+            max-height:var(--mobile-visible-height,var(--visual-height,100vh)) !important;
+            overflow-y:auto !important;
+            scroll-padding-bottom:calc(var(--footer-nav-reserve,8.75rem) + var(--keyboard-offset,0px) + 2.5rem + env(safe-area-inset-bottom)) !important;
+            overscroll-behavior-y:contain !important;
+            -webkit-overflow-scrolling:touch !important;
+            touch-action:pan-y !important;
+        }
+        #view-detail.detail-photo-update-mode :is(#det-season-content,#det-location-content,#det-notes-content,#det-request-content,#det-ncr-content,#det-docks-content,#det-flyer-content){
+            padding-bottom:calc(var(--footer-nav-reserve,8.75rem) + var(--keyboard-offset,0px) + 3rem + env(safe-area-inset-bottom)) !important;
+            overflow:visible !important;
+        }
+        body.shared-mobile-layout #view-detail.detail-photo-update-mode :is(#det-season-content,#det-location-content,#det-notes-content,#det-request-content,#det-ncr-content,#det-docks-content,#det-flyer-content){
+            padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + var(--keyboard-offset,0px) + 3.25rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.shared-mobile-layout.keyboard-open #view-detail.detail-photo-update-mode :is(#det-season-content,#det-location-content,#det-notes-content,#det-request-content,#det-ncr-content,#det-docks-content,#det-flyer-content),
+        body.shared-mobile-layout.detail-field-active #view-detail.detail-photo-update-mode :is(#det-season-content,#det-location-content,#det-notes-content,#det-request-content,#det-ncr-content,#det-docks-content,#det-flyer-content),
+        body.shared-mobile-layout.measurement-keyboard-open #view-detail.detail-photo-update-mode :is(#det-season-content,#det-location-content,#det-notes-content,#det-request-content,#det-ncr-content,#det-docks-content,#det-flyer-content){
+            padding-bottom:calc(var(--keyboard-offset,0px) + 4.5rem + env(safe-area-inset-bottom)) !important;
+            scroll-margin-bottom:calc(var(--keyboard-offset,0px) + 4.5rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.shared-mobile-layout.keyboard-open #view-detail.detail-photo-update-mode,
+        body.shared-mobile-layout.detail-field-active #view-detail.detail-photo-update-mode,
+        body.shared-mobile-layout.measurement-keyboard-open #view-detail.detail-photo-update-mode{
+            max-height:var(--mobile-visible-height,var(--visual-height,100vh)) !important;
+            scroll-padding-bottom:calc(var(--keyboard-offset,0px) + 5rem + env(safe-area-inset-bottom)) !important;
+        }
+        #view-detail.detail-photo-update-mode :is(#ssn-av-dropdown-list,#lsn-av-dropdown-list,#na-av-dropdown-list,#req-av-dropdown-list,#flyer-av-dropdown-list),
+        .av-note-dropdown-panel{
+            max-height:min(20rem,calc(var(--visual-height,100vh) - 14rem)) !important;
+            overflow-y:auto !important;
+            overscroll-behavior:contain !important;
+            -webkit-overflow-scrolling:touch !important;
+            touch-action:pan-y !important;
+        }
+        body.shared-mobile-layout #view-detail.detail-photo-update-mode :is(#ssn-av-dropdown-list,#lsn-av-dropdown-list,#na-av-dropdown-list,#req-av-dropdown-list,#flyer-av-dropdown-list),
+        body.shared-mobile-layout .av-note-dropdown-panel{
+            max-height:min(18rem,calc(var(--mobile-visible-height,var(--visual-height,100vh)) - 12rem)) !important;
+        }
+        body.shared-mobile-layout.keyboard-open #view-detail.detail-photo-update-mode :is(#ssn-av-dropdown-list,#lsn-av-dropdown-list,#na-av-dropdown-list,#req-av-dropdown-list,#flyer-av-dropdown-list),
+        body.shared-mobile-layout.detail-field-active #view-detail.detail-photo-update-mode :is(#ssn-av-dropdown-list,#lsn-av-dropdown-list,#na-av-dropdown-list,#req-av-dropdown-list,#flyer-av-dropdown-list),
+        body.shared-mobile-layout.keyboard-open .av-note-dropdown-panel,
+        body.shared-mobile-layout.detail-field-active .av-note-dropdown-panel{
+            max-height:min(13rem,calc(var(--mobile-visible-height,var(--visual-height,100vh)) - 10rem)) !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -6246,7 +6292,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.13').trim() || 'V2026.08.12.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.14').trim() || 'V2026.08.12.14';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6297,7 +6343,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-review-btn" class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> New Crop Release</div>
             <div id="drawer-move-up-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('move-up'); toggleMenu();"><i class="ph-bold ph-arrow-up"></i> Move Up</div>
             <div id="drawer-advertisement-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('advertisement'); toggleMenu();"><i class="ph-bold ph-megaphone"></i> Advertisement</div>
-            <div id="drawer-diagnostics-btn" class="drawer-item text-blue-700 font-bold role-access hidden" onclick="switchView('diagnostics'); toggleMenu();"><i class="ph-bold ph-stethoscope"></i> Diagnostics</div>
             <div id="drawer-grower-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('grower'); toggleMenu();"><i class="ph-bold ph-plant"></i> Grower</div>
             <div id="drawer-pest-management-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="switchView('pest-management'); toggleMenu();"><i class="ph-bold ph-bug"></i> Pest Management</div>
             <hr class="my-3 border-gray-200">
@@ -6359,7 +6404,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
                                 <div id="home-tile-review" onclick="switchView('review')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                                 <div id="home-tile-move-up" onclick="switchView('move-up')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
-                                <div id="home-tile-diagnostics" onclick="switchView('diagnostics')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-stethoscope text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Diagnostics</span></div>
                                 <div id="home-tile-grower" onclick="switchView('grower')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Grower</span></div>
                                 <div id="home-tile-pest-management" onclick="switchView('pest-management')" class="hidden bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Pest Management</span></div>
                             </div>
@@ -6922,11 +6966,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         </div>
                     </div>
                     <div id="disease-pest-hub-grid" class="grid gap-3 md:grid-cols-2">
-                        <button type="button" id="disease-pest-open-diagnostics" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('diagnostics')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-stethoscope text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Diagnostics</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">AI photo review</div>
-                        </button>
                         <button type="button" id="disease-pest-open-pest-management" class="rounded-2xl border border-red-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('pest-management')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-700"><i class="ph-bold ph-bug text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Pest Management</div>
@@ -7308,19 +7347,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                 </div>
 
-                <div id="view-diagnostics" class="hidden">
-                    <div class="freeze-panel">
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div class="min-w-0 flex-1">
-                                <div id="diagnostics-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-1">AI Diagnostics</div>
-                                <div class="text-xl font-black text-slate-900">Diagnostics</div>
-                            </div>
-                            <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
-                        </div>
-                    </div>
-                    <div id="diagnostics-content"></div>
-                </div>
-
                 <div id="view-grower" class="hidden">
                     <div class="freeze-panel">
                         <div class="flex items-start justify-between gap-3 mb-3">
@@ -7638,11 +7664,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const REQUEST_HISTORY_TABLE = 'ph_request_history';
         const SALES_CREDIT_REQUESTS_TABLE = 'ph_sales_credit_requests';
         const FLYER_FOLDER_HISTORY_TABLE = 'ph_flyer_folder_history';
-        const ML_IMAGE_JOBS_TABLE = 'ph_ml_image_jobs';
-        const ML_CAPTURE_PHOTO_BUCKET = 'ml_capture_photos';
-        const DIAGNOSTIC_LAB_CASES_TABLE = 'ph_diagnostic_lab_cases';
-        const DIAGNOSTIC_LAB_REPORT_BUCKET = 'diagnostic_lab_reports';
-        const DISEASE_TRAINING_ASSETS_TABLE = 'ph_disease_training_assets';
         const GROWER_SCOUT_REPORTS_TABLE = 'ph_grower_scout_reports';
         const GROWER_SCOUT_ASSETS_TABLE = 'ph_grower_scout_assets';
         const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
@@ -7692,7 +7713,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             'dock-': 'dock_photos',
             'flyer-': 'flyer_photos',
             'marketing-': 'marketing_materials',
-            'ml-': ML_CAPTURE_PHOTO_BUCKET,
             'default': 'flyer_photos'
         };
         const MARKETING_MATERIALS_TABLE = 'marketing_materials';
@@ -7716,7 +7736,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7754,6 +7774,17 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (!client || !client.storage) throw new Error(errorMessage);
             return client.storage;
         }
+
+        function formatPhotoUploadErrorMessage(err = null) {
+            const raw = String(err && err.message ? err.message : err || '').trim();
+            if (/failed to fetch|networkerror|load failed|aborterror|timed out|timeout/i.test(raw)) {
+                return 'Photo upload did not reach the server. Check service/network, then try the photo again.';
+            }
+            if (/session|forbidden|unauthorized|401|403/i.test(raw)) {
+                return 'Photo upload could not verify this session. Close and reopen the app, then try again.';
+            }
+            return raw ? `Upload failed: ${raw}` : 'Photo upload failed. Please try again.';
+        }
         getSupabaseBrowserClient();
 const QUOTA_SAFE_REALTIME_MODE = true;
 const QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS = 240000;
@@ -7775,13 +7806,16 @@ const FOREGROUND_INVENTORY_FULL_MAX_AGE_MS = 30000;
 const FOREGROUND_INVENTORY_INITIAL_MAX_AGE_MS = 15000;
 const FORCE_VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 10000;
 const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
-const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'mlJobs', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
+const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
+const RETIRED_DATASET_KEYS = new Set(['mlJobs']);
+const RETIRED_MANUAL_SYNC_STAGE_KEYS = new Set(['disease', 'lab', 'lab_reports']);
+const MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT = Object.freeze(['drive','soc','reserves','customer_rep_map','warehouse_assigned_items','cav','hl_po_parsed']);
 const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
-            home: ['request', 'sales-office', 'tasks', 'diagnostics', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
+            home: ['request', 'sales-office', 'tasks', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
             drive: ['inventory', 'av', 'reserves', 'request', 'sales-office', 'customer-rep-map'],
             'crop-roll': ['crop-roll', 'inventory'],
-            tasks: ['tasks', 'request', 'sales-office', 'diagnostics', 'grower', 'customer-rep-map'],
+            tasks: ['tasks', 'request', 'sales-office', 'grower', 'customer-rep-map'],
             request: ['request', 'sales-office', 'shear-list', 'docks', 'inventory', 'customer-rep-map'],
             reports: ['request', 'sales-office', 'docks', 'customer-rep-map'],
             'sales-office': ['sales-office'],
@@ -7792,7 +7826,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             docks: ['docks'],
             review: ['inventory'],
             'move-up': ['inventory', 'sales-office'],
-            diagnostics: ['diagnostics'],
             grower: ['grower'],
             'pest-management': ['grower'],
             'shear-list': ['shear-list', 'inventory', 'reserves'],
@@ -7800,7 +7833,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             production: ['production', 'inventory'],
             'production-workflow': ['production', 'inventory'],
             sales: ['request', 'docks', 'av', 'sales-office', 'inventory', 'reserves', 'customer-rep-map'],
-            managers: ['diagnostics', 'inventory', 'tasks'],
+            managers: ['inventory', 'tasks'],
             qc: ['docks', 'inventory'],
             office: ['sales-office'],
             inventory: ['sales-inventory', 'sales-office', 'production'],
@@ -7810,11 +7843,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         });
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 'visible-default' },
-            managers: { realtimeTables: ['ph_master_inventory', ML_IMAGE_JOBS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            managers: { realtimeTables: ['ph_master_inventory'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             chat: { realtimeTables: ['ph_chat_conversations', 'ph_chat_participants', 'ph_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            tasks: { realtimeTables: ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, ML_IMAGE_JOBS_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            tasks: { realtimeTables: ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             request: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_inventory_edit_requests', 'ph_av_option_eval_requests', SHEAR_LIST_TABLE, 'ph_sales_office', 'ph_master_inventory', 'ph_soc_master'], pollMs: REQUEST_VISIBLE_POLL_MS },
             'sales-office': { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             moves: { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -7827,7 +7860,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             advertisement: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             review: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'move-up': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            diagnostics: { realtimeTables: [ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
             grower: { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'pest-management': { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'shear-list': { realtimeTables: [SHEAR_LIST_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -9693,13 +9725,28 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return raw;
         }
 
+        const RETIRED_SUPABASE_RUNTIME_TABLES = new Set([
+            'ph_ml_image_jobs',
+            'v2_ml_image_jobs',
+            'ph_disease_training_assets',
+            'v2_disease_training_assets',
+            'ph_diagnostic_lab_cases',
+            'ph_diagnostic_reference_reports',
+            'ph_diagnostic_review_feedback'
+        ]);
+
+        function isRetiredSupabaseRuntimeTable(tableName = '') {
+            const raw = String(tableName || '').trim().toLowerCase();
+            return RETIRED_SUPABASE_RUNTIME_TABLES.has(raw) || RETIRED_SUPABASE_RUNTIME_TABLES.has(normalizeAppTableName(raw));
+        }
+
         function normalizeRealtimeTableList(tables = []) {
             const raw = Array.isArray(tables) ? tables : [];
             const next = [];
             const seen = new Set();
             raw.forEach((tableName) => {
                 const key = normalizeAppTableName(tableName);
-                if (!key || seen.has(key)) return;
+                if (!key || seen.has(key) || isRetiredSupabaseRuntimeTable(key)) return;
                 seen.add(key);
                 next.push(key);
             });
@@ -9891,7 +9938,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (safeTable === SPREAD_COUNT_TABLE || safeTable === BUNCH_COUNT_TABLE) return 'sales-inventory';
             if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
             if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
-            if (safeTable === ML_IMAGE_JOBS_TABLE) return 'diagnostics';
             if (safeTable === GROWER_SCOUT_REPORTS_TABLE || safeTable === GROWER_SCOUT_ASSETS_TABLE) return 'grower';
             if (safeTable === WAREHOUSE_ASSIGNED_ITEMS_TABLE) return 'tasks';
             if (safeTable === 'ph_master_inventory') return 'inventory';
@@ -10903,7 +10949,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             'crop-roll',
             'review',
             'move-up',
-            'diagnostics',
             'grower',
             'pest-management'
         ]);
@@ -15616,7 +15661,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             0x017E: 0x9E,
             0x0178: 0x9F
         };
-        const DISPLAY_MOJIBAKE_MARKERS = ['Ã', 'Â', 'â€™', 'â€œ', 'â€', 'â€¢', 'Ãƒ', 'Ã¢'];
+        const DISPLAY_MOJIBAKE_MARKERS = ['Ãƒ', 'Ã‚', 'Ã¢â‚¬â„¢', 'Ã¢â‚¬Å“', 'Ã¢â‚¬', 'Ã¢â‚¬Â¢', 'ÃƒÆ’', 'ÃƒÂ¢'];
         const DISPLAY_MOJIBAKE_ROW_FIELDS = [
             'COMMONNAME',
             'DESCRIPTION',
@@ -16716,7 +16761,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'ph_sales_office') return ['salesOffice'];
             if (tableName === FLYER_FOLDER_ROWS_TABLE) return ['flyerRows'];
             if (tableName === FLYER_FOLDER_HISTORY_TABLE) return ['flyerHistory'];
-            if (tableName === ML_IMAGE_JOBS_TABLE) return ['mlJobs'];
             if (tableName === GROWER_SCOUT_REPORTS_TABLE) return ['growerScoutReports'];
             if (tableName === GROWER_SCOUT_ASSETS_TABLE) return ['growerScoutAssets'];
             if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) return ['warehouseAssignedItems'];
@@ -17927,13 +17971,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     const historyRow = normalizeFlyerFolderHistoryRow(payload.new || nextRow);
                     if (historyRow) changed = !!cacheFlyerFolderHistoryRow(historyRow);
                 }
-            } else if (tableName === ML_IMAGE_JOBS_TABLE) {
-                if (eventType === 'DELETE') {
-                    changed = removeRealtimeRow(mlImageJobsInventory, uniqueId);
-                } else if (nextRow) {
-                    changed = upsertRealtimeRow(mlImageJobsInventory, normalizeMlImageJobRow(nextRow), tableName);
-                }
-                rebuildMlImageJobIndexes();
             } else if (tableName === GROWER_SCOUT_REPORTS_TABLE) {
                 if (eventType === 'DELETE') {
                     changed = removeRealtimeRow(growerScoutReportsInventory, uniqueId);
@@ -18067,12 +18104,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (isViewVisible('advertisement')) {
                     renderAdvertisementFlyerFolders();
                 }
-            } else if (tableName === ML_IMAGE_JOBS_TABLE) {
-                markViewDirty('managers');
-                markViewDirty('diagnostics');
-                markViewDirty('tasks');
-                if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
-                if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
             } else if (tableName === GROWER_SCOUT_REPORTS_TABLE || tableName === GROWER_SCOUT_ASSETS_TABLE) {
                 markViewDirty('grower');
                 markViewDirty('pest-management');
@@ -22434,6 +22465,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             table = normalizeAppTableName(table);
             const safeMethod = String(method || 'GET').trim().toUpperCase() || 'GET';
+            if (isRetiredSupabaseRuntimeTable(table)) {
+                return safeMethod === 'GET' ? [] : {};
+            }
             if(safeMethod==='GET'){
                 const readKey = `legacy:${String(table || '').trim()}:${String(query || '').trim()}`;
                 try {
@@ -24482,7 +24516,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (match.lot) parts.push(`Lot: ${match.lot}`);
             if (match.priority !== undefined && match.priority !== null && String(match.priority).trim() !== '') parts.push(`Priority: ${match.priority}`);
             if (match.qty !== undefined && match.qty !== null && String(match.qty).trim() !== '') parts.push(`Qty: ${match.qty}`);
-            return parts.join(' • ');
+            return parts.join(' â€¢ ');
         }
 
         function buildLeafRichMatchMeta(match = {}) {
@@ -24491,7 +24525,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (match.salesRep) parts.push(`Rep: ${match.salesRep}`);
             if (match.customer) parts.push(`Customer: ${match.customer}`);
             if (match.hold) parts.push(`Hold: ${match.hold}`);
-            return parts.filter(Boolean).join(' • ');
+            return parts.filter(Boolean).join(' â€¢ ');
         }
 
         function buildLeafActionSummary(action = {}) {
@@ -24572,7 +24606,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const clarification = !!message.needsClarification;
                 const actionHtml = role === 'assistant' ? buildLeafActionSummary({ ...(message.action || {}), messageIndex }) : '';
                 const matchHtml = matches.length ? `<div class="leaf-match-list">${matches.map((match) => `<div class="leaf-match-card"><div class="leaf-match-title">${escapeLeafHtml(firstNonEmptyValue(match.commonName, match.itemCode, match.location, 'Match'))}</div><div class="leaf-match-meta">${escapeLeafHtml(buildLeafRichMatchMeta(match))}</div></div>`).join('')}</div>` : '';
-                const footerHtml = sourceLabel ? `<div class="leaf-match-meta">${escapeLeafHtml(sourceLabel)}${clarification ? ' • Clarification needed' : ''}</div>` : (clarification ? `<div class="leaf-match-meta">Clarification needed</div>` : '');
+                const footerHtml = sourceLabel ? `<div class="leaf-match-meta">${escapeLeafHtml(sourceLabel)}${clarification ? ' â€¢ Clarification needed' : ''}</div>` : (clarification ? `<div class="leaf-match-meta">Clarification needed</div>` : '');
                 return `<div class="leaf-msg ${role}"><div class="leaf-msg-role">${role === 'user' ? 'You' : 'Leaf'}</div><div class="leaf-msg-bubble">${escapeLeafHtml(message.text || '')}</div>${actionHtml}${matchHtml}${footerHtml}</div>`;
             }).join('');
             requestAnimationFrame(() => {
@@ -25224,7 +25258,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             'salesOffice',
             'flyerRows',
             'flyerHistory',
-            'mlJobs',
             'growerScoutReports',
             'growerScoutAssets',
             'warehouseAssignedItems',
@@ -25255,7 +25288,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
                 flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
                 flyerFolderHistoryData: buildCacheRows(flyerFolderHistoryInventory),
-                mlJobsData: buildCacheRows(mlImageJobsInventory),
                 growerScoutReportsData: buildCacheRows(growerScoutReportsInventory),
                 growerScoutAssetsData: buildCacheRows(growerScoutAssetsInventory),
                 warehouseAssignedItemsData: buildCacheRows(warehouseAssignedItemsInventory),
@@ -25295,7 +25327,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
                 flyerRows: { initialLoaded: hasRows(cachedRes.flyerFolderRowsData), fullLoaded: false },
                 flyerHistory: { initialLoaded: hasRows(cachedRes.flyerFolderHistoryData), fullLoaded: false },
-                mlJobs: { initialLoaded: hasRows(cachedRes.mlJobsData), fullLoaded: false },
                 growerScoutReports: { initialLoaded: hasRows(cachedRes.growerScoutReportsData), fullLoaded: false },
                 growerScoutAssets: { initialLoaded: hasRows(cachedRes.growerScoutAssetsData), fullLoaded: false },
                 warehouseAssignedItems: { initialLoaded: hasRows(cachedRes.warehouseAssignedItemsData), fullLoaded: false },
@@ -25473,7 +25504,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 salesOffice: createDatasetLoadEntry(),
                 flyerRows: createDatasetLoadEntry(),
                 flyerHistory: createDatasetLoadEntry(),
-                mlJobs: createDatasetLoadEntry(),
                 growerScoutReports: createDatasetLoadEntry(),
                 growerScoutAssets: createDatasetLoadEntry(),
                 cav: createDatasetLoadEntry(),
@@ -25951,7 +25981,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const SHEAR_APPROVAL_VIEW = 'shear-approvals';
         const NOT_ON_INVENTORY_APPROVAL_VIEW = 'not-on-inventory-approvals';
         const MANAGER_APPROVAL_TAB_VALUES = Object.freeze([SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW, NOT_ON_INVENTORY_APPROVAL_VIEW]);
-        const TASK_DIAGNOSTICS_VIEW = 'diagnostics-review';
         const INVENTORY_TRANSACTION_HISTORY_VIEW = 'inventory-transaction-history';
         const MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW = 'assigned-items-export';
         const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
@@ -26908,7 +26937,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.13').trim() || 'V2026.08.12.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.14').trim() || 'V2026.08.12.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27665,7 +27694,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             review: { eyebrow: 'Amazon Filters', title: 'New Crop Release' },
             'move-up': { eyebrow: 'Amazon Filters', title: 'Move Up' },
             advertisement: { eyebrow: 'Marketing Studio', title: 'Advertisement' },
-            diagnostics: { eyebrow: 'AI Diagnostics', title: 'Diagnostics' },
             detail: { eyebrow: 'Amazon Actions', title: 'Item Detail' },
             hours: { eyebrow: 'Amazon Actions', title: 'Labor Hours' }
         };
@@ -27753,21 +27781,56 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return isStrictDylanCollygeUser();
         }
 
+        function normalizeRetiredManualSyncStageKey(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+        }
+
+        function isRetiredManualSyncStageKey(value = '') {
+            return RETIRED_MANUAL_SYNC_STAGE_KEYS.has(normalizeRetiredManualSyncStageKey(value));
+        }
+
+        function isRetiredManualSyncStatusText(value = '') {
+            const text = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (!text) return false;
+            if (/unknown_manual_sync_stage:_?(disease|lab|lab_reports)\b/.test(text)) return true;
+            if (/failed_during_(disease|disease_lab_assets|lab_assets|lab_reports)\b/.test(text)) return true;
+            return false;
+        }
+
+        function filterRetiredManualSyncStageKeys(values = []) {
+            return (Array.isArray(values) ? values : [])
+                .filter(Boolean)
+                .map((value) => String(value || '').trim())
+                .filter((value) => value && !isRetiredManualSyncStageKey(value));
+        }
+
+        function normalizeManualSyncStageKeyForClient(value = '') {
+            const safeKey = normalizeRetiredManualSyncStageKey(value);
+            return isRetiredManualSyncStageKey(safeKey) ? '' : safeKey;
+        }
+
         function normalizeManualSyncStatusPayload(raw = null) {
             const source = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+            const rawCurrentStage = String(firstNonEmptyValue(source.currentStage, source.current_stage, '')).trim();
+            const rawMessage = String(firstNonEmptyValue(source.message, '')).trim();
+            const rawError = String(firstNonEmptyValue(source.error, '')).trim();
+            const retiredStatus = isRetiredManualSyncStageKey(rawCurrentStage) || isRetiredManualSyncStatusText(rawMessage) || isRetiredManualSyncStatusText(rawError);
+            const currentStage = retiredStatus ? '' : normalizeManualSyncStageKeyForClient(rawCurrentStage);
             return {
-                active: !!source.active,
+                active: retiredStatus ? false : !!source.active,
                 runId: String(firstNonEmptyValue(source.runId, source.run_id, '')).trim(),
-                currentStage: String(firstNonEmptyValue(source.currentStage, source.current_stage, '')).trim().toLowerCase(),
-                currentStageLabel: String(firstNonEmptyValue(source.currentStageLabel, source.current_stage_label, '')).trim(),
+                currentStage,
+                currentStageLabel: currentStage ? String(firstNonEmptyValue(source.currentStageLabel, source.current_stage_label, '')).trim() : '',
                 stageIndex: Math.max(0, Number(firstNonEmptyValue(source.stageIndex, source.stage_index, 0)) || 0),
-                stageOrder: Array.isArray(source.stageOrder) ? source.stageOrder.filter(Boolean).map((value) => String(value || '').trim()) : [],
-                completedStages: Array.isArray(source.completedStages) ? source.completedStages.filter(Boolean).map((value) => String(value || '').trim()) : [],
-                stageResults: Array.isArray(source.stageResults) ? source.stageResults.slice() : [],
+                stageOrder: filterRetiredManualSyncStageKeys(source.stageOrder),
+                completedStages: filterRetiredManualSyncStageKeys(source.completedStages),
+                stageResults: Array.isArray(source.stageResults)
+                    ? source.stageResults.filter((result) => !isRetiredManualSyncStageKey(firstNonEmptyValue(result && result.key, result && result.stageKey, result && result.stage, '')))
+                    : [],
                 source: String(firstNonEmptyValue(source.source, source.trigger, '')).trim().toLowerCase(),
                 requestedBy: String(firstNonEmptyValue(source.requestedBy, source.requested_by, '')).trim(),
-                message: String(firstNonEmptyValue(source.message, '')).trim(),
-                error: String(firstNonEmptyValue(source.error, '')).trim(),
+                message: retiredStatus ? '' : rawMessage,
+                error: retiredStatus ? '' : rawError,
                 startedAt: String(firstNonEmptyValue(source.startedAt, source.started_at, '')).trim(),
                 updatedAt: String(firstNonEmptyValue(source.updatedAt, source.updated_at, '')).trim(),
                 finishedAt: String(firstNonEmptyValue(source.finishedAt, source.finished_at, '')).trim()
@@ -27808,6 +27871,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function releaseStaleManualSyncClientStateIfNeeded() {
             if (!manualSyncStatusState || !manualSyncStatusState.active) return false;
+            if (isRetiredManualSyncStageKey(firstNonEmptyValue(manualSyncStatusState.currentStage, manualSyncStatusState.current_stage, ''))) {
+                const nowIso = new Date().toISOString();
+                manualSyncStatusState = normalizeManualSyncStatusPayload({
+                    ...manualSyncStatusState,
+                    active: false,
+                    currentStage: 'complete',
+                    currentStageLabel: 'Complete',
+                    updatedAt: nowIso,
+                    finishedAt: nowIso,
+                    message: 'Retired sync stage skipped. Please press Run Script again if you need a fresh sync.',
+                    error: ''
+                });
+                clearManualSyncStatusPoll();
+                syncGoogleScriptButton();
+                return true;
+            }
             if (!isManualSyncStatusClientStale(manualSyncStatusState)) return false;
             manualSyncStatusState = markManualSyncStatusClientStale(manualSyncStatusState);
             clearManualSyncStatusPoll();
@@ -28048,7 +28127,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 applyManualSyncStatus({
                     active: true,
                     runId: '',
-                    stageOrder: ['drive','soc','reserves','customer_rep_map','warehouse_assigned_items','cav','disease'],
+                    stageOrder: MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT.slice(),
                     stageIndex: 0,
                     currentStage: 'queued',
                     currentStageLabel: 'Starting',
@@ -28074,7 +28153,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     applyManualSyncStatus({
                         active: true,
                         runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
-                        stageOrder: Array.isArray(responseData && responseData.stageOrder) ? responseData.stageOrder : ['drive','soc','reserves','customer_rep_map','warehouse_assigned_items','cav','disease'],
+                        stageOrder: Array.isArray(responseData && responseData.stageOrder) ? responseData.stageOrder : MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT.slice(),
                         stageIndex: 0,
                         currentStage: 'queued',
                         currentStageLabel: 'Queued',
@@ -28303,7 +28382,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             salesOffice: { table: 'ph_sales_office', sourceTable: 'ph_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
             flyerRows: { table: FLYER_FOLDER_ROWS_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc` },
             flyerHistory: { table: FLYER_FOLDER_HISTORY_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
-            mlJobs: { table: ML_IMAGE_JOBS_TABLE, sourceTable: ML_IMAGE_JOBS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
             growerScoutReports: { table: GROWER_SCOUT_REPORTS_TABLE, sourceTable: GROWER_SCOUT_REPORTS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
             growerScoutAssets: { table: GROWER_SCOUT_ASSETS_TABLE, sourceTable: GROWER_SCOUT_ASSETS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
             warehouseAssignedItems: { table: WAREHOUSE_ASSIGNED_ITEMS_TABLE, sourceTable: WAREHOUSE_ASSIGNED_ITEMS_TABLE, initialQuery: 'select=*&order=updated_at.desc', fullQuery: 'select=*&order=updated_at.desc', initialFetchAll: true },
@@ -28330,7 +28408,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             reports: { container: 'reports-content', crumb: 'reports-crumb' },
             review: { container: 'review-content', crumb: 'review-crumb' },
             'move-up': { container: 'move-up-content', crumb: 'move-up-crumb' },
-            diagnostics: { container: 'diagnostics-content', crumb: 'diagnostics-crumb' },
             grower: { container: 'grower-content', crumb: 'grower-crumb' },
             'pest-management': { container: 'pest-management-content', crumb: 'pest-management-crumb' },
             'shear-list': { container: 'shear-list-content', crumb: 'shear-list-crumb' },
@@ -30941,7 +31018,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'salesOffice') return { salesOfficeData: formatted };
             if (key === 'flyerRows') return { flyerFolderRowsData: formatted };
             if (key === 'flyerHistory') return { flyerFolderHistoryData: formatted };
-            if (key === 'mlJobs') return { mlJobsData: formatted };
             if (key === 'growerScoutReports') return { growerScoutReportsData: formatted };
             if (key === 'growerScoutAssets') return { growerScoutAssetsData: formatted };
             if (key === 'warehouseAssignedItems') return { warehouseAssignedItemsData: formatted };
@@ -31078,7 +31154,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 case 'salesOffice': return Array.isArray(salesOfficeInventory) ? salesOfficeInventory.length : 0;
                 case 'flyerRows': return Array.isArray(flyerFolderInventory) ? flyerFolderInventory.length : 0;
                 case 'flyerHistory': return Array.isArray(flyerFolderHistoryInventory) ? flyerFolderHistoryInventory.length : 0;
-                case 'mlJobs': return Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory.length : 0;
+                case 'mlJobs': return 0;
                 case 'growerScoutReports': return Array.isArray(growerScoutReportsInventory) ? growerScoutReportsInventory.length : 0;
                 case 'growerScoutAssets': return Array.isArray(growerScoutAssetsInventory) ? growerScoutAssetsInventory.length : 0;
                 case 'warehouseAssignedItems': return Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory.length : 0;
@@ -31126,6 +31202,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function ensureDatasetLoaded(key, mode = 'initial', options = {}) {
+            if (RETIRED_DATASET_KEYS.has(String(key || '').trim())) return false;
             const definition = DATASET_DEFINITIONS[key];
             if (!definition) return false;
             const wantsFull = mode === 'full';
@@ -31280,6 +31357,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function queueDatasetLoad(key, mode = 'full', delayMs = 180) {
+            if (RETIRED_DATASET_KEYS.has(String(key || '').trim())) return;
             const queueKey = `${key}:${mode}`;
             const state = getDatasetState(key);
             if (isDatasetFrozenDuringManualSync(key, mode)) return;
@@ -31481,13 +31559,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified Que...' };
             if (viewId === 'managers') {
                 if (isTaskDiagnosticsView(activeHomeTab)) {
-                    return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading manager diagnostics...' };
+                    return { required: [], background: [], label: 'Loading manager tools...' };
                 }
                 if (isInventoryChecksApprovalTaskView(activeHomeTab)) {
-                    return { required: [{ key: 'master', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }], background: [{ key: 'mlJobs', mode: 'initial' }], label: 'Loading inventory check approvals...' };
+                    return { required: [{ key: 'master', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }], background: [], label: 'Loading inventory check approvals...' };
                 }
                 if (isManagerApprovalTab(activeHomeTab)) {
-                    return { required: [{ key: 'master', mode: 'full' }], background: [{ key: 'mlJobs', mode: 'initial' }], label: 'Loading manager approval rows...' };
+                    return { required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading manager approval rows...' };
                 }
                 if (activeHomeTab === 'moves') {
                     if (activeMovesTab === 'office') {
@@ -31499,7 +31577,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     }
                     return { required: [{ key: 'master', mode: 'full' }, { key: 'salesOffice', mode: 'full' }, { key: 'requests', mode: 'full' }], background: [], label: 'Loading move approvals and evaluation rows...' };
                 }
-                return { required: [], background: [{ key: 'master', mode: 'initial' }, { key: 'mlJobs', mode: 'initial' }], label: 'Loading manager tools...' };
+                return { required: [], background: [{ key: 'master', mode: 'initial' }], label: 'Loading manager tools...' };
             }
             if (viewId === 'sales') return { required: [], background: [], label: 'Loading sales...' };
             if (viewId === 'qc') return { required: [], background: [], label: 'Loading QC...' };
@@ -31536,7 +31614,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (viewId === 'tasks') {
                 if (isTaskDiagnosticsView(activeTaskView)) {
-                    return { required: [{ key: 'mlJobs', mode: 'full' }], background: [], label: 'Loading verified diagnostic issue rows...' };
+                    return { required: [], background: [], label: 'Loading tasks...' };
                 }
                 const isFlyerTaskView = activeTaskView === 'flyer';
                 const isAvBlankTaskView = activeTaskView === 'av-blanks';
@@ -31559,7 +31637,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'review') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified review rows...' });
             if (viewId === 'move-up') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified Move Up rows...' });
             if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }], background: [], label: 'Loading verified advertisement assets...' };
-            if (viewId === 'diagnostics') return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading diagnostics...' };
+            if (viewId === 'diagnostics') return { required: [], background: [], label: 'Diagnostics retired.' };
             if (viewId === 'grower') return { required: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }, { key: 'master', mode: 'full' }], background: [], label: 'Loading verified grower scouting...' };
             if (viewId === 'pest-management') return { required: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }], background: [], label: 'Loading verified pest management...' };
             if (viewId === 'reports') return { required: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified reports...' };
@@ -33512,7 +33590,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function isTaskDiagnosticsView(view = activeTaskView) {
-            return String(view || '').trim().toLowerCase() === TASK_DIAGNOSTICS_VIEW;
+            return false;
         }
 
         function getNcrApprovalAssignment(type = 'new-crop', stage = 'dylan') {
@@ -46242,13 +46320,11 @@ function toggleDriveQuickRequestItem(domId) {
                 addTarget('flyerHistory', 'full');
                 addTarget('cav', 'full');
                 addTarget('cavAvBlankKeys', 'full');
-                addTarget('mlJobs', 'full');
                 addTarget('reserves', 'full');
                 addTarget('customerRepMap', 'full');
             }
-            if (hasView('managers') || hasView('diagnostics')) {
+            if (hasView('managers')) {
                 addTarget('master', 'full');
-                addTarget('mlJobs', 'full');
                 addTarget('salesOffice', 'full');
             }
             if (hasView('advertisement')) {
@@ -46972,7 +47048,6 @@ function toggleDriveQuickRequestItem(domId) {
             const hasSalesOffice = hasKey('salesOfficeData');
             const hasFlyerRows = hasKey('flyerFolderRowsData');
             const hasFlyerHistory = hasKey('flyerFolderHistoryData');
-            const hasMlJobs = hasKey('mlJobsData');
             const hasGrowerScoutReports = hasKey('growerScoutReportsData');
             const hasGrowerScoutAssets = hasKey('growerScoutAssetsData');
             const hasWarehouseAssignedItems = hasKey('warehouseAssignedItemsData');
@@ -46980,7 +47055,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasCavAvBlankKeys = hasKey('cavAvBlankKeysData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasCropRollDrive || hasAvOpen || hasRequests || hasRequestHistory || hasSalesCredits || hasInventoryEditRequests || hasReserves || hasCustomerRepMap || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasWarehouseAssignedItems || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasCropRollDrive || hasAvOpen || hasRequests || hasRequestHistory || hasSalesCredits || hasInventoryEditRequests || hasReserves || hasCustomerRepMap || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasGrowerScoutReports || hasGrowerScoutAssets || hasWarehouseAssignedItems || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasCropRollDrive) changedDatasetKeys.push('cropRollDrive');
@@ -46995,7 +47070,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
             if (hasFlyerRows) changedDatasetKeys.push('flyerRows');
             if (hasFlyerHistory) changedDatasetKeys.push('flyerHistory');
-            if (hasMlJobs) changedDatasetKeys.push('mlJobs');
             if (hasGrowerScoutReports) changedDatasetKeys.push('growerScoutReports');
             if (hasGrowerScoutAssets) changedDatasetKeys.push('growerScoutAssets');
             if (hasWarehouseAssignedItems) changedDatasetKeys.push('warehouseAssignedItems');
@@ -47079,11 +47153,6 @@ function toggleDriveQuickRequestItem(domId) {
 
             if (hasInventoryEditRequests) {
                 inventoryEditRequestInventory = (res.inventoryEditRequestsData || []).map((item) => normalizeInventoryEditLiveRecord(item)).filter(Boolean);
-            }
-
-            if (hasMlJobs) {
-                mlImageJobsInventory = (res.mlJobsData || []).map((item, idx) => normalizeMlImageJobRow(item, idx)).filter(Boolean);
-                rebuildMlImageJobIndexes();
             }
 
             if (hasGrowerScoutReports) {
@@ -50570,7 +50639,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','production-workflow','weather-hold','shear-list','sales','managers','building','qc','av','request','reserves','sales-office','office','po-management','sales-inventory','moves','reports','hours','low-stock','review','move-up','advertisement','diagnostics','disease-pest','grower','pest-management','communication','department-calendar','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','production-workflow','weather-hold','shear-list','sales','managers','building','qc','av','request','reserves','sales-office','office','po-management','sales-inventory','moves','reports','hours','low-stock','review','move-up','advertisement','disease-pest','grower','pest-management','communication','department-calendar','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn'],
@@ -50599,7 +50668,6 @@ function toggleDriveQuickRequestItem(domId) {
             review: ['drawer-review-btn'],
             'move-up': ['drawer-move-up-btn'],
             advertisement: ['drawer-advertisement-btn'],
-            diagnostics: ['drawer-diagnostics-btn'],
             'disease-pest': ['drawer-disease-pest-btn'],
             grower: ['drawer-grower-btn'],
             'pest-management': ['drawer-pest-management-btn'],
@@ -50722,7 +50790,6 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
-            if (targetView === 'diagnostics') return isStrictDylanCollygeUser();
             if (targetView === 'pest-management') return isStrictDylanCollygeUser();
             if (targetView === 'disease-pest') return isStrictDylanCollygeUser();
             if (targetView === 'crop-roll') return canViewCropRollHome();
@@ -50930,7 +50997,7 @@ function toggleDriveQuickRequestItem(domId) {
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
                 const isEvalInventoryUser = !!(access && access.isEval && !access.isAdmin);
                 const hideSalesShellDirectEntry = isSalesShellAccess(access) && viewId !== 'sales';
-                const isAllowed = hideSalesShellDirectEntry ? false : ((viewId === 'request' || viewId === 'moves' || viewId === 'diagnostics' || viewId === 'disease-pest' || viewId === 'pest-management' || viewId === 'crop-roll') ? canAccessView(viewId) : allowedViews.has(viewId));
+                const isAllowed = hideSalesShellDirectEntry ? false : ((viewId === 'request' || viewId === 'moves' || viewId === 'disease-pest' || viewId === 'pest-management' || viewId === 'crop-roll') ? canAccessView(viewId) : allowedViews.has(viewId));
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
@@ -53202,7 +53269,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','crop-roll','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','department-calendar','sales','managers','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','managers','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -53235,12 +53302,6 @@ function toggleDriveQuickRequestItem(domId) {
                 affectedViews.push('managers');
             }
             if ((changedSet.has('flyerRows') || changedSet.has('flyerHistory')) && !affectedViews.includes('tasks')) {
-                affectedViews.push('tasks');
-            }
-            if (changedSet.has('mlJobs') && !affectedViews.includes('managers')) {
-                affectedViews.push('managers');
-            }
-            if (changedSet.has('mlJobs') && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
             }
             if ((changedSet.has('growerScoutReports') || changedSet.has('growerScoutAssets')) && !affectedViews.includes('pest-management')) {
@@ -54116,12 +54177,6 @@ function toggleDriveQuickRequestItem(domId) {
                 entry.uploadedUrl = publicUrl;
                 entry.uploadedName = fileName;
                 uploadedUrls.push(publicUrl);
-                queueMlImageJobForUploadedRowPhoto(item, 'ncr-', {
-                    imageBucket: NCR_PHOTO_BUCKET,
-                    imagePath: filePath,
-                    imageUrl: publicUrl,
-                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, '')
-                }).catch((error) => console.warn('ML queue background task failed for NCR photo.', error));
                 markPhotoPersistActivity();
             }
             return uploadedUrls;
@@ -60832,12 +60887,6 @@ function toggleDriveQuickRequestItem(domId) {
                 entry.uploadedName = fileName;
                 uploadedUrls.push(publicUrl);
                 uploadedNames.push(fileName);
-                queueMlImageJobForUploadedRowPhoto(targetItem, 'ncr-', {
-                    imageBucket: NCR_PHOTO_BUCKET,
-                    imagePath: filePath,
-                    imageUrl: publicUrl,
-                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, '')
-                }).catch((error) => console.warn('ML queue background task failed for Not On Inventory photo.', error));
                 markPhotoPersistActivity();
             }
             return { photoUrls: uploadedUrls, photoNames: uploadedNames };
@@ -61907,7 +61956,6 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderDiseasePestHub() {
             const visibleCount = [
-                setHubButtonVisibility('disease-pest-open-diagnostics', canAccessView('diagnostics')),
                 setHubButtonVisibility('disease-pest-open-pest-management', canAccessView('pest-management'))
             ].filter(Boolean).length;
             const emptyState = document.getElementById('disease-pest-empty-state');
@@ -63030,31 +63078,18 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal) modal.classList.remove('hidden');
             renderWeatherHoldItemMlDetail();
             try {
-                const [summaries, profiles, itemcodeCycles, fallbackCycles, jobs, assets] = await Promise.all([
+                const [summaries, profiles, itemcodeCycles, fallbackCycles] = await Promise.all([
                     supabaseFetch('ph_hold_stop_itemcode_summaries', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&limit=1`).catch(() => []),
                     supabaseFetch('ph_hold_learning_profiles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`),
                     supabaseFetch('ph_hold_stop_itemcode_cycles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=episode_start_date.desc&limit=120`).catch(() => []),
-                    supabaseFetch('ph_hold_release_cycles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=hold_started_on.desc&limit=120`),
-                    supabaseFetch(ML_IMAGE_JOBS_TABLE, 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`),
-                    supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`)
+                    supabaseFetch('ph_hold_release_cycles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=hold_started_on.desc&limit=120`)
                 ]);
                 weatherHoldState.itemMlDetailSummary = Array.isArray(summaries) && summaries.length ? summaries[0] : null;
                 weatherHoldState.itemMlDetailProfiles = Array.isArray(profiles) ? profiles : [];
                 weatherHoldState.itemMlDetailCycleFallback = !(Array.isArray(itemcodeCycles) && itemcodeCycles.length) && Array.isArray(fallbackCycles) && fallbackCycles.length > 0;
                 weatherHoldState.itemMlDetailCycles = Array.isArray(itemcodeCycles) && itemcodeCycles.length ? itemcodeCycles : (Array.isArray(fallbackCycles) ? fallbackCycles : []);
-                weatherHoldState.itemMlDetailJobs = Array.isArray(jobs) ? jobs : [];
-                weatherHoldState.itemMlDetailAssets = Array.isArray(assets) ? assets : [];
-                if (weatherHoldState.itemMlDetailJobs.length) {
-                    const existingIds = new Set((Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : []).map((row) => String(firstNonEmptyValue(row && row.unique_id, row && row.UNIQUE_ID, '') || '').trim()).filter(Boolean));
-                    const additions = weatherHoldState.itemMlDetailJobs.filter((row) => {
-                        const id = String(firstNonEmptyValue(row && row.unique_id, row && row.UNIQUE_ID, '') || '').trim();
-                        return id && !existingIds.has(id);
-                    });
-                    if (additions.length) {
-                        mlImageJobsInventory = (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : []).concat(additions);
-                        rebuildMlImageJobIndexes();
-                    }
-                }
+                weatherHoldState.itemMlDetailJobs = [];
+                weatherHoldState.itemMlDetailAssets = [];
             } catch (error) {
                 weatherHoldState.itemMlDetailError = error && error.message ? error.message : 'Itemcode ML detail could not load.';
             } finally {
@@ -66351,8 +66386,6 @@ function toggleDriveQuickRequestItem(domId) {
                 renderMoveUp();
             } else if (viewId === 'advertisement') {
                 renderAdvertisement();
-            } else if (viewId === 'diagnostics') {
-                renderDiagnostics();
             } else if (viewId === 'grower') {
                 renderGrowerScout();
             } else if (viewId === 'pest-management') {
@@ -69202,7 +69235,7 @@ function toggleDriveQuickRequestItem(domId) {
                 || normalizedRawResponse.includes('<html')
                 || normalizedRawResponse.includes('google apps script')
                 || normalizedRawResponse.includes('script completed but did not return anything')
-                || normalizedRawResponse.includes('that’s an error')
+                || normalizedRawResponse.includes('thatâ€™s an error')
                 || normalizedRawResponse.includes("that's an error")
             ));
             const bodySaysError = parsed && (
@@ -75494,7 +75527,7 @@ function toggleDriveQuickRequestItem(domId) {
                     dockMistakeIssuePhotoPromise = null;
                     clearDockMistakeIssuePhotoPreviewUrl();
                     renderDockMistakeIssuePhotoPreview();
-                    showToast('Photo Failed', error && error.message ? error.message : 'Could not upload that issue photo.', true);
+                    showToast('Photo Failed', formatPhotoUploadErrorMessage(error), true);
                     return '';
             });
             return false;
@@ -110402,240 +110435,70 @@ C.14.043 C.15.000
         }
 
         function canUseMlAdminViews() {
-            return isStrictDylanCollygeUser();
-        }
-
-        function normalizeMlStatus(value = '') {
-            const text = String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
-            if (['pending_ml','processing','pending_approval','approved','ml_failed'].includes(text)) return text;
-            return text || 'pending_ml';
-        }
-
-        function normalizeMlImageJobRow(row = null, idx = 0) {
-            if (!row || typeof row !== 'object') return null;
-            const item = Object.assign({}, row);
-            item.SOURCE_TABLE = ML_IMAGE_JOBS_TABLE;
-            item.UNIQUE_ID = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.ID, item.id, `ml_${idx}`)).trim();
-            item.DOM_ID = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, `ml_${item.UNIQUE_ID}`)).trim();
-            item.STATUS = normalizeMlStatus(firstNonEmptyValue(item.STATUS, item.status, 'pending_ml'));
-            item.ML_ROW_SOURCE_TABLE = String(firstNonEmptyValue(item.ML_ROW_SOURCE_TABLE, item.ml_row_source_table, item.source_table, '')).trim();
-            item.ML_SOURCE_UNIQUE_ID = String(firstNonEmptyValue(item.ML_SOURCE_UNIQUE_ID, item.ml_source_unique_id, item.source_unique_id, '')).trim();
-            item.IMAGE_BUCKET = String(firstNonEmptyValue(item.IMAGE_BUCKET, item.image_bucket, ML_CAPTURE_PHOTO_BUCKET)).trim() || ML_CAPTURE_PHOTO_BUCKET;
-            item.IMAGE_PATH = String(firstNonEmptyValue(item.IMAGE_PATH, item.image_path, '')).trim();
-            item.IMAGE_URL = String(firstNonEmptyValue(item.IMAGE_URL, item.image_url, '')).trim();
-            item.SEASON = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
-            item.BLOCK = String(firstNonEmptyValue(item.BLOCK, item.block, '')).trim();
-            item.ITEMCODE = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '')).trim();
-            item.GENUS = String(firstNonEmptyValue(item.GENUS, item.genus, '')).trim();
-            item.COMMONNAME = String(firstNonEmptyValue(item.COMMONNAME, item.COMMON_NAME, item.common_name, item.ML_COMMON_NAME, item.ml_common_name, 'AI Capture')).trim();
-            item.CONTSIZE = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '')).trim();
-            item.LOCATIONCODE = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '')).trim();
-            item.LOTCODE = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '')).trim();
-            item.PTRAVAILABLE = firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0');
-            item.ML_GENUS = String(firstNonEmptyValue(item.ML_GENUS, item.ml_genus, '')).trim();
-            item.ML_COMMON_NAME = String(firstNonEmptyValue(item.ML_COMMON_NAME, item.ml_common_name, '')).trim();
-            item.ML_GRADE = String(firstNonEmptyValue(item.ML_GRADE, item.ml_grade, '')).trim().toUpperCase();
-            item.ML_GRADE_RAW = String(firstNonEmptyValue(item.ML_GRADE_RAW, item.ml_grade_raw, '')).trim().toUpperCase();
-            item.ML_CONFIDENCE = firstNonEmptyValue(item.ML_CONFIDENCE, item.ml_confidence, '');
-            item.DIAGNOSIS = String(firstNonEmptyValue(item.DIAGNOSIS, item.diagnosis, '')).trim();
-            item.RECOMMENDED_TREATMENT = String(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, item.recommended_treatment, '')).trim();
-            item.MANUAL_REVIEW = item.MANUAL_REVIEW === true || item.manual_review === true || String(firstNonEmptyValue(item.MANUAL_REVIEW, item.manual_review, '')).toLowerCase() === 'true';
-            item.APPROVED_S1 = firstNonEmptyValue(item.APPROVED_S1, item.approved_s1, '0');
-            item.APPROVED_F1 = firstNonEmptyValue(item.APPROVED_F1, item.approved_f1, '0');
-            item.APPROVED_U1 = firstNonEmptyValue(item.APPROVED_U1, item.approved_u1, '0');
-            item.APPROVED_U2 = firstNonEmptyValue(item.APPROVED_U2, item.approved_u2, '0');
-            item.APPROVED_U3 = firstNonEmptyValue(item.APPROVED_U3, item.approved_u3, '0');
-            item.APPROVED_X = firstNonEmptyValue(item.APPROVED_X, item.approved_x, '0');
-            item.APPROVED_BY_USERNAME = String(firstNonEmptyValue(item.APPROVED_BY_USERNAME, item.approved_by_username, '')).trim();
-            item.APPROVED_BY_DISPLAY = String(firstNonEmptyValue(item.APPROVED_BY_DISPLAY, item.approved_by_display, '')).trim();
-            item.CREATED_AT = String(firstNonEmptyValue(item.CREATED_AT, item.created_at, '')).trim();
-            item.UPDATED_AT = String(firstNonEmptyValue(item.UPDATED_AT, item.updated_at, '')).trim();
-            item.ML_COMPLETED_AT = String(firstNonEmptyValue(item.ML_COMPLETED_AT, item.ml_completed_at, '')).trim();
-            item.APPROVED_AT = String(firstNonEmptyValue(item.APPROVED_AT, item.approved_at, '')).trim();
-            item.LAST_ERROR = String(firstNonEmptyValue(item.LAST_ERROR, item.last_error, '')).trim();
-            item.DIAGNOSTIC_REFERENCE_ASSET_ID = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_ASSET_ID, item.diagnostic_reference_asset_id, '')).trim();
-            item.DIAGNOSTIC_REFERENCE_KIND = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_KIND, item.diagnostic_reference_kind, '')).trim();
-            item.DIAGNOSTIC_REFERENCE_FILE_NAME = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_FILE_NAME, item.diagnostic_reference_file_name, '')).trim();
-            item.DIAGNOSTIC_REFERENCE_PUBLIC_URL = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_PUBLIC_URL, item.diagnostic_reference_public_url, '')).trim();
-            item.DIAGNOSTIC_REFERENCE_LABEL = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_LABEL, item.diagnostic_reference_label, '')).trim();
-            item.DIAGNOSTIC_REFERENCE_SCORE = firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_SCORE, item.diagnostic_reference_score, '');
-            item.DIAGNOSTIC_REFERENCE_REPORT_TEXT = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_TEXT, item.diagnostic_reference_report_text, '')).trim();
-            item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, item.diagnostic_reference_report_rewrite, '')).trim();
-            item.DIAGNOSTIC_REVIEW_DECISION = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEW_DECISION, item.diagnostic_review_decision, '')).trim().toLowerCase();
-            item.DIAGNOSTIC_REVIEWER_REPORT = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_REPORT, item.diagnostic_reviewer_report, '')).trim();
-            item.DIAGNOSTIC_REVIEWER_DIAGNOSIS = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_DIAGNOSIS, item.diagnostic_reviewer_diagnosis, '')).trim();
-            item.DIAGNOSTIC_REVIEWER_TREATMENT = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_TREATMENT, item.diagnostic_reviewer_treatment, '')).trim();
-            item.DIAGNOSTIC_REVIEWED_BY_USERNAME = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWED_BY_USERNAME, item.diagnostic_reviewed_by_username, '')).trim();
-            item.DIAGNOSTIC_REVIEWED_BY_DISPLAY = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWED_BY_DISPLAY, item.diagnostic_reviewed_by_display, '')).trim();
-            item.DIAGNOSTIC_REVIEWED_AT = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWED_AT, item.diagnostic_reviewed_at, '')).trim();
-            item.DIAGNOSTIC_LAB_CASE_ID = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_CASE_ID, item.diagnostic_lab_case_id, '')).trim();
-            item.DIAGNOSTIC_LAB_STATUS = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_STATUS, item.diagnostic_lab_status, '')).trim().toLowerCase();
-            item.DIAGNOSTIC_LAB_LABEL_PRINTED_AT = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_LABEL_PRINTED_AT, item.diagnostic_lab_label_printed_at, '')).trim();
-            item.DIAGNOSTIC_LAB_REPORT_BUCKET = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_BUCKET, item.diagnostic_lab_report_bucket, '')).trim();
-            item.DIAGNOSTIC_LAB_REPORT_PATH = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_PATH, item.diagnostic_lab_report_path, '')).trim();
-            item.DIAGNOSTIC_LAB_REPORT_URL = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_URL, item.diagnostic_lab_report_url, '')).trim();
-            item.DIAGNOSTIC_LAB_REPORT_UPLOADED_AT = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_UPLOADED_AT, item.diagnostic_lab_report_uploaded_at, '')).trim();
-            item.DIAGNOSTIC_LAB_REPORT_UPLOADED_BY = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_UPLOADED_BY, item.diagnostic_lab_report_uploaded_by, '')).trim();
-            item.DIAGNOSTIC_LEARNING_SCOPE = String(firstNonEmptyValue(item.DIAGNOSTIC_LEARNING_SCOPE, item.diagnostic_learning_scope, 'genus_commonname_all_contsizes')).trim() || 'genus_commonname_all_contsizes';
-            return item;
-        }
-
-        function rebuildMlImageJobIndexes() {
-            mlImageJobsInventoryById = new Map();
-            (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : []).forEach((row, idx) => {
-                const normalized = normalizeMlImageJobRow(row, idx);
-                if (!normalized || !normalized.UNIQUE_ID) return;
-                mlImageJobsInventoryById.set(normalized.UNIQUE_ID, normalized);
-            });
-        }
-
-        function getMlImageJobById(uniqueId = '') {
-            const safeId = String(uniqueId || '').trim();
-            if (!safeId) return null;
-            return mlImageJobsInventoryById.get(safeId) || (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === safeId) : null) || null;
-        }
-
-        function getMlJobsByStatus(statuses = []) {
-            const statusSet = new Set((Array.isArray(statuses) ? statuses : [statuses]).map((value) => normalizeMlStatus(value)).filter(Boolean));
-            return (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : [])
-                .map((row, idx) => normalizeMlImageJobRow(row, idx))
-                .filter(Boolean)
-                .filter((row) => !statusSet.size || statusSet.has(normalizeMlStatus(row.STATUS)))
-                .sort((a, b) => String(firstNonEmptyValue(b.UPDATED_AT, b.CREATED_AT, '')).localeCompare(String(firstNonEmptyValue(a.UPDATED_AT, a.CREATED_AT, ''))));
-        }
-
-        function getMlJobImageUrl(row = null) {
-            const imageUrl = String(firstNonEmptyValue(row && row.IMAGE_URL, row && row.image_url, '')).trim();
-            if (imageUrl) return imageUrl;
-            const imagePath = String(firstNonEmptyValue(row && row.IMAGE_PATH, row && row.image_path, '')).trim();
-            const imageBucket = String(firstNonEmptyValue(row && row.IMAGE_BUCKET, row && row.image_bucket, ML_CAPTURE_PHOTO_BUCKET)).trim() || ML_CAPTURE_PHOTO_BUCKET;
-            const storageClient = getSupabaseBrowserClient();
-            if (!imagePath || !storageClient || !storageClient.storage) return '';
-            try {
-                const { data } = storageClient.storage.from(imageBucket).getPublicUrl(imagePath);
-                return data && data.publicUrl ? data.publicUrl : '';
-            } catch (error) {
-                return '';
-            }
-        }
-
-        function formatMlConfidence(value = '') {
-            const num = Number(value);
-            if (!Number.isFinite(num) || num <= 0) return 'Manual';
-            return `${Math.round(num * 100)}%`;
-        }
-
-        function formatMlTimestamp(value = '') {
-            const text = String(value || '').trim();
-            if (!text) return '';
-            const parsed = new Date(text);
-            if (Number.isNaN(parsed.getTime())) return text;
-            return parsed.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-        }
-
-        function isGenericMlTitle(value = '') {
-            const text = String(value || '').trim().toLowerCase();
-            return !text || ['unknown', 'ai capture', 'row photo', 'manual review required'].includes(text);
-        }
-
-        function findMlJobSourceRow(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            if (!item) return null;
-            const sourceUid = String(firstNonEmptyValue(item.ML_SOURCE_UNIQUE_ID, '') || '').trim();
-            const sourceTable = String(firstNonEmptyValue(item.ML_ROW_SOURCE_TABLE, '') || '').trim().toLowerCase();
-            if (sourceUid) {
-                if (sourceTable === 'ph_active_request') return requestsInventoryById.get(sourceUid) || findItemByUniqueId(sourceUid);
-                if (sourceTable === 'ph_soc_master') return socInventoryById.get(sourceUid) || findItemByUniqueId(sourceUid);
-                if (sourceTable === 'ph_sales_office') return salesOfficeInventoryById.get(sourceUid) || findItemByUniqueId(sourceUid);
-                return findItemByUniqueId(sourceUid);
-            }
-            const itemCode = String(item.ITEMCODE || '').trim();
-            const locationCode = String(item.LOCATIONCODE || '').trim();
-            const lotCode = String(item.LOTCODE || '').trim();
-            const contSize = String(item.CONTSIZE || '').trim();
-            const candidates = [
-                ...(Array.isArray(fullInventory) ? fullInventory : []),
-                ...(Array.isArray(avOpenInventory) ? avOpenInventory : []),
-                ...(Array.isArray(requestsInventory) ? requestsInventory : []),
-                ...(Array.isArray(socInventory) ? socInventory : []),
-                ...(Array.isArray(salesOfficeInventory) ? salesOfficeInventory : []),
-                ...(Array.isArray(moveUpInventory) ? moveUpInventory : []),
-                ...(Array.isArray(managerReviewInventory) ? managerReviewInventory : [])
-            ];
-            return candidates.find((candidate) => {
-                if (!candidate) return false;
-                const sameItem = !itemCode || String(firstNonEmptyValue(candidate.ITEMCODE, candidate.itemcode, '')).trim() === itemCode;
-                const sameLoc = !locationCode || String(firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, '')).trim() === locationCode;
-                const sameLot = !lotCode || String(firstNonEmptyValue(candidate.LOTCODE, candidate.lotcode, '')).trim() === lotCode;
-                const sameSize = !contSize || String(firstNonEmptyValue(candidate.CONTSIZE, candidate.contsize, '')).trim() === contSize;
-                return sameItem && sameLoc && sameLot && sameSize;
-            }) || null;
-        }
-
-        function getMlJobDisplayCommonName(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            const sourceRow = findMlJobSourceRow(item);
-            const sourceName = String(firstNonEmptyValue(sourceRow && sourceRow.COMMONNAME, sourceRow && sourceRow.commonname, '')).trim();
-            if (!isGenericMlTitle(sourceName)) return sourceName;
-            if (!isGenericMlTitle(item && item.COMMONNAME)) return String(item.COMMONNAME).trim();
-            if (!isGenericMlTitle(item && item.ML_COMMON_NAME)) return String(item.ML_COMMON_NAME).trim();
-            return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.LOCATIONCODE, 'Diagnostic Row')).trim();
-        }
-
-        function getMlJobPhotoCsv(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            const sourceRow = findMlJobSourceRow(item);
-            const ownImage = getMlJobImageUrl(item);
-            const mergedPhotoCsv = mergePhotoCsvList([
-                ownImage,
-                sourceRow ? getDriveCustomerOutreachPhotoCsv(sourceRow) : '',
-                sourceRow ? getSharedAppPhotoLinkCsv(sourceRow, { includePending: false }) : '',
-                sourceRow && sourceRow.ROW_PHOTO_LINK,
-                sourceRow && sourceRow.REQ_PHOTO_LINK,
-                sourceRow && sourceRow.DOCK_PHOTO_LINK,
-                sourceRow && sourceRow.FLYER_PHOTO_LINK,
-                item && item.IMAGE_URL
-            ]);
-            const mergedPhotoNames = mergePhotoCsvList([
-                sourceRow && getSharedAppPhotoName(sourceRow),
-                sourceRow && sourceRow.ROW_PHOTO_NAME,
-                sourceRow && sourceRow.REQ_PHOTO_NAME,
-                sourceRow && sourceRow.DOCK_PHOTO_NAME,
-                sourceRow && sourceRow.FLYER_PHOTO_NAME,
-                item && item.IMAGE_NAME
-            ]);
-            return filterPhotoCsvByRetention(mergedPhotoCsv, sourceRow || item, { namesCsv: mergedPhotoNames });
-        }
-
-        function getMlJobDriveModeMeta(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            const sourceRow = findMlJobSourceRow(item);
-            const itemcode = firstNonEmptyValue(sourceRow && sourceRow.ITEMCODE, item && item.ITEMCODE, '');
-            const contsize = firstNonEmptyValue(sourceRow && sourceRow.CONTSIZE, item && item.CONTSIZE, '');
-            const loc = firstNonEmptyValue(sourceRow && sourceRow.LOCATIONCODE, item && item.LOCATIONCODE, '');
-            const lot = firstNonEmptyValue(sourceRow && sourceRow.LOTCODE, item && item.LOTCODE, '');
-            const block = firstNonEmptyValue(sourceRow && sourceRow.BLOCKALPHA, item && item.BLOCK, '');
-            const season = firstNonEmptyValue(sourceRow && sourceRow.SEASON, item && item.SEASON, '');
-            return { itemcode, contsize, loc, lot, block, season, sourceRow };
-        }
-
-        function getDiagnosticIssueCardTab(uid = '') {
-            const safeUid = String(uid || '').trim();
-            return diagnosticIssueCardTabs.get(safeUid) || 'diagnostic';
-        }
-
-        function setDiagnosticIssueCardTab(uid = '', tab = 'diagnostic') {
-            const safeUid = String(uid || '').trim();
-            const safeTab = ['diagnostic', 'report', 'photos'].includes(String(tab || '').trim()) ? String(tab).trim() : 'diagnostic';
-            if (!safeUid) return false;
-            diagnosticIssueCardTabs.set(safeUid, safeTab);
-            markViewDirty('tasks');
-            markViewDirty('diagnostics');
-            if (isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
-            if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 80);
             return false;
         }
 
+        function normalizeMlStatus(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/\s+/g, '_') || 'retired';
+        }
+
+        function normalizeMlImageJobRow(row = null, idx = 0) {
+            return null;
+        }
+
+        function rebuildMlImageJobIndexes() {
+            mlImageJobsInventory = [];
+            mlImageJobsInventoryById = new Map();
+            return false;
+        }
+
+        function getMlImageJobById(uniqueId = '') {
+            return null;
+        }
+
+        function getMlJobsByStatus(statuses = []) {
+            return [];
+        }
+
+        function getMlJobImageUrl(row = null) {
+            return '';
+        }
+
+        function formatMlConfidence(value = '') {
+            return '';
+        }
+
+        function formatMlTimestamp(value = '') {
+            return '';
+        }
+
+        function isGenericMlTitle(value = '') {
+            return true;
+        }
+
+        function findMlJobSourceRow(row = null) {
+            return null;
+        }
+
+        function getMlJobDisplayCommonName(row = null) {
+            return '';
+        }
+
+        function getMlJobPhotoCsv(row = null) {
+            return '';
+        }
+
+        function getMlJobDriveModeMeta(row = null) {
+            return { itemcode: '', contsize: '', loc: '', lot: '', block: '', season: '', sourceRow: null };
+        }
+
+        function getDiagnosticIssueCardTab(uid = '') {
+            return 'diagnostic';
+        }
+
+        function setDiagnosticIssueCardTab(uid = '', tab = 'diagnostic') {
+            return false;
+        }
         function canUseGrowerScoutView() {
             const access = getRoleAccessState();
             return !!(access.isAdmin || access.isForeman || access.isGrower || isStrictDylanCollygeUser());
@@ -111417,1308 +111280,167 @@ C.14.043 C.15.000
         }
 
         function getDefaultMlCaptureSeason() {
-            const now = new Date();
-            const month = now.getMonth() + 1;
-            const day = now.getDate();
-            if (month > 7 || (month === 7 && day >= 15)) {
-                if (month < 12 || (month === 12 && day < 15)) return 'F1';
-            }
-            return 'S1';
+            return '';
         }
 
         function getMlJobSourceTableForRowPhoto(item = null, prefix = '') {
-            const safePrefix = String(prefix || '').trim().toLowerCase();
-            const explicitTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '') || '').trim();
-            if (explicitTable) return explicitTable;
-            if (safePrefix === 'req-') return 'ph_active_request';
-            if (safePrefix === 'dock-') return 'ph_soc_master';
-            return 'ph_master_inventory';
+            return '';
         }
 
         function buildMlImageJobPayloadFromRowPhoto(item = null, prefix = '', photoMeta = {}) {
-            if (!item || !photoMeta) return null;
-            const imageBucket = String(firstNonEmptyValue(photoMeta.imageBucket, photoMeta.bucketName, '') || '').trim();
-            const imagePath = String(firstNonEmptyValue(photoMeta.imagePath, photoMeta.filePath, '') || '').trim();
-            const imageUrl = String(firstNonEmptyValue(photoMeta.imageUrl, photoMeta.publicUrl, '') || '').trim();
-            if (!imageBucket || !imagePath) return null;
-            const uploadToken = String(firstNonEmptyValue(photoMeta.uploadToken, '') || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 64) || Math.random().toString(36).slice(2, 10);
-            const sourceUniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.MASTER_UNIQUE_ID, item.MASTER_ID, '') || '').trim();
-            const sourceTable = getMlJobSourceTableForRowPhoto(item, prefix);
-            const rawSeason = String(firstNonEmptyValue(item.SEASON, item.season, getDefaultMlCaptureSeason()) || '').trim().toUpperCase();
-            const season = rawSeason === 'F1' ? 'F1' : rawSeason === 'S1' ? 'S1' : getDefaultMlCaptureSeason();
-            const block = String(firstNonEmptyValue(
-                item.BLOCKALPHA,
-                item.blockalpha,
-                item.BLOCK,
-                item.block,
-                typeof getTaskBlockAlpha === 'function' ? getTaskBlockAlpha(item) : ''
-            ) || '').trim();
-            const commonName = String(firstNonEmptyValue(
-                item.COMMONNAME,
-                item.commonname,
-                typeof getDrivePlantCommonName === 'function' ? getDrivePlantCommonName(item) : '',
-                item.DESCRIPTION,
-                item.description,
-                item.PLANT_NAME,
-                item.plant_name,
-                'Row Photo'
-            ) || '').trim();
-            const contSize = String(firstNonEmptyValue(
-                item.CONTSIZE,
-                item.contsize,
-                typeof getDrivePlantContSize === 'function' ? getDrivePlantContSize(item) : '',
-                item.CONTAINER_SIZE,
-                item.container_size,
-                ''
-            ) || '').trim();
-            const uniqueIdSeed = [sourceUniqueId, sourceTable, imagePath, uploadToken].filter(Boolean).join('_');
-            const uniqueId = `mlrow_${uniqueIdSeed || Date.now()}`
-                .replace(/[^a-zA-Z0-9_-]+/g, '_')
-                .slice(0, 180);
-            return {
-                unique_id: uniqueId,
-                status: 'pending_ml',
-                image_bucket: imageBucket,
-                image_path: imagePath,
-                image_url: imageUrl,
-                source_table: sourceTable,
-                source_unique_id: sourceUniqueId || null,
-                season,
-                block: block || null,
-                itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim() || null,
-                genus: String(firstNonEmptyValue(
-                    typeof getDrivePlantGenusValue === 'function' ? getDrivePlantGenusValue(item) : '',
-                    item.GENUS,
-                    item.GENUSNAME,
-                    item.genus,
-                    item.genusname,
-                    ''
-                ) || '').trim() || null,
-                common_name: commonName || null,
-                contsize: contSize || null,
-                locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '') || '').trim() || null,
-                lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim() || null,
-                ptravailable: parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0')) || 0,
-                created_by_username: String(currentUser || '').trim(),
-                created_by_display: String(currentUserDisplay || currentUser || '').trim()
-            };
+            return null;
         }
 
         async function queueMlImageJobForUploadedRowPhoto(item = null, prefix = '', photoMeta = {}) {
-            if (!currentUser || navigator.onLine === false) return false;
-            const payload = buildMlImageJobPayloadFromRowPhoto(item, prefix, photoMeta);
-            if (!payload) return false;
-            try {
-                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                const localRow = normalizeMlImageJobRow(payload);
-                if (localRow) {
-                    upsertRealtimeRow(mlImageJobsInventory, localRow, ML_IMAGE_JOBS_TABLE);
-                    rebuildMlImageJobIndexes();
-                    markViewDirty('diagnostics');
-                    markViewDirty('managers');
-                    if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
-                    if (typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
-                }
-                return true;
-            } catch (error) {
-                console.warn('ML image job queue failed for uploaded row photo.', error);
-                if (typeof canUseMlAdminViews === 'function' && canUseMlAdminViews()) {
-                    showToast('ML Queue Skipped', 'Photo saved, but the ML job table was not available.', true);
-                }
-                return false;
-            }
+            return false;
         }
 
         function getMlCaptureBlockOptions() {
-            const values = new Set();
-            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
-                const block = String(firstNonEmptyValue(row && row.BLOCKALPHA, row && row.blockalpha, '')).trim();
-                if (block) values.add(block);
-            });
-            return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+            return [];
         }
 
         function renderMlHomeTabs(activeTab = 'dashboard', canViewProductivity = false, canViewCapture = false, canViewGrading = false, options = {}) {
-            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-            const includeDashboard = opts.includeDashboard !== false;
-            const tabs = includeDashboard ? [{ id: 'dashboard', label: 'Dashboard' }] : [];
-            if (canViewCapture) tabs.push({ id: 'ai-capture', label: 'Capture AI' });
-            if (canViewGrading) tabs.push({ id: 'grading', label: 'Grading' });
-            if (canViewProductivity) tabs.push({ id: 'productivity', label: 'Productivity' });
-            const extraTabs = Array.isArray(opts.extraTabs) ? opts.extraTabs : [];
-            extraTabs.forEach((tab) => {
-                if (tab && tab.id && tab.label) tabs.push({ id: String(tab.id), label: String(tab.label) });
-            });
-            if (tabs.length <= 1) return '';
-            const tabButtonClass = (isActive) => isActive ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
-            return `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2">${tabs.map((tab) => `<button type="button" class="${tabButtonClass(activeTab === tab.id)}" ${buildFastInvokeAttrs('setHomeTab', [tab.id], tab.label)}>${esc(tab.label)}</button>`).join('')}</div>`;
+            return '';
         }
 
         function renderMlCaptureHomePanel() {
-            const blocks = getMlCaptureBlockOptions();
-            const defaultSeason = getDefaultMlCaptureSeason();
-            const blockOptions = blocks.length
-                ? blocks.map((block) => `<option value="${esc(block)}">${esc(block)}</option>`).join('')
-                : '<option value="">No block list loaded</option>';
-            const loadingNotice = !isDatasetLoaded('master', 'initial')
-                ? '<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[12px] font-bold text-amber-800">Loading Drive Mode blocks. You can upload after the block list appears.</div>'
-                : '';
-            if (!isDatasetLoaded('master', 'initial')) queueDatasetLoad('master', 'initial', 0);
-            return `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 space-y-4">
-                <div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Capture AI</div><div class="mt-1 text-xl font-black text-slate-900">Upload a plant photo</div></div>
-                ${loadingNotice}
-                <form id="ml-capture-form" class="space-y-4" onsubmit="return submitMlCaptureJob(event)">
-                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo</span><input id="ml-capture-file" type="file" accept="image/*" capture="environment" class="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold text-slate-700" onpointerdown="return handleDetailCameraInputActivation(event)" ontouchstart="return handleDetailCameraInputActivation(event)" onclick="return handleDetailCameraInputActivation(event)" required></label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Season</span><select id="ml-capture-season" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800"><option value="S1" ${defaultSeason === 'S1' ? 'selected' : ''}>S1</option><option value="F1" ${defaultSeason === 'F1' ? 'selected' : ''}>F1</option></select></label>
-                        <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Block</span><select id="ml-capture-block" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800">${blockOptions}</select></label>
-                    </div>
-                    <button id="ml-capture-upload-btn" type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-4 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]"><i class="ph-bold ph-upload-simple align-middle text-base"></i><span class="align-middle ml-2">Upload For ML</span></button>
-                </form>
-            </div>`;
+            return '';
         }
 
         function getMlApprovalDefaultQuantities(row = null) {
-            const grade = String(firstNonEmptyValue(row && row.ML_GRADE, row && row.ml_grade, '')).trim().toUpperCase();
-            return {
-                s1: grade === 'S1' ? 1 : 0,
-                f1: grade === 'F1' ? 1 : 0,
-                u1: grade === 'U1' ? 1 : 0,
-                u2: grade === 'U2' ? 1 : 0,
-                u3: grade === 'U3' ? 1 : 0,
-                x: grade === 'X' ? 1 : 0
-            };
+            return {};
         }
 
         function getMlApprovalInputId(uniqueId = '', key = '') {
-            return `ml-approve-${String(key || '').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${String(uniqueId || '').replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+            return `ml-retired-${String(uniqueId || '').replace(/[^a-z0-9_-]/gi, '_')}-${String(key || '').replace(/[^a-z0-9_-]/gi, '_')}`;
         }
 
-        function renderMlApprovalQuantityInput(uniqueId = '', key = '', label = '', value = 0) {
-            const inputId = getMlApprovalInputId(uniqueId, key);
-            return `<label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(label)}<input id="${esc(inputId)}" type="number" min="0" step="1" inputmode="numeric" value="${esc(String(value == null ? 0 : value))}" class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-right text-sm font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100"></label>`;
+        function renderMlApprovalQuantityInput(uniqueId = '', key = '', label = '', value = '') {
+            return '';
         }
 
-        function renderMlApprovalCard(row = null, mode = 'pending') {
-            const item = normalizeMlImageJobRow(row);
-            if (!item) return '';
-            const uid = item.UNIQUE_ID;
-            const imageUrl = getMlJobImageUrl(item);
-            const title = firstNonEmptyValue(item.ML_COMMON_NAME, item.COMMONNAME, 'AI Capture');
-            const genus = firstNonEmptyValue(item.ML_GENUS, item.GENUS, '');
-            const grade = firstNonEmptyValue(item.ML_GRADE, item.ML_GRADE_RAW, 'Manual');
-            const defaults = mode === 'approved'
-                ? { s1: item.APPROVED_S1, f1: item.APPROVED_F1, u1: item.APPROVED_U1, u2: item.APPROVED_U2, u3: item.APPROVED_U3, x: item.APPROVED_X }
-                : getMlApprovalDefaultQuantities(item);
-            const photoHtml = imageUrl ? `<img src="${esc(imageUrl)}" alt="" class="h-24 w-24 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0" loading="lazy">` : '<div class="h-24 w-24 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 flex items-center justify-center text-center flex-shrink-0">No Photo</div>';
-            const statusTone = item.STATUS === 'ml_failed' ? 'border-red-200 bg-red-50 text-red-700' : (item.MANUAL_REVIEW ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700');
-            const actionHtml = mode === 'approved'
-                ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[11px] font-bold text-slate-500">Approved ${esc(formatMlTimestamp(item.APPROVED_AT) || 'recently')} by ${esc(firstNonEmptyValue(item.APPROVED_BY_DISPLAY, item.APPROVED_BY_USERNAME, 'Unknown'))}</div>`
-                : `<div class="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">${renderMlApprovalQuantityInput(uid, 's1', 'S1', defaults.s1)}${renderMlApprovalQuantityInput(uid, 'f1', 'F1', defaults.f1)}${renderMlApprovalQuantityInput(uid, 'u1', 'U1', defaults.u1)}${renderMlApprovalQuantityInput(uid, 'u2', 'U2', defaults.u2)}${renderMlApprovalQuantityInput(uid, 'u3', 'U3', defaults.u3)}${renderMlApprovalQuantityInput(uid, 'x', 'X', defaults.x)}</div><button type="button" class="mt-3 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]" onclick="return approveMlImageJob('${escJsAttrValue(uid)}', this)">Approve &amp; Log</button>`;
-            return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div class="flex items-start gap-3">
-                    ${photoHtml}
-                    <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap gap-2 mb-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusTone}">${esc(item.MANUAL_REVIEW ? 'Manual Review' : item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">${esc(String(grade || 'Manual'))}</span></div>
-                        <div class="text-base font-black text-slate-900 leading-tight break-words">${esc(title)}</div>
-                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc([genus, item.CONTSIZE, item.BLOCK ? 'Block ' + item.BLOCK : '', item.SEASON].filter(Boolean).join(' | '))}</div>
-                        <div class="mt-2 text-[11px] font-bold text-slate-500">Confidence ${esc(formatMlConfidence(item.ML_CONFIDENCE))}</div>
-                    </div>
-                </div>
-                <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[12px] font-semibold text-slate-600">
-                    <div><span class="font-black text-slate-800">Issue:</span> ${esc(firstNonEmptyValue(item.DIAGNOSIS, 'Waiting for diagnostics'))}</div>
-                    <div class="mt-1"><span class="font-black text-slate-800">Treatment:</span> ${esc(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'Review before logging.'))}</div>
-                </div>
-                ${actionHtml}
-            </div>`;
+        function renderMlApprovalCard(row = null) {
+            return '';
         }
 
         async function prepareMlCaptureBlob(file) {
-            if (!file || !String(file.type || '').startsWith('image/')) throw new Error('Please choose an image file.');
-            const previewUrl = URL.createObjectURL(file);
-            return new Promise((resolve, reject) => {
-                let img = null;
-                let bitmap = null;
-                let canvas = null;
-                const cleanup = () => {
-                    URL.revokeObjectURL(previewUrl);
-                    if (bitmap && typeof bitmap.close === 'function') {
-                        try { bitmap.close(); } catch (error) {}
-                    }
-                    if (img) {
-                        img.onload = null;
-                        img.onerror = null;
-                    }
-                    if (canvas) {
-                        canvas.width = 1;
-                        canvas.height = 1;
-                    }
-                };
-                const fail = (error) => {
-                    cleanup();
-                    reject(error instanceof Error ? error : new Error(String(error || 'Could not process image.')));
-                };
-                const drawImage = (sourceImage) => {
-                    try {
-                        const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
-                        const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
-                        if (!sourceWidth || !sourceHeight) throw new Error('Could not read image dimensions.');
-                        const sourceMax = Math.max(sourceWidth, sourceHeight);
-                        const scale = sourceMax > PHOTO_MAX_WIDTH ? PHOTO_MAX_WIDTH / sourceMax : 1;
-                        canvas = document.createElement('canvas');
-                        canvas.width = Math.max(1, Math.round(sourceWidth * scale));
-                        canvas.height = Math.max(1, Math.round(sourceHeight * scale));
-                        const ctx = canvas.getContext('2d', { alpha: false });
-                        if (!ctx) throw new Error('Could not prepare image.');
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
-                        ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-                        canvas.toBlob((blob) => {
-                            if (!blob) {
-                                fail(new Error('Could not compress image.'));
-                                return;
-                            }
-                            cleanup();
-                            resolve(blob);
-                        }, 'image/jpeg', PHOTO_JPEG_QUALITY);
-                    } catch (error) {
-                        fail(error);
-                    }
-                };
-                if (window.createImageBitmap) {
-                    createImageBitmap(file).then((imageBitmap) => {
-                        bitmap = imageBitmap;
-                        drawImage(imageBitmap);
-                    }).catch(() => {
-                        img = new Image();
-                        img.onload = () => drawImage(img);
-                        img.onerror = () => fail(new Error('Could not load image.'));
-                        img.src = previewUrl;
-                    });
-                } else {
-                    img = new Image();
-                    img.onload = () => drawImage(img);
-                    img.onerror = () => fail(new Error('Could not load image.'));
-                    img.src = previewUrl;
-                }
-            });
+            return null;
         }
 
         async function submitMlCaptureJob(event = null) {
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
-            if (!currentUser) {
-                showToast('Login Required', 'Please log in before uploading AI Capture photos.', true);
-                return false;
-            }
-            const fileInput = document.getElementById('ml-capture-file');
-            const seasonInput = document.getElementById('ml-capture-season');
-            const blockInput = document.getElementById('ml-capture-block');
-            const button = document.getElementById('ml-capture-upload-btn');
-            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
-            if (!file) {
-                showToast('Photo Required', 'Choose a photo before uploading.', true);
-                return false;
-            }
-            const previousLabel = button ? button.innerHTML : '';
-            if (button) {
-                button.disabled = true;
-                button.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin align-middle"></i><span class="align-middle ml-2">Uploading...</span>';
-            }
-            try {
-                const blob = await prepareMlCaptureBlob(file);
-                const uniqueId = `ml_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-                const clean = (value) => String(value || 'capture').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 48) || 'capture';
-                const filePath = `${new Date().toISOString().split('T')[0]}/${clean(currentUser)}-${uniqueId}.jpg`;
-                const uploadResult = await withTimeout(getSupabaseStorageClient().from(ML_CAPTURE_PHOTO_BUCKET).upload(filePath, blob, {
-                    contentType: 'image/jpeg',
-                    cacheControl: '31536000',
-                    upsert: true
-                }), SUPABASE_UPLOAD_TIMEOUT_MS, 'ML photo upload');
-                if (uploadResult && uploadResult.error) throw uploadResult.error;
-                const { data: publicUrlData } = getSupabaseStorageClient().from(ML_CAPTURE_PHOTO_BUCKET).getPublicUrl(filePath);
-                const payload = {
-                    unique_id: uniqueId,
-                    status: 'pending_ml',
-                    image_bucket: ML_CAPTURE_PHOTO_BUCKET,
-                    image_path: filePath,
-                    image_url: publicUrlData && publicUrlData.publicUrl ? publicUrlData.publicUrl : '',
-                    source_table: 'mobile_ai_capture',
-                    season: String(seasonInput && seasonInput.value || getDefaultMlCaptureSeason()).trim().toUpperCase(),
-                    block: String(blockInput && blockInput.value || '').trim(),
-                    created_by_username: String(currentUser || '').trim(),
-                    created_by_display: String(currentUserDisplay || currentUser || '').trim()
-                };
-                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                const localRow = normalizeMlImageJobRow(payload);
-                if (localRow) {
-                    upsertRealtimeRow(mlImageJobsInventory, localRow, ML_IMAGE_JOBS_TABLE);
-                    rebuildMlImageJobIndexes();
-                }
-                markViewDirty('managers');
-                markViewDirty('diagnostics');
-                if (fileInput) fileInput.value = '';
-                showToast('Uploaded', 'Photo sent to the ML worker.');
-                scheduleHomeOrManagersRender(true);
-            } catch (error) {
-                showToast('Upload Failed', error && error.message ? error.message : 'Could not upload the ML photo.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerHTML = previousLabel || '<i class="ph-bold ph-upload-simple align-middle text-base"></i><span class="align-middle ml-2">Upload For ML</span>';
-                }
-            }
             return false;
         }
 
         function readMlApprovalQuantity(uniqueId = '', key = '') {
-            const input = document.getElementById(getMlApprovalInputId(uniqueId, key));
-            const value = input ? parseAppNumber(input.value) : 0;
-            return Math.max(0, Number.isFinite(value) ? value : 0);
+            return 0;
         }
 
         async function refreshMlJobsNow() {
-            await ensureDatasetLoaded('mlJobs', 'full', { force: true }).catch(() => false);
-            markViewDirty('managers');
-            markViewDirty('diagnostics');
-            markViewDirty('tasks');
-            if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
-            if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
-            if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
             return false;
         }
 
         async function runDiagnosticsMlWorkerNow(button = null) {
-            if (!canUseMlAdminViews()) {
-                showToast('Restricted', 'Only Dylan, JD, and Megan can manually run the ML worker.', true);
-                return false;
-            }
-            const previousHtml = button ? button.innerHTML : '';
-            if (button) {
-                button.disabled = true;
-                button.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin align-middle"></i><span class="align-middle ml-1">Starting...</span>';
-            }
-            const touchedQueues = [];
-            const nowIso = new Date().toISOString();
-            try {
-                const pendingJobs = await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'GET', null, 'select=unique_id&status=eq.pending_ml&order=updated_at.asc');
-                const pendingJobId = pendingJobs && pendingJobs[0] ? String(firstNonEmptyValue(pendingJobs[0].unique_id, pendingJobs[0].UNIQUE_ID, '')).trim() : '';
-                if (pendingJobId) {
-                    await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', {
-                        status: 'pending_ml',
-                        updated_at: nowIso
-                    }, `unique_id=eq.${encodeURIComponent(pendingJobId)}`, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS });
-                    touchedQueues.push('photo jobs');
-                }
-
-                const pendingAssets = await supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'GET', null, 'select=unique_id&processed_status=eq.pending_ml&order=updated_at.asc');
-                const pendingAssetId = pendingAssets && pendingAssets[0] ? String(firstNonEmptyValue(pendingAssets[0].unique_id, pendingAssets[0].UNIQUE_ID, '')).trim() : '';
-                if (pendingAssetId) {
-                    await supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'PATCH', {
-                        processed_status: 'pending_ml',
-                        updated_at: nowIso
-                    }, `unique_id=eq.${encodeURIComponent(pendingAssetId)}`, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS });
-                    touchedQueues.push('lab reports');
-                }
-
-                await refreshMlJobsNow();
-                if (touchedQueues.length) {
-                    showToast('ML Worker Started', `Wake signal sent for ${touchedQueues.join(' and ')}.`);
-                } else {
-                    showToast('Nothing Pending', 'No pending ML rows were found. Requeue rows first, or wait for new uploads.', true);
-                }
-            } catch (error) {
-                showToast('ML Worker Not Started', error && error.message ? error.message : 'Could not wake the ML worker.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerHTML = previousHtml || '<i class="ph-bold ph-play-circle align-middle"></i><span class="align-middle ml-1">Run ML Worker</span>';
-                }
-            }
             return false;
         }
 
         async function approveMlImageJob(uniqueId = '', button = null) {
-            if (!canUseMlAdminViews()) {
-                showToast('Restricted', 'Only Dylan, JD, and Megan can approve ML grading rows.', true);
-                return false;
-            }
-            const safeId = String(uniqueId || '').trim();
-            const row = getMlImageJobById(safeId);
-            if (!row) {
-                showToast('Not Found', 'That ML job could not be found.', true);
-                return false;
-            }
-            const previousLabel = button ? button.innerText : '';
-            if (button) {
-                button.disabled = true;
-                button.innerText = 'Saving...';
-            }
-            const payload = {
-                status: 'approved',
-                approved_s1: readMlApprovalQuantity(safeId, 's1'),
-                approved_f1: readMlApprovalQuantity(safeId, 'f1'),
-                approved_u1: readMlApprovalQuantity(safeId, 'u1'),
-                approved_u2: readMlApprovalQuantity(safeId, 'u2'),
-                approved_u3: readMlApprovalQuantity(safeId, 'u3'),
-                approved_x: readMlApprovalQuantity(safeId, 'x'),
-                approved_by_username: String(currentUser || '').trim(),
-                approved_by_display: String(currentUserDisplay || currentUser || '').trim(),
-                approved_at: new Date().toISOString()
-            };
-            try {
-                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`);
-                Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
-                rebuildMlImageJobIndexes();
-                markViewDirty('managers');
-                markViewDirty('diagnostics');
-                markViewDirty('tasks');
-                showToast('Approved', 'ML grading row approved and logged.');
-                if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
-                if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
-                if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
-            } catch (error) {
-                showToast('Save Failed', error && error.message ? error.message : 'Could not approve this ML job.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerText = previousLabel || 'Approve & Log';
-                }
-            }
             return false;
         }
 
         function isMlDiagnosticIssueRow(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            if (!item) return false;
-            const status = normalizeMlStatus(item.STATUS);
-            if (!['pending_approval', 'approved'].includes(status)) return false;
-            const diagnosis = String(firstNonEmptyValue(item.DIAGNOSIS, '') || '').trim().toLowerCase();
-            const treatment = String(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, '') || '').trim().toLowerCase();
-            const workerNote = String(firstNonEmptyValue(item.LAST_ERROR, '') || '').trim().toLowerCase();
-            if (!diagnosis) return false;
-            const noModelOnly = diagnosis.includes('manual review required')
-                && (treatment.includes('no diagnostics model') || workerNote.includes('no diagnostics model') || workerNote.includes('no model checkpoint'));
-            if (noModelOnly) return false;
-            if (item.MANUAL_REVIEW) return true;
-            const healthyPhrases = [
-                'no visible issue',
-                'no disease issue',
-                'no issue',
-                'no disease',
-                'healthy',
-                'no treatment recommended',
-                'no diagnosis returned',
-                'no diagnostics model'
-            ];
-            return !healthyPhrases.some((phrase) => diagnosis === phrase || diagnosis.includes(phrase));
+            return false;
         }
 
         function getTaskDiagnosticIssueRows() {
-            if (!canUseMlAdminViews()) return [];
-            return getMlJobsByStatus(['pending_approval']).filter((row) => isMlDiagnosticIssueRow(row));
+            return [];
         }
 
         function sanitizeDiagnosticCaseSegment(value = '', fallback = 'NA') {
-            const cleaned = String(value || '').trim().replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toUpperCase();
-            return (cleaned || fallback).slice(0, 28);
+            const text = String(value || '').trim().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '');
+            return text || fallback;
         }
 
         function buildDiagnosticLabCaseId(item = null) {
-            const normalized = normalizeMlImageJobRow(item) || {};
-            const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            const itemPart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(normalized.ITEMCODE, 'NOITEM'));
-            const locPart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(normalized.LOCATIONCODE, 'NOLOC'));
-            const lotPart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(normalized.LOTCODE, normalized.SEASON, 'NOLOT'));
-            const randomPart = (window.crypto && typeof window.crypto.randomUUID === 'function')
-                ? window.crypto.randomUUID().split('-')[0].toUpperCase()
-                : Math.random().toString(36).slice(2, 10).toUpperCase();
-            return `LAB-${dateStamp}-${itemPart}-${locPart}-${lotPart}-${randomPart}`;
+            return '';
         }
 
         function getDiagnosticLabCaseId(item = null) {
-            const normalized = normalizeMlImageJobRow(item) || {};
-            return String(firstNonEmptyValue(normalized.DIAGNOSTIC_LAB_CASE_ID, '')).trim() || buildDiagnosticLabCaseId(normalized);
+            return '';
         }
 
         function getDiagnosticReviewLabel(item = null, fallback = 'Diagnostic review') {
-            const normalized = normalizeMlImageJobRow(item) || {};
-            return String(firstNonEmptyValue(
-                normalized.DIAGNOSTIC_REVIEWER_DIAGNOSIS,
-                normalized.DIAGNOSTIC_REFERENCE_LABEL,
-                normalized.DIAGNOSIS,
-                fallback
-            )).trim();
+            return fallback;
         }
 
-        function getDiagnosticReviewMetadata(item = null, extra = {}) {
-            const normalized = normalizeMlImageJobRow(item) || {};
-            const metaInfo = getMlJobDriveModeMeta(normalized);
-            return {
-                source: 'gnc_app_diagnostic_review',
-                source_ml_job_id: normalized.UNIQUE_ID || '',
-                source_table: normalized.ML_ROW_SOURCE_TABLE || '',
-                source_unique_id: normalized.ML_SOURCE_UNIQUE_ID || '',
-                learning_scope: 'genus_commonname_all_contsizes',
-                genus: firstNonEmptyValue(normalized.GENUS, normalized.ML_GENUS, metaInfo.sourceRow && metaInfo.sourceRow.GENUS, ''),
-                commonname: getMlJobDisplayCommonName(normalized),
-                itemcode: metaInfo.itemcode || normalized.ITEMCODE || '',
-                contsize: metaInfo.contsize || normalized.CONTSIZE || '',
-                locationcode: metaInfo.loc || normalized.LOCATIONCODE || '',
-                lotcode: metaInfo.lot || normalized.LOTCODE || '',
-                season: metaInfo.season || normalized.SEASON || '',
-                block: metaInfo.block || normalized.BLOCK || '',
-                ...extra
-            };
+        function getDiagnosticReviewMetadata(item = null) {
+            return {};
         }
 
-        async function upsertDiagnosticLearningReference(item = null, options = {}) {
-            const normalized = normalizeMlImageJobRow(item);
-            if (!normalized || !normalized.UNIQUE_ID) return false;
-            const caseId = String(firstNonEmptyValue(options.caseId, normalized.DIAGNOSTIC_LAB_CASE_ID, buildDiagnosticLabCaseId(normalized))).trim();
-            const nowIso = new Date().toISOString();
-            const meta = getDiagnosticReviewMetadata(normalized, options.metadata || {});
-            const label = String(firstNonEmptyValue(options.label, getDiagnosticReviewLabel(normalized), 'Diagnostic review')).trim();
-            const reportText = String(firstNonEmptyValue(options.reportText, normalized.DIAGNOSTIC_REVIEWER_REPORT, normalized.DIAGNOSTIC_REFERENCE_REPORT_TEXT, '')).trim();
-            const reportRewrite = String(firstNonEmptyValue(options.reportRewrite, reportText, normalized.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, '')).trim();
-            const uniquePart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(options.uniquePart, options.decision, 'review'), 'REVIEW').toLowerCase();
-            const uniqueId = String(firstNonEmptyValue(options.uniqueId, `${uniquePart}-${caseId}`)).trim();
-            const storagePath = String(firstNonEmptyValue(options.storagePath, `review-feedback/${caseId}.json`)).trim();
-            const payload = {
-                unique_id: uniqueId,
-                drive_file_id: String(firstNonEmptyValue(options.driveFileId, uniqueId)).trim(),
-                drive_parent_id: 'gnc-app-diagnostic-review',
-                drive_path: storagePath,
-                folder_path: `app-diagnostic-review/${sanitizeDiagnosticCaseSegment(firstNonEmptyValue(meta.genus, meta.commonname, 'plant'), 'PLANT')}`,
-                label,
-                asset_kind: String(firstNonEmptyValue(options.assetKind, 'review_feedback')).trim(),
-                bucket: String(firstNonEmptyValue(options.bucket, DIAGNOSTIC_LAB_REPORT_BUCKET)).trim(),
-                storage_path: storagePath,
-                public_url: String(firstNonEmptyValue(options.publicUrl, '')).trim() || null,
-                mime_type: String(firstNonEmptyValue(options.mimeType, 'application/json')).trim(),
-                file_name: String(firstNonEmptyValue(options.fileName, `${caseId}-review-feedback.txt`)).trim(),
-                file_size: Number(options.fileSize || 0) || null,
-                checksum: null,
-                processed_status: 'processed',
-                diagnosis: label,
-                recommended_treatment: String(firstNonEmptyValue(options.treatment, normalized.RECOMMENDED_TREATMENT, 'Review current crop condition before treatment.')).trim(),
-                confidence: Number(options.confidence || normalized.ML_CONFIDENCE || 0) || null,
-                worker_id: 'app-review',
-                attempts: 0,
-                processing_started_at: null,
-                processed_at: nowIso,
-                last_error: null,
-                plant_folder: firstNonEmptyValue(meta.genus, meta.commonname, ''),
-                source_file_title: String(firstNonEmptyValue(options.fileName, `${caseId}-review-feedback.txt`)).trim(),
-                genus: meta.genus || null,
-                commonname: meta.commonname || null,
-                locationcode: meta.locationcode || null,
-                lotcode: meta.lotcode || null,
-                contsize: meta.contsize || null,
-                itemcode: meta.itemcode || null,
-                source_ml_job_id: normalized.UNIQUE_ID,
-                lab_case_id: caseId,
-                reviewer_report: reportText || null,
-                reviewer_username: String(currentUser || '').trim() || null,
-                reviewer_display: String(currentUserDisplay || currentUser || '').trim() || null,
-                review_decision: String(firstNonEmptyValue(options.decision, normalized.DIAGNOSTIC_REVIEW_DECISION, '')).trim() || null,
-                learning_scope: 'genus_commonname_all_contsizes',
-                report_text: reportText || null,
-                report_rewrite: reportRewrite || null,
-                metadata: {
-                    ...meta,
-                    case_id: caseId,
-                    review_decision: String(firstNonEmptyValue(options.decision, '')).trim(),
-                    recommended_treatment: String(firstNonEmptyValue(options.treatment, normalized.RECOMMENDED_TREATMENT, '')).trim(),
-                    reviewed_at: nowIso,
-                    lab_report_url: String(firstNonEmptyValue(options.publicUrl, '')).trim()
-                },
-                updated_at: nowIso
-            };
-            try {
-                await supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                return true;
-            } catch (error) {
-                console.warn('Diagnostic learning reference save failed', error);
-                showToast('Learning Reference Warning', 'The review saved, but the learning reference table needs the new SQL migration.', true);
-                return false;
-            }
+        async function upsertDiagnosticLearningReference(item = null, decision = '', metadata = {}) {
+            return false;
         }
 
-        async function upsertDiagnosticLabCase(item = null, caseId = '', patch = {}) {
-            const normalized = normalizeMlImageJobRow(item);
-            if (!normalized || !caseId) return false;
-            const meta = getDiagnosticReviewMetadata(normalized);
-            const nowIso = new Date().toISOString();
-            const photoCsv = getMlJobPhotoCsv(normalized);
-            const photoUrls = getPhotoUrlList(photoCsv);
-            const payload = {
-                unique_id: caseId,
-                ml_job_id: normalized.UNIQUE_ID,
-                case_label: caseId,
-                status: String(firstNonEmptyValue(patch.status, 'pending_lab_report')).trim(),
-                source_table: normalized.ML_ROW_SOURCE_TABLE || null,
-                source_unique_id: normalized.ML_SOURCE_UNIQUE_ID || null,
-                itemcode: meta.itemcode || null,
-                genus: meta.genus || null,
-                commonname: meta.commonname || null,
-                contsize: meta.contsize || null,
-                locationcode: meta.locationcode || null,
-                lotcode: meta.lotcode || null,
-                season: meta.season || null,
-                block: meta.block || null,
-                image_url: getMlJobImageUrl(normalized) || null,
-                photo_link: photoCsv || null,
-                model_diagnosis: normalized.DIAGNOSIS || null,
-                model_treatment: normalized.RECOMMENDED_TREATMENT || null,
-                model_confidence: Number(normalized.ML_CONFIDENCE || 0) || null,
-                reviewer_report: String(firstNonEmptyValue(patch.reviewer_report, normalized.DIAGNOSTIC_REVIEWER_REPORT, '')).trim() || null,
-                reviewer_diagnosis: String(firstNonEmptyValue(patch.reviewer_diagnosis, normalized.DIAGNOSTIC_REVIEWER_DIAGNOSIS, '')).trim() || null,
-                reviewer_treatment: String(firstNonEmptyValue(patch.reviewer_treatment, normalized.DIAGNOSTIC_REVIEWER_TREATMENT, '')).trim() || null,
-                reviewer_username: String(currentUser || '').trim() || null,
-                reviewer_display: String(currentUserDisplay || currentUser || '').trim() || null,
-                reviewed_at: String(firstNonEmptyValue(patch.reviewed_at, nowIso)).trim(),
-                lab_report_bucket: String(firstNonEmptyValue(patch.lab_report_bucket, normalized.DIAGNOSTIC_LAB_REPORT_BUCKET, '')).trim() || null,
-                lab_report_path: String(firstNonEmptyValue(patch.lab_report_path, normalized.DIAGNOSTIC_LAB_REPORT_PATH, '')).trim() || null,
-                lab_report_url: String(firstNonEmptyValue(patch.lab_report_url, normalized.DIAGNOSTIC_LAB_REPORT_URL, '')).trim() || null,
-                lab_report_uploaded_by: String(firstNonEmptyValue(patch.lab_report_uploaded_by, normalized.DIAGNOSTIC_LAB_REPORT_UPLOADED_BY, '')).trim() || null,
-                lab_report_uploaded_at: String(firstNonEmptyValue(patch.lab_report_uploaded_at, normalized.DIAGNOSTIC_LAB_REPORT_UPLOADED_AT, '')).trim() || null,
-                learning_scope: 'genus_commonname_all_contsizes',
-                metadata: {
-                    photo_count: photoUrls.length,
-                    review_source: 'gnc_app',
-                    ...getDiagnosticReviewMetadata(normalized)
-                },
-                updated_at: nowIso
-            };
-            try {
-                await supabaseFetch(DIAGNOSTIC_LAB_CASES_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                return true;
-            } catch (error) {
-                console.warn('Diagnostic lab case save failed', error);
-                showToast('Lab Case Warning', 'The job saved, but the diagnostic lab case table needs the new SQL migration.', true);
-                return false;
-            }
+        async function upsertDiagnosticLabCase(item = null, options = {}) {
+            return false;
         }
 
         function refreshDiagnosticReviewViews() {
-            rebuildMlImageJobIndexes();
-            markViewDirty('managers');
-            markViewDirty('diagnostics');
-            markViewDirty('tasks');
-            if (isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
-            if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
-            if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+            return false;
         }
 
-        async function saveDiagnosticReviewDecision(uniqueId = '', decision = 'agree', options = {}) {
-            if (!canUseMlAdminViews()) {
-                showToast('Restricted', 'Only Dylan, JD, and Megan can review diagnostics.', true);
-                return false;
-            }
-            const safeId = String(uniqueId || '').trim();
-            const row = getMlImageJobById(safeId);
-            if (!row) {
-                showToast('Not Found', 'That diagnostic row could not be found.', true);
-                return false;
-            }
-            const normalized = normalizeMlImageJobRow(row);
-            const nowIso = new Date().toISOString();
-            const safeDecision = String(decision || '').trim().toLowerCase();
-            const reviewerReport = String(firstNonEmptyValue(options.report, normalized.DIAGNOSTIC_REVIEWER_REPORT, '')).trim();
-            const reviewerDiagnosis = String(firstNonEmptyValue(options.diagnosis, getDiagnosticReviewLabel(normalized))).trim();
-            const reviewerTreatment = String(firstNonEmptyValue(options.treatment, normalized.RECOMMENDED_TREATMENT, '')).trim();
-            const caseId = String(firstNonEmptyValue(options.caseId, normalized.DIAGNOSTIC_LAB_CASE_ID, safeDecision === 'send_lab' ? buildDiagnosticLabCaseId(normalized) : '')).trim();
-            const payload = {
-                diagnostic_review_decision: safeDecision,
-                diagnostic_reviewer_report: reviewerReport || null,
-                diagnostic_reviewer_diagnosis: reviewerDiagnosis || null,
-                diagnostic_reviewer_treatment: reviewerTreatment || null,
-                diagnostic_reviewed_by_username: String(currentUser || '').trim(),
-                diagnostic_reviewed_by_display: String(currentUserDisplay || currentUser || '').trim(),
-                diagnostic_reviewed_at: nowIso,
-                diagnostic_learning_scope: 'genus_commonname_all_contsizes',
-                updated_at: nowIso
-            };
-            if (caseId) payload.diagnostic_lab_case_id = caseId;
-            if (safeDecision === 'send_lab') {
-                payload.diagnostic_lab_status = 'pending_lab_report';
-            } else {
-                payload.status = 'approved';
-                payload.approved_by_username = String(currentUser || '').trim();
-                payload.approved_by_display = String(currentUserDisplay || currentUser || '').trim();
-                payload.approved_at = nowIso;
-            }
-            await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-            Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
-            if (safeDecision === 'send_lab') {
-                await upsertDiagnosticLabCase(row, caseId, {
-                    status: 'pending_lab_report',
-                    reviewer_report: reviewerReport,
-                    reviewer_diagnosis: reviewerDiagnosis,
-                    reviewer_treatment: reviewerTreatment,
-                    reviewed_at: nowIso
-                });
-            } else {
-                await upsertDiagnosticLearningReference(row, {
-                    caseId: caseId || `REVIEW-${safeId}`,
-                    decision: safeDecision,
-                    label: reviewerDiagnosis,
-                    reportText: reviewerReport || reviewerDiagnosis,
-                    treatment: reviewerTreatment,
-                    assetKind: 'review_feedback',
-                    uniquePart: safeDecision
-                });
-            }
-            refreshDiagnosticReviewViews();
-            return true;
+        async function saveDiagnosticReviewDecision(item = null, decision = '', options = {}) {
+            return false;
         }
 
         async function agreeMlDiagnostic(uniqueId = '', button = null) {
-            const previousLabel = button ? button.innerText : '';
-            if (button) {
-                button.disabled = true;
-                button.innerText = 'Saving...';
-            }
-            try {
-                await saveDiagnosticReviewDecision(uniqueId, 'agree', {});
-                showToast('Agreed', 'Diagnostic review saved and added as a learning reference.');
-            } catch (error) {
-                showToast('Save Failed', error && error.message ? error.message : 'Could not save the diagnostic agreement.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerText = previousLabel || 'Agree';
-                }
-            }
             return false;
         }
 
         async function disagreeMlDiagnostic(uniqueId = '', button = null) {
-            const row = getMlImageJobById(String(uniqueId || '').trim());
-            if (!row) {
-                showToast('Not Found', 'That diagnostic row could not be found.', true);
-                return false;
-            }
-            const diagnosis = await showAppPrompt('What diagnosis should the module learn for this row?', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_DIAGNOSIS, row.DIAGNOSIS, '')).trim(), {
-                title: 'Diagnostic Review',
-                confirmLabel: 'Save',
-                placeholder: 'Diagnosis'
-            });
-            if (diagnosis === null) return false;
-            const cleanDiagnosis = String(diagnosis || '').trim();
-            if (!cleanDiagnosis) {
-                showToast('Report Needed', 'Enter the corrected diagnosis before saving a disagreement.', true);
-                return false;
-            }
-            const report = await showAppPrompt('Add your diagnostic report or notes for this row.', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_REPORT, row.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, '')).trim(), {
-                title: 'Diagnostic Report',
-                confirmLabel: 'Continue',
-                multiline: true,
-                placeholder: 'Report or notes'
-            });
-            if (report === null) return false;
-            const treatment = await showAppPrompt('Recommended treatment or next step?', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_TREATMENT, row.RECOMMENDED_TREATMENT, '')).trim(), {
-                title: 'Treatment',
-                confirmLabel: 'Save',
-                multiline: true,
-                placeholder: 'Treatment or next step'
-            });
-            if (treatment === null) return false;
-            const previousLabel = button ? button.innerText : '';
-            if (button) {
-                button.disabled = true;
-                button.innerText = 'Saving...';
-            }
-            try {
-                await saveDiagnosticReviewDecision(uniqueId, 'disagree', {
-                    diagnosis: cleanDiagnosis,
-                    report,
-                    treatment
-                });
-                showToast('Disagreement Saved', 'Your report was saved and added as a learning reference.');
-            } catch (error) {
-                showToast('Save Failed', error && error.message ? error.message : 'Could not save the diagnostic disagreement.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerText = previousLabel || 'Disagree';
-                }
-            }
             return false;
         }
 
         async function sendMlDiagnosticToLab(uniqueId = '', button = null) {
-            const row = getMlImageJobById(String(uniqueId || '').trim());
-            if (!row) {
-                showToast('Not Found', 'That diagnostic row could not be found.', true);
-                return false;
-            }
-            const caseId = getDiagnosticLabCaseId(row);
-            const report = await showAppPrompt('Add the note to send with this lab case. The row will stay in Diagnostics until the lab report is uploaded.', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_REPORT, row.DIAGNOSIS, '')).trim(), {
-                title: 'Lab Case Note',
-                confirmLabel: 'Create Lab Case',
-                multiline: true,
-                placeholder: 'Lab note'
-            });
-            if (report === null) return false;
-            const previousLabel = button ? button.innerText : '';
-            if (button) {
-                button.disabled = true;
-                button.innerText = 'Saving...';
-            }
-            try {
-                await saveDiagnosticReviewDecision(uniqueId, 'send_lab', {
-                    caseId,
-                    report,
-                    diagnosis: getDiagnosticReviewLabel(row),
-                    treatment: firstNonEmptyValue(row.RECOMMENDED_TREATMENT, 'Await lab report.'),
-                });
-                showToast('Lab Case Created', `Print label ${caseId} and send the sample.`);
-            } catch (error) {
-                showToast('Save Failed', error && error.message ? error.message : 'Could not create the lab case.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerText = previousLabel || 'Send Lab';
-                }
-            }
             return false;
         }
 
-        async function printDiagnosticLabLabel(uniqueId = '') {
-            const row = getMlImageJobById(String(uniqueId || '').trim());
-            if (!row) {
-                showToast('Not Found', 'That diagnostic row could not be found.', true);
-                return false;
-            }
-            const item = normalizeMlImageJobRow(row);
-            const caseId = getDiagnosticLabCaseId(item);
-            const meta = getMlJobDriveModeMeta(item);
-            const title = getMlJobDisplayCommonName(item);
-            const printedAt = new Date().toISOString();
-            try {
-                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', {
-                    diagnostic_lab_case_id: caseId,
-                    diagnostic_lab_status: item.DIAGNOSTIC_LAB_STATUS || 'pending_lab_report',
-                    diagnostic_lab_label_printed_at: printedAt,
-                    updated_at: printedAt
-                }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                Object.assign(row, normalizeMlImageJobRow({ ...row, diagnostic_lab_case_id: caseId, diagnostic_lab_label_printed_at: printedAt }));
-            } catch (error) {
-                console.warn('Could not record diagnostic lab label print', error);
-            }
-            const labelHtml = `<!doctype html><html><head><title>${escapeHtml(caseId)}</title><style>
-                @page { size: 4in 2in; margin: 0.12in; }
-                body { margin: 0; font-family: Arial, sans-serif; color: #111827; }
-                .label { border: 2px solid #111827; border-radius: 10px; padding: 10px; height: calc(2in - 0.24in); box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
-                .case { font-size: 18px; font-weight: 900; letter-spacing: 0.03em; }
-                .title { font-size: 13px; font-weight: 800; line-height: 1.15; }
-                .meta { font-size: 11px; font-weight: 700; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
-                .footer { font-size: 9px; font-weight: 700; color: #4b5563; }
-            </style></head><body><div class="label">
-                <div class="case">${escapeHtml(caseId)}</div>
-                <div class="title">${escapeHtml(title)}</div>
-                <div class="meta">
-                    <div>Item: ${escapeHtml(meta.itemcode || item.ITEMCODE || '-')}</div>
-                    <div>Size: ${escapeHtml(meta.contsize || item.CONTSIZE || '-')}</div>
-                    <div>Loc: ${escapeHtml(meta.loc || item.LOCATIONCODE || '-')}</div>
-                    <div>Lot: ${escapeHtml(meta.lot || item.LOTCODE || '-')}</div>
-                </div>
-                <div class="footer">Place this label on the lab report before taking/uploading its photo.</div>
-            </div><script>window.addEventListener('load', function(){ window.print(); });<\/script></body></html>`;
-            const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=420,height=260');
-            if (!printWindow) {
-                showToast('Pop-up Blocked', `Label ID: ${caseId}`, true);
-                return false;
-            }
-            printWindow.document.open();
-            printWindow.document.write(labelHtml);
-            printWindow.document.close();
-            refreshDiagnosticReviewViews();
+        async function printDiagnosticLabLabel(uniqueId = '', button = null) {
             return false;
         }
 
         function uploadDiagnosticLabReport(uniqueId = '') {
-            const row = getMlImageJobById(String(uniqueId || '').trim());
-            if (!row) {
-                showToast('Not Found', 'That diagnostic row could not be found.', true);
-                return false;
-            }
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*,application/pdf';
-            input.capture = 'environment';
-            input.onchange = () => {
-                const file = input.files && input.files[0] ? input.files[0] : null;
-                if (file) saveDiagnosticLabReportUpload(uniqueId, file).catch((error) => {
-                    showToast('Upload Failed', error && error.message ? error.message : 'Could not upload the lab report.', true);
-                });
-            };
-            input.click();
             return false;
         }
 
         async function saveDiagnosticLabReportUpload(uniqueId = '', file = null) {
-            if (!file) return false;
-            const row = getMlImageJobById(String(uniqueId || '').trim());
-            if (!row) {
-                showToast('Not Found', 'That diagnostic row could not be found.', true);
-                return false;
-            }
-            const item = normalizeMlImageJobRow(row);
-            const caseId = getDiagnosticLabCaseId(item);
-            const resultText = await showAppPrompt('Enter the lab report result or diagnosis. This is what the module will learn.', String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_DIAGNOSIS, item.DIAGNOSIS, '')).trim(), {
-                title: 'Lab Result',
-                confirmLabel: 'Continue',
-                multiline: true,
-                placeholder: 'Lab report result'
-            });
-            if (resultText === null) return false;
-            const cleanResult = String(resultText || '').trim();
-            if (!cleanResult) {
-                showToast('Result Needed', 'Enter the lab result before uploading.', true);
-                return false;
-            }
-            const treatmentText = await showAppPrompt('Recommended treatment from the lab report or your review?', String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_TREATMENT, item.RECOMMENDED_TREATMENT, '')).trim(), {
-                title: 'Treatment',
-                confirmLabel: 'Upload',
-                multiline: true,
-                placeholder: 'Treatment or next step'
-            });
-            if (treatmentText === null) return false;
-            const nowIso = new Date().toISOString();
-            const ext = pathlibSafeExtension(file.name, file.type, 'jpg');
-            const safeName = sanitizeDiagnosticCaseSegment(file.name.replace(/\.[^.]+$/, ''), 'LAB-REPORT');
-            const filePath = `${new Date().toISOString().slice(0, 10)}/${caseId}/${safeName}-${Date.now()}.${ext}`;
-            const uploadResult = await withTimeout(getSupabaseStorageClient().from(DIAGNOSTIC_LAB_REPORT_BUCKET).upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: true,
-                contentType: file.type || undefined
-            }), SUPABASE_UPLOAD_TIMEOUT_MS, 'diagnostic lab report upload');
-            if (uploadResult.error) throw uploadResult.error;
-            const { data: publicUrlData } = getSupabaseStorageClient().from(DIAGNOSTIC_LAB_REPORT_BUCKET).getPublicUrl(filePath);
-            const publicUrl = publicUrlData && publicUrlData.publicUrl ? publicUrlData.publicUrl : '';
-            const payload = {
-                status: 'approved',
-                diagnostic_review_decision: 'lab_report_uploaded',
-                diagnostic_reviewer_report: cleanResult,
-                diagnostic_reviewer_diagnosis: cleanResult,
-                diagnostic_reviewer_treatment: String(treatmentText || '').trim() || null,
-                diagnostic_reviewed_by_username: String(currentUser || '').trim(),
-                diagnostic_reviewed_by_display: String(currentUserDisplay || currentUser || '').trim(),
-                diagnostic_reviewed_at: nowIso,
-                diagnostic_lab_case_id: caseId,
-                diagnostic_lab_status: 'lab_report_uploaded',
-                diagnostic_lab_report_bucket: DIAGNOSTIC_LAB_REPORT_BUCKET,
-                diagnostic_lab_report_path: filePath,
-                diagnostic_lab_report_url: publicUrl || null,
-                diagnostic_lab_report_uploaded_at: nowIso,
-                diagnostic_lab_report_uploaded_by: String(currentUser || '').trim(),
-                diagnostic_learning_scope: 'genus_commonname_all_contsizes',
-                approved_by_username: String(currentUser || '').trim(),
-                approved_by_display: String(currentUserDisplay || currentUser || '').trim(),
-                approved_at: nowIso,
-                updated_at: nowIso
-            };
-            await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-            Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
-            await upsertDiagnosticLabCase(row, caseId, {
-                status: 'lab_report_uploaded',
-                reviewer_report: cleanResult,
-                reviewer_diagnosis: cleanResult,
-                reviewer_treatment: String(treatmentText || '').trim(),
-                lab_report_bucket: DIAGNOSTIC_LAB_REPORT_BUCKET,
-                lab_report_path: filePath,
-                lab_report_url: publicUrl,
-                lab_report_uploaded_by: String(currentUser || '').trim(),
-                lab_report_uploaded_at: nowIso,
-                reviewed_at: nowIso
-            });
-            await upsertDiagnosticLearningReference(row, {
-                caseId,
-                decision: 'lab_report_uploaded',
-                label: cleanResult,
-                reportText: cleanResult,
-                reportRewrite: cleanResult,
-                treatment: String(treatmentText || '').trim(),
-                assetKind: file.type && file.type.toLowerCase().includes('pdf') ? 'lab_report' : 'lab_report_photo',
-                uniquePart: 'lab-report',
-                storagePath: filePath,
-                publicUrl,
-                bucket: DIAGNOSTIC_LAB_REPORT_BUCKET,
-                mimeType: file.type || 'application/octet-stream',
-                fileName: file.name || `${caseId}.${ext}`,
-                fileSize: file.size || 0,
-                confidence: item.ML_CONFIDENCE || null
-            });
-            refreshDiagnosticReviewViews();
-            showToast('Lab Report Uploaded', 'The lab result was saved and added to the diagnostic learning references.');
             return false;
         }
 
         function renderTaskDiagnosticIssueCard(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            if (!item) return '';
-            const uid = item.UNIQUE_ID;
-            const photoCsv = getMlJobPhotoCsv(item);
-            const photoUrls = getPhotoUrlList(photoCsv);
-            const imageUrl = photoUrls[0] || getMlJobImageUrl(item);
-            const photoCount = photoUrls.length;
-            const imageHtml = imageUrl
-                ? `<button type="button" class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv || imageUrl)}', '${escJsAttrValue(getMlJobDisplayCommonName(item))}'); return false;"><div class="relative h-24 w-24 overflow-hidden rounded-xl border border-red-100 bg-slate-100 shadow-sm">${buildDeferredCardPhotoImg(getDirectImageUrl(imageUrl, 'gallery-tile'), { className: 'h-full w-full object-cover' })}${photoCount > 1 ? `<span class="absolute -right-1 -top-1 rounded-full border-2 border-white bg-[#007a4d] px-1.5 py-0.5 text-[10px] font-black text-white">+${esc(String(photoCount - 1))}</span>` : ''}</div><span class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">${photoCount > 1 ? `${esc(String(photoCount))} Photos` : 'Photo'}</span></button>`
-                : '<div class="ml-3 h-24 w-24 rounded-xl border border-dashed border-red-200 bg-red-50 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 flex items-center justify-center text-center flex-shrink-0">No Photo</div>';
-            const title = getMlJobDisplayCommonName(item);
-            const metaInfo = getMlJobDriveModeMeta(item);
-            const meta = [metaInfo.itemcode ? `Item ${metaInfo.itemcode}` : '', metaInfo.contsize, metaInfo.loc ? `Loc ${metaInfo.loc}` : '', metaInfo.lot ? `Lot ${metaInfo.lot}` : '', metaInfo.block ? `Block ${metaInfo.block}` : '', metaInfo.season].filter(Boolean).join(' | ');
-            const diagnosis = firstNonEmptyValue(item.DIAGNOSIS, 'Manual review required');
-            const treatment = firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'Review before routing.');
-            const confidence = formatMlConfidence(item.ML_CONFIDENCE);
-            const sourceRow = metaInfo.sourceRow;
-            const ptr = firstNonEmptyValue(sourceRow && sourceRow.PTRAVAILABLE, sourceRow && sourceRow.ptravailable, item.PTRAVAILABLE, '');
-            const source = firstNonEmptyValue(sourceRow && sourceRow.SOURCE, sourceRow && sourceRow.source, '');
-            const activeTab = getDiagnosticIssueCardTab(uid);
-            const tabButton = (tab, label) => `<button type="button" class="${activeTab === tab ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm'}" onclick="event.stopPropagation(); return setDiagnosticIssueCardTab('${escJsAttrValue(uid)}', '${escJsAttrValue(tab)}')">${esc(label)}</button>`;
-            const reportText = firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, item.DIAGNOSTIC_REFERENCE_REPORT_TEXT, '');
-            const reportHtml = reportText
-                ? `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] font-semibold leading-relaxed text-slate-700 whitespace-pre-wrap">${esc(reportText)}</div>`
-                : `<div class="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-6 text-center text-[12px] font-semibold text-slate-400">No rewritten lab report is attached yet. Run <span class="font-black">diagnostic_reference_report_migration.sql</span>, then let the ML worker reprocess lab reports.</div>`;
-            const referenceScore = Number(item.DIAGNOSTIC_REFERENCE_SCORE);
-            const referenceScoreHtml = Number.isFinite(referenceScore) && referenceScore > 0
-                ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Match ${esc(String(Math.round(referenceScore)))}</span>`
-                : '';
-            const referenceLinkHtml = item.DIAGNOSTIC_REFERENCE_PUBLIC_URL
-                ? `<a href="${esc(item.DIAGNOSTIC_REFERENCE_PUBLIC_URL)}" target="_blank" rel="noopener" class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="event.stopPropagation()">Open Source</a>`
-                : '';
-            const reportMetaHtml = (item.DIAGNOSTIC_REFERENCE_FILE_NAME || item.DIAGNOSTIC_REFERENCE_LABEL || referenceScoreHtml || referenceLinkHtml)
-                ? `<div class="mb-2 flex flex-wrap gap-2"><span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_LABEL, 'Lab Report'))}</span>${item.DIAGNOSTIC_REFERENCE_FILE_NAME ? `<span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(item.DIAGNOSTIC_REFERENCE_FILE_NAME)}</span>` : ''}${referenceScoreHtml}${referenceLinkHtml}</div>`
-                : '';
-            const photosHtml = photoUrls.length
-                ? `<div class="grid grid-cols-3 gap-2 sm:grid-cols-5">${photoUrls.map((url, index) => `<button type="button" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm active:scale-95" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv)}', '${escJsAttrValue(title)}'); requestAnimationFrame(() => snapPhotoModalToIndex(${index}, false)); return false;">${buildDeferredCardPhotoImg(getDirectImageUrl(url, 'gallery-tile'), { className: 'aspect-square w-full object-cover' })}</button>`).join('')}</div>`
-                : '<div class="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-6 text-center text-[12px] font-semibold text-slate-400">No photos are attached to this row yet.</div>';
-            const tabContent = activeTab === 'report'
-                ? `${reportMetaHtml}${reportHtml}`
-                : activeTab === 'photos'
-                    ? photosHtml
-                    : `<div class="rounded-xl border border-red-100 bg-red-50/60 px-3 py-3 text-[12px] font-semibold text-red-900"><div><span class="font-black">Issue:</span> ${esc(diagnosis)}</div><div class="mt-1"><span class="font-black">Recommended Treatment:</span> ${esc(treatment)}</div>${item.DIAGNOSTIC_REFERENCE_LABEL ? `<div class="mt-2 text-[11px] text-red-800"><span class="font-black">Reference:</span> ${esc(item.DIAGNOSTIC_REFERENCE_LABEL)}${item.DIAGNOSTIC_REFERENCE_SCORE ? ` (${esc(String(Math.round(Number(item.DIAGNOSTIC_REFERENCE_SCORE) || 0)))} match score)` : ''}</div>` : ''}</div>`;
-            const labCaseId = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_CASE_ID, '')).trim();
-            const labStatus = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_STATUS, '')).trim();
-            const reviewReportHtml = item.DIAGNOSTIC_REVIEWER_REPORT
-                ? `<div class="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] font-bold leading-relaxed text-amber-900"><span class="font-black uppercase tracking-[0.12em] text-[9px]">Reviewer Report</span><br>${esc(item.DIAGNOSTIC_REVIEWER_REPORT)}</div>`
-                : '';
-            const labControlsHtml = labCaseId || labStatus === 'pending_lab_report'
-                ? `<div class="mt-3 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-3">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div><div class="text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Lab Case</div><div class="text-sm font-black text-blue-950">${esc(labCaseId || 'Label not printed yet')}</div></div>
-                        ${item.DIAGNOSTIC_LAB_REPORT_URL ? `<a href="${esc(item.DIAGNOSTIC_LAB_REPORT_URL)}" target="_blank" rel="noopener" class="rounded-full border border-blue-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-blue-700">Open Report</a>` : ''}
-                    </div>
-                    <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <button type="button" class="rounded-xl border border-blue-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-95" onclick="event.stopPropagation(); return printDiagnosticLabLabel('${escJsAttrValue(uid)}')"><i class="ph-bold ph-printer align-middle"></i><span class="align-middle ml-1">Print Label</span></button>
-                        <button type="button" class="rounded-xl bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return uploadDiagnosticLabReport('${escJsAttrValue(uid)}')"><i class="ph-bold ph-upload-simple align-middle"></i><span class="align-middle ml-1">Upload Lab Report</span></button>
-                    </div>
-                </div>`
-                : '';
-            return `<div class="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
-                <div class="flex items-start gap-3">
-                    <div class="min-w-0 flex-1">
-                        <div class="mb-2 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-700">Diagnostic Issue</span>
-                            <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(formatMlTimestamp(firstNonEmptyValue(item.ML_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span>
-                        </div>
-                        <div class="text-base font-black leading-tight text-slate-900 break-words">${esc(title)}</div>
-                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc(meta)}</div>
-                        <div class="mt-2 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Confidence ${esc(confidence)}</span>
-                            ${ptr !== '' ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Available ${esc(String(ptr))}</span>` : ''}
-                            ${source ? `<span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">${esc(source)}</span>` : ''}
-                        </div>
-                    </div>
-                    ${imageHtml}
-                </div>
-                <div class="mt-3 flex flex-wrap gap-2">${tabButton('diagnostic', 'Diagnostic')}${tabButton('report', 'Lab Report')}${tabButton('photos', 'Photos')}</div>
-                <div class="mt-3">
-                    ${tabContent}
-                </div>
-                ${reviewReportHtml}
-                ${labControlsHtml}
-                <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]" onclick="return agreeMlDiagnostic('${escJsAttrValue(uid)}', this)"><i class="ph-bold ph-check-circle align-middle"></i><span class="align-middle ml-1">Agree</span></button>
-                    <button type="button" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-amber-800 shadow-sm active:scale-[0.99]" onclick="return disagreeMlDiagnostic('${escJsAttrValue(uid)}', this)"><i class="ph-bold ph-pencil-simple-line align-middle"></i><span class="align-middle ml-1">Disagree</span></button>
-                    <button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-blue-800 shadow-sm active:scale-[0.99]" onclick="return sendMlDiagnosticToLab('${escJsAttrValue(uid)}', this)"><i class="ph-bold ph-flask align-middle"></i><span class="align-middle ml-1">Send Lab</span></button>
-                </div>
-            </div>`;
+            return '';
         }
 
         function renderTaskDiagnosticsReview(options = {}) {
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            if (!container) return false;
-            closeTaskDropdowns(false);
-            const tabs = document.getElementById('task-tabs-container');
-            if (tabs) tabs.classList.remove('hidden');
-            if (!canUseMlAdminViews()) {
-                if (crumb) crumb.innerText = 'Diagnostics';
-                container.innerHTML = '<div class="p-8 text-center text-gray-400">Diagnostics are restricted to Dylan.</div>';
-                return false;
-            }
-            if (!isDatasetLoaded('mlJobs', 'initial')) {
-                queueDatasetLoad('mlJobs', 'initial', 0);
-                if (crumb) crumb.innerText = 'Diagnostics | Loading';
-                container.innerHTML = '<div class="p-8 text-center text-gray-400">Loading diagnostic issue rows...</div>';
-                return false;
-            }
-            const searchTerm = String(taskLocationDetailSearchTerm || '').trim();
-            let rows = getTaskDiagnosticIssueRows();
-            if (searchTerm) rows = filterBySearch(rows, searchTerm, 'tasks');
-            if (crumb) crumb.innerText = `Diagnostics | ${rows.length} Issue${rows.length === 1 ? '' : 's'}`;
-            const prefixHtml = `<div class="mb-3 flex flex-col gap-2 rounded-2xl border border-red-100 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-700">Diagnostics</div><div class="mt-1 text-sm font-bold text-red-900">Photos with a returned issue or manual-review flag appear here for Dylan.</div></div><div class="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button><button type="button" class="min-h-[42px] rounded-xl bg-[#007a4d] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95 disabled:opacity-60" onclick="return runDiagnosticsMlWorkerNow(this)"><i class="ph-bold ph-play-circle align-middle"></i><span class="align-middle ml-1">Run ML Worker</span></button></div></div>`;
-            const tabSignature = rows.map((row) => {
-                const normalized = normalizeMlImageJobRow(row) || {};
-                const uid = String(normalized.UNIQUE_ID || '').trim();
-                return `${uid}:${getDiagnosticIssueCardTab(uid)}`;
-            }).join('|');
-            const renderSignature = buildRowsRenderSignature(`tasks-diagnostics-review|${searchTerm}|${tabSignature}`, rows, [
-                'DIAGNOSTIC_REFERENCE_REPORT_REWRITE',
-                'DIAGNOSTIC_REFERENCE_REPORT_TEXT',
-                'DIAGNOSTIC_REFERENCE_FILE_NAME',
-                'DIAGNOSTIC_REFERENCE_LABEL',
-                'DIAGNOSTIC_REFERENCE_PUBLIC_URL',
-                'DIAGNOSTIC_REFERENCE_SCORE',
-                'DIAGNOSTIC_LAB_CASE_ID',
-                'DIAGNOSTIC_LAB_STATUS',
-                'DIAGNOSTIC_LAB_REPORT_URL',
-                'DIAGNOSTIC_REVIEWER_REPORT'
-            ]);
-            renderMarkupChunkedByKey('tasks-diagnostics-review', container, null, rows, '', (row) => renderTaskDiagnosticIssueCard(row), {
-                prefixHtml,
-                renderSignature,
-                approxCardHeight: 300,
-                emptyHtml: '<div class="p-8 text-center text-gray-400">No diagnostic issue rows need review.</div>'
-            });
-            syncTaskSharedFilterArea();
+            if (crumb) crumb.innerText = 'Tasks';
+            if (container) container.innerHTML = '';
             return false;
         }
 
         async function markMlDiagnosticReviewed(uniqueId = '', button = null) {
-            if (!canUseMlAdminViews()) {
-                showToast('Restricted', 'Only Dylan, JD, and Megan can review diagnostics.', true);
-                return false;
-            }
-            const safeId = String(uniqueId || '').trim();
-            const row = getMlImageJobById(safeId);
-            if (!row) {
-                showToast('Not Found', 'That diagnostic row could not be found.', true);
-                return false;
-            }
-            const previousLabel = button ? button.innerText : '';
-            if (button) {
-                button.disabled = true;
-                button.innerText = 'Saving...';
-            }
-            const payload = {
-                status: 'approved',
-                approved_by_username: String(currentUser || '').trim(),
-                approved_by_display: String(currentUserDisplay || currentUser || '').trim(),
-                approved_at: new Date().toISOString()
-            };
-            try {
-                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`);
-                Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
-                rebuildMlImageJobIndexes();
-                markViewDirty('managers');
-                markViewDirty('diagnostics');
-                markViewDirty('tasks');
-                showToast('Reviewed', 'Diagnostic row marked reviewed.');
-                if (isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
-                if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
-                if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
-            } catch (error) {
-                showToast('Save Failed', error && error.message ? error.message : 'Could not mark this diagnostic reviewed.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerText = previousLabel || 'Reviewed';
-                }
-            }
             return false;
         }
 
         function renderDiagnosticCard(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            if (!item) return '';
-            const photoCsv = getMlJobPhotoCsv(item);
-            const photoUrls = getPhotoUrlList(photoCsv);
-            const imageUrl = photoUrls[0] || getMlJobImageUrl(item);
-            const photoHtml = imageUrl ? `<button type="button" class="flex-shrink-0" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv || imageUrl)}', '${escJsAttrValue(getMlJobDisplayCommonName(item))}'); return false;">${buildDeferredCardPhotoImg(getDirectImageUrl(imageUrl, 'gallery-tile'), { className: 'h-20 w-20 rounded-xl object-cover border border-slate-200 bg-slate-100 active:scale-95 transition-transform' })}</button>` : '<div class="h-20 w-20 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex-shrink-0"></div>';
-            const statusClass = item.STATUS === 'ml_failed' ? 'border-red-200 bg-red-50 text-red-700' : (item.STATUS === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700');
-            const title = getMlJobDisplayCommonName(item);
-            const metaInfo = getMlJobDriveModeMeta(item);
-            const meta = [metaInfo.itemcode ? `Item ${metaInfo.itemcode}` : '', metaInfo.contsize, metaInfo.loc ? `Loc ${metaInfo.loc}` : '', metaInfo.lot ? `Lot ${metaInfo.lot}` : '', metaInfo.block ? `Block ${metaInfo.block}` : '', metaInfo.season, item.ML_GRADE].filter(Boolean).join(' | ');
-            const issueText = firstNonEmptyValue(
-                item.DIAGNOSIS,
-                item.STATUS === 'processing' ? 'ML worker is processing this image.' : '',
-                item.STATUS === 'pending_ml' ? 'Waiting for ML worker' : '',
-                item.STATUS === 'ml_failed' ? 'ML worker failed' : '',
-                'No diagnosis returned'
-            );
-            const treatmentText = firstNonEmptyValue(
-                item.RECOMMENDED_TREATMENT,
-                item.STATUS === 'processing' ? 'This should move to finished shortly. If it stays here, restart the worker.' : '',
-                item.STATUS === 'pending_ml' ? 'Worker has not processed this image yet.' : '',
-                item.STATUS === 'ml_failed' ? 'Check the worker logs and last error below.' : '',
-                'Review manually.'
-            );
-            const errorHtml = item.LAST_ERROR
-                ? `<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800"><span class="font-black uppercase tracking-[0.12em] text-[9px]">Worker Note</span><br>${esc(item.LAST_ERROR)}</div>`
-                : '';
-            return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div class="flex items-start gap-3">
-                    ${photoHtml}
-                    <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap gap-2 mb-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClass}">${esc(item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(formatMlTimestamp(firstNonEmptyValue(item.ML_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span></div>
-                        <div class="text-base font-black text-slate-900 leading-tight break-words">${esc(title)}</div>
-                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc(meta)}</div>
-                    </div>
-                </div>
-                <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[12px] font-semibold text-slate-600">
-                    <div><span class="font-black text-slate-800">Issue:</span> ${esc(issueText)}</div>
-                    <div class="mt-1"><span class="font-black text-slate-800">Treatment:</span> ${esc(treatmentText)}</div>
-                    ${errorHtml}
-                </div>
-            </div>`;
+            return '';
         }
 
         function renderDiagnostics() {
-            if (!canUseMlAdminViews()) {
-                switchView('home');
-                return;
-            }
-            if (ensureViewDataForRender('diagnostics')) return;
-            const container = document.getElementById('diagnostics-content');
-            const crumb = document.getElementById('diagnostics-crumb');
-            if (!container) return;
-            const pendingRows = getMlJobsByStatus(['pending_ml', 'processing']);
-            const issueRows = getMlJobsByStatus(['pending_approval']).filter((row) => isMlDiagnosticIssueRow(row));
-            const failedRows = getMlJobsByStatus(['ml_failed']).slice(0, 20);
-            const finishedRows = issueRows.concat(failedRows).slice(0, 60);
-            const allRows = Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory.map((row, idx) => normalizeMlImageJobRow(row, idx)).filter(Boolean) : [];
-            const statusCounts = allRows.reduce((acc, row) => {
-                const status = normalizeMlStatus(row.STATUS);
-                acc[status] = (acc[status] || 0) + 1;
-                return acc;
-            }, {});
-            if (crumb) crumb.innerText = `AI Diagnostics | ${pendingRows.length} Pending`;
-            const pendingHtml = pendingRows.length ? pendingRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No pending diagnostic jobs.</div>';
-            const finishedHtml = finishedRows.length ? finishedRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No diagnostic issues awaiting review.</div>';
-            const statusSummaryHtml = ['pending_ml', 'processing', 'pending_approval', 'approved', 'ml_failed'].map((status) => `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${esc(status.replace(/_/g, ' '))}</div><div class="mt-1 text-xl font-black text-slate-900">${esc(String(statusCounts[status] || 0))}</div></div>`).join('');
-            const signature = `diagnostics:${getDatasetLoadSignature('mlJobs')}:${pendingRows.length}:${finishedRows.length}:${JSON.stringify(statusCounts)}:${finishedRows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.UPDATED_AT}:${row.LAST_ERROR}`).join('|')}`;
-            const html = `<div class="space-y-5">
-                <section class="grid grid-cols-2 gap-2 sm:grid-cols-5">${statusSummaryHtml}</section>
-                <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Pending Diagnostics</div>${pendingHtml}</section>
-                <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Diagnostic Issues</div>${finishedHtml}</section>
-            </div>`;
-            setContainerHtmlWithSignature(container, html, signature);
+            switchView('home');
+            return false;
         }
-
         function renderProductivityHomePanel() {
             if (!canViewProductivityHome()) return '';
             if (!productivityUserDirectoryState.loaded && !productivityUserDirectoryState.loading) loadProductivityUserDirectory(false).catch(() => {});
@@ -128980,7 +127702,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 taskViews.push(NCR_APPROVAL_NEW_CROP_VIEW, NCR_APPROVAL_MOVE_UP_VIEW, NCR_APPROVAL_HOLD_RELEASE_VIEW, NCR_APPROVAL_RECOUNT_VIEW);
             }
             if (canUseNotOnInventoryApprovalTaskView()) taskViews.push(NOT_ON_INVENTORY_APPROVAL_VIEW);
-            if (canUseMlAdminViews()) taskViews.push(TASK_DIAGNOSTICS_VIEW);
             return Array.from(new Set(taskViews));
         }
 
@@ -129955,7 +128676,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'hold') return 'HOLD';
             if (safeView === 'av-blanks') return 'AV BLANKS';
             if (safeView === 'ncr') return 'NCR';
-            if (safeView === TASK_DIAGNOSTICS_VIEW) return 'DIAGNOSTICS';
             if (safeView === 'colorwalk') return 'COLOR WALK';
             if (safeView === 'endcap') return 'END CAP';
             if (safeView === 'flyer') return 'FLYER';
@@ -131053,7 +129773,6 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getActiveTaskApprovalModeValue(tab = activeTaskTab) {
             const safeTab = normalizeTaskViewValue(tab);
-            if (isTaskDiagnosticsView(safeTab)) return TASK_DIAGNOSTICS_VIEW;
             return isApprovalTaskView(safeTab) ? safeTab : 'task';
         }
 
@@ -141994,12 +140713,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 mergeRequestPhotoFields(itemToUpload, detailUploadItem);
                                 refreshPhotoAcrossViews(detailUploadItem, prefix);
                             }
-                            queueMlImageJobForUploadedRowPhoto(itemToUpload, prefix, {
-                                imageBucket: bucketName,
-                                imagePath: filePath,
-                                imageUrl: publicUrl,
-                                uploadToken
-                            }).catch((error) => console.warn('ML queue background task failed.', error));
                             markPhotoPersistActivity();
                             cleanupUploadResources();
                             finishPreview(true);
@@ -142072,7 +140785,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (detailUploadItem && detailUploadItem !== itemToUpload) registerPendingPhotoUpload(detailUploadItem, prefix, queuedUploadPromise);
             if (suspendTagSourceUploadItem && suspendTagSourceUploadItem !== itemToUpload && suspendTagSourceUploadItem !== detailUploadItem) registerPendingPhotoUpload(suspendTagSourceUploadItem, prefix, queuedUploadPromise);
             queuedUploadPromise.catch((err) => {
-                showToast('Error', 'Upload failed: ' + (err && err.message ? err.message : 'Unknown error'), true);
+                showToast('Photo Upload Failed', formatPhotoUploadErrorMessage(err), true);
             });
 
             return true;
