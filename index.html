@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.15';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1926,6 +1926,28 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
 #view-detail #det-season-content,#view-detail #det-item-inquiry-content,#view-detail #det-crop-roll-form-content,#view-detail #det-location-content,#view-detail #det-alt-loc-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-inventory-edit-content,#view-detail #det-this-location-content,#view-detail #det-customer-content,#view-detail #det-ncr-content,#view-detail #det-docks-content,#view-detail #det-flyer-content,#view-detail #det-not-on-inventory-content{max-width:780px;margin:0 auto;padding:.85rem 0 calc(12rem + env(safe-area-inset-bottom))}
 #view-detail #det-season-content>div,#view-detail #det-item-inquiry-content>div,#view-detail #det-location-content>div,#view-detail #det-alt-loc-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-inventory-edit-content>div,#view-detail #det-this-location-content>div,#view-detail #det-customer-content>div,#view-detail #det-ncr-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div,#view-detail #det-not-on-inventory-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
 #view-detail #det-season-content>div:last-child,#view-detail #det-item-inquiry-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-alt-loc-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-inventory-edit-content>div:last-child,#view-detail #det-this-location-content>div:last-child,#view-detail #det-customer-content>div:last-child,#view-detail #det-ncr-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child,#view-detail #det-not-on-inventory-content>div:last-child{margin-bottom:0}
+#item-inquiry-panel .item-inquiry-table{overflow-x:auto;overflow-y:hidden;border-color:#a7f3d0;background:#fff;box-shadow:0 12px 26px rgba(15,23,42,.08);-webkit-overflow-scrolling:touch}
+#item-inquiry-panel .item-inquiry-table-inner{min-width:44rem;background:#fff}
+#item-inquiry-panel .item-inquiry-grid{display:grid;align-items:center;gap:0}
+#item-inquiry-panel .item-inquiry-grid>*{min-width:0;border-left:1px solid #dbeafe;padding:.48rem .5rem}
+#item-inquiry-panel .item-inquiry-grid>*:first-child{border-left:0}
+#item-inquiry-panel .item-inquiry-grid--header{border-bottom:2px solid #86efac;background:linear-gradient(180deg,#f0fdf4 0%,#ecfdf5 100%);color:#334155}
+#item-inquiry-panel .item-inquiry-grid--header>*{border-left-color:#bbf7d0;color:#334155;font-size:8px;font-weight:900}
+#item-inquiry-panel .item-inquiry-row{border-top:1px solid #a7f3d0!important;background:#fff;box-shadow:none}
+#item-inquiry-panel .item-inquiry-row--even:not(.item-inquiry-row--current):not(.item-inquiry-row--crop-complete):not(.item-inquiry-row--crop-pending):not(.item-inquiry-row--decision){background:#f8fffb!important}
+#item-inquiry-panel .item-inquiry-row--odd:not(.item-inquiry-row--current):not(.item-inquiry-row--crop-complete):not(.item-inquiry-row--crop-pending):not(.item-inquiry-row--decision){background:#fff!important}
+#item-inquiry-panel .item-inquiry-row--current{background:#ecfdf5!important;border-color:#007a4d!important;box-shadow:inset 3px 0 0 #007a4d,0 0 0 1px #007a4d}
+#item-inquiry-panel .item-inquiry-row--crop-complete{background:#ecfdf5!important}
+#item-inquiry-panel .item-inquiry-row--crop-pending{background:#fffbeb!important}
+#item-inquiry-panel .item-inquiry-row--decision{background:#eff6ff!important}
+#item-inquiry-panel .item-inquiry-row:hover{background:#f0fdf4!important}
+#item-inquiry-panel .item-inquiry-row .item-inquiry-grid--summary{border-bottom:1px solid #d1fae5;color:#0f172a}
+#item-inquiry-panel .item-inquiry-row .item-inquiry-grid--summary>*{border-left-color:#d1fae5}
+#item-inquiry-panel .item-inquiry-cell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#item-inquiry-panel .item-inquiry-detail-grid{display:grid;grid-template-columns:minmax(4.35rem,.62fr) minmax(0,1fr);gap:.35rem;padding:.4rem .55rem .55rem}
+#item-inquiry-panel .item-inquiry-detail-pill,#item-inquiry-panel .item-inquiry-location-note{border-color:#86efac;background:rgba(236,253,245,.72)}
+#item-inquiry-panel .item-inquiry-location-note{box-shadow:inset 0 0 0 1px rgba(0,122,77,.08)}
+@media (max-width:640px){#item-inquiry-panel .item-inquiry-table-inner{min-width:46rem}#item-inquiry-panel .item-inquiry-detail-grid{grid-template-columns:minmax(6rem,.65fr) minmax(0,1fr)}}
 #view-detail #det-not-on-inventory-content,#not-on-inventory-panel{--noi-red:#ff0000;--noi-red-soft:#fff1f1}
 #view-detail #det-not-on-inventory-content>div,#not-on-inventory-panel .app-smart-card{border-color:var(--noi-red)!important}
 #view-detail #det-not-on-inventory-content .border-amber-100,#view-detail #det-not-on-inventory-content .border-amber-200,#view-detail #det-not-on-inventory-content .border-emerald-100,#view-detail #det-not-on-inventory-content .border-emerald-200,#view-detail #det-not-on-inventory-content .border-green-200,#view-detail #det-not-on-inventory-content .border-green-500,#not-on-inventory-panel .border-amber-100,#not-on-inventory-panel .border-amber-200,#not-on-inventory-panel .border-emerald-100,#not-on-inventory-panel .border-emerald-200,#not-on-inventory-panel .border-green-200,#not-on-inventory-panel .border-green-500{border-color:var(--noi-red)!important}
@@ -6387,7 +6409,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
             -webkit-transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
         }
-        /* V2026.08.13.15: final iPhone module flow authority. Task's header behavior is the contract. */
+        /* V2026.08.13.16: final iPhone module flow authority. Task's header behavior is the contract. */
         body.ios-device.viewport-phone #view-wrapper > .view:not(.hidden):not(#view-home){
             position:relative !important;
             inset:auto !important;
@@ -7327,7 +7349,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.15').trim() || 'V2026.08.13.15';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.16').trim() || 'V2026.08.13.16';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8772,7 +8794,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -28827,7 +28849,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.15').trim() || 'V2026.08.13.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.16').trim() || 'V2026.08.13.16';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -93275,7 +93297,7 @@ function toggleDriveQuickRequestItem(domId) {
             const cropRollBannerHtml = renderCropRollInquiryBanner(item);
             const cropRollSavedPlanHtml = renderCropRollInquirySavedPlanSummary(item, baseRows, inquiryDecisionLookupRows);
             const inquiryGridColumns = '2.35rem minmax(2.75rem,.74fr) minmax(4rem,1.05fr) minmax(1.45rem,.38fr) minmax(1.35rem,.34fr) minmax(2.05rem,.5fr) minmax(2rem,.5fr) minmax(2.2rem,.55fr) 1.72rem';
-            const headerCellHtml = (label, classes = '') => `<div class="min-w-0 truncate px-0.5 text-[7px] font-black uppercase leading-none text-slate-400 ${classes}">${escapeHtml(label)}</div>`;
+            const headerCellHtml = (label, classes = '') => `<div class="item-inquiry-cell min-w-0 truncate px-0.5 text-[7px] font-black uppercase leading-none text-slate-400 ${classes}">${escapeHtml(label)}</div>`;
             const compactDateValue = (value) => {
                 const raw = String(value === null || typeof value === 'undefined' ? '' : value).trim();
                 if (!raw) return '-';
@@ -93290,11 +93312,11 @@ function toggleDriveQuickRequestItem(domId) {
             const rowCellHtml = (value, classes = '', titleValue = '') => {
                 const displayValue = String(firstNonEmptyValue(value, '-') || '-').trim() || '-';
                 const title = String(firstNonEmptyValue(titleValue, displayValue) || displayValue).trim();
-                return `<div class="min-w-0 truncate px-0.5 ${classes}" title="${escapeHtml(title)}">${escapeHtml(displayValue)}</div>`;
+                return `<div class="item-inquiry-cell min-w-0 truncate px-0.5 ${classes}" title="${escapeHtml(title)}">${escapeHtml(displayValue)}</div>`;
             };
             const detailPillHtml = (label, value, classes = '') => {
                 const displayValue = String(firstNonEmptyValue(value, '-') || '-').trim() || '-';
-                return `<div class="min-w-0 rounded-lg border border-slate-100 bg-slate-50 px-1.5 py-1 ${classes}" title="${escapeHtml(displayValue)}"><div class="truncate text-[7px] font-black uppercase leading-none tracking-[0.12em] text-slate-400">${escapeHtml(label)}</div><div class="mt-0.5 truncate text-[9px] font-black leading-tight text-slate-900">${escapeHtml(displayValue)}</div></div>`;
+                return `<div class="item-inquiry-detail-pill min-w-0 rounded-lg border border-slate-100 bg-slate-50 px-1.5 py-1 ${classes}" title="${escapeHtml(displayValue)}"><div class="truncate text-[7px] font-black uppercase leading-none tracking-[0.12em] text-slate-400">${escapeHtml(label)}</div><div class="mt-0.5 truncate text-[9px] font-black leading-tight text-slate-900">${escapeHtml(displayValue)}</div></div>`;
             };
             const rowHtml = rows.map((row, index) => {
                 const displayMeta = getCropRollInquiryDisplayMeta(row);
@@ -93331,15 +93353,21 @@ function toggleDriveQuickRequestItem(domId) {
                 const noteValue = String(firstNonEmptyValue(locationNote, '-') || '-').trim() || '-';
                 const cropRollEditorHtml = cropRollRow && !displayMeta ? renderCropRollInquiryRowEditor(row, cropRollRow, index) : '';
                 const cropRollDecisionHtml = hasExternalDecision && (!displayMeta || displayMeta.showDecision) ? renderCropRollInquiryDecisionSummary(decisionRow) : '';
+                const rowStateClass = [
+                    index % 2 ? 'item-inquiry-row--even' : 'item-inquiry-row--odd',
+                    isCurrent ? 'item-inquiry-row--current' : '',
+                    cropRollRow ? (isCropRollRowComplete(cropRollRow) ? 'item-inquiry-row--crop-complete' : 'item-inquiry-row--crop-pending') : '',
+                    hasExternalDecision ? 'item-inquiry-row--decision' : ''
+                ].filter(Boolean).join(' ');
                 const rowToneClass = cropRollRow
                     ? (isCropRollRowComplete(cropRollRow) ? 'border-emerald-300 bg-emerald-50/90 ring-1 ring-inset ring-emerald-300' : 'border-amber-300 bg-amber-50/80 ring-1 ring-inset ring-amber-300')
                     : (hasExternalDecision ? 'border-blue-200 bg-blue-50/60 ring-1 ring-inset ring-blue-200' : (isCurrent ? 'border-emerald-200 bg-emerald-50/80 ring-1 ring-inset ring-[#007a4d]' : 'border-slate-100 bg-white hover:bg-slate-50'));
-                return `<div class="cursor-pointer border-t transition-colors active:bg-emerald-50 ${rowToneClass}" data-item-inquiry-row-line="true" data-dom-id="${escapeHtml(domId)}" ${activationAttrs}><div class="grid min-h-[32px] items-center gap-x-0.5 px-2 py-1 text-[10px] font-black leading-tight text-slate-900" style="grid-template-columns:${inquiryGridColumns};">${rowCellHtml(rowLabel, 'text-[8px] uppercase text-slate-400', isCurrent ? `Row ${index + 1} Current` : `Row ${index + 1}`)}${rowCellHtml(lotCode)}${rowCellHtml(locationCode)}${rowCellHtml(source)}${rowCellHtml(priority)}${rowCellHtml(ptrOnHand, 'text-right')}${rowCellHtml(ptrReviewed, 'text-right')}${rowCellHtml(ptrAvailable, 'text-right')}<div class="flex items-center justify-end gap-1 px-0.5">${currentBadge}<span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-700"><i class="ph-bold ph-arrow-square-out text-xs" aria-hidden="true"></i></span></div></div><div class="grid grid-cols-[minmax(4.35rem,.62fr)_minmax(0,1fr)] gap-1 px-2 pb-1.5">${detailPillHtml('Date', noteDate)}${detailPillHtml('PTN1', locationPtn1)}<div class="col-span-2 min-w-0 rounded-lg border border-emerald-100 bg-emerald-50 px-1.5 py-1" title="${escapeHtml(noteValue)}"><div class="text-[7px] font-black uppercase leading-none tracking-[0.12em] text-emerald-700">Location Note</div><div class="mt-0.5 break-words text-[9px] font-black leading-tight text-emerald-950">${escapeHtml(noteValue)}</div></div></div>${cropRollDecisionHtml}${cropRollEditorHtml}</div>`;
+                return `<div class="item-inquiry-row cursor-pointer border-t transition-colors active:bg-emerald-50 ${rowStateClass} ${rowToneClass}" data-item-inquiry-row-line="true" data-dom-id="${escapeHtml(domId)}" ${activationAttrs}><div class="item-inquiry-grid item-inquiry-grid--summary min-h-[32px] text-[10px] font-black leading-tight text-slate-900" style="grid-template-columns:${inquiryGridColumns};">${rowCellHtml(rowLabel, 'text-[8px] uppercase text-slate-400', isCurrent ? `Row ${index + 1} Current` : `Row ${index + 1}`)}${rowCellHtml(lotCode)}${rowCellHtml(locationCode)}${rowCellHtml(source)}${rowCellHtml(priority)}${rowCellHtml(ptrOnHand, 'text-right')}${rowCellHtml(ptrReviewed, 'text-right')}${rowCellHtml(ptrAvailable, 'text-right')}<div class="item-inquiry-cell flex items-center justify-end gap-1 px-0.5">${currentBadge}<span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-700"><i class="ph-bold ph-arrow-square-out text-xs" aria-hidden="true"></i></span></div></div><div class="item-inquiry-detail-grid">${detailPillHtml('Date', noteDate)}${detailPillHtml('PTN1', locationPtn1)}<div class="item-inquiry-location-note col-span-2 min-w-0 rounded-lg border border-emerald-100 bg-emerald-50 px-1.5 py-1" title="${escapeHtml(noteValue)}"><div class="text-[7px] font-black uppercase leading-none tracking-[0.12em] text-emerald-700">Location Note</div><div class="mt-0.5 break-words text-[9px] font-black leading-tight text-emerald-950">${escapeHtml(noteValue)}</div></div></div>${cropRollDecisionHtml}${cropRollEditorHtml}</div>`;
             }).join('');
             const emptyHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-[12px] font-bold text-slate-400">No inventory rows were found for this item code.</div>';
-            const headerHtml = `<div class="grid items-center border-b border-slate-200 bg-slate-50 px-2 py-1.5" style="grid-template-columns:${inquiryGridColumns};">${headerCellHtml('Row')}${headerCellHtml('Lot')}${headerCellHtml('Location')}${headerCellHtml('Src')}${headerCellHtml('Pri')}${headerCellHtml('Hand', 'text-right')}${headerCellHtml('Rev', 'text-right')}${headerCellHtml('Avail', 'text-right')}${headerCellHtml('Open', 'text-right')}</div>`;
+            const headerHtml = `<div class="item-inquiry-grid item-inquiry-grid--header" style="grid-template-columns:${inquiryGridColumns};">${headerCellHtml('Row')}${headerCellHtml('Lot')}${headerCellHtml('Location')}${headerCellHtml('Src')}${headerCellHtml('Pri')}${headerCellHtml('Hand', 'text-right')}${headerCellHtml('Rev', 'text-right')}${headerCellHtml('Avail', 'text-right')}${headerCellHtml('Open', 'text-right')}</div>`;
             const rowsTableHtml = rowHtml
-                ? `<div class="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" data-item-inquiry-row-table="true">${headerHtml}${rowHtml}</div>`
+                ? `<div class="item-inquiry-table mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" data-item-inquiry-row-table="true"><div class="item-inquiry-table-inner">${headerHtml}${rowHtml}</div></div>`
                 : `<div class="mt-3">${emptyHtml}</div>`;
             const html = `${cropRollBannerHtml}<div class="flex flex-wrap items-start justify-between gap-2"><div class="min-w-0"><div class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[8px] font-black uppercase text-emerald-700"><i class="ph-bold ph-magnifying-glass text-[11px]"></i><span>Item Inquiry</span></div><div class="mt-1 text-lg font-black leading-tight text-slate-900 break-words">${escapeHtml(commonName)}</div><div class="mt-0.5 text-[10px] font-black uppercase text-slate-500">${escapeHtml(itemCode)} | ${escapeHtml(contSize)}</div></div><div class="rounded-full border border-emerald-200 bg-white px-2 py-1 text-[8px] font-black uppercase text-emerald-700">${rows.length} Row${rows.length === 1 ? '' : 's'}</div></div>${cropRollSavedPlanHtml}${rowsTableHtml}`;
             setContainerHtml(panel, html);
