@@ -13,4 +13,6 @@ FULL_CODE_GS_WITH_*.gs
 hl_po_apps_script_full.gs
 rollback-backup-*/
 tmp-video-frames*/
+node_modules/
+v2/dist/
 

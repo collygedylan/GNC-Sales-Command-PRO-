@@ -25,6 +25,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build v2 beta app
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build:v2
+
       - name: Prepare static app
         shell: bash
         run: |
@@ -48,6 +61,8 @@ jobs:
           cp ag-data-solutions-icon-v2026080925-180.png _site/ag-data-solutions-icon-v2026080925-180.png
           cp ag-data-solutions-icon-v2026080925-192.png _site/ag-data-solutions-icon-v2026080925-192.png
           cp ag-data-solutions-icon-v2026080925-512.png _site/ag-data-solutions-icon-v2026080925-512.png
+          mkdir -p _site/v2
+          cp -r v2/dist/* _site/v2/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

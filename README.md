@@ -9,3 +9,12 @@ Current production repo contents:
 - ML worker code, models, and requirements used by the scheduled GitHub Actions workflows.
 
 Old one-off SQL migrations, repair scripts, duplicate assets, and placeholder files are intentionally not kept in this repo.
+
+## v2 beta
+
+The modular React/Vite rebuild lives under `v2/` and is published by GitHub
+Pages at `/v2/`. The root `index.html` shell remains the live production app
+while the beta is accepted in the field. The first rebuilt flow is iPhone Safari
+Que Request: fixed green header, fixed search row, one scroll container, normal
+in-page request tabs/cards/details, exact-row request saves, upload retry
+states, and remove with undo.

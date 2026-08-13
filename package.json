@@ -1,0 +1,23 @@
+{
+  "name": "gnc-field-app",
+  "private": true,
+  "version": "2026.08.13-v2.01",
+  "type": "module",
+  "scripts": {
+    "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
+    "build:v2": "tsc --noEmit -p tsconfig.json && vite build --config vite.v2.config.ts",
+    "preview:v2": "vite preview --config vite.v2.config.ts --host 0.0.0.0"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.6.3",
+    "vite": "^8.2.1"
+  }
+}
