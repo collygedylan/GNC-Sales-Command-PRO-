@@ -209,7 +209,7 @@ export function App() {
         </div>
       </div>
 
-      <main className="main-scroll" ref={scrollerRef}>
+      <main className={`main-scroll view-${detailRow ? 'detail' : view}`} ref={scrollerRef}>
         {error ? <div className="banner error">{error}</div> : null}
         {toast ? (
           <Toast

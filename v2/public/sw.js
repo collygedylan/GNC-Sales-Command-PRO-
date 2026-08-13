@@ -1,4 +1,4 @@
-const APP_VERSION = 'V2026.08.13.v2.02';
+const APP_VERSION = 'V2026.08.13.v2.03';
 const CACHE_NAME = `gnc-field-v2-${APP_VERSION}`;
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest'];
 
@@ -24,11 +24,11 @@ self.addEventListener('fetch', event => {
     return;
   }
   event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
+    fetch(request).then(response => {
       if (!response || response.status !== 200 || response.type === 'opaque') return response;
       const clone = response.clone();
       caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
       return response;
-    }).catch(() => cached))
+    }).catch(() => caches.match(request))
   );
 });
