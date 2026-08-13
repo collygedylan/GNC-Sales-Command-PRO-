@@ -177,9 +177,9 @@ button {
 }
 
 .main-scroll.view-home {
-  overflow: hidden;
+  overflow-y: auto;
   padding-top: 10px;
-  padding-bottom: 10px;
+  padding-bottom: 18px;
 }
 
 .bottom-nav-wrap {
@@ -420,7 +420,7 @@ button {
   display: grid;
   grid-template-rows: 1fr auto auto;
   gap: 10px;
-  min-height: clamp(142px, 20vh, 198px);
+  min-height: clamp(124px, 17vh, 184px);
   overflow: hidden;
   border-radius: 10px;
   padding: 14px;
@@ -526,6 +526,7 @@ button {
 .home-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(78px, 1fr);
   align-content: stretch;
   gap: 10px;
   min-height: 0;
@@ -558,7 +559,7 @@ button {
 
 @media (min-width: 1100px) {
   .module-tile {
-    min-height: clamp(86px, 13vh, 126px);
+    min-height: clamp(72px, 9vh, 106px);
   }
 }
 
