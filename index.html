@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.17';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.18';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6409,7 +6409,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
             -webkit-transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
         }
-        /* V2026.08.13.17: final iPhone module flow authority. Task's header behavior is the contract. */
+        /* V2026.08.13.18: final iPhone module flow authority. Task's header behavior is the contract. */
         body.ios-device.viewport-phone #view-wrapper > .view:not(.hidden):not(#view-home){
             position:relative !important;
             inset:auto !important;
@@ -7349,7 +7349,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.17').trim() || 'V2026.08.13.17';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.18').trim() || 'V2026.08.13.18';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8794,7 +8794,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.18';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -16997,9 +16997,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return normalizeRowPhotoFields(item);
         }
 
-        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','DESIGITEM','DESIGCUST','DESIGLOC','PTRONHAND','PTRREVIEWED','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','HOLDSTOPBEGINDATE','holdstopbegindate','HOLD_RELEASE_APPROVED_AT','hold_release_approved_at','HOLD_RELEASE_APPROVED_BY','hold_release_approved_by','HOLD_RELEASE_APPROVED_BY_DISPLAY','hold_release_approved_by_display','HOLD_RELEASE_APPROVED_HOLDSTOPBEGINDATE','hold_release_approved_holdstopbegindate','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR','NCR_APPROVAL_MESSAGE','ncr_approval_message'];
+        const ROW_SCOPED_DESIGNATION_SYNC_KEYS = ['DESIGITEM','DESIGCUST','DESIGLOC'];
+        const ROW_SCOPED_DESIGNATION_SYNC_KEY_SET = new Set(ROW_SCOPED_DESIGNATION_SYNC_KEYS.concat(['desigitem','desigcust','desigloc']));
+        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRONHAND','PTRREVIEWED','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','HOLDSTOPBEGINDATE','holdstopbegindate','HOLD_RELEASE_APPROVED_AT','hold_release_approved_at','HOLD_RELEASE_APPROVED_BY','hold_release_approved_by','HOLD_RELEASE_APPROVED_BY_DISPLAY','hold_release_approved_by_display','HOLD_RELEASE_APPROVED_HOLDSTOPBEGINDATE','hold_release_approved_holdstopbegindate','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR','NCR_APPROVAL_MESSAGE','ncr_approval_message'];
         const EVAL_TASK_ROW_SYNC_KEYS = ['EVAL_TASK_TYPE','EVAL_TASK_STATUS','EVAL_TASK_INSTRUCTIONS','EVAL_TASK_ASSIGNED_BY','EVAL_TASK_ASSIGNED_AT','EVAL_TASK_COMPLETED_BY','EVAL_TASK_COMPLETED_AT','EVAL_TASK_RECOUNT_QTY','EVAL_TASK_MOVED_UP_QTY','EVAL_TASK_HOLD_ACTION','EVAL_TASK_HOLD_CODE','EVAL_TASK_HOLD_REASON','EVAL_TASK_RESULT_NOTE'];
-        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), EVAL_TASK_ROW_SYNC_KEYS, ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
+        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(ROW_SCOPED_DESIGNATION_SYNC_KEYS, getFlyerShadowKeys(), EVAL_TASK_ROW_SYNC_KEYS, ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','DESIGITEM','DESIGCUST','DESIGLOC','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_DESIRED_SPEC','REQ_DESIRED_CALIPER','DESIRED_SPEC','DESIRED_CALIPER','REQ_PICK','REQUEST_NOTE','REQUEST_NOTES','REQ_NOTE','REQ_ROW_NOTE','ROW_NOTE','ROWNOTE','REQUEST_ROW_NOTE','REQUEST_MESSAGE','NOTE','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
         const ROW_SYNC_EVENT_NAME = 'gnc-row-state-sync';
@@ -17008,6 +17010,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (window && window.console && typeof window.console.warn === 'function') {
                 window.console.warn(`[RowSync] ${context}`, error);
             }
+        }
+
+        function isRowScopedDesignationSyncKey(key = '') {
+            const safeKey = String(key || '').trim();
+            return ROW_SCOPED_DESIGNATION_SYNC_KEY_SET.has(safeKey) || ROW_SCOPED_DESIGNATION_SYNC_KEY_SET.has(safeKey.toUpperCase());
         }
 
         function buildRowSyncSnapshot(item, prefix = '') {
@@ -17041,10 +17048,23 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const snapshotSourceTable = String(firstNonEmptyValue(snapshot.sourceTable, '')).trim().toLowerCase();
             const targetId = snapshotSourceTable === FLYER_FOLDER_ROWS_TABLE ? uniqueId : (masterUniqueId || uniqueId);
             if (!targetId) return false;
+            const exactTarget = uniqueId ? (findItemByUniqueId(uniqueId) || findRequestRowByUniqueId(uniqueId)) : null;
             let target = findItemByUniqueId(targetId) || findRequestRowByUniqueId(targetId);
-            if (!target && uniqueId && uniqueId !== targetId) target = findItemByUniqueId(uniqueId) || findRequestRowByUniqueId(uniqueId);
+            if (!target && uniqueId && uniqueId !== targetId) target = exactTarget;
             if (!target) return false;
-            Object.keys(payload).forEach((key) => { target[key] = payload[key]; });
+            const targetUniqueId = String(firstNonEmptyValue(target && target.UNIQUE_ID, target && target.unique_id, '') || '').trim();
+            const isExactSnapshotTarget = !!(uniqueId && targetUniqueId && targetUniqueId === uniqueId);
+            Object.keys(payload).forEach((key) => {
+                if (!isExactSnapshotTarget && isRowScopedDesignationSyncKey(key)) return;
+                target[key] = payload[key];
+            });
+            if (exactTarget && exactTarget !== target) {
+                Object.keys(payload).forEach((key) => {
+                    if (isRowScopedDesignationSyncKey(key)) exactTarget[key] = payload[key];
+                });
+                normalizeRowPhotoFields(exactTarget);
+                buildSearchIndex(exactTarget);
+            }
             normalizeFlyerShadowFields(target);
             normalizeRowPhotoFields(target);
             syncSharedFlyerPhotoFields(target, snapshot.prefix || '');
@@ -28918,7 +28938,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.17').trim() || 'V2026.08.13.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.18').trim() || 'V2026.08.13.18';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -139032,6 +139052,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function applyLinkedRequestUpdateToLocalRow(requestRow = null, sourceItem = null, payload = {}) {
             if (!requestRow || !payload) return null;
+            const payloadKeys = Object.keys(payload || {});
+            if (!payloadKeys.length) return requestRow;
             const sourceTable = String(firstNonEmptyValue(sourceItem && sourceItem.SOURCE_TABLE, sourceItem && sourceItem.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
             if (!sourceTable || sourceTable === 'ph_master_inventory') {
                 syncMasterFieldsToRow(sourceItem, requestRow, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true, exactPhotoClone: false, photoPrefix: 'req-' });
@@ -139057,6 +139079,23 @@ ${folderNote ? `Folder Note: ${folderNote}
             normalizeRowPhotoFields(requestRow);
             buildSearchIndex(requestRow);
             return requestRow;
+        }
+
+        function recordLinkedRequestUpdateDiagnostic(sourceItem = null, rows = [], payloadKeys = [], reason = 'linked-request-update') {
+            try {
+                const stats = ensureGncPerfStats();
+                if (!Array.isArray(stats.linkedRequestUpdates)) stats.linkedRequestUpdates = [];
+                const sourceId = String(firstNonEmptyValue(sourceItem && sourceItem.UNIQUE_ID, sourceItem && sourceItem.unique_id, '') || '').trim();
+                const targetIds = (Array.isArray(rows) ? rows : []).map((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim()).filter(Boolean);
+                stats.linkedRequestUpdates.push({
+                    at: Date.now(),
+                    reason: String(reason || '').slice(0, 80),
+                    sourceId,
+                    targetIds,
+                    payloadKeys: (Array.isArray(payloadKeys) ? payloadKeys : []).map((key) => String(key || '').trim()).filter(Boolean)
+                });
+                if (stats.linkedRequestUpdates.length > 40) stats.linkedRequestUpdates = stats.linkedRequestUpdates.slice(-40);
+            } catch (error) {}
         }
 
         function refreshLinkedRequestUpdateState(rows = []) {
@@ -139101,7 +139140,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!rowId) continue;
                 const requestPayload = buildLinkedRequestUpdatePayload(sourceItem, savePayload, requestRow, prefix);
                 if (!requestPayload) {
-                    updatedRows.push(applyLinkedRequestUpdateToLocalRow(requestRow, sourceItem, {}));
                     continue;
                 }
                 try {
@@ -139112,7 +139150,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     failedRows.push({ row: requestRow, error });
                 }
             }
-            if (updatedRows.length) refreshLinkedRequestUpdateState(updatedRows);
+            if (updatedRows.length) {
+                const payloadKeys = Array.from(new Set(updatedRows.flatMap((row) => Object.keys(buildLinkedRequestUpdatePayload(sourceItem, savePayload, row, prefix) || {}))));
+                recordLinkedRequestUpdateDiagnostic(sourceItem, updatedRows, payloadKeys, 'save-propagation');
+                refreshLinkedRequestUpdateState(updatedRows);
+            }
             return { updatedRows, failedRows };
         }
 
