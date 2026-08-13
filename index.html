@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.07';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6547,7 +6547,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.07').trim() || 'V2026.08.13.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.08').trim() || 'V2026.08.13.08';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7992,7 +7992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9552,7 +9552,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 isRequestDetail,
                 isAvOptionsOpen,
                 allowRequestDetailScroll,
-                lockMainScroll: !!(isRequestDetail && !allowRequestDetailScroll)
+                lockMainScroll: !!(isRequestDetail && safeSourceView !== 'request' && !allowRequestDetailScroll)
             };
         }
 
@@ -27679,7 +27679,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.07').trim() || 'V2026.08.13.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.08').trim() || 'V2026.08.13.08';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -92269,6 +92269,55 @@ function toggleDriveQuickRequestItem(domId) {
             if (safeTab === 'request') renderRequestMatchingInventoryOptions(item, detailSourceView || activeDetailSourceView || lastView || '');
         }
 
+        function ensureRequestDetailEntryVisible(reason = '', options = {}) {
+            const safeSourceView = String(activeDetailSourceView || lastView || '').trim().toLowerCase();
+            if (safeSourceView !== 'request' || !activeItem) return false;
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const detailRoot = document.getElementById('view-detail');
+            const requestTab = document.getElementById('dtab-request');
+            const requestContent = document.getElementById('det-request-content');
+            if (!detailRoot || !requestContent) return false;
+
+            detailRoot.classList.remove('hidden');
+            detailRoot.classList.add('detail-request-mode', 'detail-photo-update-mode');
+            if (requestTab) requestTab.classList.remove('hidden');
+
+            if (activeDetailTab !== 'request' || requestContent.classList.contains('hidden')) {
+                switchDetailTab('request', { suppressScroll: true });
+            }
+            requestContent.classList.remove('hidden');
+            populateDetailInputsForPrefix('req-', activeItem);
+            renderRequestDesiredPanel(activeItem, safeSourceView);
+            renderRequestMatchingInventoryOptions(activeItem, safeSourceView, { skipLoad: opts.skipOptionLoad === true });
+            syncDetailSharedPanelsVisibility();
+            syncDetailPhotoUpdateMode('request');
+
+            if (document.body) {
+                document.body.classList.remove('app-main-scroll-locked', 'request-detail-scroll-locked');
+                document.body.classList.toggle('request-detail-av-options-open', requestAvOptionsDropdownOpen === true);
+            }
+            const mainScrollArea = document.getElementById('main-scroll-area');
+            if (mainScrollArea) {
+                mainScrollArea.style.overflowY = '';
+                mainScrollArea.style.overscrollBehaviorY = '';
+                if (opts.resetScroll !== false) mainScrollArea.scrollTop = 0;
+            }
+            if (opts.resetScroll !== false) setMainAreaScrollTop(0);
+            if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync(`request-detail:${reason || 'ensure'}`);
+            if (typeof syncGlobalHeaderChrome === 'function') syncGlobalHeaderChrome({ reason: `request-detail:${reason || 'ensure'}` });
+            return true;
+        }
+
+        function scheduleRequestDetailEntryVisible(reason = '', options = {}) {
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            ensureRequestDetailEntryVisible(reason, opts);
+            requestAnimationFrame(() => ensureRequestDetailEntryVisible(`${reason || 'raf'}`, Object.assign({}, opts, { skipOptionLoad: true })));
+            setTimeout(() => ensureRequestDetailEntryVisible(`${reason || 'settled'}:96`, Object.assign({}, opts, { skipOptionLoad: true })), 96);
+            if (isTouchConstrainedDevice()) {
+                setTimeout(() => ensureRequestDetailEntryVisible(`${reason || 'settled'}:260`, Object.assign({}, opts, { skipOptionLoad: true })), 260);
+            }
+        }
+
         function renderEvalTaskDetailPanel(item = activeItem) {
             const panel = document.getElementById('eval-task-detail-panel');
             if (!panel) return;
@@ -92647,6 +92696,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (deferCropRollFormShell) renderCropRollDetailFormOpeningShell(activeItem);
             else populatePrimaryDetailTabShell(targetDetailTab, detailSourceView, activeItem);
             switchDetailTab(targetDetailTab, { suppressScroll: true, skipHydrate: true });
+            if (String(detailSourceView || '').trim().toLowerCase() === 'request') {
+                scheduleRequestDetailEntryVisible('shell', { skipOptionLoad: true });
+            }
             recordInternalPerfDuration('detailShellDurations', detailShellStartedAt, detailSourceView || 'detail');
             return targetDetailTab;
         }
@@ -92705,6 +92757,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const requestedDetailTab = String(firstNonEmptyValue(renderOptions.preferredTab, '') || '').trim();
             const targetDetailTab = resolveVisibleDetailTab(requestedDetailTab || primaryDetailTab, primaryDetailTab || 'overview');
             switchDetailTab(targetDetailTab, { suppressScroll: !!renderOptions.suppressScroll });
+            if (String(detailSourceView || '').trim().toLowerCase() === 'request') {
+                scheduleRequestDetailEntryVisible('render', { skipOptionLoad: true, resetScroll: renderOptions.suppressScroll !== true });
+            }
 
             if (!renderOptions.skipChromeSync) {
                 updateGlobalBackButton();
@@ -92761,6 +92816,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             if (detailTapStartedAt) recordInternalPerfDuration('detailTapToShellDurations', detailTapStartedAt, resolvedSourceView || 'detail');
             showPrimaryViewWithScrollPolicy('detail', { scrollPolicy: 'reset', scrollTop: 0 });
+            if (String(resolvedSourceView || '').trim().toLowerCase() === 'request') {
+                scheduleRequestDetailEntryVisible('open', { skipOptionLoad: true });
+            }
             if (shouldShowRequestOpenInfoModal(nextItem, resolvedSourceView, openOptions)) {
                 setTimeout(() => showRequestOpenInfoModal(nextItem, resolvedSourceView, openOptions), 0);
             }
@@ -117698,6 +117756,7 @@ C.14.043 C.15.000
                 if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
             }
             openDetail(requestUid, 'request', { preferredTab: 'request', sourceDomId: domId });
+            scheduleRequestDetailEntryVisible('request-swipe-open', { skipOptionLoad: true });
             if (!activeItem || String(activeDetailSourceView || '').trim().toLowerCase() !== 'request') {
                 showToast('Open Failed', 'That request row could not be opened. Refreshing Que now.', true);
                 triggerRequestRealtimeUiRefresh(0);
