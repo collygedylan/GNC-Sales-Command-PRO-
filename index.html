@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.13';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6169,6 +6169,224 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             display:block !important;
             padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 3rem + env(safe-area-inset-bottom)) !important;
         }
+        /* V2026.08.13.14: final iPhone Request authority. Android's working flow is the contract. */
+        body.ios-device.viewport-phone.current-view-request #view-request,
+        body.ios-device.viewport-phone.current-view-request #request-content,
+        body.ios-device.viewport-phone.current-view-request #request-content *,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode *{
+            contain:none !important;
+            content-visibility:visible !important;
+            contain-intrinsic-size:auto !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request,
+        body.ios-device.viewport-phone.current-view-request #view-request:not(.hidden),
+        body.ios-device.viewport-phone.current-view-request #request-content,
+        body.ios-device.viewport-phone.current-view-request #view-request .request-card-list,
+        body.ios-device.viewport-phone.current-view-request #view-request .request-card-list--spaced{
+            position:relative !important;
+            inset:auto !important;
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            margin-left:0 !important;
+            margin-right:0 !important;
+            padding-top:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            overflow:visible !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            will-change:auto !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request > .freeze-panel,
+        body.ios-device.viewport-phone.current-view-request #view-request > .freeze-panel.fixed-filter-rail{
+            position:relative !important;
+            inset:auto !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            bottom:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin:.25rem 0 .55rem !important;
+            padding:.05rem 0 .18rem !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            overflow:visible !important;
+            box-shadow:none !important;
+            z-index:3 !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .fixed-filter-spacer{
+            display:none !important;
+            width:0 !important;
+            height:0 !important;
+            min-height:0 !important;
+            max-height:0 !important;
+            margin:0 !important;
+            padding:0 !important;
+            flex:0 0 0 !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .task-tabs{
+            display:flex !important;
+            flex-wrap:nowrap !important;
+            gap:.45rem !important;
+            width:100% !important;
+            max-width:100% !important;
+            overflow-x:auto !important;
+            overflow-y:visible !important;
+            padding:.12rem .05rem .4rem !important;
+            margin:0 0 .45rem !important;
+            -webkit-overflow-scrolling:touch !important;
+            scroll-snap-type:x proximity !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .task-tabs .task-tab{
+            flex:0 0 auto !important;
+            min-width:max-content !important;
+            max-width:none !important;
+            white-space:nowrap !important;
+            scroll-snap-align:start !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-card-list--spaced{
+            display:flex !important;
+            flex-direction:column !important;
+            gap:.85rem !important;
+            margin:.85rem 0 0 !important;
+            padding:0 0 calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 2.75rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-card-list--spaced > :first-child{
+            margin-top:0 !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .item-row,
+        body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-row,
+        body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-surface,
+        body.ios-device.viewport-phone.current-view-request #view-request .app-smart-card,
+        body.ios-device.viewport-phone.current-view-request #view-request .app-card-shell{
+            position:relative !important;
+            inset:auto !important;
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            margin-left:0 !important;
+            margin-right:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            overflow:visible !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            backface-visibility:visible !important;
+            -webkit-backface-visibility:visible !important;
+            transition:none !important;
+            will-change:auto !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-action{
+            display:none !important;
+            pointer-events:none !important;
+            width:0 !important;
+            height:0 !important;
+            opacity:0 !important;
+            visibility:hidden !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-inline-remove-action{
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            gap:.35rem !important;
+            width:max-content !important;
+            min-width:7.25rem !important;
+            max-width:100% !important;
+            min-height:2.6rem !important;
+            margin:.65rem 0 0 auto !important;
+            padding:.65rem .9rem !important;
+            border:2px solid rgba(248,113,113,.42) !important;
+            border-radius:999px !important;
+            background:#fff7f7 !important;
+            color:#b91c1c !important;
+            font-size:.78rem !important;
+            font-weight:900 !important;
+            letter-spacing:.08em !important;
+            text-transform:uppercase !important;
+            box-shadow:0 8px 20px rgba(185,28,28,.08) !important;
+            touch-action:manipulation !important;
+            -webkit-tap-highlight-color:transparent !important;
+            pointer-events:auto !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode:not(.hidden),
+        body.ios-device.viewport-phone #view-detail.detail-request-mode.detail-photo-update-mode:not(.hidden){
+            position:relative !important;
+            inset:auto !important;
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            padding-top:0 !important;
+            padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 3rem + env(safe-area-inset-bottom)) !important;
+            overflow:visible !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode :is(#det-request-content,#request-photo-section,#global-inputs-container,#detail-shared-panels,#req-input-container,#req-save-action-wrap){
+            position:relative !important;
+            inset:auto !important;
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow:visible !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #det-request-content:not(.hidden){
+            padding:.35rem 0 calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 3.5rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #req-input-container,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){
+            display:grid !important;
+            grid-template-columns:minmax(0,1fr) !important;
+            gap:.75rem !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode :is(#req-input-container,#detail-shared-panels) :is(input,textarea,select,button){
+            max-width:100% !important;
+            min-width:0 !important;
+            font-size:16px !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode :is(.grid,.flex){
+            max-width:100% !important;
+            min-width:0 !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #req-save-action-wrap{
+            margin-top:.85rem !important;
+            padding-bottom:1rem !important;
+        }
+        body.ios-device.viewport-phone.keyboard-open #view-detail.detail-request-mode{
+            padding-bottom:2rem !important;
+            scroll-padding-bottom:45vh !important;
+        }
+        body.ios-device.viewport-phone.keyboard-open #bottom-nav,
+        body.ios-device.viewport-phone.detail-field-active #bottom-nav,
+        body.ios-device.viewport-phone.measurement-keyboard-open #bottom-nav{
+            opacity:0 !important;
+            pointer-events:none !important;
+            transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
+            -webkit-transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -7008,7 +7226,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.13').trim() || 'V2026.08.13.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.14').trim() || 'V2026.08.13.14';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8453,7 +8671,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11731,24 +11949,33 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             };
         }
 
-        function isIosPhoneAndroidFlowLayout() {
+        function isIosPhoneViewportDevice() {
             const body = document.body;
             return !!(body
                 && (isIOSDevice() || body.classList.contains('ios-device'))
-                && body.classList.contains('viewport-phone')
+                && body.classList.contains('viewport-phone'));
+        }
+
+        function isIosPhoneRequestFlowEnabled() {
+            return isIosPhoneViewportDevice();
+        }
+
+        function isIosPhoneAndroidFlowLayout() {
+            const body = document.body;
+            return !!(isIosPhoneViewportDevice()
                 && !body.classList.contains('keyboard-open')
                 && !body.classList.contains('detail-field-active')
                 && !body.classList.contains('measurement-keyboard-open'));
         }
 
         function shouldResetIosPhoneMainScrollForView(viewId = '') {
-            if (!isIosPhoneAndroidFlowLayout()) return false;
+            if (!isIosPhoneRequestFlowEnabled()) return false;
             const id = String(viewId || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '') || '').trim();
             return id === 'request' || id === 'detail';
         }
 
         function isIosPhoneRequestFlowView(viewId = '') {
-            if (!isIosPhoneAndroidFlowLayout()) return false;
+            if (!isIosPhoneRequestFlowEnabled()) return false;
             const id = String(viewId || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '') || '').trim();
             if (id === 'request') return true;
             if (id !== 'detail') return false;
@@ -11790,7 +12017,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function clearIosPhoneRequestFlowState(reason = '', options = {}) {
-            if (!isIosPhoneAndroidFlowLayout()) return false;
+            if (!isIosPhoneRequestFlowEnabled()) return false;
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const currentViewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
             const detailRoot = document.getElementById('view-detail');
@@ -11812,7 +12039,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     row.classList.remove('swipe-open');
                     ['transform','-webkit-transform','top','bottom','left','right','margin-top','padding-top','height','max-height','min-height','opacity','visibility','overflow','contain','content-visibility','contain-intrinsic-size','will-change'].forEach((propertyName) => row.style.removeProperty(propertyName));
                 });
-                requestView.querySelectorAll('.request-swipe-surface').forEach((surface) => {
+                requestView.querySelectorAll('.request-swipe-surface,.request-swipe-action').forEach((surface) => {
                     ['transform','-webkit-transform','top','bottom','left','right','margin-top','padding-top','height','max-height','min-height','opacity','visibility','overflow','contain','content-visibility','contain-intrinsic-size','will-change'].forEach((propertyName) => surface.style.removeProperty(propertyName));
                 });
                 requestView.querySelectorAll('.request-card-list,.request-card-list--spaced,#request-content').forEach((el) => {
@@ -11853,8 +12080,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const firstTop = Math.max(0, Math.ceil((firstRect && firstRect.top) || 0));
             const gap = firstTop - topChromeHeight;
             const mainScrollTop = Math.max(0, Number(mainScrollArea && mainScrollArea.scrollTop) || 0);
-            const shouldReset = opts.resetScroll === true || gap > 48 || mainScrollTop > 2;
-            logIosFixedShellDiagnostics(reason || 'ios-phone-request-audit', { topChromeHeight, firstTop, gap, mainScrollTop });
+            const currentViewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
+            const requestRail = currentViewId === 'request' ? document.querySelector('#view-request > .freeze-panel') : null;
+            const railRect = requestRail && requestRail.getClientRects && requestRail.getClientRects().length ? requestRail.getBoundingClientRect() : null;
+            const railOverlap = !!(railRect && firstRect && firstRect.top < (railRect.bottom - 6) && firstRect.bottom > (railRect.top + 6));
+            const hiddenAtTop = mainScrollTop <= 2 && (!firstRect || gap > 96 || firstTop < (topChromeHeight - 6) || railOverlap);
+            const shouldReset = opts.resetScroll === true || hiddenAtTop;
+            logIosFixedShellDiagnostics(reason || 'ios-phone-request-audit', { topChromeHeight, firstTop, gap, mainScrollTop, railOverlap });
             if (!shouldReset) return false;
             clearIosPhoneRequestFlowState(reason || 'ios-phone-request-audit', { resetScroll: true });
             if (mainScrollArea) mainScrollArea.scrollTop = 0;
@@ -11875,7 +12107,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function repairIosPhoneAndroidFlowGap(reason = '') {
-            if (!isIosPhoneAndroidFlowLayout()) return false;
+            if (!isIosPhoneRequestFlowEnabled()) return false;
             const mainScrollArea = document.getElementById('main-scroll-area');
             const root = document.documentElement;
             const topChromeHeight = Math.max(0, parseFloat(getComputedStyle(root).getPropertyValue('--app-top-chrome-height')) || 0);
@@ -11887,7 +12119,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const viewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
             if (!shouldResetIosPhoneMainScrollForView(viewId)) return false;
             if (isRequestFlow && (hasActiveTextEntryFocus() || isUserActivelyTyping())) return false;
-            if (isRequestFlow ? (gap <= 48 && mainScrollTop <= 2) : gap <= 64) return false;
+            if (isRequestFlow && mainScrollTop > 2) return false;
+            if (isRequestFlow ? gap <= 96 : gap <= 64) return false;
             const { view } = getIosCurrentShellView();
             if (view) {
                 view.querySelectorAll('.fixed-filter-rail').forEach((rail) => releaseFixedFilterRail(rail));
@@ -26922,6 +27155,13 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
 
         function getDetailInputSaveDebounceMs(inputId = '') {
             const safeId = String(inputId || '').trim();
+            const prefix = extractDetailPrefixFromInputId(safeId);
+            if (prefix === 'req-' && isIosPhoneRequestFlowEnabled()) {
+                if (safeId.endsWith('-av-note')) return 1400;
+                if (safeId.endsWith('-comments') || safeId.endsWith('-pick')) return 1100;
+                if (safeId === 'req-reserve') return 700;
+                return 900;
+            }
             if (safeId.endsWith('-av-note')) return isIOSDevice() ? 1400 : DETAIL_AV_INPUT_SAVE_DEBOUNCE_MS;
             if (safeId === 'dock-sales-desc') return isIOSDevice() || isStandaloneApp() ? 1200 : 850;
             if (safeId === 'req-reserve') return DETAIL_INPUT_SAVE_DEBOUNCE_MS;
@@ -28374,7 +28614,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.13').trim() || 'V2026.08.13.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.14').trim() || 'V2026.08.13.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -76436,7 +76676,7 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveSpace = options.reserveSpace === true && !iosConstrained;
             const reserveOffset = Number(options.reserveOffset) || 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`${key}|${String(crumbText || '')}|${prefixHtml}`, rows));
-            const iosPhoneRequestFullFlow = isIosPhoneAndroidFlowLayout() && container && container.id === 'request-content';
+            const iosPhoneRequestFullFlow = isIosPhoneRequestFlowView('request') && container && container.id === 'request-content';
             const configuredChunkSize = Number(options.chunkSize);
             const chunkSize = Number.isFinite(configuredChunkSize) && configuredChunkSize > 0
                 ? Math.max(1, Math.floor(configuredChunkSize))
@@ -76484,12 +76724,12 @@ function toggleDriveQuickRequestItem(domId) {
                     requestAnimationFrame(() => {
                         if (getContainerRenderSignature(container) !== renderSignature) return;
                         onComplete();
-                        clearIosPhoneRequestFlowState('request-full-render-complete', { resetScroll: true });
-                        scheduleIosPhoneRequestFlowAudit('request-full-render-complete', { resetScroll: true });
+                        clearIosPhoneRequestFlowState('request-full-render-complete', { resetScroll: false });
+                        scheduleIosPhoneRequestFlowAudit('request-full-render-complete', { resetScroll: false });
                     });
                 } else {
-                    clearIosPhoneRequestFlowState('request-full-render', { resetScroll: true });
-                    scheduleIosPhoneRequestFlowAudit('request-full-render', { resetScroll: true });
+                    clearIosPhoneRequestFlowState('request-full-render', { resetScroll: false });
+                    scheduleIosPhoneRequestFlowAudit('request-full-render', { resetScroll: false });
                 }
                 return true;
             }
@@ -93031,14 +93271,15 @@ function toggleDriveQuickRequestItem(domId) {
                 document.body.classList.remove('app-main-scroll-locked', 'request-detail-scroll-locked');
                 document.body.classList.toggle('request-detail-av-options-open', requestAvOptionsDropdownOpen === true);
             }
-            if (isIosPhoneAndroidFlowLayout()) clearIosPhoneRequestFlowState(`request-detail:${reason || 'ensure'}`, { resetScroll: opts.resetScroll !== false });
+            const canResetRequestDetailScroll = opts.resetScroll !== false && !hasActiveTextEntryFocus() && !isUserActivelyTyping();
+            if (isIosPhoneRequestFlowView('detail')) clearIosPhoneRequestFlowState(`request-detail:${reason || 'ensure'}`, { resetScroll: canResetRequestDetailScroll });
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (mainScrollArea) {
                 mainScrollArea.style.overflowY = '';
                 mainScrollArea.style.overscrollBehaviorY = '';
-                if (opts.resetScroll !== false) mainScrollArea.scrollTop = 0;
+                if (canResetRequestDetailScroll) mainScrollArea.scrollTop = 0;
             }
-            if (opts.resetScroll !== false) setMainAreaScrollTop(0);
+            if (canResetRequestDetailScroll) setMainAreaScrollTop(0);
             if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync(`request-detail:${reason || 'ensure'}`);
             if (typeof syncGlobalHeaderChrome === 'function') syncGlobalHeaderChrome({ reason: `request-detail:${reason || 'ensure'}` });
             return true;
@@ -93052,6 +93293,38 @@ function toggleDriveQuickRequestItem(domId) {
             if (isTouchConstrainedDevice()) {
                 setTimeout(() => ensureRequestDetailEntryVisible(`${reason || 'settled'}:260`, Object.assign({}, opts, { skipOptionLoad: true })), 260);
             }
+        }
+
+        function isIosPhoneRequestDetailField(target = null) {
+            if (!target || !target.closest || !isIosPhoneRequestFlowView('detail')) return false;
+            if (!target.closest('#view-detail.detail-request-mode')) return false;
+            return !!target.closest('#req-input-container, #request-photo-section, #detail-shared-panels, #det-request-content');
+        }
+
+        function scheduleIosPhoneRequestDetailFieldAnchor(reason = '') {
+            const target = document.activeElement;
+            if (!isIosPhoneRequestDetailField(target)) return false;
+            const run = () => {
+                const active = document.activeElement;
+                if (!isIosPhoneRequestDetailField(active)) return;
+                try {
+                    active.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+                } catch (error) {
+                    try { active.scrollIntoView(false); } catch (fallbackError) {}
+                }
+                if (typeof syncGlobalHeaderChrome === 'function') syncGlobalHeaderChrome({ reason: `request-detail-field:${reason || 'focus'}` });
+            };
+            setTimeout(run, 80);
+            setTimeout(run, 260);
+            return true;
+        }
+
+        document.addEventListener('focusin', (event) => {
+            if (isIosPhoneRequestDetailField(event && event.target)) scheduleIosPhoneRequestDetailFieldAnchor('focusin');
+        }, true);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => scheduleIosPhoneRequestDetailFieldAnchor('visual-resize'), { passive: true });
+            window.visualViewport.addEventListener('scroll', () => scheduleIosPhoneRequestDetailFieldAnchor('visual-scroll'), { passive: true });
         }
 
         function renderEvalTaskDetailPanel(item = activeItem) {
@@ -98179,16 +98452,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             container.classList.remove('performance-windowed-list');
             container.style.minHeight = '';
             const nextKey = String(renderKey || (String(crumbText || '') + '::' + String(html || '')));
-            const iosPhoneRequestFlow = isIosPhoneAndroidFlowLayout();
+            const iosPhoneRequestFlow = isIosPhoneRequestFlowView('request');
             if (iosPhoneRequestFlow) {
                 if (typeof cancelChunkRenderWorkForView === 'function') cancelChunkRenderWorkForView('request');
-                clearIosPhoneRequestFlowState('request-render-markup-preflight', { resetScroll: true });
+                clearIosPhoneRequestFlowState('request-render-markup-preflight', { resetScroll: false });
             }
             if (container.dataset && container.dataset.requestRenderKey === nextKey && getContainerRenderSignature(container) === nextKey) {
                 if (iosPhoneRequestFlow) {
                     requestAnimationFrame(() => {
-                        clearIosPhoneRequestFlowState('request-render-markup-skip', { resetScroll: true });
-                        scheduleIosPhoneRequestFlowAudit('request-render-markup-skip', { resetScroll: true });
+                        clearIosPhoneRequestFlowState('request-render-markup-skip', { resetScroll: false });
+                        scheduleIosPhoneRequestFlowAudit('request-render-markup-skip', { resetScroll: false });
                     });
                 }
                 return false;
@@ -98199,12 +98472,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('request-render-markup', true);
                 if (iosPhoneRequestFlow) {
                     requestAnimationFrame(() => {
-                        clearIosPhoneRequestFlowState('request-render-markup', { resetScroll: true });
+                        clearIosPhoneRequestFlowState('request-render-markup', { resetScroll: false });
                         const rail = document.querySelector('#view-request > .freeze-panel');
                         if (rail) releaseFixedFilterRail(rail);
                         document.querySelectorAll('#view-request .fixed-filter-spacer').forEach((spacer) => spacer.remove());
                         repairIosPhoneAndroidFlowGap('request-render-markup');
-                        scheduleIosPhoneRequestFlowAudit('request-render-markup', { resetScroll: true });
+                        scheduleIosPhoneRequestFlowAudit('request-render-markup', { resetScroll: false });
                         if (typeof scheduleIosFixedShellGapAudit === 'function') scheduleIosFixedShellGapAudit('request-render-markup');
                     });
                 }
@@ -118518,15 +118791,45 @@ C.14.043 C.15.000
                 if (typeof event.stopPropagation === 'function') event.stopPropagation();
                 if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
             }
-            if (isIosPhoneAndroidFlowLayout()) clearIosPhoneRequestFlowState('request-swipe-open-before-detail', { resetScroll: false });
+            if (isIosPhoneRequestFlowView('request')) clearIosPhoneRequestFlowState('request-swipe-open-before-detail', { resetScroll: false });
             openDetail(requestUid, 'request', { preferredTab: 'request', sourceDomId: domId });
-            if (isIosPhoneAndroidFlowLayout()) clearIosPhoneRequestFlowState('request-swipe-open-after-detail', { resetScroll: true });
+            if (isIosPhoneRequestFlowView('detail')) clearIosPhoneRequestFlowState('request-swipe-open-after-detail', { resetScroll: true });
             scheduleRequestDetailEntryVisible('request-swipe-open', { skipOptionLoad: true });
             if (!activeItem || String(activeDetailSourceView || '').trim().toLowerCase() !== 'request') {
                 showToast('Open Failed', 'That request row could not be opened. Refreshing Que now.', true);
                 triggerRequestRealtimeUiRefresh(0);
             }
             return false;
+        }
+
+        function decorateIosPhoneRequestRemoveButtons(container = null) {
+            if (!container || !isIosPhoneRequestFlowView('request')) return;
+            container.querySelectorAll('.request-inline-remove-action').forEach((button) => button.remove());
+            if (!canCurrentUserArchiveRequestRows() || activeReqTab !== 'pending') return;
+            container.querySelectorAll('.item-row').forEach((row) => {
+                if (!row || row.dataset.requestHistory === 'true') return;
+                const requestUid = resolveRequestSwipeUidFromRow(row);
+                if (!requestUid) return;
+                const requestItem = findRequestInventoryRowByUniqueId(requestUid);
+                if (!canCurrentUserArchiveRequestRow(requestItem)) return;
+                row.dataset.requestUid = requestUid;
+                row.dataset.swipeEnhanced = '';
+                row.classList.remove('request-swipe-row', 'request-swipe-row--season', 'swipe-open');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'request-inline-remove-action';
+                button.setAttribute('data-fast-press-ignore', 'true');
+                button.setAttribute('aria-label', 'Remove request row');
+                button.innerHTML = '<i class="ph-bold ph-trash"></i><span>Remove</span>';
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+                    archiveRequestRow(requestUid);
+                    return false;
+                });
+                row.appendChild(button);
+            });
         }
 
         function openRequestSwipeRemoveAction(row = null, event = null) {
@@ -118592,14 +118895,15 @@ C.14.043 C.15.000
         function decorateRequestRows() {
             const container = document.getElementById('request-content');
             if (!container) return;
-            if (isIosPhoneAndroidFlowLayout()) {
+            if (isIosPhoneRequestFlowView('request')) {
                 closeAllRequestSwipes();
                 releaseRequestSwipeMoveListener();
-                container.querySelectorAll('.request-swipe-row,.request-swipe-surface').forEach((el) => {
+                container.querySelectorAll('.request-swipe-row,.request-swipe-surface,.request-swipe-action').forEach((el) => {
                     if (!el || !el.style) return;
                     el.classList.remove('swipe-open');
                     ['transform','-webkit-transform','top','bottom','left','right','height','max-height','min-height','opacity','visibility','overflow','contain','content-visibility','contain-intrinsic-size','will-change'].forEach((propertyName) => el.style.removeProperty(propertyName));
                 });
+                decorateIosPhoneRequestRemoveButtons(container);
                 clearIosPhoneRequestFlowState('request-swipe-disabled', { resetScroll: false });
                 scheduleIosPhoneRequestFlowAudit('request-swipe-disabled', { resetScroll: false });
                 return;
@@ -142706,33 +143010,47 @@ ${folderNote ? `Folder Note: ${folderNote}
                             let bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
                             let filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
                             let publicUrl = '';
-                            try {
-                                const apiUpload = await uploadPhotoViaAppApi(prefix, blob, fileName, contentType || 'image/jpeg', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                                bucketName = String(apiUpload.bucketName || bucketName).trim() || bucketName;
-                                filePath = String(apiUpload.filePath || filePath).trim() || filePath;
-                                publicUrl = String(apiUpload.publicUrl || '').trim();
-                            } catch (secureUploadError) {
-                                const fallbackStorageClient = getSupabaseBrowserClient();
-                                if (!fallbackStorageClient || !fallbackStorageClient.storage) {
-                                    throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure photo upload proxy unavailable.'));
+                            const maxUploadAttempts = isIOSDevice() || isTouchConstrainedDevice() ? 3 : 2;
+                            let lastUploadError = null;
+                            for (let uploadAttempt = 1; uploadAttempt <= maxUploadAttempts && !publicUrl; uploadAttempt++) {
+                                try {
+                                    const apiUpload = await uploadPhotoViaAppApi(prefix, blob, fileName, contentType || 'image/jpeg', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                                    bucketName = String(apiUpload.bucketName || bucketName).trim() || bucketName;
+                                    filePath = String(apiUpload.filePath || filePath).trim() || filePath;
+                                    publicUrl = String(apiUpload.publicUrl || '').trim();
+                                } catch (secureUploadError) {
+                                    try {
+                                        const fallbackStorageClient = getSupabaseBrowserClient();
+                                        if (!fallbackStorageClient || !fallbackStorageClient.storage) {
+                                            throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure photo upload proxy unavailable.'));
+                                        }
+                                        if (!appApiPhotoUploadFallbackWarningShown) {
+                                            appApiPhotoUploadFallbackWarningShown = true;
+                                            console.warn('Secure photo upload proxy unavailable; using direct Storage fallback for this browser session.', secureUploadError);
+                                        }
+                                        const uploadResult = await withTimeout(
+                                            fallbackStorageClient.storage.from(bucketName).upload(filePath, blob, {
+                                                contentType: contentType || 'image/jpeg',
+                                                cacheControl: '31536000',
+                                                upsert: true
+                                            }),
+                                            SUPABASE_UPLOAD_TIMEOUT_MS,
+                                            'Photo upload'
+                                        );
+                                        const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                                        if (uploadError) throw uploadError;
+                                        const { data: publicUrlData } = fallbackStorageClient.storage.from(bucketName).getPublicUrl(filePath);
+                                        publicUrl = publicUrlData.publicUrl;
+                                    } catch (uploadError) {
+                                        lastUploadError = uploadError instanceof Error ? uploadError : (secureUploadError instanceof Error ? secureUploadError : new Error(String(uploadError || 'Photo upload failed.')));
+                                        if (uploadAttempt < maxUploadAttempts && navigator.onLine !== false) {
+                                            if (uploadAttempt === 1) showToast('Still Uploading', 'Network was slow. Retrying photo upload...', false);
+                                            await new Promise((resolveRetry) => setTimeout(resolveRetry, uploadAttempt === 1 ? 900 : 1800));
+                                            continue;
+                                        }
+                                        throw lastUploadError;
+                                    }
                                 }
-                                if (!appApiPhotoUploadFallbackWarningShown) {
-                                    appApiPhotoUploadFallbackWarningShown = true;
-                                    console.warn('Secure photo upload proxy unavailable; using direct Storage fallback for this browser session.', secureUploadError);
-                                }
-                                const uploadResult = await withTimeout(
-                                    fallbackStorageClient.storage.from(bucketName).upload(filePath, blob, {
-                                        contentType: contentType || 'image/jpeg',
-                                        cacheControl: '31536000',
-                                        upsert: true
-                                    }),
-                                    SUPABASE_UPLOAD_TIMEOUT_MS,
-                                    'Photo upload'
-                                );
-                                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                                if (uploadError) throw uploadError;
-                                const { data: publicUrlData } = fallbackStorageClient.storage.from(bucketName).getPublicUrl(filePath);
-                                publicUrl = publicUrlData.publicUrl;
                             }
                             if (!publicUrl) throw new Error('Photo upload did not return a public URL.');
                             applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
