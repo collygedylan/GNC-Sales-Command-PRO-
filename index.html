@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.05';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5608,6 +5608,106 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.shared-mobile-layout.detail-field-active .av-note-dropdown-panel{
             max-height:min(13rem,calc(var(--mobile-visible-height,var(--visual-height,100vh)) - 10rem)) !important;
         }
+        /* Final iOS shell authority: keep Safari/Chrome/Firefox/Edge from reintroducing
+           stale home/shared-mobile offsets after the top chrome has been fixed. */
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open),
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-wrapper{
+            position:fixed !important;
+            inset:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            height:var(--app-height,100vh) !important;
+            min-height:var(--app-height,100vh) !important;
+            overflow:hidden !important;
+            overscroll-behavior:none !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome{
+            position:fixed !important;
+            inset:0 0 auto 0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            margin:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            background:var(--sticky-chrome-bg) !important;
+            z-index:36000 !important;
+            contain:none !important;
+            will-change:auto !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome .nav-header,
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome #global-header-search-row{
+            position:relative !important;
+            inset:auto !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            box-sizing:border-box !important;
+            contain:none !important;
+            will-change:auto !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome #global-header-search-row:not(.hidden){
+            display:flex !important;
+            padding-left:var(--shell-gutter) !important;
+            padding-right:var(--shell-gutter) !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
+            position:absolute !important;
+            inset:var(--app-top-chrome-height,0px) 0 var(--app-scroll-bottom,var(--footer-nav-reserve,8.75rem)) 0 !important;
+            top:var(--app-top-chrome-height,0px) !important;
+            bottom:var(--app-scroll-bottom,var(--footer-nav-reserve,8.75rem)) !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            height:auto !important;
+            min-height:0 !important;
+            padding-top:.75rem !important;
+            scroll-padding-top:.75rem !important;
+            padding-bottom:.75rem !important;
+            scroll-padding-bottom:.75rem !important;
+            overflow-y:auto !important;
+            overflow-x:hidden !important;
+            overscroll-behavior-y:contain !important;
+            -webkit-overflow-scrolling:touch !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            contain:none !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav{
+            position:fixed !important;
+            inset:auto 50% 0 auto !important;
+            left:50% !important;
+            right:auto !important;
+            top:auto !important;
+            bottom:0 !important;
+            width:min(760px,calc(100vw - (var(--shell-gutter) * 2))) !important;
+            max-width:calc(100vw - (var(--shell-gutter) * 2)) !important;
+            margin:0 !important;
+            transform:translate3d(-50%,0,0) !important;
+            -webkit-transform:translate3d(-50%,0,0) !important;
+            z-index:35000 !important;
+            opacity:1 !important;
+            pointer-events:auto !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper{
+            padding-top:0 !important;
+            margin-top:0 !important;
+            min-height:0 !important;
+            overflow:visible !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper .fixed-filter-rail,
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-av .av-primary-tabs-sticky{
+            top:var(--fixed-filter-top,var(--app-top-chrome-height,0px)) !important;
+        }
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper .freeze-panel:not(.fixed-filter-rail),
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper .drive-controls-sticky:not(.fixed-filter-rail),
+        body.ios-device.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper .task-controls-sticky:not(.fixed-filter-rail){
+            top:0 !important;
+            margin-top:0 !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -6447,7 +6547,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.05').trim() || 'V2026.08.13.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.06').trim() || 'V2026.08.13.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7892,7 +7992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8253,6 +8353,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let lastPrimaryViewChromeSignature = '';
         let lastStickyRailOffsetSignature = '';
         let passiveChromeSyncUntil = 0;
+        let iosFixedTopChromeLastViewId = '';
+        let iosFixedTopChromeLastHeight = 0;
+        let iosFixedTopChromeSettledUntil = 0;
+        let iosFixedTopChromeGapAuditQueued = false;
+        let iosFixedTopChromeLastGapRepairAt = 0;
         let lastTaskHeaderSearchVisible = null;
         let lastTaskFilterRenderSignature = '';
         let lastTaskSharedFilterRenderSignature = '';
@@ -11086,6 +11191,133 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             });
         }
 
+        function clampIosDocumentScrollToTop() {
+            if (!isIosFixedTopChromeActive()) return;
+            if (document.documentElement && Math.abs(Number(document.documentElement.scrollTop || 0)) > 1) {
+                document.documentElement.scrollTop = 0;
+            }
+            if (document.body && Math.abs(Number(document.body.scrollTop || 0)) > 1) {
+                document.body.scrollTop = 0;
+            }
+            const windowScrollTop = Number(window.pageYOffset || window.scrollY || 0);
+            if (Math.abs(windowScrollTop) > 1) {
+                try { window.scrollTo(0, 0); } catch (err) {}
+            }
+        }
+
+        function getVisibleChromeChildBottom(topChrome, searchRow) {
+            let bottom = 0;
+            const navHeader = topChrome && topChrome.querySelector ? topChrome.querySelector('.nav-header') : null;
+            [navHeader, searchRow].forEach((el) => {
+                if (!el || !el.getClientRects || !el.getClientRects().length || el.classList.contains('hidden')) return;
+                const rect = el.getBoundingClientRect();
+                const rectBottom = Math.max(0, Number(rect && rect.bottom) || 0);
+                if (rectBottom > bottom) bottom = rectBottom;
+            });
+            return Math.ceil(bottom);
+        }
+
+        function getIosCurrentShellView() {
+            const viewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
+            return {
+                viewId,
+                view: viewId ? document.getElementById(`view-${viewId}`) : null
+            };
+        }
+
+        function getIosShellFirstContentRect() {
+            const { view } = getIosCurrentShellView();
+            if (!view || !view.getClientRects || !view.getClientRects().length) return null;
+            const selectors = [
+                '.fixed-filter-rail',
+                '.drive-controls-sticky',
+                '.task-controls-sticky',
+                '.freeze-panel',
+                '[id$="-content"] > :not(.fixed-filter-spacer):not(.amazon-search-host):not(.hidden)',
+                ':scope > :not(.fixed-filter-spacer):not(.amazon-search-host):not(.hidden)'
+            ];
+            for (const selector of selectors) {
+                let matches = [];
+                try { matches = Array.from(view.querySelectorAll(selector)); } catch (err) { matches = []; }
+                for (const el of matches) {
+                    if (!el || !el.getClientRects || !el.getClientRects().length) continue;
+                    const style = window.getComputedStyle(el);
+                    if (!style || style.display === 'none' || style.visibility === 'hidden') continue;
+                    const rect = el.getBoundingClientRect();
+                    if (rect && rect.height > 1 && rect.bottom > 0) return rect;
+                }
+            }
+            return view.getBoundingClientRect ? view.getBoundingClientRect() : null;
+        }
+
+        function logIosFixedShellDiagnostics(reason = '', data = {}) {
+            if (!window.GNC_DEBUG_IOS_SHELL && !window.GNC_LAYOUT_DIAGNOSTICS) return;
+            try {
+                console.debug('[ios-shell]', Object.assign({ reason }, data));
+            } catch (err) {}
+        }
+
+        function auditIosFixedShellGap(reason = '') {
+            if (!isIosFixedTopChromeActive()) return;
+            const root = document.documentElement;
+            const body = document.body;
+            const mainScrollArea = document.getElementById('main-scroll-area');
+            const topChromeHeight = Math.max(0, parseFloat(getComputedStyle(root).getPropertyValue('--app-top-chrome-height')) || 0);
+            const firstRect = getIosShellFirstContentRect();
+            const firstTop = Math.max(0, Math.ceil((firstRect && firstRect.top) || 0));
+            const mainScrollTop = Math.max(0, Number(mainScrollArea && mainScrollArea.scrollTop) || 0);
+            const activeRail = document.querySelector('.view:not(.hidden) .fixed-filter-rail');
+            const activeRailHeight = activeRail && activeRail.getClientRects && activeRail.getClientRects().length
+                ? Math.ceil(activeRail.getBoundingClientRect().height || activeRail.offsetHeight || 0)
+                : 0;
+            const gap = firstTop - topChromeHeight;
+            logIosFixedShellDiagnostics(reason, {
+                topChromeHeight,
+                mainScrollTop,
+                windowScrollY: Number(window.pageYOffset || window.scrollY || 0),
+                firstTop,
+                gap,
+                activeRailHeight
+            });
+            if (mainScrollTop <= 2 && gap > 96 && Date.now() - iosFixedTopChromeLastGapRepairAt > 180) {
+                iosFixedTopChromeLastGapRepairAt = Date.now();
+                body.classList.add('ios-shell-gap-repair');
+                const { view } = getIosCurrentShellView();
+                if (view) {
+                    view.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => {
+                        if (!spacer || !spacer.style) return;
+                        const spacerHeight = Math.ceil(spacer.getBoundingClientRect().height || spacer.offsetHeight || 0);
+                        if (spacerHeight > Math.max(260, activeRailHeight + 80)) {
+                            applyFixedFilterSpacerInlineStyle(spacer, activeRailHeight > 0 ? `${activeRailHeight + 8}px` : '0px');
+                        }
+                    });
+                }
+                if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('ios-shell-gap-repair', true);
+            } else if (gap <= 96 || mainScrollTop > 2) {
+                body.classList.remove('ios-shell-gap-repair');
+            }
+        }
+
+        function scheduleIosFixedShellGapAudit(reason = '') {
+            if (!isIosFixedTopChromeActive() || iosFixedTopChromeGapAuditQueued) return;
+            iosFixedTopChromeGapAuditQueued = true;
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    iosFixedTopChromeGapAuditQueued = false;
+                    auditIosFixedShellGap(reason);
+                });
+            });
+        }
+
+        function shouldBlockIosMainAreaScrollRestore(nextTop = 0) {
+            return isIosFixedTopChromeActive()
+                && Math.max(0, Number(nextTop) || 0) > 2
+                && Date.now() < iosFixedTopChromeSettledUntil
+                && !(typeof hasActiveTextEntryFocus === 'function' && hasActiveTextEntryFocus())
+                && !(typeof isUserActivelyTyping === 'function' && isUserActivelyTyping())
+                && !(typeof isMobileTextEntryPositionLocked === 'function' && isMobileTextEntryPositionLocked(document.activeElement));
+        }
+
         function syncIosFixedTopChromeMetrics(reason = '') {
             const root = document.documentElement;
             const body = document.body;
@@ -11098,6 +11330,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const chromeChildProps = ['position','top','left','right','width','max-width','margin','padding-left','padding-right','transform','-webkit-transform','z-index','box-sizing','contain','will-change'];
             const scrollProps = ['position','top','bottom','left','right','height','min-height','padding-top','scroll-padding-top','padding-bottom','scroll-padding-bottom','overflow-y','-webkit-overflow-scrolling','box-sizing'];
             const wrapperProps = ['position','inset','width','max-width','height','min-height','overflow'];
+            const bottomNavProps = ['position','left','right','top','bottom','width','max-width','margin','transform','-webkit-transform','z-index'];
             const inactive = !root || !body || !mainScrollArea || !topChrome || !isIosFixedTopChromeActive();
             if (inactive) {
                 ['--ios-nav-header-height','--ios-search-row-height','--ios-top-chrome-reserve','--ios-main-scroll-height','--app-top-chrome-height','--app-bottom-nav-height','--app-scroll-bottom'].forEach((prop) => root && root.style.removeProperty(prop));
@@ -11109,11 +11342,14 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 removeImportantStyleProps(topChrome && topChrome.querySelector('.nav-header'), chromeChildProps);
                 removeImportantStyleProps(searchRow, chromeChildProps);
                 removeImportantStyleProps(mainScrollArea, scrollProps);
+                removeImportantStyleProps(bottomNav, bottomNavProps);
+                if (body) body.classList.remove('ios-shell-gap-repair');
                 return;
             }
-            void reason;
-            body.classList.add('ios-fixed-top-chrome');
             if (typeof ensureFixedChromeOutsideScrollArea === 'function') ensureFixedChromeOutsideScrollArea();
+            const currentViewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
+            const wasActive = body.classList.contains('ios-fixed-top-chrome');
+            body.classList.add('ios-fixed-top-chrome');
             const viewport = window.visualViewport;
             const visualHeight = Math.max(0, Math.ceil((viewport && viewport.height) || window.innerHeight || root.clientHeight || 0));
             if (visualHeight) {
@@ -11180,10 +11416,23 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     'will-change': 'auto'
                 });
             }
-            const topChromeHeight = Math.max(0, Math.ceil(topChrome.getBoundingClientRect().height || topChrome.offsetHeight || 0));
+            const rawTopChromeHeight = Math.max(0, Math.ceil(topChrome.getBoundingClientRect().height || topChrome.offsetHeight || 0));
+            const visibleChildBottom = getVisibleChromeChildBottom(topChrome, searchRow);
+            const maxReasonableChromeHeight = visualHeight ? Math.max(112, Math.min(320, Math.floor(visualHeight * 0.34))) : 320;
+            let topChromeHeight = visibleChildBottom > 32 ? visibleChildBottom : rawTopChromeHeight;
+            if (rawTopChromeHeight > topChromeHeight + 96 && visibleChildBottom > 32) topChromeHeight = visibleChildBottom;
+            topChromeHeight = Math.max(0, Math.ceil(Math.min(topChromeHeight || rawTopChromeHeight, maxReasonableChromeHeight)));
             const bottomVisible = bottomNav && bottomNav.getClientRects && bottomNav.getClientRects().length;
             const bottomNavHeight = bottomVisible ? Math.max(0, Math.ceil(bottomNav.getBoundingClientRect().height || bottomNav.offsetHeight || 0)) : 0;
             const scrollBottom = Math.max(bottomNavHeight || 0, bottomVisible ? 70 : 112);
+            const viewChanged = currentViewId !== iosFixedTopChromeLastViewId;
+            const heightChanged = Math.abs(topChromeHeight - iosFixedTopChromeLastHeight) > 8;
+            if (!wasActive || viewChanged || heightChanged) {
+                iosFixedTopChromeSettledUntil = Date.now() + 460;
+                if (mainScrollArea && mainScrollArea.scrollTop > 0 && viewChanged) mainScrollArea.scrollTop = 0;
+            }
+            iosFixedTopChromeLastViewId = currentViewId;
+            iosFixedTopChromeLastHeight = topChromeHeight;
             root.style.setProperty('--app-top-chrome-height', `${topChromeHeight}px`);
             root.style.setProperty('--app-bottom-nav-height', `${bottomNavHeight}px`);
             root.style.setProperty('--app-scroll-bottom', `${scrollBottom}px`);
@@ -11203,6 +11452,23 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 '-webkit-overflow-scrolling': 'touch',
                 'box-sizing': 'border-box'
             });
+            if (bottomNav) {
+                setImportantStyleProps(bottomNav, {
+                    position: 'fixed',
+                    left: '50%',
+                    right: 'auto',
+                    top: 'auto',
+                    bottom: '0px',
+                    width: 'min(760px,calc(100vw - (var(--shell-gutter) * 2)))',
+                    'max-width': 'calc(100vw - (var(--shell-gutter) * 2))',
+                    margin: '0',
+                    transform: 'translate3d(-50%,0,0)',
+                    '-webkit-transform': 'translate3d(-50%,0,0)',
+                    'z-index': '35000'
+                });
+            }
+            clampIosDocumentScrollToTop();
+            scheduleIosFixedShellGapAudit(reason);
         }
 
         function isStickyOffsetSourceInMainScrollArea(searchEl) {
@@ -11402,7 +11668,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function applyFixedFilterSpacerInlineStyle(spacerEl, space = '0px') {
             if (!spacerEl || !spacerEl.style) return;
-            const safeSpace = String(space || '0px').trim() || '0px';
+            let safeSpace = String(space || '0px').trim() || '0px';
+            if (isIosFixedTopChromeActive()) {
+                const numericSpace = Math.max(0, parseFloat(safeSpace) || 0);
+                if (numericSpace > 260) safeSpace = '0px';
+            }
             spacerEl.style.setProperty('--fixed-filter-space', safeSpace);
             spacerEl.style.setProperty('display', 'block', 'important');
             spacerEl.style.setProperty('height', safeSpace, 'important');
@@ -11429,7 +11699,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const top = getFixedFilterRailTopPx(globalSearchRow);
             applyFixedFilterRailInlineStyle(rail, top);
             const height = Math.ceil(rail.getBoundingClientRect().height || rail.offsetHeight || 0);
-            const space = `${Math.max(0, height + 12)}px`;
+            const space = `${Math.max(0, height + (isIosFixedTopChromeActive() ? 8 : 12))}px`;
             rail.style.setProperty('--fixed-filter-space', space);
             if (spacer) applyFixedFilterSpacerInlineStyle(spacer, space);
             if (rail.querySelector && rail.querySelector('.excel-filter-panel:not(.hidden)')) {
@@ -19390,6 +19660,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const applyRestore = () => {
                 if (Number(latestPostRenderMainAreaTopResetTokensByKey[safeKey] || 0) !== restoreToken) return;
                 if (safeViewId && getCurrentVisibleViewId() !== safeViewId) return;
+                if (shouldBlockIosMainAreaScrollRestore(restoreTop)) {
+                    const delay = Math.max(80, Math.min(560, iosFixedTopChromeSettledUntil - Date.now() + 40));
+                    setTimeout(applyRestore, delay);
+                    clampIosDocumentScrollToTop();
+                    return;
+                }
                 setMainAreaScrollTop(restoreTop);
             };
             cancelPendingNavigationScrollResets();
@@ -19410,9 +19686,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function setMainAreaScrollTop(value = 0) {
             const nextTop = Math.max(0, Number(value || 0));
             if (nextTop <= 2 && (hasActiveTextEntryFocus() || isUserActivelyTyping() || isMobileTextEntryPositionLocked(document.activeElement))) return;
+            if (shouldBlockIosMainAreaScrollRestore(nextTop)) {
+                clampIosDocumentScrollToTop();
+                return;
+            }
             const scrollTarget = getMainAreaScrollTarget();
             if (scrollTarget) {
                 if (Math.abs(Number(scrollTarget.scrollTop || 0) - nextTop) > 1) scrollTarget.scrollTop = nextTop;
+                clampIosDocumentScrollToTop();
                 return;
             }
             if (document.documentElement && Math.abs(Number(document.documentElement.scrollTop || 0) - nextTop) > 1) document.documentElement.scrollTop = nextTop;
@@ -27303,7 +27584,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.05').trim() || 'V2026.08.13.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.06').trim() || 'V2026.08.13.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
