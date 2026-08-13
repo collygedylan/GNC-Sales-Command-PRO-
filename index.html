@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.08';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5708,6 +5708,68 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             top:0 !important;
             margin-top:0 !important;
         }
+        body.ios-device.viewport-phone #view-request > .freeze-panel,
+        body.ios-device.viewport-phone #view-request > .freeze-panel.fixed-filter-rail,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-request > .freeze-panel,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-request > .freeze-panel.fixed-filter-rail{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin:.35rem 0 .55rem !important;
+            padding:.08rem 0 .2rem !important;
+            z-index:36 !important;
+            overflow:visible !important;
+            box-shadow:none !important;
+        }
+        body.ios-device.viewport-phone #view-request > .freeze-panel::before,
+        body.ios-device.viewport-phone #view-request > .freeze-panel.fixed-filter-rail::before{
+            display:none !important;
+        }
+        body.ios-device.viewport-phone #view-request > .fixed-filter-spacer,
+        body.ios-device.viewport-phone #view-request .fixed-filter-spacer,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-request > .fixed-filter-spacer,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-request .fixed-filter-spacer{
+            display:none !important;
+            height:0 !important;
+            min-height:0 !important;
+            flex-basis:0 !important;
+        }
+        body.ios-device.viewport-phone #view-request #request-content{
+            padding-top:0 !important;
+            margin-top:0 !important;
+            z-index:1 !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-card-list--spaced{
+            padding-top:0 !important;
+        }
+        body.ios-device.viewport-phone #view-request #request-content > .request-card-list--spaced:first-child,
+        body.ios-device.viewport-phone #view-request #request-content > :first-child:not(.request-card-list--spaced){
+            margin-top:.85rem !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-card-list--spaced > :first-child{
+            margin-top:0 !important;
+        }
+        body.ios-device.viewport-phone #view-request .task-tabs{
+            display:flex !important;
+            flex-wrap:nowrap !important;
+            gap:.45rem !important;
+            overflow-x:auto !important;
+            overflow-y:visible !important;
+            padding:.1rem .02rem .35rem !important;
+            margin:.12rem 0 .45rem !important;
+            -webkit-overflow-scrolling:touch !important;
+            scroll-snap-type:x proximity;
+        }
+        body.ios-device.viewport-phone #view-request .task-tabs .task-tab{
+            flex:0 0 auto !important;
+            min-width:max-content !important;
+            scroll-snap-align:start;
+        }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -6547,7 +6609,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.08').trim() || 'V2026.08.13.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.09').trim() || 'V2026.08.13.09';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7992,7 +8054,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11621,6 +11683,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!id) return false;
             const body = document.body;
             const iosActive = isIOSDevice() || (body && body.classList.contains('ios-device'));
+            const iosPhoneRequest = id === 'request' && iosActive && body && body.classList.contains('viewport-phone');
+            if (iosPhoneRequest) return false;
             if (iosActive && body && (body.classList.contains('keyboard-open') || body.classList.contains('detail-field-active') || body.classList.contains('measurement-keyboard-open'))) return false;
             return true;
         }
@@ -27679,7 +27743,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.08').trim() || 'V2026.08.13.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.09').trim() || 'V2026.08.13.09';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -97446,6 +97510,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (container.dataset && container.dataset.requestRenderKey === nextKey && getContainerRenderSignature(container) === nextKey) return false;
             const didRender = setContainerHtmlWithSignature(container, html, nextKey);
             if (container.dataset) container.dataset.requestRenderKey = nextKey;
+            try {
+                if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('request-render-markup', true);
+            } catch (error) {}
             return didRender;
         }
 
