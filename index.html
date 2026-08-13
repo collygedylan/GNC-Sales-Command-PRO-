@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.09';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5770,6 +5770,68 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             min-width:max-content !important;
             scroll-snap-align:start;
         }
+        body.ios-device.viewport-phone #view-detail.detail-photo-update-mode,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-detail.detail-photo-update-mode{
+            display:block !important;
+            min-height:0 !important;
+            max-height:none !important;
+            height:auto !important;
+            overflow:visible !important;
+            padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 1rem + env(safe-area-inset-bottom)) !important;
+            scroll-padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 1.5rem + env(safe-area-inset-bottom)) !important;
+            touch-action:pan-y !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-photo-update-mode .freeze-panel,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-detail.detail-photo-update-mode .freeze-panel{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            margin:0 0 .45rem !important;
+            padding-top:.18rem !important;
+            padding-bottom:.16rem !important;
+            z-index:20 !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-photo-update-mode :is(#det-season-content,#det-location-content,#det-notes-content,#det-request-content,#det-ncr-content,#det-docks-content,#det-flyer-content):not(.hidden),
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-detail.detail-photo-update-mode :is(#det-season-content,#det-location-content,#det-notes-content,#det-request-content,#det-ncr-content,#det-docks-content,#det-flyer-content):not(.hidden){
+            display:block !important;
+            min-height:0 !important;
+            max-height:none !important;
+            height:auto !important;
+            overflow:visible !important;
+            padding-top:.2rem !important;
+            padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 2.5rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-photo-update-mode :is(#ssn-input-container,#lsn-input-container,#na-input-container,#req-input-container,#ncr-input-container,#dock-input-container,#flyer-input-container),
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-detail.detail-photo-update-mode :is(#ssn-input-container,#lsn-input-container,#na-input-container,#req-input-container,#ncr-input-container,#dock-input-container,#flyer-input-container){
+            display:grid !important;
+            visibility:visible !important;
+            opacity:1 !important;
+            min-height:0 !important;
+            overflow:visible !important;
+        }
+        body.ios-device.viewport-phone.app-main-scroll-locked.request-detail-scroll-locked #main-scroll-area,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome.app-main-scroll-locked.request-detail-scroll-locked #main-scroll-area{
+            overflow-y:auto !important;
+            overscroll-behavior-y:contain !important;
+            -webkit-overflow-scrolling:touch !important;
+            touch-action:pan-y !important;
+            padding-bottom:.75rem !important;
+            scroll-padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 1.5rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.ios-device.viewport-phone.app-main-scroll-locked.request-detail-scroll-locked #view-detail.detail-request-mode #req-save-action-wrap{
+            position:relative !important;
+            left:auto !important;
+            right:auto !important;
+            bottom:auto !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin-top:.85rem !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -6609,7 +6671,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.09').trim() || 'V2026.08.13.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.10').trim() || 'V2026.08.13.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8054,7 +8116,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9607,15 +9669,59 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const isRequestEntryTab = !!(isRequestDetail && activeRequestDetailTab === 'request');
             const isRequestGalleryTab = !!(isRequestDetail && activeRequestDetailTab === 'gallery');
             const isInventoryEditTab = !!(isRequestDetail && activeRequestDetailTab === 'inventory-edit');
-            const allowRequestDetailScroll = isCropRollDetail || isAvOptionsOpen || isThisLocationTab || isRequestEntryTab || isRequestGalleryTab || isInventoryEditTab;
+            const iosPhonePhotoUpdate = !!(
+                isRequestDetail
+                && (isIOSDevice() || (document.body && document.body.classList.contains('ios-device')))
+                && document.body
+                && document.body.classList.contains('viewport-phone')
+                && detailRoot
+                && detailRoot.classList.contains('detail-photo-update-mode')
+            );
+            const allowRequestDetailScroll = isCropRollDetail || isAvOptionsOpen || isThisLocationTab || isRequestEntryTab || isRequestGalleryTab || isInventoryEditTab || iosPhonePhotoUpdate;
             return {
                 detailRoot,
                 isDetailVisible,
                 isRequestDetail,
                 isAvOptionsOpen,
+                iosPhonePhotoUpdate,
                 allowRequestDetailScroll,
-                lockMainScroll: !!(isRequestDetail && safeSourceView !== 'request' && !allowRequestDetailScroll)
+                lockMainScroll: !!(isRequestDetail && safeSourceView !== 'request' && !allowRequestDetailScroll && !iosPhonePhotoUpdate)
             };
+        }
+
+        function releaseIosPhoneDetailUpdateScrollLock(reason = '') {
+            const body = document.body;
+            const detailRoot = document.getElementById('view-detail');
+            if (!body || !detailRoot) return false;
+            const iosPhone = !!((isIOSDevice() || body.classList.contains('ios-device')) && body.classList.contains('viewport-phone'));
+            const activeUpdateDetail = !!(!detailRoot.classList.contains('hidden') && detailRoot.classList.contains('detail-photo-update-mode'));
+            if (!iosPhone || !activeUpdateDetail) return false;
+            let changed = false;
+            ['app-main-scroll-locked', 'request-detail-scroll-locked', 'detail-photo-update-scroll-locked'].forEach((className) => {
+                if (!body.classList.contains(className)) return;
+                body.classList.remove(className);
+                changed = true;
+            });
+            const mainScrollArea = document.getElementById('main-scroll-area');
+            if (mainScrollArea) {
+                if (String(mainScrollArea.style.overflowY || '').toLowerCase() === 'hidden') {
+                    mainScrollArea.style.overflowY = '';
+                    changed = true;
+                }
+                if (String(mainScrollArea.style.overscrollBehaviorY || '').toLowerCase() === 'none') {
+                    mainScrollArea.style.overscrollBehaviorY = '';
+                    changed = true;
+                }
+                if (mainScrollArea.style.pointerEvents === 'none') {
+                    mainScrollArea.style.pointerEvents = 'auto';
+                    changed = true;
+                }
+            }
+            if (changed) {
+                if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync(`ios-detail-scroll:${normalizeUiSyncReason(reason) || 'release'}`, true);
+                if (typeof scheduleIosBottomNavViewportLock === 'function') scheduleIosBottomNavViewportLock(`ios-detail-scroll:${normalizeUiSyncReason(reason) || 'release'}`, true);
+            }
+            return changed;
         }
 
         function resetTransientScrollGestureState(reason = '') {
@@ -9669,6 +9775,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             } else {
                 removeBodyClass('request-detail-scroll-locked', 'request-detail-av-options-open', 'detail-photo-update-scroll-locked');
             }
+            if (state.iosPhonePhotoUpdate) releaseIosPhoneDetailUpdateScrollLock(reason || 'repair');
 
             const activeTextEntry = hasActiveTextEntryFocus();
             const measurementKeyboardActive = !!(typeof isDetailMeasurementKeyboardActiveForInput === 'function' && isDetailMeasurementKeyboardActiveForInput());
@@ -27743,7 +27850,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.09').trim() || 'V2026.08.13.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.10').trim() || 'V2026.08.13.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -87883,6 +87990,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isPhotoUpdate = !!(detailRoot && activeItem && shouldUseCompactDetailPhotoUpdateMode(tab));
             if (detailRoot) detailRoot.classList.toggle('detail-photo-update-mode', isPhotoUpdate);
             if (!isPhotoUpdate && document.body) document.body.classList.remove('detail-photo-update-scroll-locked');
+            if (isPhotoUpdate && typeof releaseIosPhoneDetailUpdateScrollLock === 'function') releaseIosPhoneDetailUpdateScrollLock(`photo-update:${tab || 'detail'}`);
             updateTaskDetailQuickCameraState(activeDetailSourceView || lastView || '', activeItem);
             return isPhotoUpdate;
         }
@@ -90607,6 +90715,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (isViewVisible('detail') && detailRoot.classList.contains('detail-request-mode') && requestAvOptionsDropdownOpen !== true && String(activeDetailTab || '').trim().toLowerCase() !== 'this-location') setMainAreaScrollTop(0);
                 });
             }
+            releaseIosPhoneDetailUpdateScrollLock('request-detail-sync');
         }
 
         function toggleRequestAvOptionsDropdown() {
