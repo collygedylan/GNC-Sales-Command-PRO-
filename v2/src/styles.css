@@ -274,7 +274,8 @@ button {
 
 .drawer-head span,
 .drawer-mode span,
-.drawer-stat span {
+.drawer-stat span,
+.drawer-preference span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
@@ -294,7 +295,8 @@ button {
 }
 
 .drawer-mode,
-.drawer-stat {
+.drawer-stat,
+.drawer-preference {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -316,6 +318,11 @@ button {
 .drawer-stat strong {
   color: var(--green);
   text-align: right;
+}
+
+.drawer-preference {
+  display: grid;
+  align-items: stretch;
 }
 
 .login-screen {
@@ -659,9 +666,133 @@ button {
   font-weight: 900;
 }
 
+.request-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.segmented-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  border: 2px solid #bdf4d7;
+  border-radius: 999px;
+  padding: 4px;
+  background: #f3fff8;
+}
+
+.segmented-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--green-dark);
+  background: transparent;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.segmented-control button.active {
+  color: white;
+  background: var(--green);
+  box-shadow: 0 6px 16px rgba(5, 89, 55, 0.16);
+}
+
+.segmented-control.small {
+  width: auto;
+  min-width: 180px;
+  background: white;
+}
+
 .request-list {
   display: grid;
   gap: 14px;
+}
+
+.request-grid-wrap {
+  width: 100%;
+  overflow: auto;
+  border: 2px solid #bdf4d7;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 18px 38px rgba(9, 80, 54, 0.08);
+}
+
+.request-grid-table {
+  width: max(1280px, 100%);
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.request-grid-table th,
+.request-grid-table td {
+  border-right: 1px solid #d7f5e5;
+  border-bottom: 1px solid #d7f5e5;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.request-grid-table th:last-child,
+.request-grid-table td:last-child {
+  border-right: 0;
+}
+
+.request-grid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--green-dark);
+  background: #e9fff4;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.request-grid-table tbody tr:nth-child(even) {
+  background: #f8fffb;
+}
+
+.request-grid-table tbody tr:hover {
+  background: #ecfff5;
+}
+
+.request-grid-table .strong-cell {
+  min-width: 260px;
+  color: var(--green-dark);
+  font-weight: 900;
+}
+
+.grid-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grid-row-actions button {
+  min-height: 32px;
+  border: 1px solid #9af0c7;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--green);
+  background: #f3fff8;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.grid-row-actions button.danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fff5f5;
 }
 
 .request-card {
@@ -1181,6 +1312,21 @@ button {
     min-height: 42px;
     padding: 0 14px;
     font-size: 14px;
+  }
+
+  .request-actions,
+  .request-action-buttons {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .segmented-control.small {
+    width: 100%;
+  }
+
+  .request-grid-table {
+    width: 1180px;
+    font-size: 13px;
   }
 
   .request-card {

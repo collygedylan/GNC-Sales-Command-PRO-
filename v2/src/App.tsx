@@ -49,6 +49,7 @@ import {
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
 type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
+type RequestDisplayMode = 'cards' | 'grid';
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'request', label: 'Request' },
@@ -68,6 +69,28 @@ const navItems: Array<{ id: ViewId; label: string; icon: typeof Home }> = [
   { id: 'comm', label: 'Comm', icon: MessageCircle },
   { id: 'bloom', label: 'Bloom', icon: ShoppingBag }
 ];
+
+const REQUEST_DISPLAY_KEY_PREFIX = 'gnc:v2:request-display:';
+
+function requestDisplayKey(session: Session | null) {
+  return `${REQUEST_DISPLAY_KEY_PREFIX}${session?.username || 'demo'}`;
+}
+
+function readRequestDisplayMode(session: Session | null): RequestDisplayMode {
+  try {
+    return localStorage.getItem(requestDisplayKey(session)) === 'grid' ? 'grid' : 'cards';
+  } catch {
+    return 'cards';
+  }
+}
+
+function storeRequestDisplayMode(session: Session | null, mode: RequestDisplayMode) {
+  try {
+    localStorage.setItem(requestDisplayKey(session), mode);
+  } catch {
+    // Display mode is a convenience setting; ignore private-mode storage failures.
+  }
+}
 
 function useChunkedRows<T>(rows: T[], batch = 30) {
   const [count, setCount] = useState(batch);
@@ -105,6 +128,7 @@ export function App() {
   const [toast, setToast] = useState('');
   const [undoRemove, setUndoRemove] = useState<RequestRow | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [requestDisplayMode, setRequestDisplayMode] = useState<RequestDisplayMode>(() => readRequestDisplayMode(readStoredSession()));
   const topRef = useRef<HTMLDivElement | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
@@ -149,6 +173,15 @@ export function App() {
   useEffect(() => {
     void reloadRows();
   }, [session, demoMode]);
+
+  useEffect(() => {
+    setRequestDisplayMode(readRequestDisplayMode(session));
+  }, [session?.username]);
+
+  const updateRequestDisplayMode = (mode: RequestDisplayMode) => {
+    setRequestDisplayMode(mode);
+    storeRequestDisplayMode(session, mode);
+  };
 
   const openView = (next: ViewId) => {
     setView(next);
@@ -247,8 +280,10 @@ export function App() {
             rows={filteredRows}
             allRows={rows}
             activeTab={activeTab}
+            displayMode={requestDisplayMode}
             loading={loading}
             onTab={tab => { setActiveTab(tab); scrollerRef.current?.scrollTo({ top: 0 }); }}
+            onDisplayMode={updateRequestDisplayMode}
             onOpen={row => { setDetailRow(row); scrollerRef.current?.scrollTo({ top: 0 }); }}
             onRemove={(row) => removeRow(row, session, demoMode, setRows, setToast, setUndoRemove)}
             onRefresh={reloadRows}
@@ -288,6 +323,13 @@ export function App() {
             <div className="drawer-stat">
               <span>Auto Sync</span>
               <strong>AUTO {Math.min(rows.length, 7)}/7</strong>
+            </div>
+            <div className="drawer-preference">
+              <span>Request View</span>
+              <div className="segmented-control">
+                <button type="button" className={requestDisplayMode === 'cards' ? 'active' : ''} onClick={() => updateRequestDisplayMode('cards')}>Cards</button>
+                <button type="button" className={requestDisplayMode === 'grid' ? 'active' : ''} onClick={() => updateRequestDisplayMode('grid')}>Grid</button>
+              </div>
             </div>
           </aside>
         </div>
@@ -382,13 +424,15 @@ function RequestView(props: {
   rows: RequestRow[];
   allRows: RequestRow[];
   activeTab: TabId;
+  displayMode: RequestDisplayMode;
   loading: boolean;
   onTab: (tab: TabId) => void;
+  onDisplayMode: (mode: RequestDisplayMode) => void;
   onOpen: (row: RequestRow) => void;
   onRemove: (row: RequestRow) => void;
   onRefresh: () => void;
 }) {
-  const visibleRows = useChunkedRows(props.rows, 24);
+  const visibleRows = useChunkedRows(props.rows, props.displayMode === 'grid' ? 80 : 24);
   const counts = useMemo(() => {
     const map = new Map<TabId, number>();
     tabs.forEach(tab => map.set(tab.id, 0));
@@ -410,17 +454,81 @@ function RequestView(props: {
         </div>
         <div className="request-actions">
           <span>{tabLabel(props.activeTab)} Que</span>
-          <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
+          <div className="request-action-buttons">
+            <div className="segmented-control small" aria-label="Request display mode">
+              <button type="button" className={props.displayMode === 'cards' ? 'active' : ''} onClick={() => props.onDisplayMode('cards')}>Cards</button>
+              <button type="button" className={props.displayMode === 'grid' ? 'active' : ''} onClick={() => props.onDisplayMode('grid')}>Grid</button>
+            </div>
+            <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
+          </div>
         </div>
       </div>
       {props.loading && !props.rows.length ? <div className="empty-state"><Loader2 className="spin" /> Loading rows...</div> : null}
       {!props.loading && !props.rows.length ? <div className="empty-state">No rows match this view.</div> : null}
-      <div className="request-list">
-        {visibleRows.map(row => (
-          <RequestCard key={String(uniqueId(row))} row={row} onOpen={() => props.onOpen(row)} onRemove={() => props.onRemove(row)} />
-        ))}
-      </div>
+      {props.displayMode === 'grid' ? (
+        <RequestGrid rows={visibleRows} onOpen={props.onOpen} onRemove={props.onRemove} />
+      ) : (
+        <div className="request-list">
+          {visibleRows.map(row => (
+            <RequestCard key={String(uniqueId(row))} row={row} onOpen={() => props.onOpen(row)} onRemove={() => props.onRemove(row)} />
+          ))}
+        </div>
+      )}
     </section>
+  );
+}
+
+function RequestGrid({ rows, onOpen, onRemove }: { rows: RequestRow[]; onOpen: (row: RequestRow) => void; onRemove: (row: RequestRow) => void }) {
+  return (
+    <div className="request-grid-wrap" role="region" aria-label="Request rows grid">
+      <table className="request-grid-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Common Name</th>
+            <th>Loc</th>
+            <th>Lot</th>
+            <th>Size</th>
+            <th>Src</th>
+            <th>Pri</th>
+            <th>Qty</th>
+            <th>Hand</th>
+            <th>Rev</th>
+            <th>Avail</th>
+            <th>Open</th>
+            <th>Rep</th>
+            <th>Customer</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => (
+            <tr key={String(uniqueId(row))} onDoubleClick={() => onOpen(row)}>
+              <td>{field(row, ['ITEMCODE', 'itemcode'], String(uniqueId(row) || '-'))}</td>
+              <td className="strong-cell">{field(row, ['COMMONNAME', 'commonname'], 'Unnamed item')}</td>
+              <td>{field(row, ['LOCATIONCODE', 'locationcode'], '-')}</td>
+              <td>{field(row, ['LOTCODE', 'lotcode'], '-')}</td>
+              <td>{field(row, ['CONTSIZE', 'contsize'], '-')}</td>
+              <td>{field(row, ['SRC', 'src'], '-')}</td>
+              <td>{field(row, ['PRI', 'priority'], '-')}</td>
+              <td>{field(row, ['QTY', 'qty', 'REQ_QTY', 'req_qty'], '0')}</td>
+              <td>{numberField(row, ['ON_HAND', 'on_hand', 'HAND'])}</td>
+              <td>{numberField(row, ['REVIEW', 'review', 'REV'])}</td>
+              <td>{numberField(row, ['AVAILABLE', 'available', 'AVAIL'])}</td>
+              <td>{numberField(row, ['OPEN_STOCK', 'open_stock', 'OPEN'])}</td>
+              <td>{field(row, ['REQUESTED_BY', 'requested_by', 'SALES_REP', 'sales_rep'], '-')}</td>
+              <td>{field(row, ['CUSTOMER', 'customer', 'CONSIGNEE', 'consignee'], '-')}</td>
+              <td>
+                <div className="grid-row-actions">
+                  <button type="button" onClick={() => onOpen(row)}>Open</button>
+                  <button type="button" className="danger" onClick={() => onRemove(row)}>Remove</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
