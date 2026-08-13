@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1557,6 +1557,8 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         body.viewport-compact .nav-header-meta-row{flex-wrap:nowrap}
         body.viewport-compact #sync-diagnostics-badge{min-width:5.95rem;width:5.95rem}
         body.viewport-compact #sync-diagnostics-detail{width:100%;max-width:100%;min-height:1.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        #app-top-chrome{flex:0 0 auto;width:100%;max-width:100%;position:relative;z-index:59;background:var(--sticky-chrome-bg)}
+        #app-top-chrome .nav-header{width:100%;max-width:100%}
         #global-header-search-row{display:flex;align-items:center;gap:.55rem;width:var(--shell-width);max-width:var(--shell-width);margin:0 auto;padding:.16rem 0 .3rem;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:none;position:relative;z-index:58}
         #global-header-search-row.hidden{display:none}
         #global-header-inline-title{flex:1;min-width:0;display:flex;align-items:center;min-height:42px;padding:0 1rem;border-radius:14px;background:#ffffff;border:1px solid #d1fae5;box-shadow:0 8px 18px rgba(15,23,42,.05)}
@@ -2529,7 +2531,16 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             -webkit-transform:none !important;
             contain:none !important;
         }
-        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) .nav-header{
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-wrapper:not(.hidden){
+            position:fixed !important;
+            inset:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            height:var(--app-height,100vh) !important;
+            min-height:var(--app-height,100vh) !important;
+            overflow:hidden !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome{
             position:fixed !important;
             top:0 !important;
             left:0 !important;
@@ -2537,6 +2548,7 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             width:100vw !important;
             max-width:100vw !important;
             margin:0 !important;
+            background:var(--sticky-chrome-bg) !important;
             transform:none !important;
             -webkit-transform:none !important;
             z-index:18000 !important;
@@ -2544,28 +2556,39 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             contain:none !important;
             will-change:auto !important;
         }
-        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #global-header-search-row:not(.hidden){
-            position:fixed !important;
-            top:var(--ios-nav-header-height,0px) !important;
-            left:0 !important;
-            right:0 !important;
-            width:100vw !important;
-            max-width:100vw !important;
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome .nav-header,
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome #global-header-search-row{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            width:100% !important;
+            max-width:100% !important;
             margin:0 !important;
-            padding-left:var(--shell-gutter) !important;
-            padding-right:var(--shell-gutter) !important;
             transform:none !important;
             -webkit-transform:none !important;
-            z-index:17990 !important;
+            z-index:auto !important;
             box-sizing:border-box !important;
             contain:none !important;
             will-change:auto !important;
         }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome #global-header-search-row:not(.hidden){
+            display:flex !important;
+            padding-left:var(--shell-gutter) !important;
+            padding-right:var(--shell-gutter) !important;
+        }
         body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
-            height:var(--ios-main-scroll-height,var(--visual-height,100vh)) !important;
+            position:absolute !important;
+            top:var(--app-top-chrome-height,0px) !important;
+            bottom:var(--app-scroll-bottom,var(--footer-nav-reserve,8.75rem)) !important;
+            left:0 !important;
+            right:0 !important;
+            height:auto !important;
             min-height:0 !important;
-            padding-top:calc(var(--ios-top-chrome-reserve,0px) + .72rem) !important;
-            scroll-padding-top:calc(var(--ios-top-chrome-reserve,0px) + .72rem) !important;
+            padding-top:.72rem !important;
+            scroll-padding-top:.72rem !important;
+            padding-bottom:.72rem !important;
+            scroll-padding-bottom:.72rem !important;
             overflow-y:auto !important;
             -webkit-overflow-scrolling:touch !important;
             box-sizing:border-box !important;
@@ -2623,8 +2646,8 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             -webkit-transform:translate3d(0,0,0) !important;
         }
         body.ios-device.app-standalone:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
-            padding-bottom:calc(var(--footer-nav-reserve) + .35rem) !important;
-            scroll-padding-bottom:calc(var(--footer-nav-reserve) + .35rem) !important;
+            padding-bottom:.72rem !important;
+            scroll-padding-bottom:.72rem !important;
         }
         body.keyboard-open #bottom-nav,
         body.keyboard-open #global-action-bar{
@@ -6397,6 +6420,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <div id="app-wrapper" class="hidden h-full flex flex-col">
+        <div id="app-top-chrome">
         <header class="nav-header">
             <div class="nav-header-shell">
                 <div class="nav-header-utility">
@@ -6409,7 +6433,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.03').trim() || 'V2026.08.13.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.04').trim() || 'V2026.08.13.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6424,6 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="global-header-inline-title" class="hidden">
                 <div id="global-header-view-title">Home</div>
             </div>
+        </div>
         </div>
 
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
@@ -7853,7 +7878,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11021,32 +11046,76 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 && !body.classList.contains('measurement-keyboard-open'));
         }
 
+        let iosViewportShellResizeObserver = null;
+        let iosViewportShellResizeFrameQueued = false;
+        const iosViewportShellObserved = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+
+        function observeIosViewportShellChrome(...elements) {
+            if (typeof ResizeObserver === 'undefined' || !iosViewportShellObserved) return;
+            if (!iosViewportShellResizeObserver) {
+                iosViewportShellResizeObserver = new ResizeObserver(() => {
+                    if (iosViewportShellResizeFrameQueued) return;
+                    iosViewportShellResizeFrameQueued = true;
+                    const run = () => {
+                        iosViewportShellResizeFrameQueued = false;
+                        syncIosFixedTopChromeMetrics('resize-observer');
+                        if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('ios-shell-resize', true);
+                    };
+                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+                    else setTimeout(run, 0);
+                });
+            }
+            elements.forEach((el) => {
+                if (!el || iosViewportShellObserved.has(el)) return;
+                iosViewportShellObserved.add(el);
+                iosViewportShellResizeObserver.observe(el);
+            });
+        }
+
         function syncIosFixedTopChromeMetrics(reason = '') {
             const root = document.documentElement;
             const body = document.body;
             const mainScrollArea = document.getElementById('main-scroll-area');
-            const navHeader = document.querySelector('.nav-header');
+            const topChrome = document.getElementById('app-top-chrome');
             const searchRow = document.getElementById('global-header-search-row');
-            const chromeProps = ['position','top','left','right','width','max-width','margin','transform','-webkit-transform','z-index','box-sizing','contain','will-change'];
-            if (!root || !body || !mainScrollArea || !navHeader || !searchRow || !isIosFixedTopChromeActive()) {
-                ['--ios-nav-header-height','--ios-search-row-height','--ios-top-chrome-reserve','--ios-main-scroll-height'].forEach((prop) => root && root.style.removeProperty(prop));
+            const bottomNav = document.getElementById('bottom-nav');
+            const appWrapper = document.getElementById('app-wrapper');
+            const chromeProps = ['position','top','left','right','width','max-width','margin','background','transform','-webkit-transform','z-index','box-sizing','contain','will-change'];
+            const chromeChildProps = ['position','top','left','right','width','max-width','margin','padding-left','padding-right','transform','-webkit-transform','z-index','box-sizing','contain','will-change'];
+            const scrollProps = ['position','top','bottom','left','right','height','min-height','padding-top','scroll-padding-top','padding-bottom','scroll-padding-bottom','overflow-y','-webkit-overflow-scrolling','box-sizing'];
+            const wrapperProps = ['position','inset','width','max-width','height','min-height','overflow'];
+            const inactive = !root || !body || !mainScrollArea || !topChrome || !isIosFixedTopChromeActive();
+            if (inactive) {
+                ['--ios-nav-header-height','--ios-search-row-height','--ios-top-chrome-reserve','--ios-main-scroll-height','--app-top-chrome-height','--app-bottom-nav-height','--app-scroll-bottom'].forEach((prop) => root && root.style.removeProperty(prop));
                 const wasActive = !!(body && body.classList.contains('ios-fixed-top-chrome'));
                 if (body) body.classList.remove('ios-fixed-top-chrome');
                 if (!wasActive) return;
-                removeImportantStyleProps(navHeader, chromeProps);
-                removeImportantStyleProps(searchRow, [...chromeProps, 'padding-left', 'padding-right']);
-                removeImportantStyleProps(mainScrollArea, ['height','min-height','padding-top','scroll-padding-top','overflow-y','-webkit-overflow-scrolling','box-sizing']);
+                removeImportantStyleProps(appWrapper, wrapperProps);
+                removeImportantStyleProps(topChrome, chromeProps);
+                removeImportantStyleProps(topChrome && topChrome.querySelector('.nav-header'), chromeChildProps);
+                removeImportantStyleProps(searchRow, chromeChildProps);
+                removeImportantStyleProps(mainScrollArea, scrollProps);
                 return;
             }
+            void reason;
             body.classList.add('ios-fixed-top-chrome');
             if (typeof ensureFixedChromeOutsideScrollArea === 'function') ensureFixedChromeOutsideScrollArea();
             const viewport = window.visualViewport;
             const visualHeight = Math.max(0, Math.ceil((viewport && viewport.height) || window.innerHeight || root.clientHeight || 0));
             if (visualHeight) {
                 root.style.setProperty('--visual-height', `${visualHeight}px`);
-                root.style.setProperty('--ios-main-scroll-height', `${visualHeight}px`);
             }
-            setImportantStyleProps(navHeader, {
+            observeIosViewportShellChrome(topChrome, bottomNav);
+            setImportantStyleProps(appWrapper, {
+                position: 'fixed',
+                inset: '0',
+                width: '100vw',
+                'max-width': '100vw',
+                height: 'var(--app-height,100vh)',
+                'min-height': 'var(--app-height,100vh)',
+                overflow: 'hidden'
+            });
+            setImportantStyleProps(topChrome, {
                 position: 'fixed',
                 top: '0px',
                 left: '0px',
@@ -11054,6 +11123,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 width: '100vw',
                 'max-width': '100vw',
                 margin: '0',
+                background: 'var(--sticky-chrome-bg)',
                 transform: 'none',
                 '-webkit-transform': 'none',
                 'z-index': '18000',
@@ -11061,39 +11131,60 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 contain: 'none',
                 'will-change': 'auto'
             });
-            const navHeight = Math.max(0, Math.ceil(navHeader.getBoundingClientRect().height || navHeader.offsetHeight || 0));
-            const searchVisible = !searchRow.classList.contains('hidden') && isStickyOffsetSourceVisible(searchRow);
-            const searchHeight = searchVisible ? Math.max(0, Math.ceil(searchRow.getBoundingClientRect().height || searchRow.offsetHeight || 0)) : 0;
-            const reserve = Math.max(0, navHeight + searchHeight);
-            root.style.setProperty('--ios-nav-header-height', `${navHeight}px`);
-            root.style.setProperty('--ios-search-row-height', `${searchHeight}px`);
-            root.style.setProperty('--ios-top-chrome-reserve', `${reserve}px`);
-            if (searchVisible) {
+            const navHeader = topChrome.querySelector('.nav-header');
+            setImportantStyleProps(navHeader, {
+                position: 'relative',
+                top: 'auto',
+                left: 'auto',
+                right: 'auto',
+                width: '100%',
+                'max-width': '100%',
+                margin: '0',
+                transform: 'none',
+                '-webkit-transform': 'none',
+                'z-index': 'auto',
+                'box-sizing': 'border-box',
+                contain: 'none',
+                'will-change': 'auto'
+            });
+            if (searchRow) {
                 setImportantStyleProps(searchRow, {
-                    position: 'fixed',
-                    top: `${navHeight}px`,
-                    left: '0px',
-                    right: '0px',
-                    width: '100vw',
-                    'max-width': '100vw',
+                    position: 'relative',
+                    top: 'auto',
+                    left: 'auto',
+                    right: 'auto',
+                    width: '100%',
+                    'max-width': '100%',
                     margin: '0',
                     'padding-left': 'var(--shell-gutter)',
                     'padding-right': 'var(--shell-gutter)',
                     transform: 'none',
                     '-webkit-transform': 'none',
-                    'z-index': '17990',
+                    'z-index': 'auto',
                     'box-sizing': 'border-box',
                     contain: 'none',
                     'will-change': 'auto'
                 });
-            } else {
-                removeImportantStyleProps(searchRow, [...chromeProps, 'padding-left', 'padding-right']);
             }
+            const topChromeHeight = Math.max(0, Math.ceil(topChrome.getBoundingClientRect().height || topChrome.offsetHeight || 0));
+            const bottomVisible = bottomNav && bottomNav.getClientRects && bottomNav.getClientRects().length;
+            const bottomNavHeight = bottomVisible ? Math.max(0, Math.ceil(bottomNav.getBoundingClientRect().height || bottomNav.offsetHeight || 0)) : 0;
+            const scrollBottom = Math.max(bottomNavHeight || 0, bottomVisible ? 70 : 112);
+            root.style.setProperty('--app-top-chrome-height', `${topChromeHeight}px`);
+            root.style.setProperty('--app-bottom-nav-height', `${bottomNavHeight}px`);
+            root.style.setProperty('--app-scroll-bottom', `${scrollBottom}px`);
             setImportantStyleProps(mainScrollArea, {
-                height: visualHeight ? `${visualHeight}px` : 'var(--visual-height,100vh)',
+                position: 'absolute',
+                top: `${topChromeHeight}px`,
+                bottom: `${scrollBottom}px`,
+                left: '0px',
+                right: '0px',
+                height: 'auto',
                 'min-height': '0',
-                'padding-top': `calc(${reserve}px + .72rem)`,
-                'scroll-padding-top': `calc(${reserve}px + .72rem)`,
+                'padding-top': '.72rem',
+                'scroll-padding-top': '.72rem',
+                'padding-bottom': '.72rem',
+                'scroll-padding-bottom': '.72rem',
                 'overflow-y': 'auto',
                 '-webkit-overflow-scrolling': 'touch',
                 'box-sizing': 'border-box'
@@ -11116,6 +11207,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function getFixedFilterRailTopPx(sourceEl) {
+            if (isIosFixedTopChromeActive()) {
+                const root = document.documentElement;
+                const measuredTop = parseFloat((root && getComputedStyle(root).getPropertyValue('--app-top-chrome-height')) || '0') || 0;
+                if (measuredTop > 0) return Math.ceil(measuredTop);
+                const topChrome = document.getElementById('app-top-chrome');
+                if (topChrome && topChrome.getClientRects && topChrome.getClientRects().length) {
+                    return Math.max(0, Math.ceil(topChrome.getBoundingClientRect().bottom || topChrome.offsetHeight || 0));
+                }
+            }
             if (!isStickyOffsetSourceVisible(sourceEl)) return 0;
             const rect = sourceEl.getBoundingClientRect();
             const rawBottom = Math.max(0, Math.ceil(rect.bottom || 0));
@@ -27184,7 +27284,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.03').trim() || 'V2026.08.13.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.04').trim() || 'V2026.08.13.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
