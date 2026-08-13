@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.14';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1648,6 +1648,27 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
             max-height:calc(var(--visual-height,100vh) - max(12px,env(safe-area-inset-top)) - 8px) !important;
         }
         body.ios-device .fixed-filter-rail{overflow:visible !important}
+        body.ios-device #view-request > .freeze-panel.fixed-filter-rail{
+            position:-webkit-sticky !important;
+            position:sticky !important;
+            top:var(--freeze-panel-offset,0px) !important;
+            left:auto !important;
+            right:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin:0 0 .72rem 0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            box-shadow:none !important;
+            z-index:48 !important;
+        }
+        body.ios-device #view-request > .freeze-panel.fixed-filter-rail::before{display:block !important}
+        body.ios-device #view-request > .fixed-filter-spacer{
+            display:none !important;
+            height:0 !important;
+            min-height:0 !important;
+        }
+        body.ios-device #view-request .request-card-list--spaced{padding-top:.35rem !important}
         #view-managers .manager-module-freeze{z-index:55}
         #view-managers .manager-module-freeze::before{display:block}
         .manager-module-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem}
@@ -6292,7 +6313,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.14').trim() || 'V2026.08.12.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.15').trim() || 'V2026.08.12.15';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7736,7 +7757,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11008,7 +11029,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function shouldUseFixedFilterRailForView(viewId = '') {
-            return !!String(viewId || '').trim();
+            const id = String(viewId || '').trim();
+            if (!id) return false;
+            if (id === 'request' && (isIOSDevice() || (document.body && document.body.classList.contains('ios-device')))) return false;
+            return true;
         }
 
         function releaseFixedFilterRail(railEl) {
@@ -26937,7 +26961,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.14').trim() || 'V2026.08.12.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.15').trim() || 'V2026.08.12.15';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37707,6 +37731,17 @@ let avTopControlsRenderToken = 0;
                 reportRow[upperKey] = raw;
                 reportRow[lowerKey] = raw;
             };
+            const setRequestedPair = (upperKey, lowerKey, value) => {
+                const raw = String(value == null ? '' : value).trim();
+                if (raw === '') return;
+                reportRow[upperKey] = raw;
+                reportRow[lowerKey] = raw;
+            };
+            const setOriginalPair = (upperKey, lowerKey, value) => {
+                const raw = String(value == null ? '' : value).trim();
+                reportRow[upperKey] = raw;
+                reportRow[lowerKey] = raw;
+            };
             setPair('LOTCODE', 'lotcode', screenValues.lotcode);
             setPair('LOCATIONCODE', 'locationcode', screenValues.locationcode);
             setPair('SOURCE', 'source', firstNonEmptyValue(screenValues.source, screenValues.sourcecode, ''));
@@ -37715,9 +37750,48 @@ let avTopControlsRenderToken = 0;
             setPair('PTRREVIEWED', 'ptrreviewed', screenValues.ptrreviewed);
             setPair('HOLDSTOPCODE', 'holdstopcode', screenValues.holdstopcode);
             setPair('HOLDSTOPREASON', 'holdstopreason', screenValues.holdstopreason);
+            setPair('EVALDATE', 'evaldate', screenValues.evaldate);
+            setPair('PRISETBY', 'prisetby', firstNonEmptyValue(screenValues.priBy, screenValues.priby, screenValues.prisetby, ''));
+            setPair('PRIBY', 'priby', firstNonEmptyValue(screenValues.priBy, screenValues.priby, screenValues.prisetby, ''));
+            setPair('PRIUPDATED', 'priupdated', firstNonEmptyValue(screenValues.priorityUpdate, screenValues.priupdated, ''));
+            setPair('LOCATIONNOTEDATE', 'locationnotedate', firstNonEmptyValue(screenValues.locationnoteDate, screenValues.locationnotedate, ''));
+            setPair('LOCATIONNOTE', 'locationnote', screenValues.locationnote);
+            setPair('LOCATIONPTN1', 'locationptn1', screenValues.locationptn1);
+            setOriginalPair('ORIGINAL_PRIORITY', 'originalPriority', firstNonEmptyValue(item && item.PRIORITY, item && item.priority, reportRow.PRIORITY, reportRow.priority, ''));
+            setOriginalPair('ORIGINAL_HOLDSTOPCODE', 'originalHoldStopCode', firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.holdstopcode, item && item.HOLSTOPCODE, item && item.holstopcode, ''));
+            setOriginalPair('ORIGINAL_HOLDSTOPREASON', 'originalHoldStopReason', firstNonEmptyValue(item && item.HOLDSTOPREASON, item && item.holdstopreason, item && item.HOLSTOPREASON, item && item.holstopreason, ''));
+            setOriginalPair('ORIGINAL_LOTCODE', 'originalLotCode', firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, ''));
+            setOriginalPair('ORIGINAL_LOCATIONCODE', 'originalLocationCode', firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, ''));
+            setOriginalPair('ORIGINAL_SOURCE', 'originalSource', firstNonEmptyValue(item && item.SOURCE, item && item.source, item && item.SOURCECODE, item && item.sourcecode, ''));
+            setOriginalPair('ORIGINAL_PTRONHAND', 'originalPtrOnHand', firstNonEmptyValue(item && item.PTRONHAND, item && item.ptronhand, ''));
+            setOriginalPair('ORIGINAL_PTRREVIEWED', 'originalPtrReviewed', firstNonEmptyValue(item && item.PTRREVIEWED, item && item.ptrreviewed, ''));
+            setOriginalPair('ORIGINAL_PTRAVAILABLE', 'originalPtrAvailable', firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, ''));
+            setOriginalPair('ORIGINAL_EVALDATE', 'originalEvalDate', firstNonEmptyValue(item && item.EVALDATE, item && item.evaldate, ''));
+            setOriginalPair('ORIGINAL_PRISETBY', 'originalPriSetBy', firstNonEmptyValue(item && item.PRISETBY, item && item.prisetby, item && item.PRIBY, item && item.priby, ''));
+            setOriginalPair('ORIGINAL_PRIBY', 'originalPriBy', firstNonEmptyValue(item && item.PRIBY, item && item.priby, item && item.PRISETBY, item && item.prisetby, ''));
+            setOriginalPair('ORIGINAL_PRIUPDATED', 'originalPriUpdated', firstNonEmptyValue(item && item.PRIUPDATED, item && item.priupdated, ''));
+            setOriginalPair('ORIGINAL_LOCATIONNOTEDATE', 'originalLocationNoteDate', firstNonEmptyValue(item && item.LOCATIONNOTEDATE, item && item.locationnotedate, ''));
+            setOriginalPair('ORIGINAL_LOCATIONNOTE', 'originalLocationNote', firstNonEmptyValue(item && item.LOCATIONNOTE, item && item.locationnote, ''));
+            setOriginalPair('ORIGINAL_LOCATIONPTN1', 'originalLocationPtn1', firstNonEmptyValue(item && item.LOCATIONPTN1, item && item.locationptn1, item && item.LOC_PTN1, item && item.loc_ptn1, ''));
             const currentPriority = normalizeArgosInventoryTransactionPriorityValue(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, reportRow.PRIORITY, reportRow.priority, ''));
             reportRow.PRIORITY = currentPriority || '';
             reportRow.priority = currentPriority || '';
+            setRequestedPair('REQUESTED_PRIORITY', 'requestedPriority', firstNonEmptyValue(screenValues.priority, safeOptions.priority, ''));
+            setRequestedPair('REQUESTED_HOLDSTOPCODE', 'requestedHoldStopCode', screenValues.holdstopcode);
+            setRequestedPair('REQUESTED_HOLDSTOPREASON', 'requestedHoldStopReason', screenValues.holdstopreason);
+            setRequestedPair('REQUESTED_LOTCODE', 'requestedLotCode', screenValues.lotcode);
+            setRequestedPair('REQUESTED_LOCATIONCODE', 'requestedLocationCode', screenValues.locationcode);
+            setRequestedPair('REQUESTED_SOURCE', 'requestedSource', firstNonEmptyValue(screenValues.source, screenValues.sourcecode, ''));
+            setRequestedPair('REQUESTED_PTRONHAND', 'requestedPtrOnHand', screenValues.ptronhand);
+            setRequestedPair('REQUESTED_PTRREVIEWED', 'requestedPtrReviewed', screenValues.ptrreviewed);
+            setRequestedPair('REQUESTED_PTRAVAILABLE', 'requestedPtrAvailable', screenValues.ptravailable);
+            setRequestedPair('REQUESTED_EVALDATE', 'requestedEvalDate', screenValues.evaldate);
+            setRequestedPair('REQUESTED_PRISETBY', 'requestedPriSetBy', firstNonEmptyValue(screenValues.priBy, screenValues.priby, screenValues.prisetby, ''));
+            setRequestedPair('REQUESTED_PRIBY', 'requestedPriBy', firstNonEmptyValue(screenValues.priBy, screenValues.priby, screenValues.prisetby, ''));
+            setRequestedPair('REQUESTED_PRIUPDATED', 'requestedPriUpdated', firstNonEmptyValue(screenValues.priorityUpdate, screenValues.priupdated, ''));
+            setRequestedPair('REQUESTED_LOCATIONNOTEDATE', 'requestedLocationNoteDate', firstNonEmptyValue(screenValues.locationnoteDate, screenValues.locationnotedate, ''));
+            setRequestedPair('REQUESTED_LOCATIONNOTE', 'requestedLocationNote', screenValues.locationnote);
+            setRequestedPair('REQUESTED_LOCATIONPTN1', 'requestedLocationPtn1', screenValues.locationptn1);
             reportRow.ROW = index + 1;
             reportRow.row = index + 1;
             return reportRow;
@@ -38298,7 +38372,14 @@ let avTopControlsRenderToken = 0;
 
         function getInventoryMultiActionReportRow(item = null, selections = {}) {
             const baseRow = getGroupedBloomNcrReportRow(item, null, 0);
+            const screenValues = selections && selections.screenValues && typeof selections.screenValues === 'object'
+                ? selections.screenValues
+                : {};
             const holdStopCode = String(firstNonEmptyValue(
+                screenValues.holdstopcode,
+                screenValues.HOLDSTOPCODE,
+                selections && selections.holdstopcode,
+                selections && selections.holdStopCode,
                 baseRow && baseRow.holdStopCode,
                 typeof getBloomActionRowCurrentHoldStop === 'function' ? getBloomActionRowCurrentHoldStop(item) : '',
                 item && item.HOLDSTOPCODE,
@@ -38308,6 +38389,10 @@ let avTopControlsRenderToken = 0;
                 ''
             ) || '').trim();
             const holdStopReason = String(firstNonEmptyValue(
+                screenValues.holdstopreason,
+                screenValues.HOLDSTOPREASON,
+                selections && selections.holdstopreason,
+                selections && selections.holdStopReason,
                 baseRow && baseRow.holdStopReason,
                 typeof getBloomActionRowCurrentHoldStopReason === 'function' ? getBloomActionRowCurrentHoldStopReason(item) : '',
                 item && item.HOLDSTOPREASON,
@@ -38322,22 +38407,106 @@ let avTopControlsRenderToken = 0;
                 item && item.priority,
                 ''
             ) || '').trim();
+            const getScreenValue = (...keys) => {
+                for (const key of keys) {
+                    if (screenValues && Object.prototype.hasOwnProperty.call(screenValues, key)) {
+                        const value = screenValues[key];
+                        if (value !== null && typeof value !== 'undefined' && String(value).trim() !== '') return value;
+                    }
+                }
+                return '';
+            };
             return {
                 ...(baseRow || {}),
                 itemCode: String(firstNonEmptyValue(baseRow && baseRow.itemCode, item && item.ITEMCODE, item && item.itemcode, '-') || '-').trim(),
                 commonName: String(firstNonEmptyValue(baseRow && baseRow.commonName, item && item.COMMONNAME, item && item.commonname, 'Unknown Item') || 'Unknown Item').trim(),
                 contSize: String(firstNonEmptyValue(baseRow && baseRow.contSize, item && item.CONTSIZE, item && item.contsize, '-') || '-').trim(),
-                lotCode: String(firstNonEmptyValue(baseRow && (baseRow.lotCode || baseRow.lotcode), item && item.LOTCODE, item && item.lotcode, '-') || '-').trim(),
-                locationCode: String(firstNonEmptyValue(baseRow && (baseRow.locationCode || baseRow.locationcode), item && item.LOCATIONCODE, item && item.locationcode, '-') || '-').trim(),
-                source: String(firstNonEmptyValue(baseRow && (baseRow.source || baseRow.sourcecode), item && item.SOURCE, item && item.source, item && item.SOURCECODE, item && item.sourcecode, '-') || '-').trim(),
-                ptravailable: String(firstNonEmptyValue(baseRow && baseRow.ptravailable, item && item.PTRAVAILABLE, item && item.ptravailable, '-') || '-').trim(),
-                ptronhand: String(firstNonEmptyValue(baseRow && baseRow.ptronhand, item && item.PTRONHAND, item && item.ptronhand, '-') || '-').trim(),
-                ptrreviewed: String(firstNonEmptyValue(baseRow && baseRow.ptrreviewed, item && item.PTRREVIEWED, item && item.ptrreviewed, '-') || '-').trim(),
+                lotCode: String(firstNonEmptyValue(getScreenValue('lotcode', 'LOTCODE'), baseRow && (baseRow.lotCode || baseRow.lotcode), item && item.LOTCODE, item && item.lotcode, '-') || '-').trim(),
+                locationCode: String(firstNonEmptyValue(getScreenValue('locationcode', 'LOCATIONCODE'), baseRow && (baseRow.locationCode || baseRow.locationcode), item && item.LOCATIONCODE, item && item.locationcode, '-') || '-').trim(),
+                source: String(firstNonEmptyValue(getScreenValue('source', 'SOURCE'), baseRow && (baseRow.source || baseRow.sourcecode), item && item.SOURCE, item && item.source, item && item.SOURCECODE, item && item.sourcecode, '-') || '-').trim(),
+                ptravailable: String(firstNonEmptyValue(getScreenValue('ptravailable', 'PTRAVAILABLE'), baseRow && baseRow.ptravailable, item && item.PTRAVAILABLE, item && item.ptravailable, '-') || '-').trim(),
+                ptronhand: String(firstNonEmptyValue(getScreenValue('ptronhand', 'PTRONHAND'), baseRow && baseRow.ptronhand, item && item.PTRONHAND, item && item.ptronhand, '-') || '-').trim(),
+                ptrreviewed: String(firstNonEmptyValue(getScreenValue('ptrreviewed', 'PTRREVIEWED'), baseRow && baseRow.ptrreviewed, item && item.PTRREVIEWED, item && item.ptrreviewed, '-') || '-').trim(),
                 priority: currentPriority,
                 requestedPriority: selections && selections.priority ? selections.requestedPriority : '',
                 holdStopCode,
-                holdStopReason
+                holdStopReason,
+                evalDate: String(firstNonEmptyValue(getScreenValue('evaldate', 'EVALDATE', 'eval date'), baseRow && (baseRow.evalDate || baseRow.evaldate), item && item.EVALDATE, item && item.evaldate, '') || '').trim(),
+                priBy: String(firstNonEmptyValue(getScreenValue('priby', 'PRIBY', 'prisetby', 'PRISETBY', 'pri by'), baseRow && (baseRow.priBy || baseRow.priby || baseRow.prisetby), item && item.PRISETBY, item && item.prisetby, item && item.PRIBY, item && item.priby, '') || '').trim(),
+                priUpdate: String(firstNonEmptyValue(getScreenValue('priupdate', 'PRIUPDATE', 'priupdated', 'PRIUPDATED', 'pri update'), baseRow && (baseRow.priUpdate || baseRow.priupdate || baseRow.priupdated), item && item.PRIUPDATED, item && item.priupdated, item && item.PRIUPDATE, item && item.priupdate, '') || '').trim(),
+                locationNoteDate: String(firstNonEmptyValue(getScreenValue('locationnotedate', 'LOCATIONNOTEDATE', 'note date'), baseRow && (baseRow.locationNoteDate || baseRow.locationnotedate), item && item.LOCATIONNOTEDATE, item && item.locationnotedate, '') || '').trim(),
+                locationNote: String(firstNonEmptyValue(getScreenValue('locationnote', 'LOCATIONNOTE'), baseRow && (baseRow.locationNote || baseRow.locationnote), item && item.LOCATIONNOTE, item && item.locationnote, '') || '').trim(),
+                locationPtn1: String(firstNonEmptyValue(getScreenValue('locationptn1', 'LOCATIONPTN1'), baseRow && (baseRow.locationPtn1 || baseRow.locationptn1), item && item.LOCATIONPTN1, item && item.locationptn1, '') || '').trim()
             };
+        }
+
+        function normalizeRequestChangedFieldDisplayValue(value = '') {
+            const raw = String(value === null || typeof value === 'undefined' ? '' : value).trim();
+            if (!raw || ['BLANK', 'NULL', '-'].includes(raw.toUpperCase())) return '';
+            return raw;
+        }
+
+        function normalizeRequestChangedFieldCompareValue(value = '') {
+            return normalizeRequestChangedFieldDisplayValue(value).replace(/\s+/g, ' ').trim().toUpperCase();
+        }
+
+        function getRequestChangedFieldValue(row = {}, keys = [], fallback = '') {
+            const safeRow = row && typeof row === 'object' ? row : {};
+            for (const key of (Array.isArray(keys) ? keys : [])) {
+                if (Object.prototype.hasOwnProperty.call(safeRow, key)) {
+                    const value = safeRow[key];
+                    if (value !== null && typeof value !== 'undefined' && String(value).trim() !== '') return value;
+                }
+            }
+            return fallback == null ? '' : fallback;
+        }
+
+        function buildInventoryMultiActionChangedFieldRows(item = null, selections = {}, rowArg = null) {
+            const row = rowArg || getInventoryMultiActionReportRow(item, selections);
+            const screenValues = selections && selections.screenValues && typeof selections.screenValues === 'object'
+                ? selections.screenValues
+                : {};
+            const changed = [];
+            const add = (label, currentValue, requestedValue, options = {}) => {
+                const current = normalizeRequestChangedFieldDisplayValue(currentValue);
+                const requested = normalizeRequestChangedFieldDisplayValue(requestedValue);
+                if (!requested && !options.allowBlankRequested) return;
+                if (normalizeRequestChangedFieldCompareValue(current) === normalizeRequestChangedFieldCompareValue(requested)) return;
+                changed.push({
+                    label,
+                    current: current || 'Blank',
+                    requested: requested || 'Blank'
+                });
+            };
+            const currentPriority = firstNonEmptyValue(row.priority, item && item.PRIORITY, item && item.priority, '');
+            add('PRIORITY', currentPriority, selections && selections.priority ? selections.requestedPriority : '');
+            add('HOLDSTOPCODE', firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.holdstopcode, row.holdStopCode, ''), selections && selections.takeOffHold ? '' : firstNonEmptyValue(screenValues.holdstopcode, screenValues.HOLDSTOPCODE, selections && selections.holdstopcode, row.holdStopCode, ''), { allowBlankRequested: !!(selections && selections.takeOffHold) });
+            add('HOLDSTOPREASON', firstNonEmptyValue(item && item.HOLDSTOPREASON, item && item.holdstopreason, row.holdStopReason, ''), selections && selections.takeOffHold ? '' : firstNonEmptyValue(screenValues.holdstopreason, screenValues.HOLDSTOPREASON, selections && selections.holdstopreason, row.holdStopReason, ''), { allowBlankRequested: !!(selections && selections.takeOffHold) });
+            add('LOTCODE', firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, row.lotCode, ''), firstNonEmptyValue(screenValues.lotcode, screenValues.LOTCODE, row.lotCode, ''));
+            add('LOCATIONCODE', firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, row.locationCode, ''), firstNonEmptyValue(screenValues.locationcode, screenValues.LOCATIONCODE, row.locationCode, ''));
+            add('SOURCE', firstNonEmptyValue(item && item.SOURCE, item && item.source, item && item.SOURCECODE, item && item.sourcecode, row.source, ''), firstNonEmptyValue(screenValues.source, screenValues.SOURCE, row.source, ''));
+            add('PTRONHAND', firstNonEmptyValue(item && item.PTRONHAND, item && item.ptronhand, row.ptronhand, ''), firstNonEmptyValue(screenValues.ptronhand, screenValues.PTRONHAND, row.ptronhand, ''));
+            add('PTRREVIEWED', firstNonEmptyValue(item && item.PTRREVIEWED, item && item.ptrreviewed, row.ptrreviewed, ''), firstNonEmptyValue(screenValues.ptrreviewed, screenValues.PTRREVIEWED, row.ptrreviewed, ''));
+            add('PTRAVAILABLE', firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, row.ptravailable, ''), firstNonEmptyValue(screenValues.ptravailable, screenValues.PTRAVAILABLE, row.ptravailable, ''));
+            add('EVAL DATE', firstNonEmptyValue(item && item.EVALDATE, item && item.evaldate, row.evalDate, ''), firstNonEmptyValue(screenValues.evaldate, screenValues.EVALDATE, row.evalDate, ''));
+            add('PRI BY', firstNonEmptyValue(item && item.PRISETBY, item && item.prisetby, item && item.PRIBY, item && item.priby, row.priBy, ''), firstNonEmptyValue(screenValues.priby, screenValues.PRIBY, screenValues.prisetby, screenValues.PRISETBY, row.priBy, ''));
+            add('PRI UPDATE', firstNonEmptyValue(item && item.PRIUPDATED, item && item.priupdated, item && item.PRIUPDATE, item && item.priupdate, row.priUpdate, ''), firstNonEmptyValue(screenValues.priupdate, screenValues.PRIUPDATE, screenValues.priupdated, screenValues.PRIUPDATED, row.priUpdate, ''));
+            add('NOTE DATE', firstNonEmptyValue(item && item.LOCATIONNOTEDATE, item && item.locationnotedate, row.locationNoteDate, ''), firstNonEmptyValue(screenValues.locationnotedate, screenValues.LOCATIONNOTEDATE, row.locationNoteDate, ''));
+            add('LOCATIONNOTE', firstNonEmptyValue(item && item.LOCATIONNOTE, item && item.locationnote, row.locationNote, ''), firstNonEmptyValue(screenValues.locationnote, screenValues.LOCATIONNOTE, row.locationNote, ''));
+            add('LOCATIONPTN1', firstNonEmptyValue(item && item.LOCATIONPTN1, item && item.locationptn1, row.locationPtn1, ''), firstNonEmptyValue(screenValues.locationptn1, screenValues.LOCATIONPTN1, row.locationPtn1, ''));
+            return changed;
+        }
+
+        function serializeInventoryMultiActionChangedFields(rows = []) {
+            try {
+                return JSON.stringify((Array.isArray(rows) ? rows : []).map((field) => ({
+                    label: String(field && field.label || '').trim(),
+                    current: String(field && field.current || '').trim(),
+                    requested: String(field && field.requested || '').trim()
+                })).filter((field) => field.label));
+            } catch (error) {
+                return '';
+            }
         }
 
         function setInventoryMultiActionPriorityValue(value = '') {
@@ -38417,6 +38586,8 @@ let avTopControlsRenderToken = 0;
         function buildInventoryMultiActionPayloadItem(item = null, selections = {}) {
             const row = getInventoryMultiActionReportRow(item, selections);
             const labels = getInventoryMultiActionLabels(selections);
+            const changedFields = buildInventoryMultiActionChangedFieldRows(item, selections, row);
+            const changedFieldsJson = serializeInventoryMultiActionChangedFields(changedFields);
             const priorityText = selections.priority
                 ? `${row.priority || '-'} -> ${selections.requestedPriority || '-'}`
                 : '';
@@ -38441,6 +38612,46 @@ let avTopControlsRenderToken = 0;
                 PTRONHAND: row.ptronhand,
                 PTRREVIEWED: row.ptrreviewed,
                 PTRAVAILABLE: row.ptravailable,
+                EVALDATE: row.evalDate || '',
+                PRISETBY: row.priBy || '',
+                PRIBY: row.priBy || '',
+                PRIUPDATED: row.priUpdate || '',
+                LOCATIONNOTEDATE: row.locationNoteDate || '',
+                LOCATIONNOTE: row.locationNote || '',
+                LOCATIONPTN1: row.locationPtn1 || '',
+                ORIGINAL_PRIORITY: row.priority || '',
+                ORIGINAL_HOLDSTOPCODE: firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.holdstopcode, row.holdStopCode, ''),
+                ORIGINAL_HOLDSTOPREASON: firstNonEmptyValue(item && item.HOLDSTOPREASON, item && item.holdstopreason, row.holdStopReason, ''),
+                ORIGINAL_LOTCODE: firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, row.lotCode, ''),
+                ORIGINAL_LOCATIONCODE: firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, row.locationCode, ''),
+                ORIGINAL_SOURCE: firstNonEmptyValue(item && item.SOURCE, item && item.source, item && item.SOURCECODE, item && item.sourcecode, row.source, ''),
+                ORIGINAL_PTRONHAND: firstNonEmptyValue(item && item.PTRONHAND, item && item.ptronhand, row.ptronhand, ''),
+                ORIGINAL_PTRREVIEWED: firstNonEmptyValue(item && item.PTRREVIEWED, item && item.ptrreviewed, row.ptrreviewed, ''),
+                ORIGINAL_PTRAVAILABLE: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, row.ptravailable, ''),
+                ORIGINAL_EVALDATE: firstNonEmptyValue(item && item.EVALDATE, item && item.evaldate, row.evalDate, ''),
+                ORIGINAL_PRISETBY: firstNonEmptyValue(item && item.PRISETBY, item && item.prisetby, row.priBy, ''),
+                ORIGINAL_PRIBY: firstNonEmptyValue(item && item.PRIBY, item && item.priby, row.priBy, ''),
+                ORIGINAL_PRIUPDATED: firstNonEmptyValue(item && item.PRIUPDATED, item && item.priupdated, row.priUpdate, ''),
+                ORIGINAL_LOCATIONNOTEDATE: firstNonEmptyValue(item && item.LOCATIONNOTEDATE, item && item.locationnotedate, row.locationNoteDate, ''),
+                ORIGINAL_LOCATIONNOTE: firstNonEmptyValue(item && item.LOCATIONNOTE, item && item.locationnote, row.locationNote, ''),
+                ORIGINAL_LOCATIONPTN1: firstNonEmptyValue(item && item.LOCATIONPTN1, item && item.locationptn1, row.locationPtn1, ''),
+                REQUESTED_HOLDSTOPCODE: selections.takeOffHold ? '' : (row.holdStopCode || ''),
+                REQUESTED_HOLDSTOPREASON: selections.takeOffHold ? '' : (row.holdStopReason || ''),
+                REQUESTED_LOTCODE: row.lotCode || '',
+                REQUESTED_LOCATIONCODE: row.locationCode || '',
+                REQUESTED_SOURCE: row.source || '',
+                REQUESTED_PTRONHAND: row.ptronhand || '',
+                REQUESTED_PTRREVIEWED: row.ptrreviewed || '',
+                REQUESTED_PTRAVAILABLE: row.ptravailable || '',
+                REQUESTED_EVALDATE: row.evalDate || '',
+                REQUESTED_PRISETBY: row.priBy || '',
+                REQUESTED_PRIBY: row.priBy || '',
+                REQUESTED_PRIUPDATED: row.priUpdate || '',
+                REQUESTED_LOCATIONNOTEDATE: row.locationNoteDate || '',
+                REQUESTED_LOCATIONNOTE: row.locationNote || '',
+                REQUESTED_LOCATIONPTN1: row.locationPtn1 || '',
+                CHANGED_FIELDS_JSON: changedFieldsJson,
+                changed_fields_json: changedFieldsJson,
                 APPROVAL_TYPE: approvalType,
                 ACTIONS: labels.join(', '),
                 REQ_COMMENTS: [
@@ -38461,6 +38672,7 @@ let avTopControlsRenderToken = 0;
         function buildInventoryMultiActionEmailText(item = null, selections = {}) {
             const row = getInventoryMultiActionReportRow(item, selections);
             const labels = getInventoryMultiActionLabels(selections);
+            const changedFields = buildInventoryMultiActionChangedFieldRows(item, selections, row);
             const submittedBy = String(firstNonEmptyValue(currentUserDisplay, currentUser, 'Unknown') || 'Unknown').trim();
             const reportTitle = String(firstNonEmptyValue(selections.reportTitle, 'GNC PH Multi Action') || 'GNC PH Multi Action').trim();
             const lines = [
@@ -38482,6 +38694,13 @@ let avTopControlsRenderToken = 0;
             if (selections.priority) lines.push(`REQUESTED PRIORITY: ${selections.requestedPriority || '-'}`);
             lines.push(`HOLDSTOPCODE: ${row.holdStopCode || '-'}`);
             lines.push(`HOLDSTOPREASON: ${row.holdStopReason || '-'}`);
+            if (changedFields.length) {
+                lines.push('');
+                lines.push('Changed Fields:');
+                changedFields.forEach((field) => {
+                    lines.push(`${field.label}: ${field.current || 'Blank'} -> ${field.requested || 'Blank'}`);
+                });
+            }
             lines.push('');
             lines.push('Requested Actions:');
             if (selections.ncr) lines.push('- NCR');
@@ -38497,6 +38716,7 @@ let avTopControlsRenderToken = 0;
         function buildInventoryMultiActionEmailHtml(item = null, selections = {}) {
             const row = getInventoryMultiActionReportRow(item, selections);
             const labels = getInventoryMultiActionLabels(selections);
+            const changedFields = buildInventoryMultiActionChangedFieldRows(item, selections, row);
             const submittedBy = String(firstNonEmptyValue(currentUserDisplay, currentUser, 'Unknown') || 'Unknown').trim();
             const reportTitle = String(firstNonEmptyValue(selections.reportTitle, 'GNC PH Multi Action') || 'GNC PH Multi Action').trim();
             const h = (value) => escapeShareHtml(String(value === null || typeof value === 'undefined' ? '' : value));
@@ -38534,6 +38754,13 @@ let avTopControlsRenderToken = 0;
             const messageHtml = selections.message
                 ? `<div style="margin:0 0 14px 0;border-left:4px solid #007a4d;background:#ecfdf5;padding:10px 12px;font-size:13px;line-height:1.4;"><strong>Message:</strong><br>${h(selections.message).replace(/\n/g, '<br>')}</div>`
                 : '';
+            const changedFieldsHtml = changedFields.length
+                ? `<div style="font-weight:800;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:.08em;color:#007a4d;">Changed Fields</div>${table(['FIELD', 'CURRENT', 'REQUESTED'], changedFields.map((field) => [
+                    dataCell(field.label, { bold: true, nowrap: true }),
+                    dataCell(field.current || 'Blank', { bold: true }),
+                    dataCell(field.requested || 'Blank', { bold: true, highlight: true })
+                ]))}`
+                : '';
             return `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.45;color:#111827;max-width:780px;margin:0 auto;">
                 <style>@media screen and (max-width: 620px) {.gnc-email-table th,.gnc-email-table td{font-size:12px!important;padding:7px 6px!important;}}</style>
                 <h2 style="margin:0 0 8px 0;color:#007a4d;font-size:24px;line-height:1.1;">${h(reportTitle)}</h2>
@@ -38559,6 +38786,7 @@ let avTopControlsRenderToken = 0;
                     dataCell(selections.takeOffHold ? strikeValue(row.holdStopCode) : row.holdStopCode, { html: selections.takeOffHold, bold: true, nowrap: true, highlight: selections.takeOffHold }),
                     dataCell(selections.takeOffHold ? strikeValue(row.holdStopReason) : row.holdStopReason, { html: selections.takeOffHold, bold: true, highlight: selections.takeOffHold })
                 ]])}
+                ${changedFieldsHtml}
                 ${table(['ACTION', 'REQUEST'], actionRows.length ? actionRows : [[dataCell('None'), dataCell('-')]])}
             </div>`;
         }
@@ -38578,6 +38806,22 @@ let avTopControlsRenderToken = 0;
             }
             if (selections.priority && !selections.requestedPriority) {
                 showToast('Priority Required', 'Enter the requested priority before sending.', true);
+                return false;
+            }
+            const reportRow = getInventoryMultiActionReportRow(item, selections);
+            const changedFields = buildInventoryMultiActionChangedFieldRows(item, selections, reportRow);
+            const holdStopCodeChanged = changedFields.some((field) => String(field && field.label || '').trim().toUpperCase() === 'HOLDSTOPCODE' && normalizeRequestChangedFieldDisplayValue(field.requested));
+            const requestedHoldReason = normalizeRequestChangedFieldDisplayValue(firstNonEmptyValue(
+                reportRow.REQUESTED_HOLDSTOPREASON,
+                reportRow.requestedHoldStopReason,
+                reportRow.holdStopReason,
+                selections && selections.holdstopreason,
+                selections && selections.holdStopReason,
+                selections && selections.screenValues && (selections.screenValues.holdstopreason || selections.screenValues.HOLDSTOPREASON),
+                ''
+            ));
+            if (!selections.takeOffHold && holdStopCodeChanged && !requestedHoldReason) {
+                showToast('Hold Reason Required', 'Enter a Hold/Stop Reason when changing Hold/Stop Code.', true);
                 return false;
             }
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
@@ -84320,6 +84564,121 @@ function toggleDriveQuickRequestItem(domId) {
             return normalizePaperNcrCompareValue(nextValue) !== normalizePaperNcrCompareValue(originalValue);
         }
 
+        function normalizePaperNcrChangedFieldDisplayValue(value = '') {
+            const raw = String(value === null || typeof value === 'undefined' ? '' : value).trim();
+            if (!raw || ['BLANK', 'NULL', '-'].includes(raw.toUpperCase())) return '';
+            return raw;
+        }
+
+        function getPaperNcrChangedFieldValue(row = {}, keys = [], fallback = '') {
+            const safeRow = row && typeof row === 'object' ? row : {};
+            for (const key of (Array.isArray(keys) ? keys : [])) {
+                if (Object.prototype.hasOwnProperty.call(safeRow, key)) {
+                    const value = safeRow[key];
+                    if (value !== null && typeof value !== 'undefined' && String(value).trim() !== '') return value;
+                }
+            }
+            return fallback == null ? '' : fallback;
+        }
+
+        function buildPaperNcrChangedFieldRows(row = {}, fallbackRow = {}) {
+            const safeRow = row && typeof row === 'object' ? row : {};
+            const fallback = fallbackRow && typeof fallbackRow === 'object' ? fallbackRow : {};
+            const actionType = normalizePaperNcrRowAction(firstNonEmptyValue(safeRow.actionType, safeRow.NCR_ACTION_TYPE, safeRow.action_type, 'ncr'));
+            const clearsHoldStop = actionType === 'off-hold' || actionType === 'off-stop';
+            const rows = [];
+            const add = (label, currentValue, requestedValue, options = {}) => {
+                const current = normalizePaperNcrChangedFieldDisplayValue(currentValue);
+                const requested = normalizePaperNcrChangedFieldDisplayValue(requestedValue);
+                if (!requested && !options.allowBlankRequested) return;
+                if (normalizePaperNcrCompareValue(current) === normalizePaperNcrCompareValue(requested)) return;
+                rows.push({
+                    label,
+                    current: current || 'Blank',
+                    requested: requested || 'Blank'
+                });
+            };
+            add('PRIORITY',
+                getPaperNcrChangedFieldValue(safeRow, ['originalPriority', 'original_priority', 'ORIGINAL_PRIORITY'], getPaperNcrChangedFieldValue(fallback, ['priority', 'PRIORITY'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['priority', 'PRIORITY', 'NCR_PRIORITY', 'requestedPriority', 'REQUESTED_PRIORITY'], '')
+            );
+            add('HOLDSTOPCODE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalHoldStopCode', 'original_holdstopcode', 'ORIGINAL_HOLDSTOPCODE'], getPaperNcrChangedFieldValue(fallback, ['holdStopCode', 'holdstopcode', 'HOLDSTOPCODE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['holdStopCode', 'holdstopcode', 'HOLDSTOPCODE', 'NCR_HOLDSTOPCODE'], ''),
+                { allowBlankRequested: clearsHoldStop }
+            );
+            add('HOLDSTOPREASON',
+                getPaperNcrChangedFieldValue(safeRow, ['originalHoldStopReason', 'original_holdstopreason', 'ORIGINAL_HOLDSTOPREASON'], getPaperNcrChangedFieldValue(fallback, ['holdStopReason', 'holdstopreason', 'HOLDSTOPREASON'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['holdStopReason', 'holdstopreason', 'HOLDSTOPREASON', 'NCR_HOLDSTOPREASON'], ''),
+                { allowBlankRequested: clearsHoldStop }
+            );
+            add('LOTCODE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalLotcode', 'original_lotcode', 'ORIGINAL_LOTCODE'], getPaperNcrChangedFieldValue(fallback, ['lotcode', 'LOTCODE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['lotcode', 'LOTCODE'], getPaperNcrChangedFieldValue(fallback, ['lotcode', 'LOTCODE'], ''))
+            );
+            add('LOCATIONCODE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalLocationcode', 'original_locationcode', 'ORIGINAL_LOCATIONCODE'], getPaperNcrChangedFieldValue(fallback, ['locationcode', 'LOCATIONCODE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['locationcode', 'LOCATIONCODE'], getPaperNcrChangedFieldValue(fallback, ['locationcode', 'LOCATIONCODE'], ''))
+            );
+            add('SOURCE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalSource', 'original_source', 'ORIGINAL_SOURCE'], getPaperNcrChangedFieldValue(fallback, ['source', 'SOURCE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['source', 'SOURCE'], getPaperNcrChangedFieldValue(fallback, ['source', 'SOURCE'], ''))
+            );
+            add('PTRONHAND',
+                getPaperNcrChangedFieldValue(safeRow, ['originalPtronhand', 'original_ptronhand', 'ORIGINAL_PTRONHAND'], getPaperNcrChangedFieldValue(fallback, ['ptronhand', 'PTRONHAND'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['ptronhand', 'PTRONHAND'], getPaperNcrChangedFieldValue(fallback, ['ptronhand', 'PTRONHAND'], ''))
+            );
+            add('PTRREVIEWED',
+                getPaperNcrChangedFieldValue(safeRow, ['originalPtrreviewed', 'original_ptrreviewed', 'ORIGINAL_PTRREVIEWED'], getPaperNcrChangedFieldValue(fallback, ['ptrreviewed', 'PTRREVIEWED'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['ptrreviewed', 'PTRREVIEWED'], getPaperNcrChangedFieldValue(fallback, ['ptrreviewed', 'PTRREVIEWED'], ''))
+            );
+            add('PTRAVAILABLE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalPtravailable', 'original_ptravailable', 'ORIGINAL_PTRAVAILABLE'], getPaperNcrChangedFieldValue(fallback, ['ptravailable', 'PTRAVAILABLE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['ptravailable', 'PTRAVAILABLE'], getPaperNcrChangedFieldValue(fallback, ['ptravailable', 'PTRAVAILABLE'], ''))
+            );
+            add('EVAL DATE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalEvalDate', 'originalEvaldate', 'original_evaldate', 'ORIGINAL_EVALDATE'], getPaperNcrChangedFieldValue(fallback, ['evalDate', 'evaldate', 'EVALDATE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['evalDate', 'evaldate', 'EVALDATE'], getPaperNcrChangedFieldValue(fallback, ['evalDate', 'evaldate', 'EVALDATE'], ''))
+            );
+            add('PRI BY',
+                getPaperNcrChangedFieldValue(safeRow, ['originalPriBy', 'originalPriby', 'original_priby', 'ORIGINAL_PRIBY', 'originalPriSetBy', 'originalPrisetby'], getPaperNcrChangedFieldValue(fallback, ['priBy', 'priby', 'PRISETBY', 'prisetby'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['priBy', 'priby', 'PRISETBY', 'prisetby'], getPaperNcrChangedFieldValue(fallback, ['priBy', 'priby', 'PRISETBY', 'prisetby'], ''))
+            );
+            add('PRI UPDATE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalPriUpdate', 'originalPriupdated', 'original_priupdated', 'ORIGINAL_PRIUPDATED'], getPaperNcrChangedFieldValue(fallback, ['priUpdate', 'priupdated', 'PRIUPDATED'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['priUpdate', 'priupdated', 'PRIUPDATED'], getPaperNcrChangedFieldValue(fallback, ['priUpdate', 'priupdated', 'PRIUPDATED'], ''))
+            );
+            add('NOTE DATE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalLocationNoteDate', 'original_locationnotedate', 'ORIGINAL_LOCATIONNOTEDATE'], getPaperNcrChangedFieldValue(fallback, ['locationnoteDate', 'locationnotedate', 'LOCATIONNOTEDATE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['locationnoteDate', 'locationnotedate', 'LOCATIONNOTEDATE', 'NCR_LOCATIONNOTEDATE'], '')
+            );
+            add('LOCATIONNOTE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalLocationNote', 'original_locationnote', 'ORIGINAL_LOCATIONNOTE'], getPaperNcrChangedFieldValue(fallback, ['locationnote', 'LOCATIONNOTE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['locationnote', 'LOCATIONNOTE', 'NCR_LOCATIONNOTE'], '')
+            );
+            add('LOCATIONPTN1',
+                getPaperNcrChangedFieldValue(safeRow, ['originalLocationPtn1', 'original_locationptn1', 'ORIGINAL_LOCATIONPTN1'], getPaperNcrChangedFieldValue(fallback, ['locationptn1', 'LOCATIONPTN1'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['locationptn1', 'LOCATIONPTN1', 'NCR_LOCATIONPTN1'], '')
+            );
+            add('SALESNOTE',
+                getPaperNcrChangedFieldValue(safeRow, ['originalSalesNote', 'original_salesnote', 'ORIGINAL_SALESNOTE'], getPaperNcrChangedFieldValue(fallback, ['salesNote', 'salesnote', 'SALESNOTE'], '')),
+                getPaperNcrChangedFieldValue(safeRow, ['salesNote', 'salesnote', 'SALESNOTE', 'NCR_SALESNOTE'], '')
+            );
+            return rows;
+        }
+
+        function serializePaperNcrChangedFields(rows = []) {
+            try {
+                return JSON.stringify((Array.isArray(rows) ? rows : []).map((field) => ({
+                    label: String(field && field.label || '').trim(),
+                    current: String(field && field.current || '').trim(),
+                    requested: String(field && field.requested || '').trim()
+                })).filter((field) => field.label));
+            } catch (error) {
+                return '';
+            }
+        }
+
         function getPaperNcrQtyDisplay(value = '') {
             const raw = String(value === null || typeof value === 'undefined' ? '' : value).trim();
             return raw && raw !== '-' ? raw : '0';
@@ -85843,6 +86202,29 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                     if (!getPaperNcrMoveDownSeasonOptions().includes(normalizePaperNcrMoveDownSeason(state.moveDownSeason))) {
                         return `${pkg.commonName || `Item ${index + 1}`} ${rowLabel} needs a Move Down season.`;
+                    }
+                }
+                const clearsHoldStop = action === 'off-hold' || action === 'off-stop';
+                if (!clearsHoldStop) {
+                    const originalHoldStopCode = normalizeBloomActionHoldStopCodeChoice(firstNonEmptyValue(
+                        state.originalHoldStopCode,
+                        state.original_holdstopcode,
+                        ''
+                    ));
+                    const requestedHoldStopCode = normalizeBloomActionHoldStopCodeChoice(firstNonEmptyValue(
+                        state.holdStopCode,
+                        state.holdstopcode,
+                        state.HOLDSTOPCODE,
+                        ''
+                    ));
+                    const requestedHoldStopReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(
+                        state.holdStopReason,
+                        state.holdstopreason,
+                        state.HOLDSTOPREASON,
+                        ''
+                    ));
+                    if (requestedHoldStopCode && requestedHoldStopCode !== originalHoldStopCode && !requestedHoldStopReason) {
+                        return `${pkg.commonName || `Item ${index + 1}`} ${rowLabel} needs a Hold/Stop Reason when changing Hold/Stop Code.`;
                     }
                 }
             }
@@ -131919,6 +132301,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const packageLabel = getPaperNcrPackageLabel(safePkg, safePkg.type || 'new-crop');
             return (Array.isArray(sourceRows) ? sourceRows : []).map((row, index) => {
                 const activeRow = activeOnly ? row : getPaperNcrActiveRowForSnapshot(row, index, activeMap);
+                const changedFields = activeRow ? buildPaperNcrChangedFieldRows(activeRow, row) : [];
+                const changedFieldsJson = serializePaperNcrChangedFields(changedFields);
                 return {
                     SOURCE_TABLE: 'ph_master_inventory',
                     REQUEST_FOLDER: `Item Inquiry ${packageLabel}`,
@@ -131959,7 +132343,42 @@ ${folderNote ? `Folder Note: ${folderNote}
                     NCR_HOLDSTOPCODE: activeRow ? activeRow.holdStopCode || '' : '',
                     NCR_HOLDSTOPREASON: activeRow ? activeRow.holdStopReason || '' : '',
                     NCR_SALESNOTE: activeRow ? activeRow.salesNote || '' : '',
-                    ORIGINAL_SALESNOTE: activeRow ? activeRow.originalSalesNote || row.salesNote || '' : row.salesNote || ''
+                    ORIGINAL_PRIORITY: activeRow ? activeRow.originalPriority || row.priority || '' : row.priority || '',
+                    REQUESTED_PRIORITY: activeRow ? activeRow.priority || '' : '',
+                    ORIGINAL_HOLDSTOPCODE: activeRow ? activeRow.originalHoldStopCode || row.holdStopCode || '' : row.holdStopCode || '',
+                    REQUESTED_HOLDSTOPCODE: activeRow ? firstNonEmptyValue(activeRow.holdStopCode, activeRow.holdstopcode, '') : '',
+                    ORIGINAL_HOLDSTOPREASON: activeRow ? activeRow.originalHoldStopReason || row.holdStopReason || '' : row.holdStopReason || '',
+                    REQUESTED_HOLDSTOPREASON: activeRow ? firstNonEmptyValue(activeRow.holdStopReason, activeRow.holdstopreason, '') : '',
+                    ORIGINAL_LOTCODE: row.lotcode || '',
+                    REQUESTED_LOTCODE: activeRow ? firstNonEmptyValue(activeRow.lotcode, row.lotcode, '') : row.lotcode || '',
+                    ORIGINAL_LOCATIONCODE: row.locationcode || '',
+                    REQUESTED_LOCATIONCODE: activeRow ? firstNonEmptyValue(activeRow.locationcode, row.locationcode, '') : row.locationcode || '',
+                    ORIGINAL_SOURCE: row.source || '',
+                    REQUESTED_SOURCE: activeRow ? firstNonEmptyValue(activeRow.source, row.source, '') : row.source || '',
+                    ORIGINAL_PTRONHAND: row.ptronhand || '',
+                    REQUESTED_PTRONHAND: activeRow ? firstNonEmptyValue(activeRow.ptronhand, row.ptronhand, '') : row.ptronhand || '',
+                    ORIGINAL_PTRREVIEWED: row.ptrreviewed || '',
+                    REQUESTED_PTRREVIEWED: activeRow ? firstNonEmptyValue(activeRow.ptrreviewed, row.ptrreviewed, '') : row.ptrreviewed || '',
+                    ORIGINAL_PTRAVAILABLE: row.ptravailable || '',
+                    REQUESTED_PTRAVAILABLE: activeRow ? firstNonEmptyValue(activeRow.ptravailable, row.ptravailable, '') : row.ptravailable || '',
+                    ORIGINAL_EVALDATE: row.evaldate || row.evalDate || '',
+                    REQUESTED_EVALDATE: activeRow ? firstNonEmptyValue(activeRow.evaldate, activeRow.evalDate, row.evaldate, row.evalDate, '') : firstNonEmptyValue(row.evaldate, row.evalDate, ''),
+                    ORIGINAL_PRISETBY: row.prisetby || row.priBy || row.priby || '',
+                    ORIGINAL_PRIBY: row.prisetby || row.priBy || row.priby || '',
+                    REQUESTED_PRISETBY: activeRow ? firstNonEmptyValue(activeRow.prisetby, activeRow.priBy, activeRow.priby, row.prisetby, row.priBy, row.priby, '') : firstNonEmptyValue(row.prisetby, row.priBy, row.priby, ''),
+                    REQUESTED_PRIBY: activeRow ? firstNonEmptyValue(activeRow.prisetby, activeRow.priBy, activeRow.priby, row.prisetby, row.priBy, row.priby, '') : firstNonEmptyValue(row.prisetby, row.priBy, row.priby, ''),
+                    ORIGINAL_PRIUPDATED: row.priupdated || row.priUpdate || '',
+                    REQUESTED_PRIUPDATED: activeRow ? firstNonEmptyValue(activeRow.priupdated, activeRow.priUpdate, row.priupdated, row.priUpdate, '') : firstNonEmptyValue(row.priupdated, row.priUpdate, ''),
+                    ORIGINAL_LOCATIONNOTEDATE: activeRow ? activeRow.originalLocationNoteDate || row.locationnoteDate || '' : row.locationnoteDate || '',
+                    REQUESTED_LOCATIONNOTEDATE: activeRow ? activeRow.locationnoteDate || '' : row.locationnoteDate || '',
+                    ORIGINAL_LOCATIONNOTE: activeRow ? activeRow.originalLocationNote || row.locationnote || '' : row.locationnote || '',
+                    REQUESTED_LOCATIONNOTE: activeRow ? activeRow.locationnote || '' : row.locationnote || '',
+                    ORIGINAL_LOCATIONPTN1: activeRow ? activeRow.originalLocationPtn1 || row.locationptn1 || '' : row.locationptn1 || '',
+                    REQUESTED_LOCATIONPTN1: activeRow ? activeRow.locationptn1 || '' : row.locationptn1 || '',
+                    ORIGINAL_SALESNOTE: activeRow ? activeRow.originalSalesNote || row.salesNote || '' : row.salesNote || '',
+                    REQUESTED_SALESNOTE: activeRow ? activeRow.salesNote || '' : row.salesNote || '',
+                    CHANGED_FIELDS_JSON: changedFieldsJson,
+                    changed_fields_json: changedFieldsJson
                 };
             });
         }
@@ -132258,6 +132677,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const commonName = firstNonEmptyValue(row.commonName, safePkg.commonName, 'Unknown Item');
                 const contSize = firstNonEmptyValue(row.contSize, safePkg.contSize, '');
                 const itemCode = firstNonEmptyValue(row.itemCode, safePkg.itemCode, '');
+                const changedFields = buildPaperNcrChangedFieldRows(row);
+                const changedFieldsTable = changedFields.length
+                    ? `<div style="font-weight:800;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:.08em;color:#007a4d;">Changed Fields</div>${buildRowsTable(['FIELD', 'CURRENT', 'REQUESTED'], changedFields.map((field) => [
+                        dataCell(field.label, { bold: true, nowrap: true }),
+                        dataCell(field.current || 'Blank', { bold: true }),
+                        dataCell(field.requested || 'Blank', { bold: true, highlight: true })
+                    ]))}`
+                    : '';
                 const priorityInfo = getPaperNcrEmailPriorityInfo(row);
                 const locationNoteDateInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNoteDate, row.locationnoteDate);
                 const locationNoteInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNote, row.locationnote);
@@ -132323,6 +132750,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         <div style="font-weight:700;margin:0 0 10px 0;">Selected ${h(packageLabel)} Rows</div>
                         ${offHoldTable}
                         ${noteTable}
+                        ${changedFieldsTable}
                         ${index === 0 ? buildPriorityChangeRequestHtml() : ''}
                     </div>`;
                 }
@@ -132362,6 +132790,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     ${rowTable}
                     ${qtyTable}
                     ${noteTable}
+                    ${changedFieldsTable}
                     ${requestedLine ? `<div style="margin:10px 0 0 0;border-top:1px solid #b8b8b8;padding-top:10px;"><div style="font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px 0;">${h(requestedLineLabel)}</div><div style="display:block;background:#fff176;color:#111827;border-bottom:3px solid #111827;padding:9px 11px;font-size:18px;line-height:1.2;font-weight:900;word-break:break-word;">${h(requestedLine)}</div></div>` : ''}
                 </div>`;
             }).join('');
@@ -132407,6 +132836,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             activeRows.forEach((row, index) => {
                 const actionType = normalizePaperNcrRowAction(row.actionType || 'ncr');
+                const changedFields = buildPaperNcrChangedFieldRows(row);
+                const appendChangedFieldsText = () => {
+                    if (!changedFields.length) return;
+                    lines.push('Changed Fields:');
+                    changedFields.forEach((field) => {
+                        lines.push(`${field.label}: ${field.current || 'Blank'} -> ${field.requested || 'Blank'}`);
+                    });
+                };
                 const priorityInfo = getPaperNcrEmailPriorityInfo(row);
                 const locationNoteDateInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNoteDate, row.locationnoteDate);
                 const locationNoteInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNote, row.locationnote);
@@ -132453,6 +132890,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     ].filter(Boolean).join(' | '));
                     lines.push(`HOLDSTOPCODE REMOVED: ${oldHoldStopCodeText}`);
                     lines.push(`HOLDSTOPREASON REMOVED: ${oldHoldStopReasonText}`);
+                    appendChangedFieldsText();
                     if (index === 0 && priorityChangeRows.length) {
                         lines.push('');
                         lines.push('Priority Change Request:');
@@ -132483,6 +132921,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 lines.push('Current Row Details:');
                 lines.push([`ROW ${row.rowIndex || index + 1}`, `LOTCODE ${getPaperNcrDisplayValue(row.lotcode)}`, `LOCATIONCODE ${getPaperNcrDisplayValue(row.locationcode)}`, `SOURCE ${getPaperNcrDisplayValue(row.source)}`, `DESIGCUST ${getPaperNcrDisplayValue(row.desigCust)}`, `PRIORITY ${getPaperNcrDisplayValue(priorityInfo.value)}`, `PTRONHAND ${getOnHandText(row, actionType)}`, `PTRREVIEWED ${getPaperNcrQtyDisplay(row.ptrreviewed)}`, `PTRAVAILABLE ${getPaperNcrQtyDisplay(row.ptravailable)}`, `LOCATIONNOTEDATE ${getPaperNcrDisplayValue(currentLocationNoteDate)}`, `LOCATIONPTN1 ${getPaperNcrDisplayValue(currentLocationPtn1)}`].join(' | '));
                 lines.push(`LOCATIONNOTE: ${getPaperNcrDisplayValue(currentLocationNote)}`);
+                appendChangedFieldsText();
                 if (actionType === 'note') {
                     lines.push('Note:');
                     if (requestedLineText) lines.push(`NOTE: ${requestedLineText}`);

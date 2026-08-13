@@ -6609,6 +6609,166 @@ function buildEmailTable_(headers, cells) {
   ].join('');
 }
 
+function buildEmailRowsTable_(headers, rows) {
+  const safeHeaders = Array.isArray(headers) ? headers : [];
+  const safeRows = Array.isArray(rows) ? rows : [];
+  return [
+    '<table class="gnc-email-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;table-layout:auto;margin:0 0 14px 0;">',
+    safeHeaders.length ? '<thead><tr>' + safeHeaders.map(buildEmailTableHeaderCell_).join('') + '</tr></thead>' : '',
+    '<tbody>' + safeRows.map(function(cells) { return '<tr>' + cells.join('') + '</tr>'; }).join('') + '</tbody>',
+    '</table>'
+  ].join('');
+}
+
+function normalizeRequestChangedFieldDisplay_(value) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw || ['BLANK', 'NULL', '-'].indexOf(raw.toUpperCase()) !== -1) return '';
+  return raw;
+}
+
+function normalizeRequestChangedFieldCompare_(value) {
+  return normalizeRequestChangedFieldDisplay_(value).replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+function parseRequestChangedFieldsJson_(item) {
+  const raw = String(firstNonEmptyRequestValue_(
+    item && item.changed_fields_json,
+    item && item.CHANGED_FIELDS_JSON,
+    item && item.changedFieldsJson,
+    item && item.changedFields,
+    ''
+  ) || '').trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(function(field) {
+      return {
+        label: String(firstNonEmptyRequestValue_(field && field.label, field && field.field, field && field.FIELD, '') || '').trim(),
+        current: String(firstNonEmptyRequestValue_(field && field.current, field && field.CURRENT, field && field.original, field && field.ORIGINAL, '') || '').trim(),
+        requested: String(firstNonEmptyRequestValue_(field && field.requested, field && field.REQUESTED, field && field.next, field && field.NEXT, '') || '').trim()
+      };
+    }).filter(function(field) {
+      return field.label && String(field.requested || '').trim();
+    });
+  } catch (error) {
+    return [];
+  }
+}
+
+function getRequestChangedFieldValue_(item, keys, fallback) {
+  const safeItem = item || {};
+  const safeKeys = Array.isArray(keys) ? keys : [];
+  for (let i = 0; i < safeKeys.length; i += 1) {
+    const key = safeKeys[i];
+    if (Object.prototype.hasOwnProperty.call(safeItem, key)) {
+      const value = safeItem[key];
+      if (String(value == null ? '' : value).trim() !== '') return value;
+    }
+  }
+  return fallback == null ? '' : fallback;
+}
+
+function buildRequestChangedFieldsRows_(item) {
+  const parsed = parseRequestChangedFieldsJson_(item);
+  if (parsed.length) return parsed;
+  const rows = [];
+  const add = function(label, currentValue, requestedValue) {
+    const current = normalizeRequestChangedFieldDisplay_(currentValue);
+    const requested = normalizeRequestChangedFieldDisplay_(requestedValue);
+    if (!requested) return;
+    if (normalizeRequestChangedFieldCompare_(current) === normalizeRequestChangedFieldCompare_(requested)) return;
+    rows.push({
+      label: label,
+      current: current || 'Blank',
+      requested: requested || 'Blank'
+    });
+  };
+  add('PRIORITY',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_PRIORITY', 'original_priority', 'originalPriority', 'priority', 'PRIORITY'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_PRIORITY', 'requested_priority', 'requestedPriority', 'NCR_PRIORITY'], '')
+  );
+  add('HOLDSTOPCODE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_HOLDSTOPCODE', 'original_holdstopcode', 'originalHoldStopCode', 'holdstopcode', 'HOLDSTOPCODE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_HOLDSTOPCODE', 'requested_holdstopcode', 'requestedHoldStopCode', 'NCR_HOLDSTOPCODE'], '')
+  );
+  add('HOLDSTOPREASON',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_HOLDSTOPREASON', 'original_holdstopreason', 'originalHoldStopReason', 'holdstopreason', 'HOLDSTOPREASON'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_HOLDSTOPREASON', 'requested_holdstopreason', 'requestedHoldStopReason', 'NCR_HOLDSTOPREASON'], '')
+  );
+  add('LOTCODE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_LOTCODE', 'original_lotcode', 'originalLotcode', 'lotcode', 'LOTCODE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_LOTCODE', 'requested_lotcode', 'requestedLotcode'], '')
+  );
+  add('LOCATIONCODE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_LOCATIONCODE', 'original_locationcode', 'originalLocationcode', 'locationcode', 'LOCATIONCODE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_LOCATIONCODE', 'requested_locationcode', 'requestedLocationcode'], '')
+  );
+  add('SOURCE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_SOURCE', 'original_source', 'originalSource', 'source', 'SOURCE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_SOURCE', 'requested_source', 'requestedSource'], '')
+  );
+  add('PTRONHAND',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_PTRONHAND', 'original_ptronhand', 'originalPtronhand', 'ptronhand', 'PTRONHAND'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_PTRONHAND', 'requested_ptronhand', 'requestedPtronhand'], '')
+  );
+  add('PTRREVIEWED',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_PTRREVIEWED', 'original_ptrreviewed', 'originalPtrreviewed', 'ptrreviewed', 'PTRREVIEWED'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_PTRREVIEWED', 'requested_ptrreviewed', 'requestedPtrreviewed'], '')
+  );
+  add('PTRAVAILABLE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_PTRAVAILABLE', 'original_ptravailable', 'originalPtravailable', 'ptravailable', 'PTRAVAILABLE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_PTRAVAILABLE', 'requested_ptravailable', 'requestedPtravailable'], '')
+  );
+  add('EVAL DATE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_EVALDATE', 'original_evaldate', 'originalEvalDate', 'evaldate', 'EVALDATE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_EVALDATE', 'requested_evaldate', 'requestedEvalDate'], '')
+  );
+  add('PRI BY',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_PRIBY', 'ORIGINAL_PRISETBY', 'original_priby', 'original_prisetby', 'priby', 'PRIBY', 'prisetby', 'PRISETBY'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_PRIBY', 'REQUESTED_PRISETBY', 'requested_priby', 'requested_prisetby'], '')
+  );
+  add('PRI UPDATE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_PRIUPDATED', 'original_priupdated', 'originalPriupdated', 'priupdated', 'PRIUPDATED'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_PRIUPDATED', 'requested_priupdated', 'requestedPriupdated'], '')
+  );
+  add('NOTE DATE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_LOCATIONNOTEDATE', 'original_locationnotedate', 'originalLocationNoteDate', 'locationnotedate', 'LOCATIONNOTEDATE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_LOCATIONNOTEDATE', 'requested_locationnotedate', 'requestedLocationNoteDate', 'NCR_LOCATIONNOTEDATE'], '')
+  );
+  add('LOCATIONNOTE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_LOCATIONNOTE', 'original_locationnote', 'originalLocationNote', 'locationnote', 'LOCATIONNOTE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_LOCATIONNOTE', 'requested_locationnote', 'requestedLocationNote', 'NCR_LOCATIONNOTE'], '')
+  );
+  add('LOCATIONPTN1',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_LOCATIONPTN1', 'original_locationptn1', 'originalLocationPtn1', 'locationptn1', 'LOCATIONPTN1'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_LOCATIONPTN1', 'requested_locationptn1', 'requestedLocationPtn1', 'NCR_LOCATIONPTN1'], '')
+  );
+  add('SALESNOTE',
+    getRequestChangedFieldValue_(item, ['ORIGINAL_SALESNOTE', 'original_salesnote', 'originalSalesNote', 'salesnote', 'SALESNOTE'], ''),
+    getRequestChangedFieldValue_(item, ['REQUESTED_SALESNOTE', 'requested_salesnote', 'requestedSalesNote', 'NCR_SALESNOTE'], '')
+  );
+  return rows;
+}
+
+function buildRequestChangedFieldsTableHtml_(item) {
+  const rows = buildRequestChangedFieldsRows_(item);
+  if (!rows.length) return '';
+  return [
+    '<div style="font-weight:800;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:.08em;color:#007a4d;">Changed Fields</div>',
+    buildEmailRowsTable_(
+      ['FIELD', 'CURRENT', 'REQUESTED'],
+      rows.map(function(field) {
+        return [
+          buildEmailTableDataCell_(field.label, { bold: true, nowrap: true }),
+          buildEmailTableDataCell_(field.current || 'Blank', { bold: true }),
+          buildEmailTableDataCell_(field.requested || 'Blank', { bold: true, highlight: true })
+        ];
+      })
+    )
+  ].join('');
+}
+
 function buildRequestEmailTableItemsHtml_(payload, options) {
   const safePayload = payload || {};
   const safeOptions = options || {};
@@ -6658,6 +6818,7 @@ function buildRequestEmailTableItemsHtml_(payload, options) {
         buildEmailTableDataCell_(getEmailTableValue_(item, ['locationptn1', 'LOCATIONPTN1', 'ptn1', 'PTN1'], ''), { bold: true })
       ]
     );
+    const changedFieldsTable = buildRequestChangedFieldsTableHtml_(item);
     const requestFields = [
       ['ACTION', getEmailTableValue_(item, ['approval_label', 'approvalLabel', 'approval_type', 'APPROVAL_TYPE', 'action', 'ACTION'], '')],
       ['QTY', getEmailTableValue_(item, ['qty', 'REQ_QTY', 'request_qty', 'requested_qty', 'ncr_qty', 'NCR_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '')],
@@ -6691,6 +6852,7 @@ function buildRequestEmailTableItemsHtml_(payload, options) {
       rowTable,
       qtyTable,
       noteTable,
+      changedFieldsTable,
       requestTable,
       photosHtml,
       '</div>'
@@ -7362,6 +7524,39 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       locationnotedate: firstNonEmptyRequestValue_(item && item.locationnotedate, item && item.LOCATIONNOTEDATE, snapshot.LOCATIONNOTEDATE, snapshot.locationnotedate, ''),
       locationnote: firstNonEmptyRequestValue_(item && item.locationnote, item && item.LOCATIONNOTE, snapshot.LOCATIONNOTE, snapshot.locationnote, ''),
       locationptn1: firstNonEmptyRequestValue_(item && item.locationptn1, item && item.LOCATIONPTN1, snapshot.LOCATIONPTN1, snapshot.locationptn1, ''),
+      original_priority: firstNonEmptyRequestValue_(item && item.original_priority, item && item.ORIGINAL_PRIORITY, snapshot.ORIGINAL_PRIORITY, snapshot.original_priority, ''),
+      requested_priority: firstNonEmptyRequestValue_(item && item.requested_priority, item && item.REQUESTED_PRIORITY, snapshot.REQUESTED_PRIORITY, snapshot.requested_priority, ''),
+      original_holdstopcode: firstNonEmptyRequestValue_(item && item.original_holdstopcode, item && item.ORIGINAL_HOLDSTOPCODE, snapshot.ORIGINAL_HOLDSTOPCODE, snapshot.original_holdstopcode, ''),
+      requested_holdstopcode: firstNonEmptyRequestValue_(item && item.requested_holdstopcode, item && item.REQUESTED_HOLDSTOPCODE, snapshot.REQUESTED_HOLDSTOPCODE, snapshot.requested_holdstopcode, ''),
+      original_holdstopreason: firstNonEmptyRequestValue_(item && item.original_holdstopreason, item && item.ORIGINAL_HOLDSTOPREASON, snapshot.ORIGINAL_HOLDSTOPREASON, snapshot.original_holdstopreason, ''),
+      requested_holdstopreason: firstNonEmptyRequestValue_(item && item.requested_holdstopreason, item && item.REQUESTED_HOLDSTOPREASON, snapshot.REQUESTED_HOLDSTOPREASON, snapshot.requested_holdstopreason, ''),
+      original_lotcode: firstNonEmptyRequestValue_(item && item.original_lotcode, item && item.ORIGINAL_LOTCODE, snapshot.ORIGINAL_LOTCODE, snapshot.original_lotcode, ''),
+      requested_lotcode: firstNonEmptyRequestValue_(item && item.requested_lotcode, item && item.REQUESTED_LOTCODE, snapshot.REQUESTED_LOTCODE, snapshot.requested_lotcode, ''),
+      original_locationcode: firstNonEmptyRequestValue_(item && item.original_locationcode, item && item.ORIGINAL_LOCATIONCODE, snapshot.ORIGINAL_LOCATIONCODE, snapshot.original_locationcode, ''),
+      requested_locationcode: firstNonEmptyRequestValue_(item && item.requested_locationcode, item && item.REQUESTED_LOCATIONCODE, snapshot.REQUESTED_LOCATIONCODE, snapshot.requested_locationcode, ''),
+      original_source: firstNonEmptyRequestValue_(item && item.original_source, item && item.ORIGINAL_SOURCE, snapshot.ORIGINAL_SOURCE, snapshot.original_source, ''),
+      requested_source: firstNonEmptyRequestValue_(item && item.requested_source, item && item.REQUESTED_SOURCE, snapshot.REQUESTED_SOURCE, snapshot.requested_source, ''),
+      original_ptronhand: firstNonEmptyRequestValue_(item && item.original_ptronhand, item && item.ORIGINAL_PTRONHAND, snapshot.ORIGINAL_PTRONHAND, snapshot.original_ptronhand, ''),
+      requested_ptronhand: firstNonEmptyRequestValue_(item && item.requested_ptronhand, item && item.REQUESTED_PTRONHAND, snapshot.REQUESTED_PTRONHAND, snapshot.requested_ptronhand, ''),
+      original_ptrreviewed: firstNonEmptyRequestValue_(item && item.original_ptrreviewed, item && item.ORIGINAL_PTRREVIEWED, snapshot.ORIGINAL_PTRREVIEWED, snapshot.original_ptrreviewed, ''),
+      requested_ptrreviewed: firstNonEmptyRequestValue_(item && item.requested_ptrreviewed, item && item.REQUESTED_PTRREVIEWED, snapshot.REQUESTED_PTRREVIEWED, snapshot.requested_ptrreviewed, ''),
+      original_ptravailable: firstNonEmptyRequestValue_(item && item.original_ptravailable, item && item.ORIGINAL_PTRAVAILABLE, snapshot.ORIGINAL_PTRAVAILABLE, snapshot.original_ptravailable, ''),
+      requested_ptravailable: firstNonEmptyRequestValue_(item && item.requested_ptravailable, item && item.REQUESTED_PTRAVAILABLE, snapshot.REQUESTED_PTRAVAILABLE, snapshot.requested_ptravailable, ''),
+      original_evaldate: firstNonEmptyRequestValue_(item && item.original_evaldate, item && item.ORIGINAL_EVALDATE, snapshot.ORIGINAL_EVALDATE, snapshot.original_evaldate, ''),
+      requested_evaldate: firstNonEmptyRequestValue_(item && item.requested_evaldate, item && item.REQUESTED_EVALDATE, snapshot.REQUESTED_EVALDATE, snapshot.requested_evaldate, ''),
+      original_priby: firstNonEmptyRequestValue_(item && item.original_priby, item && item.ORIGINAL_PRIBY, item && item.original_prisetby, item && item.ORIGINAL_PRISETBY, snapshot.ORIGINAL_PRIBY, snapshot.ORIGINAL_PRISETBY, snapshot.original_priby, snapshot.original_prisetby, ''),
+      requested_priby: firstNonEmptyRequestValue_(item && item.requested_priby, item && item.REQUESTED_PRIBY, item && item.requested_prisetby, item && item.REQUESTED_PRISETBY, snapshot.REQUESTED_PRIBY, snapshot.REQUESTED_PRISETBY, snapshot.requested_priby, snapshot.requested_prisetby, ''),
+      original_priupdated: firstNonEmptyRequestValue_(item && item.original_priupdated, item && item.ORIGINAL_PRIUPDATED, snapshot.ORIGINAL_PRIUPDATED, snapshot.original_priupdated, ''),
+      requested_priupdated: firstNonEmptyRequestValue_(item && item.requested_priupdated, item && item.REQUESTED_PRIUPDATED, snapshot.REQUESTED_PRIUPDATED, snapshot.requested_priupdated, ''),
+      original_locationnotedate: firstNonEmptyRequestValue_(item && item.original_locationnotedate, item && item.ORIGINAL_LOCATIONNOTEDATE, snapshot.ORIGINAL_LOCATIONNOTEDATE, snapshot.original_locationnotedate, ''),
+      requested_locationnotedate: firstNonEmptyRequestValue_(item && item.requested_locationnotedate, item && item.REQUESTED_LOCATIONNOTEDATE, snapshot.REQUESTED_LOCATIONNOTEDATE, snapshot.requested_locationnotedate, ''),
+      original_locationnote: firstNonEmptyRequestValue_(item && item.original_locationnote, item && item.ORIGINAL_LOCATIONNOTE, snapshot.ORIGINAL_LOCATIONNOTE, snapshot.original_locationnote, ''),
+      requested_locationnote: firstNonEmptyRequestValue_(item && item.requested_locationnote, item && item.REQUESTED_LOCATIONNOTE, snapshot.REQUESTED_LOCATIONNOTE, snapshot.requested_locationnote, ''),
+      original_locationptn1: firstNonEmptyRequestValue_(item && item.original_locationptn1, item && item.ORIGINAL_LOCATIONPTN1, snapshot.ORIGINAL_LOCATIONPTN1, snapshot.original_locationptn1, ''),
+      requested_locationptn1: firstNonEmptyRequestValue_(item && item.requested_locationptn1, item && item.REQUESTED_LOCATIONPTN1, snapshot.REQUESTED_LOCATIONPTN1, snapshot.requested_locationptn1, ''),
+      original_salesnote: firstNonEmptyRequestValue_(item && item.original_salesnote, item && item.ORIGINAL_SALESNOTE, snapshot.ORIGINAL_SALESNOTE, snapshot.original_salesnote, ''),
+      requested_salesnote: firstNonEmptyRequestValue_(item && item.requested_salesnote, item && item.REQUESTED_SALESNOTE, snapshot.REQUESTED_SALESNOTE, snapshot.requested_salesnote, ''),
+      changed_fields_json: firstNonEmptyRequestValue_(item && item.changed_fields_json, item && item.CHANGED_FIELDS_JSON, snapshot.CHANGED_FIELDS_JSON, snapshot.changed_fields_json, ''),
       salesnote: firstNonEmptyRequestValue_(item && item.salesnote, item && item.SALESNOTE, item && item.sales_note, item && item.SALES_NOTE, snapshot.SALESNOTE, snapshot.salesnote, snapshot.SALES_NOTE, snapshot.sales_note, ''),
       holdstopcode: firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, item && item.holstopcode, item && item.HOLSTOPCODE, snapshot.HOLDSTOPCODE, snapshot.holdstopcode, snapshot.HOLSTOPCODE, snapshot.holstopcode, ''),
       holdstopreason: firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, item && item.holstopreason, item && item.HOLSTOPREASON, snapshot.HOLDSTOPREASON, snapshot.holdstopreason, snapshot.HOLSTOPREASON, snapshot.holstopreason, ''),
@@ -7427,6 +7622,43 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       emailItem.REQ_COMMENTS_USER_ENTERED = true;
       emailItem.req_comments_user_entered = true;
     }
+    [
+      ['original_priority', 'ORIGINAL_PRIORITY'],
+      ['requested_priority', 'REQUESTED_PRIORITY'],
+      ['original_holdstopcode', 'ORIGINAL_HOLDSTOPCODE'],
+      ['requested_holdstopcode', 'REQUESTED_HOLDSTOPCODE'],
+      ['original_holdstopreason', 'ORIGINAL_HOLDSTOPREASON'],
+      ['requested_holdstopreason', 'REQUESTED_HOLDSTOPREASON'],
+      ['original_lotcode', 'ORIGINAL_LOTCODE'],
+      ['requested_lotcode', 'REQUESTED_LOTCODE'],
+      ['original_locationcode', 'ORIGINAL_LOCATIONCODE'],
+      ['requested_locationcode', 'REQUESTED_LOCATIONCODE'],
+      ['original_source', 'ORIGINAL_SOURCE'],
+      ['requested_source', 'REQUESTED_SOURCE'],
+      ['original_ptronhand', 'ORIGINAL_PTRONHAND'],
+      ['requested_ptronhand', 'REQUESTED_PTRONHAND'],
+      ['original_ptrreviewed', 'ORIGINAL_PTRREVIEWED'],
+      ['requested_ptrreviewed', 'REQUESTED_PTRREVIEWED'],
+      ['original_ptravailable', 'ORIGINAL_PTRAVAILABLE'],
+      ['requested_ptravailable', 'REQUESTED_PTRAVAILABLE'],
+      ['original_evaldate', 'ORIGINAL_EVALDATE'],
+      ['requested_evaldate', 'REQUESTED_EVALDATE'],
+      ['original_priby', 'ORIGINAL_PRIBY'],
+      ['requested_priby', 'REQUESTED_PRIBY'],
+      ['original_priupdated', 'ORIGINAL_PRIUPDATED'],
+      ['requested_priupdated', 'REQUESTED_PRIUPDATED'],
+      ['original_locationnotedate', 'ORIGINAL_LOCATIONNOTEDATE'],
+      ['requested_locationnotedate', 'REQUESTED_LOCATIONNOTEDATE'],
+      ['original_locationnote', 'ORIGINAL_LOCATIONNOTE'],
+      ['requested_locationnote', 'REQUESTED_LOCATIONNOTE'],
+      ['original_locationptn1', 'ORIGINAL_LOCATIONPTN1'],
+      ['requested_locationptn1', 'REQUESTED_LOCATIONPTN1'],
+      ['original_salesnote', 'ORIGINAL_SALESNOTE'],
+      ['requested_salesnote', 'REQUESTED_SALESNOTE'],
+      ['changed_fields_json', 'CHANGED_FIELDS_JSON']
+    ].forEach(function(pair) {
+      if (emailItem[pair[0]]) emailItem[pair[1]] = emailItem[pair[0]];
+    });
     emailItem.pick_note = getRequestPickNoteWithOverSeasonRule_(emailItem, emailItem.pick_note);
     return emailItem;
   }).filter(function(item) {
