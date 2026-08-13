@@ -1,17 +1,26 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
+  BarChart3,
+  BookOpen,
   Camera,
+  ChevronDown,
   CheckCircle2,
   ClipboardList,
   Cloud,
+  Database,
+  Hammer,
+  Handshake,
   Home,
+  Leaf,
   Loader2,
   Menu,
   MessageCircle,
   RefreshCw,
   Search,
+  ShieldCheck,
   ShoppingBag,
+  Store,
   Trash2,
   Truck,
   UploadCloud,
@@ -37,7 +46,7 @@ import {
   uploadRequestPhoto
 } from './services';
 
-type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'inventory' | 'managers';
+type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
 type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
 
@@ -298,30 +307,50 @@ function LoginScreen({ onLogin, onDemo }: { onLogin: (session: Session) => void;
 
 function HomeView({ onOpen }: { onOpen: (view: ViewId) => void }) {
   const modules: Array<{ view: ViewId; label: string; icon: typeof Home }> = [
-    { view: 'request', label: 'Que Request', icon: ClipboardList },
     { view: 'drive', label: 'Drive Mode', icon: Truck },
-    { view: 'tasks', label: 'Tasks', icon: ClipboardList },
     { view: 'docks', label: 'Docks', icon: Truck },
-    { view: 'inventory', label: 'Inventory', icon: ShoppingBag },
-    { view: 'managers', label: 'Managers', icon: Cloud },
+    { view: 'tasks', label: 'AV', icon: BookOpen },
     { view: 'comm', label: 'Communication', icon: MessageCircle },
-    { view: 'bloom', label: 'Bloom', icon: ShoppingBag }
+    { view: 'sales', label: 'Sales', icon: Handshake },
+    { view: 'managers', label: 'Managers', icon: Cloud },
+    { view: 'building', label: 'Building', icon: Hammer },
+    { view: 'qc', label: 'QC', icon: ShieldCheck },
+    { view: 'office', label: 'Office', icon: Store },
+    { view: 'inventory', label: 'Inventory', icon: ShoppingBag },
+    { view: 'production', label: 'Production', icon: Leaf },
+    { view: 'reports', label: 'Reports', icon: BarChart3 }
   ];
   return (
-    <section className="home-grid">
-      <div className="hero-panel">
-        <div className="hero-mark">Ag Data Solutions</div>
-        <span>v2 beta</span>
+    <section className="home-dashboard">
+      <div className="dashboard-card">
+        <div className="dashboard-brand">
+          <img src="../ag-data-solutions-logo-v2026080925.png" alt="Ag Data Solutions" />
+          <span>Dashboard</span>
+        </div>
+        <div className="dashboard-divider">
+          <span>Powered By Ag Metric</span>
+        </div>
+        <div className="dashboard-status">
+          <strong>{formatDashboardTime()}</strong>
+          <div className="dashboard-actions">
+            <span><UploadCloud size={18} /> Auto 5/7</span>
+            <span><Database size={20} /></span>
+            <span><ChevronDown size={20} /></span>
+          </div>
+        </div>
       </div>
-      {modules.map(module => {
-        const Icon = module.icon;
-        return (
-          <button className="module-tile" key={module.view} onClick={() => onOpen(module.view)}>
-            <Icon size={34} />
-            <span>{module.label}</span>
-          </button>
-        );
-      })}
+      <div className="module-label">App Modules</div>
+      <div className="home-grid">
+        {modules.map(module => {
+          const Icon = module.icon;
+          return (
+            <button className="module-tile" key={module.view} onClick={() => onOpen(module.view)}>
+              <Icon size={34} />
+              <span>{module.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -620,7 +649,23 @@ function Toast({ message, action, onClose }: { message: string; action?: { label
 }
 
 function labelForView(view: ViewId) {
-  return ({ home: 'Home', request: 'Que', drive: 'Drive', tasks: 'Tasks', docks: 'Docks', comm: 'Communication', bloom: 'Bloom', inventory: 'Inventory', managers: 'Managers' } as Record<ViewId, string>)[view];
+  return ({
+    home: 'Home',
+    request: 'Que',
+    drive: 'Drive',
+    tasks: 'Tasks',
+    docks: 'Docks',
+    comm: 'Communication',
+    bloom: 'Bloom',
+    inventory: 'Inventory',
+    managers: 'Managers',
+    sales: 'Sales',
+    building: 'Building',
+    qc: 'QC',
+    office: 'Office',
+    production: 'Production',
+    reports: 'Reports'
+  } as Record<ViewId, string>)[view];
 }
 
 function tabLabel(tab: TabId) {
@@ -629,4 +674,15 @@ function tabLabel(tab: TabId) {
 
 function delay(ms: number) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
+function formatDashboardTime() {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(new Date());
 }

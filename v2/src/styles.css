@@ -319,12 +319,110 @@ button {
   opacity: 0.55;
 }
 
+.home-dashboard,
 .home-grid,
 .request-flow,
 .detail-flow,
 .placeholder {
   width: min(100%, 980px);
   margin: 0 auto;
+}
+
+.home-dashboard {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-card {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  min-height: 210px;
+  overflow: hidden;
+  border-radius: 14px;
+  padding: 14px;
+  color: white;
+  background: linear-gradient(135deg, #07874f, #047342);
+  box-shadow: 0 18px 42px rgba(5, 89, 55, 0.14);
+}
+
+.dashboard-brand,
+.dashboard-divider,
+.dashboard-status {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-brand {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+}
+
+.dashboard-brand img {
+  width: 150px;
+  max-width: 48%;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.dashboard-brand span,
+.dashboard-divider span,
+.module-label {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.dashboard-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-divider::before,
+.dashboard-divider::after {
+  content: "";
+  height: 1px;
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.dashboard-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--green);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dashboard-actions span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  border: 2px solid #bdf4d7;
+  border-radius: 14px;
+  padding: 0 12px;
+}
+
+.module-label {
+  color: #667085;
 }
 
 .hero-panel {
@@ -889,7 +987,29 @@ button {
   }
 
   .home-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-card {
+    min-height: 176px;
+    border-radius: 12px;
+  }
+
+  .dashboard-brand img {
+    width: 126px;
+  }
+
+  .dashboard-status {
+    align-items: stretch;
+  }
+
+  .dashboard-actions span:first-child {
+    display: none;
+  }
+
+  .module-tile {
+    min-height: 92px;
+    font-size: 15px;
   }
 
   .bottom-nav-wrap {
