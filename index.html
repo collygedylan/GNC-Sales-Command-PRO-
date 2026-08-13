@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.10';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5770,6 +5770,55 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             min-width:max-content !important;
             scroll-snap-align:start;
         }
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
+            padding-top:.5rem !important;
+            scroll-padding-top:.5rem !important;
+        }
+        body.ios-device.viewport-phone #view-wrapper > .view:not(.hidden),
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper > .view:not(.hidden){
+            padding-top:0 !important;
+            margin-top:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            min-height:0 !important;
+        }
+        body.ios-device.viewport-phone #view-wrapper .fixed-filter-spacer,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper .fixed-filter-spacer{
+            display:none !important;
+            height:0 !important;
+            min-height:0 !important;
+            flex:0 0 0 !important;
+        }
+        body.ios-device.viewport-phone #view-wrapper .fixed-filter-rail,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper .fixed-filter-rail,
+        body.ios-device.viewport-phone #view-av .av-primary-tabs-sticky,
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-av .av-primary-tabs-sticky,
+        body.ios-device.viewport-phone #view-drive .drive-controls-sticky,
+        body.ios-device.viewport-phone #view-tasks .task-controls-sticky{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin:.35rem 0 .55rem !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            box-shadow:none !important;
+            overflow:visible !important;
+        }
+        body.ios-device.viewport-phone #view-wrapper .fixed-filter-rail::before,
+        body.ios-device.viewport-phone #view-av .av-primary-tabs-sticky::before,
+        body.ios-device.viewport-phone #view-drive .drive-controls-sticky::before,
+        body.ios-device.viewport-phone #view-tasks .task-controls-sticky::before{
+            display:none !important;
+        }
+        body.ios-device.viewport-phone :is(#request-content,#drive-content,#docks-content,#task-content,#av-content,#communication-content,#inventory-content,#managers-content,#po-management-content){
+            padding-top:0 !important;
+            margin-top:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+        }
         body.ios-device.viewport-phone #view-detail.detail-photo-update-mode,
         body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-detail.detail-photo-update-mode{
             display:block !important;
@@ -6671,7 +6720,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.10').trim() || 'V2026.08.13.10';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.11').trim() || 'V2026.08.13.11';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8116,7 +8165,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11394,6 +11443,43 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             };
         }
 
+        function isIosPhoneAndroidFlowLayout() {
+            const body = document.body;
+            return !!(body
+                && (isIOSDevice() || body.classList.contains('ios-device'))
+                && body.classList.contains('viewport-phone')
+                && !body.classList.contains('keyboard-open')
+                && !body.classList.contains('detail-field-active')
+                && !body.classList.contains('measurement-keyboard-open'));
+        }
+
+        function shouldResetIosPhoneMainScrollForView(viewId = '') {
+            if (!isIosPhoneAndroidFlowLayout()) return false;
+            const id = String(viewId || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '') || '').trim();
+            return id === 'request' || id === 'detail';
+        }
+
+        function repairIosPhoneAndroidFlowGap(reason = '') {
+            if (!isIosPhoneAndroidFlowLayout()) return false;
+            const mainScrollArea = document.getElementById('main-scroll-area');
+            const root = document.documentElement;
+            const topChromeHeight = Math.max(0, parseFloat(getComputedStyle(root).getPropertyValue('--app-top-chrome-height')) || 0);
+            const firstRect = getIosShellFirstContentRect();
+            const firstTop = Math.max(0, Math.ceil((firstRect && firstRect.top) || 0));
+            const gap = firstTop - topChromeHeight;
+            const mainScrollTop = Math.max(0, Number(mainScrollArea && mainScrollArea.scrollTop) || 0);
+            const viewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
+            if (!shouldResetIosPhoneMainScrollForView(viewId) || gap <= 64) return false;
+            const { view } = getIosCurrentShellView();
+            if (view) {
+                view.querySelectorAll('.fixed-filter-rail').forEach((rail) => releaseFixedFilterRail(rail));
+                view.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => spacer.remove());
+            }
+            if (mainScrollArea && (mainScrollTop > 2 || gap > 96)) mainScrollArea.scrollTop = 0;
+            logIosFixedShellDiagnostics(reason || 'ios-phone-gap-repair', { topChromeHeight, firstTop, gap, mainScrollTop });
+            return true;
+        }
+
         function getIosShellFirstContentRect() {
             const { view } = getIosCurrentShellView();
             if (!view || !view.getClientRects || !view.getClientRects().length) return null;
@@ -11453,14 +11539,20 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 body.classList.add('ios-shell-gap-repair');
                 const { view } = getIosCurrentShellView();
                 if (view) {
+                    if (isIosPhoneAndroidFlowLayout()) {
+                        view.querySelectorAll('.fixed-filter-rail').forEach((rail) => releaseFixedFilterRail(rail));
+                    }
                     view.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => {
                         if (!spacer || !spacer.style) return;
                         const spacerHeight = Math.ceil(spacer.getBoundingClientRect().height || spacer.offsetHeight || 0);
-                        if (spacerHeight > Math.max(260, activeRailHeight + 80)) {
+                        if (isIosPhoneAndroidFlowLayout()) {
+                            spacer.remove();
+                        } else if (spacerHeight > Math.max(260, activeRailHeight + 80)) {
                             applyFixedFilterSpacerInlineStyle(spacer, activeRailHeight > 0 ? `${activeRailHeight + 8}px` : '0px');
                         }
                     });
                 }
+                repairIosPhoneAndroidFlowGap('ios-shell-gap-repair');
                 if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('ios-shell-gap-repair', true);
             } else if (gap <= 96 || mainScrollTop > 2) {
                 body.classList.remove('ios-shell-gap-repair');
@@ -11598,7 +11690,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const heightChanged = Math.abs(topChromeHeight - iosFixedTopChromeLastHeight) > 8;
             if (!wasActive || viewChanged || heightChanged) {
                 iosFixedTopChromeSettledUntil = Date.now() + 460;
-                if (mainScrollArea && mainScrollArea.scrollTop > 0 && viewChanged) mainScrollArea.scrollTop = 0;
+                if (mainScrollArea && mainScrollArea.scrollTop > 0 && (viewChanged || shouldResetIosPhoneMainScrollForView(currentViewId))) mainScrollArea.scrollTop = 0;
             }
             iosFixedTopChromeLastViewId = currentViewId;
             iosFixedTopChromeLastHeight = topChromeHeight;
@@ -11761,6 +11853,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function shouldUseMobileFlowFilterChrome_() {
             const body = document.body;
+            if (isIosPhoneAndroidFlowLayout()) return true;
             if (isIOSDevice()
                 && !(body && (body.classList.contains('keyboard-open')
                     || body.classList.contains('detail-field-active')
@@ -11779,6 +11872,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function shouldUseAvMobileFlowFilterChrome_() {
             const body = document.body;
+            if (isIosPhoneAndroidFlowLayout()) return true;
             if (isIOSDevice() || (body && body.classList.contains('ios-device'))) return false;
             const compactBody = !!(body && (body.classList.contains('viewport-compact') || body.classList.contains('ios-device')));
             const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
@@ -11790,8 +11884,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!id) return false;
             const body = document.body;
             const iosActive = isIOSDevice() || (body && body.classList.contains('ios-device'));
-            const iosPhoneRequest = id === 'request' && iosActive && body && body.classList.contains('viewport-phone');
-            if (iosPhoneRequest) return false;
+            if (iosActive && body && body.classList.contains('viewport-phone')) return false;
             if (iosActive && body && (body.classList.contains('keyboard-open') || body.classList.contains('detail-field-active') || body.classList.contains('measurement-keyboard-open'))) return false;
             return true;
         }
@@ -19825,7 +19918,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function schedulePostRenderMainAreaScrollRestore(viewId = '', key = 'global', scrollTop = 0) {
             const safeViewId = String(viewId || '').trim();
             const safeKey = String(key || safeViewId || 'global').trim() || 'global';
-            const restoreTop = Math.max(0, Number(scrollTop) || 0);
+            const requestedTop = Math.max(0, Number(scrollTop) || 0);
+            const restoreTop = shouldResetIosPhoneMainScrollForView(safeViewId) ? 0 : requestedTop;
             const restoreToken = (Number(latestPostRenderMainAreaTopResetTokensByKey[safeKey] || 0) + 1);
             latestPostRenderMainAreaTopResetTokensByKey[safeKey] = restoreToken;
             const applyRestore = () => {
@@ -19945,7 +20039,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!detailReturnState || !detailReturnState.viewId) return;
             const targetViewId = String(expectedViewId || lastView || '').trim();
             if (targetViewId && detailReturnState.viewId !== targetViewId) return;
-            const restoreTop = Math.max(0, Number(detailReturnState.scrollTop || 0));
+            const restoreTop = shouldResetIosPhoneMainScrollForView(detailReturnState.viewId)
+                ? 0
+                : Math.max(0, Number(detailReturnState.scrollTop || 0));
             scheduleUiRender(`detail-return:${detailReturnState.viewId}:${restoreTop}`, () => {
                 setMainAreaScrollTop(restoreTop);
                 requestAnimationFrame(() => {
@@ -20013,7 +20109,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 const shouldRestoreScroll = !forceReset && getCurrentVisibleViewId() === safeViewId;
-                const restoreScrollTop = shouldRestoreScroll ? getMainAreaScrollTop() : 0;
+                const restoreScrollTop = shouldRestoreScroll && !shouldResetIosPhoneMainScrollForView(safeViewId) ? getMainAreaScrollTop() : 0;
                 const viewRenderStartedAt = beginInternalPerfMeasure();
                 try {
                     renderViewContent(safeViewId, forceReset, forceRender);
@@ -27850,7 +27946,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.10').trim() || 'V2026.08.13.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.11').trim() || 'V2026.08.13.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -97621,6 +97717,15 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (container.dataset) container.dataset.requestRenderKey = nextKey;
             try {
                 if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('request-render-markup', true);
+                if (isIosPhoneAndroidFlowLayout()) {
+                    requestAnimationFrame(() => {
+                        const rail = document.querySelector('#view-request > .freeze-panel');
+                        if (rail) releaseFixedFilterRail(rail);
+                        document.querySelectorAll('#view-request .fixed-filter-spacer').forEach((spacer) => spacer.remove());
+                        repairIosPhoneAndroidFlowGap('request-render-markup');
+                        if (typeof scheduleIosFixedShellGapAudit === 'function') scheduleIosFixedShellGapAudit('request-render-markup');
+                    });
+                }
             } catch (error) {}
             return didRender;
         }
