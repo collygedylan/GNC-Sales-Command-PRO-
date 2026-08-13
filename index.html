@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.11';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5881,6 +5881,152 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             max-width:100% !important;
             margin-top:.85rem !important;
         }
+        body.ios-device.viewport-phone #view-request,
+        body.ios-device.viewport-phone #view-request:not(.hidden),
+        body.ios-device.viewport-phone #view-request #request-content,
+        body.ios-device.viewport-phone #view-request .request-card-list,
+        body.ios-device.viewport-phone #view-request .request-card-list--spaced{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            min-height:0 !important;
+            height:auto !important;
+            max-height:none !important;
+            margin-left:0 !important;
+            margin-right:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            overflow:visible !important;
+            contain:none !important;
+            content-visibility:visible !important;
+            contain-intrinsic-size:auto !important;
+            will-change:auto !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-card-list--spaced{
+            display:flex !important;
+            flex-direction:column !important;
+            gap:.9rem !important;
+            padding:0 0 calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 1.25rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.ios-device.viewport-phone #view-request #request-content > .request-card-list--spaced:first-child{
+            margin-top:.85rem !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-swipe-row,
+        body.ios-device.viewport-phone #view-request .request-swipe-row > div:first-child,
+        body.ios-device.viewport-phone #view-request .request-swipe-surface,
+        body.ios-device.viewport-phone #view-request .app-smart-card,
+        body.ios-device.viewport-phone #view-request .app-card-shell{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            min-height:0 !important;
+            height:auto !important;
+            max-height:none !important;
+            margin-top:0 !important;
+            margin-left:0 !important;
+            margin-right:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            contain:none !important;
+            content-visibility:visible !important;
+            contain-intrinsic-size:auto !important;
+            will-change:auto !important;
+            backface-visibility:visible !important;
+            -webkit-backface-visibility:visible !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-swipe-row{
+            overflow:visible !important;
+            background:transparent !important;
+            border-radius:22px !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-swipe-row.swipe-open .request-swipe-surface{
+            transform:none !important;
+            -webkit-transform:none !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-swipe-action{
+            position:absolute !important;
+            inset:0 0 auto auto !important;
+            width:0 !important;
+            min-width:0 !important;
+            max-width:0 !important;
+            height:0 !important;
+            min-height:0 !important;
+            max-height:0 !important;
+            display:none !important;
+            opacity:0 !important;
+            visibility:hidden !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            pointer-events:none !important;
+        }
+        body.ios-device.viewport-phone #view-request .request-swipe-surface{
+            z-index:2 !important;
+            overflow:visible !important;
+            border-radius:inherit !important;
+            transition:none !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode:not(.hidden),
+        body.ios-device.viewport-phone #view-detail.detail-request-mode.detail-photo-update-mode,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #det-request-content,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #global-inputs-container,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #detail-shared-panels,
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #req-input-container{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            min-height:0 !important;
+            height:auto !important;
+            max-height:none !important;
+            margin-left:0 !important;
+            margin-right:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            overflow:visible !important;
+            contain:none !important;
+            content-visibility:visible !important;
+            contain-intrinsic-size:auto !important;
+            will-change:auto !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode:not(.hidden){
+            display:block !important;
+            padding-top:0 !important;
+            padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 2rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #det-request-content:not(.hidden){
+            display:block !important;
+            padding:.25rem 0 calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 2.75rem + env(safe-area-inset-bottom)) !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #req-input-container{
+            display:grid !important;
+            grid-template-columns:minmax(0,1fr) !important;
+            gap:.7rem !important;
+        }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){
+            display:grid !important;
+            grid-template-columns:minmax(0,1fr) !important;
+            gap:.6rem !important;
+            padding:.1rem 0 .7rem !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -6720,7 +6866,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.11').trim() || 'V2026.08.13.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.12').trim() || 'V2026.08.13.12';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8165,7 +8311,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11459,6 +11605,54 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return id === 'request' || id === 'detail';
         }
 
+        function clearIosPhoneRequestFlowState(reason = '', options = {}) {
+            if (!isIosPhoneAndroidFlowLayout()) return false;
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const currentViewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
+            const detailRoot = document.getElementById('view-detail');
+            const isRequestDetail = !!(detailRoot && !detailRoot.classList.contains('hidden') && detailRoot.classList.contains('detail-request-mode'));
+            if (currentViewId !== 'request' && currentViewId !== 'detail' && !isRequestDetail) return false;
+            const requestView = document.getElementById('view-request');
+            const mainScrollArea = document.getElementById('main-scroll-area');
+            const requestRail = requestView ? requestView.querySelector(':scope > .freeze-panel') : null;
+            if (requestRail) releaseFixedFilterRail(requestRail);
+            if (requestView) {
+                requestView.querySelectorAll('.fixed-filter-rail').forEach((rail) => releaseFixedFilterRail(rail));
+                requestView.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => spacer.remove());
+                requestView.querySelectorAll('.request-swipe-row').forEach((row) => {
+                    row.classList.remove('swipe-open');
+                    ['transform','-webkit-transform','top','left','right','height','max-height','min-height','opacity','visibility'].forEach((propertyName) => row.style.removeProperty(propertyName));
+                });
+                requestView.querySelectorAll('.request-swipe-surface').forEach((surface) => {
+                    ['transform','-webkit-transform','top','left','right','height','max-height','min-height','opacity','visibility','will-change'].forEach((propertyName) => surface.style.removeProperty(propertyName));
+                });
+                requestView.querySelectorAll('.request-card-list,.request-card-list--spaced,#request-content').forEach((el) => {
+                    ['top','margin-top','padding-top','transform','-webkit-transform','height','max-height','min-height','opacity','visibility'].forEach((propertyName) => el.style.removeProperty(propertyName));
+                });
+            }
+            if (isRequestDetail && document.body) {
+                document.body.classList.remove('app-main-scroll-locked', 'request-detail-scroll-locked', 'detail-photo-update-scroll-locked');
+                detailRoot.classList.add('detail-request-mode', 'detail-photo-update-mode');
+                const requestContent = document.getElementById('det-request-content');
+                if (requestContent) requestContent.classList.remove('hidden');
+                const requestTab = document.getElementById('dtab-request');
+                if (requestTab) requestTab.classList.remove('hidden');
+                [detailRoot, requestContent, document.getElementById('global-inputs-container'), document.getElementById('detail-shared-panels'), document.getElementById('req-input-container')].forEach((el) => {
+                    if (!el || !el.style) return;
+                    ['top','margin-top','padding-top','transform','-webkit-transform','height','max-height','min-height','opacity','visibility','overflow'].forEach((propertyName) => el.style.removeProperty(propertyName));
+                });
+            }
+            if (mainScrollArea) {
+                mainScrollArea.style.overflowY = '';
+                mainScrollArea.style.overscrollBehaviorY = '';
+                mainScrollArea.style.pointerEvents = '';
+                if (opts.resetScroll === true && !hasActiveTextEntryFocus() && !isUserActivelyTyping()) mainScrollArea.scrollTop = 0;
+            }
+            if (opts.resetScroll === true && !hasActiveTextEntryFocus() && !isUserActivelyTyping()) setMainAreaScrollTop(0);
+            if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync(`ios-phone-request-flow:${reason || 'clear'}`, true);
+            return true;
+        }
+
         function repairIosPhoneAndroidFlowGap(reason = '') {
             if (!isIosPhoneAndroidFlowLayout()) return false;
             const mainScrollArea = document.getElementById('main-scroll-area');
@@ -11475,6 +11669,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 view.querySelectorAll('.fixed-filter-rail').forEach((rail) => releaseFixedFilterRail(rail));
                 view.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => spacer.remove());
             }
+            clearIosPhoneRequestFlowState(reason || 'gap-repair', { resetScroll: true });
             if (mainScrollArea && (mainScrollTop > 2 || gap > 96)) mainScrollArea.scrollTop = 0;
             logIosFixedShellDiagnostics(reason || 'ios-phone-gap-repair', { topChromeHeight, firstTop, gap, mainScrollTop });
             return true;
@@ -27946,7 +28141,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.11').trim() || 'V2026.08.13.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.12').trim() || 'V2026.08.13.12';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -92565,6 +92760,7 @@ function toggleDriveQuickRequestItem(domId) {
                 document.body.classList.remove('app-main-scroll-locked', 'request-detail-scroll-locked');
                 document.body.classList.toggle('request-detail-av-options-open', requestAvOptionsDropdownOpen === true);
             }
+            if (isIosPhoneAndroidFlowLayout()) clearIosPhoneRequestFlowState(`request-detail:${reason || 'ensure'}`, { resetScroll: opts.resetScroll !== false });
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (mainScrollArea) {
                 mainScrollArea.style.overflowY = '';
@@ -97719,6 +97915,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('request-render-markup', true);
                 if (isIosPhoneAndroidFlowLayout()) {
                     requestAnimationFrame(() => {
+                        clearIosPhoneRequestFlowState('request-render-markup', { resetScroll: true });
                         const rail = document.querySelector('#view-request > .freeze-panel');
                         if (rail) releaseFixedFilterRail(rail);
                         document.querySelectorAll('#view-request .fixed-filter-spacer').forEach((spacer) => spacer.remove());
@@ -118036,7 +118233,9 @@ C.14.043 C.15.000
                 if (typeof event.stopPropagation === 'function') event.stopPropagation();
                 if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
             }
+            if (isIosPhoneAndroidFlowLayout()) clearIosPhoneRequestFlowState('request-swipe-open-before-detail', { resetScroll: false });
             openDetail(requestUid, 'request', { preferredTab: 'request', sourceDomId: domId });
+            if (isIosPhoneAndroidFlowLayout()) clearIosPhoneRequestFlowState('request-swipe-open-after-detail', { resetScroll: true });
             scheduleRequestDetailEntryVisible('request-swipe-open', { skipOptionLoad: true });
             if (!activeItem || String(activeDetailSourceView || '').trim().toLowerCase() !== 'request') {
                 showToast('Open Failed', 'That request row could not be opened. Refreshing Que now.', true);
