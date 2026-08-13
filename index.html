@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.14';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6169,7 +6169,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             display:block !important;
             padding-bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 3rem + env(safe-area-inset-bottom)) !important;
         }
-        /* V2026.08.13.14: final iPhone Request authority. Android's working flow is the contract. */
+        /* iPhone Request authority. Android's working flow is the contract. */
         body.ios-device.viewport-phone.current-view-request #view-request,
         body.ios-device.viewport-phone.current-view-request #request-content,
         body.ios-device.viewport-phone.current-view-request #request-content *,
@@ -6386,6 +6386,107 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             pointer-events:none !important;
             transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
             -webkit-transform:translate3d(-50%,calc(100% + env(safe-area-inset-bottom) + 1rem),0) !important;
+        }
+        /* V2026.08.13.15: final iPhone module flow authority. Task's header behavior is the contract. */
+        body.ios-device.viewport-phone #view-wrapper > .view:not(.hidden):not(#view-home){
+            position:relative !important;
+            inset:auto !important;
+            top:auto !important;
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            margin-top:0 !important;
+            padding-top:.65rem !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            overflow:visible !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            contain:none !important;
+            content-visibility:visible !important;
+            will-change:auto !important;
+        }
+        body.ios-device.viewport-phone #view-wrapper :is(.fixed-filter-rail,.freeze-panel.fixed-filter-rail,.drive-controls-sticky.fixed-filter-rail,.task-controls-sticky.fixed-filter-rail,.av-primary-tabs-sticky.fixed-filter-rail),
+        body.ios-device.viewport-phone.ios-fixed-top-chrome:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper :is(.fixed-filter-rail,.freeze-panel.fixed-filter-rail,.drive-controls-sticky.fixed-filter-rail,.task-controls-sticky.fixed-filter-rail,.av-primary-tabs-sticky.fixed-filter-rail){
+            position:relative !important;
+            inset:auto !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            bottom:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin:.15rem 0 .55rem !important;
+            padding-left:0 !important;
+            padding-right:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            z-index:3 !important;
+            overflow:visible !important;
+            box-shadow:none !important;
+            background:transparent !important;
+        }
+        body.ios-device.viewport-phone #view-wrapper :is(.fixed-filter-rail,.freeze-panel.fixed-filter-rail,.drive-controls-sticky.fixed-filter-rail,.task-controls-sticky.fixed-filter-rail,.av-primary-tabs-sticky.fixed-filter-rail)::before{
+            display:none !important;
+            content:none !important;
+        }
+        body.ios-device.viewport-phone #view-wrapper .fixed-filter-spacer{
+            display:none !important;
+            width:0 !important;
+            height:0 !important;
+            min-height:0 !important;
+            max-height:0 !important;
+            margin:0 !important;
+            padding:0 !important;
+            flex:0 0 0 !important;
+            overflow:hidden !important;
+        }
+        body.ios-device.viewport-phone :is(#view-drive,#view-crop-roll,#view-docks,#view-tasks,#view-av,#view-request,#view-communication,#view-chat,#view-inventory,#view-managers,#view-building,#view-sales,#view-qc,#view-office,#view-po-management,#view-sales-office,#view-review,#view-move-up,#view-low-stock,#view-reserves,#view-shear-list,#view-detail) :is(#request-content,#drive-content,#docks-content,#task-content,#av-content,#communication-content,#inventory-content,#managers-content,#po-management-content,#review-content,#move-up-content,#low-stock-content,#reserves-content,#sales-office-content,#det-request-content,.request-card-list,.request-card-list--spaced){
+            position:relative !important;
+            inset:auto !important;
+            top:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            margin-top:0 !important;
+            padding-top:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            overflow:visible !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            contain:none !important;
+            content-visibility:visible !important;
+            will-change:auto !important;
+        }
+        body.ios-device.viewport-phone :is(#view-drive,#view-crop-roll,#view-docks,#view-tasks,#view-av,#view-request,#view-review,#view-move-up) :is(.task-tabs,.drive-tabs,.av-tabs,.dock-tabs,.request-tabs){
+            position:relative !important;
+            inset:auto !important;
+            display:flex !important;
+            flex-wrap:nowrap !important;
+            align-items:center !important;
+            gap:.45rem !important;
+            width:100% !important;
+            max-width:100% !important;
+            overflow-x:auto !important;
+            overflow-y:visible !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            -webkit-overflow-scrolling:touch !important;
+            scroll-snap-type:x proximity !important;
+        }
+        body.ios-device.viewport-phone :is(#view-drive,#view-crop-roll,#view-docks,#view-tasks,#view-av,#view-request,#view-review,#view-move-up) :is(.task-tabs,.drive-tabs,.av-tabs,.dock-tabs,.request-tabs) > *{
+            flex:0 0 auto !important;
+            min-width:max-content !important;
+            white-space:nowrap !important;
+            scroll-snap-align:start !important;
         }
     </style>
 </head>
@@ -7226,7 +7327,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.14').trim() || 'V2026.08.13.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.15').trim() || 'V2026.08.13.15';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8671,7 +8772,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11984,6 +12085,113 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return !!(detailRoot && detailRoot.classList.contains('detail-request-mode')) || detailSource === 'request';
         }
 
+        function isIosPhoneTaskStyleModuleFlowView(viewId = '') {
+            if (!isIosPhoneViewportDevice()) return false;
+            const id = String(viewId || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '') || '').trim();
+            if (!id) return false;
+            return [
+                'request',
+                'drive',
+                'crop-roll',
+                'docks',
+                'tasks',
+                'av',
+                'communication',
+                'chat',
+                'inventory',
+                'managers',
+                'building',
+                'sales',
+                'qc',
+                'office',
+                'po-management',
+                'sales-office',
+                'review',
+                'move-up',
+                'low-stock',
+                'reserves',
+                'shear-list',
+                'detail'
+            ].includes(id);
+        }
+
+        function clearIosPhoneElementFlowInlineState(el) {
+            if (!el || !el.style) return;
+            [
+                'position',
+                'inset',
+                'top',
+                'bottom',
+                'left',
+                'right',
+                'width',
+                'max-width',
+                'min-width',
+                'height',
+                'min-height',
+                'max-height',
+                'margin',
+                'margin-top',
+                'padding-top',
+                'transform',
+                '-webkit-transform',
+                'overflow',
+                'overflow-y',
+                'opacity',
+                'visibility',
+                'contain',
+                'content-visibility',
+                'contain-intrinsic-size',
+                'will-change',
+                'z-index',
+                'box-shadow'
+            ].forEach((propertyName) => el.style.removeProperty(propertyName));
+        }
+
+        function clearIosPhoneTaskStyleModuleFlowState(reason = '', options = {}) {
+            if (!isIosPhoneViewportDevice()) return false;
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const viewId = String(opts.viewId || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '') || '').trim();
+            if (!isIosPhoneTaskStyleModuleFlowView(viewId)) return false;
+            if (viewId === 'request' || isIosPhoneRequestFlowView(viewId)) {
+                return clearIosPhoneRequestFlowState(reason || 'ios-phone-module-flow', opts);
+            }
+            const view = document.getElementById(`view-${viewId}`);
+            if (!view) return false;
+            view.querySelectorAll('.fixed-filter-rail').forEach((rail) => releaseFixedFilterRail(rail));
+            view.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => spacer.remove());
+            [
+                view,
+                ...Array.from(view.querySelectorAll([
+                    '.freeze-panel',
+                    '.drive-controls-sticky',
+                    '.task-controls-sticky',
+                    '.av-primary-tabs-sticky',
+                    '[id$="-content"]',
+                    '.request-card-list',
+                    '.request-card-list--spaced'
+                ].join(',')))
+            ].forEach(clearIosPhoneElementFlowInlineState);
+            if (opts.resetScroll === true && !hasActiveTextEntryFocus() && !isUserActivelyTyping()) {
+                setMainAreaScrollTop(0);
+            }
+            logIosFixedShellDiagnostics(reason || 'ios-phone-task-style-flow-clear', { viewId });
+            return true;
+        }
+
+        function scheduleIosPhoneTaskStyleModuleFlowCleanup(viewId = '', reason = '', options = {}) {
+            const safeViewId = String(viewId || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '') || '').trim();
+            if (!isIosPhoneTaskStyleModuleFlowView(safeViewId)) return false;
+            const opts = Object.assign({}, (options && typeof options === 'object' && !Array.isArray(options)) ? options : {}, { viewId: safeViewId });
+            const run = () => clearIosPhoneTaskStyleModuleFlowState(reason || 'scheduled', opts);
+            requestAnimationFrame(() => {
+                run();
+                setTimeout(run, 80);
+                setTimeout(run, 220);
+            });
+            return true;
+        }
+
         function getIosPhoneRequestPrimaryContentRect() {
             if (!isIosPhoneRequestFlowView()) return null;
             const currentViewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
@@ -12707,6 +12915,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             syncIosFixedTopChromeMetrics('sticky-rail');
             const globalSearchRow = document.getElementById('global-header-search-row');
             const currentViewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
+            if (isIosPhoneTaskStyleModuleFlowView(currentViewId) && !isIosPhoneRequestFlowView(currentViewId)) {
+                clearIosPhoneTaskStyleModuleFlowState('sticky-rail-task-style', { viewId: currentViewId, resetScroll: false });
+                return;
+            }
             if (currentViewId === 'av') {
                 applyStickyRailOffset(document.querySelector('#view-av .av-primary-tabs-sticky'), globalSearchRow);
                 syncAvFixedFilterToolbar();
@@ -20677,6 +20889,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                         else syncRequestViewLiveSync(requestSyncDelay);
                     }
                     if (!skipStickySync) scheduleStickyRailOffsetSync(`view-chrome:${safeViewId}`, true);
+                    scheduleIosPhoneTaskStyleModuleFlowCleanup(safeViewId, `view-chrome:${safeViewId}`, { resetScroll: false });
                     lastPrimaryViewChromeSignature = buildPrimaryViewChromeSignature(safeViewId, nextOptions);
                 }, delay);
             };
@@ -28614,7 +28827,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.14').trim() || 'V2026.08.13.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.15').trim() || 'V2026.08.13.15';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -68387,6 +68600,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             state.initialized = true;
             state.dirty = false;
+            scheduleIosPhoneTaskStyleModuleFlowCleanup(viewId, `render:${viewId}`, { resetScroll: false });
             recordInternalPerfDuration('viewRenderDurations', renderStartedAt, viewId || 'unknown');
         }
 
