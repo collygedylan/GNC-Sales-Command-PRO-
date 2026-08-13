@@ -104,6 +104,7 @@ export function App() {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [undoRemove, setUndoRemove] = useState<RequestRow | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const topRef = useRef<HTMLDivElement | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
@@ -182,29 +183,26 @@ export function App() {
     <div className="app-shell">
       <div className="top-chrome" ref={topRef}>
         <div className="brand-strip">
+          <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : openView('home')}>
+            <ArrowLeft size={28} />
+          </button>
           <div>
             <div className="brand-user">{session?.displayName || session?.username || 'demo_user'}</div>
             <div className="brand-subtitle">AG DATA SOLUTIONS</div>
           </div>
-          <div className="status-cluster">
-            <span className="version-pill">{APP_VERSION}</span>
-            <span className="mode-pill">FIELD</span>
-            <span className="auto-pill">AUTO</span>
-            <span className="auto-count">AUTO {Math.min(rows.length, 7)}/7</span>
-          </div>
-        </div>
-        <div className="search-row">
-          <button className="back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : openView('home')}>
-            <ArrowLeft size={28} />
-          </button>
-          <div className="search-box">
+          <div className="app-search-box">
             {view === 'request' && !detailRow ? <Search size={20} /> : null}
             <input
-              value={detailRow ? title : search || ''}
+              value={detailRow || view !== 'request' ? title : search}
               onChange={event => !detailRow && setSearch(event.target.value)}
               readOnly={Boolean(detailRow) || view !== 'request'}
               placeholder={view === 'request' ? 'Search requests...' : title}
             />
+          </div>
+          <div className="status-cluster">
+            <span className="version-pill">{APP_VERSION}</span>
+            <span className="auto-pill">AUTO</span>
+            <span className="auto-count">AUTO {Math.min(rows.length, 7)}/7</span>
           </div>
         </div>
       </div>
@@ -262,13 +260,38 @@ export function App() {
 
       <div className="bottom-nav-wrap" ref={navRef}>
         <nav className="bottom-nav" aria-label="Primary">
-          <button type="button" onClick={() => openView('inventory')} className="nav-item">
+          <button type="button" onClick={() => setMenuOpen(true)} className="nav-item">
             <Menu size={28} /><span>Menu</span>
           </button>
           {navItems.slice(0, 1).map(item => <NavButton key={item.id} item={item} active={view === item.id} onOpen={openView} />)}
           {navItems.slice(1).map(item => <NavButton key={item.id} item={item} active={view === item.id} onOpen={openView} />)}
         </nav>
       </div>
+      {menuOpen ? (
+        <div className="drawer-scrim" onClick={() => setMenuOpen(false)}>
+          <aside className="side-drawer" aria-label="App menu" onClick={event => event.stopPropagation()}>
+            <div className="drawer-head">
+              <div>
+                <strong>{session?.displayName || session?.username || 'demo_user'}</strong>
+                <span>AG DATA SOLUTIONS</span>
+              </div>
+              <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><XCircle size={24} /></button>
+            </div>
+            <div className="drawer-mode">
+              <span>Mode</span>
+              <strong>FIELD</strong>
+            </div>
+            <div className="drawer-stat">
+              <span>Shell</span>
+              <strong>{APP_VERSION}</strong>
+            </div>
+            <div className="drawer-stat">
+              <span>Auto Sync</span>
+              <strong>AUTO {Math.min(rows.length, 7)}/7</strong>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -377,16 +400,18 @@ function RequestView(props: {
   }, [props.allRows]);
   return (
     <section className="request-flow">
-      <div className="request-tabs" role="tablist">
-        {tabs.map(tab => (
-          <button className={`filter-tab ${props.activeTab === tab.id ? 'active' : ''}`} key={tab.id} onClick={() => props.onTab(tab.id)}>
-            {tab.label}<span>{counts.get(tab.id) || 0}</span>
-          </button>
-        ))}
-      </div>
-      <div className="request-actions">
-        <span>{tabLabel(props.activeTab)} Que</span>
-        <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
+      <div className="filter-rail">
+        <div className="request-tabs" role="tablist">
+          {tabs.map(tab => (
+            <button className={`filter-tab ${props.activeTab === tab.id ? 'active' : ''}`} key={tab.id} onClick={() => props.onTab(tab.id)}>
+              {tab.label}<span>{counts.get(tab.id) || 0}</span>
+            </button>
+          ))}
+        </div>
+        <div className="request-actions">
+          <span>{tabLabel(props.activeTab)} Que</span>
+          <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
+        </div>
       </div>
       {props.loading && !props.rows.length ? <div className="empty-state"><Loader2 className="spin" /> Loading rows...</div> : null}
       {!props.loading && !props.rows.length ? <div className="empty-state">No rows match this view.</div> : null}
