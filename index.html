@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.13.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.13.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1884,6 +1884,20 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         body.ios-device #view-tasks .task-controls-sticky{overflow:visible !important}
         #global-header-search-slot > .sticky-search{position:relative !important;top:auto !important;z-index:auto !important;padding-top:0 !important;padding-bottom:0 !important;margin:0 !important;background:transparent !important;box-shadow:none !important;transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important}
         #global-header-search-slot > .sticky-search .input-field{box-shadow:0 8px 18px rgba(7,94,63,.12)}
+        body.global-header-search-active #view-wrapper .amazon-search-host:not(.global-header-search-mounted){
+            display:none !important;
+            height:0 !important;
+            min-height:0 !important;
+            max-height:0 !important;
+            margin:0 !important;
+            padding:0 !important;
+            overflow:hidden !important;
+            pointer-events:none !important;
+            visibility:hidden !important;
+        }
+        body.global-header-search-active #view-wrapper .amazon-search-host:not(.global-header-search-mounted) *{
+            pointer-events:none !important;
+        }
         #global-back-btn{display:none !important}
         .amazon-inline-back{flex:0 0 auto;width:42px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.92);color:#007a4d;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(7,94,63,.18);font-weight:900}
         .amazon-inline-back:active{transform:scale(.97)}
@@ -6433,7 +6447,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.04').trim() || 'V2026.08.13.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.13.05').trim() || 'V2026.08.13.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7878,7 +7892,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.13.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10359,7 +10373,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const appWrapper = document.getElementById('app-wrapper');
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (!appWrapper || !mainScrollArea) return;
-            ['global-action-bar', 'bottom-nav'].forEach((elementId) => {
+            ['app-top-chrome', 'global-action-bar', 'bottom-nav'].forEach((elementId) => {
                 const element = document.getElementById(elementId);
                 if (element && element.parentElement === mainScrollArea) {
                     appWrapper.appendChild(element);
@@ -11206,6 +11220,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return Math.max(0, Math.ceil(height + marginBottom));
         }
 
+        function getScrollerStickyRailOffsetPx(searchEl) {
+            if (isIosFixedTopChromeActive()) return 0;
+            return getStickyRailOffsetPx(searchEl);
+        }
+
         function getFixedFilterRailTopPx(sourceEl) {
             if (isIosFixedTopChromeActive()) {
                 const root = document.documentElement;
@@ -11445,7 +11464,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 ...targets.map(({ rail, source, key }) => {
                     const railVisible = !!(rail && rail.getClientRects && rail.getClientRects().length && !rail.classList.contains('hidden'));
                     const sourceVisible = isStickyOffsetSourceVisible(source);
-                    const offset = railVisible ? getStickyRailOffsetPx(source) : 0;
+                    const offset = railVisible ? getScrollerStickyRailOffsetPx(source) : 0;
                     const fixedTop = railVisible ? getFixedFilterRailTopPx(source) : 0;
                     const railHeight = railVisible ? Math.ceil(rail.getBoundingClientRect().height || rail.offsetHeight || 0) : 0;
                     return `${key}:${railVisible ? '1' : '0'}:${sourceVisible ? '1' : '0'}:${offset}:${fixedTop}:${railHeight}`;
@@ -11459,7 +11478,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 railEl.style.setProperty('--freeze-panel-offset', '0px');
                 return;
             }
-            railEl.style.setProperty('--freeze-panel-offset', `${getStickyRailOffsetPx(searchEl)}px`);
+            railEl.style.setProperty('--freeze-panel-offset', `${getScrollerStickyRailOffsetPx(searchEl)}px`);
         }
 
         function syncAvFixedFilterToolbar() {
@@ -27284,7 +27303,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.04').trim() || 'V2026.08.13.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.13.05').trim() || 'V2026.08.13.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28088,8 +28107,37 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const container = document.getElementById(containerId);
                 const placeholder = document.querySelector(`[data-header-search-placeholder="${containerId}"]`);
                 if (!container || !placeholder || !placeholder.parentNode) return;
+                container.classList.remove('global-header-search-mounted');
+                container.removeAttribute('data-global-header-mounted');
                 if (container.parentNode !== placeholder.parentNode || container.previousSibling !== placeholder) {
                     placeholder.parentNode.insertBefore(container, placeholder.nextSibling);
+                }
+            });
+        }
+
+        function syncGlobalHeaderSearchOwnership(activeContainer = null) {
+            const searchSlot = document.getElementById('global-header-search-slot');
+            const activeId = activeContainer && activeContainer.id ? activeContainer.id : '';
+            if (document.body) {
+                document.body.classList.toggle('global-header-search-active', !!activeId);
+                if (activeId) document.body.setAttribute('data-global-header-search-owner', activeId);
+                else document.body.removeAttribute('data-global-header-search-owner');
+            }
+            Object.values(GLOBAL_HEADER_SEARCH_CONFIG).forEach((containerId) => {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                const mounted = !!(searchSlot && searchSlot.contains(container) && container.id === activeId);
+                container.classList.toggle('global-header-search-mounted', mounted);
+                if (mounted) {
+                    container.setAttribute('data-global-header-mounted', 'true');
+                    container.removeAttribute('aria-hidden');
+                    container.style.removeProperty('display');
+                    container.style.removeProperty('visibility');
+                    container.style.removeProperty('height');
+                    container.style.removeProperty('min-height');
+                    container.style.removeProperty('max-height');
+                } else {
+                    container.removeAttribute('data-global-header-mounted');
                 }
             });
         }
@@ -28551,7 +28599,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getGlobalHeaderChromeState() {
             ensureGlobalHeaderSearchPlaceholders();
-            const currentView = getCurrentVisibleViewId();
+            const bodyView = document.body && document.body.dataset ? String(document.body.dataset.currentView || '').trim() : '';
+            const reportedView = getCurrentVisibleViewId();
+            const bodyViewEl = bodyView ? document.getElementById('view-' + bodyView) : null;
+            const bodyViewVisible = !!(bodyViewEl && !bodyViewEl.classList.contains('hidden') && (!window.getComputedStyle || window.getComputedStyle(bodyViewEl).display !== 'none'));
+            const currentView = bodyViewVisible ? bodyView : reportedView;
             const baseMeta = AMAZON_HEADER_META[currentView] || { title: formatGlobalHeaderTitle(currentView) };
             const meta = currentView === 'moves' && activeMovesTab === 'office'
                 ? { eyebrow: 'Location Move', title: 'Inventory Office' }
@@ -28590,7 +28642,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const syncReason = normalizeUiSyncReason(nextOptions.reason);
             const chromeState = getGlobalHeaderChromeState();
-            if (!nextOptions.force && chromeState.signature === lastGlobalHeaderChromeSignature) {
+            const searchRow = document.getElementById('global-header-search-row');
+            const title = document.getElementById('global-header-view-title');
+            const backBtn = document.getElementById('global-header-inline-back');
+            const searchSlot = document.getElementById('global-header-search-slot');
+            const inlineTitle = document.getElementById('global-header-inline-title');
+            const expectedMountedSearch = !!(chromeState.searchContainer && chromeState.searchVisible);
+            const mountedSearchMatches = !expectedMountedSearch || !!(searchSlot && searchSlot.contains(chromeState.searchContainer));
+            if (!nextOptions.force && chromeState.signature === lastGlobalHeaderChromeSignature && mountedSearchMatches) {
+                syncGlobalHeaderSearchOwnership(expectedMountedSearch ? chromeState.searchContainer : null);
                 syncIosFixedTopChromeMetrics('global-header:same');
                 scheduleStickyRailOffsetSync('global-header:same', true);
                 return;
@@ -28601,11 +28661,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             const headerUser = document.getElementById('header-user');
             const headerVersion = document.getElementById('header-version');
-            const searchRow = document.getElementById('global-header-search-row');
-            const title = document.getElementById('global-header-view-title');
-            const backBtn = document.getElementById('global-header-inline-back');
-            const searchSlot = document.getElementById('global-header-search-slot');
-            const inlineTitle = document.getElementById('global-header-inline-title');
             if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
             if (headerVersion) headerVersion.innerText = APP_VERSION;
             syncGoogleScriptButton();
@@ -28618,8 +28673,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (searchRow) searchRow.classList.remove('hidden');
                 searchSlot.classList.remove('hidden');
                 searchSlot.appendChild(chromeState.searchContainer);
+                syncGlobalHeaderSearchOwnership(chromeState.searchContainer);
                 if (inlineTitle) inlineTitle.classList.add('hidden');
             } else {
+                syncGlobalHeaderSearchOwnership(null);
                 if (searchSlot) searchSlot.classList.add('hidden');
                 if (inlineTitle) inlineTitle.classList.toggle('hidden', chromeState.currentView === 'home');
                 if (searchRow) searchRow.classList.toggle('hidden', chromeState.currentView === 'home');
@@ -67477,6 +67534,8 @@ function toggleDriveQuickRequestItem(domId) {
                     });
                 }
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
+                syncGlobalHeaderChrome({ reason: `view-reuse:${nextViewId}`, force: true });
+                scheduleStickyRailOffsetSync(`view-reuse:${nextViewId}`, true);
                 schedulePrimaryViewChromeRefresh(nextViewId, {
                     delay: 0,
                 requestSyncDelay: nextViewId === 'request' ? 120 : 0,
@@ -67496,6 +67555,8 @@ function toggleDriveQuickRequestItem(domId) {
                 showOnlyPrimaryView(nextViewId);
                 repairAppShellScrollState(`view-switch:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
                 updateFooterNavState();
+                syncGlobalHeaderChrome({ reason: `view-switch:${nextViewId}`, force: true });
+                scheduleStickyRailOffsetSync(`view-switch:${nextViewId}`, true);
                 if (needsTargetRender) {
                     const runTargetRender = () => {
                         if (!isLatestViewRenderToken(nextViewId, renderToken)) {
