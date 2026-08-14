@@ -1,4 +1,4 @@
-const APP_VERSION = 'V2026.08.13.v2.07';
+const APP_VERSION = 'V2026.08.13.v2.08';
 const CACHE_NAME = `gnc-field-v2-${APP_VERSION}`;
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest'];
 

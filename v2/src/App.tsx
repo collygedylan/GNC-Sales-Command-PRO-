@@ -3,24 +3,31 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  Boxes,
   Camera,
   CheckCircle2,
   ClipboardList,
   Cloud,
+  Grid3X3,
   Hammer,
   Handshake,
   Home,
+  Image as ImageIcon,
   Leaf,
   Loader2,
   Menu,
   MessageCircle,
+  Moon,
   RefreshCw,
+  Rows3,
   Search,
   ShieldCheck,
   ShoppingBag,
   Store,
+  Sun,
   Trash2,
   Truck,
+  UserRound,
   XCircle
 } from 'lucide-react';
 import {
@@ -46,7 +53,8 @@ import {
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
 type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
-type RequestDisplayMode = 'cards' | 'grid';
+type DisplayMode = 'cards' | 'grid';
+type ThemeMode = 'light' | 'dark';
 type RequestColumnKey = 'item' | 'common' | 'loc' | 'lot' | 'size' | 'src' | 'pri' | 'qty' | 'hand' | 'review' | 'avail' | 'open' | 'rep' | 'customer';
 
 const tabs: Array<{ id: TabId; label: string }> = [
@@ -68,8 +76,10 @@ const navItems: Array<{ id: ViewId; label: string; icon: typeof Home }> = [
   { id: 'bloom', label: 'Bloom', icon: ShoppingBag }
 ];
 
+const DISPLAY_KEY_PREFIX = 'gnc:v2:display-mode:';
 const REQUEST_DISPLAY_KEY_PREFIX = 'gnc:v2:request-display:';
 const REQUEST_COLUMNS_KEY_PREFIX = 'gnc:v2:request-columns:';
+const THEME_KEY_PREFIX = 'gnc:v2:theme:';
 
 const requestGridColumns: Array<{ key: RequestColumnKey; label: string; className?: string; render: (row: RequestRow) => string | number }> = [
   { key: 'item', label: 'Item', render: row => field(row, ['ITEMCODE', 'itemcode'], String(uniqueId(row) || '-')) },
@@ -90,23 +100,48 @@ const requestGridColumns: Array<{ key: RequestColumnKey; label: string; classNam
 
 const defaultRequestColumnKeys = requestGridColumns.map(column => column.key);
 
-function requestDisplayKey(session: Session | null) {
+function displayModeKey(session: Session | null) {
+  return `${DISPLAY_KEY_PREFIX}${session?.username || 'demo'}`;
+}
+
+function legacyRequestDisplayKey(session: Session | null) {
   return `${REQUEST_DISPLAY_KEY_PREFIX}${session?.username || 'demo'}`;
 }
 
-function readRequestDisplayMode(session: Session | null): RequestDisplayMode {
+function readDisplayMode(session: Session | null): DisplayMode {
   try {
-    return localStorage.getItem(requestDisplayKey(session)) === 'grid' ? 'grid' : 'cards';
+    const stored = localStorage.getItem(displayModeKey(session)) || localStorage.getItem(legacyRequestDisplayKey(session));
+    return stored === 'grid' ? 'grid' : 'cards';
   } catch {
     return 'cards';
   }
 }
 
-function storeRequestDisplayMode(session: Session | null, mode: RequestDisplayMode) {
+function storeDisplayMode(session: Session | null, mode: DisplayMode) {
   try {
-    localStorage.setItem(requestDisplayKey(session), mode);
+    localStorage.setItem(displayModeKey(session), mode);
   } catch {
     // Display mode is a convenience setting; ignore private-mode storage failures.
+  }
+}
+
+function themeModeKey(session: Session | null) {
+  return `${THEME_KEY_PREFIX}${session?.username || 'demo'}`;
+}
+
+function readThemeMode(session: Session | null): ThemeMode {
+  try {
+    return localStorage.getItem(themeModeKey(session)) === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+function storeThemeMode(session: Session | null, mode: ThemeMode) {
+  try {
+    localStorage.setItem(themeModeKey(session), mode);
+  } catch {
+    // Theme is local-only; ignore private-mode storage failures.
   }
 }
 
@@ -184,7 +219,8 @@ export function App() {
   const [toast, setToast] = useState('');
   const [undoRemove, setUndoRemove] = useState<RequestRow | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [requestDisplayMode, setRequestDisplayMode] = useState<RequestDisplayMode>(() => readRequestDisplayMode(readStoredSession()));
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(() => readDisplayMode(readStoredSession()));
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode(readStoredSession()));
   const [requestColumnKeys, setRequestColumnKeys] = useState<RequestColumnKey[]>(() => readRequestColumnKeys(readStoredSession()));
   const isPhoneViewport = usePhoneViewport();
   const topRef = useRef<HTMLDivElement | null>(null);
@@ -233,13 +269,19 @@ export function App() {
   }, [session, demoMode]);
 
   useEffect(() => {
-    setRequestDisplayMode(readRequestDisplayMode(session));
+    setDisplayMode(readDisplayMode(session));
+    setThemeMode(readThemeMode(session));
     setRequestColumnKeys(readRequestColumnKeys(session));
   }, [session?.username]);
 
-  const updateRequestDisplayMode = (mode: RequestDisplayMode) => {
-    setRequestDisplayMode(mode);
-    storeRequestDisplayMode(session, mode);
+  const updateDisplayMode = (mode: DisplayMode) => {
+    setDisplayMode(mode);
+    storeDisplayMode(session, mode);
+  };
+
+  const updateThemeMode = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    storeThemeMode(session, mode);
   };
 
   const updateRequestColumnKeys = (next: RequestColumnKey[]) => {
@@ -258,8 +300,8 @@ export function App() {
   const title = detailRow ? 'Item Detail' : view === 'request' ? 'Que' : view === 'home' ? 'Home' : labelForView(view);
   const activeShellView = detailRow ? 'detail' : view;
   const showTopSearch = Boolean(detailRow) || view !== 'home';
-  const allowRequestGrid = !isPhoneViewport;
-  const effectiveRequestDisplayMode = allowRequestGrid ? requestDisplayMode : 'cards';
+  const allowGrid = !isPhoneViewport;
+  const effectiveDisplayMode = allowGrid ? displayMode : 'cards';
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows
@@ -282,7 +324,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell app-view-${activeShellView}`}>
+    <div className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''}`}>
       <div className="top-chrome" ref={topRef}>
         <div className="brand-strip">
           <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : openView('home')}>
@@ -304,6 +346,7 @@ export function App() {
             </div>
           ) : null}
           <div className="status-cluster">
+            {demoMode ? <span className="demo-pill">Demo Safe</span> : null}
             <span className="version-pill">{APP_VERSION}</span>
             <span className="auto-pill">AUTO</span>
             <span className="auto-count">AUTO {Math.min(rows.length, 7)}/7</span>
@@ -351,18 +394,18 @@ export function App() {
             rows={filteredRows}
             allRows={rows}
             activeTab={activeTab}
-            displayMode={effectiveRequestDisplayMode}
-            allowGrid={allowRequestGrid}
+            displayMode={effectiveDisplayMode}
+            allowGrid={allowGrid}
             columnKeys={requestColumnKeys}
             loading={loading}
             onTab={tab => { setActiveTab(tab); scrollerRef.current?.scrollTo({ top: 0 }); }}
-            onDisplayMode={updateRequestDisplayMode}
+            onDisplayMode={updateDisplayMode}
             onOpen={row => { setDetailRow(row); scrollerRef.current?.scrollTo({ top: 0 }); }}
             onRemove={(row) => removeRow(row, session, demoMode, setRows, setToast, setUndoRemove)}
             onRefresh={reloadRows}
           />
         ) : (
-          <ModulePlaceholder view={view} />
+          <ModuleWorkspace view={view} displayMode={effectiveDisplayMode} allowGrid={allowGrid} demoMode={demoMode} />
         )}
       </main>
 
@@ -387,30 +430,41 @@ export function App() {
             </div>
             <div className="drawer-mode">
               <span>Mode</span>
-              <strong>FIELD</strong>
+              <strong>{demoMode ? 'DEMO' : 'FIELD'}</strong>
             </div>
             <div className="drawer-stat">
               <span>Shell</span>
               <strong>{APP_VERSION}</strong>
             </div>
             <div className="drawer-stat">
+              <span>Data Source</span>
+              <strong>{demoMode ? 'Sandbox' : 'Live'}</strong>
+            </div>
+            <div className="drawer-preference">
+              <span>Theme</span>
+              <div className="segmented-control icon-control">
+                <button type="button" className={themeMode === 'light' ? 'active' : ''} onClick={() => updateThemeMode('light')}><Sun size={16} /> Light</button>
+                <button type="button" className={themeMode === 'dark' ? 'active' : ''} onClick={() => updateThemeMode('dark')}><Moon size={16} /> Dark</button>
+              </div>
+            </div>
+            <div className="drawer-stat">
               <span>Auto Sync</span>
               <strong>AUTO {Math.min(rows.length, 7)}/7</strong>
             </div>
             <div className="drawer-preference">
-              <span>Request View</span>
-              {allowRequestGrid ? (
-                <div className="segmented-control">
-                  <button type="button" className={requestDisplayMode === 'cards' ? 'active' : ''} onClick={() => updateRequestDisplayMode('cards')}>Cards</button>
-                  <button type="button" className={requestDisplayMode === 'grid' ? 'active' : ''} onClick={() => updateRequestDisplayMode('grid')}>Grid</button>
+              <span>View Style</span>
+              {allowGrid ? (
+                <div className="segmented-control icon-control">
+                  <button type="button" className={displayMode === 'cards' ? 'active' : ''} onClick={() => updateDisplayMode('cards')}><Rows3 size={16} /> Cards</button>
+                  <button type="button" className={displayMode === 'grid' ? 'active' : ''} onClick={() => updateDisplayMode('grid')}><Grid3X3 size={16} /> Grid</button>
                 </div>
               ) : (
                 <strong>Cards on phone</strong>
               )}
             </div>
-            {allowRequestGrid ? (
+            {allowGrid ? (
               <details className="drawer-columns" open>
-                <summary>Field Columns</summary>
+                <summary>Request Grid Columns</summary>
                 <div className="drawer-column-list">
                   {requestGridColumns.map(column => (
                     <label className="drawer-column-option" key={column.key}>
@@ -463,7 +517,7 @@ function LoginScreen({ onLogin, onDemo }: { onLogin: (session: Session) => void;
         <input value={password} onChange={event => setPassword(event.target.value)} placeholder="Password" type="password" />
         {error ? <div className="banner error">{error}</div> : null}
         <button className="primary-button" disabled={busy || !username || !password}>{busy ? 'Signing in...' : 'Sign In'}</button>
-        <button className="ghost-button" type="button" onClick={onDemo}>Open demo data</button>
+        <button className="ghost-button" type="button" onClick={onDemo}>Open demo sandbox</button>
       </form>
     </div>
   );
@@ -506,12 +560,12 @@ function RequestView(props: {
   rows: RequestRow[];
   allRows: RequestRow[];
   activeTab: TabId;
-  displayMode: RequestDisplayMode;
+  displayMode: DisplayMode;
   allowGrid: boolean;
   columnKeys: RequestColumnKey[];
   loading: boolean;
   onTab: (tab: TabId) => void;
-  onDisplayMode: (mode: RequestDisplayMode) => void;
+  onDisplayMode: (mode: DisplayMode) => void;
   onOpen: (row: RequestRow) => void;
   onRemove: (row: RequestRow) => void;
   onRefresh: () => void;
@@ -541,8 +595,8 @@ function RequestView(props: {
           <div className="request-action-buttons">
             {props.allowGrid ? (
               <div className="segmented-control small" aria-label="Request display mode">
-                <button type="button" className={props.displayMode === 'cards' ? 'active' : ''} onClick={() => props.onDisplayMode('cards')}>Cards</button>
-                <button type="button" className={props.displayMode === 'grid' ? 'active' : ''} onClick={() => props.onDisplayMode('grid')}>Grid</button>
+                <button type="button" className={props.displayMode === 'cards' ? 'active' : ''} onClick={() => props.onDisplayMode('cards')}><Rows3 size={16} /> Cards</button>
+                <button type="button" className={props.displayMode === 'grid' ? 'active' : ''} onClick={() => props.onDisplayMode('grid')}><Grid3X3 size={16} /> Grid</button>
               </div>
             ) : null}
             <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
@@ -607,7 +661,7 @@ function RequestCard({ row, onOpen, onRemove }: { row: RequestRow; onOpen: () =>
           <span className="color-chip">{field(row, ['COLOR', 'color', 'DESIGCUST', 'desigcust'], '')}</span>
           <strong>{field(row, ['CONTSIZE', 'contsize'], '')}</strong>
           <span>{field(row, ['SRC', 'src'], '')}</span>
-          <div className="photo-box">No Photo</div>
+          <ModernPhoto row={row} />
         </div>
       </div>
       <div className="chip-grid">
@@ -728,7 +782,7 @@ function RequestDetail(props: {
             <h1>{field(props.row, ['COMMONNAME', 'commonname'], 'Unnamed item')}</h1>
             <a>{field(props.row, ['LOCATIONCODE', 'locationcode'], '-')}</a>
           </div>
-          <div className="photo-box large">No Photo</div>
+          <ModernPhoto row={props.row} large />
         </div>
         <div className="field-grid">
           <ReadOnlyField label="PRI" value={field(props.row, ['PRI', 'priority'], '-')} />
@@ -817,13 +871,92 @@ function NavButton({ item, active, onOpen }: { item: { id: ViewId; label: string
   return <button type="button" onClick={() => onOpen(item.id)} className={`nav-item ${active ? 'active' : ''}`}><Icon size={28} /><span>{item.label}</span></button>;
 }
 
-function ModulePlaceholder({ view }: { view: ViewId }) {
+type ModulePreviewRow = {
+  title: string;
+  meta: string;
+  owner: string;
+  status: string;
+  quantity: string;
+  tone: 'green' | 'blue' | 'purple' | 'orange' | 'warning';
+};
+
+function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: ViewId; displayMode: DisplayMode; allowGrid: boolean; demoMode: boolean }) {
+  const rows = modulePreviewRows(view);
+  const isGrid = allowGrid && displayMode === 'grid';
   return (
-    <section className="placeholder">
-      <h1>{labelForView(view)}</h1>
-      <p>This `/v2` beta is focused on the iPhone Safari Que Request flow first. Continue using the live root app for this module until it is rebuilt.</p>
+    <section className="module-workspace">
+      <div className="module-workspace-head">
+        <div>
+          <span>{demoMode ? 'Sandbox Workflow' : 'Field Workflow'}</span>
+          <h1>{labelForView(view)}</h1>
+        </div>
+        <div className="workspace-mode-pill">{isGrid ? <Grid3X3 size={16} /> : <Rows3 size={16} />}{isGrid ? 'Grid' : 'Cards'}</div>
+      </div>
+      {isGrid ? (
+        <div className="module-grid-wrap">
+          <table className="module-grid-table">
+            <thead>
+              <tr><th>Work Item</th><th>Location</th><th>Owner</th><th>Status</th><th>Qty</th></tr>
+            </thead>
+            <tbody>
+              {rows.map(row => (
+                <tr key={row.title}>
+                  <td>{row.title}</td>
+                  <td>{row.meta}</td>
+                  <td>{row.owner}</td>
+                  <td><Chip tone={row.tone} label={row.status} /></td>
+                  <td>{row.quantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="module-card-list">
+          {rows.map(row => (
+            <article className="module-preview-card" key={row.title}>
+              <div className="module-preview-icon"><Boxes size={24} /></div>
+              <div>
+                <h2>{row.title}</h2>
+                <p>{row.meta}</p>
+                <span><UserRound size={15} /> {row.owner}</span>
+              </div>
+              <div className="module-preview-side">
+                <Chip tone={row.tone} label={row.status} />
+                <strong>{row.quantity}</strong>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
+}
+
+function ModernPhoto({ row, large = false }: { row: RequestRow; large?: boolean }) {
+  const url = field(row, ['REQ_PHOTO_LINK', 'req_photo_link', 'PHOTO_URL', 'photo_url', 'IMAGE_URL', 'image_url']);
+  const name = field(row, ['COMMONNAME', 'commonname'], 'Item');
+  return (
+    <div className={`media-frame ${large ? 'large' : ''}`}>
+      {url ? (
+        <img src={url} alt="" loading="lazy" />
+      ) : (
+        <div className="media-placeholder">
+          <ImageIcon size={large ? 34 : 26} />
+          <span>{mediaInitials(name)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function mediaInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || 'AG';
 }
 
 function Chip({ label, tone = 'neutral' }: { label: string; tone?: 'neutral' | 'green' | 'blue' | 'purple' | 'orange' | 'warning' }) {
@@ -860,6 +993,79 @@ function labelForView(view: ViewId) {
     production: 'Production',
     reports: 'Reports'
   } as Record<ViewId, string>)[view];
+}
+
+function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
+  const base: Record<ViewId, ModulePreviewRow[]> = {
+    home: [],
+    request: [],
+    drive: [
+      { title: 'Stop 60 - Dothan Nurseries', meta: 'Dock 34 | AL route', owner: 'Toby Brown', status: 'Open Stop', quantity: '27 rows', tone: 'blue' },
+      { title: 'Acoma Crape Myrtle', meta: 'H.03.000 | Lot 27.F1', owner: 'Kayla Knepp', status: 'Pull Ready', quantity: '94', tone: 'green' },
+      { title: 'Green Sargent Juniper', meta: 'C.05.000 | Lot 27.F1', owner: 'Brian Hatfield', status: 'Review', quantity: '48', tone: 'warning' }
+    ],
+    tasks: [
+      { title: 'AV Blanks - Block A', meta: 'Current Season | #3 and #5', owner: 'Dylan Collyge', status: 'Active', quantity: '45 items', tone: 'green' },
+      { title: 'Photo, spec, and PRI check', meta: 'Big Blue Liriope | E.07.000', owner: 'Kayla Knepp', status: 'Open', quantity: '939', tone: 'blue' },
+      { title: 'Hold risk review', meta: 'Compact Andorra Juniper | K.03.000', owner: 'JD Jones', status: 'Hold', quantity: '235', tone: 'warning' }
+    ],
+    docks: [
+      { title: 'Dock 34', meta: 'Checker / inspector pending', owner: 'Tracey Tapscott', status: 'Loading', quantity: '85 items', tone: 'blue' },
+      { title: 'Drop Off', meta: 'Retail transfer queue', owner: 'Megan Kelly', status: 'Queued', quantity: '18 rows', tone: 'purple' },
+      { title: 'Mistake Review', meta: 'Customer and lot mismatch', owner: 'Mitch Kaiser', status: 'Needs Review', quantity: '1', tone: 'warning' }
+    ],
+    comm: [
+      { title: 'kayla_knepp', meta: 'Screenshot please, text it to my phone', owner: '2 members', status: 'New', quantity: 'Jul 2', tone: 'blue' },
+      { title: 'tony_bono', meta: 'Will get shortly.', owner: '2 members', status: 'Open', quantity: 'Jun 15', tone: 'green' },
+      { title: 'test_test', meta: 'Hey', owner: '4 members', status: 'Read', quantity: 'May 30', tone: 'purple' }
+    ],
+    bloom: [
+      { title: 'Bloom Picker Orders', meta: 'Retail and house picks', owner: 'Office', status: 'Ready', quantity: '12 orders', tone: 'green' },
+      { title: 'Photo Match Review', meta: 'Rows missing request images', owner: 'AV Team', status: 'Review', quantity: '6 rows', tone: 'warning' },
+      { title: 'No Photos', meta: 'Available plants without images', owner: 'Field', status: 'Open', quantity: '34', tone: 'blue' }
+    ],
+    inventory: [
+      { title: 'Crop Roll', meta: 'Blocks A through F', owner: 'Inventory Office', status: 'Current', quantity: '674 rows', tone: 'green' },
+      { title: 'PO Management', meta: 'HL PO 27F1', owner: 'Managers', status: 'Built', quantity: '234 rows', tone: 'blue' },
+      { title: 'Weather & Hold Risk', meta: 'Heat sensitive rows', owner: 'Grower Team', status: 'Watch', quantity: '9', tone: 'warning' }
+    ],
+    managers: [
+      { title: 'Approval', meta: 'Shear and NCR approvals', owner: 'Dylan Collyge', status: 'Active', quantity: '2 queues', tone: 'green' },
+      { title: 'Shortage / Cancel', meta: 'Dylan only', owner: 'Managers', status: 'Clean', quantity: '0 net', tone: 'blue' },
+      { title: 'Labor Hours', meta: 'Daily field check', owner: 'Mitch Kaiser', status: 'Due', quantity: 'Today', tone: 'warning' }
+    ],
+    sales: [
+      { title: 'Season Sales Notes', meta: 'Lavender and blue color runs', owner: 'Sales Team', status: 'Open', quantity: '31 notes', tone: 'purple' },
+      { title: 'Customer Holds', meta: 'Oakland Garden Center', owner: 'Annette Hancock', status: 'Hold', quantity: '14', tone: 'warning' },
+      { title: 'Rep Follow Up', meta: 'Coastal Landscape', owner: 'Wes Lugas', status: 'Today', quantity: '8 rows', tone: 'green' }
+    ],
+    building: [
+      { title: 'Cart Bay', meta: 'Door hardware and signage', owner: 'Building', status: 'Open', quantity: '3 tasks', tone: 'blue' },
+      { title: 'Dock Extension', meta: 'South staging lane', owner: 'Managers', status: 'Review', quantity: '1', tone: 'warning' },
+      { title: 'Office Repair', meta: 'Inventory printer station', owner: 'Office', status: 'Ready', quantity: '2 tasks', tone: 'green' }
+    ],
+    qc: [
+      { title: 'NCR Approvals', meta: 'Quality review', owner: 'QC', status: 'Review', quantity: '7', tone: 'warning' },
+      { title: 'Photo Standards', meta: 'Request image check', owner: 'Kayla Knepp', status: 'Open', quantity: '12', tone: 'blue' },
+      { title: 'Spec Confirmed', meta: 'Container size verification', owner: 'Grower Team', status: 'Passed', quantity: '45', tone: 'green' }
+    ],
+    office: [
+      { title: 'Inventory Office', meta: 'Location move review', owner: 'Office', status: 'Open', quantity: '22 rows', tone: 'blue' },
+      { title: 'Reports Queue', meta: 'Daily exports', owner: 'Dylan Collyge', status: 'Ready', quantity: '5', tone: 'green' },
+      { title: 'Customer Cards', meta: 'Consignee cleanup', owner: 'Megan Kelly', status: 'Review', quantity: '18', tone: 'warning' }
+    ],
+    production: [
+      { title: 'Block Clearing', meta: 'A and C blocks', owner: 'Production', status: 'Active', quantity: '96 rows', tone: 'green' },
+      { title: 'Crop Roll Review', meta: 'Pot count variance', owner: 'Grower Team', status: 'Review', quantity: '11', tone: 'warning' },
+      { title: 'Weather Hold', meta: 'Heat forecast', owner: 'Managers', status: 'Watch', quantity: '3 blocks', tone: 'orange' }
+    ],
+    reports: [
+      { title: 'Daily Request Summary', meta: 'Auto 5/7 sync', owner: 'Dylan Collyge', status: 'Ready', quantity: 'Today', tone: 'green' },
+      { title: 'Open Stock Audit', meta: 'High variance items', owner: 'Inventory', status: 'Open', quantity: '27 rows', tone: 'blue' },
+      { title: 'Completion History', meta: 'Photo/spec updates', owner: 'Field', status: 'Export', quantity: 'CSV', tone: 'purple' }
+    ]
+  };
+  return base[view] || [];
 }
 
 function tabLabel(tab: TabId) {
