@@ -1,4 +1,4 @@
-export const APP_VERSION = 'V2026.08.13.v2.09';
+export const APP_VERSION = 'V2026.08.13.v2.10';
 export const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 export const APP_API_URL = `${SUPABASE_URL}/functions/v1/app-api`;
 export const REQUEST_TABLE = 'ph_active_request';
