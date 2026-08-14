@@ -318,7 +318,8 @@ export function App() {
     scrollerRef.current?.scrollTo({ top: 0 });
   };
 
-  const title = detailRow ? 'Item Detail' : moduleDetail ? moduleDetail.row.title : view === 'request' ? 'Que' : view === 'home' ? 'Home' : labelForView(view);
+  const itemWorkflowDetail = Boolean(moduleDetail && ['drive', 'tasks', 'inventory'].includes(moduleDetail.view));
+  const title = detailRow || itemWorkflowDetail ? 'Item Detail' : moduleDetail ? moduleDetail.row.title : view === 'request' ? 'Que' : view === 'home' ? 'Home' : labelForView(view);
   const activeShellView = detailRow ? 'detail' : moduleDetail ? 'module-detail' : view;
   const showTopSearch = Boolean(detailRow || moduleDetail) || view !== 'home';
   const allowGrid = !isPhoneViewport;
@@ -395,13 +396,22 @@ export function App() {
           />
         ) : null}
         {moduleDetail ? (
-          <ModuleDetail
-            view={moduleDetail.view}
-            row={moduleDetail.row}
-            demoMode={SANDBOX_ONLY || demoMode}
-            onBack={() => { setModuleDetail(null); scrollerRef.current?.scrollTo({ top: 0 }); }}
-            onToast={setToast}
-          />
+          ['drive', 'tasks', 'inventory'].includes(moduleDetail.view) ? (
+            <ItemWorkflowDetail
+              view={moduleDetail.view}
+              row={moduleDetail.row}
+              onBack={() => { setModuleDetail(null); scrollerRef.current?.scrollTo({ top: 0 }); }}
+              onToast={setToast}
+            />
+          ) : (
+            <ModuleDetail
+              view={moduleDetail.view}
+              row={moduleDetail.row}
+              demoMode={SANDBOX_ONLY || demoMode}
+              onBack={() => { setModuleDetail(null); scrollerRef.current?.scrollTo({ top: 0 }); }}
+              onToast={setToast}
+            />
+          )
         ) : detailRow ? (
           <RequestDetail
             row={detailRow}
@@ -430,6 +440,8 @@ export function App() {
             onRemove={(row) => removeRow(row, session, SANDBOX_ONLY || demoMode, setRows, setToast, setUndoRemove)}
             onRefresh={reloadRows}
           />
+        ) : view === 'tasks' ? (
+          <TasksWorkspace onOpen={row => { setModuleDetail({ view: 'tasks', row }); scrollerRef.current?.scrollTo({ top: 0 }); }} />
         ) : view === 'comm' ? (
           <CommunicationView demoMode={SANDBOX_ONLY || demoMode} />
         ) : (
@@ -987,6 +999,201 @@ type ModulePreviewRow = {
   };
 };
 
+function TasksWorkspace({ onOpen }: { onOpen: (row: ModulePreviewRow) => void }) {
+  const [activeBlock, setActiveBlock] = useState<string | null>(null);
+  const blocks = [
+    { id: 'A', count: 45 },
+    { id: 'B', count: 84 },
+    { id: 'C', count: 201 },
+    { id: 'D', count: 225 },
+    { id: 'E', count: 119 }
+  ];
+  const taskRows: ModulePreviewRow[] = activeBlock ? [
+    {
+      title: 'Colorama Scarlet Crapemyrtle Tree',
+      meta: `${activeBlock}.01.000 | Lot 26.F1 | #15`,
+      owner: 'Dylan Collyge',
+      status: 'Open',
+      quantity: '40',
+      tone: 'blue',
+      filter: 'open',
+      detail: { fields: [{ label: 'Item code', value: '010705.150.1' }, { label: 'Task', value: 'AV Blanks' }], notes: ['Verify photo, specification, and priority.'] }
+    },
+    {
+      title: 'Green Machine Redbud',
+      meta: `${activeBlock}.01.000 | Lot 26.F1 | #25`,
+      owner: 'Megan Kelly',
+      status: 'Review',
+      quantity: '3',
+      tone: 'orange',
+      filter: 'review',
+      detail: { fields: [{ label: 'Item code', value: '010370.250.1' }, { label: 'Task', value: 'AV Blanks' }], notes: ['Confirm current size and location photo.'] }
+    },
+    {
+      title: 'Grey Guardian Juniper Wreath',
+      meta: `${activeBlock}.01.000 | Lot 27.F1 | 2DP`,
+      owner: 'Mitch Kaiser',
+      status: 'Active',
+      quantity: '300',
+      tone: 'green',
+      filter: 'active',
+      detail: { fields: [{ label: 'Item code', value: '011732.021.1' }, { label: 'Task', value: 'AV Blanks' }], notes: ['Review availability and block placement.'] }
+    }
+  ] : [];
+
+  return (
+    <section className="tasks-workspace">
+      <div className="task-breadcrumb">AV BLANKS &gt; {activeBlock ? `BLOCK ${activeBlock}` : 'ALL'}</div>
+      <div className="task-filter-grid" aria-label="Task filters">
+        {[
+          ['Task View', 'AV Blanks'],
+          ['Contsize', 'All Sizes'],
+          ['Genus', 'All Genus'],
+          ['Task Filter', 'All']
+        ].map(([label, value]) => (
+          <label className="filter-select compact" key={label}>
+            <span>{label}</span>
+            <select defaultValue={value}><option>{value}</option></select>
+            <ChevronDown size={16} />
+          </label>
+        ))}
+      </div>
+      {activeBlock ? (
+        <>
+          <button type="button" className="task-back" onClick={() => setActiveBlock(null)}><ArrowLeft size={18} /> All blocks</button>
+          <div className="live-card-list task-item-list">
+            {taskRows.map(row => (
+              <button type="button" className="live-work-card task-item-card" key={row.title} onClick={() => onOpen(row)}>
+                <span className={`work-card-rail tone-${row.tone}`} />
+                <span className="work-card-icon"><ClipboardList size={22} /></span>
+                <span className="work-card-main"><strong>{row.title}</strong><span>{row.meta}</span><small><UserRound size={14} /> {row.owner}</small></span>
+                <span className="work-card-side"><span className={`status-chip tone-${row.tone}`}>{row.status}</span><strong>{row.quantity}</strong><small>OPEN <ChevronRight size={15} /></small></span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="task-block-list">
+          {blocks.map(block => (
+            <button type="button" className="task-block-row" key={block.id} onClick={() => setActiveBlock(block.id)}>
+              <span className="task-block-letter">{block.id}</span>
+              <strong>Block {block.id}</strong>
+              <span>{block.count} items</span>
+              <ChevronRight size={20} />
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ItemWorkflowDetail({
+  view,
+  row,
+  onBack,
+  onToast
+}: {
+  view: ViewId;
+  row: ModulePreviewRow;
+  onBack: () => void;
+  onToast: (message: string) => void;
+}) {
+  const tabs = ['ITEM DETAILS', 'INVENTORY EDITS', 'CUSTOMER / CONSIGNEE', 'NOTES & ACTIONS', 'ITEM INQUIRY', 'LOCATION'] as const;
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('ITEM DETAILS');
+  const [season, setSeason] = useState('27');
+  const [showAv, setShowAv] = useState(false);
+  const [status, setStatus] = useState(row.status);
+  const metaParts = row.meta.split('|').map(part => part.trim());
+  const location = metaParts.find(part => /^[A-Z]\.\d/.test(part)) || metaParts[1] || 'H.03.000';
+  const lot = metaParts.find(part => /^Lot/i.test(part))?.replace(/^Lot\s*/i, '') || '27.F1';
+  const itemCode = row.detail?.fields?.find(item => item.label.toLowerCase().includes('item'))?.value || '003746.030.1';
+  const avRows = [
+    { id: 'R3', salesYear: 27, blockAlpha: 'H', blockNumber: 3, location: 'H.03.000', lot: '27.F1', hand: 94, review: 0, available: 94, open: 441, date: '05/11/2026', ptn: '-', note: 'Early A - 7/9 NCR 123 of 123', current: true },
+    { id: 'R1', salesYear: 27, blockAlpha: 'D', blockNumber: 26, location: 'D.26.000', lot: '27.F1', hand: 347, review: 0, available: 347, open: 441, date: '-', ptn: 'south group', note: '-', current: false },
+    { id: 'R2', salesYear: 26, blockAlpha: 'F', blockNumber: 7, location: 'F.07.000', lot: '27.U1', hand: 124, review: 0, available: 124, open: 0, date: '07/20/2026', ptn: '-', note: 'late plant 6-19-26', current: false },
+    { id: 'R4', salesYear: 28, blockAlpha: 'A', blockNumber: 2, location: 'A.02.000', lot: '28.F1', hand: 60, review: 0, available: 60, open: 0, date: '08/10/2026', ptn: '-', note: 'future season sample', current: false }
+  ].sort((a, b) => {
+    const yearRank = (year: number) => year === Number(season) ? 0 : year < Number(season) ? 100 - year : 200 + year;
+    return yearRank(a.salesYear) - yearRank(b.salesYear)
+      || a.blockAlpha.localeCompare(b.blockAlpha)
+      || a.blockNumber - b.blockNumber
+      || a.location.localeCompare(b.location)
+      || a.id.localeCompare(b.id);
+  });
+
+  const saveSandbox = (message: string) => onToast(`${message} saved in test data only.`);
+
+  return (
+    <section className="item-workflow-detail">
+      <button type="button" className="detail-inline-back" onClick={onBack}><ArrowLeft size={18} /> Back to {labelForView(view)}</button>
+      <div className="item-detail-shell">
+        <div className="item-detail-tabs" role="tablist" aria-label="Item detail sections">
+          {tabs.map(tab => <button type="button" role="tab" aria-selected={activeTab === tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)} key={tab}>{tab}</button>)}
+        </div>
+        <header className="item-detail-head">
+          <div><span className="eyebrow">{labelForView(view)} item</span><h1>{row.title}</h1><p>{itemCode} | {location} | Lot {lot}</p></div>
+          <div className="item-photo-slot"><ImageIcon size={28} /><span>NO PHOTO</span></div>
+          <div className="item-detail-status"><span className={`status-chip tone-${row.tone}`}>{status}</span><strong>{row.quantity}</strong></div>
+        </header>
+
+        {activeTab === 'ITEM DETAILS' ? (
+          <div className="item-detail-pane">
+            <div className="detail-metric-grid">
+              {[['On Hand', row.quantity], ['Review', '0'], ['Available', row.quantity], ['Open Stock', row.status === 'Request' ? '44' : '0'], ['Priority', '1'], ['Qty', row.quantity]].map(([label, value]) => <div className="detail-metric" key={label}><span>{label}</span><strong>{value}</strong></div>)}
+            </div>
+            <button type="button" className="av-options-toggle" onClick={() => setShowAv(value => !value)} aria-expanded={showAv}><span><strong>AV OPTIONS</strong><small>{itemCode} | {avRows.length} rows</small></span><ChevronDown size={20} /></button>
+            {showAv ? (
+              <div className="av-options-panel">
+                <label className="filter-select compact"><span>Sales year</span><select value={season} onChange={event => setSeason(event.target.value)}><option value="27">27</option><option value="26">26</option><option value="28">28</option></select><ChevronDown size={16} /></label>
+                <div className="av-option-list">{avRows.map(option => <button type="button" key={option.id} className={option.current ? 'current' : ''} onClick={() => onToast(`Selected ${option.location} from sales year ${option.salesYear}.`)}><span><strong>{option.location}</strong><small>SY {option.salesYear} | {option.blockAlpha}.{option.blockNumber} | Lot {option.lot}</small></span><span><b>{option.available}</b><small>available</small></span></button>)}</div>
+              </div>
+            ) : null}
+          </div>
+        ) : activeTab === 'INVENTORY EDITS' ? (
+          <div className="item-detail-pane detail-form-grid">
+            <label><span>DesigCust</span><input defaultValue="" placeholder="Customer designation" /></label>
+            <label><span>DesigItem</span><input defaultValue="" placeholder="Item designation" /></label>
+            <label><span>DesigLoc</span><input defaultValue="" placeholder="Location designation" /></label>
+            <label><span>Status</span><select value={status} onChange={event => setStatus(event.target.value)}><option>{row.status}</option><option>Review</option><option>Available</option><option>Hold Check</option></select></label>
+            <button type="button" className="primary-action" onClick={() => saveSandbox('Exact-row inventory edits')}><Save size={18} /> Save edits</button>
+          </div>
+        ) : activeTab === 'CUSTOMER / CONSIGNEE' ? (
+          <div className="item-detail-pane detail-metric-grid">
+            <div className="detail-metric"><span>Sales Rep</span><strong>{row.owner}</strong></div>
+            <div className="detail-metric"><span>Customer / Consignee</span><strong>{row.title.includes('Dawn') ? 'Coastal Landscape' : 'N/A'}</strong></div>
+            <div className="detail-metric"><span>Assignment</span><strong>{labelForView(view)}</strong></div>
+            <div className="detail-metric"><span>Reserve</span><strong>No</strong></div>
+          </div>
+        ) : activeTab === 'NOTES & ACTIONS' ? (
+          <div className="item-detail-pane detail-form-grid">
+            <label className="span-full"><span>Work note</span><textarea defaultValue={row.detail?.notes?.[0] || 'Review this row using the live workflow.'} /></label>
+            <div className="detail-history span-full"><div><span>Loaded</span><strong>Fixture data</strong></div><div><span>Last sync</span><strong>Test mode</strong></div><div><span>Safety</span><strong>No emails or production writes</strong></div></div>
+            <button type="button" className="primary-action" onClick={() => saveSandbox('Work note')}><Save size={18} /> Save note</button>
+            <button type="button" className="commit-action" onClick={() => onToast('Commit recorded in sandbox test state.')}><CheckCircle2 size={18} /> Commit</button>
+          </div>
+        ) : activeTab === 'ITEM INQUIRY' ? (
+          <div className="item-detail-pane item-inquiry-scroll">
+            <div className="item-inquiry-grid item-inquiry-header"><span>ROW</span><span>LOT</span><span>LOCATION</span><span>SRC</span><span>PRI</span><span>HAND</span><span>REV</span><span>AVAIL</span><span>OPEN</span></div>
+            {avRows.map(option => (
+              <div className={`item-inquiry-row ${option.current ? 'current' : ''}`} key={option.id}>
+                <div className="item-inquiry-grid"><strong>{option.id}{option.current ? '*' : ''}</strong><strong>{option.lot}</strong><strong>{option.location}</strong><span>LD</span><span>-</span><strong>{option.hand}</strong><strong>{option.review}</strong><strong>{option.available}</strong><strong>{option.open}</strong></div>
+                <div className="item-inquiry-notes"><span><small>Date</small>{option.date}</span><span><small>PTN1</small>{option.ptn}</span><span className="wide"><small>Location Note</small>{option.note}</span></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="item-detail-pane detail-metric-grid">
+            <div className="detail-metric"><span>Location</span><strong>{location}</strong></div>
+            <div className="detail-metric"><span>Lot</span><strong>{lot}</strong></div>
+            <div className="detail-metric"><span>Block Alpha</span><strong>{location.split('.')[0]}</strong></div>
+            <div className="detail-metric"><span>Current Row</span><strong>{avRows.find(option => option.current)?.id || 'R1'}</strong></div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 function ModuleWorkspace({
   view,
   displayMode,
