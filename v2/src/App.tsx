@@ -6,6 +6,7 @@ import {
   Boxes,
   Camera,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
   Cloud,
   Grid3X3,
@@ -36,7 +37,6 @@ import {
   RequestRow,
   Session,
   demoRows,
-  fetchRequestRows,
   field,
   isArchived,
   isCompleted,
@@ -56,6 +56,18 @@ type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
 type DisplayMode = 'cards' | 'grid';
 type ThemeMode = 'light' | 'dark';
 type RequestColumnKey = 'item' | 'common' | 'loc' | 'lot' | 'size' | 'src' | 'pri' | 'qty' | 'hand' | 'review' | 'avail' | 'open' | 'rep' | 'customer';
+type ModuleFilter = { id: string; label: string };
+type MessageThread = {
+  id: string;
+  title: string;
+  preview: string;
+  date: string;
+  members: string;
+  unread?: boolean;
+  messages: Array<{ from: string; body: string; time: string }>;
+};
+
+const SANDBOX_ONLY = true;
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'request', label: 'Request' },
@@ -208,7 +220,7 @@ function useChunkedRows<T>(rows: T[], batch = 30) {
 
 export function App() {
   const [session, setSession] = useState<Session | null>(() => readStoredSession());
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode, setDemoMode] = useState(SANDBOX_ONLY);
   const [view, setView] = useState<ViewId>('home');
   const [activeTab, setActiveTab] = useState<TabId>('request');
   const [rows, setRows] = useState<RequestRow[]>([]);
@@ -248,15 +260,16 @@ export function App() {
   }, []);
 
   const reloadRows = async () => {
-    if (demoMode) {
+    if (SANDBOX_ONLY || demoMode) {
       setRows(demoRows());
+      setError('');
       return;
     }
     if (!session) return;
     setLoading(true);
     setError('');
     try {
-      setRows(await fetchRequestRows(session));
+      setRows(demoRows());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load request rows');
     } finally {
@@ -346,9 +359,8 @@ export function App() {
             </div>
           ) : null}
           <div className="status-cluster">
-            {demoMode ? <span className="demo-pill">Demo Safe</span> : null}
+            {SANDBOX_ONLY || demoMode ? <span className="demo-pill">Test Data</span> : null}
             <span className="version-pill">{APP_VERSION}</span>
-            <span className="auto-pill">AUTO</span>
             <span className="auto-count">AUTO {Math.min(rows.length, 7)}/7</span>
           </div>
         </div>
@@ -364,7 +376,7 @@ export function App() {
               onClick: () => {
                 const row = undoRemove;
                 setRows(current => current.map(item => uniqueId(item) === uniqueId(row) ? { ...item, REQ_ARCHIVED: false, REQ_ARCHIVED_AT: null } : item));
-                if (!demoMode && session) {
+                if (!SANDBOX_ONLY && !demoMode && session) {
                   void patchRow(session, REQUEST_TABLE, uniqueId(row), { REQ_ARCHIVED: false, REQ_ARCHIVED_AT: null });
                 }
                 setUndoRemove(null);
@@ -378,7 +390,7 @@ export function App() {
           <RequestDetail
             row={detailRow}
             session={session}
-            demoMode={demoMode}
+            demoMode={SANDBOX_ONLY || demoMode}
             onBack={() => { setDetailRow(null); scrollerRef.current?.scrollTo({ top: 0 }); }}
             onPatch={patch => {
               setRows(current => current.map(row => uniqueId(row) === uniqueId(detailRow) ? { ...row, ...patch } : row));
@@ -395,17 +407,17 @@ export function App() {
             allRows={rows}
             activeTab={activeTab}
             displayMode={effectiveDisplayMode}
-            allowGrid={allowGrid}
             columnKeys={requestColumnKeys}
             loading={loading}
             onTab={tab => { setActiveTab(tab); scrollerRef.current?.scrollTo({ top: 0 }); }}
-            onDisplayMode={updateDisplayMode}
             onOpen={row => { setDetailRow(row); scrollerRef.current?.scrollTo({ top: 0 }); }}
-            onRemove={(row) => removeRow(row, session, demoMode, setRows, setToast, setUndoRemove)}
+            onRemove={(row) => removeRow(row, session, SANDBOX_ONLY || demoMode, setRows, setToast, setUndoRemove)}
             onRefresh={reloadRows}
           />
+        ) : view === 'comm' ? (
+          <CommunicationView demoMode={SANDBOX_ONLY || demoMode} />
         ) : (
-          <ModuleWorkspace view={view} displayMode={effectiveDisplayMode} allowGrid={allowGrid} demoMode={demoMode} />
+          <ModuleWorkspace view={view} displayMode={effectiveDisplayMode} allowGrid={allowGrid} demoMode={SANDBOX_ONLY || demoMode} />
         )}
       </main>
 
@@ -430,7 +442,7 @@ export function App() {
             </div>
             <div className="drawer-mode">
               <span>Mode</span>
-              <strong>{demoMode ? 'DEMO' : 'FIELD'}</strong>
+              <strong>{SANDBOX_ONLY || demoMode ? 'TEST' : 'FIELD'}</strong>
             </div>
             <div className="drawer-stat">
               <span>Shell</span>
@@ -438,7 +450,7 @@ export function App() {
             </div>
             <div className="drawer-stat">
               <span>Data Source</span>
-              <strong>{demoMode ? 'Sandbox' : 'Live'}</strong>
+              <strong>Live-shaped Fixtures</strong>
             </div>
             <div className="drawer-preference">
               <span>Theme</span>
@@ -561,11 +573,9 @@ function RequestView(props: {
   allRows: RequestRow[];
   activeTab: TabId;
   displayMode: DisplayMode;
-  allowGrid: boolean;
   columnKeys: RequestColumnKey[];
   loading: boolean;
   onTab: (tab: TabId) => void;
-  onDisplayMode: (mode: DisplayMode) => void;
   onOpen: (row: RequestRow) => void;
   onRemove: (row: RequestRow) => void;
   onRefresh: () => void;
@@ -583,22 +593,18 @@ function RequestView(props: {
   return (
     <section className="request-flow">
       <div className="filter-rail">
-        <div className="request-tabs" role="tablist">
-          {tabs.map(tab => (
-            <button className={`filter-tab ${props.activeTab === tab.id ? 'active' : ''}`} key={tab.id} onClick={() => props.onTab(tab.id)}>
-              {tab.label}<span>{counts.get(tab.id) || 0}</span>
-            </button>
-          ))}
-        </div>
-        <div className="request-actions">
-          <span>{tabLabel(props.activeTab)} Que</span>
-          <div className="request-action-buttons">
-            {props.allowGrid ? (
-              <div className="segmented-control small" aria-label="Request display mode">
-                <button type="button" className={props.displayMode === 'cards' ? 'active' : ''} onClick={() => props.onDisplayMode('cards')}><Rows3 size={16} /> Cards</button>
-                <button type="button" className={props.displayMode === 'grid' ? 'active' : ''} onClick={() => props.onDisplayMode('grid')}><Grid3X3 size={16} /> Grid</button>
-              </div>
-            ) : null}
+        <div className="filter-dropdown-row">
+          <label className="filter-select">
+            <span>Que View</span>
+            <select value={props.activeTab} onChange={event => props.onTab(event.target.value as TabId)}>
+              {tabs.map(tab => (
+                <option key={tab.id} value={tab.id}>{tab.label} ({counts.get(tab.id) || 0})</option>
+              ))}
+            </select>
+            <ChevronDown size={18} />
+          </label>
+          <div className="request-actions">
+            <span>{tabLabel(props.activeTab)} Que</span>
             <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
           </div>
         </div>
@@ -878,11 +884,18 @@ type ModulePreviewRow = {
   status: string;
   quantity: string;
   tone: 'green' | 'blue' | 'purple' | 'orange' | 'warning';
+  filter?: string;
 };
 
 function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: ViewId; displayMode: DisplayMode; allowGrid: boolean; demoMode: boolean }) {
   const rows = modulePreviewRows(view);
+  const [activeFilter, setActiveFilter] = useState('all');
+  useEffect(() => setActiveFilter('all'), [view]);
   const isGrid = allowGrid && displayMode === 'grid';
+  const filters = moduleFilterOptions(rows);
+  const visibleRows = activeFilter === 'all'
+    ? rows
+    : rows.filter(row => rowFilterId(row) === activeFilter);
   return (
     <section className="module-workspace">
       <div className="module-workspace-head">
@@ -890,7 +903,15 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
           <span>{demoMode ? 'Sandbox Workflow' : 'Field Workflow'}</span>
           <h1>{labelForView(view)}</h1>
         </div>
-        <div className="workspace-mode-pill">{isGrid ? <Grid3X3 size={16} /> : <Rows3 size={16} />}{isGrid ? 'Grid' : 'Cards'}</div>
+      </div>
+      <div className="filter-rail module-filter-rail">
+        <label className="filter-select compact">
+          <span>Filter</span>
+          <select value={activeFilter} onChange={event => setActiveFilter(event.target.value)}>
+            {filters.map(filter => <option key={filter.id} value={filter.id}>{filter.label}</option>)}
+          </select>
+          <ChevronDown size={18} />
+        </label>
       </div>
       {isGrid ? (
         <div className="module-grid-wrap">
@@ -899,7 +920,7 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
               <tr><th>Work Item</th><th>Location</th><th>Owner</th><th>Status</th><th>Qty</th></tr>
             </thead>
             <tbody>
-              {rows.map(row => (
+              {visibleRows.map(row => (
                 <tr key={row.title}>
                   <td>{row.title}</td>
                   <td>{row.meta}</td>
@@ -913,7 +934,7 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
         </div>
       ) : (
         <div className="module-card-list">
-          {rows.map(row => (
+          {visibleRows.map(row => (
             <article className="module-preview-card" key={row.title}>
               <div className="module-preview-icon"><Boxes size={24} /></div>
               <div>
@@ -929,6 +950,80 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function CommunicationView({ demoMode }: { demoMode: boolean }) {
+  const threads = communicationThreads();
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const visibleThreads = activeFilter === 'all'
+    ? threads
+    : threads.filter(thread => activeFilter === 'unread' ? thread.unread : !thread.unread);
+  const activeThread = threads.find(thread => thread.id === activeThreadId);
+  if (activeThread) {
+    return (
+      <section className="module-workspace communication-workspace">
+        <button className="inline-back" type="button" onClick={() => setActiveThreadId(null)}><ArrowLeft size={22} /> Back to Messages</button>
+        <div className="message-thread-detail">
+          <div className="message-thread-head">
+            <div>
+              <span>{demoMode ? 'Sandbox Messages' : 'Messages'}</span>
+              <h1>{activeThread.title}</h1>
+              <p>{activeThread.members}</p>
+            </div>
+            <Chip tone={activeThread.unread ? 'blue' : 'green'} label={activeThread.unread ? 'New' : 'Open'} />
+          </div>
+          <div className="message-list" aria-label={`${activeThread.title} messages`}>
+            {activeThread.messages.map(message => (
+              <article className="message-bubble" key={`${message.from}-${message.time}-${message.body}`}>
+                <strong>{message.from}</strong>
+                <p>{message.body}</p>
+                <span>{message.time}</span>
+              </article>
+            ))}
+          </div>
+          <div className="safe-action-note">Test app only. Replies are not sent.</div>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="module-workspace communication-workspace">
+      <div className="module-workspace-head">
+        <div>
+          <span>{demoMode ? 'Sandbox Messages' : 'Messages'}</span>
+          <h1>Communication</h1>
+        </div>
+      </div>
+      <div className="filter-rail module-filter-rail">
+        <label className="filter-select compact">
+          <span>Thread View</span>
+          <select value={activeFilter} onChange={event => setActiveFilter(event.target.value)}>
+            <option value="all">All Threads</option>
+            <option value="unread">Unread</option>
+            <option value="open">Open</option>
+          </select>
+          <ChevronDown size={18} />
+        </label>
+      </div>
+      <div className="module-card-list">
+        {visibleThreads.map(thread => (
+          <button type="button" className="message-thread-card" key={thread.id} onClick={() => setActiveThreadId(thread.id)}>
+            <div className="thread-avatar">{thread.title.slice(0, 2).toUpperCase()}</div>
+            <div>
+              <h2>{thread.title}</h2>
+              <p>{thread.preview}</p>
+              <span>{thread.members}</span>
+            </div>
+            <div className="message-thread-side">
+              <strong>{thread.date}</strong>
+              {thread.unread ? <Chip tone="blue" label="New" /> : <Chip tone="green" label="Open" />}
+            </div>
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1000,19 +1095,25 @@ function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
     home: [],
     request: [],
     drive: [
-      { title: 'Field Route - North Yard', meta: 'Blocks A, B, C | 6 stops', owner: 'Kayla Knepp', status: 'In Progress', quantity: '42 rows', tone: 'blue' },
-      { title: 'Pull Run - H Block', meta: 'H.03.000 through H.18.000', owner: 'Dylan Collyge', status: 'Ready', quantity: '94 items', tone: 'green' },
-      { title: 'Location Check - East Pad', meta: 'C.05.000 | C.12.005 | C.15.000', owner: 'Brian Hatfield', status: 'Review', quantity: '48 rows', tone: 'warning' }
+      { title: 'Acoma Crapemyrtle', meta: '003746.030.1 | H.03.000 | Lot 27.F1 | #3', owner: 'Kayla Knepp', status: 'Available', quantity: '94', tone: 'green' },
+      { title: 'Dawn Redwood', meta: 'B.13.012 | Lot 27.S1 | #3 Lavender', owner: 'Abbey Burka', status: 'Request', quantity: '44', tone: 'blue' },
+      { title: 'Compact Andorra Juniper', meta: '001360.050.1 | K.03.000 | Lot 27.U2 | #5', owner: 'JD Jones', status: 'Hold Check', quantity: '235', tone: 'warning' },
+      { title: 'Big Blue Liriope', meta: '004350.010.1 | E.07.000 | Lot 26.U2 | #1', owner: 'Kayla Knepp', status: 'AV Check', quantity: '939', tone: 'purple' },
+      { title: 'Madame Rosy Trumpet Creeper', meta: '002134.011.1 | E.23.000 | Lot 27.F1 | #1D', owner: 'Mitch Kaiser', status: 'Shear', quantity: '323', tone: 'orange' }
     ],
     tasks: [
-      { title: 'AV Blanks - Block A', meta: 'Current Season | #3 and #5', owner: 'Dylan Collyge', status: 'Active', quantity: '45 items', tone: 'green' },
-      { title: 'Photo, spec, and PRI check', meta: 'Big Blue Liriope | E.07.000', owner: 'Kayla Knepp', status: 'Open', quantity: '939', tone: 'blue' },
-      { title: 'Hold risk review', meta: 'Compact Andorra Juniper | K.03.000', owner: 'JD Jones', status: 'Hold', quantity: '235', tone: 'warning' }
+      { title: 'AV Blanks - Block A', meta: 'Current Season | All Sizes | All Genus', owner: 'Dylan Collyge', status: 'Active', quantity: '45 items', tone: 'green' },
+      { title: 'AV Blanks - Block B', meta: 'Current Season | All Sizes | All Genus', owner: 'Dylan Collyge', status: 'Active', quantity: '84 items', tone: 'green' },
+      { title: 'AV Blanks - Block C', meta: 'Current Season | All Sizes | All Genus', owner: 'Dylan Collyge', status: 'Active', quantity: '201 items', tone: 'green' },
+      { title: 'Photo, spec, and PRI check', meta: 'Big Blue Liriope | E.07.000 | Lot 26.U2', owner: 'Kayla Knepp', status: 'Open', quantity: '939', tone: 'blue' },
+      { title: 'Hold risk review', meta: 'Compact Andorra Juniper | K.03.000 | Lot 27.U2', owner: 'JD Jones', status: 'Hold', quantity: '235', tone: 'warning' }
     ],
     docks: [
       { title: 'Dock 34', meta: 'Checker / inspector pending', owner: 'Tracey Tapscott', status: 'Loading', quantity: '85 items', tone: 'blue' },
       { title: 'Stop 60 - Dothan Nurseries', meta: 'AL route | Open stop', owner: 'Toby Brown', status: 'Open Stop', quantity: '27 rows', tone: 'green' },
-      { title: 'Mistake Review', meta: 'Customer and lot mismatch', owner: 'Mitch Kaiser', status: 'Needs Review', quantity: '1', tone: 'warning' }
+      { title: 'Stop 42 - Oakland Garden Center', meta: 'TN route | Open stop', owner: 'Annette Hancock', status: 'Open Stop', quantity: '14 rows', tone: 'green' },
+      { title: 'Mistake Review', meta: 'Customer and lot mismatch', owner: 'Mitch Kaiser', status: 'Needs Review', quantity: '1', tone: 'warning' },
+      { title: 'Drop Off', meta: 'Completed stop review', owner: 'Dock Team', status: 'Ready', quantity: '3 stops', tone: 'blue' }
     ],
     comm: [
       { title: 'kayla_knepp', meta: 'Screenshot please, text it to my phone', owner: '2 members', status: 'New', quantity: 'Jul 2', tone: 'blue' },
@@ -1025,13 +1126,21 @@ function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
       { title: 'No Photos', meta: 'Available plants without images', owner: 'Field', status: 'Open', quantity: '34', tone: 'blue' }
     ],
     inventory: [
+      { title: 'Task', meta: 'Inventory task launcher', owner: 'Inventory Office', status: 'Hub', quantity: 'Open', tone: 'green' },
+      { title: 'Drive Mode', meta: 'Common name / location / card inventory', owner: 'Field Team', status: 'Current', quantity: '3,745 items', tone: 'blue' },
       { title: 'Crop Roll', meta: 'Blocks A through F', owner: 'Inventory Office', status: 'Current', quantity: '674 rows', tone: 'green' },
       { title: 'PO Management', meta: 'HL PO 27F1', owner: 'Managers', status: 'Built', quantity: '234 rows', tone: 'blue' },
+      { title: 'Inventory Office', meta: 'Location moves and recount review', owner: 'Office', status: 'Open', quantity: '22 rows', tone: 'warning' },
       { title: 'Weather & Hold Risk', meta: 'Heat sensitive rows', owner: 'Grower Team', status: 'Watch', quantity: '9', tone: 'warning' }
     ],
     managers: [
-      { title: 'Approval', meta: 'Shear and NCR approvals', owner: 'Dylan Collyge', status: 'Active', quantity: '2 queues', tone: 'green' },
-      { title: 'Shortage / Cancel', meta: 'Dylan only', owner: 'Managers', status: 'Clean', quantity: '0 net', tone: 'blue' },
+      { title: 'Approval', meta: 'Shear approvals and NCR approvals', owner: 'Dylan Collyge', status: 'Active', quantity: '2 queues', tone: 'green' },
+      { title: 'Crop Roll', meta: 'Manager crop roll review', owner: 'Grower Team', status: 'Open', quantity: '674 rows', tone: 'green' },
+      { title: 'Move', meta: 'Location move approvals', owner: 'Managers', status: 'Review', quantity: '1', tone: 'warning' },
+      { title: 'Season', meta: 'Current season setup', owner: 'Office', status: 'Current', quantity: 'F1', tone: 'blue' },
+      { title: 'AV Blanks', meta: 'Blocks A through F task review', owner: 'Dylan Collyge', status: 'Active', quantity: '6 blocks', tone: 'green' },
+      { title: 'Shortage / Cancel', meta: 'Dylan only shortage/cancel dashboard', owner: 'Managers', status: 'Clean', quantity: '0 net', tone: 'blue' },
+      { title: 'Transaction History', meta: 'Recent inventory changes', owner: 'Managers', status: 'Search', quantity: 'Today', tone: 'purple' },
       { title: 'Labor Hours', meta: 'Daily field check', owner: 'Mitch Kaiser', status: 'Due', quantity: 'Today', tone: 'warning' }
     ],
     sales: [
@@ -1066,6 +1175,83 @@ function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
     ]
   };
   return base[view] || [];
+}
+
+function slugifyFilter(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'open';
+}
+
+function rowFilterId(row: ModulePreviewRow) {
+  return slugifyFilter(row.filter || row.status || 'Open');
+}
+
+function moduleFilterOptions(rows: ModulePreviewRow[]): ModuleFilter[] {
+  const options: ModuleFilter[] = [{ id: 'all', label: 'All Rows' }];
+  const seen = new Set<string>();
+  rows.forEach(row => {
+    const label = row.filter || row.status || 'Open';
+    const id = slugifyFilter(label);
+    if (!seen.has(id)) {
+      seen.add(id);
+      options.push({ id, label });
+    }
+  });
+  return options;
+}
+
+function communicationThreads(): MessageThread[] {
+  return [
+    {
+      id: 'kayla-photo',
+      title: 'kayla_knepp',
+      preview: 'screen shot please, text it to my phone',
+      date: 'Jul 2',
+      members: '2 members',
+      unread: true,
+      messages: [
+        { from: 'kayla_knepp', body: 'I cannot see the request rows on iPhone after opening Que.', time: '8:13 AM' },
+        { from: 'dylan_collyge', body: 'Send a screenshot and the itemcode. We will keep this in the sandbox until it is fixed.', time: '8:17 AM' },
+        { from: 'kayla_knepp', body: 'screen shot please, text it to my phone', time: 'Jul 2' }
+      ]
+    },
+    {
+      id: 'dock-status',
+      title: 'tony_bono',
+      preview: 'Will get shortly.',
+      date: 'Jun 15',
+      members: '2 members',
+      messages: [
+        { from: 'dylan_collyge', body: 'Can you confirm Dock 34 checker and inspector status?', time: '9:28 AM' },
+        { from: 'tony_bono', body: 'Will get shortly.', time: 'Jun 15' }
+      ]
+    },
+    {
+      id: 'customer-cards',
+      title: 'megan_kelly',
+      preview: 'Customer card cleanup is ready for review.',
+      date: 'May 20',
+      members: '3 members',
+      unread: true,
+      messages: [
+        { from: 'megan_kelly', body: 'Customer card cleanup is ready for review.', time: 'May 20' },
+        { from: 'dylan_collyge', body: 'Keep this in test mode. No emails should send from v2.', time: 'May 20' }
+      ]
+    },
+    {
+      id: 'manager-approval',
+      title: 'mitch_kaiser',
+      preview: 'Approval queue needs shear and NCR examples.',
+      date: 'May 7',
+      members: '4 members',
+      messages: [
+        { from: 'mitch_kaiser', body: 'Approval queue needs shear and NCR examples.', time: 'May 7' },
+        { from: 'jd_jones', body: 'Grower review should be card view on phones and grid on larger screens.', time: 'May 7' }
+      ]
+    }
+  ];
 }
 
 function tabLabel(tab: TabId) {
