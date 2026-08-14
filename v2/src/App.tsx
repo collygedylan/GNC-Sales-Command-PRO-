@@ -1000,9 +1000,9 @@ function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
     home: [],
     request: [],
     drive: [
-      { title: 'Stop 60 - Dothan Nurseries', meta: 'Dock 34 | AL route', owner: 'Toby Brown', status: 'Open Stop', quantity: '27 rows', tone: 'blue' },
-      { title: 'Acoma Crape Myrtle', meta: 'H.03.000 | Lot 27.F1', owner: 'Kayla Knepp', status: 'Pull Ready', quantity: '94', tone: 'green' },
-      { title: 'Green Sargent Juniper', meta: 'C.05.000 | Lot 27.F1', owner: 'Brian Hatfield', status: 'Review', quantity: '48', tone: 'warning' }
+      { title: 'Field Route - North Yard', meta: 'Blocks A, B, C | 6 stops', owner: 'Kayla Knepp', status: 'In Progress', quantity: '42 rows', tone: 'blue' },
+      { title: 'Pull Run - H Block', meta: 'H.03.000 through H.18.000', owner: 'Dylan Collyge', status: 'Ready', quantity: '94 items', tone: 'green' },
+      { title: 'Location Check - East Pad', meta: 'C.05.000 | C.12.005 | C.15.000', owner: 'Brian Hatfield', status: 'Review', quantity: '48 rows', tone: 'warning' }
     ],
     tasks: [
       { title: 'AV Blanks - Block A', meta: 'Current Season | #3 and #5', owner: 'Dylan Collyge', status: 'Active', quantity: '45 items', tone: 'green' },
@@ -1011,7 +1011,7 @@ function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
     ],
     docks: [
       { title: 'Dock 34', meta: 'Checker / inspector pending', owner: 'Tracey Tapscott', status: 'Loading', quantity: '85 items', tone: 'blue' },
-      { title: 'Drop Off', meta: 'Retail transfer queue', owner: 'Megan Kelly', status: 'Queued', quantity: '18 rows', tone: 'purple' },
+      { title: 'Stop 60 - Dothan Nurseries', meta: 'AL route | Open stop', owner: 'Toby Brown', status: 'Open Stop', quantity: '27 rows', tone: 'green' },
       { title: 'Mistake Review', meta: 'Customer and lot mismatch', owner: 'Mitch Kaiser', status: 'Needs Review', quantity: '1', tone: 'warning' }
     ],
     comm: [

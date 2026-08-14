@@ -642,25 +642,25 @@ button {
 
 .module-tile {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   place-items: center;
   min-height: 0;
   height: 100%;
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
+  border: 2px solid var(--green);
+  border-radius: 8px;
   color: var(--green);
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-alt) 100%);
-  box-shadow: var(--shadow-sm);
+  background: var(--surface);
+  box-shadow: none;
   font-size: clamp(15px, 1.4vw, 19px);
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .module-tile:hover,
 .module-tile:focus-visible {
+  background: var(--surface-alt);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 
 .module-tile svg {
