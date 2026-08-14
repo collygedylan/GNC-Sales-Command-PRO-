@@ -4,11 +4,9 @@ import {
   BarChart3,
   BookOpen,
   Camera,
-  ChevronDown,
   CheckCircle2,
   ClipboardList,
   Cloud,
-  Database,
   Hammer,
   Handshake,
   Home,
@@ -23,7 +21,6 @@ import {
   Store,
   Trash2,
   Truck,
-  UploadCloud,
   XCircle
 } from 'lucide-react';
 import {
@@ -50,6 +47,7 @@ type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
 type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
 type RequestDisplayMode = 'cards' | 'grid';
+type RequestColumnKey = 'item' | 'common' | 'loc' | 'lot' | 'size' | 'src' | 'pri' | 'qty' | 'hand' | 'review' | 'avail' | 'open' | 'rep' | 'customer';
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'request', label: 'Request' },
@@ -71,6 +69,26 @@ const navItems: Array<{ id: ViewId; label: string; icon: typeof Home }> = [
 ];
 
 const REQUEST_DISPLAY_KEY_PREFIX = 'gnc:v2:request-display:';
+const REQUEST_COLUMNS_KEY_PREFIX = 'gnc:v2:request-columns:';
+
+const requestGridColumns: Array<{ key: RequestColumnKey; label: string; className?: string; render: (row: RequestRow) => string | number }> = [
+  { key: 'item', label: 'Item', render: row => field(row, ['ITEMCODE', 'itemcode'], String(uniqueId(row) || '-')) },
+  { key: 'common', label: 'Common Name', className: 'strong-cell', render: row => field(row, ['COMMONNAME', 'commonname'], 'Unnamed item') },
+  { key: 'loc', label: 'Loc', render: row => field(row, ['LOCATIONCODE', 'locationcode'], '-') },
+  { key: 'lot', label: 'Lot', render: row => field(row, ['LOTCODE', 'lotcode'], '-') },
+  { key: 'size', label: 'Size', render: row => field(row, ['CONTSIZE', 'contsize'], '-') },
+  { key: 'src', label: 'Src', render: row => field(row, ['SRC', 'src'], '-') },
+  { key: 'pri', label: 'Pri', render: row => field(row, ['PRI', 'priority'], '-') },
+  { key: 'qty', label: 'Qty', render: row => field(row, ['QTY', 'qty', 'REQ_QTY', 'req_qty'], '0') },
+  { key: 'hand', label: 'Hand', render: row => numberField(row, ['ON_HAND', 'on_hand', 'HAND']) },
+  { key: 'review', label: 'Rev', render: row => numberField(row, ['REVIEW', 'review', 'REV']) },
+  { key: 'avail', label: 'Avail', render: row => numberField(row, ['AVAILABLE', 'available', 'AVAIL']) },
+  { key: 'open', label: 'Open', render: row => numberField(row, ['OPEN_STOCK', 'open_stock', 'OPEN']) },
+  { key: 'rep', label: 'Rep', render: row => field(row, ['REQUESTED_BY', 'requested_by', 'SALES_REP', 'sales_rep'], '-') },
+  { key: 'customer', label: 'Customer', render: row => field(row, ['CUSTOMER', 'customer', 'CONSIGNEE', 'consignee'], '-') }
+];
+
+const defaultRequestColumnKeys = requestGridColumns.map(column => column.key);
 
 function requestDisplayKey(session: Session | null) {
   return `${REQUEST_DISPLAY_KEY_PREFIX}${session?.username || 'demo'}`;
@@ -90,6 +108,44 @@ function storeRequestDisplayMode(session: Session | null, mode: RequestDisplayMo
   } catch {
     // Display mode is a convenience setting; ignore private-mode storage failures.
   }
+}
+
+function requestColumnsKey(session: Session | null) {
+  return `${REQUEST_COLUMNS_KEY_PREFIX}${session?.username || 'demo'}`;
+}
+
+function readRequestColumnKeys(session: Session | null): RequestColumnKey[] {
+  try {
+    const raw = localStorage.getItem(requestColumnsKey(session));
+    if (!raw) return defaultRequestColumnKeys;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return defaultRequestColumnKeys;
+    const allowed = new Set(defaultRequestColumnKeys);
+    const keys = parsed.filter((key): key is RequestColumnKey => typeof key === 'string' && allowed.has(key as RequestColumnKey));
+    return keys.length ? keys : defaultRequestColumnKeys;
+  } catch {
+    return defaultRequestColumnKeys;
+  }
+}
+
+function storeRequestColumnKeys(session: Session | null, keys: RequestColumnKey[]) {
+  try {
+    localStorage.setItem(requestColumnsKey(session), JSON.stringify(keys));
+  } catch {
+    // Column preferences are local convenience settings; ignore storage failures.
+  }
+}
+
+function usePhoneViewport() {
+  const [isPhone, setIsPhone] = useState(() => window.matchMedia?.('(max-width: 720px)').matches ?? false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 720px)');
+    const sync = () => setIsPhone(media.matches);
+    sync();
+    media.addEventListener?.('change', sync);
+    return () => media.removeEventListener?.('change', sync);
+  }, []);
+  return isPhone;
 }
 
 function useChunkedRows<T>(rows: T[], batch = 30) {
@@ -129,6 +185,8 @@ export function App() {
   const [undoRemove, setUndoRemove] = useState<RequestRow | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [requestDisplayMode, setRequestDisplayMode] = useState<RequestDisplayMode>(() => readRequestDisplayMode(readStoredSession()));
+  const [requestColumnKeys, setRequestColumnKeys] = useState<RequestColumnKey[]>(() => readRequestColumnKeys(readStoredSession()));
+  const isPhoneViewport = usePhoneViewport();
   const topRef = useRef<HTMLDivElement | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
@@ -176,11 +234,18 @@ export function App() {
 
   useEffect(() => {
     setRequestDisplayMode(readRequestDisplayMode(session));
+    setRequestColumnKeys(readRequestColumnKeys(session));
   }, [session?.username]);
 
   const updateRequestDisplayMode = (mode: RequestDisplayMode) => {
     setRequestDisplayMode(mode);
     storeRequestDisplayMode(session, mode);
+  };
+
+  const updateRequestColumnKeys = (next: RequestColumnKey[]) => {
+    const keys = next.length ? next : defaultRequestColumnKeys;
+    setRequestColumnKeys(keys);
+    storeRequestColumnKeys(session, keys);
   };
 
   const openView = (next: ViewId) => {
@@ -191,6 +256,10 @@ export function App() {
   };
 
   const title = detailRow ? 'Item Detail' : view === 'request' ? 'Que' : view === 'home' ? 'Home' : labelForView(view);
+  const activeShellView = detailRow ? 'detail' : view;
+  const showTopSearch = Boolean(detailRow) || view !== 'home';
+  const allowRequestGrid = !isPhoneViewport;
+  const effectiveRequestDisplayMode = allowRequestGrid ? requestDisplayMode : 'cards';
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows
@@ -213,7 +282,7 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell app-view-${activeShellView}`}>
       <div className="top-chrome" ref={topRef}>
         <div className="brand-strip">
           <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : openView('home')}>
@@ -223,15 +292,17 @@ export function App() {
             <div className="brand-user">{session?.displayName || session?.username || 'demo_user'}</div>
             <div className="brand-subtitle">AG DATA SOLUTIONS</div>
           </div>
-          <div className="app-search-box">
-            {view === 'request' && !detailRow ? <Search size={20} /> : null}
-            <input
-              value={detailRow || view !== 'request' ? title : search}
-              onChange={event => !detailRow && setSearch(event.target.value)}
-              readOnly={Boolean(detailRow) || view !== 'request'}
-              placeholder={view === 'request' ? 'Search requests...' : title}
-            />
-          </div>
+          {showTopSearch ? (
+            <div className="app-search-box">
+              {view === 'request' && !detailRow ? <Search size={20} /> : null}
+              <input
+                value={detailRow || view !== 'request' ? title : search}
+                onChange={event => !detailRow && setSearch(event.target.value)}
+                readOnly={Boolean(detailRow) || view !== 'request'}
+                placeholder={view === 'request' ? 'Search requests...' : title}
+              />
+            </div>
+          ) : null}
           <div className="status-cluster">
             <span className="version-pill">{APP_VERSION}</span>
             <span className="auto-pill">AUTO</span>
@@ -280,7 +351,9 @@ export function App() {
             rows={filteredRows}
             allRows={rows}
             activeTab={activeTab}
-            displayMode={requestDisplayMode}
+            displayMode={effectiveRequestDisplayMode}
+            allowGrid={allowRequestGrid}
+            columnKeys={requestColumnKeys}
             loading={loading}
             onTab={tab => { setActiveTab(tab); scrollerRef.current?.scrollTo({ top: 0 }); }}
             onDisplayMode={updateRequestDisplayMode}
@@ -326,11 +399,37 @@ export function App() {
             </div>
             <div className="drawer-preference">
               <span>Request View</span>
-              <div className="segmented-control">
-                <button type="button" className={requestDisplayMode === 'cards' ? 'active' : ''} onClick={() => updateRequestDisplayMode('cards')}>Cards</button>
-                <button type="button" className={requestDisplayMode === 'grid' ? 'active' : ''} onClick={() => updateRequestDisplayMode('grid')}>Grid</button>
-              </div>
+              {allowRequestGrid ? (
+                <div className="segmented-control">
+                  <button type="button" className={requestDisplayMode === 'cards' ? 'active' : ''} onClick={() => updateRequestDisplayMode('cards')}>Cards</button>
+                  <button type="button" className={requestDisplayMode === 'grid' ? 'active' : ''} onClick={() => updateRequestDisplayMode('grid')}>Grid</button>
+                </div>
+              ) : (
+                <strong>Cards on phone</strong>
+              )}
             </div>
+            {allowRequestGrid ? (
+              <details className="drawer-columns" open>
+                <summary>Field Columns</summary>
+                <div className="drawer-column-list">
+                  {requestGridColumns.map(column => (
+                    <label className="drawer-column-option" key={column.key}>
+                      <input
+                        type="checkbox"
+                        checked={requestColumnKeys.includes(column.key)}
+                        onChange={event => {
+                          const next = event.target.checked
+                            ? [...requestColumnKeys, column.key]
+                            : requestColumnKeys.filter(key => key !== column.key);
+                          updateRequestColumnKeys(defaultRequestColumnKeys.filter(key => next.includes(key)));
+                        }}
+                      />
+                      <span>{column.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </aside>
         </div>
       ) : null}
@@ -387,23 +486,6 @@ function HomeView({ onOpen }: { onOpen: (view: ViewId) => void }) {
   ];
   return (
     <section className="home-dashboard">
-      <div className="dashboard-card">
-        <div className="dashboard-brand">
-          <img src="../ag-data-solutions-logo-v2026080925.png" alt="Ag Data Solutions" />
-          <span>Dashboard</span>
-        </div>
-        <div className="dashboard-divider">
-          <span>Powered By Ag Metric</span>
-        </div>
-        <div className="dashboard-status">
-          <strong>{formatDashboardTime()}</strong>
-          <div className="dashboard-actions">
-            <span><UploadCloud size={18} /> Auto 5/7</span>
-            <span><Database size={20} /></span>
-            <span><ChevronDown size={20} /></span>
-          </div>
-        </div>
-      </div>
       <div className="module-label">App Modules</div>
       <div className="home-grid">
         {modules.map(module => {
@@ -425,6 +507,8 @@ function RequestView(props: {
   allRows: RequestRow[];
   activeTab: TabId;
   displayMode: RequestDisplayMode;
+  allowGrid: boolean;
+  columnKeys: RequestColumnKey[];
   loading: boolean;
   onTab: (tab: TabId) => void;
   onDisplayMode: (mode: RequestDisplayMode) => void;
@@ -455,10 +539,12 @@ function RequestView(props: {
         <div className="request-actions">
           <span>{tabLabel(props.activeTab)} Que</span>
           <div className="request-action-buttons">
-            <div className="segmented-control small" aria-label="Request display mode">
-              <button type="button" className={props.displayMode === 'cards' ? 'active' : ''} onClick={() => props.onDisplayMode('cards')}>Cards</button>
-              <button type="button" className={props.displayMode === 'grid' ? 'active' : ''} onClick={() => props.onDisplayMode('grid')}>Grid</button>
-            </div>
+            {props.allowGrid ? (
+              <div className="segmented-control small" aria-label="Request display mode">
+                <button type="button" className={props.displayMode === 'cards' ? 'active' : ''} onClick={() => props.onDisplayMode('cards')}>Cards</button>
+                <button type="button" className={props.displayMode === 'grid' ? 'active' : ''} onClick={() => props.onDisplayMode('grid')}>Grid</button>
+              </div>
+            ) : null}
             <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
           </div>
         </div>
@@ -466,7 +552,7 @@ function RequestView(props: {
       {props.loading && !props.rows.length ? <div className="empty-state"><Loader2 className="spin" /> Loading rows...</div> : null}
       {!props.loading && !props.rows.length ? <div className="empty-state">No rows match this view.</div> : null}
       {props.displayMode === 'grid' ? (
-        <RequestGrid rows={visibleRows} onOpen={props.onOpen} onRemove={props.onRemove} />
+        <RequestGrid rows={visibleRows} columnKeys={props.columnKeys} onOpen={props.onOpen} onRemove={props.onRemove} />
       ) : (
         <div className="request-list">
           {visibleRows.map(row => (
@@ -478,46 +564,21 @@ function RequestView(props: {
   );
 }
 
-function RequestGrid({ rows, onOpen, onRemove }: { rows: RequestRow[]; onOpen: (row: RequestRow) => void; onRemove: (row: RequestRow) => void }) {
+function RequestGrid({ rows, columnKeys, onOpen, onRemove }: { rows: RequestRow[]; columnKeys: RequestColumnKey[]; onOpen: (row: RequestRow) => void; onRemove: (row: RequestRow) => void }) {
+  const columns = requestGridColumns.filter(column => columnKeys.includes(column.key));
   return (
     <div className="request-grid-wrap" role="region" aria-label="Request rows grid">
       <table className="request-grid-table">
         <thead>
           <tr>
-            <th>Item</th>
-            <th>Common Name</th>
-            <th>Loc</th>
-            <th>Lot</th>
-            <th>Size</th>
-            <th>Src</th>
-            <th>Pri</th>
-            <th>Qty</th>
-            <th>Hand</th>
-            <th>Rev</th>
-            <th>Avail</th>
-            <th>Open</th>
-            <th>Rep</th>
-            <th>Customer</th>
+            {columns.map(column => <th key={column.key}>{column.label}</th>)}
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(row => (
             <tr key={String(uniqueId(row))} onDoubleClick={() => onOpen(row)}>
-              <td>{field(row, ['ITEMCODE', 'itemcode'], String(uniqueId(row) || '-'))}</td>
-              <td className="strong-cell">{field(row, ['COMMONNAME', 'commonname'], 'Unnamed item')}</td>
-              <td>{field(row, ['LOCATIONCODE', 'locationcode'], '-')}</td>
-              <td>{field(row, ['LOTCODE', 'lotcode'], '-')}</td>
-              <td>{field(row, ['CONTSIZE', 'contsize'], '-')}</td>
-              <td>{field(row, ['SRC', 'src'], '-')}</td>
-              <td>{field(row, ['PRI', 'priority'], '-')}</td>
-              <td>{field(row, ['QTY', 'qty', 'REQ_QTY', 'req_qty'], '0')}</td>
-              <td>{numberField(row, ['ON_HAND', 'on_hand', 'HAND'])}</td>
-              <td>{numberField(row, ['REVIEW', 'review', 'REV'])}</td>
-              <td>{numberField(row, ['AVAILABLE', 'available', 'AVAIL'])}</td>
-              <td>{numberField(row, ['OPEN_STOCK', 'open_stock', 'OPEN'])}</td>
-              <td>{field(row, ['REQUESTED_BY', 'requested_by', 'SALES_REP', 'sales_rep'], '-')}</td>
-              <td>{field(row, ['CUSTOMER', 'customer', 'CONSIGNEE', 'consignee'], '-')}</td>
+              {columns.map(column => <td className={column.className} key={column.key}>{column.render(row)}</td>)}
               <td>
                 <div className="grid-row-actions">
                   <button type="button" onClick={() => onOpen(row)}>Open</button>
@@ -807,15 +868,4 @@ function tabLabel(tab: TabId) {
 
 function delay(ms: number) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
-}
-
-function formatDashboardTime() {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'numeric',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit'
-  }).format(new Date());
 }

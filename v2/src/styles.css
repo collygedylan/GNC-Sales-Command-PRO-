@@ -72,6 +72,10 @@ button {
   padding: calc(12px + env(safe-area-inset-top)) clamp(16px, 5vw, 72px) 12px;
 }
 
+.app-view-home .brand-strip {
+  grid-template-columns: 58px minmax(220px, 1fr) auto;
+}
+
 .brand-user {
   overflow: hidden;
   font-size: clamp(20px, 2vw, 30px);
@@ -177,7 +181,10 @@ button {
 }
 
 .main-scroll.view-home {
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
   padding-top: 10px;
   padding-bottom: 18px;
 }
@@ -275,7 +282,9 @@ button {
 .drawer-head span,
 .drawer-mode span,
 .drawer-stat span,
-.drawer-preference span {
+.drawer-preference span,
+.drawer-columns summary,
+.drawer-column-option span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
@@ -320,9 +329,52 @@ button {
   text-align: right;
 }
 
+.drawer-preference strong {
+  color: var(--green);
+  text-align: right;
+}
+
 .drawer-preference {
   display: grid;
   align-items: stretch;
+}
+
+.drawer-columns {
+  border: 1px solid #d9f5e7;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f8fffc;
+}
+
+.drawer-columns summary {
+  cursor: pointer;
+  color: var(--green-dark);
+}
+
+.drawer-column-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding-top: 10px;
+}
+
+.drawer-column-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid #d9f5e7;
+  border-radius: 10px;
+  padding: 6px 8px;
+  background: white;
+}
+
+.drawer-column-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
 }
 
 .login-screen {
@@ -414,11 +466,13 @@ button {
 }
 
 .home-dashboard {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 8px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   width: min(100%, 1480px);
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
 }
 
@@ -533,7 +587,8 @@ button {
 .home-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: minmax(78px, 1fr);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
   align-content: stretch;
   gap: 10px;
   min-height: 0;
@@ -566,7 +621,7 @@ button {
 
 @media (min-width: 1100px) {
   .module-tile {
-    min-height: clamp(72px, 9vh, 106px);
+    min-height: 0;
   }
 }
 
@@ -1203,6 +1258,12 @@ button {
     padding: calc(14px + env(safe-area-inset-top)) 14px 12px;
   }
 
+  .app-view-home .brand-strip {
+    grid-template-columns: 50px minmax(0, 1fr) auto;
+    grid-template-areas: "back brand status";
+    min-height: calc(92px + env(safe-area-inset-top));
+  }
+
   .app-back-button {
     grid-area: back;
     min-height: 50px;
@@ -1246,16 +1307,19 @@ button {
   }
 
   .main-scroll.view-home {
+    display: block;
     overflow-y: auto;
     padding-bottom: 20px;
   }
 
   .home-dashboard {
+    height: auto;
     min-height: auto;
   }
 
   .home-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
   }
 
   .dashboard-card {
