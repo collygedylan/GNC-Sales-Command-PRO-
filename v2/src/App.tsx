@@ -7,6 +7,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   ClipboardList,
   Cloud,
   Grid3X3,
@@ -21,6 +22,7 @@ import {
   Moon,
   RefreshCw,
   Rows3,
+  Save,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -225,6 +227,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('request');
   const [rows, setRows] = useState<RequestRow[]>([]);
   const [detailRow, setDetailRow] = useState<RequestRow | null>(null);
+  const [moduleDetail, setModuleDetail] = useState<{ view: ViewId; row: ModulePreviewRow } | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -234,6 +237,7 @@ export function App() {
   const [displayMode, setDisplayMode] = useState<DisplayMode>(() => readDisplayMode(readStoredSession()));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode(readStoredSession()));
   const [requestColumnKeys, setRequestColumnKeys] = useState<RequestColumnKey[]>(() => readRequestColumnKeys(readStoredSession()));
+  const [moduleFilters, setModuleFilters] = useState<Partial<Record<ViewId, string>>>({});
   const isPhoneViewport = usePhoneViewport();
   const topRef = useRef<HTMLDivElement | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
@@ -306,13 +310,14 @@ export function App() {
   const openView = (next: ViewId) => {
     setView(next);
     setDetailRow(null);
+    setModuleDetail(null);
     setSearch('');
     scrollerRef.current?.scrollTo({ top: 0 });
   };
 
-  const title = detailRow ? 'Item Detail' : view === 'request' ? 'Que' : view === 'home' ? 'Home' : labelForView(view);
-  const activeShellView = detailRow ? 'detail' : view;
-  const showTopSearch = Boolean(detailRow) || view !== 'home';
+  const title = detailRow ? 'Item Detail' : moduleDetail ? moduleDetail.row.title : view === 'request' ? 'Que' : view === 'home' ? 'Home' : labelForView(view);
+  const activeShellView = detailRow ? 'detail' : moduleDetail ? 'module-detail' : view;
+  const showTopSearch = Boolean(detailRow || moduleDetail) || view !== 'home';
   const allowGrid = !isPhoneViewport;
   const effectiveDisplayMode = allowGrid ? displayMode : 'cards';
   const filteredRows = useMemo(() => {
@@ -340,7 +345,7 @@ export function App() {
     <div className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''}`}>
       <div className="top-chrome" ref={topRef}>
         <div className="brand-strip">
-          <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : openView('home')}>
+          <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : moduleDetail ? setModuleDetail(null) : openView('home')}>
             <ArrowLeft size={28} />
           </button>
           <div>
@@ -349,11 +354,11 @@ export function App() {
           </div>
           {showTopSearch ? (
             <div className="app-search-box">
-              {view === 'request' && !detailRow ? <Search size={20} /> : null}
+              {view === 'request' && !detailRow && !moduleDetail ? <Search size={20} /> : null}
               <input
-                value={detailRow || view !== 'request' ? title : search}
-                onChange={event => !detailRow && setSearch(event.target.value)}
-                readOnly={Boolean(detailRow) || view !== 'request'}
+                value={detailRow || moduleDetail || view !== 'request' ? title : search}
+                onChange={event => !detailRow && !moduleDetail && setSearch(event.target.value)}
+                readOnly={Boolean(detailRow || moduleDetail) || view !== 'request'}
                 placeholder={view === 'request' ? 'Search requests...' : title}
               />
             </div>
@@ -366,7 +371,7 @@ export function App() {
         </div>
       </div>
 
-      <main className={`main-scroll view-${detailRow ? 'detail' : view}`} ref={scrollerRef}>
+      <main className={`main-scroll view-${detailRow ? 'detail' : moduleDetail ? 'module-detail' : view}`} ref={scrollerRef}>
         {error ? <div className="banner error">{error}</div> : null}
         {toast ? (
           <Toast
@@ -386,7 +391,15 @@ export function App() {
             onClose={() => { setToast(''); setUndoRemove(null); }}
           />
         ) : null}
-        {detailRow ? (
+        {moduleDetail ? (
+          <ModuleDetail
+            view={moduleDetail.view}
+            row={moduleDetail.row}
+            demoMode={SANDBOX_ONLY || demoMode}
+            onBack={() => { setModuleDetail(null); scrollerRef.current?.scrollTo({ top: 0 }); }}
+            onToast={setToast}
+          />
+        ) : detailRow ? (
           <RequestDetail
             row={detailRow}
             session={session}
@@ -417,7 +430,15 @@ export function App() {
         ) : view === 'comm' ? (
           <CommunicationView demoMode={SANDBOX_ONLY || demoMode} />
         ) : (
-          <ModuleWorkspace view={view} displayMode={effectiveDisplayMode} allowGrid={allowGrid} demoMode={SANDBOX_ONLY || demoMode} />
+          <ModuleWorkspace
+            view={view}
+            displayMode={effectiveDisplayMode}
+            allowGrid={allowGrid}
+            demoMode={SANDBOX_ONLY || demoMode}
+            activeFilter={moduleFilters[view] || 'all'}
+            onFilterChange={filter => setModuleFilters(current => ({ ...current, [view]: filter }))}
+            onOpen={row => { setModuleDetail({ view, row }); scrollerRef.current?.scrollTo({ top: 0 }); }}
+          />
         )}
       </main>
 
@@ -885,12 +906,32 @@ type ModulePreviewRow = {
   quantity: string;
   tone: 'green' | 'blue' | 'purple' | 'orange' | 'warning';
   filter?: string;
+  detail?: {
+    fields?: Array<{ label: string; value: string }>;
+    notes?: string[];
+    history?: Array<{ label: string; value: string }>;
+    actions?: string[];
+  };
 };
 
-function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: ViewId; displayMode: DisplayMode; allowGrid: boolean; demoMode: boolean }) {
+function ModuleWorkspace({
+  view,
+  displayMode,
+  allowGrid,
+  demoMode,
+  activeFilter,
+  onFilterChange,
+  onOpen
+}: {
+  view: ViewId;
+  displayMode: DisplayMode;
+  allowGrid: boolean;
+  demoMode: boolean;
+  activeFilter: string;
+  onFilterChange: (filter: string) => void;
+  onOpen: (row: ModulePreviewRow) => void;
+}) {
   const rows = modulePreviewRows(view);
-  const [activeFilter, setActiveFilter] = useState('all');
-  useEffect(() => setActiveFilter('all'), [view]);
   const isGrid = allowGrid && displayMode === 'grid';
   const filters = moduleFilterOptions(rows);
   const visibleRows = activeFilter === 'all'
@@ -907,7 +948,7 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
       <div className="filter-rail module-filter-rail">
         <label className="filter-select compact">
           <span>Filter</span>
-          <select value={activeFilter} onChange={event => setActiveFilter(event.target.value)}>
+          <select value={activeFilter} onChange={event => onFilterChange(event.target.value)}>
             {filters.map(filter => <option key={filter.id} value={filter.id}>{filter.label}</option>)}
           </select>
           <ChevronDown size={18} />
@@ -917,16 +958,17 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
         <div className="module-grid-wrap">
           <table className="module-grid-table">
             <thead>
-              <tr><th>Work Item</th><th>Location</th><th>Owner</th><th>Status</th><th>Qty</th></tr>
+              <tr><th>Work Item</th><th>Location</th><th>Owner</th><th>Status</th><th>Qty</th><th>Open</th></tr>
             </thead>
             <tbody>
               {visibleRows.map(row => (
-                <tr key={row.title}>
+                <tr key={row.title} className="module-grid-row" onDoubleClick={() => onOpen(row)}>
                   <td>{row.title}</td>
                   <td>{row.meta}</td>
                   <td>{row.owner}</td>
                   <td><Chip tone={row.tone} label={row.status} /></td>
                   <td>{row.quantity}</td>
+                  <td><button type="button" className="grid-open-button" onClick={() => onOpen(row)}>Open</button></td>
                 </tr>
               ))}
             </tbody>
@@ -935,8 +977,8 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
       ) : (
         <div className="module-card-list">
           {visibleRows.map(row => (
-            <article className="module-preview-card" key={row.title}>
-              <div className="module-preview-icon"><Boxes size={24} /></div>
+            <button type="button" className="module-preview-card" key={row.title} onClick={() => onOpen(row)}>
+              <div className="module-preview-icon">{moduleIcon(view, 24)}</div>
               <div>
                 <h2>{row.title}</h2>
                 <p>{row.meta}</p>
@@ -945,11 +987,115 @@ function ModuleWorkspace({ view, displayMode, allowGrid, demoMode }: { view: Vie
               <div className="module-preview-side">
                 <Chip tone={row.tone} label={row.status} />
                 <strong>{row.quantity}</strong>
+                <em>Open <ChevronRight size={16} /></em>
               </div>
-            </article>
+            </button>
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function ModuleDetail({ view, row, demoMode, onBack, onToast }: {
+  view: ViewId;
+  row: ModulePreviewRow;
+  demoMode: boolean;
+  onBack: () => void;
+  onToast: (message: string) => void;
+}) {
+  const details = liveShapedDetailFor(view, row);
+  const [status, setStatus] = useState(row.status);
+  const [quantity, setQuantity] = useState(row.quantity);
+  const [note, setNote] = useState(details.notes[0] || '');
+  const [decision, setDecision] = useState(details.actions[0] || 'Review');
+
+  const sandboxToast = (action: string) => {
+    onToast(`${action} saved in the v2 sandbox only. No production data, email, or upload was touched.`);
+  };
+
+  return (
+    <section className="module-detail-flow">
+      <button className="inline-back" type="button" onClick={onBack}><ArrowLeft size={22} /> Back to {labelForView(view)}</button>
+      <article className="module-detail-card">
+        <div className="module-detail-head">
+          <div className="module-media-frame">
+            <div className="module-media-mark">{moduleIcon(view, 34)}</div>
+            <span>{mediaInitials(row.title)}</span>
+          </div>
+          <div className="module-detail-title">
+            <span>{demoMode ? 'Sandbox Detail' : 'Workflow Detail'}</span>
+            <h1>{row.title}</h1>
+            <p>{row.meta}</p>
+          </div>
+          <div className="module-detail-status">
+            <Chip tone={row.tone} label={status} />
+            <strong>{quantity}</strong>
+          </div>
+        </div>
+
+        <div className="module-detail-metrics" aria-label="Detail metrics">
+          {details.fields.slice(0, 4).map(field => <ReadOnlyField key={field.label} label={field.label} value={field.value} />)}
+        </div>
+
+        <div className="module-detail-sections">
+          <section className="detail-panel">
+            <div className="detail-panel-title">
+              <span>Update</span>
+              <strong>Sandbox Fields</strong>
+            </div>
+            <div className="field-grid sandbox-field-grid">
+              <label className="editable-field">
+                <span>Status</span>
+                <select value={status} onChange={event => setStatus(event.target.value)}>
+                  {[row.status, 'Open', 'In Progress', 'Review', 'Ready', 'Complete'].filter((value, index, all) => all.indexOf(value) === index).map(value => (
+                    <option key={value} value={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="editable-field">
+                <span>Quantity / Rows</span>
+                <input value={quantity} onChange={event => setQuantity(event.target.value)} />
+              </label>
+              <label className="editable-field">
+                <span>Decision</span>
+                <select value={decision} onChange={event => setDecision(event.target.value)}>
+                  {details.actions.map(action => <option key={action} value={action}>{action}</option>)}
+                </select>
+              </label>
+              <ReadOnlyField label="Owner" value={row.owner} />
+            </div>
+            <label className="editable-field full">
+              <span>Work Note</span>
+              <textarea value={note} onChange={event => setNote(event.target.value)} rows={4} placeholder="Add a test note..." />
+            </label>
+            <div className="module-action-row">
+              <button type="button" className="primary-button" onClick={() => sandboxToast('Test save')}><Save size={18} /> Save Test Changes</button>
+              <button type="button" className="ghost-button" onClick={() => sandboxToast('Test completion')}><CheckCircle2 size={18} /> Mark Test Complete</button>
+              <button type="button" className="ghost-button" onClick={() => sandboxToast('Test upload retry')}><RefreshCw size={18} /> Retry Upload Test</button>
+            </div>
+          </section>
+
+          <section className="detail-panel">
+            <div className="detail-panel-title">
+              <span>Context</span>
+              <strong>Live-Shaped Snapshot</strong>
+            </div>
+            <div className="detail-key-value-grid">
+              {details.fields.slice(4).map(field => <ReadOnlyField key={field.label} label={field.label} value={field.value} />)}
+            </div>
+            <div className="status-history">
+              {details.history.map(entry => (
+                <div key={`${entry.label}-${entry.value}`}>
+                  <span>{entry.label}</span>
+                  <strong>{entry.value}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="safe-action-note">v2 test environment only. Buttons update local UI state and never send emails, uploads, or production database writes.</div>
+          </section>
+        </div>
+      </article>
     </section>
   );
 }
@@ -1088,6 +1234,107 @@ function labelForView(view: ViewId) {
     production: 'Production',
     reports: 'Reports'
   } as Record<ViewId, string>)[view];
+}
+
+function moduleIcon(view: ViewId, size = 24) {
+  const props = { size, strokeWidth: 2.2 };
+  switch (view) {
+    case 'drive':
+    case 'docks':
+      return <Truck {...props} />;
+    case 'tasks':
+    case 'request':
+      return <ClipboardList {...props} />;
+    case 'comm':
+      return <MessageCircle {...props} />;
+    case 'bloom':
+      return <ShoppingBag {...props} />;
+    case 'inventory':
+    case 'office':
+      return <Store {...props} />;
+    case 'managers':
+      return <UserRound {...props} />;
+    case 'sales':
+      return <Handshake {...props} />;
+    case 'building':
+      return <Hammer {...props} />;
+    case 'qc':
+      return <ShieldCheck {...props} />;
+    case 'production':
+      return <Leaf {...props} />;
+    case 'reports':
+      return <BarChart3 {...props} />;
+    default:
+      return <Boxes {...props} />;
+  }
+}
+
+function moduleWorkflowLabel(view: ViewId) {
+  return ({
+    drive: 'Inventory item workflow',
+    docks: 'Dock, stop, and drop-off workflow',
+    tasks: 'Task and AV blank workflow',
+    comm: 'Field message workflow',
+    bloom: 'Bloom picker workflow',
+    inventory: 'Inventory hub workflow',
+    managers: 'Manager review workflow',
+    sales: 'Sales note workflow',
+    building: 'Building task workflow',
+    qc: 'Quality control workflow',
+    office: 'Office workflow',
+    production: 'Production workflow',
+    reports: 'Reporting workflow',
+    request: 'Request queue workflow',
+    home: 'Module dashboard'
+  } as Record<ViewId, string>)[view];
+}
+
+function moduleActionsForView(view: ViewId) {
+  return ({
+    drive: ['Save inventory note', 'Mark pull ready', 'Open item inquiry'],
+    docks: ['Save stop status', 'Mark loaded', 'Flag mistake'],
+    tasks: ['Save task note', 'Complete task', 'Assign reviewer'],
+    comm: ['Send test reply', 'Mark read', 'Add participant'],
+    bloom: ['Save order note', 'Mark picked', 'Retry photo match'],
+    inventory: ['Save inventory note', 'Start recount', 'Open PO review'],
+    managers: ['Approve test row', 'Request changes', 'Assign manager'],
+    sales: ['Save sales note', 'Create follow up', 'Mark reviewed'],
+    building: ['Save work note', 'Mark repaired', 'Escalate'],
+    qc: ['Save QC note', 'Pass review', 'Create NCR'],
+    office: ['Save office note', 'Export test file', 'Mark reviewed'],
+    production: ['Save production note', 'Clear block', 'Flag hold risk'],
+    reports: ['Run test export', 'Save report note', 'Mark reviewed'],
+    request: ['Save request note', 'Complete request', 'Retry upload'],
+    home: ['Open module']
+  } as Record<ViewId, string[]>)[view];
+}
+
+function liveShapedDetailFor(view: ViewId, row: ModulePreviewRow) {
+  const defaultFields = [
+    { label: 'Module', value: labelForView(view) },
+    { label: 'Owner', value: row.owner },
+    { label: 'Status', value: row.status },
+    { label: 'Rows / Qty', value: row.quantity },
+    { label: 'Reference', value: row.meta },
+    { label: 'Workflow', value: moduleWorkflowLabel(view) },
+    { label: 'Data Mode', value: 'Live-shaped fixture' },
+    { label: 'Write Mode', value: 'Sandbox only' }
+  ];
+  const defaultNotes = [
+    `Review ${row.title} using the same field flow as the live app, without touching production data.`,
+    'All save, complete, upload, remove, and message actions are local test actions in v2.'
+  ];
+  const defaultHistory = [
+    { label: 'Loaded', value: 'Fixture data' },
+    { label: 'Last Sync', value: 'Test mode' },
+    { label: 'Safety', value: 'No emails or production writes' }
+  ];
+  return {
+    fields: row.detail?.fields?.length ? row.detail.fields : defaultFields,
+    notes: row.detail?.notes?.length ? row.detail.notes : defaultNotes,
+    history: row.detail?.history?.length ? row.detail.history : defaultHistory,
+    actions: row.detail?.actions?.length ? row.detail.actions : moduleActionsForView(view)
+  };
 }
 
 function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
