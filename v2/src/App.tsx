@@ -38,6 +38,7 @@ import {
   REQUEST_TABLE,
   RequestRow,
   Session,
+  demoAvOptions,
   demoRows,
   field,
   isArchived,
@@ -51,6 +52,7 @@ import {
   uniqueId,
   uploadRequestPhoto
 } from './services';
+import type { AvOptionRow } from './types';
 
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
@@ -197,26 +199,27 @@ function usePhoneViewport() {
   return isPhone;
 }
 
-function useChunkedRows<T>(rows: T[], batch = 30) {
+function useChunkedRows<T>(rows: T[], batch = 30, maximum = 96) {
   const [count, setCount] = useState(batch);
   useEffect(() => {
     let cancelled = false;
     let frame = 0;
-    setCount(Math.min(batch, rows.length));
+    const target = Math.min(rows.length, maximum);
+    setCount(Math.min(batch, target));
     const pump = () => {
       if (cancelled) return;
       setCount(current => {
-        const next = Math.min(current + batch, rows.length);
-        if (next < rows.length) frame = window.requestAnimationFrame(pump);
+        const next = Math.min(current + batch, target);
+        if (next < target) frame = window.requestAnimationFrame(pump);
         return next;
       });
     };
-    if (rows.length > batch) frame = window.requestAnimationFrame(pump);
+    if (target > batch) frame = window.requestAnimationFrame(pump);
     return () => {
       cancelled = true;
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [rows, batch]);
+  }, [rows, batch, maximum]);
   return rows.slice(0, count);
 }
 
@@ -641,6 +644,11 @@ function RequestView(props: {
           ))}
         </div>
       )}
+      {props.rows.length > visibleRows.length ? (
+        <p className="render-limit-note">
+          Showing the first {visibleRows.length.toLocaleString()} of {props.rows.length.toLocaleString()} matching rows. Refine the search or filter to narrow the list.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -676,11 +684,14 @@ function RequestGrid({ rows, columnKeys, onOpen, onRemove }: { rows: RequestRow[
 
 function RequestCard({ row, onOpen, onRemove }: { row: RequestRow; onOpen: () => void; onRemove: () => void }) {
   return (
-    <article className="request-card" onClick={onOpen}>
+    <article className="request-card live-row-card" onClick={onOpen}>
       <div className="card-main">
-        <div>
+        <div className="card-copy">
           <h2>{field(row, ['COMMONNAME', 'commonname'], 'Unnamed item')}</h2>
           <a>{field(row, ['LOCATIONCODE', 'locationcode'], '-')}</a>
+          <div className="card-meta-line">
+            {field(row, ['ITEMCODE', 'itemcode'], '-')} | Lot {field(row, ['LOTCODE', 'lotcode'], '-')} | {field(row, ['CONTSIZE', 'contsize'], '-')}
+          </div>
           <p>{field(row, ['REQUESTED_BY', 'requested_by', 'SALES_REP', 'sales_rep'], 'No rep')}</p>
           <p>{field(row, ['CUSTOMER', 'customer', 'CONSIGNEE', 'consignee'], 'No customer')}</p>
         </div>
@@ -689,6 +700,7 @@ function RequestCard({ row, onOpen, onRemove }: { row: RequestRow; onOpen: () =>
           <strong>{field(row, ['CONTSIZE', 'contsize'], '')}</strong>
           <span>{field(row, ['SRC', 'src'], '')}</span>
           <ModernPhoto row={row} />
+          <em>Open <ChevronRight size={15} /></em>
         </div>
       </div>
       <div className="chip-grid">
@@ -731,6 +743,19 @@ function RequestDetail(props: {
   }));
   const [busy, setBusy] = useState(false);
   const [uploads, setUploads] = useState<Array<{ id: string; file: File; preview: string; state: UploadState; error?: string; url?: string }>>([]);
+  const [showAdvanced, setShowAdvanced] = useState(() => (
+    typeof window === 'undefined' ? true : !(window.matchMedia?.('(max-width: 720px)').matches ?? false)
+  ));
+  const [selectedYear, setSelectedYear] = useState(27);
+  const [selectedAvRowId, setSelectedAvRowId] = useState('');
+  const avRows = useMemo(
+    () => demoAvOptions(field(props.row, ['ITEMCODE', 'itemcode'], ''), selectedYear),
+    [props.row, selectedYear]
+  );
+  const selectedAvRow = useMemo(
+    () => avRows.find(row => String(row.unique_id ?? '') === selectedAvRowId) ?? null,
+    [avRows, selectedAvRowId]
+  );
   const pendingUpload = uploads.some(upload => upload.state === 'queued' || upload.state === 'uploading' || upload.state === 'retrying');
   const failedUpload = uploads.some(upload => upload.state === 'failed');
   const rowId = uniqueId(props.row);
@@ -751,13 +776,15 @@ function RequestDetail(props: {
       LOC_MATCH: draft.locMatch,
       AV_NOTE: draft.avNote,
       PICK_NOTE: draft.pickNote,
+      AV_OPTION_UNIQUE_ID: selectedAvRowId || null,
+      AV_SELECTED_LOCATION: selectedAvRow ? avValue(selectedAvRow, 'LOCATIONCODE', 'locationcode') : null,
       ...(complete ? { REQ_STATUS: 'Complete', DATE_COMPLETED: new Date().toISOString() } : {})
     };
     setBusy(true);
     try {
       if (!props.demoMode && props.session) await patchRow(props.session, REQUEST_TABLE, rowId, patch);
       props.onPatch(patch);
-      props.onToast(complete ? 'Request row completed.' : 'Request row saved.');
+      props.onToast(complete ? 'Request row committed.' : 'Request row saved.');
       if (complete) props.onBack();
     } catch (err) {
       props.onToast(err instanceof Error ? err.message : 'Save failed');
@@ -811,19 +838,15 @@ function RequestDetail(props: {
           </div>
           <ModernPhoto row={props.row} large />
         </div>
-        <div className="field-grid">
+        <div className="field-grid detail-primary-grid">
           <ReadOnlyField label="PRI" value={field(props.row, ['PRI', 'priority'], '-')} />
           <ReadOnlyField label="On Hand" value={String(numberField(props.row, ['ON_HAND', 'on_hand', 'HAND']))} />
-          <ReadOnlyField label="Review" value={String(numberField(props.row, ['REVIEW', 'review', 'REV']))} />
           <ReadOnlyField label="Available" value={String(numberField(props.row, ['AVAILABLE', 'available', 'AVAIL']))} />
-          <ReadOnlyField label="Open Stock" value={String(numberField(props.row, ['OPEN_STOCK', 'open_stock', 'OPEN']))} />
           <label><span>Qty</span><input value={draft.qty} inputMode="numeric" onChange={event => update('qty', event.target.value)} /></label>
           <label><span>Reserve</span><select value={draft.reserve} onChange={event => update('reserve', event.target.value)}><option>NO</option><option>YES</option></select></label>
           <ReadOnlyField label="Sales Rep" value={field(props.row, ['REQUESTED_BY', 'requested_by', 'SALES_REP', 'sales_rep'], '-')} />
           <ReadOnlyField label="Customer / Consignee" value={field(props.row, ['CUSTOMER', 'customer', 'CONSIGNEE', 'consignee'], 'N/A')} />
           <label className="wide"><span>Row Note</span><textarea value={draft.rowNote} onChange={event => update('rowNote', event.target.value)} /></label>
-          <label><span>Required Spec</span><input value={draft.spec} placeholder="e.g. 24-30 inch" onChange={event => update('spec', event.target.value)} /></label>
-          <label><span>Required Caliper</span><input value={draft.caliper} placeholder="N/A" onChange={event => update('caliper', event.target.value)} /></label>
         </div>
         <label className="photo-button">
           <Camera size={24} />
@@ -831,24 +854,74 @@ function RequestDetail(props: {
           <input type="file" accept="image/*" capture="environment" multiple onChange={event => onFiles(event.target.files)} />
         </label>
         <UploadStrip uploads={uploads} onRetry={upload => void runUpload(upload)} onRemove={id => setUploads(current => current.filter(item => item.id !== id))} />
-        <div className="av-options">
-          <strong>AV Options</strong>
-          <span>{field(props.row, ['ITEMCODE', 'itemcode'], '-') } | {field(props.row, ['ROWS', 'rows'], '1 row')}</span>
-        </div>
-        <div className="field-grid">
-          <label><span>Loc Match %</span><input value={draft.locMatch} inputMode="decimal" placeholder="e.g. 95" onChange={event => update('locMatch', event.target.value)} /></label>
-          <label className="wide"><span>AV Note</span><textarea value={draft.avNote} onChange={event => update('avNote', event.target.value)} /></label>
-          <label className="wide"><span>Pick Note</span><textarea value={draft.pickNote} onChange={event => update('pickNote', event.target.value)} /></label>
-        </div>
+        <details className="detail-advanced" open={showAdvanced} onToggle={event => setShowAdvanced(event.currentTarget.open)}>
+          <summary>
+            <span>Advanced fields</span>
+            <ChevronDown size={18} />
+          </summary>
+          <div className="advanced-body">
+            <div className="field-grid detail-secondary-grid">
+              <ReadOnlyField label="Review" value={String(numberField(props.row, ['REVIEW', 'review', 'REV']))} />
+              <ReadOnlyField label="Open Stock" value={String(numberField(props.row, ['OPEN_STOCK', 'open_stock', 'OPEN']))} />
+              <label><span>Required Spec</span><input value={draft.spec} placeholder="e.g. 24-30 inch" onChange={event => update('spec', event.target.value)} /></label>
+              <label><span>Required Caliper</span><input value={draft.caliper} placeholder="N/A" onChange={event => update('caliper', event.target.value)} /></label>
+            </div>
+            <details className="av-options-panel">
+              <summary>
+                <span><strong>AV Options</strong><small>{field(props.row, ['ITEMCODE', 'itemcode'], '-')} | {avRows.length} rows</small></span>
+                <ChevronDown size={18} />
+              </summary>
+              <div className="av-options-body">
+                <label className="av-year-select">
+                  <span>Season / Sales Year</span>
+                  <select value={selectedYear} onChange={event => { setSelectedYear(Number(event.target.value)); setSelectedAvRowId(''); }}>
+                    {[27, 26, 25, 24, 28, 29, 30].map(year => <option key={year} value={year}>Sales year {year}</option>)}
+                  </select>
+                </label>
+                <div className="av-option-list" role="listbox" aria-label="Available inventory rows">
+                  {avRows.map(row => {
+                    const id = String(row.unique_id ?? '');
+                    const selected = id === selectedAvRowId;
+                    return (
+                      <button
+                        className={`av-option-row${selected ? ' selected' : ''}`}
+                        key={id}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => setSelectedAvRowId(selected ? '' : id)}
+                      >
+                        <span className="av-option-location">{avValue(row, 'LOCATIONCODE', 'locationcode')}</span>
+                        <span>Year {avValue(row, 'SALESYEAR', 'salesyear')}</span>
+                        <span>Block {avValue(row, 'BLOCKALPHA', 'blockalpha')}{avValue(row, 'BLOCKNUMBER', 'blocknumber')}</span>
+                        <strong>{avValue(row, 'AVAILABLE', 'available')} available</strong>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </details>
+            <div className="field-grid detail-secondary-grid">
+              <label><span>Loc Match %</span><input value={draft.locMatch} inputMode="decimal" placeholder="e.g. 95" onChange={event => update('locMatch', event.target.value)} /></label>
+              <label><span>AV Note</span><textarea value={draft.avNote} onChange={event => update('avNote', event.target.value)} /></label>
+              <label className="wide"><span>Pick Note</span><textarea value={draft.pickNote} onChange={event => update('pickNote', event.target.value)} /></label>
+            </div>
+          </div>
+        </details>
         <div className="detail-actions">
           <button className="ghost-button" disabled={busy} onClick={() => void save(false)}>Save</button>
           <button className="primary-button" disabled={busy || pendingUpload || failedUpload} onClick={() => void save(true)}>
-            <CheckCircle2 size={20} /> Complete Row
+            <CheckCircle2 size={20} /> Commit
           </button>
         </div>
       </div>
     </section>
   );
+}
+
+function avValue(row: AvOptionRow, upper: string, lower: string) {
+  const value = row[upper] ?? row[lower];
+  return value === undefined || value === null || value === '' ? '-' : String(value);
 }
 
 function UploadStrip({ uploads, onRetry, onRemove }: {
@@ -977,7 +1050,7 @@ function ModuleWorkspace({
       ) : (
         <div className="module-card-list">
           {visibleRows.map(row => (
-            <button type="button" className="module-preview-card" key={row.title} onClick={() => onOpen(row)}>
+            <button type="button" className="module-preview-card live-row-card" key={row.title} onClick={() => onOpen(row)}>
               <div className="module-preview-icon">{moduleIcon(view, 24)}</div>
               <div>
                 <h2>{row.title}</h2>
