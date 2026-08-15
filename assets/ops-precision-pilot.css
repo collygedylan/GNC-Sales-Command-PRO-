@@ -991,7 +991,7 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
   }
 }
 
-/* V2026.08.15.09 — compact enterprise shell, semantic dual-theme controls, and responsive inventory cards. */
+/* V2026.08.15.10 — compact enterprise shell, semantic dual-theme controls, and responsive inventory cards. */
 :root {
   --login-canvas: #076f45;
   --login-canvas-deep: #045b38;
@@ -1553,10 +1553,6 @@ body.ops-precision-pilot .app-empty-state strong {
     grid-template-areas: "main main" "bottom reclass" !important;
   }
 
-  body.ops-precision-pilot .app-drive-card-photo {
-    display: none !important;
-  }
-
   body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-row,
   body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -1574,6 +1570,81 @@ body.ops-precision-pilot .app-empty-state strong {
 #loading-spinner.hidden,
 #login-progress-wrap.hidden {
   display: none !important;
+}
+
+/* V2026.08.15.10 phone layout repair: full-width two-column Home tiles,
+   restored Drive thumbnails, and Reclass returned to the upper-right. */
+@media (max-width: 639px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    width: 100% !important;
+    max-width: none !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: auto !important;
+    justify-items: stretch !important;
+    gap: 10px !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-width: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    justify-self: stretch !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-grid,
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-actions {
+    position: relative;
+    grid-template-columns: clamp(4.4rem, 21vw, 5.25rem) minmax(0, 1fr) !important;
+    grid-template-areas: "photo main" "bottom bottom" !important;
+    gap: 8px 10px !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo,
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo.app-drive-card-grid--no-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "main" "bottom" !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-photo {
+    display: block !important;
+    align-self: start;
+  }
+
+  body.ops-precision-pilot .app-drive-card-photo .app-smart-thumb,
+  body.ops-precision-pilot .app-drive-card-photo .app-inline-thumb-box {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: cover;
+  }
+
+  body.ops-precision-pilot .app-drive-card-main {
+    padding-right: 76px !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-reclass {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
+    width: 68px;
+    min-width: 68px;
+    margin: 0;
+  }
+
+  body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
+    min-height: 42px !important;
+    padding: 6px 7px !important;
+    gap: 2px !important;
+    font-size: 9px !important;
+    line-height: 1 !important;
+  }
 }
 
 /* V2026.08.15.08 — unified command shell, readable data pills, and theme-aware chat. */
@@ -2710,7 +2781,7 @@ body.ops-precision-pilot .footer-nav-btn > span:not(.footer-nav-badge) {
   }
 }
 
-/* V2026.08.15.09 final cascade — intentional override of pre-release tile/card experiments. */
+/* V2026.08.15.10 final cascade — intentional override of pre-release tile/card experiments. */
 body.ops-precision-pilot #view-home #home-dashboard-grid,
 body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
   display: grid !important;
@@ -2751,14 +2822,14 @@ body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button > i {
 body.ops-precision-pilot .app-drive-card-grid,
 body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-actions {
   grid-template-columns: minmax(5.25rem, 7.25rem) minmax(0, 1fr) auto !important;
-  grid-template-areas: "photo main main" "bottom bottom reclass" !important;
+  grid-template-areas: "photo main reclass" "bottom bottom bottom" !important;
   gap: 10px 12px !important;
 }
 
 body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo,
 body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo.app-drive-card-grid--no-actions {
   grid-template-columns: minmax(0, 1fr) auto !important;
-  grid-template-areas: "main main" "bottom reclass" !important;
+  grid-template-areas: "main reclass" "bottom bottom" !important;
 }
 
 body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-row,
@@ -2795,7 +2866,7 @@ body.ops-precision-pilot .app-data-pill {
 
 body.ops-precision-pilot .app-drive-card-reclass {
   grid-area: reclass;
-  align-self: end;
+  align-self: start;
   min-width: 96px;
 }
 
@@ -2839,12 +2910,83 @@ body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
     grid-template-areas: "main main" "bottom reclass" !important;
   }
 
-  body.ops-precision-pilot .app-drive-card-photo {
-    display: none !important;
-  }
-
   body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-row,
   body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* V2026.08.15.10 mobile cascade lock. This block intentionally stays last so
+   legacy phone experiments cannot narrow Home tiles or hide Drive media. */
+@media (max-width: 639px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    width: 100% !important;
+    max-width: none !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: auto !important;
+    justify-items: stretch !important;
+    gap: 10px !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-width: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    justify-self: stretch !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-grid,
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-actions {
+    position: relative !important;
+    grid-template-columns: clamp(4.4rem, 21vw, 5.25rem) minmax(0, 1fr) !important;
+    grid-template-areas: "photo main" "bottom bottom" !important;
+    gap: 8px 10px !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo,
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo.app-drive-card-grid--no-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "main" "bottom" !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-photo {
+    display: block !important;
+    align-self: start !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-photo .app-smart-thumb,
+  body.ops-precision-pilot .app-drive-card-photo .app-inline-thumb-box {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: cover !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-main {
+    padding-right: 76px !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-reclass {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    z-index: 3 !important;
+    width: 68px !important;
+    min-width: 68px !important;
+    margin: 0 !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
+    min-height: 42px !important;
+    padding: 6px 7px !important;
+    gap: 2px !important;
+    font-size: 9px !important;
+    line-height: 1 !important;
   }
 }

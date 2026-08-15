@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.09';
+  const release = 'V2026.08.15.10';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.09'/);
-  assert.equal(packageJson.version, '2026.08.15.09');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.10'/);
+  assert.equal(packageJson.version, '2026.08.15.10');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -140,7 +140,7 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /--ops-surface: #111c18/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(css, /V2026\.08\.15\.09 final cascade[\s\S]*grid-template-rows: none !important/);
+  assert.match(css, /V2026\.08\.15\.10 final cascade[\s\S]*grid-template-rows: none !important/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /--ops-desktop-nav: 1400px/);
@@ -208,7 +208,7 @@ test('primary module icons use a restrained single-weight treatment', () => {
   assert.match(drawerBlock, /class="ph-duotone ph-palette"/);
   assert.match(drawerBlock, /class="ph-duotone ph-arrows-clockwise"/);
   assert.match(css, /--ops-icon-well:/);
-  assert.match(css, /V2026\.08\.15\.09 final cascade[\s\S]*#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 10px !important/);
+  assert.match(css, /V2026\.08\.15\.10 final cascade[\s\S]*#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 10px !important/);
   assert.match(css, /\.drawer-item > i[\s\S]*width: 34px !important/);
   assert.match(css, /\.footer-nav-btn:is\(\.active, \.menu-open, \[aria-current="page"\]\) > i/);
   assert.match(css, /text-transform: none !important/);
@@ -311,9 +311,22 @@ test('new inventory transactions are Reclass-only while audit history keeps lega
 test('design pills and Drive metrics use the professional responsive card system', () => {
   assert.match(html, /class="app-data-pill app-data-pill--location\$\{compactClass\}"/);
   assert.match(html, /<div class="app-drive-card-title-row">[\s\S]*<div class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}<\/div>/);
-  assert.match(css, /V2026\.08\.15\.09 final cascade[\s\S]*\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
+  assert.match(css, /V2026\.08\.15\.10 final cascade[\s\S]*\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
   assert.match(css, /\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(4/);
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
+});
+
+test('phone Home tiles fill both columns and Drive cards retain the thumbnail with Reclass at top right', () => {
+  const cascadeLockIndex = css.lastIndexOf('V2026.08.15.10 mobile cascade lock');
+  const legacyMobileGridIndex = css.lastIndexOf('grid-template-areas: "main main" "bottom reclass"');
+  assert.ok(cascadeLockIndex > legacyMobileGridIndex, 'mobile repair must follow every legacy phone card rule');
+  const mobileCascade = css.slice(cascadeLockIndex);
+  assert.match(mobileCascade, /grid-auto-rows: auto !important/);
+  assert.match(mobileCascade, /#view-home #home-dashboard-grid > div[\s\S]*width: 100% !important[\s\S]*height: auto !important[\s\S]*justify-self: stretch !important/);
+  assert.doesNotMatch(css, /\.app-drive-card-photo\s*\{\s*display:\s*none\s*!important/);
+  assert.match(mobileCascade, /\.app-drive-card-photo\s*\{[\s\S]*display: block !important/);
+  assert.match(mobileCascade, /\.app-drive-card-reclass\s*\{[\s\S]*position: absolute !important;[\s\S]*top: 0 !important;[\s\S]*right: 0 !important;/);
+  assert.match(css, /grid-template-areas: "photo main reclass" "bottom bottom bottom"/);
 });
 
 test('static deployment includes the pilot assets and builds the pinned bundle', () => {
@@ -323,7 +336,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081509\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081510\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
