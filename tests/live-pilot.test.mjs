@@ -17,12 +17,28 @@ const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.06';
+  const release = 'V2026.08.15.07';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.06'/);
-  assert.equal(packageJson.version, '2026.08.15.06');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.07'/);
+  assert.equal(packageJson.version, '2026.08.15.07');
+});
+
+test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
+  assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
+  assert.match(html, /verifiedUsername === 'dylan_collyge' && localStorage\.getItem\('gnc_explicit_logout_v1'\) !== '1'/);
+  assert.match(html, /localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
+  assert.match(html, /const prepaintTheme = cachedTheme === 'light' \? 'light' : 'dark'/);
+  assert.match(html, /document\.documentElement\.dataset\.opsPrepaintTheme = prepaintTheme/);
+  assert.match(html, /id="ops-theme-prepaint"[\s\S]*data-ops-prepaint-theme="dark"[\s\S]*background:#07120e !important/);
+  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#111c18 !important/);
+  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*color:#9db4aa !important/);
+  assert.match(html, /data-ops-prepaint-theme="light"[\s\S]*background:#f3f7f5 !important/);
+  assert.match(client, /function clearPrepaintTheme\(\)/);
+  assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
+  assert.match(html, /function clearPersistedLoginSession\(\)[\s\S]*removeAttribute\('data-ops-prepaint-theme'\)/);
+  assert.equal(manifest.background_color, '#007a4d');
 });
 
 test('restored sessions retry pilot bootstrap only after authenticated session refresh', () => {
@@ -43,7 +59,7 @@ test('restored sessions retry pilot bootstrap only after authenticated session r
 test('pilot UI is drawer-only and inactive by default', () => {
   assert.match(html, /id="side-drawer"[\s\S]*id="ops-pilot-settings"[\s\S]*id="drawer-logout-btn"/);
   assert.match(html, /id="ops-pilot-settings" class="ops-pilot-settings hidden"/);
-  assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-bold ph-palette"><\/i> Appearance/);
+  assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-duotone ph-palette"><\/i> Appearance/);
   assert.ok(html.indexOf('<div class="drawer-header">Menu</div>') < html.indexOf('id="ops-pilot-settings"'));
   assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-home-btn"'));
   assert.match(css, /body\.ops-pilot-active \.ops-pilot-segmented button[\s\S]*min-height: 44px !important/);
@@ -107,8 +123,8 @@ test('Dylan receives one menu-only Light and Dark selector with legacy System ma
   const themeButtons = html.match(/data-ops-theme-mode="[^"]+"/g) || [];
   assert.deepEqual(themeButtons, ['data-ops-theme-mode="light"', 'data-ops-theme-mode="dark"']);
   assert.doesNotMatch(html, /data-ops-theme-mode="system"/);
-  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="light"[\s\S]*ph-sun[\s\S]*<span>Light<\/span>/);
-  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="dark"[\s\S]*ph-moon[\s\S]*<span>Dark<\/span>/);
+  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="light"[\s\S]*ph-duotone ph-sun[\s\S]*<span>Light<\/span>/);
+  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="dark"[\s\S]*ph-duotone ph-moon[\s\S]*<span>Dark<\/span>/);
   assert.match(client, /return mode === 'light' \? 'light' : 'dark'/);
   assert.match(client, /querySelectorAll\('button\[data-ops-theme-mode\]'\)/);
   assert.match(client, /querySelectorAll\('button\[data-ops-display-mode\]'\)/);
@@ -150,6 +166,24 @@ test('Home alone shows identity metadata while modules use the compact command h
   assert.match(html, /const homeIdentityOnly = chromeState\.currentView === 'home' && !chromeState\.showHomeBack/);
   assert.match(html, /const visibleBack = naturalBack/);
   assert.match(html, /if \(homeIdentityOnly\)[\s\S]*searchRow\.classList\.add\('hidden'\)/);
+});
+
+test('primary module and navigation icons use the modern duotone treatment', () => {
+  const homeBlock = html.slice(html.indexOf('id="home-dashboard-grid"'), html.indexOf('id="home-dynamic-content-sales"'));
+  const bottomNavBlock = html.slice(html.indexOf('id="bottom-nav"'), html.indexOf('id="app-script-source"'));
+  const drawerBlock = html.slice(html.indexOf('id="side-drawer"'), html.indexOf('id="main-scroll-area"'));
+  assert.match(homeBlock, /id="home-tile-drive"[\s\S]*class="ph-duotone ph-car/);
+  assert.match(homeBlock, /id="home-tile-reports"[\s\S]*class="ph-duotone ph-chart-bar/);
+  assert.doesNotMatch(homeBlock, /id="home-tile-[^\"]+"[\s\S]{0,420}class="ph-bold/);
+  assert.match(bottomNavBlock, /class="ph-duotone ph-house"/);
+  assert.match(bottomNavBlock, /class="ph-duotone ph-chat-circle-dots"/);
+  assert.match(drawerBlock, /class="ph-duotone ph-palette"/);
+  assert.match(drawerBlock, /class="ph-duotone ph-arrows-clockwise"/);
+  assert.match(css, /--ops-icon-well:/);
+  assert.match(css, /#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 17px !important/);
+  assert.match(css, /\.drawer-item > i[\s\S]*width: 34px !important/);
+  assert.match(css, /\.footer-nav-btn:is\(\.active, \.menu-open, \[aria-current="page"\]\) > i/);
+  assert.match(css, /text-transform: none !important/);
 });
 
 test('dark cards and chat have explicit high-contrast presentation without replacing handlers', () => {

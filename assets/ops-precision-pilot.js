@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.15.06';
+  const RELEASE = 'V2026.08.15.07';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -110,6 +110,13 @@
 
   function getEffectiveTheme() {
     return state.preferences.themeMode === 'light' ? 'light' : 'dark';
+  }
+
+  function clearPrepaintTheme() {
+    const root = document.documentElement;
+    if (!root) return;
+    root.removeAttribute('data-ops-prepaint-theme');
+    root.style.removeProperty('color-scheme');
   }
 
   function gridIsSupportedHere() {
@@ -517,6 +524,7 @@
     installMutationObserver();
     if (!bridge || typeof bridge.request !== 'function') {
       deactivate();
+      clearPrepaintTheme();
       return false;
     }
     try {
@@ -524,6 +532,7 @@
       if (serial !== initializeSerial) return false;
       if (!response || response.ok !== true || response.eligible !== true) {
         deactivate();
+        clearPrepaintTheme();
         return false;
       }
       const flags = response.flags && typeof response.flags === 'object' ? response.flags : {};
@@ -543,6 +552,7 @@
       state.initialized = true;
       writeCachedPreferences(state.preferences, useDirtyCache);
       applyUiState();
+      clearPrepaintTheme();
       if (useDirtyCache) requestPreferenceSave();
       if (state.flags.monitoring) initializeMonitoring(response.monitoring);
       return true;
