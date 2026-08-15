@@ -15,14 +15,16 @@ const manifest = JSON.parse(read('manifest.json'));
 const serviceWorker = read('sw.js');
 const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
+const liveShellBuild = read('scripts/build-live-shell.mjs');
+const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.08';
+  const release = 'V2026.08.15.09';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.08'/);
-  assert.equal(packageJson.version, '2026.08.15.08');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.09'/);
+  assert.equal(packageJson.version, '2026.08.15.09');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -138,7 +140,7 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /--ops-surface: #111c18/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(css, /grid-template-rows: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /V2026\.08\.15\.09 final cascade[\s\S]*grid-template-rows: none !important/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /--ops-desktop-nav: 1400px/);
@@ -194,19 +196,19 @@ test('Home alone shows identity metadata while modules use the compact command h
   assert.match(html, /if \(homeIdentityOnly\)[\s\S]*searchRow\.classList\.add\('hidden'\)/);
 });
 
-test('primary module and navigation icons use the modern duotone treatment', () => {
+test('primary module icons use a restrained single-weight treatment', () => {
   const homeBlock = html.slice(html.indexOf('id="home-dashboard-grid"'), html.indexOf('id="home-dynamic-content-sales"'));
   const bottomNavBlock = html.slice(html.indexOf('id="bottom-nav"'), html.indexOf('id="app-script-source"'));
   const drawerBlock = html.slice(html.indexOf('id="side-drawer"'), html.indexOf('id="main-scroll-area"'));
-  assert.match(homeBlock, /id="home-tile-drive"[\s\S]*class="ph-duotone ph-car/);
-  assert.match(homeBlock, /id="home-tile-reports"[\s\S]*class="ph-duotone ph-chart-bar/);
-  assert.doesNotMatch(homeBlock, /id="home-tile-[^\"]+"[\s\S]{0,420}class="ph-bold/);
+  assert.match(homeBlock, /id="home-tile-drive"[\s\S]*class="ph ph-car/);
+  assert.match(homeBlock, /id="home-tile-reports"[\s\S]*class="ph ph-chart-bar/);
+  assert.doesNotMatch(homeBlock, /id="home-tile-[^\"]+"[\s\S]{0,420}class="ph-(?:bold|duotone)/);
   assert.match(bottomNavBlock, /class="ph-duotone ph-house"/);
   assert.match(bottomNavBlock, /class="ph-duotone ph-chat-circle-dots"/);
   assert.match(drawerBlock, /class="ph-duotone ph-palette"/);
   assert.match(drawerBlock, /class="ph-duotone ph-arrows-clockwise"/);
   assert.match(css, /--ops-icon-well:/);
-  assert.match(css, /#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 17px !important/);
+  assert.match(css, /V2026\.08\.15\.09 final cascade[\s\S]*#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 10px !important/);
   assert.match(css, /\.drawer-item > i[\s\S]*width: 34px !important/);
   assert.match(css, /\.footer-nav-btn:is\(\.active, \.menu-open, \[aria-current="page"\]\) > i/);
   assert.match(css, /text-transform: none !important/);
@@ -266,9 +268,64 @@ test('performance bridge covers routes, renders, chunks, long tasks, and stale w
   assert.match(client, /ui\.stale-work/);
 });
 
+test('modern login separates saved accounts from fresh credentials without a theme flash', () => {
+  assert.match(html, /id="login-title">Welcome back</);
+  assert.match(html, /id="saved-login-account"/);
+  assert.match(html, /id="login-credential-fields"/);
+  assert.match(html, /id="pin-code"[^>]*type="password"|type="password"[^>]*id="pin-code"/);
+  assert.match(html, /id="login-password-toggle"[\s\S]*toggleLoginPasswordVisibility/);
+  assert.match(html, /function useAnotherLoginAccount\(\)/);
+  assert.match(html, /function setLoginButtonPresentation\(/);
+  assert.match(css, /html\[data-ops-prepaint-theme="dark"\][\s\S]*--login-surface: #111c18/);
+  assert.match(css, /#view-login \.login-card[\s\S]*border-radius: 18px !important/);
+});
+
+test('Drive universal search preserves drill state and renders only its results while typing', () => {
+  assert.match(html, /drive_universal: \(item\) => \[item\.COMMONNAME, item\.LOCATIONCODE, item\.ITEMCODE, item\.CONTSIZE, item\.LOTCODE, item\.DESIGCUST, item\.DESIGITEM, item\.DESIGLOC\]/);
+  assert.match(html, /function captureDriveStateBeforeUniversalSearch\(\)/);
+  assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)/);
+  assert.match(html, /function renderDriveUniversalSearchResultsOnly\(\)/);
+  assert.match(html, /filterBySearch\(drivePlantFilterState\.filteredItems, safeTerm, 'drive_universal'\)/);
+  assert.match(html, /const driveUniversalSearchResultCache=new Map\(\)/);
+  assert.match(html, /while \(driveUniversalSearchResultCache\.size > 24\)/);
+  assert.match(html, /renderMarkupChunkedByKey\('drive-universal-search'/);
+  assert.match(html, /if \(renderDriveUniversalSearchResultsOnly\(\)\) return;[\s\S]*renderViewContent\('drive'/);
+  const searchHandler = html.slice(html.indexOf('function handleDriveSearch'), html.indexOf('function selectDriveName'));
+  assert.doesNotMatch(searchHandler, /resetDriveDrillSelectionState\(\)/);
+});
+
+test('new inventory transactions are Reclass-only while audit history keeps legacy labels', () => {
+  const actionBuilder = html.slice(html.indexOf('function buildArgosInventoryTransactionRailHtml'), html.indexOf('function normalizeArgosInventoryNumber'));
+  const modalBuilder = html.slice(html.indexOf('function ensureArgosInventoryTransactionModal'), html.indexOf('function renderArgosInventoryTransactionSource'));
+  const payloadBuilder = html.slice(html.indexOf('function buildArgosInventoryTransactionPayload'), html.indexOf('async function postArgosInventoryTransactionPayload'));
+  assert.match(actionBuilder, /ARGOS_INVENTORY_TRANSACTION_ACTIONS = Object\.freeze\(\['reclass'\]\)/);
+  assert.match(actionBuilder, /openArgosInventoryTransactionModal\('\$\{safeUid\}', 'reclass'/);
+  assert.doesNotMatch(actionBuilder, /Open quantity transaction|Open transfer transaction|ALT\+Q|ALT\+T/);
+  assert.doesNotMatch(modalBuilder, /data-argos-transaction-tab="(?:qty|transfer)"/);
+  assert.match(payloadBuilder, /const transactionAction = 'reclass'/);
+  assert.doesNotMatch(payloadBuilder, /transactionAction === '(?:qty|transfer)'/);
+  assert.match(html, /if \(safeAction === 'qty'\) return 'QTY'/);
+  assert.match(html, /if \(safeAction === 'transfer'\) return 'TRANSFER'/);
+});
+
+test('design pills and Drive metrics use the professional responsive card system', () => {
+  assert.match(html, /class="app-data-pill app-data-pill--location\$\{compactClass\}"/);
+  assert.match(html, /<div class="app-drive-card-title-row">[\s\S]*<div class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}<\/div>/);
+  assert.match(css, /V2026\.08\.15\.09 final cascade[\s\S]*\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
+  assert.match(css, /\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(4/);
+  assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
+});
+
 test('static deployment includes the pilot assets and builds the pinned bundle', () => {
   assert.match(workflow, /npm run build:pilot-monitoring/);
+  assert.match(workflow, /npm run build:live:assets/);
+  assert.match(workflow, /npm run build:live:shell/);
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081509\.min\.js/);
+  assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
+  assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
+  assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
+  assert.match(liveVendorBuild, /@phosphor-icons/);
 });

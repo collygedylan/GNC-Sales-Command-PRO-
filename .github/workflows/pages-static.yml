@@ -36,7 +36,10 @@ jobs:
         run: |
           set -euo pipefail
           npm ci
+          npm run check:inline
+          npm run test:pilot
           npm run build:pilot-monitoring
+          npm run build:live:assets
           npm run build:v2
 
       - name: Prepare static app
@@ -65,6 +68,9 @@ jobs:
           cp ag-data-solutions-icon-v2026080925-512.png _site/ag-data-solutions-icon-v2026080925-512.png
           mkdir -p _site/v2
           cp -r v2/dist/* _site/v2/
+          npm run build:live:shell
+          test "$(wc -c < _site/index.html)" -le 1500000
+          ! grep -Eq 'cdn\.tailwindcss\.com|unpkg\.com/@phosphor-icons|cdn\.jsdelivr\.net/npm/@supabase' _site/index.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

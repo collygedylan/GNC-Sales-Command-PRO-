@@ -10,12 +10,15 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
-    <link rel="preconnect" href="https://cdn.tailwindcss.com">
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081509.min.css?v=V2026.08.15.09">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.15.08';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.15.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -140,6 +143,7 @@
     </style>
     <style>
         html, body{background:var(--bg)}
+        #saved-login-switch.hidden,#login-credential-fields.hidden,#loading-spinner.hidden,#login-progress-wrap.hidden{display:none!important}
         #app-wrapper{background:#f8fbf9}
         :root{--shell-max-width:920px;--content-max-width:820px;--shell-gutter:clamp(12px,2vw,24px);--shell-width:min(calc(100% - (var(--shell-gutter) * 2)),var(--shell-max-width));--content-width:min(100%,var(--content-max-width));--sticky-chrome-bg:#f8fbf9;--footer-nav-reserve:8.75rem;--request-mark-done-clearance:5.85rem;--module-filter-sticky-z:74}
         #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:1.25rem;scroll-padding-bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom));padding:0 var(--shell-gutter) calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom));background:linear-gradient(180deg,#f8fbf9 0%,#f4f7f5 100%)}
@@ -1592,7 +1596,7 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         #app-top-chrome .nav-header{width:100%;max-width:100%}
         #global-header-search-row{display:flex;align-items:center;gap:.55rem;width:var(--shell-width);max-width:var(--shell-width);margin:0 auto;padding:.16rem 0 .3rem;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:none;position:relative;z-index:58}
         #global-header-search-row.hidden{display:none}
-        /* V2026.08.15.08: Home owns identity/status; modules own the command header. */
+        /* V2026.08.15.09: Home owns identity/status; modules own the command header. */
         body.current-view-home #global-header-search-row,
         body.current-view-home #global-header-search-row.hidden{display:none!important}
         body:not(.current-view-home) #app-top-chrome{background:linear-gradient(180deg,#007a4d 0%,#0d8b5d 100%)}
@@ -6549,7 +6553,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.08">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.09">
 </head>
 <body class="bg-gray-50 overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6599,27 +6603,44 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </section>
     </div>
     <div id="view-login">
-        <div class="login-card">
-            <div class="flex flex-col items-center mb-8 w-full relative">
-                <img src="./ag-data-solutions-logo-v2026080925.png" alt="Ag Data Solutions" class="w-full max-w-[270px] rounded-xl object-contain">
-                <div class="flex flex-col items-center gap-0.5 mt-5">
-                    <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">POWERED BY AG METRIC</span>
-                </div>
+        <div class="login-card" role="dialog" aria-labelledby="login-title" aria-describedby="login-subtitle">
+            <div class="login-brand-lockup">
+                <img src="./ag-data-solutions-logo-v2026080925.png" alt="Ag Data Solutions" class="login-brand-logo">
+                <div class="login-brand-rule" aria-hidden="true"></div>
+                <p class="login-product-label">Powered by Ag Metric</p>
+            </div>
+            <div class="login-heading-block">
+                <h1 id="login-title">Welcome back</h1>
+                <p id="login-subtitle">Sign in to continue to field operations.</p>
             </div>
             <div id="login-inputs">
-                <input type="text" id="username-input" name="gnc-login-user" class="input-field mb-4 text-center border-2" placeholder="USERNAME" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" inputmode="text" data-lpignore="true" data-1p-ignore="true" data-form-type="other" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pin-code').focus();}">
-                <input type="text" id="pin-code" name="gnc-access-code" class="input-field mb-4 text-center border-2 tracking-widest" style="-webkit-text-security: disc;" placeholder="ACCESS CODE" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" enterkeyhint="go" onkeydown="if(event.key==='Enter'){return triggerLoginFromUI(event);}">
-                <button id="login-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="return triggerLoginFromUI(event)">LOGIN</button>
-                <div id="saved-login-hint" class="hidden mt-3 text-[11px] font-semibold text-slate-500 text-center"></div>
-            </div>
-            <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center w-full">
-                <div class="spinner"></div>
-                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div>
-                <div id="login-progress-wrap" class="hidden w-full mt-4">
-                    <div class="w-full h-3 bg-green-900/20 rounded-full overflow-hidden border border-white/20">
-                        <div id="login-progress-bar" class="h-full w-0 bg-[#22c55e] transition-all duration-300 ease-out rounded-full"></div>
+                <section id="saved-login-account" class="login-saved-account hidden" aria-live="polite">
+                    <span id="saved-login-avatar" class="login-saved-avatar" aria-hidden="true">DC</span>
+                    <span class="login-saved-copy">
+                        <strong id="saved-login-display-name">Saved account</strong>
+                        <span>Secure session ready</span>
+                    </span>
+                    <i class="ph-bold ph-check-circle" aria-hidden="true"></i>
+                </section>
+                <div id="login-credential-fields" class="login-field-stack">
+                    <label class="login-field-label" for="username-input">Username</label>
+                    <input type="text" id="username-input" name="gnc-login-user" class="input-field login-field" placeholder="Enter username" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username" inputmode="text" data-lpignore="true" data-1p-ignore="true" data-form-type="other" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pin-code').focus();}">
+                    <label class="login-field-label" for="pin-code">Access code</label>
+                    <div class="login-password-shell">
+                        <input type="password" id="pin-code" name="gnc-access-code" class="input-field login-field" placeholder="Enter access code" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" data-lpignore="true" data-1p-ignore="true" data-form-type="other" enterkeyhint="go" onkeydown="if(event.key==='Enter'){return triggerLoginFromUI(event);}">
+                        <button id="login-password-toggle" type="button" class="login-password-toggle" onclick="return toggleLoginPasswordVisibility()" aria-label="Show access code" aria-pressed="false"><i class="ph-bold ph-eye" aria-hidden="true"></i></button>
                     </div>
-                    <div id="login-progress-label" class="text-[11px] font-bold text-white mt-2 text-center">Starting...</div>
+                </div>
+                <button id="login-button" type="button" class="login-primary-button" onclick="return triggerLoginFromUI(event)"><span data-login-button-label>Login</span><i class="ph-bold ph-arrow-right" aria-hidden="true"></i></button>
+                <button id="saved-login-switch" type="button" class="login-secondary-button hidden" onclick="return useAnotherLoginAccount()">Use another account</button>
+                <div id="saved-login-hint" class="hidden login-assistive-copy"></div>
+            </div>
+            <div id="loading-spinner" class="hidden login-loading-state" aria-live="polite">
+                <div class="spinner"></div>
+                <div id="loading-text" class="login-loading-title">Syncing database…</div>
+                <div id="login-progress-wrap" class="hidden login-progress-wrap">
+                    <div class="login-progress-track"><div id="login-progress-bar" class="login-progress-bar"></div></div>
+                    <div id="login-progress-label" class="login-progress-label">Starting…</div>
                 </div>
             </div>
         </div>
@@ -6633,10 +6654,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <button id="save-password-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="return triggerPasswordChangeFromUI(event)">SAVE & CONTINUE</button>
         </div>
     </div>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.08"></script>
+    <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.09"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7389,7 +7408,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.08').trim() || 'V2026.08.15.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.09').trim() || 'V2026.08.15.09';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7505,23 +7524,23 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="home-dashboard-modules" class="hidden">
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">
-                                <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor hidden"><i class="ph-duotone ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                                <div id="home-tile-docks" onclick="switchView('docks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                                <div id="home-tile-av" onclick="switchView('av')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                                <div id="home-tile-communication" onclick="switchView('communication')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
-                                <div id="home-tile-sales" onclick="switchView('sales')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-duotone ph-handshake text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales</span></div>
-                                <div id="home-tile-managers" onclick="switchView('managers')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-duotone ph-users-three text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Managers</span></div>
-                                <div id="home-tile-building" onclick="switchView('building')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-duotone ph-hammer text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Building</span></div>
-                                <div id="home-tile-qc" onclick="switchView('qc')" class="bg-white border-2 border-orange-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-duotone ph-shield-check text-3xl text-orange-700"></i><span class="font-bold text-sm text-orange-700 uppercase tracking-wide">QC</span></div>
-                                <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-duotone ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
-                                <div id="home-tile-sales-inventory" onclick="openInventoryHubView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-duotone ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory</span></div>
-                                <div id="home-tile-production" onclick="switchView('production')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-duotone ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Production</span></div>
-                                <div id="home-tile-moves" onclick="openMovesView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-map-pin-line text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Location Move</span></div>
-                                <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-duotone ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                                <div id="home-tile-review" onclick="switchView('review')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
-                                <div id="home-tile-move-up" onclick="switchView('move-up')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
-                                <div id="home-tile-grower" onclick="switchView('grower')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Grower</span></div>
-                                <div id="home-tile-pest-management" onclick="switchView('pest-management')" class="hidden bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-duotone ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Pest Management</span></div>
+                                <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor hidden"><i class="ph ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                                <div id="home-tile-docks" onclick="switchView('docks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                                <div id="home-tile-av" onclick="switchView('av')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                                <div id="home-tile-communication" onclick="switchView('communication')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
+                                <div id="home-tile-sales" onclick="switchView('sales')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph ph-handshake text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales</span></div>
+                                <div id="home-tile-managers" onclick="switchView('managers')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph ph-users-three text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Managers</span></div>
+                                <div id="home-tile-building" onclick="switchView('building')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph ph-hammer text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Building</span></div>
+                                <div id="home-tile-qc" onclick="switchView('qc')" class="bg-white border-2 border-orange-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph ph-shield-check text-3xl text-orange-700"></i><span class="font-bold text-sm text-orange-700 uppercase tracking-wide">QC</span></div>
+                                <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
+                                <div id="home-tile-sales-inventory" onclick="openInventoryHubView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory</span></div>
+                                <div id="home-tile-production" onclick="switchView('production')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Production</span></div>
+                                <div id="home-tile-moves" onclick="openMovesView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-map-pin-line text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Location Move</span></div>
+                                <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                                <div id="home-tile-review" onclick="switchView('review')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
+                                <div id="home-tile-move-up" onclick="switchView('move-up')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
+                                <div id="home-tile-grower" onclick="switchView('grower')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Grower</span></div>
+                                <div id="home-tile-pest-management" onclick="switchView('pest-management')" class="hidden bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Pest Management</span></div>
                             </div>
                         </div>
                     </div>
@@ -8852,7 +8871,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -16088,10 +16107,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 savedLoginHint.innerText = '';
                 savedLoginHint.classList.add('hidden');
             }
-            if (loginButton) {
-                loginButton.innerText = 'LOGIN';
-                loginButton.setAttribute('aria-label', 'Login');
-            }
+            setLoginButtonPresentation('Login', 'Login');
+            setSavedLoginPromptState(null);
 
             ['username-input', 'pin-code', 'login-button', 'save-password-button', 'new-password', 'confirm-password'].forEach((id) => {
                 const el = document.getElementById(id);
@@ -16457,13 +16474,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function buildInventoryCardFieldChipsHtml(row = null, options = {}) {
             const safeOptions = options && typeof options === 'object' && !Array.isArray(options) ? options : {};
-            const sizeClasses = safeOptions.compact ? 'px-2 py-1' : 'px-3 py-1';
+            const compactClass = safeOptions.compact ? ' app-data-pill--compact' : '';
             const desigCust = escapeHtml(getInventoryCardDesigCustValue(row));
             const desigItem = escapeHtml(getInventoryCardDesigItemValue(row));
             const desigLoc = escapeHtml(getInventoryCardDesigLocValue(row));
-            const desigCustHtml = desigCust ? `<span class="max-w-full rounded-full border border-emerald-200 bg-emerald-50 ${sizeClasses} text-emerald-700">DESIGCUST <span class="text-emerald-900">${desigCust}</span></span>` : '';
-            const desigItemHtml = desigItem ? `<span class="max-w-full rounded-full border border-indigo-200 bg-indigo-50 ${sizeClasses} text-indigo-700">DESIGITEM <span class="text-indigo-900">${desigItem}</span></span>` : '';
-            const desigLocHtml = desigLoc ? `<span class="max-w-full rounded-full border border-cyan-200 bg-cyan-50 ${sizeClasses} text-cyan-700">DESIGLOC <span class="text-cyan-900">${desigLoc}</span></span>` : '';
+            const desigCustHtml = desigCust ? `<span class="app-data-pill app-data-pill--customer${compactClass}"><span class="app-data-pill__label">DESIGCUST</span><span class="app-data-pill__value">${desigCust}</span></span>` : '';
+            const desigItemHtml = desigItem ? `<span class="app-data-pill app-data-pill--item${compactClass}"><span class="app-data-pill__label">DESIGITEM</span><span class="app-data-pill__value">${desigItem}</span></span>` : '';
+            const desigLocHtml = desigLoc ? `<span class="app-data-pill app-data-pill--location${compactClass}"><span class="app-data-pill__label">DESIGLOC</span><span class="app-data-pill__value">${desigLoc}</span></span>` : '';
             return `${desigCustHtml}${desigItemHtml}${desigLocHtml}`;
         }
 
@@ -27002,24 +27019,75 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function setSavedLoginPromptState(sessionRecord = null) {
             const loginButton = document.getElementById('login-button');
             const hint = document.getElementById('saved-login-hint');
+            const account = document.getElementById('saved-login-account');
+            const accountName = document.getElementById('saved-login-display-name');
+            const avatar = document.getElementById('saved-login-avatar');
+            const credentialFields = document.getElementById('login-credential-fields');
+            const switchButton = document.getElementById('saved-login-switch');
             const displayName = String(firstNonEmptyValue(sessionRecord && sessionRecord.displayName, sessionRecord && sessionRecord.username, '') || '').trim();
             const storedUsername = String(firstNonEmptyValue(sessionRecord && sessionRecord.username, displayName, '') || '').trim();
             const storedPassword = String(firstNonEmptyValue(sessionRecord && sessionRecord.password, '') || '').trim();
             const mustChangePassword = !!(displayName && shouldRequirePasswordChangeForUser(storedUsername, storedPassword, false, displayName));
-            if (loginButton) {
-                loginButton.innerText = displayName ? 'CONTINUE' : 'LOGIN';
-                loginButton.setAttribute('aria-label', displayName ? `Continue as ${displayName}` : 'Login');
-            }
+            const initials = displayName
+                ? displayName.split(/[\s_.-]+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('')
+                : '';
+            setLoginButtonPresentation(displayName ? 'Continue' : 'Login', displayName ? `Continue as ${displayName}` : 'Login');
+            if (account) account.classList.toggle('hidden', !displayName);
+            if (credentialFields) credentialFields.classList.toggle('hidden', !!displayName);
+            if (switchButton) switchButton.classList.toggle('hidden', !displayName);
+            if (accountName) accountName.textContent = displayName || 'Saved account';
+            if (avatar) avatar.textContent = initials || 'AD';
             if (!hint) return;
             if (displayName) {
-                hint.innerText = mustChangePassword
-                    ? `Saved login ready for ${displayName}. Tap CONTINUE to change the default password before opening the app.`
-                    : `Saved login ready for ${displayName}. Tap CONTINUE to open the app.`;
-                hint.classList.remove('hidden');
+                hint.innerText = mustChangePassword ? 'You will be asked to update the default access code.' : '';
+                hint.classList.toggle('hidden', !mustChangePassword);
             } else {
                 hint.innerText = '';
                 hint.classList.add('hidden');
             }
+        }
+
+        function setLoginButtonPresentation(label = 'Login', ariaLabel = '') {
+            const loginButton = document.getElementById('login-button');
+            if (!loginButton) return;
+            const labelNode = loginButton.querySelector('[data-login-button-label]');
+            if (labelNode) labelNode.textContent = String(label || 'Login');
+            else loginButton.textContent = String(label || 'Login');
+            loginButton.setAttribute('aria-label', ariaLabel || String(label || 'Login'));
+        }
+
+        function toggleLoginPasswordVisibility() {
+            const input = document.getElementById('pin-code');
+            const button = document.getElementById('login-password-toggle');
+            if (!input || !button) return false;
+            const reveal = input.type === 'password';
+            input.type = reveal ? 'text' : 'password';
+            button.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+            button.setAttribute('aria-label', reveal ? 'Hide access code' : 'Show access code');
+            const icon = button.querySelector('i');
+            if (icon) icon.className = `ph-bold ${reveal ? 'ph-eye-slash' : 'ph-eye'}`;
+            input.focus({ preventScroll: true });
+            return false;
+        }
+
+        function useAnotherLoginAccount() {
+            setSavedLoginPromptState(null);
+            const usernameInput = document.getElementById('username-input');
+            const pinInput = document.getElementById('pin-code');
+            if (usernameInput) usernameInput.value = '';
+            if (pinInput) {
+                pinInput.value = '';
+                pinInput.type = 'password';
+            }
+            const passwordToggle = document.getElementById('login-password-toggle');
+            if (passwordToggle) {
+                passwordToggle.setAttribute('aria-pressed', 'false');
+                passwordToggle.setAttribute('aria-label', 'Show access code');
+                const icon = passwordToggle.querySelector('i');
+                if (icon) icon.className = 'ph-bold ph-eye';
+            }
+            requestAnimationFrame(() => usernameInput && usernameInput.focus({ preventScroll: true }));
+            return false;
         }
 
         function primeSavedLoginUiOnStartup() {
@@ -27859,7 +27927,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
         const MOVES_PAIR_SEASONS = new Set(['F1', 'S1']);
         const MOVES_UNIVERSAL_SEASONS = new Set(['U1', 'U2', 'U3']);
         const MOVES_PAIR_LOTCODES = new Set(['26.S1', '27.F1']);
-let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveProgram=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let selectedDriveLocationCodes=new Set(); let driveLocationSearchTerm=''; let driveLocationFilterOpen=false; let selectedDriveLotCodes=new Set(); let driveLotSearchTerm=''; let driveLotFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let drivePlantFilterLocationOptions=[]; let drivePlantFilterLotOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveLocationSelectionMode='all'; let driveLotSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const AV_FILTER_SEASON_OPTIONS=Object.freeze(["F1","S1","U1","U2"]); const CAV_AV_BLANK_KEYS_QUERY=`select=*&order=itemcode.asc`; const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; const DRIVE_ITEM_PROGRAM_OPTIONS=Object.freeze([{ value:'q1', label:'Q1', suffix:'1' }, { value:'promo', label:'PROMO', suffix:'2' }]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
+let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveProgram=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let selectedDriveLocationCodes=new Set(); let driveLocationSearchTerm=''; let driveLocationFilterOpen=false; let selectedDriveLotCodes=new Set(); let driveLotSearchTerm=''; let driveLotFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let drivePlantFilterLocationOptions=[]; let drivePlantFilterLotOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveLocationSelectionMode='all'; let driveLotSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const AV_FILTER_SEASON_OPTIONS=Object.freeze(["F1","S1","U1","U2"]); const CAV_AV_BLANK_KEYS_QUERY=`select=*&order=itemcode.asc`; const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; const DRIVE_ITEM_PROGRAM_OPTIONS=Object.freeze([{ value:'q1', label:'Q1', suffix:'1' }, { value:'promo', label:'PROMO', suffix:'2' }]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0; let driveUniversalSearchRestoreState=null; let driveUniversalSearchPendingScrollTop=null; const driveUniversalSearchResultCache=new Map();
         let driveColumnFilters={}; let driveColumnFilterDrafts={}; let driveColumnFilterSelectedHeaders=new Set(); let driveColumnFilterDropdownOpen=false; let driveColumnFilterStep='select'; let driveColumnFilterFieldKey=''; let driveColumnFilterMode='values'; let driveColumnFilterValueSearchTerm=''; let driveColumnFilterFieldSearchTerm=''; let driveColumnFilterHeaderFieldsCache=[]; let driveStandardColumnFilters={}; let driveSeasonSalesNoteColumnFilters={};
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
@@ -29071,7 +29139,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.08').trim() || 'V2026.08.15.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.09').trim() || 'V2026.08.15.09';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -39115,36 +39183,28 @@ let avTopControlsRenderToken = 0;
             if (!isArgosInventoryTransactionEligible(item)) return '';
             const safeUid = escJsAttrValue(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, ''));
             const safeSource = escJsAttrValue(sourceView || activeDetailSourceView || lastView || '');
-            return [
-                `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-qty" aria-label="Open quantity transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'qty', '${safeSource}')"><i class="ph-bold ph-pencil-simple-line text-base"></i><span>QTY</span></button>`,
-                `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-transfer" aria-label="Open transfer transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'transfer', '${safeSource}')"><i class="ph-bold ph-export text-base"></i><span>Transfer</span></button>`,
-                `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-reclass" aria-label="Open reclass transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'reclass', '${safeSource}')"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Reclass</span></button>`
-            ].join('');
+            return `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-reclass" aria-label="Open reclass transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'reclass', '${safeSource}')"><i class="ph ph-arrows-clockwise text-base"></i><span>Reclass</span></button>`;
         }
 
-        const ARGOS_INVENTORY_TRANSACTION_ACTIONS = Object.freeze(['qty', 'transfer', 'reclass']);
+        const ARGOS_INVENTORY_TRANSACTION_ACTIONS = Object.freeze(['reclass']);
 
         function normalizeArgosInventoryTransactionAction(value = '') {
             const safeAction = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            return ARGOS_INVENTORY_TRANSACTION_ACTIONS.includes(safeAction) ? safeAction : 'qty';
+            return ARGOS_INVENTORY_TRANSACTION_ACTIONS.includes(safeAction) ? safeAction : 'reclass';
         }
 
         function getArgosInventoryTransactionActionLabel(action = '') {
             const rawAction = String(action || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
             if (rawAction === 'priority_change' || rawAction === 'priority' || rawAction === 'prioritychange') return 'Priority Change';
             const safeAction = normalizeArgosInventoryTransactionAction(action);
-            if (safeAction === 'transfer') return 'Transfer';
-            if (safeAction === 'reclass') return 'Reclass';
-            return 'Quantity Change';
+            return 'Reclass';
         }
 
         function getArgosInventoryTransactionActionShortLabel(action = '') {
             const rawAction = String(action || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
             if (rawAction === 'priority_change' || rawAction === 'priority' || rawAction === 'prioritychange') return 'PRIORITY';
             const safeAction = normalizeArgosInventoryTransactionAction(action);
-            if (safeAction === 'transfer') return 'ALT+T | TRANSFER';
-            if (safeAction === 'reclass') return 'ALT+R | RECLASS';
-            return 'ALT+Q | QTY';
+            return 'RECLASS';
         }
 
         function normalizeArgosInventoryNumber(value = null) {
@@ -39271,7 +39331,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function shouldArgosInventoryTransactionUseDestinationSeasonPicker() {
-            const stateAction = normalizeArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'qty');
+            const stateAction = normalizeArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'reclass');
             return stateAction === 'reclass' && isArgosInventoryTransactionMoveSeasonRequestAction(getArgosInventoryTransactionRequestAction());
         }
 
@@ -39387,10 +39447,8 @@ let avTopControlsRenderToken = 0;
                     </div>
                     <div class="argos-tx-body">
                         <div id="argos-inventory-transaction-notice" class="argos-tx-notice"><span class="font-black">Auto-Commit</span> - Apply writes to live inventory and records an audit row.</div>
-                        <div class="argos-tx-tabs">
-                            <button type="button" data-argos-transaction-tab="qty" class="argos-transaction-tab" onclick="return setArgosInventoryTransactionAction('qty')"><i class="ph-bold ph-pencil-simple-line"></i>QTY</button>
-                            <button type="button" data-argos-transaction-tab="transfer" class="argos-transaction-tab" onclick="return setArgosInventoryTransactionAction('transfer')"><i class="ph-bold ph-export"></i>Transfer</button>
-                            <button type="button" data-argos-transaction-tab="reclass" class="argos-transaction-tab" onclick="return setArgosInventoryTransactionAction('reclass')"><i class="ph-bold ph-arrows-clockwise"></i>Reclass</button>
+                        <div class="argos-tx-tabs" aria-label="Inventory transaction type">
+                            <span class="argos-transaction-tab active" data-argos-transaction-tab="reclass"><i class="ph ph-arrows-clockwise"></i>Reclass</span>
                         </div>
                         <div id="argos-inventory-transaction-source" class="argos-tx-source"></div>
                         <div class="argos-tx-send-as" aria-label="Send as request actions">
@@ -39459,7 +39517,7 @@ let avTopControlsRenderToken = 0;
             return `<div class="argos-tx-source-grid">${fields.map(([label, value]) => `<div class="argos-tx-source-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || '-')}</strong></div>`).join('')}</div>`;
         }
 
-        function openArgosInventoryTransactionModal(uid = '', action = 'qty', sourceView = '') {
+        function openArgosInventoryTransactionModal(uid = '', action = 'reclass', sourceView = '') {
             const safeUid = String(uid || '').trim();
             const item = findItemByUniqueId(safeUid);
             if (!isArgosInventoryTransactionEligible(item)) {
@@ -39478,7 +39536,7 @@ let avTopControlsRenderToken = 0;
                 item,
                 snapshot,
                 sourceView: String(sourceView || activeDetailSourceView || lastView || '').trim(),
-                action: 'qty',
+                action: 'reclass',
                 submitting: false
             };
             const titleEl = document.getElementById('argos-inventory-transaction-title');
@@ -39502,7 +39560,7 @@ let avTopControlsRenderToken = 0;
             const reasonInput = document.getElementById('argos-inventory-transaction-reason');
             if (reasonInput) reasonInput.value = '';
             if (sourceInput) sourceInput.value = snapshot.source || '';
-            if (qtyInput) qtyInput.value = action === 'qty' ? snapshot.ptrOnHand : '0';
+            if (qtyInput) qtyInput.value = '0';
             if (priorityInput) priorityInput.value = normalizeArgosInventoryTransactionPriorityValue(snapshot.priority) || '';
             if (newItemInput) newItemInput.value = snapshot.itemCode || '';
             if (newLotInput) {
@@ -39529,7 +39587,7 @@ let avTopControlsRenderToken = 0;
             return false;
         }
 
-        function setArgosInventoryTransactionAction(action = 'qty') {
+        function setArgosInventoryTransactionAction(action = 'reclass') {
             if (!argosInventoryTransactionState) return false;
             const safeAction = normalizeArgosInventoryTransactionAction(action);
             argosInventoryTransactionState.action = safeAction;
@@ -39540,7 +39598,7 @@ let avTopControlsRenderToken = 0;
                 button.classList.toggle('shadow-sm', active);
             });
             const qtyLabel = document.getElementById('argos-inventory-transaction-qty-label');
-            if (qtyLabel) qtyLabel.textContent = safeAction === 'qty' ? 'New Quantity' : 'Quantity To Move';
+            if (qtyLabel) qtyLabel.textContent = 'Quantity To Move';
             const sourceField = document.querySelector('[data-argos-core-field="source"]');
             const qtyField = document.querySelector('[data-argos-core-field="qty"]');
             const priorityField = document.querySelector('[data-argos-priority-field="priority"]');
@@ -39553,9 +39611,9 @@ let avTopControlsRenderToken = 0;
                 priorityField.hidden = true;
                 priorityField.classList.add('hidden');
             }
-            if (itemField) itemField.hidden = safeAction !== 'reclass';
-            if (lotField) lotField.hidden = safeAction === 'qty';
-            if (locationField) locationField.hidden = safeAction === 'qty';
+            if (itemField) itemField.hidden = false;
+            if (lotField) lotField.hidden = false;
+            if (locationField) locationField.hidden = false;
             const newItemInput = document.getElementById('argos-inventory-transaction-new-item');
             const newLotInput = document.getElementById('argos-inventory-transaction-new-lot');
             const newLocationInput = document.getElementById('argos-inventory-transaction-new-location');
@@ -39563,9 +39621,9 @@ let avTopControlsRenderToken = 0;
             const priorityInput = document.getElementById('argos-inventory-transaction-priority');
             if (qtyInput) qtyInput.required = true;
             if (priorityInput) priorityInput.required = false;
-            if (newItemInput) newItemInput.required = safeAction === 'reclass';
-            if (newLotInput) newLotInput.required = safeAction !== 'qty';
-            if (newLocationInput) newLocationInput.required = safeAction !== 'qty';
+            if (newItemInput) newItemInput.required = true;
+            if (newLotInput) newLotInput.required = true;
+            if (newLocationInput) newLocationInput.required = true;
             const advanced = document.querySelector('.argos-tx-advanced');
             if (advanced) advanced.open = false;
             const apply = document.getElementById('argos-inventory-transaction-apply');
@@ -39661,7 +39719,7 @@ let avTopControlsRenderToken = 0;
             const apply = document.getElementById('argos-inventory-transaction-apply');
             const note = document.querySelector('[data-argos-hold-field="note"]');
             const advanced = document.querySelector('.argos-tx-advanced');
-            const stateAction = normalizeArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'qty');
+            const stateAction = normalizeArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'reclass');
             const reasonField = document.querySelector('[data-argos-core-field="reason"]');
             const sourceField = document.querySelector('[data-argos-core-field="source"]');
             const qtyField = document.querySelector('[data-argos-core-field="qty"]');
@@ -39685,16 +39743,16 @@ let avTopControlsRenderToken = 0;
             }
             if (itemField) itemField.hidden = requestOnly || isPriorityChange || stateAction !== 'reclass';
             if (lotField) {
-                lotField.hidden = (requestOnly && !needsDestinationSeasonLot) || isPriorityChange || stateAction === 'qty';
+                lotField.hidden = (requestOnly && !needsDestinationSeasonLot) || isPriorityChange;
                 const lotLabel = lotField.querySelector('span');
                 if (lotLabel) lotLabel.textContent = needsDestinationSeasonLot ? 'Destination Season' : 'New Lot';
             }
-            if (locationField) locationField.hidden = requestOnly || isPriorityChange || stateAction === 'qty';
+            if (locationField) locationField.hidden = requestOnly || isPriorityChange;
             if (qtyInput) qtyInput.required = !requestOnly && !isPriorityChange;
             if (priorityInput) priorityInput.required = false;
             if (newItemInput) newItemInput.required = !requestOnly && !isPriorityChange && stateAction === 'reclass';
-            if (newLotInput) newLotInput.required = needsDestinationSeasonLot || (!requestOnly && stateAction !== 'qty' && !isPriorityChange);
-            if (newLocationInput) newLocationInput.required = !requestOnly && stateAction !== 'qty' && !isPriorityChange;
+            if (newLotInput) newLotInput.required = needsDestinationSeasonLot || (!requestOnly && !isPriorityChange);
+            if (newLocationInput) newLocationInput.required = !requestOnly && !isPriorityChange;
             if (reasonInput && (requestOnly || isPriorityChange)) reasonInput.required = false;
             if (advanced) {
                 advanced.classList.toggle('hidden', requestOnly || isPriorityChange);
@@ -39717,7 +39775,7 @@ let avTopControlsRenderToken = 0;
                 note.textContent = 'Applies to every current season/current sales year row for this item.';
             }
             if (apply && requestOnly) apply.innerHTML = `<i class="ph-bold ph-envelope mr-1"></i> Open ${escapeHtml(requestLabel)} Request`;
-            else if (apply && argosInventoryTransactionState) apply.innerHTML = `<i class="ph-bold ph-check mr-1"></i> Apply ${escapeHtml(getArgosInventoryTransactionActionLabel(argosInventoryTransactionState.action || 'qty'))}`;
+            else if (apply && argosInventoryTransactionState) apply.innerHTML = `<i class="ph-bold ph-check mr-1"></i> Apply ${escapeHtml(getArgosInventoryTransactionActionLabel(argosInventoryTransactionState.action || 'reclass'))}`;
         }
 
         function setArgosInventoryTransactionHoldAction(action = 'none') {
@@ -39731,7 +39789,7 @@ let avTopControlsRenderToken = 0;
             if (select && select.value !== safeAction) select.value = safeAction;
             if (argosInventoryTransactionState
                 && isArgosInventoryTransactionMoveSeasonRequestAction(safeAction)
-                && normalizeArgosInventoryTransactionAction(argosInventoryTransactionState.action || 'qty') !== 'reclass') {
+                && normalizeArgosInventoryTransactionAction(argosInventoryTransactionState.action || 'reclass') !== 'reclass') {
                 setArgosInventoryTransactionAction('reclass');
             }
             syncArgosInventoryTransactionHoldActionPicker(safeAction);
@@ -40102,7 +40160,7 @@ let avTopControlsRenderToken = 0;
         function buildArgosInventoryTransactionPayload() {
             const state = argosInventoryTransactionState || {};
             const snapshot = state.snapshot || {};
-            const transactionAction = normalizeArgosInventoryTransactionAction(state.action || 'qty');
+            const transactionAction = 'reclass';
             const requestedHoldAction = normalizeArgosInventoryTransactionRequestAction(getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-action'));
             const isPriorityChange = requestedHoldAction === 'priority_change';
             const action = isPriorityChange ? 'priority_change' : transactionAction;
@@ -40113,8 +40171,7 @@ let avTopControlsRenderToken = 0;
             if (!isPriorityChange) {
                 qty = parseAppNumber(qtyValue);
                 if (!Number.isFinite(qty)) throw new Error('Enter a valid quantity.');
-                if (transactionAction === 'qty' && qty < 0) throw new Error('New quantity cannot be negative.');
-                if (transactionAction !== 'qty' && qty <= 0) throw new Error('Quantity to move must be greater than 0.');
+                if (qty <= 0) throw new Error('Quantity to move must be greater than 0.');
             } else {
                 if (priorityValue === null || !priorityValue) throw new Error('Choose the requested priority for the report.');
             }
@@ -40123,12 +40180,12 @@ let avTopControlsRenderToken = 0;
             if (holdAction === 'hold' && !holdStopReason) throw new Error('Enter the hold/stop reason.');
             const tx = {
                 quantity: qty,
-                newQuantity: !isPriorityChange && transactionAction === 'qty' ? qty : '',
+                newQuantity: '',
                 newPriority: isPriorityChange ? priorityValue : '',
                 priority: isPriorityChange ? priorityValue : snapshot.priority,
-                newItemCode: !isPriorityChange && transactionAction === 'reclass' ? getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-item') : snapshot.itemCode,
-                newLotCode: (transactionAction === 'qty' || isPriorityChange) ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot'),
-                newLocationCode: (transactionAction === 'qty' || isPriorityChange) ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-location'),
+                newItemCode: !isPriorityChange ? getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-item') : snapshot.itemCode,
+                newLotCode: isPriorityChange ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot'),
+                newLocationCode: isPriorityChange ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-location'),
                 source: getArgosInventoryTransactionInputValue('argos-inventory-transaction-source-code'),
                 reason: getArgosInventoryTransactionInputValue('argos-inventory-transaction-reason'),
                 desigCust: getArgosInventoryTransactionInputValue('argos-inventory-transaction-desigcust'),
@@ -40142,11 +40199,11 @@ let avTopControlsRenderToken = 0;
                 sourceSeason: snapshot.season,
                 sourceSalesYear: snapshot.salesYear
             };
-            if (!isPriorityChange && (transactionAction === 'transfer' || transactionAction === 'reclass')) {
+            if (!isPriorityChange) {
                 if (!String(tx.newLotCode || '').trim()) throw new Error('Enter the destination lot.');
                 if (!String(tx.newLocationCode || '').trim()) throw new Error('Enter the destination location.');
             }
-            if (!isPriorityChange && transactionAction === 'reclass' && !String(tx.newItemCode || '').trim()) throw new Error('Enter the destination item.');
+            if (!isPriorityChange && !String(tx.newItemCode || '').trim()) throw new Error('Enter the destination item.');
             return {
                 type: 'inventory_transaction',
                 action,
@@ -40246,7 +40303,7 @@ let avTopControlsRenderToken = 0;
                 return false;
             }
             if (!requestAction) return false;
-            const stateAction = normalizeArgosInventoryTransactionAction(state.action || 'qty');
+            const stateAction = normalizeArgosInventoryTransactionAction(state.action || 'reclass');
             const requiresDestinationSeasonLot = stateAction === 'reclass' && isArgosInventoryTransactionMoveSeasonRequestAction(requestAction);
             const requestLabel = getArgosInventoryTransactionRequestLabel(requestAction);
             let requestInitialValues = null;
@@ -40361,7 +40418,7 @@ let avTopControlsRenderToken = 0;
                 if (argosInventoryTransactionState) argosInventoryTransactionState.submitting = false;
                 if (apply) {
                     apply.disabled = false;
-                    setArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action || 'qty');
+                    setArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action || 'reclass');
                 }
             }
             return false;
@@ -47476,6 +47533,7 @@ function toggleDriveQuickRequestItem(domId) {
             drive_name: (item) => [item.COMMONNAME, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
             drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
             drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
+            drive_universal: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
             crop_roll_block: (item) => [getTaskBlockAlpha(item), item.BLOCKALPHA, item.LOCATIONCODE],
             crop_roll_loc: (item) => [getTaskLocationBucket(item), item.LOCATIONCODE],
             crop_roll_card: (item) => [item.COMMONNAME, item.commonname, item.ITEMCODE, item.itemcode, item.CONTSIZE, item.contsize, item.LOTCODE, item.lotcode, item.LOCATIONCODE, item.locationcode],
@@ -70113,8 +70171,11 @@ function toggleDriveQuickRequestItem(domId) {
             };
             Object.entries(tabMap).forEach(([key, el]) => {
                 if (!el) return;
-                el.classList.toggle('active', activeDriveTab === key);
+                el.classList.toggle('active', !hasActiveDriveSearchTerm() && activeDriveTab === key);
+                el.setAttribute('aria-pressed', !hasActiveDriveSearchTerm() && activeDriveTab === key ? 'true' : 'false');
             });
+            const tabs = document.getElementById('drive-drill-tabs');
+            if (tabs) tabs.classList.toggle('drive-search-results-active', hasActiveDriveSearchTerm());
         }
 
         function resetDriveColumnFilterUiState() {
@@ -70414,6 +70475,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function resetDriveView(shouldRender = true) {
             activeDriveMode = 'ok';
+            driveUniversalSearchRestoreState = null;
+            driveUniversalSearchPendingScrollTop = null;
+            driveUniversalSearchResultCache.clear();
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
             activeDriveTab = 'name';
@@ -121947,7 +122011,7 @@ C.14.043 C.15.000
                 const driveHoldReleaseBtn = canUseDriveOptions ? getDriveHoldReleaseButtonHtml(item) : '';
                 const driveReverseRailBtn = canUseDriveOptions ? buildNcrApprovalReverseRailButtonHtml(item, 'drive') : '';
                 const driveArgosRailHtml = canUseDriveOptions ? buildArgosInventoryTransactionRailHtml(item, 'drive') : '';
-                const driveSideActionRailHtml = driveArgosRailHtml ? `<div class="app-drive-card-actions" onclick="event.stopPropagation();">${driveArgosRailHtml}</div>` : '';
+                const driveReclassActionHtml = driveArgosRailHtml ? `<div class="app-drive-card-reclass" onclick="event.stopPropagation();">${driveArgosRailHtml}</div>` : '';
                 const includeDriveBloomPickerBtn = canUseDriveOptions && (canUseDriveBloomPickerForTakeBack() || isWarehouseAssignedDriveCardForCurrentUser(item));
                 const driveBottomExtraHtml = `${driveNewCropReleaseBtn}${driveHoldReleaseBtn}${driveReverseRailBtn}`.trim();
                 let quickRequestBtn = '';
@@ -121962,10 +122026,10 @@ C.14.043 C.15.000
                 const driveFieldChipsHtml = buildInventoryCardFieldChipsHtml(item, { compact: true });
                 const driveChipRowHtml = `${driveTagColorHtml}${driveSourceChipHtml}${buildDriveEarlyABadgeHtml(item)}${driveFieldChipsHtml}`.trim();
                 const drivePhotoCellHtml = inlineThumbHtml ? `<div class="app-drive-card-photo">${inlineThumbHtml}</div>` : '';
-                const driveCardGridClass = `${driveSideActionRailHtml ? '' : 'app-drive-card-grid--no-actions'} ${inlineThumbHtml ? '' : 'app-drive-card-grid--no-photo'}`.trim();
-                const driveCardActionClass = `${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} ${driveSideActionRailHtml ? 'app-drive-card-with-side-rail' : ''}`.trim();
+                const driveCardGridClass = `app-drive-card-grid--no-actions ${inlineThumbHtml ? '' : 'app-drive-card-grid--no-photo'}`.trim();
+                const driveCardActionClass = `${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} ${driveReclassActionHtml ? 'app-drive-card-with-reclass' : ''}`.trim();
                 const drivePriorityText = String(firstNonEmptyValue(item.PRIORITY, item.priority, '-') || '-').trim() || '-';
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card ${cropRollCardClass} ${seasonCardShellClass} ${driveCardActionClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}<div class="app-drive-card-grid ${driveCardGridClass} flex-grow">${drivePhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.CONTSIZE || '-')} ${esc(item.COMMONNAME || 'Unknown')}</div><div class="app-drive-card-meta">${esc(item.LOCATIONCODE || 'No Loc')} ${esc(item.LOTCODE || '-')} PRI ${esc(drivePriorityText)}</div></div>${driveChipRowHtml ? `<div class="app-drive-card-chip-row">${driveChipRowHtml}</div>` : ''}${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}</div>${driveSideActionRailHtml}<div class="app-drive-card-quantity-band">${driveQuantityRowHtml}</div>${quickRequestBtn ? `<div class="app-drive-card-bottom">${quickRequestBtn}</div>` : ''}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card ${cropRollCardClass} ${seasonCardShellClass} ${driveCardActionClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}<div class="app-drive-card-grid ${driveCardGridClass} flex-grow">${drivePhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.CONTSIZE || '-')} ${esc(item.COMMONNAME || 'Unknown')}</div><div class="app-drive-card-meta">${esc(item.LOCATIONCODE || 'No Loc')} ${esc(item.LOTCODE || '-')} PRI ${esc(drivePriorityText)}</div></div><div class="app-drive-card-quantity-band">${driveQuantityRowHtml}</div>${driveChipRowHtml ? `<div class="app-drive-card-chip-row">${driveChipRowHtml}</div>` : ''}${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}</div>${driveReclassActionHtml}${quickRequestBtn ? `<div class="app-drive-card-bottom">${quickRequestBtn}</div>` : ''}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
@@ -125653,6 +125717,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const DRIVE_CHUNK_RENDER_KEYS = Object.freeze([
             'drive-main-card',
+            'drive-universal-search',
             'drive-quick-card',
             'drive:name:list',
             'drive:name:sizes',
@@ -125700,6 +125765,154 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function cancelDriveChunkedRenders() {
             DRIVE_CHUNK_RENDER_KEYS.forEach((key) => bumpChunkRenderTokenByKey(key));
+        }
+
+        function captureDriveStateBeforeUniversalSearch() {
+            if (driveUniversalSearchRestoreState) return driveUniversalSearchRestoreState;
+            const scrollContainer = document.getElementById('main-scroll-area');
+            driveUniversalSearchRestoreState = {
+                activeDriveTab,
+                driveViewLevel,
+                selectedDriveName,
+                selectedDriveSize,
+                selectedDriveSeason,
+                selectedDriveProgram,
+                selectedDriveBlock,
+                selectedDriveLoc,
+                scrollTop: scrollContainer ? Number(scrollContainer.scrollTop || 0) : 0
+            };
+            return driveUniversalSearchRestoreState;
+        }
+
+        function restoreDriveStateAfterUniversalSearch() {
+            const state = driveUniversalSearchRestoreState;
+            driveUniversalSearchRestoreState = null;
+            if (!state) return null;
+            activeDriveTab = state.activeDriveTab || 'name';
+            driveViewLevel = Number(state.driveViewLevel || 0);
+            selectedDriveName = state.selectedDriveName || null;
+            selectedDriveSize = state.selectedDriveSize || null;
+            selectedDriveSeason = state.selectedDriveSeason || null;
+            selectedDriveProgram = state.selectedDriveProgram || null;
+            selectedDriveBlock = state.selectedDriveBlock || null;
+            selectedDriveLoc = state.selectedDriveLoc || null;
+            driveUniversalSearchPendingScrollTop = Math.max(0, Number(state.scrollTop || 0));
+            return state;
+        }
+
+        function getDriveUniversalSearchDataSignature(items = []) {
+            const rows = Array.isArray(items) ? items : [];
+            const getRowKey = (row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, row && row.DOM_ID, row && row.ITEMCODE, '') || '');
+            return `${resolvedViewStateEpoch}:${rows.length}:${rows.length ? getRowKey(rows[0]) : ''}:${rows.length ? getRowKey(rows[rows.length - 1]) : ''}`;
+        }
+
+        function buildDriveUniversalSearchCacheKey(items = [], term = '') {
+            return [
+                getDriveUniversalSearchDataSignature(items),
+                String(term || '').trim().toLowerCase(),
+                [...driveSelectedSeasons].map((value) => String(value || '').toUpperCase()).sort().join('|'),
+                driveGenusSelectionMode,
+                [...selectedDriveGenusNames].sort().join('|'),
+                driveContSizeSelectionMode,
+                [...selectedDriveContSizes].sort().join('|'),
+                driveLocationSelectionMode,
+                [...selectedDriveLocationCodes].sort().join('|'),
+                driveLotSelectionMode,
+                [...selectedDriveLotCodes].sort().join('|'),
+                buildDriveColumnFilterStateKey(),
+                String(driveQuickFilterName || '').trim().toLowerCase(),
+                String(driveQuickFilterLocation || '').trim(),
+                String(driveQuickFilterLot || '').trim(),
+                String(driveQuickFilterSize || '').trim(),
+                getDriveQuickPriorityValues().join('|'),
+                String(driveQuickFilterLtsMode || '').trim(),
+                String(driveQuickFilterLtsValue || '').trim()
+            ].join('::');
+        }
+
+        function setDriveUniversalSearchCacheEntry(key = '', value = null) {
+            const safeKey = String(key || '');
+            if (!safeKey || !value) return;
+            if (driveUniversalSearchResultCache.has(safeKey)) driveUniversalSearchResultCache.delete(safeKey);
+            driveUniversalSearchResultCache.set(safeKey, value);
+            while (driveUniversalSearchResultCache.size > 24) {
+                const oldestKey = driveUniversalSearchResultCache.keys().next().value;
+                driveUniversalSearchResultCache.delete(oldestKey);
+            }
+        }
+
+        function buildDriveUniversalSearchState(term = '') {
+            const safeTerm = String(term || '').trim();
+            let baseItems = getDriveModeItems();
+            normalizeDriveSelectedSeasons();
+            if (!areAllDriveSeasonsSelected()) {
+                baseItems = baseItems.filter((item) => driveSelectedSeasons.has(String(item && item.SEASON || '').trim().toUpperCase()));
+            }
+            if (driveQuickHoldStopOnly) baseItems = baseItems.filter((item) => isDriveHoldStopCodeRow(item));
+            const cacheKey = buildDriveUniversalSearchCacheKey(baseItems, safeTerm);
+            if (driveUniversalSearchResultCache.has(cacheKey)) {
+                const cached = driveUniversalSearchResultCache.get(cacheKey);
+                driveUniversalSearchResultCache.delete(cacheKey);
+                driveUniversalSearchResultCache.set(cacheKey, cached);
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return cached;
+            }
+            const drivePlantFilterState = buildDrivePlantFilterState(baseItems);
+            const searchMatches = filterBySearch(drivePlantFilterState.filteredItems, safeTerm, 'drive_universal');
+            const columnFilteredItems = applyDriveColumnFiltersToItems(searchMatches);
+            const visibleItems = applyDriveQuickFiltersToItems(columnFilteredItems, `universal:${cacheKey}`);
+            const finalItems = sortDriveCardItems(visibleItems);
+            const state = { baseItems, drivePlantFilterState, finalItems, cacheKey };
+            setDriveUniversalSearchCacheEntry(cacheKey, state);
+            return state;
+        }
+
+        function preserveDriveSearchCaret(callback) {
+            const input = document.getElementById('drive-search');
+            const wasFocused = !!(input && document.activeElement === input);
+            const selectionStart = input && Number.isFinite(input.selectionStart) ? input.selectionStart : null;
+            const selectionEnd = input && Number.isFinite(input.selectionEnd) ? input.selectionEnd : null;
+            callback();
+            if (!wasFocused || !input) return;
+            requestAnimationFrame(() => {
+                input.focus({ preventScroll: true });
+                if (selectionStart !== null && selectionEnd !== null && typeof input.setSelectionRange === 'function') {
+                    input.setSelectionRange(selectionStart, selectionEnd);
+                }
+            });
+        }
+
+        function renderDriveUniversalSearchResultsOnly() {
+            const term = getDriveSearchTerm();
+            if (!term || activeDriveMode !== 'ok') return false;
+            const container = document.getElementById('drive-content');
+            const crumb = document.getElementById('drive-crumb');
+            const filtersDiv = document.getElementById('drive-season-filters');
+            if (!container || !crumb) return false;
+            captureDriveStateBeforeUniversalSearch();
+            const state = buildDriveUniversalSearchState(term);
+            const { baseItems, drivePlantFilterState, finalItems, cacheKey } = state;
+            const crumbText = `Search Results > “${term}” (${finalItems.length} item${finalItems.length === 1 ? '' : 's'})`;
+            const renderSignature = buildRowsRenderSignature(`drive:universal:${cacheKey}`, finalItems);
+            syncDriveTabPills();
+            hideDrivePlantFilters();
+            renderDriveQuickRequestBar(finalItems);
+            scheduleDriveTopControlsRender(baseItems, drivePlantFilterState);
+            preserveDriveSearchCaret(() => {
+                if (!finalItems.length) {
+                    applyDriveRenderMarkup(container, crumb, crumbText, '<div class="app-empty-state"><i class="ph ph-magnifying-glass"></i><strong>No matching inventory</strong><span>Try a plant, location, item, size, lot, or design value.</span></div>', `drive:universal:empty:${cacheKey}`);
+                    return;
+                }
+                renderMarkupChunkedByKey('drive-universal-search', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
+                    approxCardHeight: 260,
+                    initialRows: isTouchConstrainedDevice() ? 12 : 20,
+                    chunkSize: isTouchConstrainedDevice() ? 12 : 28,
+                    perFrameRows: isTouchConstrainedDevice() ? 12 : 28,
+                    renderSignature
+                });
+            });
+            if (filtersDiv) filtersDiv.setAttribute('data-drive-search-results', 'true');
+            return true;
         }
 
         function scheduleDriveSearchRequest(term = '') {
@@ -125765,7 +125978,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return;
                 const targetView = document.getElementById('view-drive');
                 if (!targetView || targetView.classList.contains('hidden')) return;
+                if (renderDriveUniversalSearchResultsOnly()) return;
                 renderViewContent('drive', false, false);
+                if (driveUniversalSearchPendingScrollTop !== null) {
+                    const nextScrollTop = driveUniversalSearchPendingScrollTop;
+                    driveUniversalSearchPendingScrollTop = null;
+                    requestAnimationFrame(() => {
+                        const scrollContainer = document.getElementById('main-scroll-area');
+                        if (scrollContainer) scrollContainer.scrollTop = nextScrollTop;
+                    });
+                }
             }, term, {
                 force: !!nextOptions.force,
                 skipDebounce: !!nextOptions.skipDebounce,
@@ -125787,16 +126009,15 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function clearDriveSearch() {
             cancelDriveSearchRenderWork();
-            document.getElementById('drive-search').value = "";
-            document.getElementById('drive-search-clear').classList.add('hidden');
+            const input = document.getElementById('drive-search');
+            const clearButton = document.getElementById('drive-search-clear');
+            if (input) input.value = "";
+            if (clearButton) clearButton.classList.add('hidden');
             setDriveSearchManualSelectionLock(false);
-            if (!shouldScopeDriveSearchToSelectedLocation()) {
-                if (activeDriveTab === 'name' || activeDriveTab === 'loc') resetDriveDrillSelectionState();
-                else {
-                    driveViewLevel = 0;
-                    selectedDriveProgram = null;
-                }
-            }
+            restoreDriveStateAfterUniversalSearch();
+            const filtersDiv = document.getElementById('drive-season-filters');
+            if (filtersDiv) filtersDiv.removeAttribute('data-drive-search-results');
+            syncDriveTabPills();
             scheduleDriveSearchRender('', { force: true, debounceDelay: 0, typingDelay: 45 });
         }
 
@@ -128111,6 +128332,9 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function resetDriveFiltersToAll() {
             beginDirectNavigationActivity();
+            driveUniversalSearchRestoreState = null;
+            driveUniversalSearchPendingScrollTop = null;
+            driveUniversalSearchResultCache.clear();
             closeDriveTopControlDropdowns(false);
             driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
             driveSeasonSearchTerm = '';
@@ -129440,23 +129664,18 @@ ${folderNote ? `Folder Note: ${folderNote}
         function handleDriveSearch() {
             beginDirectNavigationActivity();
             cancelDriveChunkedRenders();
-            const term = document.getElementById('drive-search').value.toLowerCase();
+            const term = document.getElementById('drive-search').value.trim().toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
                 clearBtn.classList.remove('hidden');
+                captureDriveStateBeforeUniversalSearch();
             } else {
                 clearBtn.classList.add('hidden');
+                restoreDriveStateAfterUniversalSearch();
+                const filtersDiv = document.getElementById('drive-season-filters');
+                if (filtersDiv) filtersDiv.removeAttribute('data-drive-search-results');
             }
-            if (shouldScopeDriveSearchToSelectedLocation()) {
-                setDriveSearchManualSelectionLock(false);
-            } else if (activeDriveTab === 'name' || activeDriveTab === 'loc') {
-                resetDriveDrillSelectionState();
-                setDriveSearchManualSelectionLock(term.length > 0);
-            } else {
-                driveViewLevel = 0;
-                selectedDriveProgram = null;
-                setDriveSearchManualSelectionLock(false);
-            }
+            setDriveSearchManualSelectionLock(false);
             scheduleDriveSearchRequest(term);
         }
 
@@ -130227,6 +130446,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const drillTabs = document.getElementById('drive-drill-tabs');
             cancelDriveChunkedRenders();
             if (drillTabs) drillTabs.classList.remove('hidden');
+            if (renderDriveUniversalSearchResultsOnly()) return;
             if (activeDriveMode !== 'ok') {
                 syncDriveFilterStrip(filtersDiv, '');
                 hideDrivePlantFilters();

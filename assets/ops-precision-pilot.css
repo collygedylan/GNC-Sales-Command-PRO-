@@ -991,6 +991,591 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
   }
 }
 
+/* V2026.08.15.09 — compact enterprise shell, semantic dual-theme controls, and responsive inventory cards. */
+:root {
+  --login-canvas: #076f45;
+  --login-canvas-deep: #045b38;
+  --login-surface: #ffffff;
+  --login-surface-muted: #f3f8f5;
+  --login-text: #10231a;
+  --login-muted: #607168;
+  --login-border: #c9d8d0;
+  --login-focus: #1677e8;
+}
+
+html[data-ops-prepaint-theme="dark"] {
+  --login-canvas: #06120d;
+  --login-canvas-deep: #030b08;
+  --login-surface: #111c18;
+  --login-surface-muted: #182620;
+  --login-text: #f4fbf7;
+  --login-muted: #9db4aa;
+  --login-border: rgba(99, 230, 173, 0.34);
+  --login-focus: #72adff;
+}
+
+#view-login,
+#view-change-password {
+  background:
+    radial-gradient(circle at 22% 12%, rgba(111, 238, 181, 0.14), transparent 28%),
+    linear-gradient(145deg, var(--login-canvas), var(--login-canvas-deep)) !important;
+}
+
+#view-login .login-card,
+#view-change-password .login-card {
+  width: min(100%, 430px) !important;
+  max-width: 430px !important;
+  border: 1px solid var(--login-border) !important;
+  border-radius: 18px !important;
+  padding: clamp(24px, 4vw, 36px) !important;
+  color: var(--login-text) !important;
+  background: var(--login-surface) !important;
+  box-shadow: 0 24px 70px rgba(0, 25, 16, 0.28) !important;
+  text-align: left !important;
+}
+
+.login-brand-lockup {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.login-brand-logo {
+  display: block;
+  width: min(100%, 224px);
+  height: auto;
+  object-fit: contain;
+}
+
+html[data-ops-prepaint-theme="dark"] .login-brand-logo {
+  padding: 8px;
+  border-radius: 10px;
+  background: #f7faf8;
+}
+
+.login-brand-rule {
+  width: 44px;
+  height: 3px;
+  border-radius: 2px;
+  background: #0a8753;
+}
+
+.login-product-label {
+  margin: 0;
+  color: var(--login-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.login-heading-block {
+  margin: 24px 0 20px;
+}
+
+.login-heading-block h1 {
+  margin: 0;
+  color: var(--login-text);
+  font-size: clamp(26px, 5vw, 34px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.login-heading-block p {
+  margin: 7px 0 0;
+  color: var(--login-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.login-field-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.login-field-label {
+  color: var(--login-text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.login-field-stack .login-field {
+  height: 48px !important;
+  margin: 0 0 6px !important;
+  border: 1px solid var(--login-border) !important;
+  border-radius: 10px !important;
+  padding: 0 14px !important;
+  color: var(--login-text) !important;
+  background: var(--login-surface-muted) !important;
+  box-shadow: none !important;
+  font-size: 15px !important;
+  text-align: left !important;
+  letter-spacing: 0 !important;
+}
+
+.login-password-shell {
+  position: relative;
+}
+
+.login-password-shell .login-field {
+  padding-right: 50px !important;
+}
+
+.login-password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  color: var(--login-muted);
+  background: transparent;
+  font-size: 19px;
+}
+
+.login-saved-account {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  border: 1px solid var(--login-border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--login-surface-muted);
+}
+
+.login-saved-account.hidden {
+  display: none !important;
+}
+
+.login-saved-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  color: #ffffff;
+  background: #08784a;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.login-saved-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.login-saved-copy strong {
+  overflow: hidden;
+  color: var(--login-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-saved-copy span {
+  color: var(--login-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.login-saved-account > i {
+  color: #168454;
+  font-size: 20px;
+}
+
+.login-primary-button,
+.login-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.login-secondary-button.hidden,
+.login-field-stack.hidden,
+.login-loading-state.hidden,
+.login-progress-wrap.hidden {
+  display: none !important;
+}
+
+.login-primary-button {
+  border: 1px solid #08784a;
+  color: #ffffff;
+  background: #08784a;
+  box-shadow: 0 8px 18px rgba(8, 120, 74, 0.2);
+}
+
+.login-secondary-button {
+  margin-top: 8px;
+  border: 1px solid var(--login-border);
+  color: var(--login-text);
+  background: transparent;
+}
+
+.login-assistive-copy,
+.login-loading-title,
+.login-progress-label {
+  color: var(--login-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.login-assistive-copy {
+  margin-top: 10px;
+}
+
+.login-loading-state {
+  padding: 18px 0 4px;
+  text-align: center;
+}
+
+.login-progress-wrap {
+  margin-top: 15px;
+}
+
+.login-progress-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--login-surface-muted);
+}
+
+.login-progress-bar {
+  width: 0;
+  height: 100%;
+  background: #19a76a;
+  transition: width 180ms ease;
+}
+
+.login-primary-button:is(:hover, :focus-visible) {
+  background: #056b42;
+}
+
+:where(.login-field, .login-primary-button, .login-secondary-button, .login-password-toggle):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--login-focus) 38%, transparent) !important;
+  outline-offset: 2px !important;
+}
+
+body.ops-precision-pilot {
+  --ops-control-height: 44px;
+  --ops-card-radius: 12px;
+  --ops-panel-radius: 14px;
+  --ops-shadow-rest: 0 2px 10px rgba(15, 35, 25, 0.07);
+  --ops-shadow-float: 0 12px 30px rgba(15, 35, 25, 0.12);
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-shadow-rest: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --ops-shadow-float: 0 14px 34px rgba(0, 0, 0, 0.38);
+}
+
+body.ops-precision-pilot #main-scroll-area {
+  padding-bottom: calc(var(--footer-nav-reserve, 6.5rem) + env(safe-area-inset-bottom) + 24px) !important;
+  scroll-padding-bottom: calc(var(--footer-nav-reserve, 6.5rem) + env(safe-area-inset-bottom) + 24px) !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  align-items: start !important;
+  gap: 12px !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+  aspect-ratio: 1 / 1 !important;
+  min-height: 0 !important;
+  border: 2px solid color-mix(in srgb, var(--ops-brand) 56%, var(--ops-border)) !important;
+  border-radius: var(--ops-card-radius) !important;
+  padding: clamp(12px, 2vw, 22px) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: var(--ops-shadow-rest) !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div::after,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button::after {
+  opacity: 0.16 !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div > i,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button > i {
+  width: 44px !important;
+  height: 44px !important;
+  flex-basis: 44px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--ops-brand-soft) !important;
+  box-shadow: none !important;
+  font-size: 24px !important;
+}
+
+body.ops-precision-pilot :is(button, [role="button"], input, select, textarea, summary):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ops-focus) 42%, transparent) !important;
+  outline-offset: 2px !important;
+}
+
+body.ops-precision-pilot :is(.app-smart-card, .app-card-shell, .inv-card, .freeze-panel, .sticky-search, .task-top-control-shell) {
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-panel-radius) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: var(--ops-shadow-rest) !important;
+}
+
+body.ops-precision-pilot :is(.bg-white, .bg-slate-50, .bg-gray-50, .bg-gray-100) {
+  background-color: var(--ops-surface) !important;
+}
+
+body.ops-precision-pilot :is(.text-black, .text-slate-900, .text-gray-900, .text-gray-800, .text-slate-800) {
+  color: var(--ops-text) !important;
+}
+
+body.ops-precision-pilot :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-gray-400, .text-gray-500, .text-gray-600) {
+  color: var(--ops-text-muted) !important;
+}
+
+body.ops-precision-pilot :is(.border-slate-100, .border-slate-200, .border-gray-100, .border-gray-200, .border-gray-300) {
+  border-color: var(--ops-border) !important;
+}
+
+body.ops-precision-pilot :is(.input-field, .argos-tx-input, input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface-muted) !important;
+}
+
+body.ops-precision-pilot #drive-season-filters,
+body.ops-precision-pilot #drive-season-filters.drive-top-inline,
+body.ops-precision-pilot #drive-drill-tabs,
+body.ops-precision-pilot .drive-filter-shell,
+body.ops-precision-pilot .drive-top-controls-row {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+}
+
+body.ops-precision-pilot #drive-drill-tabs.drive-search-results-active .detail-tab {
+  color: var(--ops-text-muted) !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot .app-drive-compact-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 260px;
+  border-width: 1px !important;
+  border-left-width: 3px !important;
+  border-radius: var(--ops-card-radius) !important;
+  padding: 14px !important;
+}
+
+body.ops-precision-pilot .app-drive-card-grid,
+body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-actions {
+  grid-template-columns: minmax(5.25rem, 7.25rem) minmax(0, 1fr) auto !important;
+  grid-template-areas: "photo main main" "bottom bottom reclass" !important;
+  gap: 10px 12px !important;
+}
+
+body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo,
+body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo.app-drive-card-grid--no-actions {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas: "main main" "bottom reclass" !important;
+}
+
+body.ops-precision-pilot .app-drive-card-main {
+  min-width: 0;
+}
+
+body.ops-precision-pilot .app-drive-card-title {
+  color: var(--ops-text) !important;
+  font-size: clamp(17px, 1.7vw, 24px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+body.ops-precision-pilot .app-drive-card-itemcode,
+body.ops-precision-pilot .app-drive-card-meta {
+  color: var(--ops-text-muted) !important;
+}
+
+body.ops-precision-pilot .app-drive-card-quantity-band {
+  display: block !important;
+  margin: 10px 0 8px !important;
+}
+
+body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-row,
+body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip {
+  min-height: 40px !important;
+  border-radius: 9px !important;
+  padding: 7px 9px !important;
+  white-space: normal !important;
+}
+
+body.ops-precision-pilot .app-data-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 34px !important;
+  max-width: 100% !important;
+  border: 1px solid var(--ops-border-strong) !important;
+  border-radius: 999px !important;
+  padding: 6px 10px !important;
+  color: var(--ops-pill-neutral-text) !important;
+  background: var(--ops-pill-neutral-bg) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.055em !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+body.ops-precision-pilot .app-data-pill--compact {
+  min-height: 30px !important;
+  padding: 5px 9px !important;
+}
+
+body.ops-precision-pilot .app-data-pill__label {
+  margin-right: 5px;
+  color: var(--ops-text-muted) !important;
+}
+
+body.ops-precision-pilot .app-data-pill__value {
+  color: var(--ops-pill-value) !important;
+}
+
+body.ops-precision-pilot .app-drive-card-reclass {
+  grid-area: reclass;
+  align-self: end;
+  min-width: 96px;
+}
+
+body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
+  width: 100%;
+  min-height: 44px !important;
+  border: 1px solid var(--ops-border-strong) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface-muted) !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot .app-drive-card-bottom {
+  grid-area: bottom;
+}
+
+body.ops-precision-pilot .app-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  border: 1px dashed var(--ops-border-strong);
+  border-radius: var(--ops-panel-radius);
+  padding: 40px 20px;
+  color: var(--ops-text-muted);
+  background: var(--ops-surface);
+  text-align: center;
+}
+
+body.ops-precision-pilot .app-empty-state i {
+  color: var(--ops-brand-strong);
+  font-size: 28px;
+}
+
+body.ops-precision-pilot .app-empty-state strong {
+  color: var(--ops-text);
+  font-size: 15px;
+}
+
+@media (min-width: 640px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 960px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1400px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+  }
+}
+
+@media (max-width: 639px) {
+  #view-login,
+  #view-change-password {
+    justify-content: flex-start !important;
+    overflow-y: auto;
+    padding: max(18px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom)) !important;
+  }
+
+  #view-login .login-card,
+  #view-change-password .login-card {
+    margin: auto 0;
+    padding: 22px !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-grid,
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-actions {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas: "main main" "bottom reclass" !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-photo {
+    display: none !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-row,
+  body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-reclass {
+    min-width: 90px;
+  }
+}
+
+/* Login visibility is explicit so saved-account state cannot be overridden by
+   component display rules or a partially refreshed PWA stylesheet. */
+#saved-login-switch.hidden,
+#login-credential-fields.hidden,
+#loading-spinner.hidden,
+#login-progress-wrap.hidden {
+  display: none !important;
+}
+
 /* V2026.08.15.08 — unified command shell, readable data pills, and theme-aware chat. */
 body.ops-precision-pilot {
   --ops-command: #0a1712;
@@ -2122,5 +2707,144 @@ body.ops-precision-pilot .footer-nav-btn > span:not(.footer-nav-badge) {
 
   body.ops-precision-pilot .footer-nav-btn > span:not(.footer-nav-badge) {
     font-size: 8px !important;
+  }
+}
+
+/* V2026.08.15.09 final cascade — intentional override of pre-release tile/card experiments. */
+body.ops-precision-pilot #view-home #home-dashboard-grid,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  align-items: start !important;
+  gap: 12px !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+  aspect-ratio: 1 / 1 !important;
+  min-height: 0 !important;
+  border: 2px solid color-mix(in srgb, var(--ops-brand) 56%, var(--ops-border)) !important;
+  border-radius: 12px !important;
+  padding: clamp(12px, 2vw, 22px) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: var(--ops-shadow-rest) !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div::after,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button::after {
+  opacity: 0.16 !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div > i,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button > i {
+  width: 44px !important;
+  height: 44px !important;
+  flex-basis: 44px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--ops-brand-soft) !important;
+  box-shadow: none !important;
+  font-size: 24px !important;
+}
+
+body.ops-precision-pilot .app-drive-card-grid,
+body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-actions {
+  grid-template-columns: minmax(5.25rem, 7.25rem) minmax(0, 1fr) auto !important;
+  grid-template-areas: "photo main main" "bottom bottom reclass" !important;
+  gap: 10px 12px !important;
+}
+
+body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo,
+body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-photo.app-drive-card-grid--no-actions {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas: "main main" "bottom reclass" !important;
+}
+
+body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-row,
+body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip {
+  min-height: 40px !important;
+  border-radius: 9px !important;
+  padding: 7px 9px !important;
+  white-space: normal !important;
+}
+
+body.ops-precision-pilot .app-data-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 34px !important;
+  max-width: 100% !important;
+  border: 1px solid var(--ops-border-strong) !important;
+  border-radius: 999px !important;
+  padding: 6px 10px !important;
+  color: var(--ops-pill-neutral-text) !important;
+  background: var(--ops-pill-neutral-bg) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.055em !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+body.ops-precision-pilot .app-drive-card-reclass {
+  grid-area: reclass;
+  align-self: end;
+  min-width: 96px;
+}
+
+body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
+  width: 100%;
+  min-height: 44px !important;
+  border: 1px solid var(--ops-border-strong) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface-muted) !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 640px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 960px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1400px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+  }
+}
+
+@media (max-width: 639px) {
+  body.ops-precision-pilot .app-drive-card-grid,
+  body.ops-precision-pilot .app-drive-card-grid.app-drive-card-grid--no-actions {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas: "main main" "bottom reclass" !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-photo {
+    display: none !important;
+  }
+
+  body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-row,
+  body.ops-precision-pilot .app-drive-card-quantity-band .app-card-qty-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
