@@ -1,4 +1,4 @@
-/* V2026.08.15.07 — server-gated Ops Precision pilot skin. */
+/* V2026.08.15.08 — server-gated Ops Precision pilot skin. */
 body.ops-precision-pilot {
   --ops-canvas: #f3f7f5;
   --ops-surface: #ffffff;
@@ -991,7 +991,7 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
   }
 }
 
-/* V2026.08.15.07 — unified command shell, readable data pills, and theme-aware chat. */
+/* V2026.08.15.08 — unified command shell, readable data pills, and theme-aware chat. */
 body.ops-precision-pilot {
   --ops-command: #0a1712;
   --ops-command-raised: #10211a;
@@ -1581,7 +1581,7 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
-/* V2026.08.15.07 — Dylan-only two-mode theme selector and complete dual-theme shell. */
+/* V2026.08.15.08 — Dylan-only two-mode theme selector and complete dual-theme shell. */
 body.ops-precision-pilot {
   --ops-command: #f7fbf9;
   --ops-command-raised: #ffffff;
@@ -1912,7 +1912,7 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
-/* V2026.08.15.07 — identity on Home; compact search/filter command chrome in modules. */
+/* V2026.08.15.08 — identity on Home; compact search/filter command chrome in modules. */
 body.ops-precision-pilot.current-view-home #global-header-search-row,
 body.ops-precision-pilot.current-view-home #global-header-search-row.hidden {
   display: none !important;
@@ -1936,7 +1936,7 @@ body.ops-precision-pilot:not(.current-view-home) #global-header-search-row.hidde
   }
 }
 
-/* V2026.08.15.07 — stable first paint and a restrained, modern navigation icon system. */
+/* V2026.08.15.08 — stable saved appearance and a restrained, modern navigation icon system. */
 body.ops-precision-pilot {
   --ops-icon-well: color-mix(in srgb, var(--ops-brand) 9%, var(--ops-surface));
   --ops-icon-well-strong: color-mix(in srgb, var(--ops-brand) 16%, var(--ops-surface));
@@ -2076,6 +2076,14 @@ body.ops-precision-pilot .footer-nav-btn > span:not(.footer-nav-badge) {
   font-weight: 850 !important;
   letter-spacing: 0.035em !important;
   text-transform: none !important;
+}
+
+@media (min-width: 1400px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 @media (max-width: 767px) {

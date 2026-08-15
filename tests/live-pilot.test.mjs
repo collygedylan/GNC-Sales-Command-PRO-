@@ -17,12 +17,12 @@ const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.07';
+  const release = 'V2026.08.15.08';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.07'/);
-  assert.equal(packageJson.version, '2026.08.15.07');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.08'/);
+  assert.equal(packageJson.version, '2026.08.15.08');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -38,7 +38,31 @@ test('verified Dylan sessions restore the saved theme before the app shell paint
   assert.match(client, /function clearPrepaintTheme\(\)/);
   assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
   assert.match(html, /function clearPersistedLoginSession\(\)[\s\S]*removeAttribute\('data-ops-prepaint-theme'\)/);
+  const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
+  assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v1/);
   assert.equal(manifest.background_color, '#007a4d');
+});
+
+test('verified login primes the saved appearance before Home is revealed', () => {
+  assert.match(html, /function primeOpsPilotAppearanceForVerifiedUser\(username = ''\)/);
+  assert.match(html, /normalizedUsername !== 'dylan_collyge'/);
+  assert.match(html, /pilot\.primeCachedAppearance\(\{[\s\S]*activeView:/);
+  assert.match(html, /persistVerifiedLoginRecord\(username[\s\S]*primeOpsPilotAppearanceForVerifiedUser\(normalizedUsername\)/);
+  assert.match(client, /function primeCachedAppearance\(options = \{\}\)/);
+  assert.match(client, /preferences: normalizePreferences\(cached \|\| DEFAULT_PREFERENCES\)/);
+  assert.match(client, /provisional: true/);
+  assert.match(client, /const skinActive = state\.provisional \|\| \(state\.eligible && state\.flags\.skin\)/);
+  assert.match(client, /state\.provisional \|\| \(state\.eligible && state\.flags\.skin\)[\s\S]*LIST_VIEWS\.has\(state\.activeView\)/);
+  assert.match(client, /panel\.classList\.toggle\('hidden', state\.provisional/);
+  assert.match(client, /if \(serial === initializeSerial && !state\.provisional\) deactivate\(\)/);
+});
+
+test('login overlay stays up until role permissions and Home modules are ready', () => {
+  const shellOpen = html.slice(html.indexOf('function openAppShellAfterLogin'), html.indexOf('function addLoginWarmupTarget'));
+  assert.ok(shellOpen.indexOf('applyRolePermissions();') < shellOpen.indexOf("loginView.style.display = 'none'"));
+  assert.ok(shellOpen.indexOf("ensureHomeDashboardReadyAfterLogin('login-shell-open')") < shellOpen.indexOf("loginView.style.display = 'none'"));
+  const rolePermissions = html.slice(html.indexOf('function applyRolePermissions'), html.indexOf('function syncRoleAccessUi'));
+  assert.doesNotMatch(rolePermissions, /view-login/);
 });
 
 test('restored sessions retry pilot bootstrap only after authenticated session refresh', () => {
@@ -63,8 +87,8 @@ test('pilot UI is drawer-only and inactive by default', () => {
   assert.ok(html.indexOf('<div class="drawer-header">Menu</div>') < html.indexOf('id="ops-pilot-settings"'));
   assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-home-btn"'));
   assert.match(css, /body\.ops-pilot-active \.ops-pilot-segmented button[\s\S]*min-height: 44px !important/);
-  assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible\)/);
-  assert.match(client, /body\.classList\.toggle\('ops-precision-pilot', state\.eligible && state\.flags\.skin\)/);
+  assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible && !state\.provisional\)/);
+  assert.match(client, /body\.classList\.toggle\('ops-precision-pilot', skinActive\)/);
   assert.doesNotMatch(html, /<body[^>]*ops-precision-pilot/);
 });
 
@@ -98,7 +122,7 @@ test('remote controls are independent and seeded only for the explicit pilot', (
   }
   assert.match(migration, /values \('dylan_collyge', 'system', 'cards'\)/);
   assert.doesNotMatch(migration, /kayla_knepp|megan_kelly|mitch_kaiser|jd_jones/);
-  assert.match(client, /panel\.classList\.toggle\('hidden', !state\.eligible \|\| \(!state\.flags\.preferences && !state\.flags\.card_grid\)\)/);
+  assert.match(client, /panel\.classList\.toggle\('hidden', state\.provisional \|\| !state\.eligible \|\| \(!state\.flags\.preferences && !state\.flags\.card_grid\)\)/);
   assert.match(client, /themeGroup\.classList\.toggle\('hidden', !state\.flags\.preferences\)/);
   assert.match(client, /displayGroup\.classList\.toggle\('hidden', !state\.flags\.card_grid\)/);
   assert.match(edge, /flags\.preferences \|\| flags\.card_grid \|\| flags\.monitoring/);
@@ -113,6 +137,8 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /--ops-canvas: #07120e/);
   assert.match(css, /--ops-surface: #111c18/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(css, /grid-template-rows: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /--ops-desktop-nav: 1400px/);

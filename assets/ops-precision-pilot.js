@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.15.07';
+  const RELEASE = 'V2026.08.15.08';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -45,7 +45,8 @@
     preferences: { ...DEFAULT_PREFERENCES },
     cohortId: '',
     activeView: 'home',
-    initialized: false
+    initialized: false,
+    provisional: false
   };
   let initializeSerial = 0;
   let preferenceSaveInFlight = null;
@@ -125,7 +126,7 @@
   }
 
   function getEffectiveDisplayMode() {
-    if (!state.flags.card_grid || !LIST_VIEWS.has(state.activeView)) return 'cards';
+    if ((!state.flags.card_grid && !state.provisional) || !LIST_VIEWS.has(state.activeView)) return 'cards';
     if (state.preferences.displayMode !== 'grid' || !gridIsSupportedHere()) return 'cards';
     return 'grid';
   }
@@ -150,9 +151,10 @@
     if (!body) return;
     const effectiveTheme = getEffectiveTheme();
     const effectiveDisplay = getEffectiveDisplayMode();
-    body.classList.toggle('ops-pilot-active', state.eligible);
-    body.classList.toggle('ops-precision-pilot', state.eligible && state.flags.skin);
-    body.classList.toggle('ops-grid-effective', state.eligible && state.flags.skin && effectiveDisplay === 'grid');
+    const skinActive = state.provisional || (state.eligible && state.flags.skin);
+    body.classList.toggle('ops-pilot-active', state.eligible && !state.provisional);
+    body.classList.toggle('ops-precision-pilot', skinActive);
+    body.classList.toggle('ops-grid-effective', skinActive && effectiveDisplay === 'grid');
     body.dataset.opsTheme = effectiveTheme;
     body.dataset.opsThemeMode = state.preferences.themeMode;
     body.dataset.opsDisplayMode = state.preferences.displayMode;
@@ -167,7 +169,7 @@
     const panel = document.getElementById('ops-pilot-settings');
     const themeGroup = document.getElementById('ops-theme-settings');
     const displayGroup = document.getElementById('ops-display-settings');
-    if (panel) panel.classList.toggle('hidden', !state.eligible || (!state.flags.preferences && !state.flags.card_grid));
+    if (panel) panel.classList.toggle('hidden', state.provisional || !state.eligible || (!state.flags.preferences && !state.flags.card_grid));
     if (themeGroup) themeGroup.classList.toggle('hidden', !state.flags.preferences);
     if (displayGroup) displayGroup.classList.toggle('hidden', !state.flags.card_grid);
     updateControlState();
@@ -187,7 +189,7 @@
 
   function decorateRecordCollections() {
     decorateFrame = 0;
-    if (!state.eligible || !state.flags.skin || !LIST_VIEWS.has(state.activeView)) return;
+    if (!(state.provisional || (state.eligible && state.flags.skin)) || !LIST_VIEWS.has(state.activeView)) return;
     const rootId = LIST_ROOT_IDS[state.activeView];
     const root = rootId ? document.getElementById(rootId) : null;
     if (!root) return;
@@ -512,9 +514,32 @@
       preferences: { ...DEFAULT_PREFERENCES },
       cohortId: '',
       activeView: 'home',
-      initialized: false
+      initialized: false,
+      provisional: false
     };
     applyUiState();
+  }
+
+  function primeCachedAppearance(options = {}) {
+    const safeOptions = options && typeof options === 'object' ? options : {};
+    const cached = readCachedPreferences();
+    state = {
+      eligible: false,
+      flags: { ...DEFAULT_FLAGS },
+      preferences: normalizePreferences(cached || DEFAULT_PREFERENCES),
+      cohortId: '',
+      activeView: String(safeOptions.activeView || 'home').trim().toLowerCase() || 'home',
+      initialized: false,
+      provisional: true
+    };
+    const theme = getEffectiveTheme();
+    const root = document.documentElement;
+    if (root) {
+      root.dataset.opsPrepaintTheme = theme;
+      root.style.colorScheme = theme;
+    }
+    applyUiState();
+    return true;
   }
 
   async function initialize(options) {
@@ -550,6 +575,7 @@
       state.cohortId = String(response.monitoring && (response.monitoring.cohortId || response.monitoring.cohort_id) || '').trim().slice(0, 80);
       state.activeView = String(bridge.getActiveView && bridge.getActiveView() || 'home').trim().toLowerCase() || 'home';
       state.initialized = true;
+      state.provisional = false;
       writeCachedPreferences(state.preferences, useDirtyCache);
       applyUiState();
       clearPrepaintTheme();
@@ -557,7 +583,7 @@
       if (state.flags.monitoring) initializeMonitoring(response.monitoring);
       return true;
     } catch (_error) {
-      if (serial === initializeSerial) deactivate();
+      if (serial === initializeSerial && !state.provisional) deactivate();
       return false;
     }
   }
@@ -568,6 +594,7 @@
   window.__gncOpsPilot = Object.freeze({
     release: RELEASE,
     initialize,
+    primeCachedAppearance,
     setActiveView,
     captureFailure,
     observeToast,
@@ -576,6 +603,7 @@
     getState() {
       return {
         initialized: state.initialized,
+        provisional: state.provisional,
         eligible: state.eligible,
         flags: { ...state.flags },
         preferences: { ...state.preferences },

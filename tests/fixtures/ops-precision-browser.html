@@ -77,7 +77,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.15.07</span>
+              <span class="nav-version-pill">V2026.08.15.08</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -282,6 +282,11 @@
           throw new Error('Unexpected action');
         }
       };
+      if (params.get('prime') === '1') {
+        localStorage.setItem('gnc_ops_precision_preferences_v1', JSON.stringify({ ...preferences, dirty: false }));
+        window.__gncOpsPilot.primeCachedAppearance({ activeView });
+        document.body.dataset.qaPrimeReady = 'true';
+      }
       window.__qaAuthorizePilot = () => {
         authorized = true;
         return window.__gncOpsPilot.initialize(bridge).then((initialized) => {
