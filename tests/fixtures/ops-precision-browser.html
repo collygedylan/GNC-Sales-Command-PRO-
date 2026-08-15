@@ -73,7 +73,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.15.03</span>
+              <span class="nav-version-pill">V2026.08.15.04</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -124,16 +124,14 @@
         <section id="view-drive">
         <div id="fixture-layout">
           <aside id="side-drawer">
-            <button class="drawer-item" type="button">Home</button>
-            <button class="drawer-item" type="button">Crop Roll</button>
-            <div id="ops-pilot-settings" class="ops-pilot-settings hidden" aria-label="Display preferences">
-              <div class="ops-pilot-settings__eyebrow">Appearance</div>
+            <div class="drawer-header">Menu</div>
+            <div id="ops-pilot-settings" class="ops-pilot-settings hidden" aria-label="Appearance and display preferences">
+              <div class="ops-pilot-settings__eyebrow"><i>◐</i> Appearance</div>
               <div id="ops-theme-settings" class="ops-pilot-settings__group hidden">
                 <span class="ops-pilot-settings__label">Theme</span>
-                <div class="ops-pilot-segmented">
-                  <button type="button" data-ops-theme-mode="system">System</button>
-                  <button type="button" data-ops-theme-mode="light">Light</button>
-                  <button type="button" data-ops-theme-mode="dark">Dark</button>
+                <div class="ops-pilot-segmented ops-theme-selector" role="group" aria-label="Theme">
+                  <button type="button" class="ops-theme-choice" data-ops-theme-mode="light" aria-label="Use light theme" aria-pressed="false"><i>☀</i><span>Light</span></button>
+                  <button type="button" class="ops-theme-choice" data-ops-theme-mode="dark" aria-label="Use dark theme" aria-pressed="false"><i>☾</i><span>Dark</span></button>
                 </div>
               </div>
               <div id="ops-display-settings" class="ops-pilot-settings__group hidden">
@@ -145,6 +143,8 @@
                 <div id="ops-display-note" class="ops-pilot-settings__note" aria-live="polite"></div>
               </div>
             </div>
+            <button class="drawer-item" type="button">Home</button>
+            <button class="drawer-item" type="button">Crop Roll</button>
           </aside>
           <section>
             <div id="drive-content">

@@ -1,4 +1,4 @@
-/* V2026.08.15.03 — server-gated Ops Precision pilot skin. */
+/* V2026.08.15.04 — server-gated Ops Precision pilot skin. */
 body.ops-precision-pilot {
   --ops-canvas: #f3f7f5;
   --ops-surface: #ffffff;
@@ -991,7 +991,7 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
   }
 }
 
-/* V2026.08.15.03 — unified command shell, readable data pills, and dark chat. */
+/* V2026.08.15.04 — unified command shell, readable data pills, and theme-aware chat. */
 body.ops-precision-pilot {
   --ops-command: #0a1712;
   --ops-command-raised: #10211a;
@@ -1578,5 +1578,336 @@ body.ops-precision-pilot #bottom-nav {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* V2026.08.15.04 — Dylan-only two-mode theme selector and complete dual-theme shell. */
+body.ops-precision-pilot {
+  --ops-command: #f7fbf9;
+  --ops-command-raised: #ffffff;
+  --ops-command-border: rgba(5, 98, 60, 0.34);
+  --ops-command-text: #10271d;
+  --ops-command-muted: #5d7469;
+  --ops-active-text: #05623c;
+  --ops-active-bg: #e2f5eb;
+  --ops-pill-neutral-bg: #edf4f0;
+  --ops-pill-neutral-text: #29473a;
+  --ops-pill-value: #10271d;
+  --ops-pill-success-bg: #e6f7ee;
+  --ops-pill-success-text: #08683f;
+  --ops-pill-success-border: rgba(22, 132, 84, 0.42);
+  --ops-pill-info-bg: #eaf2ff;
+  --ops-pill-info-text: #2355a0;
+  --ops-pill-info-border: rgba(37, 99, 235, 0.38);
+  --ops-pill-violet-bg: #f1edff;
+  --ops-pill-violet-text: #5a32b6;
+  --ops-pill-violet-border: rgba(124, 58, 237, 0.4);
+  --ops-chat-shell: #f8fbf9;
+  --ops-chat-header: #eef6f2;
+  --ops-chat-canvas: #f3f8f5;
+  --ops-chat-theirs: #ffffff;
+  --ops-chat-composer: #edf5f1;
+  --ops-chat-input: #ffffff;
+  --ops-chat-text: #13271e;
+  --ops-chat-muted: #667c71;
+  --ops-chat-border: rgba(7, 120, 74, 0.24);
+  --ops-chat-shadow: rgba(20, 61, 43, 0.14);
+  --ops-glow: rgba(25, 185, 121, 0.12);
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-command: #0a1712;
+  --ops-command-raised: #10211a;
+  --ops-command-border: rgba(167, 243, 208, 0.34);
+  --ops-command-text: #f6fff9;
+  --ops-command-muted: #9eb7ac;
+  --ops-active-text: #7ff0bb;
+  --ops-active-bg: rgba(25, 185, 121, 0.16);
+  --ops-pill-neutral-bg: #172720;
+  --ops-pill-neutral-text: #effbf5;
+  --ops-pill-value: #ffffff;
+  --ops-pill-success-bg: rgba(22, 132, 84, 0.18);
+  --ops-pill-success-text: #7ee0ad;
+  --ops-pill-success-border: rgba(82, 202, 143, 0.58);
+  --ops-pill-info-bg: rgba(37, 99, 235, 0.16);
+  --ops-pill-info-text: #a9c8ff;
+  --ops-pill-info-border: rgba(115, 167, 255, 0.5);
+  --ops-pill-violet-bg: rgba(124, 58, 237, 0.2);
+  --ops-pill-violet-text: #d5c8ff;
+  --ops-pill-violet-border: rgba(167, 139, 250, 0.62);
+  --ops-chat-shell: #0a1511;
+  --ops-chat-header: #12231c;
+  --ops-chat-canvas: #09140f;
+  --ops-chat-theirs: #192822;
+  --ops-chat-composer: #102019;
+  --ops-chat-input: #09150f;
+  --ops-chat-text: #f5fff9;
+  --ops-chat-muted: #9eb7ac;
+  --ops-chat-border: rgba(99, 230, 173, 0.28);
+  --ops-chat-shadow: rgba(0, 20, 13, 0.34);
+  --ops-glow: rgba(25, 185, 121, 0.18);
+}
+
+body.ops-pilot-active .ops-pilot-settings:not(.hidden) {
+  margin: 10px 12px 8px !important;
+  border-width: 1.5px !important;
+  border-color: var(--ops-border-strong) !important;
+  border-radius: 16px !important;
+  padding: 12px !important;
+  background: var(--ops-surface-muted) !important;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--ops-chat-shadow) 72%, transparent) !important;
+}
+
+body.ops-pilot-active .ops-pilot-settings__eyebrow {
+  margin-bottom: 10px !important;
+  color: var(--ops-brand-strong) !important;
+  font-size: 11px !important;
+}
+
+body.ops-pilot-active .ops-theme-selector {
+  grid-auto-flow: initial !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  border-radius: 14px !important;
+  padding: 5px !important;
+  background: color-mix(in srgb, var(--ops-surface-strong) 88%, var(--ops-brand-soft)) !important;
+}
+
+body.ops-pilot-active .ops-theme-selector .ops-theme-choice {
+  display: grid !important;
+  grid-template-columns: 22px minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-items: center !important;
+  justify-items: start !important;
+  column-gap: 6px !important;
+  min-height: 62px !important;
+  padding: 9px 11px !important;
+  border-radius: 11px !important;
+  color: var(--ops-text-muted) !important;
+  background: transparent !important;
+  text-align: left !important;
+}
+
+body.ops-pilot-active .ops-theme-selector .ops-theme-choice > i {
+  grid-row: 1 / 3 !important;
+  font-size: 22px !important;
+}
+
+body.ops-pilot-active .ops-theme-selector .ops-theme-choice > span {
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
+
+body.ops-pilot-active .ops-theme-selector .ops-theme-choice::after {
+  grid-column: 2 !important;
+  content: "Choose";
+  color: var(--ops-text-muted);
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+body.ops-pilot-active .ops-theme-selector .ops-theme-choice[aria-pressed="true"] {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #08794b, #12a66a) !important;
+  box-shadow: 0 8px 18px rgba(5, 98, 60, 0.24) !important;
+}
+
+body.ops-pilot-active .ops-theme-selector .ops-theme-choice[aria-pressed="true"]::after {
+  content: "Active";
+  color: rgba(255, 255, 255, 0.76);
+}
+
+body.ops-pilot-active #ops-display-settings {
+  margin-top: 12px !important;
+  padding-top: 11px !important;
+  border-top: 1px solid var(--ops-border) !important;
+}
+
+body.ops-precision-pilot #global-header-inline-title,
+body.ops-precision-pilot #global-header-search-slot :is(.input-field, input[type="text"], input[type="search"]) {
+  border-color: var(--ops-command-border) !important;
+  color: var(--ops-command-text) !important;
+  background: var(--ops-command) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 64%, transparent), 0 10px 28px rgba(0, 34, 22, 0.16) !important;
+}
+
+body.ops-precision-pilot #global-header-inline-title::before {
+  color: var(--ops-brand) !important;
+}
+
+body.ops-precision-pilot #global-header-view-title {
+  color: var(--ops-command-text) !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot :is(.input-field, input)::placeholder {
+  color: var(--ops-command-muted) !important;
+}
+
+body.ops-precision-pilot :is(.task-tabs, .detail-tabs) {
+  background: var(--ops-command) !important;
+}
+
+body.ops-precision-pilot :is(.task-tab, .detail-tab).active {
+  color: var(--ops-active-text) !important;
+  background: var(--ops-active-bg) !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .task-top-control-shell,
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .drive-mode-export-button {
+  background: var(--ops-command-raised) !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .drive-mode-export-button {
+  color: var(--ops-info) !important;
+  border-color: color-mix(in srgb, var(--ops-info) 48%, transparent) !important;
+  background: color-mix(in srgb, var(--ops-info) 10%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot :where(
+  .app-card-qty-chip,
+  .app-card-chip-row > span.rounded-full,
+  .app-smart-card .flex.flex-wrap > span.rounded-full,
+  .app-card-shell .flex.flex-wrap > span.rounded-full,
+  .request-swipe-surface .flex.flex-wrap > span.rounded-full,
+  .inv-card .flex.flex-wrap > span.rounded-full
+) {
+  color: var(--ops-pill-neutral-text) !important;
+  background: var(--ops-pill-neutral-bg) !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip:nth-child(1) {
+  border-color: var(--ops-pill-success-border) !important;
+  color: var(--ops-pill-success-text) !important;
+  background: var(--ops-pill-success-bg) !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip:nth-child(2),
+body.ops-precision-pilot .app-card-qty-chip:nth-child(3) {
+  border-color: var(--ops-pill-info-border) !important;
+  color: var(--ops-pill-info-text) !important;
+  background: var(--ops-pill-info-bg) !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip:nth-child(4) {
+  border-color: var(--ops-pill-violet-border) !important;
+  color: var(--ops-pill-violet-text) !important;
+  background: var(--ops-pill-violet-bg) !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip :is(.app-card-qty-value, .text-slate-900) {
+  color: var(--ops-pill-value) !important;
+}
+
+body.ops-precision-pilot :is(.bg-violet-50, .bg-fuchsia-50) {
+  background-color: var(--ops-pill-violet-bg) !important;
+}
+
+body.ops-precision-pilot :is(.border-violet-100, .border-violet-200, .border-fuchsia-100, .border-fuchsia-200) {
+  border-color: var(--ops-pill-violet-border) !important;
+}
+
+body.ops-precision-pilot :is(.text-violet-600, .text-violet-700, .text-violet-800, .text-fuchsia-600, .text-fuchsia-700, .text-fuchsia-800) {
+  color: var(--ops-pill-violet-text) !important;
+}
+
+body.ops-precision-pilot #view-chat > .freeze-panel button {
+  color: var(--ops-active-text) !important;
+  background: var(--ops-active-bg) !important;
+}
+
+body.ops-precision-pilot .chat-thread-shell,
+body.ops-precision-pilot .android-chat-shell {
+  background: var(--ops-chat-shell) !important;
+  box-shadow: 0 22px 60px var(--ops-chat-shadow) !important;
+}
+
+body.ops-precision-pilot .android-chat-header {
+  background: var(--ops-chat-header) !important;
+}
+
+body.ops-precision-pilot .ios-chat-title-cluster > div:nth-child(2) {
+  color: var(--ops-chat-text) !important;
+}
+
+body.ops-precision-pilot .ios-chat-title-cluster > div:nth-child(3) {
+  color: var(--ops-chat-muted) !important;
+}
+
+body.ops-precision-pilot .chat-message-scroll {
+  background:
+    radial-gradient(circle at 78% 18%, var(--ops-glow), transparent 28%),
+    var(--ops-chat-canvas) !important;
+  scrollbar-color: color-mix(in srgb, var(--ops-brand) 50%, transparent) transparent;
+}
+
+body.ops-precision-pilot .android-message-bubble {
+  color: var(--ops-chat-text) !important;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ops-chat-shadow) 72%, transparent) !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.mine {
+  color: #ffffff !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.theirs {
+  border-color: var(--ops-chat-border) !important;
+  color: var(--ops-chat-text) !important;
+  background: var(--ops-chat-theirs) !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.theirs .text-\[\#007aff\] {
+  color: var(--ops-brand-strong) !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.mine .android-message-meta {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.theirs .android-message-meta {
+  color: var(--ops-chat-muted) !important;
+}
+
+body.ops-precision-pilot .chat-thread-composer {
+  background: var(--ops-chat-composer) !important;
+}
+
+body.ops-precision-pilot .android-composer-pill {
+  border-color: var(--ops-chat-border) !important;
+  background: var(--ops-chat-input) !important;
+}
+
+body.ops-precision-pilot .android-chat-input {
+  color: var(--ops-chat-text) !important;
+}
+
+body.ops-precision-pilot .android-chat-input::placeholder {
+  color: var(--ops-chat-muted) !important;
+}
+
+body.ops-precision-pilot .android-icon-btn,
+body.ops-precision-pilot .chat-voice-hold-btn.voice-talk-btn {
+  border-color: color-mix(in srgb, var(--ops-brand) 32%, transparent) !important;
+  color: var(--ops-brand-strong) !important;
+  background: color-mix(in srgb, var(--ops-brand) 9%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot #bottom-nav {
+  box-shadow: 0 -10px 34px color-mix(in srgb, var(--ops-chat-shadow) 84%, transparent) !important;
+}
+
+@media (max-width: 767px) {
+  body.ops-pilot-active .ops-pilot-settings:not(.hidden) {
+    margin: 8px 10px 7px !important;
+    padding: 11px !important;
+  }
+
+  body.ops-pilot-active .ops-theme-selector .ops-theme-choice {
+    min-height: 58px !important;
+    padding: 8px 9px !important;
   }
 }

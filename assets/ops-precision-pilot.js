@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.15.03';
+  const RELEASE = 'V2026.08.15.04';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -59,7 +59,7 @@
 
   function normalizeThemeMode(value) {
     const mode = String(value || '').trim().toLowerCase();
-    return mode === 'light' || mode === 'dark' || mode === 'system' ? mode : 'dark';
+    return mode === 'light' ? 'light' : 'dark';
   }
 
   function normalizeDisplayMode(value) {
@@ -109,8 +109,7 @@
   }
 
   function getEffectiveTheme() {
-    if (state.preferences.themeMode === 'light' || state.preferences.themeMode === 'dark') return state.preferences.themeMode;
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return state.preferences.themeMode === 'light' ? 'light' : 'dark';
   }
 
   function gridIsSupportedHere() {
@@ -125,10 +124,10 @@
   }
 
   function updateControlState() {
-    document.querySelectorAll('[data-ops-theme-mode]').forEach((button) => {
+    document.querySelectorAll('button[data-ops-theme-mode]').forEach((button) => {
       button.setAttribute('aria-pressed', String(button.getAttribute('data-ops-theme-mode') === state.preferences.themeMode));
     });
-    document.querySelectorAll('[data-ops-display-mode]').forEach((button) => {
+    document.querySelectorAll('button[data-ops-display-mode]').forEach((button) => {
       button.setAttribute('aria-pressed', String(button.getAttribute('data-ops-display-mode') === state.preferences.displayMode));
     });
     const note = document.getElementById('ops-display-note');
@@ -274,12 +273,12 @@
   }
 
   function installControlHandlers() {
-    document.querySelectorAll('[data-ops-theme-mode]').forEach((button) => {
+    document.querySelectorAll('button[data-ops-theme-mode]').forEach((button) => {
       if (button.dataset.opsBound === 'true') return;
       button.dataset.opsBound = 'true';
       button.addEventListener('click', () => updatePreference('theme', button.getAttribute('data-ops-theme-mode')));
     });
-    document.querySelectorAll('[data-ops-display-mode]').forEach((button) => {
+    document.querySelectorAll('button[data-ops-display-mode]').forEach((button) => {
       if (button.dataset.opsBound === 'true') return;
       button.dataset.opsBound = 'true';
       button.addEventListener('click', () => updatePreference('display', button.getAttribute('data-ops-display-mode')));
@@ -553,8 +552,6 @@
     }
   }
 
-  const themeMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  if (themeMedia && typeof themeMedia.addEventListener === 'function') themeMedia.addEventListener('change', applyUiState);
   window.addEventListener('resize', applyUiState, { passive: true });
   window.addEventListener('online', () => requestPreferenceSave(), { passive: true });
 

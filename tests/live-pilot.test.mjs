@@ -17,20 +17,20 @@ const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.03';
+  const release = 'V2026.08.15.04';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.03'/);
-  assert.equal(packageJson.version, '2026.08.15.03');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.04'/);
+  assert.equal(packageJson.version, '2026.08.15.04');
 });
 
 test('pilot UI is drawer-only and inactive by default', () => {
   assert.match(html, /id="side-drawer"[\s\S]*id="ops-pilot-settings"[\s\S]*id="drawer-logout-btn"/);
   assert.match(html, /id="ops-pilot-settings" class="ops-pilot-settings hidden"/);
   assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-bold ph-palette"><\/i> Appearance/);
-  assert.ok(html.indexOf('id="drawer-outdoor-mode-btn"') < html.indexOf('id="ops-pilot-settings"'));
-  assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-enable-push-btn"'));
+  assert.ok(html.indexOf('<div class="drawer-header">Menu</div>') < html.indexOf('id="ops-pilot-settings"'));
+  assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-home-btn"'));
   assert.match(css, /body\.ops-pilot-active \.ops-pilot-segmented button[\s\S]*min-height: 44px !important/);
   assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible\)/);
   assert.match(client, /body\.classList\.toggle\('ops-precision-pilot', state\.eligible && state\.flags\.skin\)/);
@@ -75,7 +75,7 @@ test('remote controls are independent and seeded only for the explicit pilot', (
 
 test('Dylan receives the full dark Ops Precision composition by default', () => {
   assert.match(client, /DEFAULT_PREFERENCES = Object\.freeze\(\{ themeMode: 'dark'/);
-  assert.match(client, /\? mode : 'dark'/);
+  assert.match(client, /return mode === 'light' \? 'light' : 'dark'/);
   assert.match(edge, /theme_mode: "dark"/);
   assert.match(darkDefaultMigration, /theme_mode = 'dark'/);
   assert.match(darkDefaultMigration, /where user_key = 'dylan_collyge'/);
@@ -86,6 +86,33 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /--ops-desktop-nav: 1400px/);
   assert.match(css, /--ops-wide-content: 1880px/);
+});
+
+test('Dylan receives one menu-only Light and Dark selector with legacy System mapped to Dark', () => {
+  const themeButtons = html.match(/data-ops-theme-mode="[^"]+"/g) || [];
+  assert.deepEqual(themeButtons, ['data-ops-theme-mode="light"', 'data-ops-theme-mode="dark"']);
+  assert.doesNotMatch(html, /data-ops-theme-mode="system"/);
+  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="light"[\s\S]*ph-sun[\s\S]*<span>Light<\/span>/);
+  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="dark"[\s\S]*ph-moon[\s\S]*<span>Dark<\/span>/);
+  assert.match(client, /return mode === 'light' \? 'light' : 'dark'/);
+  assert.match(client, /querySelectorAll\('button\[data-ops-theme-mode\]'\)/);
+  assert.match(client, /querySelectorAll\('button\[data-ops-display-mode\]'\)/);
+  assert.match(client, /body\.dataset\.opsTheme = effectiveTheme/);
+  assert.match(css, /\.ops-theme-selector[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.ops-theme-choice\[aria-pressed="true"\][\s\S]*content: "Active"/);
+});
+
+test('light and dark modes provide theme-aware command, pill, chat, form, and navigation tokens', () => {
+  assert.match(css, /--ops-command: #f7fbf9/);
+  assert.match(css, /--ops-chat-shell: #f8fbf9/);
+  assert.match(css, /--ops-chat-theirs: #ffffff/);
+  assert.match(css, /data-ops-theme="dark"[\s\S]*--ops-command: #0a1712/);
+  assert.match(css, /data-ops-theme="dark"[\s\S]*--ops-chat-shell: #0a1511/);
+  assert.match(css, /#global-header-inline-title,[\s\S]*background: var\(--ops-command\) !important/);
+  assert.match(css, /\.app-card-qty-chip:nth-child\(4\)[\s\S]*background: var\(--ops-pill-violet-bg\) !important/);
+  assert.match(css, /\.android-message-bubble\.theirs[\s\S]*background: var\(--ops-chat-theirs\) !important/);
+  assert.match(css, /\.android-composer-pill[\s\S]*background: var\(--ops-chat-input\) !important/);
+  assert.match(css, /#bottom-nav[\s\S]*var\(--ops-chat-shadow\)/);
 });
 
 test('precision shell keeps one persistent back control and promotes queue search into the header', () => {
