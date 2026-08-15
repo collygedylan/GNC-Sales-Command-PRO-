@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.10';
+  const release = 'V2026.08.15.11';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.10'/);
-  assert.equal(packageJson.version, '2026.08.15.10');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.11'/);
+  assert.equal(packageJson.version, '2026.08.15.11');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -140,7 +140,7 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /--ops-surface: #111c18/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(css, /V2026\.08\.15\.10 final cascade[\s\S]*grid-template-rows: none !important/);
+  assert.match(css, /V2026\.08\.15\.11 final cascade[\s\S]*grid-template-rows: none !important/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /--ops-desktop-nav: 1400px/);
@@ -208,7 +208,7 @@ test('primary module icons use a restrained single-weight treatment', () => {
   assert.match(drawerBlock, /class="ph-duotone ph-palette"/);
   assert.match(drawerBlock, /class="ph-duotone ph-arrows-clockwise"/);
   assert.match(css, /--ops-icon-well:/);
-  assert.match(css, /V2026\.08\.15\.10 final cascade[\s\S]*#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 10px !important/);
+  assert.match(css, /V2026\.08\.15\.11 final cascade[\s\S]*#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 10px !important/);
   assert.match(css, /\.drawer-item > i[\s\S]*width: 34px !important/);
   assert.match(css, /\.footer-nav-btn:is\(\.active, \.menu-open, \[aria-current="page"\]\) > i/);
   assert.match(css, /text-transform: none !important/);
@@ -280,6 +280,26 @@ test('modern login separates saved accounts from fresh credentials without a the
   assert.match(css, /#view-login \.login-card[\s\S]*border-radius: 18px !important/);
 });
 
+test('mobile and tablet keyboards keep login controls visible and login reads retry safely', () => {
+  assert.match(html, /const LOGIN_READ_TIMEOUT_MS = 15000/);
+  assert.match(html, /for \(let attempt = 0; attempt <= LOGIN_FETCH_RETRY_COUNT; attempt \+= 1\)/);
+  assert.match(html, /attempt >= LOGIN_FETCH_RETRY_COUNT \|\| !isRetryableLoginReadError\(error\)/);
+  assert.match(html, /\[408, 429, 500, 502, 503, 504\]\.includes\(status\)/);
+  assert.match(html, /function revealLoginFieldAboveKeyboard\(inputEl\)[\s\S]*scrollIntoView\(\{ block: 'center'/);
+  const loginInteractionBlock = html.slice(html.indexOf('function toggleLoginPasswordVisibility'), html.indexOf('function primeSavedLoginUiOnStartup'));
+  assert.doesNotMatch(loginInteractionBlock, /preventScroll: true/);
+  assert.match(loginInteractionBlock, /revealLoginFieldAboveKeyboard\(input\)/);
+  assert.match(loginInteractionBlock, /revealLoginFieldAboveKeyboard\(usernameInput\)/);
+  const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.11 keyboard-safe authentication cascade');
+  const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
+  assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
+  const keyboardCascade = css.slice(keyboardCascadeIndex);
+  assert.match(keyboardCascade, /body\.keyboard-open #view-login[\s\S]*height: var\(--visual-height, 100dvh\) !important/);
+  assert.match(keyboardCascade, /overflow-y: auto !important/);
+  assert.match(keyboardCascade, /\.login-brand-lockup[\s\S]*display: none !important/);
+  assert.doesNotMatch(keyboardCascade, /@media \(max-width: 639px\)/);
+});
+
 test('Drive universal search preserves drill state and renders only its results while typing', () => {
   assert.match(html, /drive_universal: \(item\) => \[item\.COMMONNAME, item\.LOCATIONCODE, item\.ITEMCODE, item\.CONTSIZE, item\.LOTCODE, item\.DESIGCUST, item\.DESIGITEM, item\.DESIGLOC\]/);
   assert.match(html, /function captureDriveStateBeforeUniversalSearch\(\)/);
@@ -311,13 +331,13 @@ test('new inventory transactions are Reclass-only while audit history keeps lega
 test('design pills and Drive metrics use the professional responsive card system', () => {
   assert.match(html, /class="app-data-pill app-data-pill--location\$\{compactClass\}"/);
   assert.match(html, /<div class="app-drive-card-title-row">[\s\S]*<div class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}<\/div>/);
-  assert.match(css, /V2026\.08\.15\.10 final cascade[\s\S]*\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
+  assert.match(css, /V2026\.08\.15\.11 final cascade[\s\S]*\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
   assert.match(css, /\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(4/);
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
 });
 
 test('phone Home tiles fill both columns and Drive cards retain the thumbnail with Reclass at top right', () => {
-  const cascadeLockIndex = css.lastIndexOf('V2026.08.15.10 mobile cascade lock');
+  const cascadeLockIndex = css.lastIndexOf('V2026.08.15.11 mobile cascade lock');
   const legacyMobileGridIndex = css.lastIndexOf('grid-template-areas: "main main" "bottom reclass"');
   assert.ok(cascadeLockIndex > legacyMobileGridIndex, 'mobile repair must follow every legacy phone card rule');
   const mobileCascade = css.slice(cascadeLockIndex);
@@ -336,7 +356,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081510\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081511\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);

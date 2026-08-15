@@ -991,7 +991,7 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
   }
 }
 
-/* V2026.08.15.10 — compact enterprise shell, semantic dual-theme controls, and responsive inventory cards. */
+/* V2026.08.15.11 — compact enterprise shell, semantic dual-theme controls, and responsive inventory cards. */
 :root {
   --login-canvas: #076f45;
   --login-canvas-deep: #045b38;
@@ -1572,7 +1572,7 @@ body.ops-precision-pilot .app-empty-state strong {
   display: none !important;
 }
 
-/* V2026.08.15.10 phone layout repair: full-width two-column Home tiles,
+/* V2026.08.15.11 phone layout repair: full-width two-column Home tiles,
    restored Drive thumbnails, and Reclass returned to the upper-right. */
 @media (max-width: 639px) {
   body.ops-precision-pilot #view-home #home-dashboard-grid,
@@ -2781,7 +2781,7 @@ body.ops-precision-pilot .footer-nav-btn > span:not(.footer-nav-badge) {
   }
 }
 
-/* V2026.08.15.10 final cascade — intentional override of pre-release tile/card experiments. */
+/* V2026.08.15.11 final cascade — intentional override of pre-release tile/card experiments. */
 body.ops-precision-pilot #view-home #home-dashboard-grid,
 body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
   display: grid !important;
@@ -2916,7 +2916,7 @@ body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
   }
 }
 
-/* V2026.08.15.10 mobile cascade lock. This block intentionally stays last so
+/* V2026.08.15.11 mobile cascade lock. This block intentionally stays last so
    legacy phone experiments cannot narrow Home tiles or hide Drive media. */
 @media (max-width: 639px) {
   body.ops-precision-pilot #view-home #home-dashboard-grid,
@@ -2989,4 +2989,72 @@ body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
     font-size: 9px !important;
     line-height: 1 !important;
   }
+}
+
+/* V2026.08.15.11 keyboard-safe authentication cascade. This final lock follows
+   every breakpoint so iPad landscape cannot inherit desktop centering. */
+body.keyboard-open #view-login,
+body.keyboard-open #view-change-password {
+  inset: 0 0 auto !important;
+  width: 100% !important;
+  height: var(--visual-height, 100dvh) !important;
+  min-height: 0 !important;
+  max-height: var(--visual-height, 100dvh) !important;
+  justify-content: flex-start !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding: max(8px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)) !important;
+  scroll-padding-block: 12px !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.keyboard-open #view-login .login-card,
+body.keyboard-open #view-change-password .login-card {
+  flex: 0 0 auto !important;
+  width: min(100%, 430px) !important;
+  margin: 0 auto !important;
+  padding: 14px 18px 16px !important;
+  border-radius: 14px !important;
+}
+
+body.keyboard-open #view-login .login-brand-lockup,
+body.keyboard-open #view-change-password .login-brand-lockup,
+body.keyboard-open #view-login .login-heading-block p,
+body.keyboard-open #view-change-password .login-heading-block p {
+  display: none !important;
+}
+
+body.keyboard-open #view-login .login-heading-block,
+body.keyboard-open #view-change-password .login-heading-block {
+  margin: 0 0 10px !important;
+}
+
+body.keyboard-open #view-login .login-heading-block h1,
+body.keyboard-open #view-change-password .login-heading-block h1 {
+  font-size: 22px !important;
+  line-height: 1.1 !important;
+}
+
+body.keyboard-open #view-login .login-field-stack,
+body.keyboard-open #view-change-password .login-field-stack {
+  gap: 5px !important;
+}
+
+body.keyboard-open #view-login .login-field-stack .login-field,
+body.keyboard-open #view-change-password .login-field-stack .login-field {
+  height: 44px !important;
+  margin-bottom: 3px !important;
+}
+
+body.keyboard-open #view-login .login-password-toggle,
+body.keyboard-open #view-change-password .login-password-toggle {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+body.keyboard-open #view-login :is(.login-primary-button, .login-secondary-button),
+body.keyboard-open #view-change-password :is(.login-primary-button, .login-secondary-button) {
+  min-height: 44px !important;
+  margin-top: 9px !important;
 }
