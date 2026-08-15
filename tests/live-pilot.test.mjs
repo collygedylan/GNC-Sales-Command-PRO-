@@ -17,17 +17,21 @@ const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.01';
+  const release = 'V2026.08.15.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.01'/);
-  assert.equal(packageJson.version, '2026.08.15.01');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.02'/);
+  assert.equal(packageJson.version, '2026.08.15.02');
 });
 
 test('pilot UI is drawer-only and inactive by default', () => {
   assert.match(html, /id="side-drawer"[\s\S]*id="ops-pilot-settings"[\s\S]*id="drawer-logout-btn"/);
   assert.match(html, /id="ops-pilot-settings" class="ops-pilot-settings hidden"/);
+  assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-bold ph-palette"><\/i> Appearance/);
+  assert.ok(html.indexOf('id="drawer-outdoor-mode-btn"') < html.indexOf('id="ops-pilot-settings"'));
+  assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-enable-push-btn"'));
+  assert.match(css, /body\.ops-pilot-active \.ops-pilot-segmented button[\s\S]*min-height: 44px !important/);
   assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible\)/);
   assert.match(client, /body\.classList\.toggle\('ops-precision-pilot', state\.eligible && state\.flags\.skin\)/);
   assert.doesNotMatch(html, /<body[^>]*ops-precision-pilot/);

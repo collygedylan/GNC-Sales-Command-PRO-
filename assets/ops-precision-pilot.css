@@ -1,4 +1,4 @@
-/* V2026.08.15.01 — server-gated Ops Precision pilot skin. */
+/* V2026.08.15.02 — server-gated Ops Precision pilot skin. */
 body.ops-precision-pilot {
   --ops-canvas: #f3f7f5;
   --ops-surface: #ffffff;
@@ -391,6 +391,9 @@ body.ops-pilot-active .ops-pilot-settings:not(.hidden) {
 }
 
 .ops-pilot-settings__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 8px;
   color: var(--ops-text-muted, #617068);
   font-size: 10px;
@@ -972,6 +975,19 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
     border-right: 0 !important;
     border-left: 0 !important;
     border-radius: 0 !important;
+  }
+
+  body.ops-pilot-active .ops-pilot-settings:not(.hidden) {
+    margin: 10px 12px 12px !important;
+    padding: 12px !important;
+    border-width: 1.5px !important;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18) !important;
+  }
+
+  body.ops-pilot-active .ops-pilot-segmented button {
+    min-height: 44px !important;
+    padding: 8px 6px !important;
+    font-size: 12px !important;
   }
 }
 
