@@ -1070,6 +1070,112 @@ function ModuleWorkspace({
   );
 }
 
+type DetailTabId =
+  | 'summary' | 'edits' | 'customer' | 'notes' | 'inquiry' | 'location'
+  | 'items' | 'assignment' | 'photos' | 'history' | 'stops' | 'team'
+  | 'mistakes' | 'modules' | 'approval' | 'shortage' | 'materials'
+  | 'findings' | 'queue' | 'reports' | 'columns' | 'blocks' | 'moves'
+  | 'po' | 'recounts' | 'availability' | 'crop-roll' | 'stock';
+
+type DetailTabDefinition = { id: DetailTabId; label: string };
+
+function detailTabsForView(view: ViewId): DetailTabDefinition[] {
+  switch (view) {
+    case 'drive':
+      return [
+        { id: 'summary', label: 'Item Details' },
+        { id: 'edits', label: 'Inventory Edits' },
+        { id: 'customer', label: 'Customer / Consignee' },
+        { id: 'notes', label: 'Notes & Actions' },
+        { id: 'inquiry', label: 'Item Inquiry' },
+        { id: 'location', label: 'Location' },
+      ];
+    case 'tasks':
+      return [
+        { id: 'summary', label: 'Task' },
+        { id: 'items', label: 'Items' },
+        { id: 'assignment', label: 'Assignment' },
+        { id: 'notes', label: 'Notes' },
+      ];
+    case 'docks':
+      return [
+        { id: 'summary', label: 'Dock Status' },
+        { id: 'stops', label: 'Stops' },
+        { id: 'team', label: 'Team' },
+        { id: 'mistakes', label: 'Mistakes' },
+      ];
+    case 'inventory':
+      return [
+        { id: 'summary', label: 'Inventory' },
+        { id: 'moves', label: 'Moves' },
+        { id: 'po', label: 'PO Management' },
+        { id: 'recounts', label: 'Recounts' },
+        { id: 'inquiry', label: 'Item Inquiry' },
+      ];
+    case 'managers':
+      return [
+        { id: 'modules', label: 'Modules' },
+        { id: 'approval', label: 'Approval' },
+        { id: 'shortage', label: 'Shortage / Cancel' },
+        { id: 'history', label: 'History' },
+      ];
+    case 'bloom':
+      return [
+        { id: 'stock', label: 'Stock' },
+        { id: 'photos', label: 'Photos' },
+        { id: 'inquiry', label: 'Item Inquiry' },
+        { id: 'notes', label: 'Notes' },
+      ];
+    case 'sales':
+      return [
+        { id: 'customer', label: 'Customer' },
+        { id: 'availability', label: 'Availability' },
+        { id: 'notes', label: 'Sales Notes' },
+        { id: 'history', label: 'History' },
+      ];
+    case 'building':
+      return [
+        { id: 'summary', label: 'Work Order' },
+        { id: 'materials', label: 'Materials' },
+        { id: 'assignment', label: 'Assignment' },
+        { id: 'history', label: 'History' },
+      ];
+    case 'qc':
+      return [
+        { id: 'summary', label: 'Check' },
+        { id: 'photos', label: 'Photos' },
+        { id: 'findings', label: 'Findings' },
+        { id: 'history', label: 'History' },
+      ];
+    case 'office':
+      return [
+        { id: 'queue', label: 'Queue' },
+        { id: 'customer', label: 'Customers' },
+        { id: 'reports', label: 'Reports' },
+        { id: 'notes', label: 'Notes' },
+      ];
+    case 'production':
+      return [
+        { id: 'crop-roll', label: 'Crop Roll' },
+        { id: 'blocks', label: 'Blocks' },
+        { id: 'notes', label: 'Notes' },
+        { id: 'history', label: 'History' },
+      ];
+    case 'reports':
+      return [
+        { id: 'reports', label: 'Report' },
+        { id: 'columns', label: 'Columns' },
+        { id: 'history', label: 'History' },
+      ];
+    default:
+      return [
+        { id: 'summary', label: 'Summary' },
+        { id: 'notes', label: 'Notes & Actions' },
+        { id: 'history', label: 'History' },
+      ];
+  }
+}
+
 function ModuleDetail({ view, row, demoMode, onBack, onToast }: {
   view: ViewId;
   row: ModulePreviewRow;
@@ -1077,97 +1183,156 @@ function ModuleDetail({ view, row, demoMode, onBack, onToast }: {
   onBack: () => void;
   onToast: (message: string) => void;
 }) {
-  const details = liveShapedDetailFor(view, row);
+  const details = useMemo(() => liveShapedDetailFor(view, row), [view, row]);
   const [status, setStatus] = useState(row.status);
   const [quantity, setQuantity] = useState(row.quantity);
   const [note, setNote] = useState(details.notes[0] || '');
   const [decision, setDecision] = useState(details.actions[0] || 'Review');
+  const tabs = useMemo(() => detailTabsForView(view), [view]);
+  const [activeTab, setActiveTab] = useState<DetailTabId>(tabs[0].id);
+
+  useEffect(() => {
+    setActiveTab(tabs[0].id);
+    setStatus(row.status);
+    setQuantity(row.quantity);
+    setNote(details.notes[0] || '');
+    setDecision(details.actions[0] || 'Review');
+  }, [details.notes, row.quantity, row.status, row.title, tabs]);
 
   const sandboxToast = (action: string) => {
     onToast(`${action} saved in the v2 sandbox only. No production data, email, or upload was touched.`);
   };
 
+  const renderEditableSummary = () => (
+    <div className="live-detail-grid">
+      <label className="editable-field">
+        <span>Status</span>
+        <select value={status} onChange={event => setStatus(event.target.value)}>
+          {[row.status, 'Open', 'In Progress', 'Review', 'Ready', 'Complete'].filter((value, index, all) => all.indexOf(value) === index).map(value => (
+            <option key={value} value={value}>{value}</option>
+          ))}
+        </select>
+      </label>
+      <label className="editable-field">
+        <span>Quantity / Rows</span>
+        <input value={quantity} onChange={event => setQuantity(event.target.value)} />
+      </label>
+      <label className="editable-field">
+        <span>Action</span>
+        <select value={decision} onChange={event => setDecision(event.target.value)}>
+          {details.actions.map(action => <option key={action} value={action}>{action}</option>)}
+        </select>
+      </label>
+      <ReadOnlyField label="Owner" value={row.owner} />
+      {details.fields.map(field => <ReadOnlyField key={field.label} label={field.label} value={field.value} />)}
+    </div>
+  );
+
+  const renderInquiry = () => (
+    <div className="live-inquiry-wrap">
+      <table className="live-inquiry-table">
+        <thead><tr><th>Row</th><th>Lot</th><th>Location</th><th>Src</th><th>Pri</th><th>On Hand</th><th>Review</th><th>Available</th><th /></tr></thead>
+        <tbody>
+          {[
+            ['R1', '27.F1', 'D.26.000', 'LD', '1', quantity, '0', quantity],
+            ['R2', '27.U1', 'F.07.000', 'LD', '-', '124', '0', '124'],
+            ['R3', '27.F1', 'H.03.000', 'LD', '1', '94', '0', '94'],
+          ].map((cells, index) => (
+            <tr key={cells[0]} className={index === 0 ? 'is-current' : ''}>
+              {cells.map((cell, cellIndex) => <td key={`${cell}-${cellIndex}`}>{cell}</td>)}
+              <td><button type="button" className="table-open" onClick={() => sandboxToast(`Row ${cells[0]} opened`)}>Open</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderTabContent = () => {
+    if (activeTab === 'inquiry') return renderInquiry();
+    if (activeTab === 'photos') {
+      return (
+        <div className="live-photo-grid">
+          <button type="button" className="live-photo-action" onClick={() => sandboxToast('Test photo queued')}><Camera size={26} /><strong>Take Photo</strong><span>Sandbox upload queue</span></button>
+          <div className="live-photo-slot"><ImageIcon size={28} /><strong>No Photo</strong><span>Front view</span></div>
+          <div className="live-photo-slot"><ImageIcon size={28} /><strong>No Photo</strong><span>Tag / detail</span></div>
+        </div>
+      );
+    }
+    if (activeTab === 'notes' || activeTab === 'findings') {
+      return (
+        <div className="live-notes-layout">
+          <label className="editable-field full"><span>{activeTab === 'findings' ? 'QC Findings' : 'Work Note'}</span><textarea value={note} onChange={event => setNote(event.target.value)} rows={5} placeholder="Add a test note..." /></label>
+          <div className="status-history">{details.history.map(entry => <div key={`${entry.label}-${entry.value}`}><span>{entry.label}</span><strong>{entry.value}</strong></div>)}</div>
+        </div>
+      );
+    }
+    if (activeTab === 'history') {
+      return <div className="status-history live-history">{details.history.map(entry => <div key={`${entry.label}-${entry.value}`}><span>{entry.label}</span><strong>{entry.value}</strong></div>)}</div>;
+    }
+    if (activeTab === 'edits') {
+      return (
+        <div className="live-detail-grid">
+          <label className="editable-field"><span>DesigCust</span><input defaultValue="" placeholder="Exact row only" /></label>
+          <label className="editable-field"><span>DesigItem</span><input defaultValue="" placeholder="Exact row only" /></label>
+          <label className="editable-field"><span>DesigLoc</span><input defaultValue="" placeholder="Exact row only" /></label>
+          <ReadOnlyField label="Update Scope" value="Selected unique row only" />
+          <div className="safe-action-note full-span">Designation changes never propagate to linked rows.</div>
+        </div>
+      );
+    }
+    if (activeTab === 'customer' || activeTab === 'location' || activeTab === 'assignment' || activeTab === 'team') {
+      return (
+        <div className="live-detail-grid">
+          <ReadOnlyField label={activeTab === 'customer' ? 'Customer / Consignee' : activeTab === 'location' ? 'Location' : activeTab === 'team' ? 'Checker' : 'Assigned To'} value={activeTab === 'customer' ? 'Coastal Landscape' : activeTab === 'location' ? row.meta : row.owner} />
+          <ReadOnlyField label="Contact / Lead" value={row.owner} />
+          <ReadOnlyField label="Route / Block" value={row.meta} />
+          <ReadOnlyField label="Current Status" value={status} />
+        </div>
+      );
+    }
+    if (activeTab === 'items' || activeTab === 'stops' || activeTab === 'queue' || activeTab === 'modules' || activeTab === 'approval' || activeTab === 'shortage' || activeTab === 'moves' || activeTab === 'po' || activeTab === 'recounts' || activeTab === 'blocks' || activeTab === 'crop-roll' || activeTab === 'stock' || activeTab === 'availability' || activeTab === 'reports' || activeTab === 'columns' || activeTab === 'materials' || activeTab === 'mistakes') {
+      return (
+        <div className="live-subrow-list">
+          {[1, 2, 3].map(index => (
+            <button type="button" key={index} onClick={() => sandboxToast(`${tabs.find(tab => tab.id === activeTab)?.label} row ${index} opened`)}>
+              <span className="live-subrow-index">{String(index).padStart(2, '0')}</span>
+              <span><strong>{index === 1 ? row.title : `${tabs.find(tab => tab.id === activeTab)?.label} ${index}`}</strong><small>{index === 1 ? row.meta : `${row.meta} | Test row ${index}`}</small></span>
+              <Chip tone={index === 2 ? 'warning' : row.tone} label={index === 2 ? 'Review' : status} />
+              <ChevronRight size={18} />
+            </button>
+          ))}
+        </div>
+      );
+    }
+    return renderEditableSummary();
+  };
+
   return (
-    <section className="module-detail-flow">
-      <button className="inline-back" type="button" onClick={onBack}><ArrowLeft size={22} /> Back to {labelForView(view)}</button>
-      <article className="module-detail-card">
-        <div className="module-detail-head">
-          <div className="module-media-frame">
-            <div className="module-media-mark">{moduleIcon(view, 34)}</div>
-            <span>{mediaInitials(row.title)}</span>
+    <section className="module-detail-flow live-parity-detail">
+      <button className="inline-back" type="button" onClick={onBack}><ArrowLeft size={20} /> Back to {labelForView(view)}</button>
+      <article className="live-detail-card">
+        <header className="live-detail-head">
+          <div className="live-detail-identity">
+            <div className="module-media-frame compact"><div className="module-media-mark">{moduleIcon(view, 28)}</div><span>{mediaInitials(row.title)}</span></div>
+            <div><span>{demoMode ? 'Test Data' : 'Workflow Detail'} - {labelForView(view)}</span><h1>{row.title}</h1><p>{row.meta}</p></div>
           </div>
-          <div className="module-detail-title">
-            <span>{demoMode ? 'Sandbox Detail' : 'Workflow Detail'}</span>
-            <h1>{row.title}</h1>
-            <p>{row.meta}</p>
-          </div>
-          <div className="module-detail-status">
-            <Chip tone={row.tone} label={status} />
-            <strong>{quantity}</strong>
-          </div>
-        </div>
+          <div className="module-detail-status"><Chip tone={row.tone} label={status} /><strong>{quantity}</strong></div>
+        </header>
 
-        <div className="module-detail-metrics" aria-label="Detail metrics">
-          {details.fields.slice(0, 4).map(field => <ReadOnlyField key={field.label} label={field.label} value={field.value} />)}
-        </div>
+        <nav className="live-detail-tabs" aria-label={`${labelForView(view)} detail sections`}>
+          {tabs.map(tab => <button key={tab.id} type="button" className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>)}
+        </nav>
 
-        <div className="module-detail-sections">
-          <section className="detail-panel">
-            <div className="detail-panel-title">
-              <span>Update</span>
-              <strong>Sandbox Fields</strong>
-            </div>
-            <div className="field-grid sandbox-field-grid">
-              <label className="editable-field">
-                <span>Status</span>
-                <select value={status} onChange={event => setStatus(event.target.value)}>
-                  {[row.status, 'Open', 'In Progress', 'Review', 'Ready', 'Complete'].filter((value, index, all) => all.indexOf(value) === index).map(value => (
-                    <option key={value} value={value}>{value}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="editable-field">
-                <span>Quantity / Rows</span>
-                <input value={quantity} onChange={event => setQuantity(event.target.value)} />
-              </label>
-              <label className="editable-field">
-                <span>Decision</span>
-                <select value={decision} onChange={event => setDecision(event.target.value)}>
-                  {details.actions.map(action => <option key={action} value={action}>{action}</option>)}
-                </select>
-              </label>
-              <ReadOnlyField label="Owner" value={row.owner} />
-            </div>
-            <label className="editable-field full">
-              <span>Work Note</span>
-              <textarea value={note} onChange={event => setNote(event.target.value)} rows={4} placeholder="Add a test note..." />
-            </label>
-            <div className="module-action-row">
-              <button type="button" className="primary-button" onClick={() => sandboxToast('Test save')}><Save size={18} /> Save Test Changes</button>
-              <button type="button" className="ghost-button" onClick={() => sandboxToast('Test completion')}><CheckCircle2 size={18} /> Mark Test Complete</button>
-              <button type="button" className="ghost-button" onClick={() => sandboxToast('Test upload retry')}><RefreshCw size={18} /> Retry Upload Test</button>
-            </div>
-          </section>
+        <section className="live-detail-content" aria-live="polite">
+          <div className="live-detail-section-title"><span>{tabs.find(tab => tab.id === activeTab)?.label}</span><small>Live-shaped sandbox workflow</small></div>
+          {renderTabContent()}
+        </section>
 
-          <section className="detail-panel">
-            <div className="detail-panel-title">
-              <span>Context</span>
-              <strong>Live-Shaped Snapshot</strong>
-            </div>
-            <div className="detail-key-value-grid">
-              {details.fields.slice(4).map(field => <ReadOnlyField key={field.label} label={field.label} value={field.value} />)}
-            </div>
-            <div className="status-history">
-              {details.history.map(entry => (
-                <div key={`${entry.label}-${entry.value}`}>
-                  <span>{entry.label}</span>
-                  <strong>{entry.value}</strong>
-                </div>
-              ))}
-            </div>
-            <div className="safe-action-note">v2 test environment only. Buttons update local UI state and never send emails, uploads, or production database writes.</div>
-          </section>
-        </div>
+        <footer className="live-detail-actions">
+          <button type="button" className="ghost-button" onClick={() => sandboxToast('Test save')}><Save size={18} /> Save</button>
+          <button type="button" className="primary-button" onClick={() => sandboxToast('Test commit')}><CheckCircle2 size={18} /> Commit</button>
+        </footer>
       </article>
     </section>
   );
