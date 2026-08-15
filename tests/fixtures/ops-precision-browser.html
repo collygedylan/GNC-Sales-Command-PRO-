@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ops Precision browser fixture</title>
   <style>
+    :root { --visual-height: 100vh; --footer-nav-reserve: 8.75rem; }
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; font-family: Inter, system-ui, sans-serif; }
     .hidden { display: none !important; }
@@ -17,6 +18,8 @@
     .nav-header-meta-row { display: flex; align-items: center; gap: 8px; }
     .nav-header-user { font-weight: 900; }
     .nav-header-company, #sync-diagnostics-detail { font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .nav-version-pill, .nav-outdoor-toggle { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; border-radius: 999px; padding: 0 12px; }
+    #global-header-search-slot, #global-header-inline-title { flex: 1 1 auto; }
     #main-scroll-area { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px; }
     #view-wrapper { max-width: 1240px; margin: 0 auto; }
     #drive-search-container { display: flex; gap: 8px; margin-bottom: 12px; padding: 8px; }
@@ -35,6 +38,19 @@
     #home-dashboard-grid > div { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 68px; text-align: center; }
     #bottom-nav { position: fixed; z-index: 20; left: 50%; bottom: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); transform: translateX(-50%); }
     .footer-nav-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 1px solid transparent; }
+    .chat-thread-shell { display: flex; flex-direction: column; overflow: hidden; }
+    .android-chat-header { display: grid; align-items: center; gap: 8px; }
+    .android-chat-avatar { display: flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .chat-message-scroll { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow-y: auto; }
+    .android-message-row { display: flex; width: 100%; }
+    .android-message-row.mine { justify-content: flex-end; }
+    .android-message-row.theirs { justify-content: flex-start; }
+    .android-message-meta { margin-top: 3px; font-size: 9px; text-align: right; text-transform: uppercase; }
+    .chat-thread-composer { flex: 0 0 auto; }
+    .android-composer-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px; align-items: end; gap: 8px; }
+    .android-composer-pill { display: flex; align-items: center; padding: 4px 12px; }
+    .android-chat-input { width: 100%; min-height: 30px; max-height: 92px; border: 0; outline: 0; resize: none; }
+    .android-icon-btn { display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 999px; }
     @media (max-width: 767px) {
       #main-scroll-area { padding: 10px; }
       #fixture-layout { grid-template-columns: 1fr; }
@@ -45,6 +61,7 @@
 </head>
 <body>
   <div id="app-wrapper">
+    <div id="app-top-chrome">
     <header class="nav-header">
       <div class="nav-header-shell">
         <div class="nav-header-utility">
@@ -56,7 +73,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.15.02</span>
+              <span class="nav-version-pill">V2026.08.15.03</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -64,6 +81,16 @@
         </div>
       </div>
     </header>
+    <div id="global-header-search-row">
+      <button id="global-header-inline-back" class="amazon-inline-back" type="button" aria-label="Back" onclick="document.body.dataset.qaBack='used'">←</button>
+      <div id="global-header-search-slot">
+        <div id="drive-search-container" class="amazon-search-host global-header-search-mounted">
+          <input class="input-field" aria-label="Search inventory" placeholder="Search names or locations...">
+        </div>
+      </div>
+      <div id="global-header-inline-title" class="hidden"><div id="global-header-view-title">Chat</div></div>
+    </div>
+    </div>
     <main id="main-scroll-area">
       <div id="view-wrapper">
         <section id="view-home" class="hidden">
@@ -95,10 +122,6 @@
           </div>
         </section>
         <section id="view-drive">
-        <div id="drive-search-container">
-          <input aria-label="Search inventory" placeholder="Search inventory">
-          <button type="button">Filter</button>
-        </div>
         <div id="fixture-layout">
           <aside id="side-drawer">
             <button class="drawer-item" type="button">Home</button>
@@ -125,7 +148,7 @@
           </aside>
           <section>
             <div id="drive-content">
-              <article class="inv-card"><p class="record-title">North dock</p><p class="record-meta">Ready for review</p></article>
+              <article class="inv-card app-smart-card"><p class="record-title">North dock</p><p class="record-meta">Ready for review</p><div class="app-card-qty-row grid"><span class="app-card-qty-chip"><span class="app-card-qty-label">On hand</span><span class="app-card-qty-value">39</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Review</span><span class="app-card-qty-value">0</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Available</span><span class="app-card-qty-value">39</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Open Stock</span><span class="app-card-qty-value">39</span></span></div></article>
               <article class="inv-card"><p class="record-title">Crop roll</p><p class="record-meta">3 records queued</p></article>
               <article class="inv-card"><p class="record-title">Availability</p><p class="record-meta">Updated recently</p></article>
               <article class="inv-card"><p class="record-title">Requests</p><p class="record-meta">No blocking errors</p></article>
@@ -136,6 +159,23 @@
             </form>
           </section>
         </div>
+        </section>
+        <section id="view-chat" class="hidden chat-thread-active">
+          <div class="freeze-panel"><div><span id="chat-crumb">Conversation</span><strong id="chat-title">Chat</strong></div></div>
+          <div id="chat-content">
+            <div id="chat-thread-shell" class="chat-thread-shell android-chat-shell">
+              <div class="android-chat-header">
+                <button class="android-icon-btn mic" type="button" aria-label="Back to chats">←</button>
+                <div class="ios-chat-title-cluster"><div class="android-chat-avatar">KK</div><div>Kayla Knepp</div><div>dylan_collyge, kayla_knepp</div></div>
+                <button class="android-icon-btn mic" type="button" aria-label="New message">＋</button>
+              </div>
+              <div class="chat-message-scroll">
+                <div class="android-message-row theirs"><div class="android-message-bubble theirs"><div>Kayla Knepp</div><div>The app loads a page and goes white.</div><div class="android-message-meta">Jun 19</div></div></div>
+                <div class="android-message-row mine"><div class="android-message-bubble mine"><div>I’ll take a look right now.</div><div class="android-message-meta">Jul 2</div></div></div>
+              </div>
+              <form class="chat-thread-composer"><div class="android-composer-row"><button class="android-icon-btn mic" type="button">●</button><div class="android-composer-pill"><textarea class="android-chat-input" placeholder="Message"></textarea></div><button class="android-icon-btn send" type="button">➤</button></div></form>
+            </div>
+          </div>
         </section>
       </div>
     </main>
@@ -198,8 +238,12 @@
       const activeView = params.get('view') || 'drive';
       document.body.classList.toggle('current-view-home', activeView === 'home');
       document.body.classList.toggle('home-dashboard-mode', activeView === 'home');
+      document.body.classList.toggle('global-header-search-active', activeView === 'drive');
       document.getElementById('view-home').classList.toggle('hidden', activeView !== 'home');
-      document.getElementById('view-drive').classList.toggle('hidden', activeView === 'home');
+      document.getElementById('view-drive').classList.toggle('hidden', activeView !== 'drive');
+      document.getElementById('view-chat').classList.toggle('hidden', activeView !== 'chat');
+      document.getElementById('global-header-search-slot').classList.toggle('hidden', activeView !== 'drive');
+      document.getElementById('global-header-inline-title').classList.toggle('hidden', activeView === 'drive');
       const bridge = {
         getActiveView() { return activeView; },
         async request(action, payload) {

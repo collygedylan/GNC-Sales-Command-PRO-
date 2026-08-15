@@ -1,4 +1,4 @@
-/* V2026.08.15.02 — server-gated Ops Precision pilot skin. */
+/* V2026.08.15.03 — server-gated Ops Precision pilot skin. */
 body.ops-precision-pilot {
   --ops-canvas: #f3f7f5;
   --ops-surface: #ffffff;
@@ -988,6 +988,585 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
     min-height: 44px !important;
     padding: 8px 6px !important;
     font-size: 12px !important;
+  }
+}
+
+/* V2026.08.15.03 — unified command shell, readable data pills, and dark chat. */
+body.ops-precision-pilot {
+  --ops-command: #0a1712;
+  --ops-command-raised: #10211a;
+  --ops-command-border: rgba(167, 243, 208, 0.34);
+  --ops-glow: rgba(25, 185, 121, 0.18);
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-surface: #0f1c17;
+  --ops-surface-muted: #14231d;
+  --ops-surface-strong: #1a2d25;
+  --ops-border: rgba(110, 231, 179, 0.28);
+  --ops-border-strong: rgba(110, 231, 179, 0.54);
+  --ops-text-muted: #a8bdb4;
+}
+
+body.ops-precision-pilot #app-top-chrome {
+  border-bottom: 1px solid rgba(167, 243, 208, 0.22) !important;
+  background:
+    radial-gradient(circle at 82% -30%, rgba(99, 230, 173, 0.2), transparent 34%),
+    linear-gradient(118deg, #05633d 0%, #078650 54%, #055f3c 100%) !important;
+  box-shadow: 0 14px 38px rgba(0, 31, 20, 0.22) !important;
+}
+
+body.ops-precision-pilot .nav-header,
+html.outdoor-mode body.ops-precision-pilot .nav-header,
+body.ops-precision-pilot #global-header-search-row {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #global-header-search-row,
+body.ops-precision-pilot #global-header-search-row.hidden {
+  display: flex !important;
+  box-sizing: border-box !important;
+  width: var(--shell-width) !important;
+  max-width: var(--shell-width) !important;
+  margin: 0 auto !important;
+  padding: 0 0 14px !important;
+  border: 0 !important;
+  gap: 10px !important;
+}
+
+body.ops-precision-pilot #global-header-inline-back,
+body.ops-precision-pilot #global-header-inline-back.hidden {
+  display: inline-flex !important;
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  border: 1px solid rgba(255, 255, 255, 0.36) !important;
+  border-radius: 15px !important;
+  color: #f5fff9 !important;
+  background: rgba(5, 39, 27, 0.34) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 22px rgba(0, 38, 24, 0.2) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+body.ops-precision-pilot #global-header-inline-back[aria-disabled="true"] {
+  opacity: 0.58;
+}
+
+body.ops-precision-pilot #global-header-inline-back i {
+  font-size: 21px !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot,
+body.ops-precision-pilot #global-header-inline-title {
+  min-width: 0 !important;
+  min-height: 50px !important;
+}
+
+body.ops-precision-pilot:not(.global-header-search-active) #global-header-inline-title.hidden {
+  display: flex !important;
+}
+
+body.ops-precision-pilot #global-header-inline-title {
+  align-items: center !important;
+  gap: 11px !important;
+  height: 50px !important;
+  padding: 0 17px !important;
+  border: 1px solid var(--ops-command-border) !important;
+  border-radius: 15px !important;
+  color: #f2fbf6 !important;
+  background: linear-gradient(180deg, rgba(7, 21, 15, 0.94), rgba(8, 26, 19, 0.98)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 34, 22, 0.2) !important;
+}
+
+body.ops-precision-pilot #global-header-inline-title::before {
+  content: "⌕";
+  flex: 0 0 auto;
+  color: #63e6ad;
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+body.ops-precision-pilot #global-header-view-title {
+  color: #f2fbf6 !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot .amazon-search-host,
+body.ops-precision-pilot #global-header-search-slot .sticky-search {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot :is(.input-field, input[type="text"], input[type="search"]) {
+  height: 50px !important;
+  min-height: 50px !important;
+  margin: 0 !important;
+  padding: 0 46px 0 17px !important;
+  border: 1px solid var(--ops-command-border) !important;
+  border-radius: 15px !important;
+  color: #f6fff9 !important;
+  background: linear-gradient(180deg, rgba(7, 21, 15, 0.94), rgba(8, 26, 19, 0.98)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 34, 22, 0.2) !important;
+  font-size: 16px !important;
+  font-weight: 750 !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot :is(.input-field, input)::placeholder {
+  color: #9eb7ac !important;
+}
+
+body.ops-precision-pilot #view-wrapper .amazon-inline-back,
+body.ops-precision-pilot #view-wrapper .back-btn,
+body.ops-precision-pilot #po-management-back-btn {
+  display: none !important;
+}
+
+body.ops-precision-pilot :is(.freeze-panel, .drive-controls-sticky, .task-controls-sticky) {
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  color: var(--ops-text) !important;
+  background: color-mix(in srgb, var(--ops-surface) 94%, transparent) !important;
+  box-shadow: 0 10px 28px rgba(0, 24, 16, 0.16) !important;
+}
+
+body.ops-precision-pilot :is(.freeze-panel, .drive-controls-sticky, .task-controls-sticky)::before {
+  display: none !important;
+}
+
+body.ops-precision-pilot :is(.task-tabs, .detail-tabs) {
+  gap: 5px !important;
+  padding: 4px !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 12px !important;
+  background: var(--ops-command) !important;
+}
+
+body.ops-precision-pilot :is(.task-tab, .detail-tab) {
+  min-height: 38px !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  padding: 9px 12px !important;
+}
+
+body.ops-precision-pilot :is(.task-tab, .detail-tab).active {
+  border-color: var(--ops-border-strong) !important;
+  color: #7ff0bb !important;
+  background: rgba(25, 185, 121, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline.drive-export-controls .drive-top-controls-row {
+  grid-template-columns: minmax(230px, 360px) minmax(180px, 270px) !important;
+  justify-content: start !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .task-top-control-shell,
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .drive-mode-export-button {
+  min-height: 50px !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 13px !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-command-raised) !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .drive-mode-export-button {
+  color: #a9c8ff !important;
+  border-color: rgba(115, 167, 255, 0.46) !important;
+  background: rgba(37, 99, 235, 0.12) !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .drive-filter-reset-row {
+  margin-top: 8px !important;
+  justify-content: flex-start !important;
+}
+
+body.ops-precision-pilot .app-card-qty-row,
+body.ops-precision-pilot .app-card-qty-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot :where(
+  .app-card-qty-chip,
+  .app-card-chip-row > span.rounded-full,
+  .app-smart-card .flex.flex-wrap > span.rounded-full,
+  .app-card-shell .flex.flex-wrap > span.rounded-full,
+  .request-swipe-surface .flex.flex-wrap > span.rounded-full,
+  .inv-card .flex.flex-wrap > span.rounded-full
+) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+  min-height: 34px !important;
+  max-width: 100% !important;
+  border-width: 1px !important;
+  border-radius: 999px !important;
+  padding: 7px 11px !important;
+  color: #effbf5 !important;
+  background: #172720 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1.05 !important;
+  letter-spacing: 0.08em !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip {
+  min-height: 42px !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip:nth-child(1) {
+  border-color: rgba(82, 202, 143, 0.58) !important;
+  color: #7ee0ad !important;
+  background: rgba(22, 132, 84, 0.18) !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip:nth-child(2),
+body.ops-precision-pilot .app-card-qty-chip:nth-child(3) {
+  border-color: rgba(115, 167, 255, 0.5) !important;
+  color: #a9c8ff !important;
+  background: rgba(37, 99, 235, 0.16) !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip:nth-child(4) {
+  border-color: rgba(167, 139, 250, 0.62) !important;
+  color: #d5c8ff !important;
+  background: rgba(124, 58, 237, 0.2) !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip :is(.app-card-qty-value, .text-slate-900) {
+  color: #ffffff !important;
+}
+
+body.ops-precision-pilot :is(.bg-violet-50, .bg-fuchsia-50) {
+  background-color: rgba(124, 58, 237, 0.2) !important;
+}
+
+body.ops-precision-pilot :is(.border-violet-100, .border-violet-200, .border-fuchsia-100, .border-fuchsia-200) {
+  border-color: rgba(167, 139, 250, 0.62) !important;
+}
+
+body.ops-precision-pilot :is(.text-violet-600, .text-violet-700, .text-violet-800, .text-fuchsia-600, .text-fuchsia-700, .text-fuchsia-800) {
+  color: #d5c8ff !important;
+}
+
+body.ops-precision-pilot #view-chat {
+  min-height: 0 !important;
+}
+
+body.ops-precision-pilot #view-chat.chat-thread-active > .freeze-panel {
+  display: none !important;
+}
+
+body.ops-precision-pilot #view-chat > .freeze-panel {
+  margin-bottom: 12px !important;
+  padding: 10px 12px !important;
+}
+
+body.ops-precision-pilot #view-chat > .freeze-panel > div {
+  margin: 0 !important;
+}
+
+body.ops-precision-pilot #view-chat > .freeze-panel button {
+  min-height: 40px !important;
+  border-color: var(--ops-border-strong) !important;
+  color: #9af3c8 !important;
+  background: rgba(25, 185, 121, 0.12) !important;
+}
+
+body.ops-precision-pilot #chat-content {
+  padding-bottom: 12px !important;
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot #chat-content > .overflow-hidden,
+body.ops-precision-pilot #chat-content > .rounded-\[24px\] {
+  border-color: var(--ops-border) !important;
+  border-radius: 18px !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: 0 18px 48px rgba(0, 22, 14, 0.24) !important;
+}
+
+body.ops-precision-pilot #chat-content > .overflow-hidden > button {
+  min-height: 78px !important;
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot #chat-content > .overflow-hidden > button:hover {
+  background: rgba(25, 185, 121, 0.08) !important;
+}
+
+body.ops-precision-pilot #view-chat :is(.bg-\[\#007aff\], .android-icon-btn.send, .android-record-send-btn) {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #0a9b61, #17bf7b) !important;
+}
+
+body.ops-precision-pilot #view-chat :is(.text-\[\#007aff\], .android-icon-btn.mic, .voice-talk-btn) {
+  color: #63e6ad !important;
+}
+
+body.ops-precision-pilot .chat-thread-shell,
+body.ops-precision-pilot .android-chat-shell {
+  height: min(760px, calc(var(--visual-height) - var(--footer-nav-reserve) - 11.5rem)) !important;
+  max-height: calc(100dvh - var(--app-top-chrome-height, 170px) - var(--footer-nav-reserve, 9rem) - 18px) !important;
+  min-height: 340px !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 20px !important;
+  background: #0a1511 !important;
+  box-shadow: 0 22px 60px rgba(0, 20, 13, 0.34) !important;
+}
+
+body.ops-precision-pilot .android-chat-header {
+  grid-template-columns: minmax(0, 1fr) 44px !important;
+  min-height: 72px !important;
+  padding: 10px 12px 10px 16px !important;
+  border-bottom: 1px solid var(--ops-border) !important;
+  background: linear-gradient(180deg, #14271f, #102019) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.ops-precision-pilot .android-chat-header > button:first-child {
+  display: none !important;
+}
+
+body.ops-precision-pilot .ios-chat-title-cluster {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  column-gap: 11px !important;
+  align-items: center !important;
+  justify-content: start !important;
+  text-align: left !important;
+}
+
+body.ops-precision-pilot .ios-chat-title-cluster .android-chat-avatar {
+  grid-row: 1 / 3 !important;
+  width: 42px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  color: #062a1b !important;
+  background: linear-gradient(135deg, #8ff0c3, #36cb8b) !important;
+  box-shadow: 0 0 0 3px rgba(99, 230, 173, 0.1) !important;
+}
+
+body.ops-precision-pilot .ios-chat-title-cluster > div:nth-child(2) {
+  color: #f5fff9 !important;
+  font-size: 14px !important;
+}
+
+body.ops-precision-pilot .ios-chat-title-cluster > div:nth-child(3) {
+  color: #9eb7ac !important;
+  font-size: 11px !important;
+}
+
+body.ops-precision-pilot .chat-message-scroll {
+  gap: 10px !important;
+  padding: 18px !important;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(25, 185, 121, 0.07), transparent 28%),
+    linear-gradient(180deg, #09130f, #0c1813) !important;
+  scrollbar-color: rgba(99, 230, 173, 0.42) transparent;
+}
+
+body.ops-precision-pilot .android-message-bubble {
+  max-width: min(72%, 680px) !important;
+  border: 1px solid transparent !important;
+  border-radius: 16px !important;
+  padding: 10px 13px !important;
+  color: #f5fff9 !important;
+  box-shadow: 0 8px 22px rgba(0, 13, 8, 0.18) !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.mine {
+  border-color: rgba(99, 230, 173, 0.42) !important;
+  border-bottom-right-radius: 5px !important;
+  background: linear-gradient(135deg, #08794b, #0b9a60) !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.theirs {
+  border-color: rgba(168, 189, 180, 0.22) !important;
+  border-bottom-left-radius: 5px !important;
+  background: #192822 !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.theirs .text-\[\#007aff\] {
+  color: #72e5ad !important;
+}
+
+body.ops-precision-pilot .android-message-bubble.mine .android-message-meta,
+body.ops-precision-pilot .android-message-bubble.theirs .android-message-meta {
+  color: rgba(224, 245, 235, 0.66) !important;
+}
+
+body.ops-precision-pilot .chat-thread-composer {
+  padding: 10px 12px calc(11px + env(safe-area-inset-bottom)) !important;
+  border-top: 1px solid var(--ops-border) !important;
+  background: #102019 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.ops-precision-pilot .android-composer-pill {
+  min-height: 44px !important;
+  border: 1px solid rgba(168, 189, 180, 0.34) !important;
+  border-radius: 15px !important;
+  background: #09150f !important;
+}
+
+body.ops-precision-pilot .android-chat-input {
+  color: #f5fff9 !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot .android-chat-input::placeholder {
+  color: #829b90 !important;
+}
+
+body.ops-precision-pilot .android-icon-btn,
+body.ops-precision-pilot .chat-voice-hold-btn.voice-talk-btn {
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid rgba(99, 230, 173, 0.25) !important;
+  background: rgba(25, 185, 121, 0.08) !important;
+}
+
+body.ops-precision-pilot .android-icon-btn.send {
+  border-color: rgba(126, 240, 179, 0.66) !important;
+  box-shadow: 0 8px 20px rgba(10, 155, 97, 0.24) !important;
+}
+
+body.ops-precision-pilot .chat-compose-form {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+}
+
+body.ops-precision-pilot #bottom-nav {
+  border: 1px solid var(--ops-border) !important;
+  color: var(--ops-text-muted) !important;
+  background: color-mix(in srgb, var(--ops-surface-strong) 94%, transparent) !important;
+  box-shadow: 0 -10px 34px rgba(0, 20, 13, 0.28) !important;
+}
+
+@media (min-width: 1100px) {
+  body.ops-precision-pilot .nav-header {
+    min-height: 102px !important;
+    padding: max(15px, env(safe-area-inset-top)) var(--shell-gutter) 8px !important;
+  }
+
+  body.ops-precision-pilot .nav-header-utility {
+    min-height: 76px !important;
+  }
+
+  body.ops-precision-pilot .nav-header-user {
+    font-size: clamp(25px, 1.75vw, 34px) !important;
+  }
+
+  body.ops-precision-pilot .nav-header-company,
+  body.ops-precision-pilot #sync-diagnostics-detail {
+    margin-top: 5px !important;
+    font-size: 11px !important;
+  }
+
+  body.ops-precision-pilot :is(.nav-version-pill, .nav-outdoor-toggle, #sync-diagnostics-badge) {
+    min-height: 38px !important;
+    padding: 0 15px !important;
+    font-size: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    height: min(760px, calc(100dvh - 284px)) !important;
+  }
+
+  body.ops-precision-pilot .footer-nav-btn {
+    min-height: 68px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  body.ops-precision-pilot #global-header-search-row,
+  body.ops-precision-pilot #global-header-search-row.hidden {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 12px 10px !important;
+    gap: 8px !important;
+  }
+
+  body.ops-precision-pilot #global-header-inline-back,
+  body.ops-precision-pilot #global-header-inline-back.hidden {
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    border-radius: 13px !important;
+  }
+
+  body.ops-precision-pilot #global-header-search-slot,
+  body.ops-precision-pilot #global-header-inline-title,
+  body.ops-precision-pilot #global-header-search-slot :is(.input-field, input[type="text"], input[type="search"]) {
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+
+  body.ops-precision-pilot #drive-season-filters.drive-top-inline.drive-export-controls .drive-top-controls-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  body.ops-precision-pilot .app-card-qty-row,
+  body.ops-precision-pilot .app-card-qty-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  body.ops-precision-pilot .app-card-qty-chip {
+    min-height: 38px !important;
+    padding: 6px 8px !important;
+  }
+
+  body.ops-precision-pilot .chat-thread-shell,
+  body.ops-precision-pilot .android-chat-shell {
+    height: calc(var(--visual-height) - var(--footer-nav-reserve) - 8.6rem) !important;
+    max-height: calc(100dvh - var(--app-top-chrome-height, 116px) - var(--footer-nav-reserve, 6rem) - 12px) !important;
+    min-height: 290px !important;
+    border-radius: 16px !important;
+  }
+
+  body.ops-precision-pilot .chat-message-scroll {
+    padding: 13px 10px !important;
+  }
+
+  body.ops-precision-pilot .android-message-bubble {
+    max-width: 86% !important;
+  }
+
+  body.ops-precision-pilot #bottom-nav {
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
   }
 }
 

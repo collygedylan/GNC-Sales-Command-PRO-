@@ -17,12 +17,12 @@ const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.02';
+  const release = 'V2026.08.15.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.02'/);
-  assert.equal(packageJson.version, '2026.08.15.02');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.03'/);
+  assert.equal(packageJson.version, '2026.08.15.03');
 });
 
 test('pilot UI is drawer-only and inactive by default', () => {
@@ -86,6 +86,26 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /--ops-desktop-nav: 1400px/);
   assert.match(css, /--ops-wide-content: 1880px/);
+});
+
+test('precision shell keeps one persistent back control and promotes queue search into the header', () => {
+  assert.match(css, /#global-header-search-row\.hidden[\s\S]*display: flex !important/);
+  assert.match(css, /#global-header-inline-back\.hidden[\s\S]*display: inline-flex !important/);
+  assert.match(css, /#view-wrapper \.back-btn[\s\S]*display: none !important/);
+  assert.match(html, /classList\.contains\('ops-precision-pilot'\) && activeReqTab === 'suspend-tag'/);
+  assert.match(html, /mode === 'suspend-tag' \? 'Search common name\.\.\.'/);
+  assert.match(html, /const commonSearchHtml = precisionSearch \? ''/);
+  assert.match(html, /currentView === 'po-management'[\s\S]*goBackPoManagementDrilldown\(\)/);
+});
+
+test('dark cards and chat have explicit high-contrast presentation without replacing handlers', () => {
+  assert.match(css, /\.app-card-qty-chip:nth-child\(4\)[\s\S]*color: #d5c8ff !important[\s\S]*background: rgba\(124, 58, 237, 0\.2\) !important/);
+  assert.match(css, /\.text-violet-600[\s\S]*color: #d5c8ff !important/);
+  assert.match(css, /\.android-chat-header > button:first-child[\s\S]*display: none !important/);
+  assert.match(css, /\.android-message-bubble\.mine[\s\S]*linear-gradient\(135deg, #08794b, #0b9a60\)/);
+  assert.match(css, /\.android-message-bubble\.theirs[\s\S]*background: #192822 !important/);
+  assert.match(html, /class="chat-thread-composer" onsubmit="event\.preventDefault\(\); sendChatMessage\(\);"/);
+  assert.match(html, /class="android-icon-btn mic chat-voice-hold-btn voice-talk-btn/);
 });
 
 test('preferences use timestamp last-write-wins and retain offline changes', () => {

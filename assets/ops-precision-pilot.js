@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.15.02';
+  const RELEASE = 'V2026.08.15.03';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -151,6 +151,12 @@
     body.dataset.opsThemeMode = state.preferences.themeMode;
     body.dataset.opsDisplayMode = state.preferences.displayMode;
     body.dataset.opsEffectiveDisplay = effectiveDisplay;
+    if (typeof window.syncGlobalHeaderChrome === 'function') {
+      window.requestAnimationFrame(() => {
+        window.syncGlobalHeaderChrome({ reason: 'ops-precision-state', force: true });
+        if (typeof window.updateGlobalBackButton === 'function') window.updateGlobalBackButton();
+      });
+    }
     body.dataset.opsView = state.activeView;
     const panel = document.getElementById('ops-pilot-settings');
     const themeGroup = document.getElementById('ops-theme-settings');
