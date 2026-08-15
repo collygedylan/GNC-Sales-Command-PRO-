@@ -10,6 +10,9 @@ const corsHeaders = {
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+const LIVE_PILOT_USERNAME = "dylan_collyge";
+const LIVE_PILOT_FEATURE_KEYS = ["skin", "preferences", "card_grid", "monitoring"] as const;
+const LIVE_PILOT_SENTRY_DSN = String(Deno.env.get("LIVE_PILOT_SENTRY_DSN") || "").trim();
 const PHOTO_BUCKETS: Record<string, string> = {
   "ssn-": "season_sales_notes_photos",
   "lsn-": "location_sales_notes_photos",
@@ -434,6 +437,209 @@ function getSessionUserKey(session: Awaited<ReturnType<typeof readAppSessionFrom
   return normalizeUsername(session.username || session.displayName || "");
 }
 
+type LivePilotFeatureKey = typeof LIVE_PILOT_FEATURE_KEYS[number];
+
+function getDisabledLivePilotFlags(): Record<LivePilotFeatureKey, boolean> {
+  return {
+    skin: false,
+    preferences: false,
+    card_grid: false,
+    monitoring: false,
+  };
+}
+
+function sanitizeLivePilotPreferences(value: unknown) {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const themeModeValue = String(source.themeMode || source.theme_mode || source.theme || "").trim().toLowerCase();
+  const displayModeValue = String(source.displayMode || source.display_mode || "").trim().toLowerCase();
+  const themeMode = ["system", "light", "dark"].includes(themeModeValue)
+    ? themeModeValue
+    : "system";
+  const displayMode = ["cards", "grid"].includes(displayModeValue)
+    ? displayModeValue
+    : "cards";
+  const updatedAtValue = String(source.updatedAt || source.updated_at || "").trim();
+  const updatedAtMs = Date.parse(updatedAtValue);
+  const updatedAt = Number.isFinite(updatedAtMs) ? new Date(updatedAtMs).toISOString() : "";
+  return { themeMode, displayMode, updatedAt };
+}
+
+async function loadLivePilotFlags() {
+  const flags = getDisabledLivePilotFlags();
+  const { data, error } = await supabase
+    .from("ph_app_live_pilot_flags")
+    .select("feature_key,enabled")
+    .in("feature_key", [...LIVE_PILOT_FEATURE_KEYS]);
+  if (error) throw error;
+  for (const row of data || []) {
+    const key = String(row?.feature_key || "") as LivePilotFeatureKey;
+    if (LIVE_PILOT_FEATURE_KEYS.includes(key)) flags[key] = row?.enabled === true;
+  }
+  return flags;
+}
+
+type LivePilotPreferenceRow = {
+  user_key: string;
+  theme_mode: string;
+  display_mode: string;
+  updated_at: string;
+  cohort_id: string;
+};
+
+function serializeLivePilotPreferenceRow(row: Partial<LivePilotPreferenceRow> | null | undefined) {
+  const preferences = sanitizeLivePilotPreferences(row || {});
+  return {
+    themeMode: preferences.themeMode,
+    displayMode: preferences.displayMode,
+    updatedAt: preferences.updatedAt || new Date(0).toISOString(),
+  };
+}
+
+async function readLivePilotPreferenceRow() {
+  const { data, error } = await supabase
+    .from("ph_app_user_preferences")
+    .select("user_key,theme_mode,display_mode,updated_at,cohort_id")
+    .eq("user_key", LIVE_PILOT_USERNAME)
+    .maybeSingle();
+  if (error) throw error;
+  return data as LivePilotPreferenceRow | null;
+}
+
+async function readOrCreateLivePilotPreferenceRow() {
+  const existing = await readLivePilotPreferenceRow();
+  if (existing) return existing;
+  const { data, error } = await supabase
+    .from("ph_app_user_preferences")
+    .insert({
+      user_key: LIVE_PILOT_USERNAME,
+      theme_mode: "system",
+      display_mode: "cards",
+      updated_at: new Date().toISOString(),
+    })
+    .select("user_key,theme_mode,display_mode,updated_at,cohort_id")
+    .single();
+  if (error) {
+    if (String(error.code || "") === "23505") {
+      const racedRow = await readLivePilotPreferenceRow();
+      if (racedRow) return racedRow;
+    }
+    throw error;
+  }
+  return data as LivePilotPreferenceRow;
+}
+
+async function handleGetUserPreferences(
+  session: Awaited<ReturnType<typeof readAppSessionFromRequest>>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401);
+  const username = getSessionUserKey(session);
+  if (username !== LIVE_PILOT_USERNAME) {
+    return jsonResponse({
+      ok: true,
+      eligible: false,
+      flags: getDisabledLivePilotFlags(),
+      preferences: null,
+      monitoring: null,
+    });
+  }
+
+  try {
+    const flags = await loadLivePilotFlags();
+    const preferenceRow = (flags.preferences || flags.card_grid || flags.monitoring)
+      ? await readOrCreateLivePilotPreferenceRow()
+      : null;
+    return jsonResponse({
+      ok: true,
+      eligible: true,
+      flags,
+      preferences: preferenceRow ? serializeLivePilotPreferenceRow(preferenceRow) : null,
+      monitoring: flags.monitoring && LIVE_PILOT_SENTRY_DSN && preferenceRow
+        ? {
+          dsn: LIVE_PILOT_SENTRY_DSN,
+          tracesSampleRate: 0.1,
+          cohortId: String(preferenceRow.cohort_id || ""),
+        }
+        : null,
+    });
+  } catch (error) {
+    console.error("Live pilot bootstrap failed closed.", error);
+    return jsonResponse({
+      ok: true,
+      eligible: false,
+      flags: getDisabledLivePilotFlags(),
+      preferences: null,
+      monitoring: null,
+    });
+  }
+}
+
+async function handleSetUserPreferences(
+  session: Awaited<ReturnType<typeof readAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401);
+  if (getSessionUserKey(session) !== LIVE_PILOT_USERNAME) {
+    return errorResponse("Pilot access denied.", 403);
+  }
+
+  try {
+    const flags = await loadLivePilotFlags();
+    if (!flags.preferences && !flags.card_grid) return errorResponse("Pilot preferences are disabled.", 403);
+    const preferences = sanitizeLivePilotPreferences(payload.preferences);
+    if (!preferences.updatedAt) return errorResponse("A valid updatedAt timestamp is required.", 400);
+
+    const existing = await readLivePilotPreferenceRow();
+    if (!existing) {
+      const { data, error } = await supabase
+        .from("ph_app_user_preferences")
+        .insert({
+          user_key: LIVE_PILOT_USERNAME,
+          theme_mode: preferences.themeMode,
+          display_mode: preferences.displayMode,
+          updated_at: preferences.updatedAt,
+        })
+        .select("user_key,theme_mode,display_mode,updated_at,cohort_id")
+        .single();
+      if (!error && data) {
+        return jsonResponse({ ok: true, applied: true, preferences: serializeLivePilotPreferenceRow(data) });
+      }
+      if (String(error?.code || "") !== "23505") throw error;
+    }
+
+    const latestBeforeUpdate = existing || await readLivePilotPreferenceRow();
+    if (latestBeforeUpdate && Date.parse(latestBeforeUpdate.updated_at) >= Date.parse(preferences.updatedAt)) {
+      return jsonResponse({
+        ok: true,
+        applied: false,
+        preferences: serializeLivePilotPreferenceRow(latestBeforeUpdate),
+      });
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from("ph_app_user_preferences")
+      .update({
+        theme_mode: preferences.themeMode,
+        display_mode: preferences.displayMode,
+        updated_at: preferences.updatedAt,
+      })
+      .eq("user_key", LIVE_PILOT_USERNAME)
+      .lt("updated_at", preferences.updatedAt)
+      .select("user_key,theme_mode,display_mode,updated_at,cohort_id")
+      .maybeSingle();
+    if (updateError) throw updateError;
+    const current = updated || await readLivePilotPreferenceRow();
+    if (!current) throw new Error("Pilot preference row was not found.");
+    return jsonResponse({
+      ok: true,
+      applied: !!updated,
+      preferences: serializeLivePilotPreferenceRow(current),
+    });
+  } catch (error) {
+    console.error("Live pilot preference save failed.", error);
+    return errorResponse("Unable to save pilot preferences.", 500);
+  }
+}
+
 function getSessionDisplayName(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>) {
   if (!session) return "";
   return String(session.displayName || session.username || "").trim();
@@ -740,6 +946,12 @@ serve(async (req) => {
 
   if (action === "login") return await handleLogin(payload);
   if (action === "password_change") return await handlePasswordChange(session, payload);
+  if (action === "get_user_preferences" || action === "live_pilot_bootstrap") {
+    return await handleGetUserPreferences(session);
+  }
+  if (action === "set_user_preferences" || action === "live_pilot_preferences_save") {
+    return await handleSetUserPreferences(session, payload);
+  }
   if (action === "db") return await handleDb(session, payload);
 
   return errorResponse("Unsupported action.", 400);

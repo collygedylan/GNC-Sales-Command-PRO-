@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ops Precision browser fixture</title>
+  <link rel="stylesheet" href="../../assets/ops-precision-pilot.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: Inter, system-ui, sans-serif; }
+    .hidden { display: none !important; }
+    #app-wrapper { min-height: 100vh; }
+    .nav-header { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 18px; color: white; }
+    #main-scroll-area { padding: 18px; }
+    #view-wrapper { max-width: 1240px; margin: 0 auto; }
+    #drive-search-container { display: flex; gap: 8px; margin-bottom: 12px; padding: 8px; }
+    #drive-search-container input { min-width: 0; flex: 1; padding: 9px; }
+    button { cursor: pointer; padding: 8px 10px; }
+    #fixture-layout { display: grid; grid-template-columns: minmax(200px, 250px) minmax(0, 1fr); gap: 14px; }
+    #side-drawer { padding: 8px; }
+    .drawer-item { display: block; width: 100%; border: 1px solid transparent; padding: 9px; text-align: left; }
+    #drive-content { display: flex; flex-direction: column; gap: 8px; }
+    .inv-card { border: 1px solid #d1d5db; padding: 12px; }
+    .record-title { margin: 0 0 5px; font-weight: 800; }
+    .record-meta { margin: 0; color: #64748b; font-size: 13px; }
+    .fixture-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; padding: 12px; border: 1px solid #d1d5db; }
+    .fixture-form input { padding: 8px; }
+    @media (max-width: 767px) {
+      #main-scroll-area { padding: 10px; }
+      #fixture-layout { grid-template-columns: 1fr; }
+      .fixture-form { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-wrapper">
+    <header class="nav-header">
+      <strong>Ag Data Solutions</strong>
+      <span>V2026.08.14.01</span>
+    </header>
+    <main id="main-scroll-area">
+      <div id="view-wrapper">
+        <div id="drive-search-container">
+          <input aria-label="Search inventory" placeholder="Search inventory">
+          <button type="button">Filter</button>
+        </div>
+        <div id="fixture-layout">
+          <aside id="side-drawer">
+            <button class="drawer-item" type="button">Home</button>
+            <button class="drawer-item" type="button">Crop Roll</button>
+            <div id="ops-pilot-settings" class="ops-pilot-settings hidden" aria-label="Display preferences">
+              <div class="ops-pilot-settings__eyebrow">Ops Precision Pilot</div>
+              <div id="ops-theme-settings" class="ops-pilot-settings__group hidden">
+                <span class="ops-pilot-settings__label">Theme</span>
+                <div class="ops-pilot-segmented">
+                  <button type="button" data-ops-theme-mode="system">System</button>
+                  <button type="button" data-ops-theme-mode="light">Light</button>
+                  <button type="button" data-ops-theme-mode="dark">Dark</button>
+                </div>
+              </div>
+              <div id="ops-display-settings" class="ops-pilot-settings__group hidden">
+                <span class="ops-pilot-settings__label">List view</span>
+                <div class="ops-pilot-segmented">
+                  <button type="button" data-ops-display-mode="cards">Cards</button>
+                  <button type="button" data-ops-display-mode="grid">Grid</button>
+                </div>
+                <div id="ops-display-note" class="ops-pilot-settings__note" aria-live="polite"></div>
+              </div>
+            </div>
+          </aside>
+          <section>
+            <div id="drive-content">
+              <article class="inv-card"><p class="record-title">North dock</p><p class="record-meta">Ready for review</p></article>
+              <article class="inv-card"><p class="record-title">Crop roll</p><p class="record-meta">3 records queued</p></article>
+              <article class="inv-card"><p class="record-title">Availability</p><p class="record-meta">Updated recently</p></article>
+              <article class="inv-card"><p class="record-title">Requests</p><p class="record-meta">No blocking errors</p></article>
+            </div>
+            <form class="fixture-form">
+              <input aria-label="Item code" placeholder="Item code">
+              <input aria-label="Quantity" placeholder="Quantity">
+            </form>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const qaUa = new URLSearchParams(location.search).get('ua');
+    const qaUserAgents = {
+      edge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0',
+      android: 'Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36',
+      ios: 'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 Version/19.0 Mobile/15E148 Safari/604.1',
+      ipad: 'Mozilla/5.0 (iPad; CPU OS 19_0 like Mac OS X) AppleWebKit/605.1.15 Version/19.0 Mobile/15E148 Safari/604.1'
+    };
+    if (qaUa && qaUserAgents[qaUa]) Object.defineProperty(navigator, 'userAgent', { configurable: true, value: qaUserAgents[qaUa] });
+    window.__qaSentry = { initOptions: null, tags: null, saved: [] };
+    window.GncSentry = {
+      init(options) { window.__qaSentry.initOptions = options; },
+      setUser(value) { window.__qaSentry.user = value; },
+      setTags(value) { window.__qaSentry.tags = value; },
+      browserTracingIntegration() { return { name: 'BrowserTracing' }; },
+      captureException(value, context) { window.__qaSentry.saved.push({ type: 'exception', value: value.message, context }); },
+      captureMessage(value, context) { window.__qaSentry.saved.push({ type: 'message', value, context }); },
+      addBreadcrumb(value) { window.__qaSentry.saved.push({ type: 'breadcrumb', value }); },
+      startSpan(value, callback) { window.__qaSentry.saved.push({ type: 'span', value }); callback(); }
+    };
+  </script>
+  <script src="../../assets/ops-precision-pilot.js"></script>
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const eligible = params.get('pilot') !== '0';
+      const flags = {
+        skin: params.get('skin') !== '0',
+        preferences: params.get('preferences') !== '0',
+        card_grid: params.get('card_grid') !== '0',
+        monitoring: params.get('monitoring') !== '0'
+      };
+      const preferences = {
+        themeMode: params.get('theme') || 'system',
+        displayMode: params.get('display') || 'cards',
+        updatedAt: '2026-08-15T04:00:00.000Z'
+      };
+      const serverStorageKey = 'ops_precision_qa_server_preferences';
+      if (params.get('reset') === '1') {
+        localStorage.removeItem('gnc_ops_precision_preferences_v1');
+        localStorage.removeItem(serverStorageKey);
+      }
+      const persistedServerPreferences = params.get('persist') === '1'
+        ? JSON.parse(localStorage.getItem(serverStorageKey) || 'null')
+        : null;
+      const bridge = {
+        getActiveView() { return 'drive'; },
+        async request(action, payload) {
+          if (action === 'get_user_preferences') {
+            return {
+              ok: true,
+              eligible,
+              flags,
+              preferences: persistedServerPreferences || preferences,
+              monitoring: flags.monitoring ? { dsn: 'https://public@example.invalid/1', cohortId: 'qa-cohort', tracesSampleRate: 0.1 } : null
+            };
+          }
+          if (action === 'set_user_preferences') {
+            document.body.dataset.qaSaveCount = String(Number(document.body.dataset.qaSaveCount || 0) + 1);
+            if (params.get('save') === 'fail') throw new Error('Offline fixture');
+            if (params.get('persist') === '1') localStorage.setItem(serverStorageKey, JSON.stringify(payload.preferences));
+            return { ok: true, eligible, preferences: payload.preferences };
+          }
+          throw new Error('Unexpected action');
+        }
+      };
+      window.__gncOpsPilot.initialize(bridge).then(() => {
+        const options = window.__qaSentry.initOptions;
+        if (options) {
+          const sample = options.beforeSend({
+            user: { username: 'dylan_collyge' },
+            request: { url: 'https://example.invalid/item/123456?customer=Smith' },
+            breadcrumbs: [{ message: 'private note' }],
+            message: 'Upload failed for dylan_collyge at https://example.invalid/item/123456',
+            extra: { itemCode: 'ABC-123456', note: 'private note', safeCount: 3 },
+            contexts: { operation: { photoUrl: 'data:image/png;base64,AAAA', rowId: 'row-123456', headers: { authorization: 'secret' } } }
+          });
+          document.body.dataset.qaSentryScrubbed = JSON.stringify(sample);
+          document.body.dataset.qaSentryPii = String(options.sendDefaultPii);
+          document.body.dataset.qaErrorSample = String(options.sampleRate);
+          document.body.dataset.qaTraceSample = String(options.tracesSampleRate);
+          document.body.dataset.qaReplaySession = String(options.replaysSessionSampleRate);
+          document.body.dataset.qaReplayError = String(options.replaysOnErrorSampleRate);
+        }
+        window.__gncOpsPilot.captureFailure('upload', new Error('Upload 123456 failed for dylan_collyge'));
+        window.__gncOpsPilot.recordPerformance('viewSwitches', { duration: 12.5 });
+        window.__gncOpsPilot.recordPerformance('longTasks', { duration: 125 });
+        window.__gncOpsPilot.recordPerformance('staleSkips', { amount: 1 });
+        document.body.dataset.qaSentryTags = JSON.stringify(window.__qaSentry.tags || {});
+        document.body.dataset.qaMonitoringEvents = JSON.stringify(window.__qaSentry.saved);
+        requestAnimationFrame(() => { document.body.dataset.qaReady = 'true'; });
+      });
+    }());
+  </script>
+</body>
+</html>

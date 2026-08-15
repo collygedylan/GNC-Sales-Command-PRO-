@@ -1,0 +1,477 @@
+/* V2026.08.14.01 — server-gated Ops Precision pilot skin. */
+body.ops-precision-pilot {
+  --ops-canvas: #f3f7f5;
+  --ops-surface: #ffffff;
+  --ops-surface-muted: #f7faf8;
+  --ops-surface-strong: #edf4f0;
+  --ops-text: #13221b;
+  --ops-text-muted: #617068;
+  --ops-border: #cbd8d1;
+  --ops-border-strong: #8fa69a;
+  --ops-brand: #08784a;
+  --ops-brand-strong: #05623c;
+  --ops-brand-soft: #e6f4ed;
+  --ops-info: #2563eb;
+  --ops-success: #168454;
+  --ops-warning: #b65f09;
+  --ops-danger: #c63f3f;
+  --ops-focus: #1d73e8;
+  --ops-density-1: 4px;
+  --ops-density-2: 8px;
+  --ops-elevation-1: 0 1px 2px rgba(15, 35, 25, 0.08);
+  --ops-elevation-2: 0 4px 12px rgba(15, 35, 25, 0.1);
+  --ops-radius-xs: 4px;
+  --ops-radius-sm: 6px;
+  --ops-radius-md: 8px;
+  --ops-transition: 150ms ease;
+  color: var(--ops-text);
+  background: var(--ops-canvas);
+  color-scheme: light;
+  font-variant-numeric: tabular-nums;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-canvas: #0a1310;
+  --ops-surface: #101c17;
+  --ops-surface-muted: #15231d;
+  --ops-surface-strong: #1b2c24;
+  --ops-text: #edf7f2;
+  --ops-text-muted: #9fb0a7;
+  --ops-border: #334a3f;
+  --ops-border-strong: #597064;
+  --ops-brand: #29b879;
+  --ops-brand-strong: #70dba9;
+  --ops-brand-soft: #143527;
+  --ops-info: #73a7ff;
+  --ops-success: #52ca8f;
+  --ops-warning: #f3ad59;
+  --ops-danger: #ff8585;
+  --ops-focus: #72adff;
+  --ops-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.34);
+  --ops-elevation-2: 0 4px 14px rgba(0, 0, 0, 0.42);
+  color-scheme: dark;
+}
+
+body.ops-precision-pilot #app-wrapper,
+body.ops-precision-pilot #main-scroll-area,
+body.ops-precision-pilot #view-wrapper {
+  color: var(--ops-text);
+  background-color: var(--ops-canvas);
+}
+
+body.ops-precision-pilot .nav-header,
+body.ops-precision-pilot .drawer-header {
+  background: linear-gradient(135deg, var(--ops-brand-strong), var(--ops-brand));
+  box-shadow: none;
+}
+
+body.ops-precision-pilot #global-header-search-row {
+  border-bottom: 1px solid var(--ops-border);
+  background: var(--ops-surface);
+  box-shadow: var(--ops-elevation-1);
+}
+
+body.ops-precision-pilot #side-drawer {
+  border-right: 1px solid var(--ops-border);
+  background: var(--ops-surface);
+  box-shadow: var(--ops-elevation-2);
+}
+
+body.ops-precision-pilot .drawer-item {
+  border-color: var(--ops-border);
+  color: var(--ops-text);
+  background: transparent;
+  transition: color var(--ops-transition), background-color var(--ops-transition), border-color var(--ops-transition);
+}
+
+body.ops-precision-pilot .drawer-item:hover,
+body.ops-precision-pilot .drawer-item:active {
+  color: var(--ops-brand-strong);
+  background: var(--ops-brand-soft);
+}
+
+body.ops-precision-pilot #bottom-nav {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  background: color-mix(in srgb, var(--ops-surface) 96%, transparent);
+  box-shadow: 0 -2px 8px rgba(15, 35, 25, 0.08);
+}
+
+body.ops-precision-pilot .footer-nav-btn {
+  color: var(--ops-text-muted);
+  transition: color var(--ops-transition), background-color var(--ops-transition);
+}
+
+body.ops-precision-pilot .footer-nav-btn.active,
+body.ops-precision-pilot .footer-nav-btn[aria-current="page"] {
+  color: var(--ops-brand-strong);
+  background: var(--ops-brand-soft);
+}
+
+body.ops-precision-pilot :is(
+  #drive-search-container,
+  #docks-search-container,
+  #request-search-container,
+  #tasks-search-container,
+  #av-search-container,
+  #managers-search-container,
+  #review-search-container,
+  #po-management-search-wrap,
+  .search-container
+) {
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-radius-md) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: var(--ops-elevation-1) !important;
+}
+
+body.ops-precision-pilot :is(
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea
+) {
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-radius-sm) !important;
+  color: var(--ops-text) !important;
+  background-color: var(--ops-surface) !important;
+  transition: border-color var(--ops-transition), box-shadow var(--ops-transition), background-color var(--ops-transition);
+}
+
+body.ops-precision-pilot :is(input, textarea)::placeholder {
+  color: var(--ops-text-muted) !important;
+  opacity: 1;
+}
+
+body.ops-precision-pilot :is(button, [role="button"], input, select, textarea, a):focus-visible {
+  outline: 2px solid var(--ops-focus) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 3px rgba(29, 115, 232, 0.2) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ops-focus) 20%, transparent) !important;
+}
+
+body.ops-precision-pilot :is(button, [role="button"], .task-tab, .detail-tab) {
+  transition-duration: 150ms !important;
+  transition-timing-function: ease !important;
+}
+
+body.ops-precision-pilot :is(
+  .task-top-control-shell,
+  .task-top-control-trigger,
+  .task-top-control-panel,
+  .excel-filter-panel,
+  .filter-shell,
+  .filter-trigger,
+  .filter-panel
+) {
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-radius-sm) !important;
+  color: var(--ops-text) !important;
+  background-color: var(--ops-surface) !important;
+  box-shadow: var(--ops-elevation-1) !important;
+}
+
+body.ops-precision-pilot :is(.task-tab, .detail-tab).active {
+  color: var(--ops-brand-strong) !important;
+  border-bottom-color: var(--ops-brand) !important;
+  background: var(--ops-surface) !important;
+}
+
+body.ops-precision-pilot :is(
+  .inv-card,
+  .drill-item,
+  .item-row,
+  .task-card,
+  .request-card,
+  .dock-card,
+  .overview-card,
+  .expand-trigger,
+  .expand-content
+) {
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-radius-md) !important;
+  color: var(--ops-text) !important;
+  background-color: var(--ops-surface) !important;
+  box-shadow: var(--ops-elevation-1) !important;
+  transition: border-color var(--ops-transition), background-color var(--ops-transition), box-shadow var(--ops-transition), transform var(--ops-transition);
+}
+
+body.ops-precision-pilot :is(.inv-card, .drill-item, .item-row):hover {
+  border-color: var(--ops-border-strong) !important;
+  box-shadow: var(--ops-elevation-2) !important;
+}
+
+body.ops-precision-pilot .ops-record-node {
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-radius-md) !important;
+  color: var(--ops-text) !important;
+  background-color: var(--ops-surface) !important;
+  box-shadow: var(--ops-elevation-1) !important;
+}
+
+body.ops-precision-pilot :is(.status-green, .status-teal) {
+  border-left-color: var(--ops-success) !important;
+}
+
+body.ops-precision-pilot :is(.status-yellow, .status-orange) {
+  border-left-color: var(--ops-warning) !important;
+}
+
+body.ops-precision-pilot .status-red {
+  border-left-color: var(--ops-danger) !important;
+}
+
+body.ops-precision-pilot :is(.status-blue, .status-indigo, .status-purple) {
+  border-left-color: var(--ops-info) !important;
+}
+
+body.ops-precision-pilot :is(table, th, td) {
+  border-color: var(--ops-border) !important;
+}
+
+body.ops-precision-pilot table {
+  color: var(--ops-text);
+  background: var(--ops-surface);
+}
+
+body.ops-precision-pilot thead,
+body.ops-precision-pilot th {
+  color: var(--ops-text-muted) !important;
+  background: var(--ops-surface-strong) !important;
+}
+
+body.ops-precision-pilot :is([role="dialog"], .modal-content, .app-modal-card) {
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius-md) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: var(--ops-elevation-2) !important;
+}
+
+body.ops-precision-pilot #toast-notification {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid color-mix(in srgb, white 30%, transparent);
+  border-radius: var(--ops-radius-md);
+  box-shadow: var(--ops-elevation-2);
+}
+
+body.ops-precision-pilot :is(.upload-progress, .photo-upload-state, [data-upload-state]) {
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-radius-sm) !important;
+  background: var(--ops-surface-muted) !important;
+}
+
+body.ops-precision-pilot .text-gray-400,
+body.ops-precision-pilot .text-gray-500,
+body.ops-precision-pilot .text-slate-400,
+body.ops-precision-pilot .text-slate-500,
+body.ops-precision-pilot .text-slate-600 {
+  color: var(--ops-text-muted) !important;
+}
+
+body.ops-precision-pilot .text-gray-600,
+body.ops-precision-pilot .text-gray-700,
+body.ops-precision-pilot .text-gray-800,
+body.ops-precision-pilot .text-gray-900,
+body.ops-precision-pilot .text-slate-700,
+body.ops-precision-pilot .text-slate-800,
+body.ops-precision-pilot .text-slate-900,
+body.ops-precision-pilot .text-black {
+  color: var(--ops-text) !important;
+}
+
+body.ops-precision-pilot .bg-white,
+body.ops-precision-pilot .bg-white\/95,
+body.ops-precision-pilot .bg-white\/90,
+body.ops-precision-pilot .bg-white\/80 {
+  background-color: var(--ops-surface) !important;
+}
+
+body.ops-precision-pilot .text-\[\#007a4d\] {
+  color: var(--ops-brand-strong) !important;
+}
+
+body.ops-precision-pilot .bg-\[\#007a4d\] {
+  background-color: var(--ops-brand) !important;
+}
+
+body.ops-precision-pilot .border-\[\#007a4d\] {
+  border-color: var(--ops-brand) !important;
+}
+
+body.ops-precision-pilot :is(.bg-emerald-50, .bg-green-50, .bg-lime-50, .bg-teal-50) {
+  background-color: var(--ops-brand-soft) !important;
+  background-color: color-mix(in srgb, var(--ops-success) 13%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot :is(.bg-blue-50, .bg-sky-50, .bg-cyan-50, .bg-indigo-50, .bg-purple-50) {
+  background-color: var(--ops-surface-muted) !important;
+  background-color: color-mix(in srgb, var(--ops-info) 13%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot :is(.bg-amber-50, .bg-yellow-50, .bg-orange-50) {
+  background-color: var(--ops-surface-muted) !important;
+  background-color: color-mix(in srgb, var(--ops-warning) 13%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot :is(.bg-red-50, .bg-rose-50) {
+  background-color: var(--ops-surface-muted) !important;
+  background-color: color-mix(in srgb, var(--ops-danger) 13%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-green-600, .text-green-700, .text-green-800, .text-lime-600, .text-lime-700, .text-lime-800, .text-teal-600, .text-teal-700, .text-teal-800) {
+  color: var(--ops-success) !important;
+}
+
+body.ops-precision-pilot :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-sky-600, .text-sky-700, .text-sky-800, .text-cyan-600, .text-cyan-700, .text-cyan-800, .text-indigo-600, .text-indigo-700, .text-indigo-800, .text-purple-600, .text-purple-700, .text-purple-800) {
+  color: var(--ops-info) !important;
+}
+
+body.ops-precision-pilot :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-yellow-600, .text-yellow-700, .text-yellow-800, .text-orange-600, .text-orange-700, .text-orange-800) {
+  color: var(--ops-warning) !important;
+}
+
+body.ops-precision-pilot :is(.text-red-600, .text-red-700, .text-red-800, .text-rose-600, .text-rose-700, .text-rose-800) {
+  color: var(--ops-danger) !important;
+}
+
+body.ops-precision-pilot :is(.border-emerald-100, .border-emerald-200, .border-green-100, .border-green-200, .border-lime-100, .border-lime-200, .border-teal-100, .border-teal-200) {
+  border-color: var(--ops-border) !important;
+  border-color: color-mix(in srgb, var(--ops-success) 42%, var(--ops-border)) !important;
+}
+
+body.ops-precision-pilot :is(.border-blue-100, .border-blue-200, .border-sky-100, .border-sky-200, .border-cyan-100, .border-cyan-200, .border-indigo-100, .border-indigo-200, .border-purple-100, .border-purple-200) {
+  border-color: var(--ops-border) !important;
+  border-color: color-mix(in srgb, var(--ops-info) 42%, var(--ops-border)) !important;
+}
+
+body.ops-precision-pilot :is(.border-amber-100, .border-amber-200, .border-yellow-100, .border-yellow-200, .border-orange-100, .border-orange-200) {
+  border-color: var(--ops-border) !important;
+  border-color: color-mix(in srgb, var(--ops-warning) 42%, var(--ops-border)) !important;
+}
+
+body.ops-precision-pilot :is(.border-red-100, .border-red-200, .border-rose-100, .border-rose-200) {
+  border-color: var(--ops-border) !important;
+  border-color: color-mix(in srgb, var(--ops-danger) 42%, var(--ops-border)) !important;
+}
+
+body.ops-precision-pilot .bg-gray-50,
+body.ops-precision-pilot .bg-gray-100,
+body.ops-precision-pilot .bg-slate-50,
+body.ops-precision-pilot .bg-slate-100,
+body.ops-precision-pilot .bg-emerald-50\/20 {
+  background-color: var(--ops-surface-muted) !important;
+}
+
+body.ops-precision-pilot .border-gray-100,
+body.ops-precision-pilot .border-gray-200,
+body.ops-precision-pilot .border-gray-300,
+body.ops-precision-pilot .border-slate-100,
+body.ops-precision-pilot .border-slate-200,
+body.ops-precision-pilot .border-slate-300,
+body.ops-precision-pilot .border-emerald-100 {
+  border-color: var(--ops-border) !important;
+}
+
+.ops-pilot-settings {
+  display: none;
+  margin: 8px 12px 12px;
+  border: 1px solid var(--ops-border, #d1d5db);
+  border-radius: var(--ops-radius-md, 8px);
+  padding: 10px;
+  color: var(--ops-text, #13221b);
+  background: var(--ops-surface-muted, #f7faf8);
+}
+
+.ops-pilot-settings .hidden {
+  display: none !important;
+}
+
+body.ops-pilot-active .ops-pilot-settings:not(.hidden) {
+  display: block;
+}
+
+.ops-pilot-settings__eyebrow {
+  margin-bottom: 8px;
+  color: var(--ops-text-muted, #617068);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ops-pilot-settings__group + .ops-pilot-settings__group {
+  margin-top: 10px;
+}
+
+.ops-pilot-settings__label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ops-text-muted, #617068);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ops-pilot-segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--ops-density-1, 4px);
+}
+
+.ops-pilot-segmented button {
+  min-height: 34px;
+  border: 1px solid var(--ops-border, #d1d5db);
+  border-radius: var(--ops-radius-sm, 6px);
+  padding: 6px 8px;
+  color: var(--ops-text-muted, #617068);
+  background: var(--ops-surface, #ffffff);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ops-pilot-segmented button[aria-pressed="true"] {
+  border-color: var(--ops-brand, #08784a);
+  color: var(--ops-brand-strong, #05623c);
+  background: var(--ops-brand-soft, #e6f4ed);
+}
+
+.ops-pilot-settings__note {
+  min-height: 14px;
+  margin-top: 5px;
+  color: var(--ops-text-muted, #617068);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+body.ops-precision-pilot.ops-grid-effective .ops-record-collection {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)) !important;
+  align-items: start !important;
+  gap: var(--ops-density-2) !important;
+}
+
+body.ops-precision-pilot.ops-grid-effective .ops-record-collection > .ops-record-node {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  border-radius: var(--ops-radius-sm) !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot.ops-grid-effective .ops-record-collection > .ops-record-node:hover {
+  border-color: var(--ops-border-strong) !important;
+  box-shadow: var(--ops-elevation-1) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.ops-precision-pilot *,
+  body.ops-precision-pilot *::before,
+  body.ops-precision-pilot *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

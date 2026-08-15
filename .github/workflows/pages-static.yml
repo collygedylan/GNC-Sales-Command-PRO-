@@ -36,6 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           npm ci
+          npm run build:pilot-monitoring
           npm run build:v2
 
       - name: Prepare static app
@@ -49,6 +50,7 @@ jobs:
           cp CNAME _site/CNAME
           cp .nojekyll _site/.nojekyll
           cp OneSignalSDKWorker.js _site/OneSignalSDKWorker.js
+          cp -r assets _site/assets
           cp ag-data-solutions-logo-v2026080923.png _site/ag-data-solutions-logo-v2026080923.png
           cp ag-data-solutions-splash-v2026080923.png _site/ag-data-solutions-splash-v2026080923.png
           cp ag-data-solutions-icon-v2026080923-32.png _site/ag-data-solutions-icon-v2026080923-32.png

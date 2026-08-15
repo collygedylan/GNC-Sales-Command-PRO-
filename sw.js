@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.08.13.18';
+const APP_SHELL_BUILD = 'V2026.08.14.01';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -14,6 +14,8 @@ const IMAGE_CACHE_MAX_ENTRIES = 1200;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
+  './assets/ops-precision-pilot.css',
+  './assets/ops-precision-pilot.js',
   './ag-data-solutions-logo-v2026080925.png',
   './ag-data-solutions-splash-v2026080925.png',
   './ag-data-solutions-icon-v2026080925-32.png',
