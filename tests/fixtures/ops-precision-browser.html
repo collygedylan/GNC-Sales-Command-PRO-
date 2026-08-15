@@ -51,6 +51,10 @@
     .android-composer-pill { display: flex; align-items: center; padding: 4px 12px; }
     .android-chat-input { width: 100%; min-height: 30px; max-height: 92px; border: 0; outline: 0; resize: none; }
     .android-icon-btn { display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 999px; }
+    body.current-view-home #global-header-search-row { display: none !important; }
+    body:not(.current-view-home) #app-top-chrome .nav-header { display: none !important; }
+    body:not(.current-view-home) #app-top-chrome { background: linear-gradient(180deg, #007a4d 0%, #0d8b5d 100%); }
+    body:not(.current-view-home) #global-header-search-row { display: flex !important; padding-top: max(10px, env(safe-area-inset-top)); }
     @media (max-width: 767px) {
       #main-scroll-area { padding: 10px; }
       #fixture-layout { grid-template-columns: 1fr; }
@@ -73,7 +77,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.15.05</span>
+              <span class="nav-version-pill">V2026.08.15.06</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>

@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.15.05';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.15.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1561,6 +1561,13 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         #app-top-chrome .nav-header{width:100%;max-width:100%}
         #global-header-search-row{display:flex;align-items:center;gap:.55rem;width:var(--shell-width);max-width:var(--shell-width);margin:0 auto;padding:.16rem 0 .3rem;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:none;position:relative;z-index:58}
         #global-header-search-row.hidden{display:none}
+        /* V2026.08.15.06: Home owns identity/status; modules own the command header. */
+        body.current-view-home #global-header-search-row,
+        body.current-view-home #global-header-search-row.hidden{display:none!important}
+        body:not(.current-view-home) #app-top-chrome{background:linear-gradient(180deg,#007a4d 0%,#0d8b5d 100%)}
+        body:not(.current-view-home) #app-top-chrome .nav-header{display:none!important}
+        body:not(.current-view-home) #global-header-search-row,
+        body:not(.current-view-home) #global-header-search-row.hidden{display:flex!important;padding:max(10px,env(safe-area-inset-top)) 0 .65rem;background:transparent;border-bottom:0}
         #global-header-inline-title{flex:1;min-width:0;display:flex;align-items:center;min-height:42px;padding:0 1rem;border-radius:14px;background:#ffffff;border:1px solid #d1fae5;box-shadow:0 8px 18px rgba(15,23,42,.05)}
         #global-header-inline-title.hidden{display:none}
         #global-header-view-title{font-size:15px;font-weight:900;line-height:1.1;color:#007a4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -6511,7 +6518,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.05">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.06">
 </head>
 <body class="bg-gray-50 overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6598,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.05"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.06"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7351,7 +7358,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.05').trim() || 'V2026.08.15.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.06').trim() || 'V2026.08.15.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8814,7 +8821,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -29016,7 +29023,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.05').trim() || 'V2026.08.15.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.06').trim() || 'V2026.08.15.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29736,6 +29743,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             docks: 'docks-search-container',
             drive: 'drive-search-container',
             'crop-roll': 'crop-roll-sy27-search-container',
+            building: 'building-search-container',
             managers: 'managers-search-container',
             review: 'review-search-container',
             'move-up': 'move-up-search-container',
@@ -30360,7 +30368,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const backBtn = document.getElementById('global-header-inline-back');
             const searchSlot = document.getElementById('global-header-search-slot');
             const inlineTitle = document.getElementById('global-header-inline-title');
-            const precisionShell = !!(document.body && document.body.classList.contains('ops-precision-pilot'));
+            const homeIdentityOnly = chromeState.currentView === 'home' && !chromeState.showHomeBack;
             const expectedMountedSearch = !!(chromeState.searchContainer && chromeState.searchVisible);
             const mountedSearchMatches = !expectedMountedSearch || !!(searchSlot && searchSlot.contains(chromeState.searchContainer));
             if (!nextOptions.force && chromeState.signature === lastGlobalHeaderChromeSignature && mountedSearchMatches) {
@@ -30381,15 +30389,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (title) title.innerText = chromeState.resolvedTitle;
             if (backBtn) {
                 const naturalBack = chromeState.currentView !== 'home' || chromeState.showHomeBack;
-                const visibleBack = precisionShell || naturalBack;
+                const visibleBack = naturalBack;
                 backBtn.classList.toggle('hidden', !visibleBack);
                 backBtn.setAttribute('aria-hidden', visibleBack ? 'false' : 'true');
-                backBtn.setAttribute('aria-disabled', precisionShell && !naturalBack ? 'true' : 'false');
+                backBtn.setAttribute('aria-disabled', visibleBack ? 'false' : 'true');
             }
             lastGlobalHeaderChromeSignature = chromeState.signature;
             restoreGlobalHeaderSearchContainers();
             if (searchSlot) clearNodeChildren(searchSlot);
-            if (searchSlot && chromeState.searchContainer && chromeState.searchVisible) {
+            if (homeIdentityOnly) {
+                syncGlobalHeaderSearchOwnership(null);
+                if (searchSlot) searchSlot.classList.add('hidden');
+                if (inlineTitle) inlineTitle.classList.add('hidden');
+                if (searchRow) searchRow.classList.add('hidden');
+            } else if (searchSlot && chromeState.searchContainer && chromeState.searchVisible) {
                 if (searchRow) searchRow.classList.remove('hidden');
                 searchSlot.classList.remove('hidden');
                 searchSlot.appendChild(chromeState.searchContainer);
@@ -30398,8 +30411,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             } else {
                 syncGlobalHeaderSearchOwnership(null);
                 if (searchSlot) searchSlot.classList.add('hidden');
-                if (inlineTitle) inlineTitle.classList.toggle('hidden', precisionShell ? false : chromeState.currentView === 'home');
-                if (searchRow) searchRow.classList.toggle('hidden', precisionShell ? false : chromeState.currentView === 'home');
+                if (inlineTitle) inlineTitle.classList.remove('hidden');
+                if (searchRow) searchRow.classList.remove('hidden');
             }
             syncIosFixedTopChromeMetrics('global-header');
             scheduleStickyRailOffsetSync('global-header', true);

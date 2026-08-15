@@ -17,12 +17,12 @@ const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.05';
+  const release = 'V2026.08.15.06';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.05'/);
-  assert.equal(packageJson.version, '2026.08.15.05');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.06'/);
+  assert.equal(packageJson.version, '2026.08.15.06');
 });
 
 test('restored sessions retry pilot bootstrap only after authenticated session refresh', () => {
@@ -130,7 +130,7 @@ test('light and dark modes provide theme-aware command, pill, chat, form, and na
   assert.match(css, /#bottom-nav[\s\S]*var\(--ops-chat-shadow\)/);
 });
 
-test('precision shell keeps one persistent back control and promotes queue search into the header', () => {
+test('precision shell keeps one persistent module back control and promotes queue search into the header', () => {
   assert.match(css, /#global-header-search-row\.hidden[\s\S]*display: flex !important/);
   assert.match(css, /#global-header-inline-back\.hidden[\s\S]*display: inline-flex !important/);
   assert.match(css, /#view-wrapper \.back-btn[\s\S]*display: none !important/);
@@ -138,6 +138,18 @@ test('precision shell keeps one persistent back control and promotes queue searc
   assert.match(html, /mode === 'suspend-tag' \? 'Search common name\.\.\.'/);
   assert.match(html, /const commonSearchHtml = precisionSearch \? ''/);
   assert.match(html, /currentView === 'po-management'[\s\S]*goBackPoManagementDrilldown\(\)/);
+});
+
+test('Home alone shows identity metadata while modules use the compact command header', () => {
+  assert.match(html, /body\.current-view-home #global-header-search-row,[\s\S]*display:none!important/);
+  assert.match(html, /body:not\(\.current-view-home\) #app-top-chrome \.nav-header\{display:none!important\}/);
+  assert.match(html, /body:not\(\.current-view-home\) #global-header-search-row,[\s\S]*display:flex!important/);
+  assert.match(css, /ops-precision-pilot\.current-view-home #global-header-search-row,[\s\S]*display: none !important/);
+  assert.match(css, /ops-precision-pilot:not\(\.current-view-home\) #app-top-chrome \.nav-header[\s\S]*display: none !important/);
+  assert.match(html, /building: 'building-search-container'/);
+  assert.match(html, /const homeIdentityOnly = chromeState\.currentView === 'home' && !chromeState\.showHomeBack/);
+  assert.match(html, /const visibleBack = naturalBack/);
+  assert.match(html, /if \(homeIdentityOnly\)[\s\S]*searchRow\.classList\.add\('hidden'\)/);
 });
 
 test('dark cards and chat have explicit high-contrast presentation without replacing handlers', () => {

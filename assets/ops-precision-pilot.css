@@ -1,4 +1,4 @@
-/* V2026.08.15.05 — server-gated Ops Precision pilot skin. */
+/* V2026.08.15.06 — server-gated Ops Precision pilot skin. */
 body.ops-precision-pilot {
   --ops-canvas: #f3f7f5;
   --ops-surface: #ffffff;
@@ -991,7 +991,7 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
   }
 }
 
-/* V2026.08.15.05 — unified command shell, readable data pills, and theme-aware chat. */
+/* V2026.08.15.06 — unified command shell, readable data pills, and theme-aware chat. */
 body.ops-precision-pilot {
   --ops-command: #0a1712;
   --ops-command-raised: #10211a;
@@ -1581,7 +1581,7 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
-/* V2026.08.15.05 — Dylan-only two-mode theme selector and complete dual-theme shell. */
+/* V2026.08.15.06 — Dylan-only two-mode theme selector and complete dual-theme shell. */
 body.ops-precision-pilot {
   --ops-command: #f7fbf9;
   --ops-command-raised: #ffffff;
@@ -1909,5 +1909,29 @@ body.ops-precision-pilot #bottom-nav {
   body.ops-pilot-active .ops-theme-selector .ops-theme-choice {
     min-height: 58px !important;
     padding: 8px 9px !important;
+  }
+}
+
+/* V2026.08.15.06 — identity on Home; compact search/filter command chrome in modules. */
+body.ops-precision-pilot.current-view-home #global-header-search-row,
+body.ops-precision-pilot.current-view-home #global-header-search-row.hidden {
+  display: none !important;
+}
+
+body.ops-precision-pilot:not(.current-view-home) #app-top-chrome .nav-header {
+  display: none !important;
+}
+
+body.ops-precision-pilot:not(.current-view-home) #global-header-search-row,
+body.ops-precision-pilot:not(.current-view-home) #global-header-search-row.hidden {
+  display: flex !important;
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+  padding-bottom: 12px !important;
+}
+
+@media (max-width: 767px) {
+  body.ops-precision-pilot:not(.current-view-home) #global-header-search-row,
+  body.ops-precision-pilot:not(.current-view-home) #global-header-search-row.hidden {
+    padding: max(9px, env(safe-area-inset-top)) 12px 10px !important;
   }
 }
