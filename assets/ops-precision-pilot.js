@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.14.01';
+  const RELEASE = 'V2026.08.15.01';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -33,7 +33,7 @@
     'po-management': 'po-management-content'
   });
   const DEFAULT_FLAGS = Object.freeze({ skin: false, preferences: false, card_grid: false, monitoring: false });
-  const DEFAULT_PREFERENCES = Object.freeze({ themeMode: 'system', displayMode: 'cards', updatedAt: '' });
+  const DEFAULT_PREFERENCES = Object.freeze({ themeMode: 'dark', displayMode: 'cards', updatedAt: '' });
   const PERFORMANCE_KINDS = new Set(['viewSwitches', 'renders', 'chunks', 'longTasks', 'staleSkips']);
   const SENSITIVE_KEY_PATTERN = /(user(name)?|name|note|item|code|customer|consignee|row|record|photo|image|body|header|query|payload|request|url|uri|email|token|password|pin|authorization|cookie)/i;
   const RECORD_CLASS_PATTERN = /(^|\s)(inv-card|drill-item|item-row|task-card|request-card|dock-card|manager-card|approval-card|low-stock-card|communication-card|sales-office-card|rounded-(?:lg|xl|2xl).*border)(\s|$)/i;
@@ -59,7 +59,7 @@
 
   function normalizeThemeMode(value) {
     const mode = String(value || '').trim().toLowerCase();
-    return mode === 'light' || mode === 'dark' || mode === 'system' ? mode : 'system';
+    return mode === 'light' || mode === 'dark' || mode === 'system' ? mode : 'dark';
   }
 
   function normalizeDisplayMode(value) {

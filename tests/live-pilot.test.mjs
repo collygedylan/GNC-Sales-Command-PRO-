@@ -10,18 +10,19 @@ const css = read('assets/ops-precision-pilot.css');
 const client = read('assets/ops-precision-pilot.js');
 const edge = read('supabase/functions/app-api/index.ts');
 const migration = read('supabase/migrations/20260815043342_dylan_live_pilot_preferences.sql');
+const darkDefaultMigration = read('supabase/migrations/20260815121724_dylan_ops_precision_dark_default.sql');
 const manifest = JSON.parse(read('manifest.json'));
 const serviceWorker = read('sw.js');
 const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.14.01';
+  const release = 'V2026.08.15.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.14\.01'/);
-  assert.equal(packageJson.version, '2026.08.14.01');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.01'/);
+  assert.equal(packageJson.version, '2026.08.15.01');
 });
 
 test('pilot UI is drawer-only and inactive by default', () => {
@@ -66,6 +67,21 @@ test('remote controls are independent and seeded only for the explicit pilot', (
   assert.match(client, /themeGroup\.classList\.toggle\('hidden', !state\.flags\.preferences\)/);
   assert.match(client, /displayGroup\.classList\.toggle\('hidden', !state\.flags\.card_grid\)/);
   assert.match(edge, /flags\.preferences \|\| flags\.card_grid \|\| flags\.monitoring/);
+});
+
+test('Dylan receives the full dark Ops Precision composition by default', () => {
+  assert.match(client, /DEFAULT_PREFERENCES = Object\.freeze\(\{ themeMode: 'dark'/);
+  assert.match(client, /\? mode : 'dark'/);
+  assert.match(edge, /theme_mode: "dark"/);
+  assert.match(darkDefaultMigration, /theme_mode = 'dark'/);
+  assert.match(darkDefaultMigration, /where user_key = 'dylan_collyge'/);
+  assert.match(css, /--ops-canvas: #07120e/);
+  assert.match(css, /--ops-surface: #111c18/);
+  assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /--ops-desktop-nav: 1400px/);
+  assert.match(css, /--ops-wide-content: 1880px/);
 });
 
 test('preferences use timestamp last-write-wins and retain offline changes', () => {

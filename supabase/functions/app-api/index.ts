@@ -454,7 +454,7 @@ function sanitizeLivePilotPreferences(value: unknown) {
   const displayModeValue = String(source.displayMode || source.display_mode || "").trim().toLowerCase();
   const themeMode = ["system", "light", "dark"].includes(themeModeValue)
     ? themeModeValue
-    : "system";
+    : "dark";
   const displayMode = ["cards", "grid"].includes(displayModeValue)
     ? displayModeValue
     : "cards";
@@ -512,7 +512,7 @@ async function readOrCreateLivePilotPreferenceRow() {
     .from("ph_app_user_preferences")
     .insert({
       user_key: LIVE_PILOT_USERNAME,
-      theme_mode: "system",
+      theme_mode: "dark",
       display_mode: "cards",
       updated_at: new Date().toISOString(),
     })

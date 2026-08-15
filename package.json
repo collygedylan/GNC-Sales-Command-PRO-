@@ -1,15 +1,15 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.08.14.01",
+  "version": "2026.08.15.01",
   "type": "module",
   "scripts": {
     "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
     "build:pilot-monitoring": "esbuild scripts/ops-precision-sentry-entry.js --bundle --format=iife --global-name=GncSentry --minify --outfile=assets/vendor/sentry-browser-10.70.0.min.js",
     "build:v2": "tsc --noEmit -p tsconfig.json && vite build --config vite.v2.config.ts",
     "preview:v2": "vite preview --config vite.v2.config.ts --host 0.0.0.0",
-    "test:v2": "vitest run",
-    "test:v2:watch": "vitest",
+    "test:v2": "vitest run --config vite.v2.config.ts",
+    "test:v2:watch": "vitest --config vite.v2.config.ts",
     "test:v2:e2e": "playwright test",
     "storybook:v2": "storybook dev -p 6006 -c v2/.storybook",
     "build:storybook:v2": "storybook build -c v2/.storybook -o v2/storybook-static",
