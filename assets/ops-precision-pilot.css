@@ -2991,7 +2991,195 @@ body.ops-precision-pilot .app-drive-card-reclass .app-card-bottom-btn {
   }
 }
 
-/* V2026.08.15.11 keyboard-safe authentication cascade. This final lock follows
+/* V2026.08.15.12 final responsive and theme cascade. Keep this after every
+   legacy shell experiment so device geometry and theme tokens win reliably. */
+body.ops-precision-pilot {
+  --ops-topbar-surface: linear-gradient(180deg, #f8fbf9 0%, #edf4f0 100%);
+  --ops-topbar-text: #10271d;
+  --ops-topbar-muted: #587065;
+  --ops-topbar-border: #cbd8d1;
+  --ops-topbar-control: #ffffff;
+  --ops-topbar-control-border: #9db2a7;
+  --ops-nav-clearance: calc(var(--footer-nav-reserve, 8.75rem) + env(safe-area-inset-bottom) + 24px);
+  --sticky-chrome-bg: var(--ops-canvas);
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-topbar-surface: linear-gradient(180deg, #07120e 0%, #0d1b15 100%);
+  --ops-topbar-text: #f2fbf6;
+  --ops-topbar-muted: #9db4aa;
+  --ops-topbar-border: rgba(99, 230, 173, 0.3);
+  --ops-topbar-control: #10211a;
+  --ops-topbar-control-border: rgba(99, 230, 173, 0.42);
+}
+
+body.ops-precision-pilot #app-top-chrome {
+  border-bottom: 1px solid var(--ops-topbar-border) !important;
+  color: var(--ops-topbar-text) !important;
+  background: var(--ops-topbar-surface) !important;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ops-canvas) 52%, transparent) !important;
+}
+
+body.ops-precision-pilot #app-top-chrome :is(.nav-header, #global-header-search-row),
+html.outdoor-mode body.ops-precision-pilot #app-top-chrome .nav-header {
+  color: var(--ops-topbar-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #app-top-chrome :is(.nav-header-user, .nav-header-company, #sync-diagnostics-detail) {
+  color: var(--ops-topbar-text) !important;
+}
+
+body.ops-precision-pilot #app-top-chrome :is(.nav-version-pill, .nav-outdoor-toggle, #sync-diagnostics-badge, #global-header-inline-back) {
+  border-color: var(--ops-topbar-control-border) !important;
+  color: var(--ops-topbar-text) !important;
+  background: var(--ops-topbar-control) !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #app-top-chrome .nav-version-pill {
+  color: var(--ops-brand-strong) !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot :is(.input-field, input[type="text"], input[type="search"]),
+body.ops-precision-pilot #global-header-inline-title {
+  border-color: var(--ops-topbar-control-border) !important;
+  color: var(--ops-topbar-text) !important;
+  background: var(--ops-topbar-control) !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot :is(.input-field, input)::placeholder {
+  color: var(--ops-topbar-muted) !important;
+}
+
+body.ops-precision-pilot #main-scroll-area,
+body.ops-precision-pilot #view-wrapper {
+  background: var(--ops-canvas) !important;
+}
+
+body.ops-precision-pilot #view-wrapper :is(.freeze-panel, .drive-controls-sticky, .task-controls-sticky, .fixed-filter-rail),
+body.ops-precision-pilot #view-drive :is(#drive-drill-tabs, #drive-season-filters, #drive-season-filters.drive-top-inline, .drive-top-controls-row) {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot #view-wrapper :is(.freeze-panel, .drive-controls-sticky, .task-controls-sticky, .fixed-filter-rail)::before {
+  display: none !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline :is(.task-top-control-shell, .drive-mode-export-button),
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .drive-filter-reset-button {
+  border-color: var(--ops-border-strong) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface-muted) !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #drive-season-filters.drive-top-inline .drive-mode-export-button {
+  color: var(--ops-info) !important;
+  border-color: color-mix(in srgb, var(--ops-info) 48%, transparent) !important;
+  background: color-mix(in srgb, var(--ops-info) 10%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  padding-bottom: var(--ops-nav-clearance) !important;
+  scroll-padding-bottom: var(--ops-nav-clearance) !important;
+}
+
+body.ops-precision-pilot.current-view-home #view-wrapper,
+body.ops-precision-pilot.current-view-home #view-home:not(.hidden),
+body.ops-precision-pilot.current-view-home #home-dashboard-content,
+body.ops-precision-pilot.current-view-home #home-dashboard-modules:not(.hidden),
+body.ops-precision-pilot.current-view-home #home-rep-dashboard-modules:not(.hidden) {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot.current-view-home #view-home:not(.hidden),
+body.ops-precision-pilot.current-view-home #home-dashboard-modules:not(.hidden),
+body.ops-precision-pilot.current-view-home #home-rep-dashboard-modules:not(.hidden) {
+  display: block !important;
+  flex: none !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  align-items: start !important;
+  align-content: start !important;
+  justify-items: stretch !important;
+  gap: 12px !important;
+  margin-bottom: 24px !important;
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  align-self: start !important;
+  justify-self: stretch !important;
+  border-width: 2px !important;
+  border-style: solid !important;
+  overflow: hidden !important;
+}
+
+@media (min-width: 640px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 960px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 900px) and (orientation: landscape), (min-width: 1400px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+}
+
+body.ops-precision-pilot.viewport-phone #view-home #home-dashboard-grid,
+body.ops-precision-pilot.viewport-phone #view-home #home-rep-dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+body.ops-precision-pilot.viewport-tablet.viewport-portrait #view-home #home-dashboard-grid,
+body.ops-precision-pilot.viewport-tablet.viewport-portrait #view-home #home-rep-dashboard-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+body.ops-precision-pilot.viewport-tablet.viewport-landscape #view-home #home-dashboard-grid,
+body.ops-precision-pilot.viewport-tablet.viewport-landscape #view-home #home-rep-dashboard-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+/* V2026.08.15.12 keyboard-safe authentication cascade. This final lock follows
    every breakpoint so iPad landscape cannot inherit desktop centering. */
 body.keyboard-open #view-login,
 body.keyboard-open #view-change-password {

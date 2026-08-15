@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.11';
+  const release = 'V2026.08.15.12';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.11'/);
-  assert.equal(packageJson.version, '2026.08.15.11');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.12'/);
+  assert.equal(packageJson.version, '2026.08.15.12');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -140,7 +140,7 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /--ops-surface: #111c18/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(css, /V2026\.08\.15\.11 final cascade[\s\S]*grid-template-rows: none !important/);
+  assert.match(css, /V2026\.08\.15\.12 final responsive and theme cascade[\s\S]*grid-template-rows: none !important/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /--ops-desktop-nav: 1400px/);
@@ -208,7 +208,7 @@ test('primary module icons use a restrained single-weight treatment', () => {
   assert.match(drawerBlock, /class="ph-duotone ph-palette"/);
   assert.match(drawerBlock, /class="ph-duotone ph-arrows-clockwise"/);
   assert.match(css, /--ops-icon-well:/);
-  assert.match(css, /V2026\.08\.15\.11 final cascade[\s\S]*#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 10px !important/);
+  assert.match(css, /#view-home #home-dashboard-grid > div > i[\s\S]*border-radius: 10px !important/);
   assert.match(css, /\.drawer-item > i[\s\S]*width: 34px !important/);
   assert.match(css, /\.footer-nav-btn:is\(\.active, \.menu-open, \[aria-current="page"\]\) > i/);
   assert.match(css, /text-transform: none !important/);
@@ -290,7 +290,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   assert.doesNotMatch(loginInteractionBlock, /preventScroll: true/);
   assert.match(loginInteractionBlock, /revealLoginFieldAboveKeyboard\(input\)/);
   assert.match(loginInteractionBlock, /revealLoginFieldAboveKeyboard\(usernameInput\)/);
-  const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.11 keyboard-safe authentication cascade');
+  const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.12 keyboard-safe authentication cascade');
   const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
   assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
   const keyboardCascade = css.slice(keyboardCascadeIndex);
@@ -331,22 +331,51 @@ test('new inventory transactions are Reclass-only while audit history keeps lega
 test('design pills and Drive metrics use the professional responsive card system', () => {
   assert.match(html, /class="app-data-pill app-data-pill--location\$\{compactClass\}"/);
   assert.match(html, /<div class="app-drive-card-title-row">[\s\S]*<div class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}<\/div>/);
-  assert.match(css, /V2026\.08\.15\.11 final cascade[\s\S]*\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
+  assert.match(css, /\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
   assert.match(css, /\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(4/);
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
 });
 
 test('phone Home tiles fill both columns and Drive cards retain the thumbnail with Reclass at top right', () => {
-  const cascadeLockIndex = css.lastIndexOf('V2026.08.15.11 mobile cascade lock');
+  const cascadeLockIndex = css.lastIndexOf('V2026.08.15.12 final responsive and theme cascade');
+  const driveMobileCascadeIndex = css.lastIndexOf('V2026.08.15.11 mobile cascade lock');
   const legacyMobileGridIndex = css.lastIndexOf('grid-template-areas: "main main" "bottom reclass"');
   assert.ok(cascadeLockIndex > legacyMobileGridIndex, 'mobile repair must follow every legacy phone card rule');
   const mobileCascade = css.slice(cascadeLockIndex);
-  assert.match(mobileCascade, /grid-auto-rows: auto !important/);
+  const driveMobileCascade = css.slice(driveMobileCascadeIndex, cascadeLockIndex);
+  assert.match(mobileCascade, /grid-auto-rows: max-content !important/);
   assert.match(mobileCascade, /#view-home #home-dashboard-grid > div[\s\S]*width: 100% !important[\s\S]*height: auto !important[\s\S]*justify-self: stretch !important/);
   assert.doesNotMatch(css, /\.app-drive-card-photo\s*\{\s*display:\s*none\s*!important/);
-  assert.match(mobileCascade, /\.app-drive-card-photo\s*\{[\s\S]*display: block !important/);
-  assert.match(mobileCascade, /\.app-drive-card-reclass\s*\{[\s\S]*position: absolute !important;[\s\S]*top: 0 !important;[\s\S]*right: 0 !important;/);
+  assert.match(driveMobileCascade, /\.app-drive-card-photo\s*\{[\s\S]*display: block !important/);
+  assert.match(driveMobileCascade, /\.app-drive-card-reclass\s*\{[\s\S]*position: absolute !important;[\s\S]*top: 0 !important;[\s\S]*right: 0 !important;/);
   assert.match(css, /grid-template-areas: "photo main reclass" "bottom bottom bottom"/);
+});
+
+test('final responsive shell keeps every Home tile square, scrollable above navigation, and device-aware', () => {
+  const finalCascadeIndex = css.lastIndexOf('V2026.08.15.12 final responsive and theme cascade');
+  const legacyFixedGridIndex = css.lastIndexOf('height: min(760px, calc(100dvh - 284px)) !important');
+  assert.ok(finalCascadeIndex > legacyFixedGridIndex, 'responsive cascade must override the legacy fixed-height Home grid');
+  const finalCascade = css.slice(finalCascadeIndex);
+  assert.match(finalCascade, /--ops-nav-clearance: calc\(var\(--footer-nav-reserve, 8\.75rem\) \+ env\(safe-area-inset-bottom\) \+ 24px\)/);
+  assert.match(finalCascade, /current-view-home\.home-dashboard-mode[\s\S]*overflow-y: auto !important;[\s\S]*padding-bottom: var\(--ops-nav-clearance\) !important/);
+  assert.match(finalCascade, /#view-home #home-dashboard-grid,[\s\S]*height: auto !important;[\s\S]*grid-auto-rows: max-content !important;[\s\S]*align-content: start !important/);
+  assert.match(finalCascade, /#view-home #home-dashboard-grid > div,[\s\S]*height: auto !important;[\s\S]*aspect-ratio: 1 \/ 1 !important;[\s\S]*border-width: 2px !important/);
+  assert.match(finalCascade, /viewport-phone #view-home #home-dashboard-grid,[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(finalCascade, /viewport-tablet\.viewport-portrait[\s\S]*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(finalCascade, /viewport-tablet\.viewport-landscape[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(finalCascade, /min-width: 1024px[\s\S]*max-height: 900px[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
+});
+
+test('top banners and sticky module controls use semantic surfaces in both themes', () => {
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.15.12 final responsive and theme cascade'));
+  assert.match(finalCascade, /--ops-topbar-surface: linear-gradient\(180deg, #f8fbf9 0%, #edf4f0 100%\)/);
+  assert.match(finalCascade, /data-ops-theme="dark"[\s\S]*--ops-topbar-surface: linear-gradient\(180deg, #07120e 0%, #0d1b15 100%\)/);
+  assert.match(finalCascade, /#app-top-chrome[\s\S]*background: var\(--ops-topbar-surface\) !important/);
+  assert.match(finalCascade, /#app-top-chrome :is\(\.nav-header, #global-header-search-row\)[\s\S]*background: transparent !important/);
+  assert.match(finalCascade, /#view-wrapper :is\(\.freeze-panel, \.drive-controls-sticky[\s\S]*background: var\(--ops-surface\) !important;[\s\S]*background-image: none !important/);
+  assert.match(finalCascade, /#drive-season-filters\.drive-top-inline \.drive-filter-reset-button[\s\S]*background: var\(--ops-surface-muted\) !important/);
+  assert.match(html, /themeColorMeta\.setAttribute\('content', prepaintTheme === 'dark' \? '#07120e' : '#f8fbf9'\)/);
+  assert.match(client, /themeColorMeta\.setAttribute\('content', skinActive \? \(effectiveTheme === 'dark' \? '#07120e' : '#f8fbf9'\) : '#007a4d'\)/);
 });
 
 test('static deployment includes the pilot assets and builds the pinned bundle', () => {
@@ -356,7 +385,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081511\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081512\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);

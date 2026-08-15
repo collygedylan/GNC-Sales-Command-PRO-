@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.15.11';
+  const RELEASE = 'V2026.08.15.12';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -159,6 +159,10 @@
     body.dataset.opsThemeMode = state.preferences.themeMode;
     body.dataset.opsDisplayMode = state.preferences.displayMode;
     body.dataset.opsEffectiveDisplay = effectiveDisplay;
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', skinActive ? (effectiveTheme === 'dark' ? '#07120e' : '#f8fbf9') : '#007a4d');
+    }
     if (typeof window.syncGlobalHeaderChrome === 'function') {
       window.requestAnimationFrame(() => {
         window.syncGlobalHeaderChrome({ reason: 'ops-precision-state', force: true });
