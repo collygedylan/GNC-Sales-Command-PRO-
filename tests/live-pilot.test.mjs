@@ -17,12 +17,27 @@ const workflow = read('.github/workflows/pages-static.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.04';
+  const release = 'V2026.08.15.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.04'/);
-  assert.equal(packageJson.version, '2026.08.15.04');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.05'/);
+  assert.equal(packageJson.version, '2026.08.15.05');
+});
+
+test('restored sessions retry pilot bootstrap only after authenticated session refresh', () => {
+  assert.match(html, /let opsPilotInitializationPromise = null/);
+  assert.match(html, /function initializeOpsPilotForCurrentSession\(reason = ''\)/);
+  assert.match(html, /if \(!currentUser \|\| navigator\.onLine === false\) return Promise\.resolve\(false\)/);
+  assert.match(html, /const sessionToken = getCurrentAppSessionToken\(\);[\s\S]*if \(!sessionToken\) return Promise\.resolve\(false\)/);
+  assert.match(html, /if \(opsPilotInitializationPromise\) return opsPilotInitializationPromise/);
+  assert.match(html, /pilot\.initialize\(getOpsPilotBridge\(reason\)\)/);
+  assert.match(client, /initialized: state\.initialized/);
+  assert.match(html, /persistVerifiedLoginRecord\(normalizedUsername[\s\S]*initializeOpsPilotForCurrentSession\('session-refreshed'\)/);
+  assert.match(html, /initializeOpsPilotForCurrentSession\(isRestoredSession \? 'restored-session' : 'login-ready'\)/);
+  assert.match(html, /window\.addEventListener\('online'[\s\S]*initializeOpsPilotForCurrentSession\('online'\)/);
+  assert.match(html, /document\.addEventListener\('visibilitychange'[\s\S]*initializeOpsPilotForCurrentSession\('foreground'\)/);
+  assert.doesNotMatch(html, /currentUser\s*===\s*['"]dylan_collyge['"]/);
 });
 
 test('pilot UI is drawer-only and inactive by default', () => {

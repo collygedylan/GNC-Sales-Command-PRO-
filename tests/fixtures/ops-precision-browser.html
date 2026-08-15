@@ -73,7 +73,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.15.04</span>
+              <span class="nav-version-pill">V2026.08.15.05</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -235,6 +235,7 @@
       const persistedServerPreferences = params.get('persist') === '1'
         ? JSON.parse(localStorage.getItem(serverStorageKey) || 'null')
         : null;
+      let authorized = params.get('auth') !== 'delayed';
       const activeView = params.get('view') || 'drive';
       document.body.classList.toggle('current-view-home', activeView === 'home');
       document.body.classList.toggle('home-dashboard-mode', activeView === 'home');
@@ -248,6 +249,7 @@
         getActiveView() { return activeView; },
         async request(action, payload) {
           if (action === 'get_user_preferences') {
+            if (!authorized) throw new Error('Authentication required');
             return {
               ok: true,
               eligible,
@@ -265,7 +267,19 @@
           throw new Error('Unexpected action');
         }
       };
-      window.__gncOpsPilot.initialize(bridge).then(() => {
+      window.__qaAuthorizePilot = () => {
+        authorized = true;
+        return window.__gncOpsPilot.initialize(bridge).then((initialized) => {
+          document.body.dataset.qaReauthResult = String(initialized);
+          document.body.dataset.qaReauthReady = 'true';
+          return initialized;
+        });
+      };
+      if (params.get('reauth') === '1') {
+        setTimeout(() => { window.__qaAuthorizePilot(); }, 80);
+      }
+      window.__gncOpsPilot.initialize(bridge).then((initialized) => {
+        document.body.dataset.qaInitialResult = String(initialized);
         const options = window.__qaSentry.initOptions;
         if (options) {
           const sample = options.beforeSend({

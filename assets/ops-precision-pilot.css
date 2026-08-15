@@ -1,4 +1,4 @@
-/* V2026.08.15.04 — server-gated Ops Precision pilot skin. */
+/* V2026.08.15.05 — server-gated Ops Precision pilot skin. */
 body.ops-precision-pilot {
   --ops-canvas: #f3f7f5;
   --ops-surface: #ffffff;
@@ -991,7 +991,7 @@ body.ops-precision-pilot :is(.primary-button, .commit-action, button.bg-\[\#007a
   }
 }
 
-/* V2026.08.15.04 — unified command shell, readable data pills, and theme-aware chat. */
+/* V2026.08.15.05 — unified command shell, readable data pills, and theme-aware chat. */
 body.ops-precision-pilot {
   --ops-command: #0a1712;
   --ops-command-raised: #10211a;
@@ -1581,7 +1581,7 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
-/* V2026.08.15.04 — Dylan-only two-mode theme selector and complete dual-theme shell. */
+/* V2026.08.15.05 — Dylan-only two-mode theme selector and complete dual-theme shell. */
 body.ops-precision-pilot {
   --ops-command: #f7fbf9;
   --ops-command-raised: #ffffff;

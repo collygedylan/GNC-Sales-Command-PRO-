@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.15.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.15.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6511,7 +6511,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.04">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.05">
 </head>
 <body class="bg-gray-50 overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6598,7 +6598,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.04"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.05"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7351,7 +7351,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.04').trim() || 'V2026.08.15.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.05').trim() || 'V2026.08.15.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8814,7 +8814,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25883,6 +25883,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         const APP_SESSION_RECORD_STORAGE_KEY = 'gnc_app_session_v1';
+        let opsPilotInitializationPromise = null;
+        let opsPilotInitializedSessionToken = '';
 
         function readPersistedAppSessionRecord() {
             try {
@@ -25911,6 +25913,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!safeRecord) {
                 currentAppSessionToken = '';
                 currentAppSessionExpiresAt = 0;
+                opsPilotInitializedSessionToken = '';
                 try { sessionStorage.removeItem(APP_SESSION_RECORD_STORAGE_KEY); } catch (error) {}
                 return false;
             }
@@ -25920,6 +25923,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 try { sessionStorage.removeItem(APP_SESSION_RECORD_STORAGE_KEY); } catch (error) {}
                 currentAppSessionToken = '';
                 currentAppSessionExpiresAt = 0;
+                opsPilotInitializedSessionToken = '';
                 return false;
             }
             currentAppSessionToken = token;
@@ -25976,6 +25980,53 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 throw err;
             }
             return payload;
+        }
+
+        function getOpsPilotBridge(reason = '') {
+            const safeReason = String(reason || '').trim().replace(/[^a-z0-9_-]+/gi, '-').slice(0, 48);
+            return {
+                request: (action, payload = {}) => postAppFunctionJson(APP_API_FUNCTION_URL, {
+                    ...(payload && typeof payload === 'object' ? payload : {}),
+                    action: String(action || '').trim()
+                }, {
+                    timeoutMs: 18000,
+                    label: safeReason ? `User preferences (${safeReason})` : 'User preferences'
+                }),
+                getActiveView: () => getCurrentVisibleViewId()
+            };
+        }
+
+        function initializeOpsPilotForCurrentSession(reason = '') {
+            const pilot = window.__gncOpsPilot;
+            if (!pilot || typeof pilot.initialize !== 'function') return Promise.resolve(false);
+            if (!currentUser || navigator.onLine === false) return Promise.resolve(false);
+            const sessionToken = getCurrentAppSessionToken();
+            if (!sessionToken) return Promise.resolve(false);
+            if (opsPilotInitializationPromise) return opsPilotInitializationPromise;
+            if (opsPilotInitializedSessionToken === sessionToken && typeof pilot.getState === 'function') {
+                const pilotState = pilot.getState();
+                if (pilotState && pilotState.initialized === true && pilotState.eligible === true) {
+                    pilot.applyUiState();
+                    return Promise.resolve(true);
+                }
+            }
+            const identityAtStart = normalizeSessionIdentity(currentUser);
+            let requestPromise = null;
+            requestPromise = Promise.resolve(pilot.initialize(getOpsPilotBridge(reason))).then((initialized) => {
+                if (identityAtStart !== normalizeSessionIdentity(currentUser)) return false;
+                if (initialized === true) opsPilotInitializedSessionToken = sessionToken;
+                return initialized === true;
+            }).catch(() => false).finally(() => {
+                if (opsPilotInitializationPromise === requestPromise) {
+                    opsPilotInitializationPromise = null;
+                    const latestSessionToken = getCurrentAppSessionToken();
+                    if (currentUser && navigator.onLine !== false && latestSessionToken && latestSessionToken !== sessionToken) {
+                        queueMicrotask(() => initializeOpsPilotForCurrentSession('session-updated').catch(() => false));
+                    }
+                }
+            });
+            opsPilotInitializationPromise = requestPromise;
+            return requestPromise;
         }
 
         function isPasswordChangeRequiredPayload(payload = null) {
@@ -27005,6 +27056,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     persistVerifiedLoginRecord(normalizedUsername, normalizedPassword, remoteRole, currentUserDisplay || normalizedUsername, remoteDivision, remoteLanguage);
                     try { localStorage.setItem('gnc_role_v3', remoteRole); } catch (error) {}
                     try { localStorage.setItem('gnc_division_v1', remoteDivision); localStorage.setItem('gnc_language_v1', remoteLanguage); } catch (error) {}
+                    initializeOpsPilotForCurrentSession('session-refreshed').catch(() => false);
                 } catch (error) {}
             }, 2200);
         }
@@ -28964,7 +29016,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.04').trim() || 'V2026.08.15.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.05').trim() || 'V2026.08.15.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30408,6 +30460,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         window.addEventListener('online', () => {
             maybeForceLatestStandaloneShell('online', { forceManifest: true }).catch(() => {});
             if (currentUser) {
+                initializeOpsPilotForCurrentSession('online').catch(() => false);
+                const credentials = getSavedLoginCredentialsForPasswordRecovery();
+                if (credentials.username && credentials.password) {
+                    scheduleBackgroundLoginValidation(credentials.username, credentials.password);
+                }
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(isIOSDevice() ? 360 : 80);
@@ -30423,6 +30480,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) {
+                initializeOpsPilotForCurrentSession('foreground').catch(() => false);
                 queueForegroundRefresh(isIOSDevice() ? 420 : 120);
                 syncAlwaysOnRequestData(isIOSDevice() ? 460 : 120, { minIntervalMs: 0 });
             } else {
@@ -48725,18 +48783,7 @@ function toggleDriveQuickRequestItem(domId) {
             const expectsLocalWarm = localWarmTaskFactories.length > 0;
             const openedFromCache = hadWarmDataBeforeLocalWarm || expectsLocalWarm;
             openApp(openedFromCache);
-            if (window.__gncOpsPilot && typeof window.__gncOpsPilot.initialize === 'function') {
-                window.__gncOpsPilot.initialize({
-                    request: (action, payload = {}) => postAppFunctionJson(APP_API_FUNCTION_URL, {
-                        ...(payload && typeof payload === 'object' ? payload : {}),
-                        action: String(action || '').trim()
-                    }, {
-                        timeoutMs: 18000,
-                        label: 'User preferences'
-                    }),
-                    getActiveView: () => getCurrentVisibleViewId()
-                }).catch(() => false);
-            }
+            initializeOpsPilotForCurrentSession(isRestoredSession ? 'restored-session' : 'login-ready').catch(() => false);
             refreshManualSyncStatus(true).catch(() => {});
             refreshCurrentSeasonSettingsFromRemote().then(() => {
                 markSeasonSensitiveViewsDirty();
