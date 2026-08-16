@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.16.04', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -17,7 +17,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844)).toBe(true);
 });
 
-test('Home fits every authorized module above navigation with two compact phone columns', async ({ page }) => {
+test('Home fits the 12 primary launch modules above navigation without desktop scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=home&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
   const phone = await page.locator('#home-dashboard-grid > *').evaluateAll((tiles) => {
@@ -31,9 +31,9 @@ test('Home fits every authorized module above navigation with two compact phone 
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
-  expect(phone.count).toBe(18);
+  expect(phone.count).toBe(12);
   expect(phone.columns).toBe(2);
-  expect(phone.rows).toBe(9);
+  expect(phone.rows).toBe(6);
   expect(phone.lastBottom).toBeLessThanOrEqual(phone.navTop);
   expect(phone.overflow).toBe(0);
 
@@ -47,11 +47,15 @@ test('Home fits every authorized module above navigation with two compact phone 
       rows: new Set(rects.map((rect) => Math.round(rect.top))).size,
       lastBottom: Math.round(rects.at(-1)?.bottom || 0),
       navTop: Math.round(navTop),
+      mainOverflowY: getComputedStyle(document.getElementById('main-scroll-area')!).overflowY,
+      mainScrollDelta: document.getElementById('main-scroll-area')!.scrollHeight - document.getElementById('main-scroll-area')!.clientHeight,
     };
   });
   expect(desktop.columns).toBe(6);
-  expect(desktop.rows).toBe(3);
+  expect(desktop.rows).toBe(2);
   expect(desktop.lastBottom).toBeLessThan(desktop.navTop);
+  expect(desktop.mainOverflowY).toBe('hidden');
+  expect(desktop.mainScrollDelta).toBeLessThanOrEqual(2);
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -64,8 +68,8 @@ test('Home fits every authorized module above navigation with two compact phone 
       navTop: Math.round(document.getElementById('bottom-nav')!.getBoundingClientRect().top),
     };
   });
-  expect(wide.columns).toBe(7);
-  expect(wide.rows).toBe(3);
+  expect(wide.columns).toBe(6);
+  expect(wide.rows).toBe(2);
   expect(wide.lastBottom).toBeLessThan(wide.navTop);
 });
 

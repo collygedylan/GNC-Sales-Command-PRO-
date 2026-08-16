@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081603.min.css?v=V2026.08.16.03">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081604.min.css?v=V2026.08.16.04">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.16.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6556,7 +6556,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.03">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.04">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6658,7 +6658,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.03"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.04"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7411,7 +7411,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.03').trim() || 'V2026.08.16.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.04').trim() || 'V2026.08.16.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8876,7 +8876,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11800,7 +11800,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const visibleTiles = Array.from(grid.children || []).filter(isHomeDashboardTileVisible);
             const columnCount = profile.width < 640
                 ? 2
-                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : (profile.width >= 1760 ? 7 : 6)));
+                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : 6));
             const rowCount = Math.max(1, Math.ceil(visibleTiles.length / columnCount));
             const mainRect = mainArea.getBoundingClientRect();
             const gridRect = grid.getBoundingClientRect();
@@ -11830,9 +11830,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 ? clamp(Math.round(profile.width * 0.026), 8, 12)
                 : clamp(Math.round(profile.width * 0.008), 10, 16);
             const fitTilePx = Math.floor((availableHeight - (rowGapPx * Math.max(0, rowCount - 1))) / rowCount);
-            const maxTilePx = profile.phone ? (profile.short ? 82 : 96) : 282;
-            const preferredMinPx = profile.phone ? (profile.short ? 52 : 58) : 108;
-            const hardMinPx = profile.phone ? 44 : 92;
+            const maxTilePx = profile.phone ? (profile.short ? 82 : 96) : 210;
+            const preferredMinPx = profile.phone ? (profile.short ? 52 : 58) : 96;
+            const hardMinPx = profile.phone ? 44 : 72;
             let tilePx = Math.min(maxTilePx, fitTilePx);
             tilePx = fitTilePx < preferredMinPx ? Math.max(hardMinPx, tilePx) : Math.max(preferredMinPx, tilePx);
             const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 18 : 28, profile.phone ? 30 : 48);
@@ -29206,7 +29206,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.03').trim() || 'V2026.08.16.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.04').trim() || 'V2026.08.16.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -53286,38 +53286,23 @@ function toggleDriveQuickRequestItem(domId) {
 
         const HOME_MODULE_REGISTRY = Object.freeze([
             { view: 'drive', label: 'Drive Mode', icon: 'ph-car', action: "switchView('drive')" },
-            { view: 'tasks', label: 'My Tasks', icon: 'ph-clipboard-text', action: "switchView('tasks')" },
             { view: 'docks', label: 'Docks', icon: 'ph-truck', action: "switchView('docks')" },
-            { view: 'request', label: 'Que', icon: 'ph-list-checks', action: "switchView('request')" },
+            { view: 'av', label: 'AV', icon: 'ph-notebook', action: "switchView('av')" },
             { view: 'communication', label: 'Communication', icon: 'ph-chat-circle-dots', action: "switchView('communication')" },
             { view: 'sales', label: 'Sales', icon: 'ph-handshake', action: "switchView('sales')" },
-            { view: 'crop-roll', label: 'Crop Roll', icon: 'ph-plant', action: "switchView('crop-roll')" },
             { view: 'managers', label: 'Managers', icon: 'ph-users-three', action: "switchView('managers')" },
             { view: 'building', label: 'Building', icon: 'ph-hammer', action: "switchView('building')" },
             { view: 'qc', label: 'QC', icon: 'ph-shield-check', action: "switchView('qc')" },
-            { view: 'take-back', label: 'Take Back', icon: 'ph-arrow-u-up-left', action: "switchView('take-back')" },
-            { view: 'av', label: 'AV', icon: 'ph-notebook', action: "switchView('av')" },
-            { view: 'reserves', label: 'Reserves', icon: 'ph-package', action: "switchView('reserves')" },
             { view: 'office', label: 'Office', icon: 'ph-buildings', action: "switchView('office')" },
             { view: 'sales-inventory', label: 'Inventory', icon: 'ph-storefront', action: 'openInventoryHubView()' },
             { view: 'production', label: 'Production', icon: 'ph-plant', action: "switchView('production')" },
-            { view: 'disease-pest', label: 'Disease & Pest', icon: 'ph-first-aid', action: "switchView('disease-pest')" },
-            { view: 'sales-office', label: 'Sales Office', icon: 'ph-briefcase', action: 'openSalesOfficeView()' },
-            { view: 'moves', label: 'Location Move', icon: 'ph-map-pin-line', action: 'openDrawerMovesView()' },
-            { view: 'reports', label: 'Reports', icon: 'ph-chart-bar', action: "switchView('reports')" },
-            { view: 'hours', label: 'Labor Hours', icon: 'ph-clock', action: "switchView('hours')" },
-            { view: 'low-stock', label: 'NCR', icon: 'ph-warning-circle', action: "switchView('low-stock')" },
-            { view: 'review', label: 'New Crop Release', icon: 'ph-sparkle', action: "switchView('review')" },
-            { view: 'move-up', label: 'Move Up', icon: 'ph-arrow-up', action: "switchView('move-up')" },
-            { view: 'advertisement', label: 'Advertisement', icon: 'ph-megaphone', action: "switchView('advertisement')" },
-            { view: 'grower', label: 'Grower', icon: 'ph-leaf', action: "switchView('grower')" },
-            { view: 'pest-management', label: 'Pest Management', icon: 'ph-bug', action: "switchView('pest-management')" }
+            { view: 'reports', label: 'Reports', icon: 'ph-chart-bar', action: "switchView('reports')" }
         ]);
 
         function ensureHomeModuleRegistry() {
             const grid = document.getElementById('home-dashboard-grid');
-            if (!grid || grid.dataset.homeRegistryRelease === '16') return grid;
-            grid.dataset.homeRegistryRelease = '16';
+            if (!grid || grid.dataset.homeRegistryRelease === '17') return grid;
+            grid.dataset.homeRegistryRelease = '17';
             grid.innerHTML = HOME_MODULE_REGISTRY.map((module) => `
                 <button type="button" id="home-tile-${module.view}" class="home-module-tile hidden" data-home-module-view="${module.view}" onclick="${module.action}" aria-label="Open ${module.label}">
                     <i class="ph ${module.icon}" aria-hidden="true"></i>

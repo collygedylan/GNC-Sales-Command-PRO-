@@ -79,7 +79,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.16.03</span>
+              <span class="nav-version-pill">V2026.08.16.04</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -209,6 +209,10 @@
   <link rel="stylesheet" href="../../assets/vendor/phosphor/regular/style.css">
   <link rel="stylesheet" href="../../assets/vendor/phosphor/duotone/style.css">
   <script>
+    const qaPrimaryHomeOrder = ['Drive Mode', 'Docks', 'AV', 'Communication', 'Sales', 'Managers', 'Building', 'QC', 'Office', 'Inventory', 'Production', 'Reports'];
+    const qaHomeGrid = document.getElementById('home-dashboard-grid');
+    const qaHomeTilesByLabel = new Map(Array.from(qaHomeGrid.children).map((tile) => [tile.querySelector('span')?.textContent?.trim(), tile]));
+    qaHomeGrid.replaceChildren(...qaPrimaryHomeOrder.map((label) => qaHomeTilesByLabel.get(label)).filter(Boolean));
     const qaHomeIconNames = ['ph-car', 'ph-truck', 'ph-notebook', 'ph-chat-circle-dots', 'ph-handshake', 'ph-users-three', 'ph-hammer', 'ph-shield-check', 'ph-buildings', 'ph-storefront', 'ph-plant', 'ph-chart-bar'];
     document.querySelectorAll('#home-dashboard-grid > div > i').forEach((icon, index) => {
       icon.className = `ph-duotone ${qaHomeIconNames[index] || 'ph-squares-four'}`;
@@ -281,11 +285,11 @@
         const grid = document.getElementById('home-dashboard-grid');
         const nav = document.getElementById('bottom-nav');
         const width = window.innerWidth;
-        const columns = width < 640 ? 2 : (width < 840 ? 3 : (width < 1100 ? 4 : (width >= 1760 ? 7 : 6)));
+        const columns = width < 640 ? 2 : (width < 840 ? 3 : (width < 1100 ? 4 : 6));
         const rows = Math.ceil(grid.children.length / columns);
         const gap = width < 640 ? 4 : 12;
         const available = Math.max(100, nav.getBoundingClientRect().top - grid.getBoundingClientRect().top - 18);
-        const tileHeight = Math.max(width < 640 ? 44 : 92, Math.min(width < 640 ? 96 : 282, Math.floor((available - gap * Math.max(0, rows - 1)) / rows)));
+        const tileHeight = Math.max(width < 640 ? 44 : 72, Math.min(width < 640 ? 96 : 210, Math.floor((available - gap * Math.max(0, rows - 1)) / rows)));
         home.style.setProperty('--home-fit-columns', String(columns));
         home.style.setProperty('--home-fit-tile-height', `${tileHeight}px`);
         home.style.setProperty('--home-fit-row-gap', `${gap}px`);
