@@ -1,6 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-const { google } = require('googleapis');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { google } from 'googleapis';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const repoRoot = path.resolve(__dirname, '..');
 const codeGsPath = path.join(repoRoot, 'Code.gs');
