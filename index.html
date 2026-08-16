@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081605.min.css?v=V2026.08.16.05">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081606.min.css?v=V2026.08.16.06">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.16.05';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6556,7 +6556,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.05">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.06">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6635,6 +6635,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                 </div>
                 <button id="login-button" type="button" class="login-primary-button" onclick="return triggerLoginFromUI(event)"><span data-login-button-label>Login</span><i class="ph-bold ph-arrow-right" aria-hidden="true"></i></button>
+                <button id="login-passkey-button" type="button" class="login-secondary-button hidden" onclick="return signInWithAppPasskey(event)"><i class="ph-bold ph-fingerprint" aria-hidden="true"></i> Use passkey</button>
                 <button id="saved-login-switch" type="button" class="login-secondary-button hidden" onclick="return useAnotherLoginAccount()">Use another account</button>
                 <div id="saved-login-hint" class="hidden login-assistive-copy"></div>
             </div>
@@ -6658,7 +6659,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.05"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.06"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7411,7 +7412,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.05').trim() || 'V2026.08.16.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.06').trim() || 'V2026.08.16.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7448,6 +7449,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <button type="button" data-ops-display-mode="grid" aria-pressed="false">Grid</button>
                     </div>
                     <div id="ops-display-note" class="ops-pilot-settings__note" aria-live="polite"></div>
+                </div>
+                <div id="ops-passkey-settings" class="ops-pilot-settings__group hidden">
+                    <span class="ops-pilot-settings__label">Passkeys</span>
+                    <div class="ops-pilot-segmented" role="group" aria-label="Passkey management">
+                        <button type="button" onclick="return registerAppPasskey(event)"><i class="ph-bold ph-fingerprint" aria-hidden="true"></i> Add passkey</button>
+                        <button type="button" onclick="return manageAppPasskeys(event)">Manage</button>
+                    </div>
+                    <div id="ops-passkey-note" class="ops-pilot-settings__note" aria-live="polite"></div>
                 </div>
             </div>
             <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-duotone ph-house"></i> Home</div>
@@ -7616,7 +7625,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
                     </div>
-                    <div class="freeze-panel av-primary-tabs-sticky">
+                    <div class="freeze-panel av-primary-tabs-sticky ops-module-filter-band">
                     <div id="av-primary-tabs" class="task-tabs amazon-filter-strip mt-2 mb-0 hidden" aria-hidden="true">
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
                         <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
@@ -7639,7 +7648,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-reports" class="hidden">
-                    <div class="freeze-panel">
+                    <div class="freeze-panel ops-module-filter-band">
                     <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
                     <div class="detail-tabs mb-4">
                         <div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div>
@@ -7663,7 +7672,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="request-search" class="input-field w-full pr-10 !mb-0" placeholder="Search sales reps..." oninput="handleRequestHeaderSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="request-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearRequestHeaderSearch()"></i>
                     </div>
-                    <div class="freeze-panel">
+                    <div class="freeze-panel ops-module-filter-band">
                     <div id="request-filter-toolbar" class="workflow-control-rail request-filter-toolbar" aria-label="Queue filters"></div>
                     <div class="task-tabs mb-2 mt-2 hidden" aria-hidden="true">
                         <div id="tab-req-pending" class="task-tab active" onclick="setReqTab('pending')">Request</div>
@@ -7845,7 +7854,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-docks" class="hidden">
-                    <div class="freeze-panel">
+                    <div class="freeze-panel ops-module-filter-band">
                     <div id="docks-search-container" class="sticky-search relative mb-2">
                         <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search common name or location..." oninput="handleDocksSearch(event)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
@@ -8140,7 +8149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-po-management" class="hidden">
-                    <div class="freeze-panel">
+                    <div class="freeze-panel ops-module-filter-band">
                         <div class="flex items-start justify-between gap-3 mb-3">
                             <div class="min-w-0 flex-1">
                                 <div id="po-management-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-2">PO Managment</div>
@@ -8160,7 +8169,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-sales-office" class="hidden">
-                    <div class="freeze-panel">
+                    <div class="freeze-panel ops-module-filter-band">
                         <div class="flex items-start justify-between gap-3 mb-3">
                             <div class="min-w-0 flex-1">
                                 <div id="sales-office-crumb" class="text-xs font-bold text-[#007a4d] mb-2">Season Sales Notes</div>
@@ -8176,7 +8185,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-moves" class="hidden">
-                    <div class="freeze-panel">
+                    <div class="freeze-panel ops-module-filter-band">
                         <div class="flex items-start justify-between gap-3 mb-3">
                             <div class="min-w-0 flex-1">
                                 <div id="moves-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-2">Location Move</div>
@@ -8204,7 +8213,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
-                    <div class="freeze-panel drive-controls-sticky">
+                    <div class="freeze-panel drive-controls-sticky ops-module-filter-band">
                     <div id="drive-toolbar-rail" class="drive-toolbar-rail" aria-label="Drive views and filters">
                     <div id="drive-drill-tabs" class="task-tabs">
                         <div id="tab-drive-name" class="task-tab" onclick="setDriveTab('name')">COMMONNAME</div>
@@ -8226,7 +8235,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="tasks-search-input" class="input-field w-full pr-10 !mb-0" placeholder="Search common name..." oninput="setTaskLocationDetailSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)">
                         <i id="tasks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="return clearTaskLocationDetailSearch()"></i>
                     </div>
-                    <div class="freeze-panel task-controls-sticky">
+                    <div class="freeze-panel task-controls-sticky ops-module-filter-band">
                     <div id="team-selector" class="hidden task-workflow-rail"></div>
                     <div id="task-approval-mode-toggles" class="hidden mb-2"></div>
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -8253,7 +8262,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="review-search" class="input-field w-full pr-10 !mb-0" placeholder="Search New Crop Release..." oninput="handleReviewSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="review-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReviewSearch()"></i>
                     </div>
-                    <div class="freeze-panel drive-controls-sticky">
+                    <div class="freeze-panel drive-controls-sticky ops-module-filter-band">
                     <div id="review-drill-tabs" class="task-tabs">
                         <div id="tab-review-name" class="task-tab" onclick="setReviewBrowseMode('item')">COMMONNAME</div>
                         <div id="tab-review-loc" class="task-tab" onclick="setReviewBrowseMode('block')">LOCATION</div>
@@ -8270,7 +8279,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="move-up-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Move Up..." oninput="handleMoveUpSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="move-up-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearMoveUpSearch()"></i>
                     </div>
-                    <div class="freeze-panel drive-controls-sticky">
+                    <div class="freeze-panel drive-controls-sticky ops-module-filter-band">
                     <div id="move-up-drill-tabs" class="task-tabs">
                         <div id="tab-move-up-name" class="task-tab" onclick="setMoveUpBrowseMode('item')">COMMONNAME</div>
                         <div id="tab-move-up-loc" class="task-tab" onclick="setMoveUpBrowseMode('block')">LOCATION</div>
@@ -8668,14 +8677,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="req-match-qty-val">0</span></div></div>
                         </div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                            <div id="req-reserve-field-wrap"><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="req-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'req-', true)"></textarea></div>
+                        <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                            <div id="req-reserve-field-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
+                            <div id="req-pick-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
+                            <div id="req-comments-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="req-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'req-', true)"></textarea></div>
                         <div id="req-save-action-wrap" class="mt-4">
                             <button id="req-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'req-')">MARK DONE</button>
                         </div>
-                        <button type="button" class="mt-3 w-full rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-lime-800 shadow-sm active:scale-95" onclick="return submitShearApprovalRequestForActiveDetail('req-')"><i class="ph-bold ph-scissors mr-1 text-base align-middle"></i>Add To Shear List</button>
+                        <button type="button" id="req-shear-action" class="mt-3 w-full rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-lime-800 shadow-sm active:scale-95" onclick="return submitShearApprovalRequestForActiveDetail('req-')"><i class="ph-bold ph-scissors mr-1 text-base align-middle"></i>Add To Shear List</button>
                         <div id="req-correction-actions" class="hidden mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
                     </div>
                     <div id="det-inventory-edit-content" class="hidden py-4">
@@ -8794,7 +8803,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
         <script id="app-script-source" type="text/plain">
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
-        const SUPABASE_KEY = "";
+        const SUPABASE_KEY = "sb_publishable_FpB561OcET7JsjWr2--kOA_9R68Kqxa";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const PUSH_SUBSCRIPTIONS_TABLE = 'ph_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
@@ -8843,8 +8852,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_MOBILE_REFRESH_STORAGE_KEY = 'gnc_mobile_push_refresh_v1';
         const DEPARTMENT_CALENDAR_READ_STORAGE_KEY = 'gnc_department_calendar_read_v1';
         const CHAT_REALTIME_TABLES = [CHAT_CONVERSATIONS_TABLE, CHAT_PARTICIPANTS_TABLE, CHAT_MESSAGES_TABLE];
-        const CHAT_BACKGROUND_POLL_MS = 60000;
-        const CHAT_BACKGROUND_HEALTHY_POLL_MS = 180000;
+        const APP_LIVE_EVENTS_ENABLED = false;
+        const REALTIME_FALLBACK_BASE_MS = 5000;
+        const REALTIME_FALLBACK_MAX_MS = 300000;
+        const CHAT_BACKGROUND_POLL_MS = REALTIME_FALLBACK_BASE_MS;
+        const CHAT_BACKGROUND_HEALTHY_POLL_MS = 0;
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -8876,7 +8888,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8894,12 +8906,29 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         let supabaseClient = null;
+        // .06 ships the native Auth implementation dark. The .07 release flips
+        // this only after the additive profile migration and user reconciliation
+        // have passed the staged dual-auth checks.
+        const NATIVE_AUTH_ENABLED = false;
+        const LEGACY_SESSION_BRIDGE_ENABLED = true;
+        const NATIVE_AUTH_ALIAS_DOMAIN = 'auth.agmetricapp.invalid';
+        const PASSKEY_ENROLLED_STORAGE_KEY = 'gnc_passkey_enrolled_v1';
+        const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1';
+        let nativeAuthSessionActive = false;
+        let nativeAuthAccessToken = '';
+        let nativeAuthProfile = null;
         function getSupabaseBrowserClient() {
             if (supabaseClient && supabaseClient.storage) return supabaseClient;
             if (!SUPABASE_KEY || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
             try {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-                    auth: { persistSession: false, autoRefreshToken: false },
+                    auth: {
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        detectSessionInUrl: false,
+                        storageKey: 'gnc_supabase_auth_v1',
+                        experimental: { passkey: true }
+                    },
                     realtime: { params: { eventsPerSecond: 8 } }
                 });
                 return supabaseClient;
@@ -8913,6 +8942,244 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             const client = getSupabaseBrowserClient();
             if (!client || !client.storage) throw new Error(errorMessage);
             return client.storage;
+        }
+
+        function normalizeNativeAuthAlias(username = '') {
+            const localPart = String(username || '').trim().toLowerCase()
+                .replace(/[^a-z0-9._-]+/g, '-')
+                .replace(/^[.-]+|[.-]+$/g, '');
+            return localPart ? `${localPart}@${NATIVE_AUTH_ALIAS_DOMAIN}` : '';
+        }
+
+        async function getNativeAuthSession() {
+            if (!NATIVE_AUTH_ENABLED) return null;
+            const client = getSupabaseBrowserClient();
+            if (!client || !client.auth) return null;
+            const { data, error } = await client.auth.getSession();
+            if (error || !data || !data.session) {
+                nativeAuthSessionActive = false;
+                nativeAuthAccessToken = '';
+                return null;
+            }
+            nativeAuthSessionActive = true;
+            nativeAuthAccessToken = String(data.session.access_token || '').trim();
+            return data.session;
+        }
+
+        async function getNativeAuthRequestHeaders() {
+            const session = await getNativeAuthSession();
+            if (!session || !nativeAuthAccessToken) return null;
+            return {
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${nativeAuthAccessToken}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        function readCachedNativeAuthProfile(userId = '') {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(NATIVE_AUTH_PROFILE_CACHE_KEY) || 'null');
+                if (!parsed || String(parsed.id || '') !== String(userId || '')) return null;
+                return parsed;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function cacheNativeAuthProfile(profile = null) {
+            if (!profile || !profile.id) return false;
+            try {
+                localStorage.setItem(NATIVE_AUTH_PROFILE_CACHE_KEY, JSON.stringify({
+                    id: profile.id,
+                    legacy_user_id: profile.legacy_user_id || null,
+                    username: profile.username,
+                    display_name: profile.display_name || profile.username,
+                    role: profile.role || 'User',
+                    division: profile.division || '10',
+                    language: profile.language || 'English',
+                    must_change_password: profile.must_change_password === true,
+                    passkey_pilot: profile.passkey_pilot === true,
+                    cached_at: new Date().toISOString()
+                }));
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function clearCachedNativeAuthProfile() {
+            try { localStorage.removeItem(NATIVE_AUTH_PROFILE_CACHE_KEY); } catch (error) {}
+        }
+
+        async function loadNativeAuthProfile(force = false) {
+            if (nativeAuthProfile && !force) return nativeAuthProfile;
+            const client = getSupabaseBrowserClient();
+            const session = await getNativeAuthSession();
+            if (!client || !session || !session.user) return null;
+            if (navigator.onLine === false) {
+                const cachedProfile = readCachedNativeAuthProfile(session.user.id);
+                if (cachedProfile) {
+                    nativeAuthProfile = cachedProfile;
+                    syncPasskeyPilotUi(cachedProfile);
+                }
+                return cachedProfile;
+            }
+            const { data, error } = await client.from('profiles')
+                .select('id,legacy_user_id,username,display_name,role,division,language,disabled_at,locked_until,must_change_password,passkey_pilot')
+                .eq('id', session.user.id)
+                .maybeSingle();
+            if (error || !data || data.disabled_at) return null;
+            if (data.locked_until && new Date(data.locked_until).getTime() > Date.now()) return null;
+            nativeAuthProfile = data;
+            cacheNativeAuthProfile(data);
+            syncPasskeyPilotUi(data);
+            return data;
+        }
+
+        async function tryNativeAuthPasswordLogin(username = '', password = '') {
+            if (!NATIVE_AUTH_ENABLED || navigator.onLine === false) return null;
+            const client = getSupabaseBrowserClient();
+            const email = normalizeNativeAuthAlias(username);
+            if (!client || !email || !password) return null;
+            const { data, error } = await client.auth.signInWithPassword({ email, password: String(password) });
+            if (error || !data || !data.session) return null;
+            nativeAuthSessionActive = true;
+            nativeAuthAccessToken = String(data.session.access_token || '').trim();
+            nativeAuthProfile = null;
+            const profile = await loadNativeAuthProfile(true);
+            if (!profile) {
+                await client.auth.signOut().catch(() => {});
+                nativeAuthSessionActive = false;
+                nativeAuthAccessToken = '';
+                clearCachedNativeAuthProfile();
+                return null;
+            }
+            return {
+                session: data.session,
+                profile,
+                user: {
+                    username: profile.username,
+                    displayName: profile.display_name || profile.username,
+                    role: profile.role || 'User',
+                    division: profile.division || '10',
+                    language: profile.language || 'English'
+                },
+                mustChangePassword: profile.must_change_password === true
+            };
+        }
+
+        function syncPasskeyPilotUi(profile = nativeAuthProfile) {
+            const supported = !!(window.PublicKeyCredential && navigator.credentials);
+            const eligible = supported && !!(profile && profile.passkey_pilot === true);
+            const settings = document.getElementById('ops-passkey-settings');
+            if (settings) settings.classList.toggle('hidden', !eligible);
+            const loginButton = document.getElementById('login-passkey-button');
+            let enrolled = false;
+            try { enrolled = localStorage.getItem(PASSKEY_ENROLLED_STORAGE_KEY) === '1'; } catch (error) {}
+            if (loginButton) loginButton.classList.toggle('hidden', !(supported && enrolled));
+            return eligible;
+        }
+
+        async function signInWithAppPasskey(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            const client = getSupabaseBrowserClient();
+            if (!client || !client.auth || !client.auth.signInWithPasskey) return false;
+            try {
+                const { data, error } = await client.auth.signInWithPasskey();
+                if (error || !data || !data.session) throw error || new Error('Passkey sign-in failed.');
+                nativeAuthSessionActive = true;
+                nativeAuthAccessToken = String(data.session.access_token || '').trim();
+                nativeAuthProfile = null;
+                const profile = await loadNativeAuthProfile(true);
+                if (!profile) throw new Error('This account is not enabled for passkeys.');
+                currentUser = String(profile.username || '').trim().toLowerCase();
+                currentUserDisplay = String(profile.display_name || profile.username || '').trim();
+                currentRole = String(profile.role || 'User');
+                currentUserDivision = String(profile.division || '10');
+                currentUserLanguage = normalizeAppUserLanguage(profile.language || 'English');
+                safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
+                beginInitialAppLoad('Signing in...');
+                await finalizeLogin(currentUser, '', false, { restoredSession: true, sessionSource: 'native-passkey' });
+                return false;
+            } catch (error) {
+                showToast('Passkey', String(error && error.message || 'Passkey sign-in was cancelled.'), true);
+                return false;
+            }
+        }
+
+        async function registerAppPasskey(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            const client = getSupabaseBrowserClient();
+            const profile = await loadNativeAuthProfile();
+            if (!client || !profile || profile.passkey_pilot !== true || !client.auth.registerPasskey) return false;
+            const { data, error } = await client.auth.registerPasskey();
+            if (error) {
+                showToast('Passkey', error.message || 'Passkey enrollment failed.', true);
+                return false;
+            }
+            const friendlyName = `${profile.display_name || profile.username} device`.slice(0, 120);
+            if (data && data.id && client.auth.passkey && client.auth.passkey.update) {
+                const { error: namingError } = await client.auth.passkey.update({ passkeyId: data.id, friendlyName });
+                if (namingError) console.warn('Passkey registered but could not be named.', namingError);
+            }
+            try { localStorage.setItem(PASSKEY_ENROLLED_STORAGE_KEY, '1'); } catch (storageError) {}
+            syncPasskeyPilotUi(profile);
+            showToast('Passkey', 'Passkey added to this account.');
+            return false;
+        }
+
+        async function manageAppPasskeys(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            const client = getSupabaseBrowserClient();
+            if (!client || !client.auth || !client.auth.passkey || !client.auth.passkey.list) return false;
+            const { data, error } = await client.auth.passkey.list();
+            if (error) {
+                showToast('Passkeys', error.message || 'Could not load passkeys.', true);
+                return false;
+            }
+            const passkeys = Array.isArray(data) ? data : (Array.isArray(data && data.passkeys) ? data.passkeys : []);
+            const note = document.getElementById('ops-passkey-note');
+            if (passkeys.length) {
+                try { localStorage.setItem(PASSKEY_ENROLLED_STORAGE_KEY, '1'); } catch (storageError) {}
+            }
+            if (note) {
+                note.textContent = passkeys.length
+                    ? passkeys.map((passkey, index) => `${index + 1}. ${passkey.friendly_name || 'Passkey'}`).join(' · ')
+                    : 'No passkeys enrolled.';
+            }
+            if (!passkeys.length) {
+                try { localStorage.removeItem(PASSKEY_ENROLLED_STORAGE_KEY); } catch (storageError) {}
+                syncPasskeyPilotUi(nativeAuthProfile);
+                return false;
+            }
+            const selectedValue = window.prompt(`Passkeys\n${passkeys.map((passkey, index) => `${index + 1}. ${passkey.friendly_name || 'Passkey'}`).join('\n')}\n\nEnter a number to rename or revoke, or Cancel to close.`);
+            if (selectedValue === null) return false;
+            const selectedIndex = Number.parseInt(String(selectedValue), 10) - 1;
+            const selectedPasskey = passkeys[selectedIndex];
+            if (!selectedPasskey) {
+                showToast('Passkeys', 'Choose a passkey number from the list.', true);
+                return false;
+            }
+            const action = String(window.prompt('Type RENAME to change its name or REVOKE to remove it.') || '').trim().toUpperCase();
+            if (action === 'RENAME') {
+                const nextName = String(window.prompt('Passkey name', selectedPasskey.friendly_name || 'Passkey') || '').trim().slice(0, 120);
+                if (!nextName) return false;
+                const { error: updateError } = await client.auth.passkey.update({ passkeyId: selectedPasskey.id, friendlyName: nextName });
+                if (updateError) showToast('Passkeys', updateError.message || 'Could not rename passkey.', true);
+                else showToast('Passkeys', 'Passkey renamed.');
+            } else if (action === 'REVOKE') {
+                if (!window.confirm(`Revoke ${selectedPasskey.friendly_name || 'this passkey'}?`)) return false;
+                const { error: deleteError } = await client.auth.passkey.delete({ passkeyId: selectedPasskey.id });
+                if (deleteError) showToast('Passkeys', deleteError.message || 'Could not revoke passkey.', true);
+                else {
+                    if (passkeys.length === 1) {
+                        try { localStorage.removeItem(PASSKEY_ENROLLED_STORAGE_KEY); } catch (storageError) {}
+                    }
+                    syncPasskeyPilotUi(nativeAuthProfile);
+                    showToast('Passkeys', 'Passkey revoked.');
+                }
+            }
+            return false;
         }
 
         function formatPhotoUploadErrorMessage(err = null) {
@@ -9023,6 +9290,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let visibleViewPollTimer = null;
         let activeVisibleViewPollViewId = '';
         let activeVisibleViewPollMs = 0;
+        const realtimeFallbackAttemptsByView = new Map();
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 60000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 180000;
         const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 1000;
@@ -9095,8 +9363,97 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 4096;
-        const PHOTO_JPEG_QUALITY = 0.95;
+        const PHOTO_MAX_WIDTH = 1920;
+        const PHOTO_JPEG_QUALITY = 0.82;
+        const PHOTO_WEBP_QUALITY = 0.82;
+        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081606.js';
+        let photoOptimizerWorker = null;
+        let photoOptimizerRequestId = 0;
+        const photoOptimizerPending = new Map();
+
+        function getPhotoOptimizerWorker() {
+            if (photoOptimizerWorker || typeof Worker !== 'function' || typeof OffscreenCanvas === 'undefined') return photoOptimizerWorker;
+            try {
+                photoOptimizerWorker = new Worker(PHOTO_OPTIMIZER_WORKER_URL);
+                photoOptimizerWorker.onmessage = (event) => {
+                    const payload = event && event.data ? event.data : {};
+                    const pending = photoOptimizerPending.get(Number(payload.id));
+                    if (!pending) return;
+                    photoOptimizerPending.delete(Number(payload.id));
+                    clearTimeout(pending.timeoutId);
+                    if (payload.ok) pending.resolve(payload);
+                    else pending.reject(new Error(String(payload.error || 'Image optimization failed.')));
+                };
+                photoOptimizerWorker.onerror = () => {
+                    photoOptimizerPending.forEach((pending) => {
+                        clearTimeout(pending.timeoutId);
+                        pending.reject(new Error('Image optimization worker failed.'));
+                    });
+                    photoOptimizerPending.clear();
+                    photoOptimizerWorker.terminate();
+                    photoOptimizerWorker = null;
+                };
+            } catch (error) {
+                photoOptimizerWorker = null;
+            }
+            return photoOptimizerWorker;
+        }
+
+        async function optimizePhotoBlobForUpload(blob, fileName = 'photo.jpg') {
+            if (!(blob instanceof Blob) || !String(blob.type || '').toLowerCase().startsWith('image/')) {
+                return { blob, fileName, contentType: String(blob && blob.type || 'application/octet-stream') };
+            }
+            const worker = getPhotoOptimizerWorker();
+            if (!worker) return { blob, fileName, contentType: String(blob.type || 'image/jpeg') };
+            const id = ++photoOptimizerRequestId;
+            try {
+                const result = await new Promise((resolve, reject) => {
+                    const timeoutId = setTimeout(() => {
+                        photoOptimizerPending.delete(id);
+                        reject(new Error('Image optimization timed out.'));
+                    }, 30000);
+                    photoOptimizerPending.set(id, { resolve, reject, timeoutId });
+                    worker.postMessage({ id, blob, fileName });
+                });
+                const extension = String(result.extension || 'webp');
+                return {
+                    blob: result.blob,
+                    fileName: `${String(result.hash || '').slice(0, 64)}.${extension}`,
+                    contentType: String(result.type || result.blob.type || 'image/webp'),
+                    hash: String(result.hash || ''),
+                    width: Number(result.width || 0),
+                    height: Number(result.height || 0)
+                };
+            } catch (error) {
+                console.warn('Photo optimization was unavailable; preserving the original upload.', error);
+                return { blob, fileName, contentType: String(blob.type || 'image/jpeg') };
+            }
+        }
+
+        async function uploadOptimizedBlobToStorage(bucketName, requestedPath, blob, options = {}) {
+            const path = String(requestedPath || '').replace(/^\/+/, '');
+            const slashIndex = path.lastIndexOf('/');
+            const folder = slashIndex >= 0 ? path.slice(0, slashIndex + 1) : '';
+            const requestedName = slashIndex >= 0 ? path.slice(slashIndex + 1) : path;
+            const optimized = await optimizePhotoBlobForUpload(blob, requestedName || 'photo.jpg');
+            const actualPath = `${folder}${optimized.fileName || requestedName}`;
+            const storage = getSupabaseStorageClient();
+            const uploadResult = await withTimeout(storage.from(bucketName).upload(actualPath, optimized.blob || blob, {
+                contentType: optimized.contentType || options.contentType || blob.type || 'application/octet-stream',
+                cacheControl: String(options.cacheControl || '31536000'),
+                upsert: false
+            }), Math.max(1000, Number(options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS), String(options.label || 'Photo upload'));
+            const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+            if (uploadError && !/already exists|duplicate/i.test(String(uploadError.message || ''))) throw uploadError;
+            const { data: publicUrlData } = storage.from(bucketName).getPublicUrl(actualPath);
+            return {
+                publicUrl: String(publicUrlData && publicUrlData.publicUrl || '').trim(),
+                filePath: actualPath,
+                fileName: String(optimized.fileName || requestedName),
+                contentType: String(optimized.contentType || options.contentType || blob.type || ''),
+                sha256: String(optimized.hash || '')
+            };
+        }
         const PHOTO_ORIGINAL_UPLOAD_MAX_BYTES = 24 * 1024 * 1024;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 350;
         const PHOTO_MASTER_PERSIST_DEBOUNCE_MS = 450;
@@ -11355,18 +11712,20 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function shouldUseDirectTableRealtimeForView(viewId = '') {
             const safeViewId = resolveRealtimeContextViewId(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+            if (!APP_LIVE_EVENTS_ENABLED) return true;
             if (!isQuotaSafeRealtimeMode()) return true;
             return QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS.has(safeViewId);
         }
 
         function shouldUseAppLiveEventsRealtime(viewId = '') {
+            if (!APP_LIVE_EVENTS_ENABLED) return false;
             if (!isQuotaSafeRealtimeMode()) return false;
             const safeViewId = resolveRealtimeContextViewId(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
             return !['chat', 'communication', 'department-calendar'].includes(safeViewId);
         }
 
         function shouldWriteAppLiveEvents() {
-            return isQuotaSafeRealtimeMode();
+            return APP_LIVE_EVENTS_ENABLED && isQuotaSafeRealtimeMode();
         }
 
         function getLiveSyncPollIntervalMs(pollMs = 0) {
@@ -11413,10 +11772,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const directRealtimeTables = shouldUseDirectTableRealtimeForView(resolvedViewId)
                 ? normalizeRealtimeTableList([...(policy.realtimeTables || []), ...alwaysOnRealtimeTables])
                 : [];
+            const hasRealtimeSource = directRealtimeTables.length > 0 || shouldUseAppLiveEventsRealtime(resolvedViewId);
             return {
                 viewId: resolvedViewId,
                 realtimeTables: directRealtimeTables,
-                pollMs: getLiveSyncPollIntervalMs(policy.pollMs)
+                // Views without an event source refresh on entry, reconnect,
+                // visibility restore, or manual sync; they never background-poll.
+                pollMs: hasRealtimeSource ? getLiveSyncPollIntervalMs(policy.pollMs) : 0
             };
         }
 
@@ -11435,8 +11797,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function hasHealthyCoreRealtimeSubscriptions(viewId = '') {
             const policy = getLiveSyncPolicy(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
-            if (!policy.realtimeTables.length) return shouldUseAppLiveEventsRealtime(policy.viewId) && hasHealthyAppLiveEventsRealtime();
-            return hasHealthyRealtimeSubscriptions(policy.realtimeTables);
+            const requiredTables = getRealtimeSubscriptionTablesForView(policy.viewId);
+            if (!requiredTables.length) return false;
+            return hasHealthyRealtimeSubscriptions(requiredTables);
         }
 
         function hasHealthyBackgroundChatRealtime() {
@@ -12851,14 +13214,23 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return getStickyRailOffsetPx(searchEl);
         }
 
-        function getFixedFilterRailTopPx(sourceEl) {
+        function getModuleFilterGapPx(railEl) {
+            if (!railEl || !railEl.classList || !railEl.classList.contains('ops-module-filter-band')) return 0;
+            const styleTarget = document.body || document.documentElement;
+            if (!styleTarget || typeof window.getComputedStyle !== 'function') return 0;
+            const rawGap = parseFloat(window.getComputedStyle(styleTarget).getPropertyValue('--ops-module-search-filter-gap')) || 0;
+            return Math.max(0, Math.min(120, Math.ceil(rawGap)));
+        }
+
+        function getFixedFilterRailTopPx(sourceEl, railEl = null) {
+            const moduleGap = getModuleFilterGapPx(railEl);
             if (isIosFixedTopChromeActive()) {
                 const root = document.documentElement;
                 const measuredTop = parseFloat((root && getComputedStyle(root).getPropertyValue('--app-top-chrome-height')) || '0') || 0;
-                if (measuredTop > 0) return Math.ceil(measuredTop);
+                if (measuredTop > 0) return Math.ceil(measuredTop) + moduleGap;
                 const topChrome = document.getElementById('app-top-chrome');
                 if (topChrome && topChrome.getClientRects && topChrome.getClientRects().length) {
-                    return Math.max(0, Math.ceil(topChrome.getBoundingClientRect().bottom || topChrome.offsetHeight || 0));
+                    return Math.max(0, Math.ceil(topChrome.getBoundingClientRect().bottom || topChrome.offsetHeight || 0)) + moduleGap;
                 }
             }
             if (!isStickyOffsetSourceVisible(sourceEl)) return 0;
@@ -12871,8 +13243,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const headerBottom = Math.max(0, Math.ceil((headerRect && headerRect.bottom) || rect.top || 0));
             const sourceHeight = Math.max(0, Math.ceil(rect.height || sourceEl.offsetHeight || 0));
             const flowBottom = headerBottom + sourceHeight;
-            if (flowBottom > 0 && rawBottom > flowBottom + 12) return flowBottom;
-            return rawBottom;
+            if (flowBottom > 0 && rawBottom > flowBottom + 12) return flowBottom + moduleGap;
+            return rawBottom + moduleGap;
         }
 
         function markPassiveChromeSyncWindow(durationMs = 1400) {
@@ -13059,10 +13431,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 releaseFixedFilterRail(rail);
                 return;
             }
-            const top = getFixedFilterRailTopPx(globalSearchRow);
+            const top = getFixedFilterRailTopPx(globalSearchRow, rail);
             applyFixedFilterRailInlineStyle(rail, top);
             const height = Math.ceil(rail.getBoundingClientRect().height || rail.offsetHeight || 0);
-            const space = `${Math.max(0, height + (isIosFixedTopChromeActive() ? 8 : 12))}px`;
+            const space = `${Math.max(0, getModuleFilterGapPx(rail) + height + (isIosFixedTopChromeActive() ? 8 : 12))}px`;
             rail.style.setProperty('--fixed-filter-space', space);
             if (spacer) applyFixedFilterSpacerInlineStyle(spacer, space);
             if (rail.querySelector && rail.querySelector('.excel-filter-panel:not(.hidden)')) {
@@ -13098,7 +13470,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     const railVisible = !!(rail && rail.getClientRects && rail.getClientRects().length && !rail.classList.contains('hidden'));
                     const sourceVisible = isStickyOffsetSourceVisible(source);
                     const offset = railVisible ? getScrollerStickyRailOffsetPx(source) : 0;
-                    const fixedTop = railVisible ? getFixedFilterRailTopPx(source) : 0;
+                    const fixedTop = railVisible ? getFixedFilterRailTopPx(source, rail) : 0;
                     const railHeight = railVisible ? Math.ceil(rail.getBoundingClientRect().height || rail.offsetHeight || 0) : 0;
                     return `${key}:${railVisible ? '1' : '0'}:${sourceVisible ? '1' : '0'}:${offset}:${fixedTop}:${railHeight}`;
                 })
@@ -13132,10 +13504,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 return;
             }
             const globalSearchRow = document.getElementById('global-header-search-row');
-            const top = getFixedFilterRailTopPx(globalSearchRow);
+            const top = getFixedFilterRailTopPx(globalSearchRow, rail);
             rail.style.setProperty('--av-filter-fixed-top', `${top}px`);
             const height = Math.ceil(rail.getBoundingClientRect().height || rail.offsetHeight || 0);
-            view.style.setProperty('--av-filter-fixed-space', `${Math.max(0, height + 12)}px`);
+            view.style.setProperty('--av-filter-fixed-space', `${Math.max(0, getModuleFilterGapPx(rail) + height + 12)}px`);
         }
 
         function syncTaskFixedFilterToolbar() {
@@ -20531,6 +20903,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 updateSyncDiagnostics('manual-sync');
                 return;
             }
+            if (policy.realtimeTables.length && hasHealthyCoreRealtimeSubscriptions(policy.viewId)) {
+                realtimeFallbackAttemptsByView.delete(policy.viewId);
+                clearVisibleViewPollSync();
+                liveSyncMode = 'realtime';
+                updateSyncDiagnostics('realtime');
+                return;
+            }
             if (backgroundRefreshInFlight || shouldDeferInteractiveBackgroundWork()) {
                 const deferDelay = policy.viewId === 'chat'
                     ? Math.min(Math.max(900, Number(policy.pollMs) || 2000), 2000)
@@ -20571,7 +20950,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }
             } catch (error) {
             } finally {
-                syncVisibleViewPoll(policy.viewId);
+                const previousAttempt = Number(realtimeFallbackAttemptsByView.get(policy.viewId) || 0);
+                realtimeFallbackAttemptsByView.set(policy.viewId, Math.min(previousAttempt + 1, 8));
+                syncVisibleViewPoll(policy.viewId, { fallback: true });
             }
         }
 
@@ -20595,21 +20976,28 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }
                 return;
             }
+            const realtimeHealthy = policy.realtimeTables.length ? hasHealthyCoreRealtimeSubscriptions(policy.viewId) : false;
+            if (realtimeHealthy) {
+                realtimeFallbackAttemptsByView.delete(policy.viewId);
+                clearVisibleViewPollSync();
+                liveSyncMode = 'realtime';
+                updateSyncDiagnostics('realtime');
+                return;
+            }
             if (!policy.realtimeTables.length || !hasHealthyCoreRealtimeSubscriptions(policy.viewId)) {
                 liveSyncMode = navigator.onLine === false ? 'offline' : 'polling';
                 updateSyncDiagnostics(liveSyncMode);
             }
             const baseDelay = Number(options && options.delay !== undefined ? options.delay : policy.pollMs) || policy.pollMs;
-            const realtimeHealthy = policy.realtimeTables.length ? hasHealthyCoreRealtimeSubscriptions(policy.viewId) : false;
-            const healthyRealtimeDelay = isQuotaSafeRealtimeMode()
-                ? (policy.viewId === 'chat'
-                    ? Math.max(baseDelay, QUOTA_SAFE_CHAT_HEALTHY_POLL_MS)
-                    : (policy.viewId === 'request' ? Math.max(baseDelay, REQUEST_VISIBLE_POLL_MS) : Math.max(baseDelay, QUOTA_SAFE_HEALTHY_REALTIME_POLL_MS)))
-                : (policy.viewId === 'chat'
-                    ? Math.max(baseDelay, 15000)
-                    : (policy.viewId === 'request' ? Math.max(baseDelay, REQUEST_VISIBLE_POLL_MS) : Math.max(baseDelay, 30000)));
             const minimumPollDelay = policy.viewId === 'request' ? REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS : 1200;
-            const nextDelay = Math.max(minimumPollDelay, realtimeHealthy ? healthyRealtimeDelay : baseDelay);
+            const attempt = Math.max(0, Number(realtimeFallbackAttemptsByView.get(policy.viewId) || 0));
+            const exponentialDelay = Math.min(REALTIME_FALLBACK_MAX_MS, REALTIME_FALLBACK_BASE_MS * (2 ** attempt));
+            const nextDelay = Math.max(
+                minimumPollDelay,
+                options && options.fallback
+                    ? exponentialDelay
+                    : Math.max(REALTIME_FALLBACK_BASE_MS, Math.min(baseDelay, REALTIME_FALLBACK_MAX_MS))
+            );
             visibleViewPollTimer = setTimeout(() => {
                 visibleViewPollTimer = null;
                 runVisibleViewPollSync(policy.viewId).catch(() => {});
@@ -20811,12 +21199,18 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 createRealtimeChannel(tableName);
             });
         }
-        function performLogout() {
+        async function performLogout() {
             cleanupRealtime();
             clearChatBackgroundPoll();
             clearManualSyncStatusPoll();
             manualSyncStatusState = null;
             setExplicitLogoutMarker();
+            const client = getSupabaseBrowserClient();
+            if (client && client.auth) await client.auth.signOut().catch(() => {});
+            nativeAuthSessionActive = false;
+            nativeAuthAccessToken = '';
+            nativeAuthProfile = null;
+            clearCachedNativeAuthProfile();
             clearPersistedLoginSession();
             sessionStorage.clear();
             location.reload();
@@ -24502,6 +24896,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         async function ensureAppApiWriteProxySession() {
             if (getCurrentAppSessionToken()) return true;
+            const nativeSession = await getNativeAuthSession().catch(() => null);
+            if (nativeSession && nativeSession.access_token) return true;
             if (typeof ensureLeafAssistantSession !== 'function') return false;
             if (window.__gncAppApiSessionBootstrapPromise) {
                 const existingResult = await window.__gncAppApiSessionBootstrapPromise.catch(() => null);
@@ -24539,7 +24935,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     body: safeMethod === 'GET' ? null : (body === undefined ? null : body)
                 }, {
                     timeoutMs,
-                    label: `${safeTable} ${safeMethod} secure database request`
+                    label: `${safeTable} ${safeMethod} secure database request`,
+                    idempotencyKey: String(requestOptions && requestOptions.idempotencyKey || '').trim()
                 });
             } catch (error) {
                 if (requestOptions && requestOptions.retryAfterPasswordRecovery === false) throw error;
@@ -24562,83 +24959,144 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : {};
         }
 
+        async function runWithFullJitter(operation, maxRetries = 3, baseDelayMs = 500, capDelayMs = 8000) {
+            let lastError = null;
+            for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+                try {
+                    return await operation(attempt);
+                } catch (error) {
+                    lastError = error;
+                    if (attempt >= maxRetries || navigator.onLine === false || (error && error.name === 'AbortError')) throw error;
+                    const ceiling = Math.min(capDelayMs, baseDelayMs * (2 ** attempt));
+                    await delayMs(Math.floor(Math.random() * Math.max(1, ceiling)));
+                }
+            }
+            throw lastError;
+        }
+
+        function getNativeDirectoryRolesFromQuery(query = '') {
+            const match = String(query || '').match(/(?:^|&)role=in\.\(([^)]*)\)/i);
+            if (!match || !match[1]) return null;
+            const roles = match[1].split(',')
+                .map((value) => decodeURIComponent(String(value || '').trim()).replace(/^['"]|['"]$/g, ''))
+                .filter(Boolean);
+            return roles.length ? [...new Set(roles)] : null;
+        }
+
+        async function fetchNativeAppUserDirectory(nativeHeaders, query = '', timeoutMs = SUPABASE_READ_TIMEOUT_MS) {
+            const response = await runWithFullJitter(async (attempt) => {
+                return await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/get_app_user_directory`, {
+                    method: 'POST',
+                    headers: {
+                        ...nativeHeaders,
+                        'Cache-Control': 'private, no-store',
+                        'x-retry-count': String(attempt)
+                    },
+                    body: JSON.stringify({ requested_roles: getNativeDirectoryRolesFromQuery(query) })
+                }, timeoutMs, 'App user directory read');
+            }, 3, 500, 8000);
+            if (!response.ok) throw new Error(await getResponseError(response, `App user directory read failed (${response.status})`));
+            const text = await response.text();
+            return text ? JSON.parse(text) : [];
+        }
+
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             table = normalizeAppTableName(table);
             const safeMethod = String(method || 'GET').trim().toUpperCase() || 'GET';
-            if (isRetiredSupabaseRuntimeTable(table)) {
-                return safeMethod === 'GET' ? [] : {};
-            }
-            if(safeMethod==='GET'){
+            if (isRetiredSupabaseRuntimeTable(table)) return safeMethod === 'GET' ? [] : {};
+            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+
+            if (safeMethod === 'GET') {
                 const readKey = `legacy:${String(table || '').trim()}:${String(query || '').trim()}`;
                 try {
                     return await runDedupeSupabaseRead(readKey, async () => {
                         startGlobalProgress();
                         try {
                             const readTimeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
-                            let allData=[]; let offset=0; const limit=1000; let hasMore=true;
-                            try {
-                                while(hasMore){
-                                    let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                                    const data = await runAppApiSupabaseWrite(table, 'GET', null, queryString, { timeoutMs: readTimeoutMs });
-                                    if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=data.length; if(data.length<limit) hasMore=false; }
-                                    else { hasMore=false; }
-                                }
-                                return allData;
-                            } catch (secureReadError) {
-                                if (!SUPABASE_KEY) throw secureReadError;
+                            if (nativeHeaders && table === 'ph_app_users') {
+                                return await fetchNativeAppUserDirectory(nativeHeaders, query, readTimeoutMs);
                             }
-                            allData=[]; offset=0; hasMore=true;
-                    while(hasMore){
-                        let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                        const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                        const response=await fetchWithTimeout(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}}, readTimeoutMs, `${table} read`);
-                        if(!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                        const text=await response.text(); const data=text?JSON.parse(text):[];
-                        if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=data.length; if(data.length<limit) hasMore=false; }
-                        else { hasMore=false; }
-                    }
+                            const limit = 1000;
+                            let allData = [];
+                            let offset = 0;
+                            let hasMore = true;
+                            while (hasMore) {
+                                const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
+                                let data = null;
+                                if (nativeHeaders) {
+                                    data = await runWithFullJitter(async (attempt) => {
+                                        const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                                        const response = await fetchWithTimeout(url, {
+                                            method: 'GET',
+                                            headers: { ...nativeHeaders, 'x-retry-count': String(attempt) }
+                                        }, readTimeoutMs, `${table} read`);
+                                        if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                                        const text = await response.text();
+                                        return text ? JSON.parse(text) : [];
+                                    }, 3, 500, 8000);
+                                } else {
+                                    data = await runAppApiSupabaseWrite(table, 'GET', null, queryString, { timeoutMs: readTimeoutMs });
+                                }
+                                if (Array.isArray(data) && data.length > 0) {
+                                    allData = allData.concat(data);
+                                    offset += data.length;
+                                    if (data.length < limit) hasMore = false;
+                                } else {
+                                    hasMore = false;
+                                }
+                            }
                             return allData;
                         } finally {
                             stopGlobalProgress();
                         }
                     });
-                } catch(e){
+                } catch (error) {
+                    console.warn(`Supabase read failed for ${table}.`, error);
                     return [];
                 }
             }
+
             startGlobalProgress();
             try {
-                    const writeTimeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
-                    let liveEventBody = body;
-                    let normalizedBody = body;
-                    const hasWriteBody = body !== null && body !== undefined;
-                    if(hasWriteBody){ normalizedBody = normalizeSupabaseWriteBodyForTable(table, safeMethod, body); liveEventBody = normalizedBody; }
-                    if (shouldRouteSupabaseWriteThroughAppApi(table, safeMethod, requestOptions)) {
-                        try {
-                            const result = await runAppApiSupabaseWrite(table, safeMethod, normalizedBody, query, { timeoutMs: writeTimeoutMs });
-                            queueAppLiveEventForWrite(table, safeMethod, liveEventBody, query);
-                            return result;
-                        } catch (proxyError) {
-                            if (isPasswordChangeRequiredError(proxyError)) throw proxyError;
-                            markAppApiWriteProxyUnavailable(proxyError);
-                            if (!shouldUseDirectSupabaseWriteFallback(proxyError, requestOptions)) throw proxyError;
-                        }
+                const writeTimeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
+                let liveEventBody = body;
+                let normalizedBody = body;
+                const hasWriteBody = body !== null && body !== undefined;
+                if (hasWriteBody) {
+                    normalizedBody = normalizeSupabaseWriteBodyForTable(table, safeMethod, body);
+                    liveEventBody = normalizedBody;
+                }
+                if (!nativeHeaders && shouldRouteSupabaseWriteThroughAppApi(table, safeMethod, requestOptions)) {
+                    try {
+                        const result = await runAppApiSupabaseWrite(table, safeMethod, normalizedBody, query, { timeoutMs: writeTimeoutMs });
+                        queueAppLiveEventForWrite(table, safeMethod, liveEventBody, query);
+                        return result;
+                    } catch (proxyError) {
+                        if (isPasswordChangeRequiredError(proxyError)) throw proxyError;
+                        markAppApiWriteProxyUnavailable(proxyError);
+                        if (!shouldUseDirectSupabaseWriteFallback(proxyError, requestOptions)) throw proxyError;
                     }
-                    if (!SUPABASE_KEY) throw new Error('Direct Supabase write fallback is disabled.');
-                    const options={method:safeMethod,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
-                    if(safeMethod==='POST') options.headers['Prefer']=table==='ph_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
-                    else if(safeMethod==='PATCH' || safeMethod==='DELETE') options.headers['Prefer']='return=minimal';
-                    else options.headers['Prefer']='return=representation';
-                    if(hasWriteBody){ options.body=JSON.stringify(normalizedBody); }
-                    const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options,writeTimeoutMs, `${table} ${safeMethod}`);
-                    if(!response.ok) throw new Error(await getResponseError(response, `Supabase write failed (${response.status})`));
-                    const text=await response.text();
-                    const result = text?JSON.parse(text):{};
-                    queueAppLiveEventForWrite(table, safeMethod, liveEventBody, query);
-                    return result;
-            } catch(e){
-                throw e;
-            } finally { stopGlobalProgress(); }
+                }
+                if (!SUPABASE_KEY) throw new Error('Direct Supabase write fallback is disabled.');
+                const options = {
+                    method: safeMethod,
+                    headers: nativeHeaders || { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
+                };
+                const idempotencyKey = String(requestOptions && requestOptions.idempotencyKey || '').trim();
+                if (idempotencyKey) options.headers['Idempotency-Key'] = idempotencyKey.slice(0, 180);
+                if (safeMethod === 'POST') options.headers.Prefer = table === 'ph_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
+                else if (safeMethod === 'PATCH' || safeMethod === 'DELETE') options.headers.Prefer = 'return=minimal';
+                else options.headers.Prefer = 'return=representation';
+                if (hasWriteBody) options.body = JSON.stringify(normalizedBody);
+                const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query ? '?' + query : ''}`, options, writeTimeoutMs, `${table} ${safeMethod}`);
+                if (!response.ok) throw new Error(await getResponseError(response, `Supabase write failed (${response.status})`));
+                const text = await response.text();
+                const result = text ? JSON.parse(text) : {};
+                queueAppLiveEventForWrite(table, safeMethod, liveEventBody, query);
+                return result;
+            } finally {
+                stopGlobalProgress();
+            }
         }
 
         async function runDetailWriteWithRetry(table, method, body, query, options = {}) {
@@ -24648,7 +25106,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (writeMethod && writeMethod !== 'GET' && ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', String(FLYER_FOLDER_ROWS_TABLE || '').trim().toLowerCase()].includes(writeTable)) {
                 markLocalRowSaveRefreshQuiet(`write:${writeTable}`);
             }
-            const retries = Math.max(0, Number(opts.retries) || 0);
+            const retryAuthorized = !!(String(opts.idempotencyKey || '').trim() || opts.offlineQueueRecord === true);
+            const retries = retryAuthorized ? Math.max(0, Number(opts.retries) || 0) : 0;
             const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
             const retryDelayMs = Math.max(120, Number(opts.retryDelayMs) || DETAIL_ROW_WRITE_RETRY_DELAY_MS);
             let lastError = null;
@@ -24658,7 +25117,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 } catch (error) {
                     lastError = error;
                     if (attempt >= retries || !isRetryableSupabaseWriteError(error)) throw error;
-                    await delayMs(retryDelayMs);
+                    const ceiling = Math.min(8000, retryDelayMs * (2 ** attempt));
+                    await delayMs(Math.floor(Math.random() * Math.max(1, ceiling)));
                 }
             }
             throw lastError;
@@ -26151,6 +26611,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 headers['apikey'] = SUPABASE_KEY;
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
+            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (nativeHeaders && nativeHeaders.Authorization) headers['Authorization'] = nativeHeaders.Authorization;
+            const idempotencyKey = String(safeOptions.idempotencyKey || '').trim();
+            if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey.slice(0, 180);
             const sessionToken = getCurrentAppSessionToken();
             if (safeOptions.includeSession !== false && sessionToken) headers['x-gnc-session'] = sessionToken;
             const response = await fetchWithTimeout(url, {
@@ -26190,7 +26654,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const pilot = window.__gncOpsPilot;
             if (!pilot || typeof pilot.initialize !== 'function') return Promise.resolve(false);
             if (!currentUser || navigator.onLine === false) return Promise.resolve(false);
-            const sessionToken = getCurrentAppSessionToken();
+            const sessionToken = getCurrentAppSessionToken() || nativeAuthAccessToken;
             if (!sessionToken) return Promise.resolve(false);
             if (opsPilotInitializationPromise) return opsPilotInitializationPromise;
             if (opsPilotInitializedSessionToken === sessionToken && typeof pilot.getState === 'function') {
@@ -26301,6 +26765,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 headers['apikey'] = SUPABASE_KEY;
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
+            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (nativeHeaders && nativeHeaders.Authorization) headers['Authorization'] = nativeHeaders.Authorization;
             const sessionToken = getCurrentAppSessionToken();
             if (safeOptions.includeSession !== false && sessionToken) headers['x-gnc-session'] = sessionToken;
             const response = await fetchWithTimeout(url, {
@@ -26330,7 +26796,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             const hasSession = await ensureAppApiWriteProxySession();
             if (!hasSession) throw new Error('App session unavailable for secure photo upload.');
-            const safeFileName = String(fileName || 'photo.jpg').trim() || 'photo.jpg';
+            const optimized = await optimizePhotoBlobForUpload(blob, fileName);
+            blob = optimized.blob || blob;
+            contentType = optimized.contentType || contentType;
+            const safeFileName = String(optimized.fileName || fileName || 'photo.jpg').trim() || 'photo.jpg';
             const formData = new FormData();
             formData.append('prefix', String(prefix || 'default').trim() || 'default');
             formData.append('fileName', safeFileName);
@@ -26360,6 +26829,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function ensureLeafAssistantSession(forceRefresh = false) {
+            const nativeSession = await getNativeAuthSession().catch(() => null);
+            if (nativeSession && nativeSession.access_token) {
+                return { ok: true, token: nativeSession.access_token, source: 'native-auth' };
+            }
             if (!forceRefresh) {
                 const existingToken = getCurrentAppSessionToken();
                 if (existingToken) return { ok: true, token: existingToken, source: 'cached-session' };
@@ -27061,6 +27534,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const normalizedDisplayName = String(displayName || username || '').trim();
             const normalizedDivision = String(firstNonEmptyValue(division, '10') || '10').trim() || '10';
             const normalizedLanguage = normalizeAppUserLanguage(language);
+            if (nativeAuthSessionActive) {
+                try {
+                    localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY);
+                    localStorage.removeItem('gnc_pin_v3');
+                } catch (error) {}
+                primeOpsPilotAppearanceForVerifiedUser(normalizedUsername);
+                return !!(normalizedUsername && normalizedRole);
+            }
             if (!normalizedUsername || !normalizedPassword || !normalizedRole) return false;
             try {
                 localStorage.setItem(VERIFIED_LOGIN_STORAGE_KEY, JSON.stringify({
@@ -27338,6 +27819,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
+            const nativeResult = await tryNativeAuthPasswordLogin(normalizedUsername, normalizedPassword).catch(() => null);
             let payload = null;
             let lastError = null;
             for (let attempt = 0; attempt <= LOGIN_FETCH_RETRY_COUNT; attempt += 1) {
@@ -27358,8 +27840,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     await delayMs(LOGIN_FETCH_RETRY_DELAY_MS * (attempt + 1));
                 }
             }
-            if (!payload && lastError) throw lastError;
-            if (!payload || !payload.ok || !payload.user) return { ok: false, reason: (payload && payload.reason) || 'mismatch' };
+            if (!payload && lastError && !nativeResult) throw lastError;
+            if ((!payload || !payload.ok || !payload.user) && !nativeResult) return { ok: false, reason: (payload && payload.reason) || 'mismatch' };
             if (payload.session && payload.session.token) {
                 persistAppSessionRecord({
                     token: payload.session.token,
@@ -27372,10 +27854,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             return {
                 ok: true,
-                user: payload.user,
-                source: 'remote',
-                session: payload.session || null,
-                mustChangePassword: !!(payload.session && payload.session.mustChangePassword === true)
+                user: nativeResult ? nativeResult.user : payload.user,
+                source: nativeResult ? 'native-auth' : 'remote',
+                session: payload && payload.session ? payload.session : null,
+                nativeSession: nativeResult ? nativeResult.session : null,
+                mustChangePassword: nativeResult
+                    ? nativeResult.mustChangePassword === true
+                    : !!(payload && payload.session && payload.session.mustChangePassword === true)
             };
         }
 
@@ -27396,6 +27881,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             try {
                 const normalizedUsername = String(username || '').trim().toLowerCase();
                 const normalizedPassword = String(password || '').trim();
+                if (navigator.onLine !== false) {
+                    try {
+                        const remote = await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
+                        if (remote && remote.ok) return remote;
+                        if (remote && remote.reason === 'mismatch') return remote;
+                    } catch (error) {
+                        console.warn('Remote login unavailable; checking the verified offline session.', error);
+                    }
+                }
                 const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
                 if (cachedUser) {
                     scheduleLoginCachePrefetch(cachedUser);
@@ -27409,11 +27903,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (navigator.onLine === false) {
                     return { ok: false, reason: 'network', error: new Error('No network connection.') };
                 }
-                try {
-                    return await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
-                } catch (error) {
-                    return { ok: false, reason: 'network', error: error };
-                }
+                return { ok: false, reason: 'network', error: new Error('Login service unavailable.') };
             } catch (e) {
                 return { ok: false, reason: 'network', error: e };
             } finally {
@@ -27752,7 +28242,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let salesCreditRequestsInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
-let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatMessageSendInFlight=false; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
+let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatMessageSendInFlight=false; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let chatBackgroundPollAttempt=0; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let salesCreditRequestsById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let warehouseAssignedItemsByLookupKey=new Map(); let warehouseAssignedItemMatchCache=new WeakMap(); let warehouseAssignedItemIndexCacheKey=''; let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
         let activeGrowerScoutTab='note'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
@@ -28986,6 +29476,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 await runDetailWriteWithRetry(AV_OPTION_EVAL_REQUESTS_TABLE, 'PATCH', payload, `id=eq.${encodeURIComponent(id)}`, {
                     timeoutMs: Math.max(90000, SUPABASE_WRITE_TIMEOUT_MS),
                     retries: 1,
+                    idempotencyKey: `av-option-eval:${id}`,
                     noDirectSupabaseFallback: true
                 });
                 Object.assign(row, payload, { updated_at: new Date().toISOString() });
@@ -29165,7 +29656,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 for (const nextPayload of payloads) {
                     await runDetailWriteWithRetry(AV_OPTION_EVAL_REQUESTS_TABLE, 'POST', nextPayload, '', {
                         timeoutMs: Math.max(30000, SUPABASE_WRITE_TIMEOUT_MS),
-                        retries: 1,
+                        retries: 0,
                         noDirectSupabaseFallback: true
                     });
                     queueAppLiveEventForWrite(AV_OPTION_EVAL_REQUESTS_TABLE, 'POST', nextPayload, '');
@@ -29276,7 +29767,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.05').trim() || 'V2026.08.16.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.06').trim() || 'V2026.08.16.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30691,6 +31182,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const shellUpdated = await ensureCurrentShellBuild();
                 if (shellUpdated) return;
                 resetLoginUiState();
+                const nativeSessionRestored = await restoreNativeAuthSessionOnStartup();
+                if (nativeSessionRestored) return;
                 primeSavedLoginUiOnStartup();
             } catch (err) {
                 console.error('Startup failed', err);
@@ -31748,19 +32241,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     appApiPhotoUploadFallbackWarningShown = true;
                     console.warn('Secure credit photo upload proxy unavailable; using direct Storage fallback.', secureUploadError);
                 }
-                const uploadResult = await withTimeout(
-                    fallbackStorageClient.storage.from(bucketName).upload(filePath, file, {
-                        contentType,
-                        cacheControl: '31536000',
-                        upsert: true
-                    }),
-                    SUPABASE_UPLOAD_TIMEOUT_MS,
-                    'Credit photo upload'
-                );
-                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                if (uploadError) throw uploadError;
-                const { data: publicUrlData } = fallbackStorageClient.storage.from(bucketName).getPublicUrl(filePath);
-                publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
+                const directUpload = await uploadOptimizedBlobToStorage(bucketName, filePath, file, { contentType, label: 'Credit photo upload' });
+                filePath = directUpload.filePath;
+                publicUrl = directUpload.publicUrl;
             }
             if (!publicUrl) throw new Error('Credit photo upload did not return a public URL.');
             return { publicUrl, fileName, bucketName, filePath };
@@ -38280,7 +38763,8 @@ let avTopControlsRenderToken = 0;
             await runDetailWriteWithRetry(INVENTORY_EDIT_REQUESTS_TABLE, 'POST', payloads, 'on_conflict=id', {
                 timeoutMs: SUPABASE_WRITE_TIMEOUT_MS,
                 retries: 1,
-                retryDelayMs: 500
+                retryDelayMs: 500,
+                idempotencyKey: `inventory-edit:${payloads.map((payload) => payload.id).filter(Boolean).join(',')}`
             });
             return true;
         }
@@ -38301,7 +38785,7 @@ let avTopControlsRenderToken = 0;
                 payload: payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}
             }, '', {
                 timeoutMs: SUPABASE_WRITE_TIMEOUT_MS,
-                retries: 1,
+                retries: 0,
                 retryDelayMs: 500
             }).catch((error) => console.warn('Inventory edit event write failed', error));
             return true;
@@ -48507,6 +48991,41 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal) modal.classList.add('hidden');
             return false;
         }
+        async function restoreNativeAuthSessionOnStartup() {
+            if (hasExplicitLogoutMarker() || !NATIVE_AUTH_ENABLED) return false;
+            const profile = await loadNativeAuthProfile(true).catch(() => null);
+            if (!profile) return false;
+            const loginInputs = document.getElementById('login-inputs');
+            const spinner = document.getElementById('loading-spinner');
+            if (loginInputs) loginInputs.classList.add('hidden');
+            if (spinner) spinner.classList.remove('hidden');
+            beginInitialAppLoad('Restoring your workspace...');
+            scheduleLoginStartupWatchdog('native-session-restore');
+            currentUser = String(profile.username || '').trim().toLowerCase();
+            currentUserDisplay = String(profile.display_name || profile.username || '').trim();
+            currentRole = String(profile.role || 'User');
+            currentUserDivision = String(profile.division || '10');
+            currentUserLanguage = normalizeAppUserLanguage(profile.language || 'English');
+            safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
+            if (profile.must_change_password === true) {
+                await getSupabaseBrowserClient().auth.signOut().catch(() => {});
+                nativeAuthSessionActive = false;
+                nativeAuthAccessToken = '';
+                clearCachedNativeAuthProfile();
+                resetLoginUiState();
+                return false;
+            }
+            try {
+                await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: 'native-auth' });
+                return true;
+            } catch (error) {
+                finishInitialAppLoad();
+                clearInMemorySessionIdentity();
+                resetLoginUiState();
+                return false;
+            }
+        }
+
         async function restorePersistedSessionOnStartup() {
             const sessionRecord = getPersistedSessionRestoreRecord();
             if (!sessionRecord) return false;
@@ -48635,6 +49154,11 @@ function toggleDriveQuickRequestItem(domId) {
             scheduleLoginStartupWatchdog('password-change');
             try {
                 const oldPassword = String(firstNonEmptyValue(document.getElementById('pin-code') && document.getElementById('pin-code').value, localStorage.getItem('gnc_pin_v3'), '') || '').trim();
+                if (nativeAuthSessionActive) {
+                    const nativeClient = getSupabaseBrowserClient();
+                    const { error: nativePasswordError } = await nativeClient.auth.updateUser({ password: newPass });
+                    if (nativePasswordError) throw nativePasswordError;
+                }
                 if (!getCurrentAppSessionToken()) {
                     const loginResult = await fetchRemoteLoginUser(currentUser, oldPassword);
                     if (!loginResult || !loginResult.ok || !loginResult.session || !loginResult.session.token) {
@@ -49015,12 +49539,17 @@ function toggleDriveQuickRequestItem(domId) {
             setBootingSession(false);
             clearExplicitLogoutMarker();
             localStorage.setItem('gnc_user_v3',user);
-            localStorage.setItem('gnc_pin_v3',pass);
             localStorage.setItem('gnc_role_v3',currentRole);
             localStorage.setItem('gnc_division_v1',currentUserDivision || '10');
             localStorage.setItem('gnc_language_v1',normalizeAppUserLanguage(currentUserLanguage));
             localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
-            persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user, currentUserDivision || '10', currentUserLanguage || 'English');
+            if (nativeAuthSessionActive) {
+                localStorage.removeItem('gnc_pin_v3');
+                localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY);
+            } else {
+                localStorage.setItem('gnc_pin_v3',pass);
+                persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user, currentUserDivision || '10', currentUserLanguage || 'English');
+            }
             applyCurrentUserLanguagePreference();
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             const roleAccess = getRoleAccessState();
@@ -54637,10 +55166,20 @@ function toggleDriveQuickRequestItem(domId) {
         function scheduleChatBackgroundPoll(delayMs = CHAT_BACKGROUND_POLL_MS) {
             clearChatBackgroundPoll();
             if (!currentUser || document.hidden) return;
+            if (hasHealthyBackgroundChatRealtime()) {
+                chatBackgroundPollAttempt = 0;
+                return;
+            }
+            const requestedDelay = Math.max(REALTIME_FALLBACK_BASE_MS, Number(delayMs) || REALTIME_FALLBACK_BASE_MS);
+            const cappedDelay = Math.min(REALTIME_FALLBACK_MAX_MS, requestedDelay * (2 ** Math.min(chatBackgroundPollAttempt, 8)));
+            const jitteredDelay = Math.max(750, Math.floor(Math.random() * Math.max(1, cappedDelay)));
             chatBackgroundPollTimer = setTimeout(() => {
                 chatBackgroundPollTimer = null;
-                runChatBackgroundPoll().catch(() => scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS));
-            }, Math.max(750, Number(delayMs) || CHAT_BACKGROUND_POLL_MS));
+                runChatBackgroundPoll().catch(() => {
+                    chatBackgroundPollAttempt = Math.min(chatBackgroundPollAttempt + 1, 8);
+                    scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS);
+                });
+            }, jitteredDelay);
         }
 
         async function runChatBackgroundPoll() {
@@ -54649,6 +55188,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             if (navigator.onLine === false) {
+                chatBackgroundPollAttempt = Math.min(chatBackgroundPollAttempt + 1, 8);
                 scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS);
                 return false;
             }
@@ -54656,7 +55196,8 @@ function toggleDriveQuickRequestItem(domId) {
             await syncDepartmentCalendarBadgeData(false);
             updateFooterChatBadge();
             if (isViewVisible('chat')) renderChat();
-            scheduleChatBackgroundPoll(hasHealthyBackgroundChatRealtime() ? CHAT_BACKGROUND_HEALTHY_POLL_MS : CHAT_BACKGROUND_POLL_MS);
+            chatBackgroundPollAttempt = 0;
+            scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS);
             return true;
         }
 
@@ -54664,7 +55205,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!currentUser) return;
             fetchChatData(false).then(() => updateFooterChatBadge()).catch(() => {});
             syncDepartmentCalendarBadgeData(false).catch(() => {});
-            scheduleChatBackgroundPoll(delayMs);
+            if (!hasHealthyBackgroundChatRealtime()) scheduleChatBackgroundPoll(delayMs);
         }
 
         function maybeShowForegroundChatNotification(message = null) {
@@ -55933,6 +56474,8 @@ function toggleDriveQuickRequestItem(domId) {
                 headers['apikey'] = SUPABASE_KEY;
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
+            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (nativeHeaders && nativeHeaders.Authorization) headers['Authorization'] = nativeHeaders.Authorization;
             if (sessionToken) headers['x-gnc-session'] = sessionToken;
             const response = await fetchWithTimeout(PUSH_FUNCTION_URL, {
                 method: 'POST',
@@ -56969,21 +57512,11 @@ function toggleDriveQuickRequestItem(domId) {
                     extension: extension.replace(/^\./, '')
                 });
                 const filePath = `${NCR_PHOTO_PATH_PREFIX}/${new Date().toISOString().split('T')[0]}/${fileName}`;
-                const uploadResult = await withTimeout(
-                    getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
-                        contentType: entry.mimeType || entry.file.type || 'application/octet-stream',
-                        upsert: true
-                    }),
-                    SUPABASE_UPLOAD_TIMEOUT_MS,
-                    'NCR photo upload'
-                );
-                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                if (uploadError) throw uploadError;
-                const { data: publicUrlData } = getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
-                const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
+                const directUpload = await uploadOptimizedBlobToStorage(NCR_PHOTO_BUCKET, filePath, entry.file, { contentType: entry.mimeType || entry.file.type, label: 'NCR photo upload' });
+                const publicUrl = directUpload.publicUrl;
                 if (!publicUrl) throw new Error('Could not resolve NCR photo URL.');
                 entry.uploadedUrl = publicUrl;
-                entry.uploadedName = fileName;
+                entry.uploadedName = directUpload.fileName;
                 uploadedUrls.push(publicUrl);
                 markPhotoPersistActivity();
             }
@@ -63678,23 +64211,13 @@ function toggleDriveQuickRequestItem(domId) {
                     extension
                 });
                 const filePath = `not-on-inventory/${new Date().toISOString().split('T')[0]}/${fileName}`;
-                const uploadResult = await withTimeout(
-                    getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
-                        contentType: entry.mimeType || entry.file.type || 'application/octet-stream',
-                        upsert: true
-                    }),
-                    SUPABASE_UPLOAD_TIMEOUT_MS,
-                    'Not On Inventory photo upload'
-                );
-                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                if (uploadError) throw uploadError;
-                const { data: publicUrlData } = getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
-                const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
+                const directUpload = await uploadOptimizedBlobToStorage(NCR_PHOTO_BUCKET, filePath, entry.file, { contentType: entry.mimeType || entry.file.type, label: 'Not On Inventory photo upload' });
+                const publicUrl = directUpload.publicUrl;
                 if (!publicUrl) throw new Error('Could not resolve Not On Inventory photo URL.');
                 entry.uploadedUrl = publicUrl;
-                entry.uploadedName = fileName;
+                entry.uploadedName = directUpload.fileName;
                 uploadedUrls.push(publicUrl);
-                uploadedNames.push(fileName);
+                uploadedNames.push(directUpload.fileName);
                 markPhotoPersistActivity();
             }
             return { photoUrls: uploadedUrls, photoNames: uploadedNames };
@@ -78349,19 +78872,8 @@ function toggleDriveQuickRequestItem(domId) {
             const bucketName = PHOTO_BUCKETS['dock-'] || PHOTO_BUCKETS.default;
             const uploadPreparedBlob = async (blob, fileName, contentType) => {
                 const filePath = `${new Date().toISOString().split('T')[0]}/issues/${fileName}`;
-                const uploadResult = await withTimeout(
-                    getSupabaseStorageClient().from(bucketName).upload(filePath, blob, {
-                        contentType: contentType || 'image/jpeg',
-                        cacheControl: '31536000',
-                        upsert: true
-                    }),
-                    SUPABASE_UPLOAD_TIMEOUT_MS,
-                    'Dock issue photo upload'
-                );
-                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                if (uploadError) throw uploadError;
-                const { data: publicUrlData } = getSupabaseStorageClient().from(bucketName).getPublicUrl(filePath);
-                return { publicUrl: publicUrlData.publicUrl, fileName };
+                const directUpload = await uploadOptimizedBlobToStorage(bucketName, filePath, blob, { contentType, label: 'Dock issue photo upload' });
+                return { publicUrl: directUpload.publicUrl, fileName: directUpload.fileName };
             };
             let canvas = null;
             const loaded = await loadDockIssuePhotoSource(file);
@@ -86936,6 +87448,7 @@ function toggleDriveQuickRequestItem(domId) {
                     await runDetailWriteWithRetry('ph_master_inventory', 'PATCH', workingPayload, `unique_id=eq.${encodeURIComponent(uid)}`, {
                         retries: 1,
                         retryDelayMs: 250,
+                        idempotencyKey: `bloom-master:${uid}`,
                         timeoutMs: SUPABASE_WRITE_TIMEOUT_MS
                     });
                     return workingPayload;
@@ -92427,7 +92940,7 @@ function toggleDriveQuickRequestItem(domId) {
         function ensureRequestItemCodeOptionState(item = activeItem) {
             const key = getRequestItemCodeOptionStateKey(item);
             if (requestItemCodeOptionState.key !== key) {
-                requestItemCodeOptionState = { key, rows: [], loading: false, loaded: false, error: '' };
+                requestItemCodeOptionState = { key, rows: [], loading: false, loaded: false, error: '', cachedRows: [], cachedSignature: '' };
                 requestAvOptionsDropdownOpen = false;
             }
             return requestItemCodeOptionState;
@@ -92784,14 +93297,20 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getRequestItemCodeOptionRows(item = activeItem) {
             const state = ensureRequestItemCodeOptionState(item);
+            const cacheSignature = [
+                state.key,
+                Array.isArray(avOpenInventory) ? avOpenInventory.length : 0,
+                Array.isArray(state.rows) ? state.rows.length : 0,
+                Array.isArray(requestsInventory) ? requestsInventory.length : 0
+            ].join('|');
+            if (state.cachedSignature === cacheSignature && Array.isArray(state.cachedRows)) return state.cachedRows;
             const existingKeys = getExistingRequestItemCodeOptionKeys(item);
             const sourceRows = [
                 ...(Array.isArray(avOpenInventory) ? avOpenInventory : []),
-                ...(Array.isArray(fullInventory) ? fullInventory : []),
                 ...(Array.isArray(state.rows) ? state.rows : [])
             ];
             const seen = new Set();
-            return sourceRows
+            const resolvedRows = sourceRows
                 .filter((row) => {
                     const uid = getRequestItemCodeOptionMasterId(row) || String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, row && row.DOM_ID, '') || '').trim();
                     if (!uid || seen.has(uid)) return false;
@@ -92808,6 +93327,9 @@ function toggleDriveQuickRequestItem(domId) {
                     if (locDiff !== 0) return locDiff;
                     return String(firstNonEmptyValue(left && left.LOTCODE, left && left.lotcode, '') || '').localeCompare(String(firstNonEmptyValue(right && right.LOTCODE, right && right.lotcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
                 });
+            state.cachedRows = resolvedRows;
+            state.cachedSignature = cacheSignature;
+            return resolvedRows;
         }
 
         function isDriveNegativeSltsAvOptionsContext(detailSourceView = '') {
@@ -92848,6 +93370,33 @@ function toggleDriveQuickRequestItem(domId) {
             return sourceRows.filter((row) => !isCurrentConfiguredSeasonSalesYearRow(row));
         }
 
+        async function collectRequestItemCodeOptionRowsFromLocalCache(item = activeItem, stateKey = '') {
+            const safeStateKey = String(stateKey || getRequestItemCodeOptionStateKey(item) || '').trim();
+            const itemCode = getRequestItemCodeOptionItemCode(item);
+            if (!item || !safeStateKey || !itemCode || !Array.isArray(fullInventory) || !fullInventory.length) return [];
+            const sourceName = getRequestItemCodeOptionCommonNameKey(item);
+            const sourceSize = getRequestItemCodeOptionContSizeKey(item);
+            const matches = [];
+            const chunkSize = 400;
+            for (let offset = 0; offset < fullInventory.length; offset += chunkSize) {
+                if (requestItemCodeOptionState.key !== safeStateKey) return [];
+                const end = Math.min(fullInventory.length, offset + chunkSize);
+                for (let index = offset; index < end; index += 1) {
+                    const row = fullInventory[index];
+                    if (!row) continue;
+                    const rowItemCode = getRequestItemCodeOptionItemCode(row);
+                    if (rowItemCode === itemCode) {
+                        matches.push(row);
+                        continue;
+                    }
+                    if (!sourceName || getRequestItemCodeOptionCommonNameKey(row) !== sourceName) continue;
+                    if (!sourceSize || getRequestItemCodeOptionContSizeKey(row) === sourceSize) matches.push(row);
+                }
+                if (end < fullInventory.length) await yieldToUiFrame();
+            }
+            return matches;
+        }
+
         async function fetchRequestItemCodeOptionRowsFromSupabase(querySuffix = '', options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const pageSize = Math.max(25, Math.min(100, Number(safeOptions.pageSize) || 100));
@@ -92867,9 +93416,10 @@ function toggleDriveQuickRequestItem(domId) {
         async function loadRequestItemCodeOptions(item = activeItem, stateKey = '') {
             const state = ensureRequestItemCodeOptionState(item);
             const safeStateKey = String(stateKey || state.key || '').trim();
-            if (!item || !safeStateKey || state.loading || state.loaded || !canFetchRequestItemCodeOptionsFromSupabase()) return false;
+            if (!item || !safeStateKey || state.loading || state.loaded) return false;
             const itemCode = getRequestItemCodeOptionItemCode(item);
             if (!itemCode) return false;
+            const canFetchRemoteRows = canFetchRequestItemCodeOptionsFromSupabase();
             state.loading = true;
             state.error = '';
             if (String(activeDetailTab || '').trim().toLowerCase() === 'this-location') {
@@ -92879,25 +93429,32 @@ function toggleDriveQuickRequestItem(domId) {
             }
             try {
                 const rawRows = [];
+                const localRowsPromise = collectRequestItemCodeOptionRowsFromLocalCache(item, safeStateKey).catch(() => []);
                 let primaryLookupError = null;
-                try {
-                    const itemRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&itemcode=eq.${encodeURIComponent(itemCode)}`, { pageSize: 100, maxRows: 2500 });
-                    rawRows.push(...itemRows);
-                } catch (lookupError) {
-                    primaryLookupError = lookupError;
-                    console.warn('Request AV option itemcode lookup failed', lookupError);
-                }
-                const commonNamePattern = getRequestItemCodeOptionCommonNameSearchPattern(item);
-                const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.itemspec, '') || '').trim();
-                if (commonNamePattern && contSize) {
+                if (canFetchRemoteRows) {
                     try {
-                        const plantRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&commonname=ilike.${encodeURIComponent(commonNamePattern)}&contsize=eq.${encodeURIComponent(contSize)}`, { pageSize: 100, maxRows: 1200 });
-                        rawRows.push(...(Array.isArray(plantRows) ? plantRows : []));
-                    } catch (fallbackError) {
-                        console.warn('Request AV option plant/size lookup failed', fallbackError);
+                        const itemRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&itemcode=eq.${encodeURIComponent(itemCode)}`, { pageSize: 100, maxRows: 2500 });
+                        rawRows.push(...itemRows);
+                    } catch (lookupError) {
+                        primaryLookupError = lookupError;
+                        console.warn('Request AV option itemcode lookup failed', lookupError);
+                    }
+                    const commonNamePattern = getRequestItemCodeOptionCommonNameSearchPattern(item);
+                    const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.itemspec, '') || '').trim();
+                    if (commonNamePattern && contSize) {
+                        try {
+                            const plantRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&commonname=ilike.${encodeURIComponent(commonNamePattern)}&contsize=eq.${encodeURIComponent(contSize)}`, { pageSize: 100, maxRows: 1200 });
+                            rawRows.push(...(Array.isArray(plantRows) ? plantRows : []));
+                        } catch (fallbackError) {
+                            console.warn('Request AV option plant/size lookup failed', fallbackError);
+                        }
                     }
                 }
+                const localRows = await localRowsPromise;
+                rawRows.push(...(Array.isArray(localRows) ? localRows : []));
                 if (requestItemCodeOptionState.key !== safeStateKey) return false;
+                state.cachedRows = [];
+                state.cachedSignature = '';
                 state.rows = formatFetchedRows(rawRows, 'ph_master_inventory').map((row, index) => {
                     const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
                     row.DOM_ID = row.DOM_ID || `reqopt_${uid || index}`;
@@ -93120,11 +93677,15 @@ function toggleDriveQuickRequestItem(domId) {
             const allRows = getRequestItemCodeOptionRows(item);
             const rows = filterDriveNegativeSltsAvOptionRows(allRows, safeSourceView);
             const hiddenCurrentSeasonRows = Math.max(0, allRows.length - rows.length);
-            const visibleRows = rows.slice(0, 80);
             const itemCode = getRequestItemCodeOptionItemCode(item);
             const isOpen = requestAvOptionsDropdownOpen === true;
-            const existingKeysForRender = getExistingRequestItemCodeOptionKeys(item);
-            const selectableRowCount = rows.filter((row) => getRequestItemCodeOptionCandidateState(row, item, existingKeysForRender).selectable).length;
+            const visibleRows = isOpen ? rows.slice(0, 80) : [];
+            const existingKeysForRender = isOpen
+                ? getExistingRequestItemCodeOptionKeys(item)
+                : { masterIds: new Set(), exactKeys: new Set() };
+            const selectableRowCount = isOpen
+                ? rows.filter((row) => getRequestItemCodeOptionCandidateState(row, item, existingKeysForRender).selectable).length
+                : 0;
             const ptrValues = rows.map((row) => getRequestAvailableQty(row)).filter((value) => Number.isFinite(value));
             const bestPtr = ptrValues.length ? Math.max(...ptrValues) : 0;
             const totalPtr = ptrValues.reduce((sum, value) => sum + value, 0);
@@ -93137,7 +93698,7 @@ function toggleDriveQuickRequestItem(domId) {
             const emptyRowsMessage = hiddenCurrentSeasonRows
                 ? 'No AV options outside current season for this itemcode.'
                 : 'No AV options found for this itemcode.';
-            const rowsHtml = visibleRows.length ? visibleRows.map((row, index) => {
+            const rowsHtml = isOpen && visibleRows.length ? visibleRows.map((row, index) => {
                 const uid = getRequestItemCodeOptionMasterId(row);
                 const location = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc') || 'No Loc');
                 const lot = String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '-') || '-');
@@ -93169,7 +93730,7 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="mb-2 flex flex-wrap gap-1.5">${getRequestItemCodeOptionHoldBadgeHtml(optionRow)}${getRequestItemCodeOptionValidBadgeHtml(optionRow)}</div>
                     <div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div>
                 </div>`;
-            }).join('') : `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : escapeShareHtml(emptyRowsMessage)}</div>`;
+            }).join('') : (isOpen ? `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : escapeShareHtml(emptyRowsMessage)}</div>` : '');
             const moreCount = Math.max(0, rows.length - visibleRows.length);
             const addOptionsLabel = isDockSuspendDcRequestMirrorRow(item) ? 'Add To Suspend Tag' : 'Add Selected Options';
             const addButtonHtml = canAddOptions && selectableRowCount ? `<button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return addSelectedRequestItemCodeOptions()">${escapeShareHtml(addOptionsLabel)}</button>` : '';
@@ -94224,11 +94785,16 @@ function toggleDriveQuickRequestItem(domId) {
         function scheduleRequestDetailEntryVisible(reason = '', options = {}) {
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             ensureRequestDetailEntryVisible(reason, opts);
-            requestAnimationFrame(() => ensureRequestDetailEntryVisible(`${reason || 'raf'}`, Object.assign({}, opts, { skipOptionLoad: true })));
-            setTimeout(() => ensureRequestDetailEntryVisible(`${reason || 'settled'}:96`, Object.assign({}, opts, { skipOptionLoad: true })), 96);
-            if (isTouchConstrainedDevice()) {
-                setTimeout(() => ensureRequestDetailEntryVisible(`${reason || 'settled'}:260`, Object.assign({}, opts, { skipOptionLoad: true })), 260);
-            }
+            const settleLayoutOnly = (settleReason = '') => {
+                if (!isViewVisible('detail') || !document.getElementById('view-detail')?.classList.contains('detail-request-mode')) return;
+                syncDetailSharedPanelsVisibility();
+                syncRequestDetailScrollMode();
+                if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync(`request-detail:${settleReason}`);
+                if (typeof syncGlobalHeaderChrome === 'function') syncGlobalHeaderChrome({ reason: `request-detail:${settleReason}` });
+            };
+            requestAnimationFrame(() => settleLayoutOnly(`${reason || 'raf'}`));
+            setTimeout(() => settleLayoutOnly(`${reason || 'settled'}:96`), 96);
+            if (isTouchConstrainedDevice()) setTimeout(() => settleLayoutOnly(`${reason || 'settled'}:260`), 260);
         }
 
         function isIosPhoneRequestDetailField(target = null) {
@@ -111300,7 +111866,7 @@ C.14.043 C.15.000
             ].join('::');
             const evalFilterHtml = renderCropRollEvalUserFilterHtml(allRowsUnfiltered, allRows, evalScopedRows);
             const shellHtml = `
-                <div class="freeze-panel drive-controls-sticky">
+                <div class="freeze-panel drive-controls-sticky ops-module-filter-band">
                     <div class="task-tabs">
                         <div class="task-tab ${sy27TabClass}" onclick="return setCropRollView('${CROP_ROLL_VIEW_SY27}')"><i class="ph-bold ph-plant text-base"></i> SY 27 <span class="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#007a4d]">${escapeHtml(String(sy27DisplayRows.length))}</span></div>
                         <div class="task-tab ${carryoverTabClass}" onclick="return setCropRollView('${CROP_ROLL_VIEW_CARRYOVER}')"><i class="ph-bold ph-arrow-counter-clockwise text-base"></i> Carryover <span class="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#007a4d]">${escapeHtml(String(carryoverDisplayRows.length))}</span></div>
@@ -113092,7 +113658,7 @@ C.14.043 C.15.000
             const optionalFields = ['season', 'locationnotedate', 'locationptn1', 'holdstopreason'];
             for (let attempt = 0; attempt <= optionalFields.length; attempt += 1) {
                 try {
-                    await runDetailWriteWithRetry('ph_master_inventory', 'PATCH', workingPayload, `unique_id=eq.${encodeURIComponent(uid)}`, { retries: 1, timeoutMs: 22000 });
+                    await runDetailWriteWithRetry('ph_master_inventory', 'PATCH', workingPayload, `unique_id=eq.${encodeURIComponent(uid)}`, { retries: 1, idempotencyKey: `crop-roll-master:${uid}`, timeoutMs: 22000 });
                     return workingPayload;
                 } catch (error) {
                     const message = String(error && error.message ? error.message : '').toLowerCase();
@@ -114093,18 +114659,8 @@ C.14.043 C.15.000
         }
 
         async function uploadGrowerScoutBlob(bucket, blob, filePath, contentType = '') {
-            const uploadResult = await withTimeout(
-                getSupabaseStorageClient().from(bucket).upload(filePath, blob, {
-                    contentType: contentType || blob.type || 'application/octet-stream',
-                    cacheControl: '31536000',
-                    upsert: true
-                }),
-                SUPABASE_UPLOAD_TIMEOUT_MS,
-                'Grower scout upload'
-            );
-            if (uploadResult && uploadResult.error) throw uploadResult.error;
-            const { data: publicUrlData } = getSupabaseStorageClient().from(bucket).getPublicUrl(filePath);
-            return String(publicUrlData && publicUrlData.publicUrl || '').trim();
+            const directUpload = await uploadOptimizedBlobToStorage(bucket, filePath, blob, { contentType, label: 'Grower scout upload' });
+            return directUpload;
         }
 
         function buildGrowerScoutAssetPayload(reportId = '', kind = 'photo', bucket = '', storagePath = '', publicUrl = '', file = null) {
@@ -114174,7 +114730,9 @@ C.14.043 C.15.000
                     audioMimeType = growerScoutAudioBlob.type || growerScoutRecordMimeType || 'audio/webm';
                     const extension = getGrowerScoutMimeExtension(audioMimeType);
                     audioPath = `${folder}/voice-note.${extension}`;
-                    audioUrl = await uploadGrowerScoutBlob(GROWER_SCOUT_AUDIO_BUCKET, growerScoutAudioBlob, audioPath, audioMimeType);
+                    const audioUpload = await uploadGrowerScoutBlob(GROWER_SCOUT_AUDIO_BUCKET, growerScoutAudioBlob, audioPath, audioMimeType);
+                    audioPath = String(audioUpload.filePath || audioPath);
+                    audioUrl = String(audioUpload.publicUrl || '');
                 }
                 const payload = {
                     unique_id: reportId,
@@ -114205,15 +114763,15 @@ C.14.043 C.15.000
                     const file = photos[index];
                     const extension = pathlibSafeExtension(file.name, file.type, 'jpg');
                     const filePath = `${folder}/photo-${index + 1}.${extension}`;
-                    const publicUrl = await uploadGrowerScoutBlob(GROWER_SCOUT_PHOTOS_BUCKET, file, filePath, file.type || 'image/jpeg');
-                    assetPayloads.push(buildGrowerScoutAssetPayload(reportId, 'photo', GROWER_SCOUT_PHOTOS_BUCKET, filePath, publicUrl, file));
+                    const photoUpload = await uploadGrowerScoutBlob(GROWER_SCOUT_PHOTOS_BUCKET, file, filePath, file.type || 'image/jpeg');
+                    assetPayloads.push(buildGrowerScoutAssetPayload(reportId, 'photo', GROWER_SCOUT_PHOTOS_BUCKET, photoUpload.filePath, photoUpload.publicUrl, file));
                 }
                 for (let index = 0; index < files.length; index += 1) {
                     const file = files[index];
                     const extension = pathlibSafeExtension(file.name, file.type, 'bin');
                     const filePath = `${folder}/file-${index + 1}-${getGrowerScoutSafeFilePart(file.name || 'attachment')}.${extension}`;
-                    const publicUrl = await uploadGrowerScoutBlob(GROWER_SCOUT_FILES_BUCKET, file, filePath, file.type || 'application/octet-stream');
-                    assetPayloads.push(buildGrowerScoutAssetPayload(reportId, 'file', GROWER_SCOUT_FILES_BUCKET, filePath, publicUrl, file));
+                    const fileUpload = await uploadGrowerScoutBlob(GROWER_SCOUT_FILES_BUCKET, file, filePath, file.type || 'application/octet-stream');
+                    assetPayloads.push(buildGrowerScoutAssetPayload(reportId, 'file', GROWER_SCOUT_FILES_BUCKET, fileUpload.filePath, fileUpload.publicUrl, file));
                 }
                 if (assetPayloads.length) {
                     await supabaseFetch(GROWER_SCOUT_ASSETS_TABLE, 'POST', assetPayloads, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
@@ -139088,14 +139646,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cleanFormat = format === 'jpeg' || format === 'jpg' ? 'jpg' : 'png';
             const datePath = new Date().toISOString().slice(0, 10);
             const filePath = `${datePath}/${uniqueId}.${cleanFormat}`;
-            const uploadResult = await withTimeout(getSupabaseStorageClient().from(MARKETING_MATERIALS_BUCKET).upload(filePath, blob, {
-                contentType: blob.type || (cleanFormat === 'jpg' ? 'image/jpeg' : 'image/png'),
-                cacheControl: '31536000',
-                upsert: true
-            }), SUPABASE_UPLOAD_TIMEOUT_MS, 'Marketing material upload');
-            if (uploadResult && uploadResult.error) throw uploadResult.error;
-            const { data: publicUrlData } = getSupabaseStorageClient().from(MARKETING_MATERIALS_BUCKET).getPublicUrl(filePath);
-            const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
+            const directUpload = await uploadOptimizedBlobToStorage(MARKETING_MATERIALS_BUCKET, filePath, blob, { contentType: blob.type, label: 'Marketing material upload' });
+            const publicUrl = directUpload.publicUrl;
             if (!publicUrl) throw new Error('Could not resolve the marketing material URL.');
             const designJson = advertisementCanvas ? advertisementCanvas.toJSON(ADVERTISEMENT_CUSTOM_PROPS) : {};
             designJson.gncAdvertisement = {
@@ -139110,7 +139662,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 title: getAdvertisementTitle(),
                 format: cleanFormat,
                 image_url: publicUrl,
-                image_path: filePath,
+                image_path: directUpload.filePath,
                 design_json: designJson,
                 created_by_username: currentUser || '',
                 created_by_display: currentUserDisplay || currentUser || '',
@@ -144427,24 +144979,21 @@ ${folderNote ? `Folder Note: ${folderNote}
                                             appApiPhotoUploadFallbackWarningShown = true;
                                             console.warn('Secure photo upload proxy unavailable; using direct Storage fallback for this browser session.', secureUploadError);
                                         }
-                                        const uploadResult = await withTimeout(
-                                            fallbackStorageClient.storage.from(bucketName).upload(filePath, blob, {
-                                                contentType: contentType || 'image/jpeg',
-                                                cacheControl: '31536000',
-                                                upsert: true
-                                            }),
-                                            SUPABASE_UPLOAD_TIMEOUT_MS,
-                                            'Photo upload'
-                                        );
-                                        const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                                        if (uploadError) throw uploadError;
-                                        const { data: publicUrlData } = fallbackStorageClient.storage.from(bucketName).getPublicUrl(filePath);
-                                        publicUrl = publicUrlData.publicUrl;
+                                        const directUpload = await uploadOptimizedBlobToStorage(bucketName, filePath, blob, {
+                                            contentType: contentType || 'image/jpeg',
+                                            cacheControl: '31536000',
+                                            timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS,
+                                            label: 'Photo upload'
+                                        });
+                                        filePath = String(directUpload.filePath || filePath);
+                                        fileName = String(directUpload.fileName || fileName);
+                                        publicUrl = String(directUpload.publicUrl || '');
                                     } catch (uploadError) {
                                         lastUploadError = uploadError instanceof Error ? uploadError : (secureUploadError instanceof Error ? secureUploadError : new Error(String(uploadError || 'Photo upload failed.')));
                                         if (uploadAttempt < maxUploadAttempts && navigator.onLine !== false) {
                                             if (uploadAttempt === 1) showToast('Still Uploading', 'Network was slow. Retrying photo upload...', false);
-                                            await new Promise((resolveRetry) => setTimeout(resolveRetry, uploadAttempt === 1 ? 900 : 1800));
+                                            const retryCap = Math.min(8000, 1000 * (2 ** Math.max(0, uploadAttempt - 1)));
+                                            await new Promise((resolveRetry) => setTimeout(resolveRetry, Math.floor(Math.random() * retryCap)));
                                             continue;
                                         }
                                         throw lastUploadError;

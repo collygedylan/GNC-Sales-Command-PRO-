@@ -18,14 +18,21 @@ const playwrightConfig = read('playwright.config.ts');
 const packageJson = JSON.parse(read('package.json'));
 const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
+const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
+const appAuth = read('supabase/functions/_shared/app-auth.ts');
+const observability = read('supabase/functions/_shared/observability.ts');
+const authMigration = read('supabase/migrations/20260816172822_native_auth_profiles.sql');
+const compactionMigration = read('supabase/migrations/20260816172825_database_compaction_shadow.sql');
+const authMigrationTool = read('scripts/migrate-custom-users-to-supabase-auth.mjs');
+const authAdmin = read('supabase/functions/auth-admin/index.ts');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.05';
+  const release = 'V2026.08.16.06';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.16\.05'/);
-  assert.equal(packageJson.version, '2026.08.16.05');
+  assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
+  assert.equal(packageJson.version, '2026.08.16.06');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -299,7 +306,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.14 — final keyboard-safe authentication lock');
   const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
   assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
-  const releaseCascadeIndex = css.indexOf('V2026.08.16.05 final cascade lock', keyboardCascadeIndex);
+  const releaseCascadeIndex = css.indexOf('V2026.08.16.06 final cascade lock', keyboardCascadeIndex);
   const keyboardCascade = css.slice(keyboardCascadeIndex, releaseCascadeIndex);
   assert.match(keyboardCascade, /body\.keyboard-open #view-login[\s\S]*height: var\(--visual-height, 100dvh\) !important/);
   assert.match(keyboardCascade, /overflow-y: auto !important/);
@@ -359,7 +366,7 @@ test('phone Home tiles fill both columns and Drive cards retain the thumbnail wi
 });
 
 test('final responsive shell measures every Home row against the fixed quick bar', () => {
-  const finalCascadeIndex = css.lastIndexOf('V2026.08.16.05 — measured Home viewport fit with fixed quick navigation');
+  const finalCascadeIndex = css.lastIndexOf('V2026.08.16.06 — measured Home viewport fit with fixed quick navigation');
   assert.ok(finalCascadeIndex > 0, 'the measured Home fit must be the final Home cascade');
   const finalCascade = css.slice(finalCascadeIndex);
   assert.match(finalCascade, /current-view-home\.home-dashboard-mode[\s\S]*#main-scroll-area \{[\s\S]*overflow: hidden !important/);
@@ -460,7 +467,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081605\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081606\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -496,9 +503,22 @@ test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () 
   assert.match(html, /buildDockModeFilterControlHtml/);
   assert.match(html, /id="docks-mode-toggle" class="hidden" aria-hidden="true"/);
   assert.ok(html.indexOf('id="team-selector"') < html.indexOf('id="task-crumb"'), 'Task controls must precede the breadcrumb');
-  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.05 final cascade lock'));
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.06 final cascade lock'));
   assert.match(finalCascade, /workflow-control-rail,[\s\S]*flex-flow: row nowrap !important/);
   assert.match(finalCascade, /#view-tasks \.task-controls-sticky[\s\S]*overflow-x: auto !important/);
+});
+
+test('module filter bands share one responsive gap below the command search', () => {
+  for (const view of ['av', 'reports', 'request', 'docks', 'drive', 'tasks', 'review', 'move-up']) {
+    const viewSource = html.slice(html.indexOf(`id="view-${view}"`), html.indexOf(`id="view-${view}"`) + 2_400);
+    assert.match(viewSource, /ops-module-filter-band/, `${view} must opt into the shared filter-band spacing contract`);
+  }
+  assert.match(css, /--ops-module-search-filter-gap: 18px/);
+  assert.match(css, /ops-module-filter-band:not\(\.fixed-filter-rail\)[\s\S]*margin-top: var\(--ops-module-search-filter-gap\) !important/);
+  assert.match(css, /@media \(min-width: 1100px\)[\s\S]*--ops-module-search-filter-gap: clamp\(56px, 7\.5vh, 84px\)/);
+  assert.match(html, /function getModuleFilterGapPx\(railEl\)/);
+  assert.match(html, /getFixedFilterRailTopPx\(globalSearchRow, rail\)/);
+  assert.match(html, /getModuleFilterGapPx\(rail\) \+ height/);
 });
 
 test('V16 preserves mobile search state and renders Grid as a spreadsheet', () => {
@@ -576,4 +596,85 @@ test('CI gates responsive release checks in Chromium, Firefox, and WebKit', () =
   assert.match(playwrightConfig, /name: 'chromium'/);
   assert.match(playwrightConfig, /name: 'firefox'/);
   assert.match(playwrightConfig, /name: 'webkit'/);
+});
+
+test('V06 contains runaway requests and uses bounded retry and cache policies', () => {
+  assert.match(html, /const APP_LIVE_EVENTS_ENABLED = false/);
+  assert.match(html, /Views without an event source refresh on entry/);
+  assert.match(html, /pollMs: hasRealtimeSource \? getLiveSyncPollIntervalMs\(policy\.pollMs\) : 0/);
+  assert.match(html, /REALTIME_FALLBACK_BASE_MS = 5000/);
+  assert.match(html, /REALTIME_FALLBACK_MAX_MS = 300000/);
+  assert.match(html, /runWithFullJitter\(operation, maxRetries = 3, baseDelayMs = 500, capDelayMs = 8000\)/);
+  assert.match(html, /retryAuthorized = !!\(String\(opts\.idempotencyKey/);
+  assert.match(serviceWorker, /IMAGE_CACHE_MAX_ENTRIES = 500/);
+  assert.match(serviceWorker, /IMAGE_CACHE_MAX_AGE_MS = 30 \* 24 \* 60 \* 60 \* 1000/);
+  assert.match(serviceWorker, /IMAGE_CACHE_MAX_BYTES = 100 \* 1024 \* 1024/);
+  assert.match(serviceWorker, /PRIVATE_NETWORK_PATH_REGEX/);
+  assert.doesNotMatch(serviceWorker, /client\.navigate/);
+  assert.doesNotMatch(serviceWorker.slice(serviceWorker.indexOf("self.addEventListener('activate'"), serviceWorker.indexOf("self.addEventListener('message'")), /client\.navigate/);
+});
+
+test('V06 request detail fits the viewport and never renders collapsed AV cards', () => {
+  assert.match(html, /const visibleRows = isOpen \? rows\.slice\(0, 80\) : \[\]/);
+  assert.match(html, /const rowsHtml = isOpen && visibleRows\.length/);
+  assert.match(html, /collectRequestItemCodeOptionRowsFromLocalCache/);
+  assert.match(html, /if \(end < fullInventory\.length\) await yieldToUiFrame\(\)/);
+  assert.match(html, /const settleLayoutOnly = \(settleReason = ''\) =>/);
+  assert.match(css, /request detail viewport fit and collapsed-panel performance shell/);
+  assert.match(css, /#view-detail\.detail-request-mode:not\(\.hidden\)[\s\S]*overflow: hidden !important/);
+  assert.match(css, /#det-request-content:not\(\.hidden\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important/);
+  assert.match(css, /request-detail-av-options-open[\s\S]*overflow-y: auto !important/);
+});
+
+test('V07 native Auth preparation is additive, dry-run, and RLS-first', () => {
+  assert.match(html, /const NATIVE_AUTH_ENABLED = false/);
+  assert.match(html, /const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1'/);
+  assert.match(html, /navigator\.onLine === false[\s\S]*readCachedNativeAuthProfile\(session\.user\.id\)/);
+  assert.match(html, /cacheNativeAuthProfile\(data\)/);
+  assert.match(html, /auth\.signInWithPassword\(\{ email, password: String\(password\) \}\)/);
+  assert.match(html, /auth\.signInWithPasskey\(\)/);
+  assert.match(html, /auth\.registerPasskey\(\)/);
+  assert.match(html, /auth\.passkey\.delete\(\{ passkeyId:/);
+  assert.match(appAuth, /supabaseAdmin\.auth\.getUser\(bearer\)/);
+  assert.match(edge, /DIRECT_RLS_REQUIRED/);
+  assert.match(authMigration, /references auth\.users\(id\) on delete cascade/);
+  assert.match(authMigration, /alter table public\.profiles enable row level security/);
+  assert.match(authMigration, /function public\.get_app_user_directory\(requested_roles text\[\] default null\)/);
+  assert.match(authMigration, /revoke all on function public\.get_app_user_directory\(text\[\]\) from public, anon/);
+  assert.match(html, /table === 'ph_app_users'[\s\S]*fetchNativeAppUserDirectory\(nativeHeaders, query, readTimeoutMs\)/);
+  assert.doesNotMatch(authMigration, /create policy profiles_update_safe_self/);
+  assert.match(authMigrationTool, /const execute = process\.argv\.includes\('--execute'\)/);
+  assert.match(authMigrationTool, /email_confirm: true/);
+  assert.doesNotMatch(authMigrationTool, /password[^\n]*process\.stdout/);
+  assert.match(authAdmin, /admin\.auth\.getUser\(token\)/);
+  assert.match(authAdmin, /app_metadata\?\.auth_admin === true/);
+  assert.match(authAdmin, /admin\.auth\.admin\.createUser/);
+  assert.match(authAdmin, /admin\.auth\.admin\.updateUserById/);
+  assert.doesNotMatch(authAdmin, /readSupabaseOrAppSessionFromRequest/);
+});
+
+test('V08 compaction preparation never copies, swaps, truncates, or drops production data', () => {
+  assert.match(compactionMigration, /ph_drive_around_report_rows_compact/);
+  assert.match(compactionMigration, /Deliberately omits duplicated raw JSONB/);
+  assert.match(compactionMigration, /copy_drive_around_compact_batch/);
+  assert.match(compactionMigration, /grant execute on function private\.copy_drive_around_compact_batch[\s\S]*to service_role/);
+  assert.match(compactionMigration, /ph_hold_learning_cursors/);
+  assert.doesNotMatch(compactionMigration, /\b(?:drop|truncate)\s+table\b/i);
+  assert.doesNotMatch(compactionMigration, /alter\s+table[^;]+rename/i);
+});
+
+test('hosted performance monitoring pins CLI and emits bounded anonymous function logs', () => {
+  assert.match(performanceWorkflow, /version: 2\.111\.0/);
+  assert.match(performanceWorkflow, /supabase(?:\s+--workdir[^\n]+)?\s+test db/);
+  assert.match(performanceWorkflow, /deno test --allow-env --allow-net supabase\/functions/);
+  assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
+  assert.match(performanceWorkflow, /Prepare static shell for Lighthouse/);
+  assert.match(performanceWorkflow, /cp index\.html manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
+  assert.match(observability, /MAX_LOG_BYTES = 2048/);
+  assert.match(observability, /SUCCESS_SAMPLE_RATE = 0\.01/);
+  assert.match(observability, /function recordHandledError/);
+  assert.doesNotMatch(edge, /console\.(?:error|warn|log|info)/);
+  for (const field of ['request_id', 'function', 'action', 'status', 'duration_ms', 'retry_count', 'release', 'error_code']) {
+    assert.match(observability, new RegExp(field));
+  }
 });

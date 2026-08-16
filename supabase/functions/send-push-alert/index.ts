@@ -1,12 +1,15 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { withObservedRequest } from "../_shared/observability.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import webpush from "npm:web-push@3.6.7";
-import { getRoleAccessState, normalizeUsername, readAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { getRoleAccessState, normalizeUsername, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-gnc-session, x-app-session",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+  "Cache-Control": "private, no-store"
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -61,7 +64,7 @@ function normalizePayloadEndpointList(value: unknown) {
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "private, no-store" }
   });
 }
 
@@ -220,7 +223,7 @@ function isServiceRoleJwt(token = "") {
   return role === "service_role" && issuer === "supabase";
 }
 
-serve(async (req) => {
+serve((req) => withObservedRequest("send-push-alert", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
@@ -230,7 +233,7 @@ serve(async (req) => {
 
   const authHeader = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   const apiKey = String(req.headers.get("apikey") || "").trim();
-  const session = await readAppSessionFromRequest(req);
+  const session = await readSupabaseOrAppSessionFromRequest(req, supabase);
   const sessionAccess = session ? getRoleAccessState(session.role) : null;
   const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY || isServiceRoleJwt(authHeader) || isServiceRoleJwt(apiKey);
   const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess);
@@ -273,7 +276,7 @@ serve(async (req) => {
   const notificationPayload = JSON.stringify(notification);
   const staleIds: number[] = [];
   let delivered = 0;
-  const failures: Record<string, unknown>[] = [];
+  const failureCounts: Record<string, number> = {};
 
   for (let start = 0; start < subscriptions.length; start += PUSH_SEND_CONCURRENCY) {
     const chunk = subscriptions.slice(start, start + PUSH_SEND_CONCURRENCY);
@@ -286,7 +289,8 @@ serve(async (req) => {
         if (statusCode === 404 || statusCode === 410) {
           staleIds.push(Number(row.id));
         }
-        failures.push({ id: row.id, endpoint: row.endpoint, statusCode, message: String((error as Error).message || error) });
+        const failureCode = statusCode > 0 ? `http_${statusCode}` : "delivery_error";
+        failureCounts[failureCode] = Number(failureCounts[failureCode] || 0) + 1;
       }
     }));
   }
@@ -300,6 +304,6 @@ serve(async (req) => {
     targets: targetUsers,
     subscriptions: subscriptions.length,
     staleRemoved: staleIds.length,
-    failures
+    failureCounts
   });
-});
+}));

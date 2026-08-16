@@ -1,12 +1,12 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.08.16.05",
+  "version": "2026.08.16.06",
   "type": "module",
   "scripts": {
     "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
     "build:pilot-monitoring": "esbuild scripts/ops-precision-sentry-entry.js --bundle --format=iife --global-name=GncSentry --minify --outfile=assets/vendor/sentry-browser-10.70.0.min.js",
-    "build:live:css": "tailwindcss -i assets/live-tailwind-source.css -o assets/live-tailwind-v2026081605.min.css --minify",
+    "build:live:css": "tailwindcss -i assets/live-tailwind-source.css -o assets/live-tailwind-v2026081606.min.css --minify",
     "build:live:vendor": "node scripts/vendor-live-assets.mjs && esbuild scripts/live-supabase-entry.js --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=assets/vendor/supabase-browser-2.112.3.min.js",
     "build:live:assets": "npm run build:live:css && npm run build:live:vendor",
     "build:live:shell": "node scripts/build-live-shell.mjs",
@@ -48,11 +48,11 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@phosphor-icons/web": "2.1.2",
-    "@tailwindcss/cli": "4.3.3",
     "@lhci/cli": "0.15.1",
+    "@phosphor-icons/web": "2.1.2",
     "@playwright/test": "1.62.1",
     "@storybook/react-vite": "10.5.8",
+    "@tailwindcss/cli": "4.3.3",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.2",
@@ -61,6 +61,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.5",
     "jsdom": "29.0.1",
+    "sharp": "0.34.4",
     "storybook": "10.5.8",
     "tailwindcss": "4.3.3",
     "terser": "5.50.0",

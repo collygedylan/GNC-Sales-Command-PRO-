@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 
-const RELEASE = 'V2026.08.16.05';
+const RELEASE = 'V2026.08.16.06';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -31,7 +31,7 @@ if (!minified.code || minified.code.length < 500_000) {
   throw new Error('Live runtime output was unexpectedly small.');
 }
 
-const runtimeName = 'live-app-runtime-v2026081605.min.js';
+const runtimeName = 'live-app-runtime-v2026081606.min.js';
 const runtimeTarget = path.join(siteRoot, 'assets', runtimeName);
 await mkdir(path.dirname(runtimeTarget), { recursive: true });
 await writeFile(runtimeTarget, `${minified.code}\n`, 'utf8');
