@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081512.min.css?v=V2026.08.15.12">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081513.min.css?v=V2026.08.15.13">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.15.12';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.15.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6555,7 +6555,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.12">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.13">
 </head>
 <body class="bg-gray-50 overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6657,7 +6657,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.12"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.13"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7410,7 +7410,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.12').trim() || 'V2026.08.15.12';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.13').trim() || 'V2026.08.15.13';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7783,18 +7783,18 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-sky-700">Hub</div>
                         </div>
                     </div>
-                    <div class="grid gap-3 md:grid-cols-3">
-                        <button type="button" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('chat')">
+                    <div id="communication-hub-grid" class="grid gap-3 md:grid-cols-3">
+                        <button type="button" class="communication-hub-card rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('chat')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-chats-circle text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Chat</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Messages</div>
                         </button>
-                        <button type="button" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('department-calendar')">
+                        <button type="button" class="communication-hub-card rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('department-calendar')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-calendar-check text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Calendar</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Time off, projects, meetings</div>
                         </button>
-                        <button type="button" id="communication-email-placeholder" class="rounded-2xl border border-indigo-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openCommunicationPlaceholder('email')">
+                        <button type="button" id="communication-email-placeholder" class="communication-hub-card rounded-2xl border border-indigo-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openCommunicationPlaceholder('email')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><i class="ph-bold ph-envelope-simple text-2xl"></i></div>
                             <div class="flex items-center justify-between gap-2">
                                 <div class="text-lg font-black text-slate-900">Email</div>
@@ -8873,7 +8873,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -27664,7 +27664,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let salesCreditRequestsInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
-let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
+let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatMessageSendInFlight=false; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let salesCreditRequestsById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let warehouseAssignedItemsByLookupKey=new Map(); let warehouseAssignedItemMatchCache=new WeakMap(); let warehouseAssignedItemIndexCacheKey=''; let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
         let activeGrowerScoutTab='note'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
@@ -29188,7 +29188,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.12').trim() || 'V2026.08.15.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.13').trim() || 'V2026.08.15.13';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -53948,6 +53948,73 @@ function toggleDriveQuickRequestItem(domId) {
                 : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
         }
 
+        function getChatMessageDayKey(value = '') {
+            const parsed = Date.parse(value || '');
+            if (!parsed) return '';
+            const date = new Date(parsed);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function formatChatDaySeparator(value = '') {
+            const parsed = Date.parse(value || '');
+            if (!parsed) return '';
+            const date = new Date(parsed);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const key = getChatMessageDayKey(value);
+            if (key === getChatMessageDayKey(today.toISOString())) return 'Today';
+            if (key === getChatMessageDayKey(yesterday.toISOString())) return 'Yesterday';
+            return date.toLocaleDateString([], {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                ...(date.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' })
+            });
+        }
+
+        function formatChatClock(value = '') {
+            const parsed = Date.parse(value || '');
+            if (!parsed) return '';
+            return new Date(parsed).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function chatMessagesBelongToGroup(first = null, second = null) {
+            if (!first || !second || first.senderUsername !== second.senderUsername) return false;
+            if (getChatMessageDayKey(first.createdAt) !== getChatMessageDayKey(second.createdAt)) return false;
+            const firstTime = Date.parse(first.createdAt || '') || 0;
+            const secondTime = Date.parse(second.createdAt || '') || 0;
+            return !!firstTime && !!secondTime && Math.abs(secondTime - firstTime) <= 5 * 60 * 1000;
+        }
+
+        function resizeChatMessageInput(input = null) {
+            const element = input || document.getElementById('chat-message-input');
+            if (!element) return;
+            element.style.height = 'auto';
+            const maxHeight = 120;
+            const nextHeight = Math.max(34, Math.min(maxHeight, element.scrollHeight || 34));
+            element.style.height = `${nextHeight}px`;
+            element.style.overflowY = (element.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
+        }
+
+        function updateChatComposerState(input = null) {
+            const element = input || document.getElementById('chat-message-input');
+            const sendButton = document.getElementById('chat-message-send');
+            const hasMessage = !!String(element ? element.value : chatMessageDraft || '').trim();
+            if (sendButton) {
+                sendButton.disabled = !hasMessage || chatMessageSendInFlight || chatVoiceUploadInFlight;
+                sendButton.classList.toggle('is-ready', hasMessage && !chatMessageSendInFlight && !chatVoiceUploadInFlight);
+                sendButton.classList.toggle('is-sending', chatMessageSendInFlight);
+                sendButton.setAttribute('aria-busy', chatMessageSendInFlight ? 'true' : 'false');
+            }
+            resizeChatMessageInput(element);
+        }
+
+        function handleChatMessageInput(input = null) {
+            chatMessageDraft = String(input && input.value || '');
+            updateChatComposerState(input);
+        }
+
         function formatChatVoiceDuration(seconds = 0) {
             const safeSeconds = Math.max(0, Number(seconds) || 0);
             const minutes = Math.floor(safeSeconds / 60);
@@ -54718,19 +54785,25 @@ function toggleDriveQuickRequestItem(domId) {
             const isRecordingHere = !!(chatVoiceRecordingActive && !chatVoiceRecordingForComposer);
             const participantLine = participants.map((participant) => participant.displayName || getChatUserDisplayName(participant.username)).join(', ');
             const titleInitials = getChatAvatarInitials(title);
-            const messageHtml = messages.length ? messages.map((message) => {
+            const messageHtml = messages.length ? messages.map((message, index) => {
                 const mine = message.senderUsername === currentUsername;
-                return `<div class="android-message-row ${mine ? 'mine' : 'theirs'}">
+                const previousMessage = index > 0 ? messages[index - 1] : null;
+                const nextMessage = index + 1 < messages.length ? messages[index + 1] : null;
+                const startsGroup = !chatMessagesBelongToGroup(previousMessage, message);
+                const endsGroup = !chatMessagesBelongToGroup(message, nextMessage);
+                const startsDay = !previousMessage || getChatMessageDayKey(previousMessage.createdAt) !== getChatMessageDayKey(message.createdAt);
+                const daySeparator = startsDay ? `<div class="chat-day-separator" role="separator"><span>${escapeHtml(formatChatDaySeparator(message.createdAt))}</span></div>` : '';
+                return `${daySeparator}<div class="android-message-row ${mine ? 'mine' : 'theirs'} ${startsGroup ? 'group-first' : 'group-middle'} ${endsGroup ? 'group-last' : ''}">
                     <div class="android-message-bubble ${mine ? 'mine' : 'theirs'}">
-                        ${mine ? '' : `<div class="mb-1 text-[10px] font-black uppercase tracking-[0.11em] text-[#007aff]">${escapeHtml(message.senderDisplayName || getChatUserDisplayName(message.senderUsername))}</div>`}
+                        ${mine || !startsGroup ? '' : `<div class="chat-message-author">${escapeHtml(message.senderDisplayName || getChatUserDisplayName(message.senderUsername))}</div>`}
                         ${message.messageType === 'voice' && message.audioUrl ? `<button type="button" class="flex w-full min-w-[170px] items-center gap-3 rounded-2xl ${mine ? 'bg-white/10' : 'bg-white'} px-2.5 py-2 text-left" onclick="playChatVoiceMessage('${esc(message.audioUrl)}', this)" aria-label="Play voice message">
                             <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${mine ? 'bg-white text-[#007aff]' : 'bg-[#007aff] text-white'}"><i class="ph-bold ph-play text-base"></i></span>
                             <span class="min-w-0 flex-1">
                                 <span class="android-voice-wave ${mine ? 'text-white' : 'text-[#007aff]'}"><span></span><span></span><span></span><span></span><span></span><span></span></span>
                                 <span class="mt-1 block text-[11px] font-black uppercase tracking-[0.1em] ${mine ? 'text-white/72' : 'text-slate-500'}">${escapeHtml(formatChatVoiceDuration(message.audioDurationSeconds || 0))}</span>
                             </span>
-                        </button>` : `<div class="whitespace-pre-wrap text-[15px] font-medium leading-snug">${escapeHtml(message.body)}</div>`}
-                        <div class="android-message-meta">${escapeHtml(formatChatTime(message.createdAt))}</div>
+                        </button>` : `<div class="chat-message-body whitespace-pre-wrap">${escapeHtml(message.body)}</div>`}
+                        ${endsGroup ? `<div class="android-message-meta">${escapeHtml(formatChatClock(message.createdAt))}</div>` : ''}
                     </div>
                 </div>`;
             }).join('') : '<div class="mt-auto mb-auto rounded-2xl bg-slate-50 px-5 py-4 text-center text-sm font-bold text-slate-400">No messages yet.</div>';
@@ -54752,9 +54825,9 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="android-composer-row ${showVoiceControls ? '' : 'no-voice'}">
                         ${showVoiceControls ? `<button type="button" class="android-icon-btn mic chat-voice-hold-btn voice-talk-btn ${isRecordingHere ? 'recording' : ''} disabled:opacity-40" ${getChatVoiceHoldButtonAttrs(false)} aria-label="Hold to record voice note" title="Hold to record; release to send" ${chatVoiceUploadInFlight ? 'disabled' : ''}><i class="ph-bold ph-microphone"></i></button>` : ''}
                         <div class="android-composer-pill">
-                            <textarea id="chat-message-input" class="android-chat-input" rows="1" placeholder="Message" oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
+                            <textarea id="chat-message-input" class="android-chat-input" rows="1" maxlength="4000" enterkeyhint="enter" aria-label="Message" placeholder="Message" oninput="handleChatMessageInput(this)">${escapeHtml(chatMessageDraft)}</textarea>
                         </div>
-                        <button type="submit" class="android-icon-btn send" aria-label="Send message" title="Send"><i class="ph-bold ph-paper-plane-tilt text-xl"></i></button>
+                        <button id="chat-message-send" type="submit" class="android-icon-btn send ${String(chatMessageDraft || '').trim() ? 'is-ready' : ''} ${chatMessageSendInFlight ? 'is-sending' : ''}" aria-label="Send message" title="Send" aria-busy="${chatMessageSendInFlight ? 'true' : 'false'}" ${String(chatMessageDraft || '').trim() && !chatMessageSendInFlight && !chatVoiceUploadInFlight ? '' : 'disabled'}><i class="ph-bold ph-arrow-up text-xl"></i></button>
                     </div>
                 </form>
             </div>`;
@@ -54768,6 +54841,8 @@ function toggleDriveQuickRequestItem(domId) {
                 chatView.classList.toggle('chat-thread-active', !!activeChatConversationId);
                 chatView.classList.toggle('chat-compose-active', !!chatComposeOpen);
             }
+            document.body.classList.toggle('chat-conversation-open', !!activeChatConversationId);
+            document.body.classList.toggle('chat-new-message-open', !!chatComposeOpen);
             const titleEl = document.getElementById('chat-title');
             const crumbEl = document.getElementById('chat-crumb');
             if (titleEl) titleEl.textContent = activeChatConversationId ? getChatConversationTitle(chatConversations.find((item) => item.id === activeChatConversationId)) : (chatComposeOpen ? 'New Chat' : 'Chat');
@@ -54801,6 +54876,7 @@ function toggleDriveQuickRequestItem(domId) {
                     scrollChatThreadToBottom();
                     const input = document.getElementById('chat-message-input');
                     if (input && String(input.value || '') !== chatMessageDraft) input.value = chatMessageDraft;
+                    updateChatComposerState(input);
                 });
                 else if (chatComposeOpen) requestAnimationFrame(() => {
                     const recipientInput = document.getElementById('chat-recipient-input');
@@ -55174,14 +55250,19 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function sendChatMessage() {
-            if (chatVoiceUploadInFlight) return;
+            if (chatVoiceUploadInFlight || chatMessageSendInFlight) return;
             const input = document.getElementById('chat-message-input');
             const body = String(input ? input.value : chatMessageDraft || '').trim();
             if (!body || !activeChatConversationId) return;
+            chatMessageSendInFlight = true;
+            updateChatComposerState(input);
             try {
                 await sendChatMessageToConversation(activeChatConversationId, body);
             } catch (error) {
                 showToast('Send Failed', error && error.message ? error.message : 'Could not send this chat.', true);
+            } finally {
+                chatMessageSendInFlight = false;
+                updateChatComposerState(document.getElementById('chat-message-input'));
             }
         }
 

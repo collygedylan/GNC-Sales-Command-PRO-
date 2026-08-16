@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.12';
+  const release = 'V2026.08.15.13';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.12'/);
-  assert.equal(packageJson.version, '2026.08.15.12');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.13'/);
+  assert.equal(packageJson.version, '2026.08.15.13');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -378,6 +378,34 @@ test('top banners and sticky module controls use semantic surfaces in both theme
   assert.match(client, /themeColorMeta\.setAttribute\('content', skinActive \? \(effectiveTheme === 'dark' \? '#07120e' : '#f8fbf9'\) : '#007a4d'\)/);
 });
 
+test('active Chat is a full-height iPhone-style conversation with keyboard-safe composing', () => {
+  const communicationCascade = css.slice(css.lastIndexOf('V2026.08.15.13 — full-height messaging and unified Communication surfaces'));
+  assert.match(communicationCascade, /current-view-chat\.chat-conversation-open #main-scroll-area[\s\S]*overflow: hidden !important/);
+  assert.match(communicationCascade, /current-view-chat\.chat-conversation-open #view-wrapper,[\s\S]*height: 100% !important;[\s\S]*min-height: 0 !important/);
+  assert.match(communicationCascade, /current-view-chat\.chat-conversation-open \.chat-thread-shell,[\s\S]*height: 100% !important;[\s\S]*max-height: none !important/);
+  assert.match(communicationCascade, /@media \(max-width: 767px\)[\s\S]*\.android-chat-shell[\s\S]*border-width: 0 !important;[\s\S]*border-radius: 0 !important/);
+  assert.match(communicationCascade, /chat-conversation-open\.keyboard-open #main-scroll-area[\s\S]*inset: var\(--app-top-chrome-height, 0px\) 0 0 !important/);
+  assert.match(html, /document\.body\.classList\.toggle\('chat-conversation-open', !!activeChatConversationId\)/);
+  assert.match(html, /function handleChatMessageInput\(input = null\)/);
+  assert.match(html, /function resizeChatMessageInput\(input = null\)/);
+  assert.match(html, /id="chat-message-send"[\s\S]*ph-arrow-up/);
+  assert.match(html, /chatMessageSendInFlight=true|chatMessageSendInFlight = true/);
+});
+
+test('Chat message groups and Communication calendar use the modern semantic system', () => {
+  const communicationCascade = css.slice(css.lastIndexOf('V2026.08.15.13 — full-height messaging and unified Communication surfaces'));
+  assert.match(html, /function formatChatDaySeparator\(value = ''\)/);
+  assert.match(html, /function chatMessagesBelongToGroup\(first = null, second = null\)/);
+  assert.match(html, /class="chat-day-separator" role="separator"/);
+  assert.match(html, /class="chat-message-author"/);
+  assert.match(html, /id="communication-hub-grid"/);
+  assert.match(communicationCascade, /#view-communication #communication-hub-grid[\s\S]*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(communicationCascade, /#view-communication \.communication-hub-card[\s\S]*background: linear-gradient\(145deg, var\(--ops-surface\)/);
+  assert.match(communicationCascade, /#view-department-calendar :is\([\s\S]*\.department-calendar-toolbar,[\s\S]*background: var\(--ops-surface\) !important/);
+  assert.match(communicationCascade, /#view-department-calendar \.department-calendar-grid[\s\S]*background: var\(--ops-calendar-gridline\) !important/);
+  assert.match(communicationCascade, /@media \(max-width: 767px\)[\s\S]*\.department-calendar-grid[\s\S]*repeat\(7, minmax\(0, 1fr\)\)/);
+});
+
 test('static deployment includes the pilot assets and builds the pinned bundle', () => {
   assert.match(workflow, /npm run build:pilot-monitoring/);
   assert.match(workflow, /npm run build:live:assets/);
@@ -385,7 +413,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081512\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081513\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
