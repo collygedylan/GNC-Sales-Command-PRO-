@@ -1,11 +1,14 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
-import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-gnc-session, x-app-session",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+  "Cache-Control": "private, no-store",
 };
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
@@ -282,7 +285,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "private, no-store" },
   });
 }
 
@@ -564,7 +567,7 @@ async function handleGetUserPreferences(
       monitoring,
     });
   } catch (error) {
-    console.error("Live pilot bootstrap failed closed.", error);
+    recordHandledError("app-api", "get_user_preferences", error, 503);
     return jsonResponse({
       ok: true,
       eligible: false,
@@ -638,7 +641,7 @@ async function handleSetUserPreferences(
       preferences: serializeLivePilotPreferenceRow(current),
     });
   } catch (error) {
-    console.error("Live pilot preference save failed.", error);
+    recordHandledError("app-api", "set_user_preferences", error, 503);
     return errorResponse("Unable to save pilot preferences.", 500);
   }
 }
@@ -918,16 +921,17 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessi
   const uploadResult = await supabase.storage.from(bucketName).upload(filePath, bytes, {
     contentType: String(file.type || "image/jpeg").trim() || "image/jpeg",
     cacheControl: "31536000",
-    upsert: true,
+    upsert: false,
   });
-  if (uploadResult.error) return errorResponse(uploadResult.error.message || "Photo upload failed.", 500);
+  const duplicateUpload = !!(uploadResult.error && /already exists|duplicate/i.test(String(uploadResult.error.message || "")));
+  if (uploadResult.error && !duplicateUpload) return errorResponse(uploadResult.error.message || "Photo upload failed.", 500);
 
   const publicUrlData = supabase.storage.from(bucketName).getPublicUrl(filePath);
   const publicUrl = String(publicUrlData.data.publicUrl || "").trim();
   return jsonResponse({ ok: true, publicUrl, bucketName, filePath });
 }
 
-serve(async (req) => {
+serve((req) => withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
 
@@ -938,7 +942,7 @@ serve(async (req) => {
   }
 
   const contentType = String(req.headers.get("content-type") || "").toLowerCase();
-  const session = await readAppSessionFromRequest(req);
+  const session = await readSupabaseOrAppSessionFromRequest(req, supabase);
 
   if (contentType.includes("multipart/form-data")) {
     return await handlePhotoUpload(session, req);
@@ -955,7 +959,14 @@ serve(async (req) => {
   if (action === "set_user_preferences" || action === "live_pilot_preferences_save") {
     return await handleSetUserPreferences(session, payload);
   }
-  if (action === "db") return await handleDb(session, payload);
+  if (action === "db") {
+    if (session && session.ver >= 2) {
+      return errorResponse("Native Auth sessions must use PostgREST with RLS for database access.", 410, {
+        code: "DIRECT_RLS_REQUIRED"
+      });
+    }
+    return await handleDb(session, payload);
+  }
 
   return errorResponse("Unsupported action.", 400);
-});
+}));

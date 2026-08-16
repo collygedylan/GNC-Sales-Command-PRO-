@@ -177,3 +177,37 @@ export async function readAppSessionFromRequest(req: Request) {
   const token = headerValue.replace(/^(Bearer|Session)\s+/i, "").trim();
   return await verifyAppSessionToken(token);
 }
+
+export async function readSupabaseOrAppSessionFromRequest(
+  req: Request,
+  supabaseAdmin: { auth: { getUser: (token: string) => Promise<any> }; from: (table: string) => any },
+): Promise<AppSessionClaims | null> {
+  const legacy = await readAppSessionFromRequest(req);
+  if (legacy) return legacy;
+  const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!bearer || !supabaseAdmin) return null;
+  try {
+    const { data, error } = await supabaseAdmin.auth.getUser(bearer);
+    const user = data?.user;
+    if (error || !user?.id) return null;
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("username,display_name,role,must_change_password,disabled_at,locked_until")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profileError || !profile || profile.disabled_at) return null;
+    if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) return null;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    return {
+      ver: 2,
+      username: normalizeUsername(profile.username),
+      displayName: String(profile.display_name || profile.username || "").trim(),
+      role: String(profile.role || "User").trim() || "User",
+      mustChangePassword: profile.must_change_password === true,
+      iat: nowSeconds,
+      exp: nowSeconds + 300,
+    };
+  } catch (_error) {
+    return null;
+  }
+}

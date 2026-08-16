@@ -79,7 +79,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.16.05</span>
+              <span class="nav-version-pill">V2026.08.16.06</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -159,9 +159,11 @@
             <button class="drawer-item" type="button">Crop Roll</button>
           </aside>
           <section>
+            <div class="freeze-panel drive-controls-sticky ops-module-filter-band">
             <div id="drive-toolbar-rail" class="drive-toolbar-rail" aria-label="Drive views and filters">
               <div id="drive-drill-tabs" class="task-tabs"><button class="task-tab active">Common Name</button><button class="task-tab">Location</button><button class="task-tab">Card</button><button class="task-tab">Reports</button></div>
               <div id="drive-season-filters" class="drive-top-inline drive-export-controls"><div class="drive-top-controls-row"><div class="task-top-control-shell"><button class="task-top-control-button">Columns</button></div><button class="drive-mode-export-button">Export Excel</button><button class="drive-filter-reset-button">Reset Filters</button></div></div>
+            </div>
             </div>
             <div id="drive-content">
               <article class="inv-card app-smart-card"><p class="record-title">North dock</p><p class="record-meta">Ready for review</p><div class="app-card-qty-row grid"><span class="app-card-qty-chip"><span class="app-card-qty-label">On hand</span><span class="app-card-qty-value">39</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Review</span><span class="app-card-qty-value">0</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Available</span><span class="app-card-qty-value">39</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Open Stock</span><span class="app-card-qty-value">39</span></span></div></article>
@@ -191,6 +193,44 @@
               </div>
               <form class="chat-thread-composer"><div class="android-composer-row"><button class="android-icon-btn mic" type="button">●</button><div class="android-composer-pill"><textarea class="android-chat-input" placeholder="Message"></textarea></div><button class="android-icon-btn send" type="button">➤</button></div></form>
             </div>
+          </div>
+        </section>
+        <section id="view-detail" class="hidden detail-request-mode detail-photo-update-mode" aria-label="Request item detail">
+          <div class="freeze-panel">
+            <div id="det-tabs-container" class="task-tabs" aria-label="Item detail views">
+              <button class="task-tab active" type="button">Request</button>
+              <button class="task-tab" type="button">Inventory Edits</button>
+              <button class="task-tab" type="button">This Location</button>
+              <button class="task-tab" type="button">Item Details</button>
+              <button class="task-tab" type="button">Item Inquiry</button>
+            </div>
+            <div class="mb-4 app-smart-card">
+              <h2 class="record-title">Endless Summer The Original Hydrangea</h2>
+              <div class="app-card-qty-row grid">
+                <span class="app-card-qty-chip"><span class="app-card-qty-label">PRI</span><span class="app-card-qty-value">--</span></span>
+                <span class="app-card-qty-chip"><span class="app-card-qty-label">On hand</span><span class="app-card-qty-value">1260</span></span>
+                <span class="app-card-qty-chip"><span class="app-card-qty-label">Review</span><span class="app-card-qty-value">0</span></span>
+                <span class="app-card-qty-chip"><span class="app-card-qty-label">Available</span><span class="app-card-qty-value">1260</span></span>
+                <span class="app-card-qty-chip"><span class="app-card-qty-label">Open stock</span><span class="app-card-qty-value">2523</span></span>
+              </div>
+              <button id="inventory-edit-request-detail-action" type="button">Take request photo</button>
+            </div>
+            <div id="detail-shared-panels">
+              <div id="req-matching-inventory-container" class="app-smart-card" aria-expanded="false">
+                <strong>AV Options</strong><span>000507.051.1 | 11 rows</span><button type="button">Show</button>
+              </div>
+            </div>
+          </div>
+          <div id="det-request-content">
+            <div id="req-input-container">
+              <div class="request-detail-field"><label for="req-spec">Spec (size/dims)</label><input id="req-spec" class="input-field" placeholder="e.g. 24-30 inch"></div>
+              <div class="request-detail-field"><label for="req-loc-match">Loc match %</label><input id="req-loc-match" class="input-field" placeholder="e.g. 95"></div>
+              <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide"><label for="req-av-note">AV note</label><div><input id="req-av-note" class="input-field" placeholder="Type AV note or select..."><button type="button" aria-label="Add AV note">+</button></div></div>
+              <div id="req-pick-wrap" class="request-detail-field"><label for="req-pick-note">Pick note</label><input id="req-pick-note" class="input-field" placeholder="e.g. Needs spacing"></div>
+              <div id="req-comments-wrap" class="request-detail-field"><label for="req-comments">Comments</label><textarea id="req-comments" class="input-field" placeholder="Any additional comments..."></textarea></div>
+            </div>
+            <div id="req-save-action-wrap"><button id="req-btn-save-complete" type="button">Mark done</button></div>
+            <button id="req-shear-action" type="button">Add to shear list</button>
           </div>
         </section>
       </div>
@@ -277,8 +317,21 @@
       document.getElementById('view-home').classList.toggle('hidden', activeView !== 'home');
       document.getElementById('view-drive').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('view-chat').classList.toggle('hidden', activeView !== 'chat');
+      document.getElementById('view-detail').classList.toggle('hidden', activeView !== 'detail');
       document.getElementById('global-header-search-slot').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('global-header-inline-title').classList.toggle('hidden', activeView === 'drive');
+      const syncFixtureViewportContracts = () => {
+        const root = document.documentElement;
+        const topChrome = document.getElementById('app-top-chrome');
+        const bottomNav = document.getElementById('bottom-nav');
+        root.style.setProperty('--visual-height', `${window.innerHeight}px`);
+        root.style.setProperty('--app-top-chrome-height', `${Math.ceil(topChrome.getBoundingClientRect().height)}px`);
+        root.style.setProperty('--footer-nav-reserve', `${Math.ceil(bottomNav.getBoundingClientRect().height)}px`);
+      };
+      syncFixtureViewportContracts();
+      requestAnimationFrame(syncFixtureViewportContracts);
+      window.addEventListener('resize', () => requestAnimationFrame(syncFixtureViewportContracts));
+      window.addEventListener('orientationchange', () => requestAnimationFrame(syncFixtureViewportContracts));
       const syncFixtureHomeFit = () => {
         if (activeView !== 'home') return;
         const home = document.getElementById('view-home');

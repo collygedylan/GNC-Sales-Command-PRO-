@@ -18,4 +18,5 @@ v2/dist/
 test-results/
 playwright-report/
 _site/
+artifacts/
 

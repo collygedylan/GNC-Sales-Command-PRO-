@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.16.06', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -213,6 +213,87 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
     expect(railState.scrollable).toBe(true);
   }
   await expect(page.getByText('Season Sales Notes', { exact: true })).toHaveCount(0);
+});
+
+test('Request detail fits the visible shell without outer scrolling or hidden actions', async ({ page }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+    { width: 1366, height: 768 },
+    { width: 1920, height: 1080 },
+  ];
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto(`${fixtureUrl}?view=detail&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#view-detail')).toBeVisible();
+    await expect(page.locator('#req-spec')).toBeVisible();
+    await expect(page.locator('#req-comments')).toBeVisible();
+    await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+    await expect(page.locator('#req-shear-action')).toBeVisible();
+    await expect(page.locator('#req-matching-inventory-container')).toHaveAttribute('aria-expanded', 'false');
+
+    const state = await page.locator('#view-detail').evaluate((detail) => {
+      const main = document.getElementById('main-scroll-area')!;
+      const nav = document.getElementById('bottom-nav')!;
+      const form = document.getElementById('det-request-content')!;
+      const summary = detail.querySelector(':scope > .freeze-panel') as HTMLElement;
+      const save = document.getElementById('req-btn-save-complete')!;
+      const shear = document.getElementById('req-shear-action')!;
+      const rect = (element: Element) => element.getBoundingClientRect();
+      return {
+        outerScroll: main.scrollHeight - main.clientHeight,
+        horizontalOverflow: main.scrollWidth - main.clientWidth,
+        detailTop: rect(detail).top,
+        detailBottom: rect(detail).bottom,
+        navTop: rect(nav).top,
+        formVisible: rect(form).height > 0 && rect(form).bottom <= rect(nav).top + 1,
+        summaryVisible: rect(summary).height > 0,
+        saveVisible: rect(save).top >= rect(form).top && rect(save).bottom <= rect(nav).top + 1,
+        shearVisible: rect(shear).top >= rect(form).top && rect(shear).bottom <= rect(nav).top + 1,
+        columns: getComputedStyle(detail).gridTemplateColumns.split(' ').length,
+      };
+    });
+    expect(state.outerScroll, `${viewport.width}x${viewport.height}: ${JSON.stringify(state)}`).toBeLessThanOrEqual(2);
+    expect(state.horizontalOverflow).toBeLessThanOrEqual(2);
+    expect(state.detailBottom, `${viewport.width}x${viewport.height}: ${JSON.stringify(state)}`).toBeLessThanOrEqual(state.navTop + 1);
+    expect(state.formVisible).toBe(true);
+    expect(state.summaryVisible).toBe(true);
+    expect(state.saveVisible).toBe(true);
+    expect(state.shearVisible).toBe(true);
+    expect(state.columns).toBe(viewport.width >= 900 ? 2 : 1);
+  }
+});
+
+test('module filters sit below the command search with responsive breathing room', async ({ page }) => {
+  const cases = [
+    { width: 390, height: 844, minGap: 20, maxGap: 44 },
+    { width: 768, height: 1024, minGap: 42, maxGap: 62 },
+    { width: 1366, height: 768, minGap: 68, maxGap: 98 },
+    { width: 1920, height: 1080, minGap: 84, maxGap: 120 },
+  ];
+  for (const viewport of cases) {
+    await page.setViewportSize(viewport);
+    await page.goto(`${fixtureUrl}?view=drive&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
+    await page.locator('#side-drawer').evaluate((drawer) => { (drawer as HTMLElement).style.display = 'none'; });
+    await page.locator('#fixture-layout').evaluate((layout) => { (layout as HTMLElement).style.gridTemplateColumns = 'minmax(0, 1fr)'; });
+    const spacing = await page.locator('#view-drive .ops-module-filter-band').evaluate((rail) => {
+      const search = document.getElementById('global-header-search-row')!;
+      const searchRect = search.getBoundingClientRect();
+      const railRect = rail.getBoundingClientRect();
+      const gapToken = Number.parseFloat(getComputedStyle(rail).marginTop);
+      return {
+        gap: Math.round((railRect.top - searchRect.bottom) * 100) / 100,
+        gapToken,
+        railTop: railRect.top,
+        searchBottom: searchRect.bottom,
+      };
+    });
+    expect(spacing.railTop, `${viewport.width}x${viewport.height}: ${JSON.stringify(spacing)}`).toBeGreaterThan(spacing.searchBottom);
+    expect(spacing.gapToken).toBeGreaterThan(0);
+    expect(spacing.gap, `${viewport.width}x${viewport.height}: ${JSON.stringify(spacing)}`).toBeGreaterThanOrEqual(viewport.minGap);
+    expect(spacing.gap, `${viewport.width}x${viewport.height}: ${JSON.stringify(spacing)}`).toBeLessThanOrEqual(viewport.maxGap);
+  }
 });
 
 test('light and dark navigation use explicit semantic fallback colors', async ({ page }) => {

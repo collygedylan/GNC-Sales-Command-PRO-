@@ -1,11 +1,14 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { getRoleAccessState, normalizeUsername, readAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { withObservedRequest } from "../_shared/observability.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import { getRoleAccessState, normalizeUsername, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-gnc-session, x-app-session",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+  "Cache-Control": "private, no-store",
 };
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
@@ -163,7 +166,7 @@ const SPOKEN_ALIAS_MAP: Record<string, string[]> = {
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "private, no-store" },
   });
 }
 
@@ -1059,13 +1062,13 @@ async function handleIntent(intent: Intent, session: { username?: string; displa
   return buildInventoryResponse(intent, matches, TABLE_LABELS.master);
 }
 
-serve(async (req) => {
+serve((req) => withObservedRequest("inventory-assistant", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
 
   try {
     ensureServerConfig();
-    const session = await readAppSessionFromRequest(req);
+    const session = await readSupabaseOrAppSessionFromRequest(req, supabase);
     if (!session) return errorResponse("Unauthorized", 401);
     const access = getRoleAccessState(session.role);
     if (!(access.isAdmin || access.isRep || access.isQcSupervisor || access.isQc)) {
@@ -1082,8 +1085,8 @@ serve(async (req) => {
     const phrased = await maybePhraseAnswer(responsePayload.answer, responsePayload.matches, responsePayload.sourceLabel, question);
     return jsonResponse({ ...responsePayload, answer: phrased }, 200);
   } catch (error) {
-    const details = String(error && (error as Error).message || error || "").trim();
-    console.error("inventory-assistant failed", { error: details });
-    return errorResponse("Leaf could not answer that question right now.", 500, { details });
+    return errorResponse("Leaf could not answer that question right now.", 500, {
+      code: error instanceof Error ? error.name : "inventory_assistant_error"
+    });
   }
-});
+}));
