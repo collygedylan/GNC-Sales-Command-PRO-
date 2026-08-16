@@ -665,7 +665,7 @@ test('V08 compaction preparation never copies, swaps, truncates, or drops produc
 
 test('hosted performance monitoring pins CLI and emits bounded anonymous function logs', () => {
   assert.match(performanceWorkflow, /version: 2\.111\.0/);
-  assert.match(performanceWorkflow, /supabase test db/);
+  assert.match(performanceWorkflow, /supabase(?:\s+--workdir[^\n]+)?\s+test db/);
   assert.match(performanceWorkflow, /deno test --allow-env --allow-net supabase\/functions/);
   assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
   assert.match(performanceWorkflow, /Prepare static shell for Lighthouse/);
