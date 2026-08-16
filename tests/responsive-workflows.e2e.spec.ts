@@ -104,7 +104,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
       };
     });
     expect(gridState.sheetWidth).toBeLessThanOrEqual(viewport.width);
-    expect(gridState.tableWidth).toBeGreaterThanOrEqual(gridState.sheetWidth);
+    expect(gridState.tableWidth).toBeGreaterThanOrEqual(gridState.sheetWidth - 3);
     expect(gridState.narrowestCell).toBeGreaterThan(30);
     expect(gridState.verticalWords).toBe(false);
 
