@@ -1,12 +1,12 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.08.16.06",
+  "version": "2026.08.16.07",
   "type": "module",
   "scripts": {
     "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
     "build:pilot-monitoring": "esbuild scripts/ops-precision-sentry-entry.js --bundle --format=iife --global-name=GncSentry --minify --outfile=assets/vendor/sentry-browser-10.70.0.min.js",
-    "build:live:css": "tailwindcss -i assets/live-tailwind-source.css -o assets/live-tailwind-v2026081606.min.css --minify",
+    "build:live:css": "tailwindcss -i assets/live-tailwind-source.css -o assets/live-tailwind-v2026081607.min.css --minify",
     "build:live:vendor": "node scripts/vendor-live-assets.mjs && esbuild scripts/live-supabase-entry.js --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=assets/vendor/supabase-browser-2.112.3.min.js",
     "build:live:assets": "npm run build:live:css && npm run build:live:vendor",
     "build:live:shell": "node scripts/build-live-shell.mjs",
@@ -61,6 +61,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.5",
     "jsdom": "29.0.1",
+    "pg": "8.23.0",
     "sharp": "0.34.4",
     "storybook": "10.5.8",
     "tailwindcss": "4.3.3",

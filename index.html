@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081606.min.css?v=V2026.08.16.06">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081607.min.css?v=V2026.08.16.07">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.16.06';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6556,7 +6556,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.06">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.07">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6659,7 +6659,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.06"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.07"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7412,7 +7412,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.06').trim() || 'V2026.08.16.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.07').trim() || 'V2026.08.16.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8888,7 +8888,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8906,10 +8906,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         let supabaseClient = null;
-        // .06 ships the native Auth implementation dark. The .07 release flips
-        // this only after the additive profile migration and user reconciliation
-        // have passed the staged dual-auth checks.
-        const NATIVE_AUTH_ENABLED = false;
+        // .07 enables native Supabase Auth after the additive profile migration,
+        // password-parity reconciliation, and dual-auth workflow checks passed.
+        const NATIVE_AUTH_ENABLED = true;
         const LEGACY_SESSION_BRIDGE_ENABLED = true;
         const NATIVE_AUTH_ALIAS_DOMAIN = 'auth.agmetricapp.invalid';
         const PASSKEY_ENROLLED_STORAGE_KEY = 'gnc_passkey_enrolled_v1';
@@ -9068,6 +9067,31 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             };
         }
 
+        async function ensureNativeAppSessionBridge(force = false) {
+            if (!NATIVE_AUTH_ENABLED || !nativeAuthSessionActive) return null;
+            if (!force) {
+                const existingToken = getCurrentAppSessionToken();
+                if (existingToken) return { ok: true, token: existingToken, source: 'cached-bridge' };
+            }
+            const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'native_session_bridge'
+            }, {
+                includeSession: false,
+                timeoutMs: 14000,
+                label: 'Native session bridge'
+            });
+            if (!payload || payload.ok !== true || !payload.session || !payload.session.token) return null;
+            persistAppSessionRecord({
+                token: payload.session.token,
+                expiresAt: Number(payload.session.expiresAt || 0),
+                username: String(firstNonEmptyValue(payload.session.username, nativeAuthProfile && nativeAuthProfile.username, currentUser) || '').trim(),
+                displayName: String(firstNonEmptyValue(payload.session.displayName, nativeAuthProfile && nativeAuthProfile.display_name, currentUserDisplay, currentUser) || '').trim(),
+                role: String(firstNonEmptyValue(payload.session.role, nativeAuthProfile && nativeAuthProfile.role, currentRole) || '').trim(),
+                mustChangePassword: payload.session.mustChangePassword === true
+            });
+            return { ok: true, token: payload.session.token, source: 'native-bridge' };
+        }
+
         function syncPasskeyPilotUi(profile = nativeAuthProfile) {
             const supported = !!(window.PublicKeyCredential && navigator.credentials);
             const eligible = supported && !!(profile && profile.passkey_pilot === true);
@@ -9092,6 +9116,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 nativeAuthProfile = null;
                 const profile = await loadNativeAuthProfile(true);
                 if (!profile) throw new Error('This account is not enabled for passkeys.');
+                await ensureNativeAppSessionBridge(true).catch(() => null);
                 currentUser = String(profile.username || '').trim().toLowerCase();
                 currentUserDisplay = String(profile.display_name || profile.username || '').trim();
                 currentRole = String(profile.role || 'User');
@@ -9366,7 +9391,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const PHOTO_MAX_WIDTH = 1920;
         const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081606.js';
+        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081607.js';
         let photoOptimizerWorker = null;
         let photoOptimizerRequestId = 0;
         const photoOptimizerPending = new Map();
@@ -24897,7 +24922,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function ensureAppApiWriteProxySession() {
             if (getCurrentAppSessionToken()) return true;
             const nativeSession = await getNativeAuthSession().catch(() => null);
-            if (nativeSession && nativeSession.access_token) return true;
+            if (nativeSession && nativeSession.access_token) {
+                const bridge = await ensureNativeAppSessionBridge(true).catch(() => null);
+                if (bridge && getCurrentAppSessionToken()) return true;
+            }
             if (typeof ensureLeafAssistantSession !== 'function') return false;
             if (window.__gncAppApiSessionBootstrapPromise) {
                 const existingResult = await window.__gncAppApiSessionBootstrapPromise.catch(() => null);
@@ -27820,6 +27848,19 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
             const nativeResult = await tryNativeAuthPasswordLogin(normalizedUsername, normalizedPassword).catch(() => null);
+            if (nativeResult) {
+                const bridge = await ensureNativeAppSessionBridge(true).catch(() => null);
+                if (bridge) {
+                    return {
+                        ok: true,
+                        user: nativeResult.user,
+                        source: 'native-auth',
+                        session: readPersistedAppSessionRecord(),
+                        nativeSession: nativeResult.session,
+                        mustChangePassword: nativeResult.mustChangePassword === true
+                    };
+                }
+            }
             let payload = null;
             let lastError = null;
             for (let attempt = 0; attempt <= LOGIN_FETCH_RETRY_COUNT; attempt += 1) {
@@ -29767,7 +29808,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.06').trim() || 'V2026.08.16.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.07').trim() || 'V2026.08.16.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -49016,6 +49057,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             try {
+                await ensureNativeAppSessionBridge(false).catch(() => null);
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: 'native-auth' });
                 return true;
             } catch (error) {

@@ -3247,7 +3247,7 @@ body.keyboard-open #view-change-password :is(.login-primary-button, .login-secon
   margin-top: 9px !important;
 }
 
-/* V2026.08.16.06 — responsive workflow, viewport, and monitoring health fixes. */
+/* V2026.08.16.07 — responsive workflow, viewport, and monitoring health fixes. */
 body.ops-precision-pilot {
   --ops-nav-light-fallback: rgba(255, 255, 255, 0.96);
   --ops-nav-dark-fallback: rgba(10, 28, 21, 0.96);
@@ -4754,7 +4754,7 @@ body.keyboard-open #view-change-password :is(.login-primary-button, .login-secon
   margin-top: 9px !important;
 }
 
-/* V2026.08.16.06 final cascade lock. */
+/* V2026.08.16.07 final cascade lock. */
 body.ops-precision-pilot[data-ops-theme="light"] #bottom-nav { background-color: rgba(255, 255, 255, .96) !important; }
 body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav,
 html.outdoor-mode body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav { background-color: rgba(10, 28, 21, .96) !important; background-image: none !important; }
@@ -4783,7 +4783,7 @@ body.ops-precision-pilot.ops-grid-effective #drive-content[data-drive-detailed-r
   body.ops-precision-pilot.ops-grid-effective #drive-content[data-drive-detailed-records="true"].ops-record-collection { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
-/* V2026.08.16.06 — spreadsheet Grid, one-rail Drive controls, adaptive Home, and visible Chat composer. */
+/* V2026.08.16.07 — spreadsheet Grid, one-rail Drive controls, adaptive Home, and visible Chat composer. */
 body.ops-precision-pilot #view-drive .drive-controls-sticky {
   overflow: visible !important;
 }
@@ -5115,7 +5115,7 @@ body.ops-precision-pilot.current-view-chat .chat-thread-composer {
   z-index: 12 !important;
 }
 
-/* V2026.08.16.06 — high-contrast semantic quick navigation. */
+/* V2026.08.16.07 — high-contrast semantic quick navigation. */
 body.ops-precision-pilot {
   --ops-quick-nav-bg: #ffffff;
   --ops-quick-nav-border: #b8cac0;
@@ -5222,7 +5222,7 @@ body.ops-precision-pilot #bottom-nav .footer-nav-badge {
   }
 }
 
-/* V2026.08.16.06 — phone Cards lock, spreadsheet column filters, fitted Home, and resilient navigation contrast. */
+/* V2026.08.16.07 — phone Cards lock, spreadsheet column filters, fitted Home, and resilient navigation contrast. */
 body.ops-precision-pilot .ops-display-option.ops-display-unavailable,
 body.ops-precision-pilot button[data-ops-display-mode="grid"]:disabled {
   cursor: not-allowed !important;
@@ -5385,7 +5385,7 @@ body.ops-precision-pilot .drive-grid-table tbody > tr[hidden] {
   color: #d4e5dc !important;
 }
 
-/* V2026.08.16.06 — primary Home launcher hierarchy and no-scroll desktop fit. */
+/* V2026.08.16.07 — primary Home launcher hierarchy and no-scroll desktop fit. */
 @media (min-width: 1100px) {
   body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area {
     overflow: hidden !important;
@@ -5426,7 +5426,7 @@ body.ops-precision-pilot .drive-grid-table tbody > tr[hidden] {
   }
 }
 
-/* V2026.08.16.06 — measured Home viewport fit with fixed quick navigation. */
+/* V2026.08.16.07 — measured Home viewport fit with fixed quick navigation. */
 html:has(body.ops-precision-pilot),
 body.ops-precision-pilot {
   width: 100% !important;
@@ -5537,7 +5537,7 @@ body.ops-precision-pilot.measurement-keyboard-open {
   }
 }
 
-/* V2026.08.16.06 — request detail viewport fit and collapsed-panel performance shell. */
+/* V2026.08.16.07 — request detail viewport fit and collapsed-panel performance shell. */
 body.ops-precision-pilot:has(#view-detail.detail-request-mode:not(.hidden)):not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area {
   overflow: hidden !important;
   overscroll-behavior: none !important;
