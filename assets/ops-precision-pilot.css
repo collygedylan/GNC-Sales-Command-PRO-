@@ -3247,7 +3247,7 @@ body.keyboard-open #view-change-password :is(.login-primary-button, .login-secon
   margin-top: 9px !important;
 }
 
-/* V2026.08.16.01 — responsive workflow, viewport, and monitoring health fixes. */
+/* V2026.08.16.02 — responsive workflow, viewport, and monitoring health fixes. */
 body.ops-precision-pilot {
   --ops-nav-light-fallback: rgba(255, 255, 255, 0.96);
   --ops-nav-dark-fallback: rgba(10, 28, 21, 0.96);
@@ -4754,7 +4754,7 @@ body.keyboard-open #view-change-password :is(.login-primary-button, .login-secon
   margin-top: 9px !important;
 }
 
-/* V2026.08.16.01 final cascade lock. */
+/* V2026.08.16.02 final cascade lock. */
 body.ops-precision-pilot[data-ops-theme="light"] #bottom-nav { background-color: rgba(255, 255, 255, .96) !important; }
 body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav,
 html.outdoor-mode body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav { background-color: rgba(10, 28, 21, .96) !important; background-image: none !important; }
@@ -4783,7 +4783,7 @@ body.ops-precision-pilot.ops-grid-effective #drive-content[data-drive-detailed-r
   body.ops-precision-pilot.ops-grid-effective #drive-content[data-drive-detailed-records="true"].ops-record-collection { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
-/* V2026.08.16.01 — spreadsheet Grid, one-rail Drive controls, adaptive Home, and visible Chat composer. */
+/* V2026.08.16.02 — spreadsheet Grid, one-rail Drive controls, adaptive Home, and visible Chat composer. */
 body.ops-precision-pilot #view-drive .drive-controls-sticky {
   overflow: visible !important;
 }
@@ -5113,4 +5113,111 @@ body.ops-precision-pilot.current-view-chat .chat-thread-composer {
   visibility: visible !important;
   overflow: visible !important;
   z-index: 12 !important;
+}
+
+/* V2026.08.16.02 — high-contrast semantic quick navigation. */
+body.ops-precision-pilot {
+  --ops-quick-nav-bg: #ffffff;
+  --ops-quick-nav-border: #b8cac0;
+  --ops-quick-nav-text: #405249;
+  --ops-quick-nav-active-bg: #e3f5ec;
+  --ops-quick-nav-active-border: #07874f;
+  --ops-quick-nav-active-text: #065f3b;
+  --ops-quick-nav-shadow: rgba(19, 34, 27, .16);
+  --ops-quick-nav-badge: #d92d3a;
+  --ops-quick-nav-badge-ring: #ffffff;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-quick-nav-bg: #0b1c16;
+  --ops-quick-nav-border: rgba(99, 230, 173, .46);
+  --ops-quick-nav-text: #bfd3c9;
+  --ops-quick-nav-active-bg: #123d2d;
+  --ops-quick-nav-active-border: #2dcc8c;
+  --ops-quick-nav-active-text: #7aebbc;
+  --ops-quick-nav-shadow: rgba(0, 0, 0, .44);
+  --ops-quick-nav-badge: #ff525d;
+  --ops-quick-nav-badge-ring: #0b1c16;
+}
+
+body.ops-precision-pilot[data-ops-theme="light"] #bottom-nav,
+body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav,
+html.outdoor-mode body.ops-precision-pilot[data-ops-theme="light"] #bottom-nav,
+html.outdoor-mode body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav {
+  border: 1px solid var(--ops-quick-nav-border) !important;
+  border-bottom: 0 !important;
+  color: var(--ops-quick-nav-text) !important;
+  background: var(--ops-quick-nav-bg) !important;
+  background-image: none !important;
+  box-shadow: 0 -10px 34px var(--ops-quick-nav-shadow) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.ops-precision-pilot #bottom-nav .footer-nav-btn {
+  border: 1px solid transparent !important;
+  color: var(--ops-quick-nav-text) !important;
+  background: transparent !important;
+  opacity: 1 !important;
+}
+
+body.ops-precision-pilot #bottom-nav .footer-nav-btn > :is(i, svg, .premium-line-icon),
+body.ops-precision-pilot #bottom-nav .footer-nav-btn > span:not(.footer-nav-badge) {
+  color: currentColor !important;
+  opacity: 1 !important;
+}
+
+body.ops-precision-pilot #bottom-nav .footer-nav-btn > span:not(.footer-nav-badge) {
+  font-weight: 850 !important;
+  letter-spacing: .025em !important;
+}
+
+body.ops-precision-pilot #bottom-nav .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]) {
+  border-color: var(--ops-quick-nav-active-border) !important;
+  color: var(--ops-quick-nav-active-text) !important;
+  background: var(--ops-quick-nav-active-bg) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ops-quick-nav-active-border) 22%, transparent) !important;
+}
+
+body.ops-precision-pilot #bottom-nav .footer-nav-btn:is(:hover, :focus-visible):not(.active):not(.menu-open):not([aria-current="page"]) {
+  border-color: color-mix(in srgb, var(--ops-quick-nav-border) 78%, transparent) !important;
+  background: color-mix(in srgb, var(--ops-quick-nav-active-bg) 54%, transparent) !important;
+}
+
+body.ops-precision-pilot #bottom-nav .footer-nav-btn:focus-visible {
+  outline-color: var(--ops-quick-nav-active-border) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ops-quick-nav-active-border) 28%, transparent) !important;
+}
+
+body.ops-precision-pilot #bottom-nav .footer-nav-badge {
+  border-color: var(--ops-quick-nav-badge-ring) !important;
+  color: #ffffff !important;
+  background: var(--ops-quick-nav-badge) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .24) !important;
+}
+
+@media (max-width: 639px) {
+  body.ops-precision-pilot #bottom-nav .footer-nav-btn {
+    min-height: 58px !important;
+  }
+
+  body.ops-precision-pilot #bottom-nav .footer-nav-btn > :is(i, svg, .premium-line-icon) {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  body.ops-precision-pilot #bottom-nav .footer-nav-btn > span:not(.footer-nav-badge) {
+    font-size: 9px !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  body.ops-precision-pilot[data-ops-theme="light"] #bottom-nav,
+  body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav {
+    border-width: 2px !important;
+  }
+
+  body.ops-precision-pilot #bottom-nav .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]) {
+    border-width: 2px !important;
+  }
 }

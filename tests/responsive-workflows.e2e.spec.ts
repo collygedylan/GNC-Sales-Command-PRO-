@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.16.02', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -126,11 +126,43 @@ test('light and dark navigation use explicit semantic fallback colors', async ({
   for (const theme of ['light', 'dark']) {
     await page.goto(`${fixtureUrl}?view=drive&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
     await expect.poll(() => page.locator('body').getAttribute('data-ops-theme')).toBe(theme);
-    const navState = await page.locator('#bottom-nav').evaluate((nav) => ({
-      color: getComputedStyle(nav).backgroundColor,
-      resolvedTheme: (nav as HTMLElement).dataset.resolvedTheme,
-    }));
-    expect(navState.color).not.toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
+    const navState = await page.locator('#bottom-nav').evaluate((nav) => {
+      const toRgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+      const luminance = (value: string) => {
+        const channels = toRgb(value).map((channel) => {
+          const normalized = channel / 255;
+          return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+      };
+      const contrast = (foreground: string, background: string) => {
+        const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+        return (lighter + 0.05) / (darker + 0.05);
+      };
+      const inactive = nav.querySelector('.footer-nav-btn:not(.active)') as HTMLElement;
+      const active = nav.querySelector('.footer-nav-btn.active') as HTMLElement;
+      const label = inactive.querySelector('span') as HTMLElement;
+      const navStyle = getComputedStyle(nav);
+      const inactiveStyle = getComputedStyle(inactive);
+      const activeStyle = getComputedStyle(active);
+      return {
+        background: navStyle.backgroundColor,
+        border: navStyle.borderTopColor,
+        inactiveColor: inactiveStyle.color,
+        activeColor: activeStyle.color,
+        activeBackground: activeStyle.backgroundColor,
+        inactiveContrast: contrast(inactiveStyle.color, navStyle.backgroundColor),
+        activeContrast: contrast(activeStyle.color, activeStyle.backgroundColor),
+        labelOpacity: getComputedStyle(label).opacity,
+        resolvedTheme: (nav as HTMLElement).dataset.resolvedTheme,
+      };
+    });
+    expect(navState.background).toBe(theme === 'dark' ? 'rgb(11, 28, 22)' : 'rgb(255, 255, 255)');
+    expect(navState.border).not.toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
+    expect(navState.inactiveContrast).toBeGreaterThanOrEqual(4.5);
+    expect(navState.activeContrast).toBeGreaterThanOrEqual(4.5);
+    expect(navState.activeBackground).not.toBe(navState.background);
+    expect(navState.labelOpacity).toBe('1');
     expect(navState.resolvedTheme).toBe(theme);
   }
 });

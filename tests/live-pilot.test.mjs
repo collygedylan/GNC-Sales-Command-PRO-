@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.01';
+  const release = 'V2026.08.16.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.16\.01'/);
-  assert.equal(packageJson.version, '2026.08.16.01');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.16\.02'/);
+  assert.equal(packageJson.version, '2026.08.16.02');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -35,7 +35,7 @@ test('verified Dylan sessions restore the saved theme before the app shell paint
   assert.match(html, /document\.documentElement\.dataset\.opsPrepaintTheme = prepaintTheme/);
   assert.match(html, /id="ops-theme-prepaint"[\s\S]*data-ops-prepaint-theme="dark"[\s\S]*background:#07120e !important/);
   assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#111c18 !important/);
-  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*color:#9db4aa !important/);
+  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*background:#0b1c16 !important[\s\S]*color:#bfd3c9 !important/);
   assert.match(html, /data-ops-prepaint-theme="light"[\s\S]*background:#f3f7f5 !important/);
   assert.match(client, /function clearPrepaintTheme\(\)/);
   assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
@@ -295,7 +295,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.14 — final keyboard-safe authentication lock');
   const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
   assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
-  const releaseCascadeIndex = css.indexOf('V2026.08.16.01 final cascade lock', keyboardCascadeIndex);
+  const releaseCascadeIndex = css.indexOf('V2026.08.16.02 final cascade lock', keyboardCascadeIndex);
   const keyboardCascade = css.slice(keyboardCascadeIndex, releaseCascadeIndex);
   assert.match(keyboardCascade, /body\.keyboard-open #view-login[\s\S]*height: var\(--visual-height, 100dvh\) !important/);
   assert.match(keyboardCascade, /overflow-y: auto !important/);
@@ -459,7 +459,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081601\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081602\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -487,7 +487,7 @@ test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () 
   assert.match(html, /buildDockModeFilterControlHtml/);
   assert.match(html, /id="docks-mode-toggle" class="hidden" aria-hidden="true"/);
   assert.ok(html.indexOf('id="team-selector"') < html.indexOf('id="task-crumb"'), 'Task controls must precede the breadcrumb');
-  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.01 final cascade lock'));
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.02 final cascade lock'));
   assert.match(finalCascade, /workflow-control-rail,[\s\S]*flex-flow: row nowrap !important/);
   assert.match(finalCascade, /#view-tasks \.task-controls-sticky[\s\S]*overflow-x: auto !important/);
 });
