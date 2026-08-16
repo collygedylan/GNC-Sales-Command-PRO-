@@ -30,6 +30,8 @@ jobs:
           ci_root="$RUNNER_TEMP/gnc-supabase-ci"
           mkdir -p "$ci_root/supabase/migrations" "$ci_root/supabase/tests"
           cp supabase/config.toml "$ci_root/supabase/config.toml"
+          cp -R supabase/functions "$ci_root/supabase/functions"
+          : > "$ci_root/supabase/seed.sql"
           cp supabase/migrations/20260816172822_native_auth_profiles.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260816172823_pwa_containment_flags.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260816172825_database_compaction_shadow.sql "$ci_root/supabase/migrations/"
