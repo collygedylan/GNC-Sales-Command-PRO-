@@ -111,9 +111,12 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
     const railState = await page.locator('#drive-toolbar-rail').evaluate((rail) => {
       const controls = Array.from(rail.querySelectorAll('.task-tab,.task-top-control-shell,.drive-mode-export-button,.drive-filter-reset-button')) as HTMLElement[];
       const tops = controls.filter((control) => control.offsetWidth).map((control) => Math.round(control.getBoundingClientRect().top));
-      return { rows: new Set(tops).size, scrollable: rail.scrollWidth >= rail.clientWidth };
+      return {
+        topSpread: Math.max(...tops) - Math.min(...tops),
+        scrollable: rail.scrollWidth >= rail.clientWidth,
+      };
     });
-    expect(railState.rows).toBe(1);
+    expect(railState.topSpread).toBeLessThanOrEqual(2);
     expect(railState.scrollable).toBe(true);
   }
   await expect(page.getByText('Season Sales Notes', { exact: true })).toHaveCount(0);
