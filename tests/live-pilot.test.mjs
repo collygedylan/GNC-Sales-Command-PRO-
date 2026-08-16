@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.02';
+  const release = 'V2026.08.16.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.16\.02'/);
-  assert.equal(packageJson.version, '2026.08.16.02');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.16\.03'/);
+  assert.equal(packageJson.version, '2026.08.16.03');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -235,8 +235,11 @@ test('preferences use timestamp last-write-wins and retain offline changes', () 
   assert.match(client, /Math\.max\(Date\.now\(\), previous \+ 1\)/);
 });
 
-test('grid reuses mounted record nodes and remains available on every viewport', () => {
-  assert.match(client, /function gridIsSupportedHere\(\) \{\s*return true;/);
+test('grid reuses mounted record nodes and is disabled on phone viewports', () => {
+  assert.match(client, /function gridIsSupportedHere\(\)/);
+  assert.match(client, /Math\.min\(viewportWidth, viewportHeight\) >= 640/);
+  assert.match(client, /button\.toggleAttribute\('disabled', unavailable\)/);
+  assert.match(client, /Cards are always used on phones/);
   assert.match(client, /classList\.toggle\('ops-record-collection'/);
   assert.match(client, /classList\.toggle\('ops-record-node'/);
   assert.match(client, /container\.closest\('\.ops-record-node'\)/);
@@ -295,7 +298,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.14 — final keyboard-safe authentication lock');
   const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
   assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
-  const releaseCascadeIndex = css.indexOf('V2026.08.16.02 final cascade lock', keyboardCascadeIndex);
+  const releaseCascadeIndex = css.indexOf('V2026.08.16.03 final cascade lock', keyboardCascadeIndex);
   const keyboardCascade = css.slice(keyboardCascadeIndex, releaseCascadeIndex);
   assert.match(keyboardCascade, /body\.keyboard-open #view-login[\s\S]*height: var\(--visual-height, 100dvh\) !important/);
   assert.match(keyboardCascade, /overflow-y: auto !important/);
@@ -459,7 +462,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081602\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081603\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -487,7 +490,7 @@ test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () 
   assert.match(html, /buildDockModeFilterControlHtml/);
   assert.match(html, /id="docks-mode-toggle" class="hidden" aria-hidden="true"/);
   assert.ok(html.indexOf('id="team-selector"') < html.indexOf('id="task-crumb"'), 'Task controls must precede the breadcrumb');
-  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.02 final cascade lock'));
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.03 final cascade lock'));
   assert.match(finalCascade, /workflow-control-rail,[\s\S]*flex-flow: row nowrap !important/);
   assert.match(finalCascade, /#view-tasks \.task-controls-sticky[\s\S]*overflow-x: auto !important/);
 });
@@ -500,11 +503,18 @@ test('V16 preserves mobile search state and renders Grid as a spreadsheet', () =
   assert.match(html, /container\.dataset\.driveDetailedRecords = 'true'/);
   assert.match(html, /delete inactiveContainer\.dataset\.driveDetailedRecords/);
   assert.match(html, /function buildDriveSpreadsheetTableHtml\(items = \[\]\)/);
+  assert.match(html, /function applyDriveSpreadsheetHeaderFilters\(sheet = null\)/);
+  assert.match(html, /class="drive-grid-filter-row"/);
+  assert.match(html, /buildDriveSpreadsheetFilterControlHtml\('common', 'Common Name'\)/);
+  assert.match(html, /buildDriveSpreadsheetFilterControlHtml\('open-stock', 'Open Stock', 'number'\)/);
+  assert.match(html, /Clear column filters/);
   assert.match(html, /class="drive-grid-table"/);
   assert.match(html, /<th scope="col">Common Name<\/th>/);
   assert.match(html, /renderDriveRecordResults\('drive-universal-search'/);
   assert.match(css, /\.drive-grid-table[\s\S]*table-layout: fixed !important/);
   assert.match(css, /\.drive-grid-table :is\(th, td\)[\s\S]*white-space: nowrap !important/);
+  assert.match(css, /\.drive-grid-filter-row > th[\s\S]*top: 42px !important/);
+  assert.match(css, /\.drive-grid-filter-control[\s\S]*height: 32px !important/);
   assert.doesNotMatch(html, /id="tab-drive-season-sales-notes"/);
   assert.doesNotMatch(html, /bindFastInvokeById\('tab-drive-season-sales-notes'/);
 });

@@ -79,7 +79,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.16.02</span>
+              <span class="nav-version-pill">V2026.08.16.03</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -283,9 +283,9 @@
         const width = window.innerWidth;
         const columns = width < 640 ? 2 : (width < 840 ? 3 : (width < 1100 ? 4 : (width >= 1760 ? 7 : 6)));
         const rows = Math.ceil(grid.children.length / columns);
-        const gap = width < 640 ? 10 : 12;
+        const gap = width < 640 ? 4 : 12;
         const available = Math.max(100, nav.getBoundingClientRect().top - grid.getBoundingClientRect().top - 18);
-        const tileHeight = Math.max(92, Math.min(282, Math.floor((available - gap * Math.max(0, rows - 1)) / rows)));
+        const tileHeight = Math.max(width < 640 ? 44 : 92, Math.min(width < 640 ? 96 : 282, Math.floor((available - gap * Math.max(0, rows - 1)) / rows)));
         home.style.setProperty('--home-fit-columns', String(columns));
         home.style.setProperty('--home-fit-tile-height', `${tileHeight}px`);
         home.style.setProperty('--home-fit-row-gap', `${gap}px`);
@@ -293,11 +293,45 @@
       };
       requestAnimationFrame(syncFixtureHomeFit);
       window.addEventListener('resize', () => requestAnimationFrame(syncFixtureHomeFit));
-      if (activeView === 'drive' && preferences.displayMode === 'grid') {
+      window.handleDriveSpreadsheetHeaderFilter = (event) => {
+        const sheet = event.target.closest('.drive-grid-sheet');
+        const controls = Array.from(sheet.querySelectorAll('[data-drive-grid-filter]'));
+        const rows = Array.from(sheet.querySelectorAll('tbody > tr'));
+        let visible = 0;
+        rows.forEach((row) => {
+          const matches = controls.every((control) => {
+            const query = String(control.value || '').trim().toLowerCase();
+            if (!query) return true;
+            const key = control.dataset.driveGridFilter;
+            const raw = key === 'selected' ? (row.querySelector('input:checked') ? 'selected' : 'unselected') : String(row.getAttribute(`data-drive-grid-${key}`) || '').toLowerCase();
+            return raw.includes(query);
+          });
+          row.hidden = !matches;
+          if (matches) visible += 1;
+        });
+        sheet.querySelector('.drive-grid-visible-count').textContent = `${visible} of ${rows.length} rows`;
+      };
+      window.clearDriveSpreadsheetHeaderFilters = (button) => {
+        const sheet = button.closest('.drive-grid-sheet');
+        sheet.querySelectorAll('[data-drive-grid-filter]').forEach((control) => { control.value = ''; });
+        window.handleDriveSpreadsheetHeaderFilter({ target: sheet.querySelector('[data-drive-grid-filter]') });
+        return false;
+      };
+      if (activeView === 'drive' && preferences.displayMode === 'grid' && Math.min(window.innerWidth, window.innerHeight) >= 640) {
         const driveContent = document.getElementById('drive-content');
         driveContent.dataset.driveDetailedRecords = 'true';
         driveContent.dataset.driveDisplay = 'grid';
-        driveContent.innerHTML = `<div class="drive-grid-sheet" role="region" aria-label="Drive inventory grid" tabindex="0"><table class="drive-grid-table"><thead><tr><th></th><th>Photo</th><th>Common Name</th><th>Container</th><th>Item Code</th><th>Location</th><th>Lot</th><th>Priority</th><th>On Hand</th><th>Review</th><th>Available</th><th>Open Stock</th><th>DESIGLOC</th><th>Action</th></tr></thead><tbody>${['Baby Gem Boxwood','Admiration Barberry','Bloodgood Japanese Maple','Alice Oakleaf Hydrangea'].map((name, index) => `<tr class="drive-grid-row"><td><input type="checkbox" aria-label="Select ${name}"></td><td><span class="drive-grid-no-photo">No photo</span></td><th scope="row" class="drive-grid-common">${name}</th><td>${index % 2 ? '3 Gal' : '5 DP'}</td><td class="drive-grid-code">0035.${100 + index}.1</td><td>F.${20 + index}.000</td><td>U2</td><td>${index + 1}</td><td class="drive-grid-number">${39 + index}</td><td class="drive-grid-number">0</td><td class="drive-grid-number">${39 + index}</td><td class="drive-grid-number">${42 + index}</td><td>OUTSIDE NORTH</td><td class="drive-grid-action"><button class="app-card-bottom-btn">Reclass</button></td></tr>`).join('')}</tbody></table></div>`;
+        const headers = ['Select','Photo','Common Name','Container','Item Code','Location','Lot','Priority','On Hand','Review','Available','Open Stock','DESIGLOC','Action'];
+        const keys = ['selected','photo','common','container','item-code','location','lot','priority','on-hand','review','available','open-stock','desigloc','action'];
+        const filterHtml = keys.map((key, index) => `<th><input class="drive-grid-filter-control" type="search" placeholder="Filter" data-drive-grid-filter="${key}" aria-label="Filter ${headers[index]}" oninput="handleDriveSpreadsheetHeaderFilter(event)"></th>`).join('');
+        const names = ['Baby Gem Boxwood','Admiration Barberry','Bloodgood Japanese Maple','Alice Oakleaf Hydrangea'];
+        const rowsHtml = names.map((name, index) => {
+          const container = index % 2 ? '3 Gal' : '5 DP';
+          const itemCode = `0035.${100 + index}.1`;
+          const locationCode = `F.${20 + index}.000`;
+          return `<tr class="drive-grid-row" data-drive-grid-photo="no" data-drive-grid-common="${name}" data-drive-grid-container="${container}" data-drive-grid-item-code="${itemCode}" data-drive-grid-location="${locationCode}" data-drive-grid-lot="U2" data-drive-grid-priority="${index + 1}" data-drive-grid-on-hand="${39 + index}" data-drive-grid-review="0" data-drive-grid-available="${39 + index}" data-drive-grid-open-stock="${42 + index}" data-drive-grid-desigloc="OUTSIDE NORTH" data-drive-grid-action="yes"><td><input type="checkbox" aria-label="Select ${name}"></td><td><span class="drive-grid-no-photo">No photo</span></td><th scope="row" class="drive-grid-common">${name}</th><td>${container}</td><td class="drive-grid-code">${itemCode}</td><td>${locationCode}</td><td>U2</td><td>${index + 1}</td><td class="drive-grid-number">${39 + index}</td><td class="drive-grid-number">0</td><td class="drive-grid-number">${39 + index}</td><td class="drive-grid-number">${42 + index}</td><td>OUTSIDE NORTH</td><td class="drive-grid-action"><button class="app-card-bottom-btn">Reclass</button></td></tr>`;
+        }).join('');
+        driveContent.innerHTML = `<div class="drive-grid-sheet" role="region" aria-label="Drive inventory grid" tabindex="0"><div class="drive-grid-sheet-toolbar"><span class="drive-grid-visible-count">4 of 4 rows</span><button class="drive-grid-clear-filters" onclick="return clearDriveSpreadsheetHeaderFilters(this)">Clear column filters</button></div><table class="drive-grid-table"><thead><tr class="drive-grid-header-row">${headers.map((header) => `<th>${header}</th>`).join('')}</tr><tr class="drive-grid-filter-row">${filterHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
       }
       const bridge = {
         getActiveView() { return activeView; },

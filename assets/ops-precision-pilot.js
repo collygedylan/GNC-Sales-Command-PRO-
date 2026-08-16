@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.16.02';
+  const RELEASE = 'V2026.08.16.03';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -183,7 +183,10 @@
   }
 
   function gridIsSupportedHere() {
-    return true;
+    const body = document.body;
+    const viewportWidth = Math.max(1, Number(window.innerWidth || document.documentElement?.clientWidth || 1));
+    const viewportHeight = Math.max(1, Number(window.innerHeight || document.documentElement?.clientHeight || 1));
+    return !(body && body.classList.contains('viewport-phone')) && Math.min(viewportWidth, viewportHeight) >= 640;
   }
 
   function getEffectiveDisplayMode() {
@@ -196,12 +199,19 @@
     document.querySelectorAll('button[data-ops-theme-mode]').forEach((button) => {
       button.setAttribute('aria-pressed', String(button.getAttribute('data-ops-theme-mode') === state.preferences.themeMode));
     });
+    const gridSupported = gridIsSupportedHere();
+    const effectiveDisplayMode = getEffectiveDisplayMode();
     document.querySelectorAll('button[data-ops-display-mode]').forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.getAttribute('data-ops-display-mode') === state.preferences.displayMode));
+      const mode = button.getAttribute('data-ops-display-mode');
+      const unavailable = mode === 'grid' && !gridSupported;
+      button.setAttribute('aria-pressed', String(mode === effectiveDisplayMode));
+      button.toggleAttribute('disabled', unavailable);
+      button.setAttribute('aria-disabled', String(unavailable));
+      button.classList.toggle('ops-display-unavailable', unavailable);
     });
     const note = document.getElementById('ops-display-note');
     if (note) {
-      note.textContent = '';
+      note.textContent = gridSupported ? '' : 'Grid is available on tablets and computers. Cards are always used on phones.';
     }
   }
 
@@ -219,6 +229,15 @@
     body.dataset.opsThemeMode = state.preferences.themeMode;
     body.dataset.opsDisplayMode = state.preferences.displayMode;
     body.dataset.opsEffectiveDisplay = effectiveDisplay;
+    const bottomNav = document.getElementById('bottom-nav');
+    if (bottomNav) {
+      const darkNav = effectiveTheme === 'dark';
+      bottomNav.dataset.resolvedTheme = effectiveTheme;
+      bottomNav.style.setProperty('background-color', darkNav ? '#0b1c16' : '#ffffff', 'important');
+      bottomNav.style.setProperty('background-image', 'none', 'important');
+      bottomNav.style.setProperty('border-color', darkNav ? 'rgba(99, 230, 173, .52)' : '#9eb5a9', 'important');
+      bottomNav.style.setProperty('color', darkNav ? '#d4e5dc' : '#33473e', 'important');
+    }
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (themeColorMeta) {
       themeColorMeta.setAttribute('content', effectiveTheme === 'dark' ? '#07120e' : '#07874f');
@@ -391,7 +410,7 @@
   function updatePreference(kind, value) {
     if (!state.eligible) return false;
     if (kind === 'theme' && !state.flags.preferences) return false;
-    if (kind === 'display' && !state.flags.card_grid) return false;
+    if (kind === 'display' && (!state.flags.card_grid || (normalizeDisplayMode(value) === 'grid' && !gridIsSupportedHere()))) return false;
     const next = {
       ...state.preferences,
       updatedAt: nextPreferenceTimestamp()

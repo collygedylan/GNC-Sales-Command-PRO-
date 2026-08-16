@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081602.min.css?v=V2026.08.16.02">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081603.min.css?v=V2026.08.16.03">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.16.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6556,7 +6556,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.02">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.03">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6658,7 +6658,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.03"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7411,7 +7411,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.02').trim() || 'V2026.08.16.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.03').trim() || 'V2026.08.16.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8876,7 +8876,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11746,6 +11746,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 '--home-fit-row-gap',
                 '--home-fit-col-gap'
             ].forEach((name) => homeView.style.removeProperty(name));
+            delete homeView.dataset.homeFitComplete;
             homeDashboardFitLastKey = '';
         }
 
@@ -11823,21 +11824,21 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
             const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
             const rowGapPx = profile.phone
-                ? clamp(Math.round(profile.height * (profile.short ? 0.0052 : 0.0062)), profile.veryNarrow ? 6 : 8, 12)
+                ? clamp(Math.round(profile.height * (profile.short ? 0.0038 : 0.0048)), 4, 8)
                 : clamp(Math.round(profile.height * 0.012), 10, 16);
             const colGapPx = profile.phone
                 ? clamp(Math.round(profile.width * 0.026), 8, 12)
                 : clamp(Math.round(profile.width * 0.008), 10, 16);
             const fitTilePx = Math.floor((availableHeight - (rowGapPx * Math.max(0, rowCount - 1))) / rowCount);
-            const maxTilePx = profile.phone ? (profile.short ? 92 : 112) : 282;
-            const preferredMinPx = profile.phone ? (profile.short ? 72 : 88) : 108;
-            const hardMinPx = profile.phone ? 64 : 92;
+            const maxTilePx = profile.phone ? (profile.short ? 82 : 96) : 282;
+            const preferredMinPx = profile.phone ? (profile.short ? 52 : 58) : 108;
+            const hardMinPx = profile.phone ? 44 : 92;
             let tilePx = Math.min(maxTilePx, fitTilePx);
             tilePx = fitTilePx < preferredMinPx ? Math.max(hardMinPx, tilePx) : Math.max(preferredMinPx, tilePx);
-            const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 24 : 28, profile.phone ? 38 : 48);
-            const labelPx = clamp(Math.round(tilePx * (profile.phone ? 0.13 : 0.075)), profile.phone ? 11 : 12, 16);
-            const tileGapPx = clamp(Math.round(tilePx * 0.07), 3, 7);
-            const paddingYPx = clamp(Math.round(tilePx * 0.13), 5, 11);
+            const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 18 : 28, profile.phone ? 30 : 48);
+            const labelPx = clamp(Math.round(tilePx * (profile.phone ? 0.16 : 0.075)), profile.phone ? 9 : 12, profile.phone ? 12 : 16);
+            const tileGapPx = clamp(Math.round(tilePx * 0.06), 2, 6);
+            const paddingYPx = clamp(Math.round(tilePx * 0.09), 3, 8);
             const nextKey = [
                 profile.width,
                 profile.height,
@@ -11864,6 +11865,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             homeView.style.setProperty('--home-phone-tile-gap', `${tileGapPx}px`);
             homeView.style.setProperty('--home-phone-icon-size', `${iconPx}px`);
             homeView.style.setProperty('--home-phone-label-size', `${labelPx}px`);
+            homeView.dataset.homeFitComplete = String(fitTilePx >= hardMinPx);
             return true;
         }
 
@@ -29204,7 +29206,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.02').trim() || 'V2026.08.16.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.03').trim() || 'V2026.08.16.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -130252,6 +130254,89 @@ ${folderNote ? `Folder Note: ${folderNote}
             return `<img class="drive-grid-thumb" src="${esc(thumbnailUrl)}" alt="" loading="lazy" decoding="async">`;
         }
 
+        function buildDriveSpreadsheetFilterControlHtml(key = '', label = '', mode = 'text') {
+            const safeKey = esc(String(key || '').trim());
+            const safeLabel = esc(String(label || 'column').trim());
+            const safeMode = esc(String(mode || 'text').trim());
+            if (safeMode === 'selection') {
+                return `<select class="drive-grid-filter-control" data-drive-grid-filter="${safeKey}" data-filter-mode="selection" aria-label="Filter ${safeLabel}" onchange="handleDriveSpreadsheetHeaderFilter(event)" onclick="event.stopPropagation()"><option value="">All</option><option value="selected">Selected</option><option value="unselected">Unselected</option></select>`;
+            }
+            if (safeMode === 'photo') {
+                return `<select class="drive-grid-filter-control" data-drive-grid-filter="${safeKey}" data-filter-mode="photo" aria-label="Filter ${safeLabel}" onchange="handleDriveSpreadsheetHeaderFilter(event)" onclick="event.stopPropagation()"><option value="">All</option><option value="yes">With photo</option><option value="no">No photo</option></select>`;
+            }
+            if (safeMode === 'action') {
+                return `<select class="drive-grid-filter-control" data-drive-grid-filter="${safeKey}" data-filter-mode="action" aria-label="Filter ${safeLabel}" onchange="handleDriveSpreadsheetHeaderFilter(event)" onclick="event.stopPropagation()"><option value="">All</option><option value="yes">Reclass</option><option value="no">No action</option></select>`;
+            }
+            const placeholder = safeMode === 'number' ? 'Filter or >=10' : 'Filter';
+            return `<input class="drive-grid-filter-control" type="search" inputmode="${safeMode === 'number' ? 'decimal' : 'search'}" autocomplete="off" placeholder="${placeholder}" data-drive-grid-filter="${safeKey}" data-filter-mode="${safeMode}" aria-label="Filter ${safeLabel}" oninput="handleDriveSpreadsheetHeaderFilter(event)" onclick="event.stopPropagation()">`;
+        }
+
+        function matchesDriveSpreadsheetHeaderFilter(rawValue = '', queryValue = '', mode = 'text') {
+            const query = String(queryValue == null ? '' : queryValue).trim().toLowerCase();
+            if (!query) return true;
+            if (mode === 'selection' || mode === 'photo' || mode === 'action') return String(rawValue || '').trim().toLowerCase() === query;
+            const raw = String(rawValue == null ? '' : rawValue).trim();
+            if (mode === 'number') {
+                const comparison = query.match(/^(<=|>=|=|<|>)\s*(-?\d+(?:\.\d+)?)$/);
+                if (comparison) {
+                    const actual = Number(raw.replace(/,/g, ''));
+                    const expected = Number(comparison[2]);
+                    if (!Number.isFinite(actual) || !Number.isFinite(expected)) return false;
+                    if (comparison[1] === '<=') return actual <= expected;
+                    if (comparison[1] === '>=') return actual >= expected;
+                    if (comparison[1] === '<') return actual < expected;
+                    if (comparison[1] === '>') return actual > expected;
+                    return actual === expected;
+                }
+            }
+            const normalized = raw.toLowerCase();
+            return query.split(/\s+/).filter(Boolean).every((token) => normalized.includes(token));
+        }
+
+        function applyDriveSpreadsheetHeaderFilters(sheet = null) {
+            const resolvedSheet = sheet && sheet.classList && sheet.classList.contains('drive-grid-sheet') ? sheet : null;
+            if (!resolvedSheet) return false;
+            const controls = Array.from(resolvedSheet.querySelectorAll('[data-drive-grid-filter]'));
+            const rows = Array.from(resolvedSheet.querySelectorAll('tbody > tr'));
+            let visibleCount = 0;
+            rows.forEach((row) => {
+                const visible = controls.every((control) => {
+                    const query = String(control.value || '').trim();
+                    if (!query) return true;
+                    const key = String(control.getAttribute('data-drive-grid-filter') || '').trim();
+                    const mode = String(control.getAttribute('data-filter-mode') || 'text').trim();
+                    let rawValue = '';
+                    if (mode === 'selection') rawValue = row.querySelector('.card-checkbox:checked') ? 'selected' : 'unselected';
+                    else if (key.startsWith('col-')) rawValue = String(row.cells[Number(key.slice(4))]?.textContent || '');
+                    else rawValue = String(row.getAttribute(`data-drive-grid-${key}`) || '');
+                    return matchesDriveSpreadsheetHeaderFilter(rawValue, query, mode);
+                });
+                row.hidden = !visible;
+                row.setAttribute('aria-hidden', String(!visible));
+                if (visible) visibleCount += 1;
+            });
+            const count = resolvedSheet.querySelector('.drive-grid-visible-count');
+            if (count) count.textContent = `${visibleCount} of ${rows.length} rows`;
+            return true;
+        }
+
+        function handleDriveSpreadsheetHeaderFilter(event = null) {
+            const control = event && event.target && event.target.closest ? event.target.closest('[data-drive-grid-filter]') : null;
+            if (!control) return false;
+            applyDriveSpreadsheetHeaderFilters(control.closest('.drive-grid-sheet'));
+            return false;
+        }
+
+        function clearDriveSpreadsheetHeaderFilters(button = null) {
+            const sheet = button && button.closest ? button.closest('.drive-grid-sheet') : null;
+            if (!sheet) return false;
+            sheet.querySelectorAll('[data-drive-grid-filter]').forEach((control) => { control.value = ''; });
+            applyDriveSpreadsheetHeaderFilters(sheet);
+            const firstFilter = sheet.querySelector('[data-drive-grid-filter]');
+            if (firstFilter && typeof firstFilter.focus === 'function') firstFilter.focus({ preventScroll: true });
+            return false;
+        }
+
         function buildDriveSpreadsheetRowHtml(item = null) {
             const row = item && typeof item === 'object' ? item : {};
             const domId = String(firstNonEmptyValue(row.DOM_ID, row.dom_id, row.UNIQUE_ID, row.unique_id, '') || '').trim();
@@ -130271,7 +130356,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const canUseDriveOptions = canCurrentUserUseDriveCardOptions(row, 'drive');
             const reclassHtml = canUseDriveOptions ? buildArgosInventoryTransactionRailHtml(row, 'drive') : '';
             const rowActivationAttrs = buildCardActivationAttrs(domId, firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, ''), 'drive', `Open ${commonName}`);
-            return `<tr class="drive-grid-row" data-dom-id="${esc(domId)}" ${rowActivationAttrs}>
+            const photoCsv = String(firstNonEmptyValue(getRowPhotoLink(row, 'drive'), getSharedAppPhotoLinkCsv(row, { includePending: false }), '') || '').trim();
+            return `<tr class="drive-grid-row" data-dom-id="${esc(domId)}" data-drive-grid-common="${esc(commonName)}" data-drive-grid-container="${esc(contSize)}" data-drive-grid-item-code="${esc(itemCode)}" data-drive-grid-location="${esc(location)}" data-drive-grid-lot="${esc(lot)}" data-drive-grid-priority="${esc(priority)}" data-drive-grid-on-hand="${esc(onHand)}" data-drive-grid-review="${esc(reviewed)}" data-drive-grid-available="${esc(available)}" data-drive-grid-open-stock="${esc(openStock)}" data-drive-grid-desigloc="${esc(designLocation)}" data-drive-grid-photo="${photoCsv ? 'yes' : 'no'}" data-drive-grid-action="${reclassHtml ? 'yes' : 'no'}" ${rowActivationAttrs}>
                 <td class="drive-grid-select" onclick="event.stopPropagation();"><input type="checkbox" class="card-checkbox" aria-label="Select ${esc(commonName)}" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(domId)}', this.checked, '${escJsAttrValue(safeSourceViewKey)}')"></td>
                 <td class="drive-grid-photo">${buildDriveSpreadsheetPhotoCell(row)}</td>
                 <th scope="row" class="drive-grid-common">${esc(commonName)}</th>
@@ -130292,10 +130378,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         function buildDriveSpreadsheetTableHtml(items = []) {
             const rows = Array.isArray(items) ? items : [];
             return `<div class="drive-grid-sheet" role="region" aria-label="Drive inventory grid" tabindex="0">
+                <div class="drive-grid-sheet-toolbar"><span class="drive-grid-visible-count" aria-live="polite">${rows.length} of ${rows.length} rows</span><button type="button" class="drive-grid-clear-filters" onclick="return clearDriveSpreadsheetHeaderFilters(this)"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i><span>Clear column filters</span></button></div>
                 <table class="drive-grid-table">
                     <caption class="sr-only">Drive inventory spreadsheet with ${rows.length} rows</caption>
-                    <thead><tr>
-                        <th scope="col" aria-label="Select"></th>
+                    <thead><tr class="drive-grid-header-row">
+                        <th scope="col">Select</th>
                         <th scope="col">Photo</th>
                         <th scope="col">Common Name</th>
                         <th scope="col">Container</th>
@@ -130309,6 +130396,21 @@ ${folderNote ? `Folder Note: ${folderNote}
                         <th scope="col">Open Stock</th>
                         <th scope="col">DESIGLOC</th>
                         <th scope="col">Action</th>
+                    </tr><tr class="drive-grid-filter-row">
+                        <th>${buildDriveSpreadsheetFilterControlHtml('selected', 'Select', 'selection')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('photo', 'Photo', 'photo')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('common', 'Common Name')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('container', 'Container')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('item-code', 'Item Code')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('location', 'Location')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('lot', 'Lot')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('priority', 'Priority')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('on-hand', 'On Hand', 'number')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('review', 'Review', 'number')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('available', 'Available', 'number')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('open-stock', 'Open Stock', 'number')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('desigloc', 'DESIGLOC')}</th>
+                        <th>${buildDriveSpreadsheetFilterControlHtml('action', 'Action', 'action')}</th>
                     </tr></thead>
                     <tbody>${rows.map((item) => buildDriveSpreadsheetRowHtml(item)).join('')}</tbody>
                 </table>
@@ -130324,7 +130426,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 container.dataset.driveDetailedRecords = 'true';
                 container.dataset.driveDisplay = useSpreadsheet ? 'grid' : 'cards';
             }
-            const displayRenderKey = `${String(renderKey || tokenKey)}::${useSpreadsheet ? 'spreadsheet-v1' : 'cards-v1'}`;
+            const displayRenderKey = `${String(renderKey || tokenKey)}::${useSpreadsheet ? 'spreadsheet-v2' : 'cards-v1'}`;
             if (useSpreadsheet) {
                 cancelChunkRenderWorkForContainer(container, String(tokenKey || 'drive-grid'));
                 applyDriveRenderMarkup(container, crumb, crumbText, `${prefixHtml}${buildDriveSpreadsheetTableHtml(safeRows)}`, displayRenderKey);
@@ -130506,11 +130608,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 rowBuilder = (entry) => ({ label: entry.location, values: [entry.rowCount], attrs: buildFastInvokeAttrs('selectDriveLoc', [entry.location], `Open location ${entry.location}`) });
             }
             const headerHtml = columns.map((column) => `<th scope="col">${esc(column)}</th>`).join('');
+            const filterHtml = columns.map((column, index) => `<th>${buildDriveSpreadsheetFilterControlHtml(`col-${index}`, column, index === 0 ? 'text' : 'number')}</th>`).join('');
             const bodyHtml = rows.map((entry) => {
                 const row = rowBuilder(entry);
                 return `<tr class="drive-grid-row drive-grid-summary-row" ${row.attrs || ''}><th scope="row">${esc(row.label)}</th>${row.values.map((value) => `<td class="drive-grid-number">${esc(String(value == null ? '-' : value))}</td>`).join('')}</tr>`;
             }).join('');
-            return `<div class="drive-grid-sheet drive-grid-summary-sheet" role="region" aria-label="Drive summary grid" tabindex="0"><table class="drive-grid-table drive-grid-summary-table"><caption class="sr-only">Drive summary spreadsheet with ${rows.length} rows</caption><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+            return `<div class="drive-grid-sheet drive-grid-summary-sheet" role="region" aria-label="Drive summary grid" tabindex="0"><div class="drive-grid-sheet-toolbar"><span class="drive-grid-visible-count" aria-live="polite">${rows.length} of ${rows.length} rows</span><button type="button" class="drive-grid-clear-filters" onclick="return clearDriveSpreadsheetHeaderFilters(this)"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i><span>Clear column filters</span></button></div><table class="drive-grid-table drive-grid-summary-table"><caption class="sr-only">Drive summary spreadsheet with ${rows.length} rows</caption><thead><tr class="drive-grid-header-row">${headerHtml}</tr><tr class="drive-grid-filter-row">${filterHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
         }
 
         function renderDriveDrillEntries(container, crumb, crumbText, entries, modeKey, renderEntry, options = {}) {
@@ -130526,7 +130629,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             const renderKey = buildDriveRenderKey(modeKey, crumbText, safeEntries);
             if (isDriveSpreadsheetGridMode()) {
-                applyDriveRenderMarkup(container, crumb, crumbText, buildDriveGroupSpreadsheetTableHtml(safeEntries, modeKey), `${renderKey}::spreadsheet-v1`);
+                applyDriveRenderMarkup(container, crumb, crumbText, buildDriveGroupSpreadsheetTableHtml(safeEntries, modeKey), `${renderKey}::spreadsheet-v2`);
                 return;
             }
             if (shouldUseChunkedCardRender(safeEntries.length, options.threshold || 110, options.chunkThreshold || 190)) {

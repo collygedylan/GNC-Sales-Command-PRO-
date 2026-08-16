@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.16.03', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -17,7 +17,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844)).toBe(true);
 });
 
-test('Home is two square columns on phones and every authorized module clears navigation on desktop', async ({ page }) => {
+test('Home fits every authorized module above navigation with two compact phone columns', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=home&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
   const phone = await page.locator('#home-dashboard-grid > *').evaluateAll((tiles) => {
@@ -25,11 +25,17 @@ test('Home is two square columns on phones and every authorized module clears na
     return {
       count: rects.length,
       columns: new Set(rects.map((rect) => Math.round(rect.left))).size,
-      square: rects.every((rect) => Math.abs(rect.width - rect.height) <= 2),
+      rows: new Set(rects.map((rect) => Math.round(rect.top))).size,
+      lastBottom: Math.round(rects.at(-1)?.bottom || 0),
+      navTop: Math.round(document.getElementById('bottom-nav')!.getBoundingClientRect().top),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
-  expect(phone).toEqual({ count: 18, columns: 2, square: true, overflow: 0 });
+  expect(phone.count).toBe(18);
+  expect(phone.columns).toBe(2);
+  expect(phone.rows).toBe(9);
+  expect(phone.lastBottom).toBeLessThanOrEqual(phone.navTop);
+  expect(phone.overflow).toBe(0);
 
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -89,11 +95,27 @@ test('phone Chat composer fills the shell and never overlaps quick navigation', 
 });
 
 test('Drive Grid is a readable spreadsheet and every control stays on one rail', async ({ page }) => {
-  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${fixtureUrl}?view=drive&display=grid&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.drive-grid-table')).toHaveCount(0);
+  await expect(page.locator('#drive-content .inv-card')).toHaveCount(4);
+  await expect(page.locator('button[data-ops-display-mode="grid"]')).toBeDisabled();
+  await expect(page.locator('button[data-ops-display-mode="cards"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#ops-display-note')).toContainText('Cards are always used on phones');
+
+  for (const viewport of [{ width: 768, height: 1024 }, { width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
     await page.setViewportSize(viewport);
     await page.goto(`${fixtureUrl}?view=drive&display=grid&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.drive-grid-table')).toBeVisible();
     await expect(page.locator('.drive-grid-table thead')).toBeVisible();
+    await expect(page.locator('.drive-grid-header-row > th')).toHaveCount(14);
+    await expect(page.locator('.drive-grid-filter-row [data-drive-grid-filter]')).toHaveCount(14);
+    await expect(page.getByLabel('Filter Common Name')).toBeVisible();
+    await page.getByLabel('Filter Common Name').fill('Baby Gem');
+    await expect(page.locator('.drive-grid-table tbody > tr:not([hidden])')).toHaveCount(1);
+    await expect(page.locator('.drive-grid-visible-count')).toHaveText('1 of 4 rows');
+    await page.getByRole('button', { name: 'Clear column filters' }).click();
+    await expect(page.locator('.drive-grid-table tbody > tr:not([hidden])')).toHaveCount(4);
     const gridState = await page.locator('.drive-grid-sheet').evaluate((sheet) => {
       const cells = Array.from(sheet.querySelectorAll('tbody :is(th,td)')) as HTMLElement[];
       return {
@@ -126,6 +148,8 @@ test('light and dark navigation use explicit semantic fallback colors', async ({
   for (const theme of ['light', 'dark']) {
     await page.goto(`${fixtureUrl}?view=drive&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
     await expect.poll(() => page.locator('body').getAttribute('data-ops-theme')).toBe(theme);
+    await expect.poll(() => page.locator('#bottom-nav').getAttribute('data-resolved-theme')).toBe(theme);
+    await page.locator('body').evaluate((body) => body.removeAttribute('data-ops-theme'));
     const navState = await page.locator('#bottom-nav').evaluate((nav) => {
       const toRgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
       const luminance = (value: string) => {
