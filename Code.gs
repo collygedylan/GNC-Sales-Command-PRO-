@@ -11953,9 +11953,129 @@ function encodeStoragePath_(path) {
     .join('/');
 }
 
+const PHOTO_ARCHIVE_CLOCK_SKEW_MS = 10 * 60 * 1000;
+const PHOTO_ARCHIVE_MAX_BYTES = 12 * 1024 * 1024;
+
+function getPhotoArchiveFolderMap_() {
+  return {
+    request_photos: '1snWsk0DHPXfa8G9gWXMVPXcFiOou7dFw',
+    flyer_photos: '1pN_5d2P9xylC0npQCIaLw9t7LQdcQtnR',
+    season_sales_notes_photos: '1Zu3CiUH_cMeS5PFWVfSbuvL0x4ypROtv',
+    location_sales_notes_photos: '1pWRtlUCW8xS8zQXFxiDt6RwZb_PJbSMq',
+    credit_photos: '1Ogwf6JzEIAgBv5k-ofJ-iuYpmoS5TdvK',
+    dock_photos: '1IWW6gUP3FFf1J0qUx-y2WRKubnjd0_Am',
+    grower_scout_photos: '1N8tp00CiTgD7IYEflqfyhsjGa2fszU1Y',
+    marketing_materials: '1ITTElK_Kv4wIj9UIQiulaNeisR5zYZtT',
+    archive_manifests: '1ccCOhMmJtaoptcyBPykQAiifDp7gqfZy',
+    failed_jobs: '13I72WbWsyctMT7h-k4WHPAXIyO94W65P'
+  };
+}
+
+function photoArchiveBytesToHex_(bytes) {
+  return (bytes || []).map(function(value) {
+    const normalized = value < 0 ? value + 256 : value;
+    return ('0' + normalized.toString(16)).slice(-2);
+  }).join('');
+}
+
+function photoArchiveSafeEqual_(left, right) {
+  const a = String(left || '').toLowerCase();
+  const b = String(right || '').toLowerCase();
+  if (a.length !== b.length || !a.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < a.length; index += 1) mismatch |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  return mismatch === 0;
+}
+
+function photoArchiveCanonicalRequest_(payload) {
+  return [
+    String(payload.action || ''),
+    String(payload.timestamp || ''),
+    String(payload.nonce || ''),
+    String(payload.folderId || ''),
+    String(payload.fileName || ''),
+    String(payload.sourceKey || ''),
+    String(payload.sha256 || ''),
+    Array.isArray(payload.folderIds) ? payload.folderIds.join(',') : ''
+  ].join('\n');
+}
+
+function verifyPhotoArchiveRequest_(payload) {
+  if (!SUPABASE_KEY) throw new Error('Photo archive signing key is unavailable.');
+  const timestamp = Number(payload.timestamp || 0);
+  if (!Number.isFinite(timestamp) || Math.abs(new Date().getTime() - timestamp) > PHOTO_ARCHIVE_CLOCK_SKEW_MS) {
+    throw new Error('Photo archive request expired.');
+  }
+  if (!/^[a-f0-9]{24,64}$/i.test(String(payload.nonce || ''))) throw new Error('Photo archive nonce is invalid.');
+  const expected = photoArchiveBytesToHex_(Utilities.computeHmacSha256Signature(
+    photoArchiveCanonicalRequest_(payload),
+    SUPABASE_KEY,
+    Utilities.Charset.UTF_8
+  ));
+  if (!photoArchiveSafeEqual_(expected, payload.signature)) throw new Error('Photo archive signature is invalid.');
+}
+
+function requirePhotoArchiveFolder_(folderId) {
+  const requested = String(folderId || '').trim();
+  const allowed = Object.keys(getPhotoArchiveFolderMap_()).some(function(key) {
+    return getPhotoArchiveFolderMap_()[key] === requested;
+  });
+  if (!allowed) throw new Error('Photo archive destination is not approved.');
+  return DriveApp.getFolderById(requested);
+}
+
+function handlePhotoArchiveRequest_(payload) {
+  verifyPhotoArchiveRequest_(payload);
+  if (payload.action === 'probe') {
+    const folderIds = Array.isArray(payload.folderIds) ? payload.folderIds : [];
+    const folders = folderIds.map(function(folderId) {
+      const folder = requirePhotoArchiveFolder_(folderId);
+      return { id: folder.getId(), name: folder.getName() };
+    });
+    return { ok: true, verified: true, folders: folders };
+  }
+  if (payload.action !== 'upload') throw new Error('Unsupported photo archive action.');
+  const fileName = sanitizePhotoUploadFileName_(payload.fileName || 'archived-photo');
+  const mimeType = String(payload.mimeType || 'application/octet-stream').trim();
+  const bytes = Utilities.base64Decode(String(payload.imageBase64 || ''));
+  if (!bytes.length || bytes.length > PHOTO_ARCHIVE_MAX_BYTES) throw new Error('Photo archive file size is invalid.');
+  const sourceSha256 = photoArchiveBytesToHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes));
+  if (!photoArchiveSafeEqual_(sourceSha256, payload.sha256)) throw new Error('Photo archive source hash does not match.');
+  const folder = requirePhotoArchiveFolder_(payload.folderId);
+  const file = folder.createFile(Utilities.newBlob(bytes, mimeType, fileName));
+  try {
+    file.setDescription(JSON.stringify({
+      archive: 'gnc-supabase-photo',
+      sourceKey: String(payload.sourceKey || ''),
+      sha256: sourceSha256
+    }));
+    const storedBytes = file.getBlob().getBytes();
+    const storedSha256 = photoArchiveBytesToHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, storedBytes));
+    if (file.getSize() !== bytes.length || !photoArchiveSafeEqual_(storedSha256, sourceSha256)) {
+      throw new Error('Google Drive verification did not match the source file.');
+    }
+    return {
+      ok: true,
+      verified: true,
+      id: file.getId(),
+      name: file.getName(),
+      size: file.getSize(),
+      sha256: storedSha256,
+      folderId: folder.getId()
+    };
+  } catch (error) {
+    try { file.setTrashed(true); } catch (trashError) { console.warn('Could not trash failed photo archive copy: ' + trashError); }
+    throw error;
+  }
+}
+
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+
+    if (payload.type === 'photo_archive') {
+      return jsonOutput_(handlePhotoArchiveRequest_(payload));
+    }
 
     if (payload.type === 'clear_request_gallery_cache') {
       return jsonOutput_(cleanupRequestGalleryPropertyCache_());

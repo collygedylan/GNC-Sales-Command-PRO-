@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createClient } from '@supabase/supabase-js';
-import { createHash, createSign } from 'node:crypto';
+import { createHash, createHmac, createSign, randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -288,6 +288,77 @@ async function uploadJsonManifest(accessToken, folderId, name, value) {
   });
 }
 
+export function photoArchiveCanonicalRequest(payload) {
+  return [
+    String(payload.action || ''),
+    String(payload.timestamp || ''),
+    String(payload.nonce || ''),
+    String(payload.folderId || ''),
+    String(payload.fileName || ''),
+    String(payload.sourceKey || ''),
+    String(payload.sha256 || ''),
+    Array.isArray(payload.folderIds) ? payload.folderIds.join(',') : ''
+  ].join('\n');
+}
+
+function createAppsScriptDriveClient(deploymentId, signingKey) {
+  const endpoint = `https://script.google.com/macros/s/${encodeURIComponent(deploymentId)}/exec`;
+  async function call(payload) {
+    const signed = {
+      type: 'photo_archive',
+      ...payload,
+      timestamp: Date.now(),
+      nonce: randomBytes(18).toString('hex')
+    };
+    signed.signature = createHmac('sha256', signingKey).update(photoArchiveCanonicalRequest(signed)).digest('hex');
+    return retry('Apps Script Drive request', async () => {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(signed)
+      });
+      const text = await response.text();
+      let body;
+      try { body = JSON.parse(text); } catch { throw new Error(`Apps Script returned non-JSON ${response.status}.`); }
+      if (!response.ok || body?.ok === false || body?.status === 'error') {
+        throw new Error(`Apps Script ${response.status}: ${String(body?.message || body?.error || 'request failed').slice(0, 300)}`);
+      }
+      return body;
+    }, { attempts: 3, baseMs: 1000 });
+  }
+  return {
+    async verifyFolders(folderIds) {
+      const result = await call({ action: 'probe', folderIds });
+      if (result.verified !== true || !Array.isArray(result.folders) || result.folders.length !== folderIds.length) {
+        throw new Error('Apps Script did not verify every archive folder.');
+      }
+      return result.folders;
+    },
+    async upload({ folderId, name, bytes, mimeType, sourceKey, sha256 }) {
+      const result = await call({
+        action: 'upload', folderId, fileName: name, sourceKey, sha256,
+        mimeType: mimeType || 'application/octet-stream', imageBase64: bytes.toString('base64')
+      });
+      if (result.verified !== true || result.sha256 !== sha256 || Number(result.size) !== bytes.length || result.folderId !== folderId) {
+        throw new Error('Apps Script Drive verification did not match source size/hash metadata.');
+      }
+      return result;
+    }
+  };
+}
+
+function createDirectDriveClient(accessToken) {
+  return {
+    async verifyFolders(folderIds) {
+      return Promise.all(folderIds.map((folderId) => verifyDriveFolder(accessToken, folderId)));
+    },
+    async upload(args) {
+      return uploadDriveFile(accessToken, args);
+    }
+  };
+}
+
 async function getStorageObjectInfo(supabase, bucket, path) {
   const slash = path.lastIndexOf('/');
   const prefix = slash >= 0 ? path.slice(0, slash) : '';
@@ -436,7 +507,8 @@ async function main() {
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const serviceAccountRaw = String(process.env.GDRIVE_SERVICE_ACCOUNT_JSON || '').trim();
   const appsScriptOauthRaw = String(process.env.APPS_SCRIPT_CLASPRC_JSON || '').trim();
-  if (!supabaseUrl || !serviceRoleKey || !serviceAccountRaw && !appsScriptOauthRaw) {
+  const appsScriptDeploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
+  if (!supabaseUrl || !serviceRoleKey || !appsScriptDeploymentId && !serviceAccountRaw && !appsScriptOauthRaw) {
     throw new Error('Supabase credentials and one Google Drive credential are required.');
   }
   const driveFolders = Object.fromEntries(Object.entries(DRIVE_FOLDER_ENV).map(([bucket, envName]) => [bucket, String(process.env[envName] || '').trim()]));
@@ -445,18 +517,22 @@ async function main() {
   const failedFolderId = String(process.env.GDRIVE_FAILED_FOLDER_ID || '').trim();
   if (!manifestFolderId || !failedFolderId) throw new Error('Drive manifest and failed-job folder IDs are required.');
 
-  const serviceAccount = serviceAccountRaw ? JSON.parse(serviceAccountRaw) : null;
-  const claspRc = appsScriptOauthRaw ? JSON.parse(appsScriptOauthRaw) : null;
-  const accessToken = await retry('Google OAuth', () => {
-    if (serviceAccount?.client_email && serviceAccount?.private_key) return getGoogleAccessToken(serviceAccount);
-    if (claspRc) return getGoogleAccessTokenFromClasp(claspRc);
-    const error = new Error('Google Drive service-account secret is not a service-account key and no Apps Script OAuth fallback is configured.');
-    error.code = 'google_credentials_invalid';
-    throw error;
-  }, { attempts: 3, baseMs: 1000 });
-  for (const folderId of [...new Set([...Object.values(driveFolders), manifestFolderId, failedFolderId])]) {
-    await verifyDriveFolder(accessToken, folderId);
+  let driveClient;
+  if (appsScriptDeploymentId) {
+    driveClient = createAppsScriptDriveClient(appsScriptDeploymentId, serviceRoleKey);
+  } else {
+    const serviceAccount = serviceAccountRaw ? JSON.parse(serviceAccountRaw) : null;
+    const claspRc = appsScriptOauthRaw ? JSON.parse(appsScriptOauthRaw) : null;
+    const accessToken = await retry('Google OAuth', () => {
+      if (serviceAccount?.client_email && serviceAccount?.private_key) return getGoogleAccessToken(serviceAccount);
+      if (claspRc) return getGoogleAccessTokenFromClasp(claspRc);
+      const error = new Error('Google Drive service-account secret is not a service-account key and no Apps Script OAuth fallback is configured.');
+      error.code = 'google_credentials_invalid';
+      throw error;
+    }, { attempts: 3, baseMs: 1000 });
+    driveClient = createDirectDriveClient(accessToken);
   }
+  await driveClient.verifyFolders([...new Set([...Object.values(driveFolders), manifestFolderId, failedFolderId])]);
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const runLock = dryRun ? { run: { id: null }, skipped: false } : await acquireRun(supabase, schedule.localDate);
   if (runLock.skipped) {
@@ -515,7 +591,7 @@ async function main() {
           const downloaded = await retry('Storage download', () => downloadStorageObject(supabase, entry.bucket, entry.path), { attempts: 4, baseMs: 1000 });
           const sha256 = createHash('sha256').update(downloaded.bytes).digest('hex');
           const name = safeDriveName(entry.path, sha256, startedAt);
-          const driveFile = await uploadDriveFile(accessToken, {
+          const driveFile = await driveClient.upload({
             folderId: driveFolders[entry.bucket],
             name,
             bytes: downloaded.bytes,
@@ -523,7 +599,9 @@ async function main() {
             sourceKey: entry.sourceKey,
             sha256
           });
-          if (driveFile.trashed || Number(driveFile.size) !== downloaded.bytes.length || driveFile.appProperties?.sha256 !== sha256 || driveFile.appProperties?.sourceKey !== entry.sourceKey) {
+          const driveSha = driveFile.sha256 || driveFile.appProperties?.sha256;
+          const driveSourceKey = driveFile.sourceKey || driveFile.appProperties?.sourceKey || entry.sourceKey;
+          if (driveFile.trashed || Number(driveFile.size) !== downloaded.bytes.length || driveSha !== sha256 || driveSourceKey !== entry.sourceKey) {
             const verifyError = new Error('Drive verification did not match source size/hash metadata.');
             verifyError.code = 'drive_verify_mismatch';
             throw verifyError;
@@ -608,8 +686,19 @@ async function main() {
     await writeFile(outputPath, `${JSON.stringify(summary, null, 2)}\n`);
     if (!dryRun) {
       const manifestName = `${schedule.localDate}__photo-archive-run.json`;
-      await uploadJsonManifest(accessToken, manifestFolderId, manifestName, summary);
-      if (summary.failures.length) await uploadJsonManifest(accessToken, failedFolderId, `${schedule.localDate}__failed-photo-jobs.json`, summary.failures);
+      const manifestBytes = Buffer.from(`${JSON.stringify(summary, null, 2)}\n`, 'utf8');
+      await driveClient.upload({
+        folderId: manifestFolderId, name: manifestName, bytes: manifestBytes, mimeType: 'application/json',
+        sourceKey: createHash('sha256').update(manifestName).digest('hex'), sha256: createHash('sha256').update(manifestBytes).digest('hex')
+      });
+      if (summary.failures.length) {
+        const failedName = `${schedule.localDate}__failed-photo-jobs.json`;
+        const failedBytes = Buffer.from(`${JSON.stringify(summary.failures, null, 2)}\n`, 'utf8');
+        await driveClient.upload({
+          folderId: failedFolderId, name: failedName, bytes: failedBytes, mimeType: 'application/json',
+          sourceKey: createHash('sha256').update(failedName).digest('hex'), sha256: createHash('sha256').update(failedBytes).digest('hex')
+        });
+      }
       const { error: completeError } = await supabase.from('ph_photo_archive_runs').update({
         status: 'completed',
         completed_at: summary.completedAt,

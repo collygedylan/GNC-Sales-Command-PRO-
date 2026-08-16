@@ -5,8 +5,16 @@ import {
   extractClaspCredentials,
   getChicagoSchedule,
   parseStorageObjectUrl,
+  photoArchiveCanonicalRequest,
   splitPhotoLinks
 } from '../scripts/archive-expired-photos.mjs';
+
+test('archive signature canonicalization binds every security-sensitive field', () => {
+  assert.equal(photoArchiveCanonicalRequest({
+    action: 'upload', timestamp: 1, nonce: 'abc', folderId: 'folder', fileName: 'file.webp',
+    sourceKey: 'source', sha256: 'hash', folderIds: []
+  }), 'upload\n1\nabc\nfolder\nfile.webp\nsource\nhash\n');
+});
 
 test('Apps Script OAuth credentials support the repository clasp secret shape', () => {
   assert.deepEqual(extractClaspCredentials({
