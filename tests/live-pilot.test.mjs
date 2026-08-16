@@ -27,12 +27,12 @@ const authMigrationTool = read('scripts/migrate-custom-users-to-supabase-auth.mj
 const authAdmin = read('supabase/functions/auth-admin/index.ts');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.07';
+  const release = 'V2026.08.16.09';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.16.07');
+  assert.equal(packageJson.version, '2026.08.16.09');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -467,7 +467,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081607\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081609\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -624,6 +624,27 @@ test('V06 request detail fits the viewport and never renders collapsed AV cards'
   assert.match(css, /#view-detail\.detail-request-mode:not\(\.hidden\)[\s\S]*overflow: hidden !important/);
   assert.match(css, /#det-request-content:not\(\.hidden\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important/);
   assert.match(css, /request-detail-av-options-open[\s\S]*overflow-y: auto !important/);
+});
+
+test('V09 avoids billable Storage transforms and unifies Columns and Excel controls', () => {
+  const storageUrlHelper = html.slice(
+    html.indexOf("function buildSupabaseStorageThumbnailUrl"),
+    html.indexOf("function getSupabaseStorageOriginalUrl")
+  );
+  assert.match(storageUrlHelper, /nextUrl\.pathname = objectPrefix \+ publicPath/);
+  assert.doesNotMatch(storageUrlHelper, /nextUrl\.pathname = renderPrefix/);
+  assert.doesNotMatch(storageUrlHelper, /searchParams\.set\('(width|quality|resize)'/);
+  assert.match(html, /ops-view-option-control[^\n]+data-drive-filter-shell="columns"/);
+  assert.match(html, /ops-view-option-control[^\n]+data-av-filter-shell="columns"/);
+  assert.match(html, /ops-view-option-control[^\n]+data-dock-filter-shell="columns"/);
+  assert.match(html, /ops-view-option-action drive-mode-export-button/);
+  assert.match(html, /id="av-export-btn" class="ops-view-option-action/);
+  assert.match(html, /id="sales-office-export-btn" class="ops-view-option-action/);
+  const sharedControlCss = css.slice(css.lastIndexOf('V2026.08.16.09 — shared View / Columns / Excel control contract'));
+  assert.match(sharedControlCss, /\.ops-view-option-control, \.ops-view-option-action/);
+  assert.match(sharedControlCss, /min-height: 44px !important/);
+  assert.match(sharedControlCss, /background: var\(--ops-surface\) !important/);
+  assert.match(sharedControlCss, /border: 1px solid var\(--ops-border\) !important/);
 });
 
 test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {

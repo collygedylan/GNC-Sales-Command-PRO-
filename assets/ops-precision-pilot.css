@@ -5730,3 +5730,102 @@ body.ops-precision-pilot.request-detail-av-options-open #view-detail.detail-requ
     height: 38px !important;
   }
 }
+
+/* V2026.08.16.09 — shared View / Columns / Excel control contract. */
+body.ops-precision-pilot :is(.ops-view-option-control, .ops-view-option-action) {
+  box-sizing: border-box !important;
+  min-width: 112px !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 10px !important;
+  color: var(--ops-text-muted) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: none !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  transition: color var(--ops-transition), border-color var(--ops-transition), background-color var(--ops-transition), transform var(--ops-transition) !important;
+}
+
+body.ops-precision-pilot .ops-view-option-control {
+  display: flex;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  padding: 0 !important;
+  align-items: stretch !important;
+}
+
+body.ops-precision-pilot .ops-view-option-control > button {
+  display: inline-flex !important;
+  width: 100% !important;
+  min-width: 112px !important;
+  min-height: 42px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  color: inherit !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font: inherit !important;
+  letter-spacing: inherit !important;
+  text-transform: inherit !important;
+}
+
+body.ops-precision-pilot .ops-view-option-control .task-top-control-title {
+  display: none !important;
+}
+
+body.ops-precision-pilot .ops-view-option-control .task-top-control-summary {
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+body.ops-precision-pilot .ops-view-option-action {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  padding: 0 14px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+body.ops-precision-pilot :is(.ops-view-option-control, .ops-view-option-action):hover {
+  border-color: var(--ops-border-strong) !important;
+  color: var(--ops-brand-strong) !important;
+  background: var(--ops-surface-strong) !important;
+}
+
+body.ops-precision-pilot :is(.ops-view-option-control > button, .ops-view-option-action):focus-visible {
+  outline: 2px solid var(--ops-focus) !important;
+  outline-offset: 2px !important;
+}
+
+body.ops-precision-pilot .ops-view-option-action:active {
+  transform: scale(.98) !important;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail :is(.ops-view-option-control, .ops-view-option-action) {
+  width: auto !important;
+  min-width: 112px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.ops-precision-pilot :is(.ops-view-option-control, .ops-view-option-action) {
+    transition: none !important;
+  }
+}
