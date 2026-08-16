@@ -78,7 +78,7 @@ test('Home adaptively fits all 12 launch modules without scrolling or quick-bar 
       expect(layout.minHeight).toBeGreaterThanOrEqual(44);
       expect(layout.lastBottom, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBeLessThanOrEqual(layout.navTop + 1);
       expect(layout.clearance).toBeGreaterThanOrEqual(-1);
-      expect(layout.overflowX).toBeLessThanOrEqual(2);
+      expect(layout.overflowX, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBe(0);
       expect(layout.mainScrollDelta).toBeLessThanOrEqual(2);
       expect(layout.mainOverflowY).toBe('hidden');
       expect(layout.navPosition).toBe('fixed');

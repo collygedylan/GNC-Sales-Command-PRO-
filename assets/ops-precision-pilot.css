@@ -5427,13 +5427,46 @@ body.ops-precision-pilot .drive-grid-table tbody > tr[hidden] {
 }
 
 /* V2026.08.16.05 — measured Home viewport fit with fixed quick navigation. */
+html:has(body.ops-precision-pilot),
+body.ops-precision-pilot {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+body.ops-precision-pilot :is(#app-wrapper, #app-top-chrome, #main-scroll-area, #view-wrapper) {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+body.ops-precision-pilot #bottom-nav {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 767px) {
+  body.ops-precision-pilot:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav {
+    right: 0 !important;
+    left: 0 !important;
+    width: auto !important;
+    max-width: 100% !important;
+    transform: none !important;
+  }
+}
+
 body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area {
+  width: 100% !important;
+  max-width: 100% !important;
   overflow: hidden !important;
   overscroll-behavior: none !important;
   padding-bottom: 0 !important;
 }
 
 body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) :is(#view-wrapper, #view-home, #home-dashboard-content) {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
   max-height: 100% !important;
