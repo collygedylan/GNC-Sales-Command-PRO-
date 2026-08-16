@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.15.15';
+  const RELEASE = 'V2026.08.16.01';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -117,7 +117,7 @@
   let viewportResizeObserver = null;
   const healthDedupe = new Map();
 
-  if (document.body) document.body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v15');
+  if (document.body) document.body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v16');
 
   function normalizeThemeMode(value) {
     const mode = String(value || '').trim().toLowerCase();
@@ -183,8 +183,7 @@
   }
 
   function gridIsSupportedHere() {
-    const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    return !(coarsePointer && Math.min(window.innerWidth || 0, window.screen && window.screen.width || Infinity) < 768);
+    return true;
   }
 
   function getEffectiveDisplayMode() {
@@ -202,9 +201,7 @@
     });
     const note = document.getElementById('ops-display-note');
     if (note) {
-      note.textContent = state.preferences.displayMode === 'grid' && !gridIsSupportedHere()
-        ? 'Grid is saved; this phone stays in Cards.'
-        : '';
+      note.textContent = '';
     }
   }
 
@@ -216,7 +213,7 @@
     const skinActive = true;
     body.classList.toggle('ops-pilot-active', state.eligible && !state.provisional);
     body.classList.remove('premium-skin-v14');
-    body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v15');
+    body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v16');
     body.classList.toggle('ops-grid-effective', skinActive && effectiveDisplay === 'grid');
     body.dataset.opsTheme = effectiveTheme;
     body.dataset.opsThemeMode = state.preferences.themeMode;
@@ -404,6 +401,9 @@
     state.preferences = next;
     writeCachedPreferences(next, true);
     applyUiState();
+    if (kind === 'display' && state.activeView === 'drive' && typeof window.scheduleDriveRender === 'function') {
+      window.setTimeout(() => window.scheduleDriveRender(0, 0), 0);
+    }
     requestPreferenceSave();
     return false;
   }

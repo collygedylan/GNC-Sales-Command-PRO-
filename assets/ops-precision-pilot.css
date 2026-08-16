@@ -3247,7 +3247,7 @@ body.keyboard-open #view-change-password :is(.login-primary-button, .login-secon
   margin-top: 9px !important;
 }
 
-/* V2026.08.15.15 — responsive workflow, viewport, and monitoring health fixes. */
+/* V2026.08.16.01 — responsive workflow, viewport, and monitoring health fixes. */
 body.ops-precision-pilot {
   --ops-nav-light-fallback: rgba(255, 255, 255, 0.96);
   --ops-nav-dark-fallback: rgba(10, 28, 21, 0.96);
@@ -4754,7 +4754,7 @@ body.keyboard-open #view-change-password :is(.login-primary-button, .login-secon
   margin-top: 9px !important;
 }
 
-/* V2026.08.15.15 final cascade lock. */
+/* V2026.08.16.01 final cascade lock. */
 body.ops-precision-pilot[data-ops-theme="light"] #bottom-nav { background-color: rgba(255, 255, 255, .96) !important; }
 body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav,
 html.outdoor-mode body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav { background-color: rgba(10, 28, 21, .96) !important; background-image: none !important; }
@@ -4781,4 +4781,336 @@ body.ops-precision-pilot.ops-grid-effective #drive-content[data-drive-detailed-r
 @media (max-width: 839px) {
   body.ops-precision-pilot.ops-grid-effective #drive-content[data-drive-detailed-records="true"] .ops-record-collection,
   body.ops-precision-pilot.ops-grid-effective #drive-content[data-drive-detailed-records="true"].ops-record-collection { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* V2026.08.16.01 — spreadsheet Grid, one-rail Drive controls, adaptive Home, and visible Chat composer. */
+body.ops-precision-pilot #view-drive .drive-controls-sticky {
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail {
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 0 6px !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail #drive-drill-tabs,
+body.ops-precision-pilot #drive-toolbar-rail #drive-season-filters,
+body.ops-precision-pilot #drive-toolbar-rail #drive-season-filters .drive-top-controls-row {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  flex-flow: row nowrap !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  width: auto !important;
+  min-width: max-content !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail .task-tab,
+body.ops-precision-pilot #drive-toolbar-rail .task-top-control-shell,
+body.ops-precision-pilot #drive-toolbar-rail .drive-mode-export-button,
+body.ops-precision-pilot #drive-toolbar-rail .drive-filter-reset-button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 112px !important;
+  max-width: none !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+  border-radius: 10px !important;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail .task-top-control-shell {
+  width: 176px !important;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail .drive-mode-export-button {
+  width: 156px !important;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail .drive-filter-reset-button {
+  width: 148px !important;
+}
+
+body.ops-precision-pilot #drive-toolbar-rail .drive-filter-reset-button.hidden {
+  display: none !important;
+}
+
+body.ops-precision-pilot #view-drive {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+}
+
+body.ops-precision-pilot #drive-content[data-drive-display="grid"] {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-precision-pilot .drive-grid-sheet {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  border: 1px solid var(--ui-border, #cbd8d1) !important;
+  border-radius: 8px !important;
+  background: var(--ui-surface-strong, #fff) !important;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ui-shadow, #13221b) 10%, transparent) !important;
+  scrollbar-color: var(--ui-border-strong, #88a99a) transparent;
+}
+
+body.ops-precision-pilot .drive-grid-table {
+  width: max(100%, 1480px) !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  color: var(--ui-text, #13221b) !important;
+  background: var(--ui-surface-strong, #fff) !important;
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+body.ops-precision-pilot .drive-grid-table :is(th, td) {
+  height: 48px !important;
+  padding: 7px 9px !important;
+  border-right: 1px solid var(--ui-border, #cbd8d1) !important;
+  border-bottom: 1px solid var(--ui-border, #cbd8d1) !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body.ops-precision-pilot .drive-grid-table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4 !important;
+  height: 42px !important;
+  color: var(--ui-text, #13221b) !important;
+  background: var(--ui-surface-muted, #eef4f0) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: .08em !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+}
+
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(1) { width: 42px !important; text-align: center !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(2) { width: 62px !important; text-align: center !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(3) { width: 250px !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(4) { width: 100px !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(5) { width: 126px !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(6) { width: 120px !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(7) { width: 88px !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(8) { width: 82px !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(n+9):nth-child(-n+12) { width: 92px !important; text-align: right !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(13) { width: 132px !important; }
+body.ops-precision-pilot .drive-grid-table :is(th, td):nth-child(14) { width: 118px !important; text-align: center !important; }
+
+body.ops-precision-pilot .drive-grid-summary-table {
+  width: 100% !important;
+  min-width: 520px !important;
+  table-layout: fixed !important;
+}
+
+body.ops-precision-pilot .drive-grid-summary-table :is(th, td):nth-child(1) {
+  width: auto !important;
+  text-align: left !important;
+}
+
+body.ops-precision-pilot .drive-grid-summary-table :is(th, td):nth-child(n+2) {
+  width: 120px !important;
+  text-align: right !important;
+}
+
+body.ops-precision-pilot .drive-grid-summary-row > th {
+  color: var(--ui-primary, #07874f) !important;
+  font-weight: 850 !important;
+}
+
+body.ops-precision-pilot .drive-grid-table tbody tr:nth-child(even) :is(th, td) {
+  background: color-mix(in srgb, var(--ui-surface-muted, #eef4f0) 62%, var(--ui-surface-strong, #fff)) !important;
+}
+
+body.ops-precision-pilot .drive-grid-table tbody tr:hover :is(th, td),
+body.ops-precision-pilot .drive-grid-table tbody tr:focus-visible :is(th, td) {
+  background: var(--ui-primary-soft, #e6f4ed) !important;
+}
+
+body.ops-precision-pilot .drive-grid-common {
+  color: var(--ui-primary, #07874f) !important;
+  font-weight: 850 !important;
+  text-align: left !important;
+}
+
+body.ops-precision-pilot .drive-grid-code,
+body.ops-precision-pilot .drive-grid-number {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800 !important;
+}
+
+body.ops-precision-pilot .drive-grid-thumb,
+body.ops-precision-pilot .drive-grid-no-photo {
+  display: inline-flex !important;
+  width: 36px !important;
+  height: 36px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--ui-border, #cbd8d1) !important;
+  border-radius: 5px !important;
+  object-fit: cover !important;
+}
+
+body.ops-precision-pilot .drive-grid-no-photo {
+  color: var(--ui-text-muted, #617068) !important;
+  background: var(--ui-surface-muted, #eef4f0) !important;
+  font-size: 7px !important;
+  font-weight: 900 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+}
+
+body.ops-precision-pilot .drive-grid-select .card-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: var(--ui-primary, #07874f);
+}
+
+body.ops-precision-pilot .drive-grid-action .app-card-bottom-btn {
+  width: 96px !important;
+  min-height: 34px !important;
+  margin: 0 auto !important;
+  border-radius: 7px !important;
+  padding: 5px 8px !important;
+  flex-direction: row !important;
+  font-size: 9px !important;
+  letter-spacing: .08em !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot.current-view-home.home-dashboard-mode #main-scroll-area {
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  padding-bottom: calc(var(--footer-nav-reserve, 0px) + env(safe-area-inset-bottom) + 20px) !important;
+}
+
+body.ops-precision-pilot.current-view-home.home-dashboard-mode :is(#view-wrapper, #view-home, #home-dashboard-content) {
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid {
+  grid-template-columns: repeat(var(--home-fit-columns, 2), minmax(0, 1fr)) !important;
+  grid-auto-rows: var(--home-fit-tile-height, auto) !important;
+  row-gap: var(--home-fit-row-gap, 10px) !important;
+  column-gap: var(--home-fit-col-gap, 10px) !important;
+  padding-bottom: 20px !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid .home-module-tile {
+  height: var(--home-fit-tile-height, auto) !important;
+  min-height: 92px !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+}
+
+@media (max-width: 639px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: auto !important;
+    padding-bottom: calc(var(--footer-nav-reserve, 0px) + env(safe-area-inset-bottom) + 20px) !important;
+  }
+
+  body.ops-precision-pilot #view-home #home-dashboard-grid .home-module-tile {
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+}
+
+body.ops-precision-pilot.current-view-chat #main-scroll-area {
+  display: block !important;
+  height: var(--ops-content-available-height, calc(100dvh - var(--footer-nav-reserve, 0px))) !important;
+  max-height: var(--ops-content-available-height, calc(100dvh - var(--footer-nav-reserve, 0px))) !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+body.ops-precision-pilot.current-view-chat #view-wrapper {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-precision-pilot.current-view-chat #view-chat:not(.hidden) {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-precision-pilot.current-view-chat #view-chat.chat-thread-active {
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+body.ops-precision-pilot.current-view-chat #chat-content {
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-precision-pilot.current-view-chat :is(.chat-thread-shell, .android-chat-shell) {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-precision-pilot.current-view-chat #chat-message-list {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body.ops-precision-pilot.current-view-chat .chat-thread-composer {
+  position: relative !important;
+  inset: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-height: 64px !important;
+  flex: 0 0 auto !important;
+  visibility: visible !important;
+  overflow: visible !important;
+  z-index: 12 !important;
 }

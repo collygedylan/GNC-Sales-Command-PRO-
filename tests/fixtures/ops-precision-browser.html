@@ -27,6 +27,7 @@
     #drive-search-container input { min-width: 0; flex: 1; padding: 9px; }
     button { cursor: pointer; padding: 8px 10px; }
     #fixture-layout { display: grid; grid-template-columns: minmax(200px, 250px) minmax(0, 1fr); gap: 14px; }
+    #fixture-layout > section { min-width: 0; }
     #side-drawer { padding: 8px; }
     .drawer-item { display: block; width: 100%; border: 1px solid transparent; padding: 9px; text-align: left; }
     #drive-content { display: flex; flex-direction: column; gap: 8px; }
@@ -64,7 +65,7 @@
   </style>
   <link rel="stylesheet" href="../../assets/ops-precision-pilot.css">
 </head>
-<body class="ops-precision-pilot ag-premium-skin premium-skin-v15" data-ops-theme="light">
+<body class="ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
   <div id="app-wrapper">
     <div id="app-top-chrome">
     <header class="nav-header">
@@ -78,7 +79,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.15.15</span>
+              <span class="nav-version-pill">V2026.08.16.01</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -110,18 +111,24 @@
             <div id="home-dashboard-modules">
               <h2>App Modules</h2>
               <div id="home-dashboard-grid">
-                <div onclick="document.body.dataset.qaHomeAction='drive'"><i>🚚</i><span>Drive Mode</span></div>
-                <div><i>🚛</i><span>Docks</span></div>
-                <div><i>📖</i><span>AV</span></div>
-                <div><i>💬</i><span>Communication</span></div>
-                <div><i>🤝</i><span>Sales</span></div>
-                <div><i>☁</i><span>Managers</span></div>
-                <div><i>🔨</i><span>Building</span></div>
-                <div><i>🛡</i><span>QC</span></div>
-                <div><i>🏢</i><span>Office</span></div>
-                <div><i>🛍</i><span>Inventory</span></div>
-                <div><i>🌿</i><span>Production</span></div>
-                <div><i>📊</i><span>Reports</span></div>
+                <div class="home-module-tile" onclick="document.body.dataset.qaHomeAction='drive'"><i>🚚</i><span>Drive Mode</span></div>
+                <div class="home-module-tile"><i>📋</i><span>My Tasks</span></div>
+                <div class="home-module-tile"><i>🚛</i><span>Docks</span></div>
+                <div class="home-module-tile"><i>☷</i><span>Que</span></div>
+                <div class="home-module-tile"><i>💬</i><span>Communication</span></div>
+                <div class="home-module-tile"><i>🤝</i><span>Sales</span></div>
+                <div class="home-module-tile"><i>🌿</i><span>Crop Roll</span></div>
+                <div class="home-module-tile"><i>☁</i><span>Managers</span></div>
+                <div class="home-module-tile"><i>🔨</i><span>Building</span></div>
+                <div class="home-module-tile"><i>🛡</i><span>QC</span></div>
+                <div class="home-module-tile"><i>↩</i><span>Take Back</span></div>
+                <div class="home-module-tile"><i>📖</i><span>AV</span></div>
+                <div class="home-module-tile"><i>📦</i><span>Reserves</span></div>
+                <div class="home-module-tile"><i>🏢</i><span>Office</span></div>
+                <div class="home-module-tile"><i>🛍</i><span>Inventory</span></div>
+                <div class="home-module-tile"><i>🌿</i><span>Production</span></div>
+                <div class="home-module-tile"><i>✚</i><span>Disease &amp; Pest</span></div>
+                <div class="home-module-tile"><i>📊</i><span>Reports</span></div>
               </div>
             </div>
           </div>
@@ -152,6 +159,10 @@
             <button class="drawer-item" type="button">Crop Roll</button>
           </aside>
           <section>
+            <div id="drive-toolbar-rail" class="drive-toolbar-rail" aria-label="Drive views and filters">
+              <div id="drive-drill-tabs" class="task-tabs"><button class="task-tab active">Common Name</button><button class="task-tab">Location</button><button class="task-tab">Card</button><button class="task-tab">Reports</button></div>
+              <div id="drive-season-filters" class="drive-top-inline drive-export-controls"><div class="drive-top-controls-row"><div class="task-top-control-shell"><button class="task-top-control-button">Columns</button></div><button class="drive-mode-export-button">Export Excel</button><button class="drive-filter-reset-button">Reset Filters</button></div></div>
+            </div>
             <div id="drive-content">
               <article class="inv-card app-smart-card"><p class="record-title">North dock</p><p class="record-meta">Ready for review</p><div class="app-card-qty-row grid"><span class="app-card-qty-chip"><span class="app-card-qty-label">On hand</span><span class="app-card-qty-value">39</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Review</span><span class="app-card-qty-value">0</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Available</span><span class="app-card-qty-value">39</span></span><span class="app-card-qty-chip"><span class="app-card-qty-label">Open Stock</span><span class="app-card-qty-value">39</span></span></div></article>
               <article class="inv-card"><p class="record-title">Crop roll</p><p class="record-meta">3 records queued</p></article>
@@ -264,6 +275,30 @@
       document.getElementById('view-chat').classList.toggle('hidden', activeView !== 'chat');
       document.getElementById('global-header-search-slot').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('global-header-inline-title').classList.toggle('hidden', activeView === 'drive');
+      const syncFixtureHomeFit = () => {
+        if (activeView !== 'home') return;
+        const home = document.getElementById('view-home');
+        const grid = document.getElementById('home-dashboard-grid');
+        const nav = document.getElementById('bottom-nav');
+        const width = window.innerWidth;
+        const columns = width < 640 ? 2 : (width < 840 ? 3 : (width < 1100 ? 4 : (width >= 1760 ? 7 : 6)));
+        const rows = Math.ceil(grid.children.length / columns);
+        const gap = width < 640 ? 10 : 12;
+        const available = Math.max(100, nav.getBoundingClientRect().top - grid.getBoundingClientRect().top - 18);
+        const tileHeight = Math.max(92, Math.min(282, Math.floor((available - gap * Math.max(0, rows - 1)) / rows)));
+        home.style.setProperty('--home-fit-columns', String(columns));
+        home.style.setProperty('--home-fit-tile-height', `${tileHeight}px`);
+        home.style.setProperty('--home-fit-row-gap', `${gap}px`);
+        home.style.setProperty('--home-fit-col-gap', `${gap}px`);
+      };
+      requestAnimationFrame(syncFixtureHomeFit);
+      window.addEventListener('resize', () => requestAnimationFrame(syncFixtureHomeFit));
+      if (activeView === 'drive' && preferences.displayMode === 'grid') {
+        const driveContent = document.getElementById('drive-content');
+        driveContent.dataset.driveDetailedRecords = 'true';
+        driveContent.dataset.driveDisplay = 'grid';
+        driveContent.innerHTML = `<div class="drive-grid-sheet" role="region" aria-label="Drive inventory grid" tabindex="0"><table class="drive-grid-table"><thead><tr><th></th><th>Photo</th><th>Common Name</th><th>Container</th><th>Item Code</th><th>Location</th><th>Lot</th><th>Priority</th><th>On Hand</th><th>Review</th><th>Available</th><th>Open Stock</th><th>DESIGLOC</th><th>Action</th></tr></thead><tbody>${['Baby Gem Boxwood','Admiration Barberry','Bloodgood Japanese Maple','Alice Oakleaf Hydrangea'].map((name, index) => `<tr class="drive-grid-row"><td><input type="checkbox" aria-label="Select ${name}"></td><td><span class="drive-grid-no-photo">No photo</span></td><th scope="row" class="drive-grid-common">${name}</th><td>${index % 2 ? '3 Gal' : '5 DP'}</td><td class="drive-grid-code">0035.${100 + index}.1</td><td>F.${20 + index}.000</td><td>U2</td><td>${index + 1}</td><td class="drive-grid-number">${39 + index}</td><td class="drive-grid-number">0</td><td class="drive-grid-number">${39 + index}</td><td class="drive-grid-number">${42 + index}</td><td>OUTSIDE NORTH</td><td class="drive-grid-action"><button class="app-card-bottom-btn">Reclass</button></td></tr>`).join('')}</tbody></table></div>`;
+      }
       const bridge = {
         getActiveView() { return activeView; },
         async request(action, payload) {

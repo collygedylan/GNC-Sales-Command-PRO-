@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081515.min.css?v=V2026.08.15.15">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081601.min.css?v=V2026.08.16.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.15.15';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6555,9 +6555,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.15">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.01">
 </head>
-<body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v15" data-ops-theme="light">
+<body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
     <div id="request-open-info-modal" class="hidden fixed inset-0 z-[17000] flex items-center justify-center p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="request-open-info-title">
@@ -6657,7 +6657,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.15"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7410,7 +7410,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.15').trim() || 'V2026.08.15.15';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.01').trim() || 'V2026.08.16.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8204,14 +8204,15 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
                     <div class="freeze-panel drive-controls-sticky">
+                    <div id="drive-toolbar-rail" class="drive-toolbar-rail" aria-label="Drive views and filters">
                     <div id="drive-drill-tabs" class="task-tabs">
                         <div id="tab-drive-name" class="task-tab" onclick="setDriveTab('name')">COMMONNAME</div>
                         <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">LOCATION</div>
                         <div id="tab-drive-card" class="task-tab" onclick="setDriveTab('card')">CARD</div>
                         <div id="tab-drive-hold" class="task-tab" onclick="setDriveTab('hold')">REPORTS</div>
-                        <div id="tab-drive-season-sales-notes" class="task-tab" onclick="setDriveTab('season-sales-notes')">SEASON SALES NOTES</div>
                     </div>
-                    <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
+                    <div class="flex scrollbar-none gap-2" id="drive-season-filters"></div>
+                    </div>
                     <div id="drive-plant-filters" class="hidden mb-3"></div>
                     </div>
                     <div id="drive-quick-request-bar" class="hidden mb-3"></div>
@@ -8874,7 +8875,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11738,7 +11739,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 '--home-phone-tile-padding-y',
                 '--home-phone-tile-gap',
                 '--home-phone-icon-size',
-                '--home-phone-label-size'
+                '--home-phone-label-size',
+                '--home-fit-columns',
+                '--home-fit-tile-height',
+                '--home-fit-row-gap',
+                '--home-fit-col-gap'
             ].forEach((name) => homeView.style.removeProperty(name));
             homeDashboardFitLastKey = '';
         }
@@ -11768,17 +11773,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function syncHomeDashboardPhoneFit(reason = 'default') {
             homeDashboardFitFrame = 0;
             const profile = getResponsiveViewportProfile();
-            const isPhoneHome = !!(
-                profile.phone
-                && !profile.landscape
-                && document.body
+            const isEligibleHome = !!(
+                document.body
                 && document.body.classList.contains('current-view-home')
                 && document.body.classList.contains('home-dashboard-mode')
                 && !document.body.classList.contains('keyboard-open')
                 && !document.body.classList.contains('detail-field-active')
                 && !document.body.classList.contains('measurement-keyboard-open')
             );
-            if (!isPhoneHome) {
+            if (!isEligibleHome) {
                 clearHomeDashboardPhoneFit();
                 return false;
             }
@@ -11793,7 +11796,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
 
             const visibleTiles = Array.from(grid.children || []).filter(isHomeDashboardTileVisible);
-            const rowCount = Math.max(1, Math.ceil(visibleTiles.length / 2));
+            const columnCount = profile.width < 640
+                ? 2
+                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : (profile.width >= 1760 ? 7 : 6)));
+            const rowCount = Math.max(1, Math.ceil(visibleTiles.length / columnCount));
             const mainRect = mainArea.getBoundingClientRect();
             const gridRect = grid.getBoundingClientRect();
             const navRect = bottomNav && bottomNav.getClientRects && bottomNav.getClientRects().length ? bottomNav.getBoundingClientRect() : null;
@@ -11815,22 +11821,27 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
 
             const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-            const rowGapPx = clamp(Math.round(profile.height * (profile.short ? 0.0052 : 0.0062)), profile.veryNarrow ? 3 : 4, profile.short ? 5 : 7);
-            const colGapPx = clamp(Math.round(profile.width * 0.026), 8, 12);
+            const rowGapPx = profile.phone
+                ? clamp(Math.round(profile.height * (profile.short ? 0.0052 : 0.0062)), profile.veryNarrow ? 6 : 8, 12)
+                : clamp(Math.round(profile.height * 0.012), 10, 16);
+            const colGapPx = profile.phone
+                ? clamp(Math.round(profile.width * 0.026), 8, 12)
+                : clamp(Math.round(profile.width * 0.008), 10, 16);
             const fitTilePx = Math.floor((availableHeight - (rowGapPx * Math.max(0, rowCount - 1))) / rowCount);
-            const maxTilePx = profile.short ? 72 : 92;
-            const preferredMinPx = profile.short ? 46 : 60;
-            const hardMinPx = profile.veryNarrow || profile.short ? 34 : 38;
+            const maxTilePx = profile.phone ? (profile.short ? 92 : 112) : 282;
+            const preferredMinPx = profile.phone ? (profile.short ? 72 : 88) : 108;
+            const hardMinPx = profile.phone ? 64 : 92;
             let tilePx = Math.min(maxTilePx, fitTilePx);
             tilePx = fitTilePx < preferredMinPx ? Math.max(hardMinPx, tilePx) : Math.max(preferredMinPx, tilePx);
-            const iconPx = clamp(Math.round(tilePx * 0.36), profile.short ? 18 : 21, 34);
-            const labelPx = clamp(Math.round(tilePx * 0.16), profile.short ? 10 : 11, 15);
+            const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 24 : 28, profile.phone ? 38 : 48);
+            const labelPx = clamp(Math.round(tilePx * (profile.phone ? 0.13 : 0.075)), profile.phone ? 11 : 12, 16);
             const tileGapPx = clamp(Math.round(tilePx * 0.07), 3, 7);
             const paddingYPx = clamp(Math.round(tilePx * 0.13), 5, 11);
             const nextKey = [
                 profile.width,
                 profile.height,
                 visibleTiles.length,
+                columnCount,
                 rowCount,
                 availableHeight,
                 tilePx,
@@ -11841,6 +11852,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             ].join(':');
             if (homeDashboardFitLastKey === nextKey) return true;
             homeDashboardFitLastKey = nextKey;
+            homeView.style.setProperty('--home-fit-columns', String(columnCount));
+            homeView.style.setProperty('--home-fit-tile-height', `${tilePx}px`);
+            homeView.style.setProperty('--home-fit-row-gap', `${rowGapPx}px`);
+            homeView.style.setProperty('--home-fit-col-gap', `${colGapPx}px`);
             homeView.style.setProperty('--home-phone-tile-height', `${tilePx}px`);
             homeView.style.setProperty('--home-phone-row-gap', `${rowGapPx}px`);
             homeView.style.setProperty('--home-phone-col-gap', `${colGapPx}px`);
@@ -23452,7 +23467,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             bindFastInvokeById('tab-drive-loc', 'setDriveTab', ['loc'], 'LOCATION');
             bindFastInvokeById('tab-drive-card', 'setDriveTab', ['card'], 'CARD');
             bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
-            bindFastInvokeById('tab-drive-season-sales-notes', 'setDriveTab', ['season-sales-notes'], 'Season Sales Notes');
             bindFastInvokeById('tab-review-name', 'setReviewBrowseMode', ['item'], 'COMMONNAME');
             bindFastInvokeById('tab-review-loc', 'setReviewBrowseMode', ['block'], 'LOCATION');
             bindFastInvokeById('tab-review-card', 'setReviewBrowseMode', ['card'], 'CARD');
@@ -29189,7 +29203,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.15').trim() || 'V2026.08.15.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.01').trim() || 'V2026.08.16.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -53299,8 +53313,8 @@ function toggleDriveQuickRequestItem(domId) {
 
         function ensureHomeModuleRegistry() {
             const grid = document.getElementById('home-dashboard-grid');
-            if (!grid || grid.dataset.homeRegistryRelease === '15') return grid;
-            grid.dataset.homeRegistryRelease = '15';
+            if (!grid || grid.dataset.homeRegistryRelease === '16') return grid;
+            grid.dataset.homeRegistryRelease = '16';
             grid.innerHTML = HOME_MODULE_REGISTRY.map((module) => `
                 <button type="button" id="home-tile-${module.view}" class="home-module-tile hidden" data-home-module-view="${module.view}" onclick="${module.action}" aria-label="Open ${module.label}">
                     <i class="ph ${module.icon}" aria-hidden="true"></i>
@@ -70414,7 +70428,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (tab === 'name') return 'Common Name';
             if (tab === 'loc') return 'Location';
             if (tab === 'hold') return 'Reports';
-            if (tab === 'season-sales-notes') return 'Season Sales Notes';
             return 'Cards';
         }
 
@@ -70423,8 +70436,7 @@ function toggleDriveQuickRequestItem(domId) {
                 name: document.getElementById('tab-drive-name'),
                 loc: document.getElementById('tab-drive-loc'),
                 card: document.getElementById('tab-drive-card'),
-                hold: document.getElementById('tab-drive-hold'),
-                'season-sales-notes': document.getElementById('tab-drive-season-sales-notes')
+                hold: document.getElementById('tab-drive-hold')
             };
             Object.entries(tabMap).forEach(([key, el]) => {
                 if (!el) return;
@@ -70661,7 +70673,8 @@ function toggleDriveQuickRequestItem(domId) {
             closeDriveQuickFiltersModal();
             lastViewSwitchAt = Date.now();
             cancelDriveSearchRenderWork();
-            const nextTab = ['name', 'loc', 'card', 'hold', 'season-sales-notes'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'card';
+            const requestedTab = String(tab || '').trim();
+            const nextTab = ['name', 'loc', 'card', 'hold'].includes(requestedTab) ? requestedTab : 'card';
             const preserveNameDrillSelection = shouldPreserveDriveNameDrillSelectionForCard(nextTab);
             return runDirectTrackedNavigation('drive', `drive-tab:${nextTab}`, () => {
                 const previousTab = activeDriveTab;
@@ -126218,12 +126231,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     applyDriveRenderMarkup(container, crumb, crumbText, '<div class="app-empty-state"><i class="ph ph-magnifying-glass"></i><strong>No matching inventory</strong><span>Try a plant, location, item, size, lot, or design value.</span></div>', `drive:universal:empty:${cacheKey}`);
                     return;
                 }
-                renderMarkupChunkedByKey('drive-universal-search', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 260,
-                    initialRows: isTouchConstrainedDevice() ? 12 : 20,
-                    chunkSize: isTouchConstrainedDevice() ? 12 : 28,
-                    perFrameRows: isTouchConstrainedDevice() ? 12 : 28,
-                    renderSignature
+                renderDriveRecordResults('drive-universal-search', container, crumb, finalItems, crumbText, renderSignature, {
+                    approxCardHeight: 260
                 });
             });
             if (filtersDiv) filtersDiv.setAttribute('data-drive-search-results', 'true');
@@ -128561,7 +128570,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function ensureDriveTopControlsShell(container) {
             if (!container) return false;
-            const shellSignature = 'drive-top-controls-shell:v10-columns-export';
+            const shellSignature = 'drive-top-controls-shell:v11-single-rail';
             if (container.dataset.driveTopControlsShell === shellSignature) {
                 container.classList.add('drive-top-inline');
                 container.classList.add('drive-export-controls');
@@ -128574,8 +128583,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 `<div class="drive-top-controls-row">`,
                 `<div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="columns"><button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleDriveColumnFilterDropdown')}><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Filter</span><span class="task-top-control-summary truncate" data-role="summary">Columns</span></span><i class="ph-bold ph-sliders-horizontal text-xs opacity-80"></i></button></div>`,
                 `<button type="button" class="drive-mode-export-button" ${buildFastInvokeAttrs('exportCurrentDriveModeToExcel', [], 'Export Drive Mode Excel')}><i class="ph-bold ph-download-simple text-sm"></i><span>Export Excel</span></button>`,
+                `<button type="button" class="drive-filter-reset-button hidden" data-drive-filter-reset-row ${buildExcelFilterFastAttrs('resetDriveFiltersToAll')}><i class="ph-bold ph-arrow-counter-clockwise text-xs"></i><span>Reset Filters</span></button>`,
                 `</div>`,
-                `<div class="drive-filter-reset-row hidden" data-drive-filter-reset-row><button type="button" class="drive-filter-reset-button" ${buildExcelFilterFastAttrs('resetDriveFiltersToAll')}><i class="ph-bold ph-arrow-counter-clockwise text-xs"></i><span>Reset Filters</span></button></div>`
             ].join(''));
             container.classList.add('drive-top-inline');
             container.classList.add('drive-export-controls');
@@ -130216,6 +130225,127 @@ ${folderNote ? `Folder Note: ${folderNote}
             return true;
         }
 
+        function isDriveSpreadsheetGridMode() {
+            try {
+                const pilotState = window.__gncOpsPilot && typeof window.__gncOpsPilot.getState === 'function'
+                    ? window.__gncOpsPilot.getState()
+                    : null;
+                if (pilotState && pilotState.effectiveDisplayMode) return pilotState.effectiveDisplayMode === 'grid';
+            } catch (error) {}
+            return !!(document.body && document.body.classList.contains('ops-grid-effective'));
+        }
+
+        function getDriveSpreadsheetValue(item = null, keys = [], fallback = '-') {
+            const row = item && typeof item === 'object' ? item : {};
+            const values = (Array.isArray(keys) ? keys : [keys]).map((key) => row[key]);
+            const value = firstNonEmptyValue(...values, fallback);
+            const text = String(value == null ? fallback : value).trim();
+            return text || fallback;
+        }
+
+        function buildDriveSpreadsheetPhotoCell(item = null) {
+            const photoCsv = String(firstNonEmptyValue(getRowPhotoLink(item, 'drive'), getSharedAppPhotoLinkCsv(item, { includePending: false }), '') || '').trim();
+            const photoUrl = getPhotoUrlList(photoCsv)[0] || '';
+            if (!photoUrl) return '<span class="drive-grid-no-photo" aria-label="No photo">No photo</span>';
+            const thumbnailUrl = getDirectImageUrl(photoUrl, 'card-thumb');
+            return `<img class="drive-grid-thumb" src="${esc(thumbnailUrl)}" alt="" loading="lazy" decoding="async">`;
+        }
+
+        function buildDriveSpreadsheetRowHtml(item = null) {
+            const row = item && typeof item === 'object' ? item : {};
+            const domId = String(firstNonEmptyValue(row.DOM_ID, row.dom_id, row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            const safeSourceViewKey = 'drive';
+            const isChecked = selectedItems.has(domId) ? 'checked' : '';
+            const commonName = getDriveSpreadsheetValue(row, ['COMMONNAME', 'commonname', 'DESCRIPTION', 'description'], 'Unknown');
+            const contSize = getDriveSpreadsheetValue(row, ['CONTSIZE', 'contsize', 'ITEMSPEC', 'itemspec', 'SIZE', 'size']);
+            const itemCode = getDriveSpreadsheetValue(row, ['ITEMCODE', 'itemcode']);
+            const location = getDriveSpreadsheetValue(row, ['LOCATIONCODE', 'locationcode', 'LOC', 'loc']);
+            const lot = getDriveSpreadsheetValue(row, ['LOTCODE', 'lotcode', 'LOT', 'lot']);
+            const priority = getDriveSpreadsheetValue(row, ['PRIORITY', 'priority']);
+            const designLocation = getDriveSpreadsheetValue(row, ['DESIGLOC', 'desigloc', 'DESIGN_LOCATION', 'design_location']);
+            const onHand = normalizeCardQuantityValue(getCardPtrOnHandValue(row));
+            const reviewed = normalizeCardQuantityValue(getCardPtrReviewedValue(row));
+            const available = normalizeCardQuantityValue(getCardPtrAvailableValue(row));
+            const openStock = normalizeCardQuantityValue(getCardOpenStockValue(row));
+            const canUseDriveOptions = canCurrentUserUseDriveCardOptions(row, 'drive');
+            const reclassHtml = canUseDriveOptions ? buildArgosInventoryTransactionRailHtml(row, 'drive') : '';
+            const rowActivationAttrs = buildCardActivationAttrs(domId, firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, ''), 'drive', `Open ${commonName}`);
+            return `<tr class="drive-grid-row" data-dom-id="${esc(domId)}" ${rowActivationAttrs}>
+                <td class="drive-grid-select" onclick="event.stopPropagation();"><input type="checkbox" class="card-checkbox" aria-label="Select ${esc(commonName)}" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(domId)}', this.checked, '${escJsAttrValue(safeSourceViewKey)}')"></td>
+                <td class="drive-grid-photo">${buildDriveSpreadsheetPhotoCell(row)}</td>
+                <th scope="row" class="drive-grid-common">${esc(commonName)}</th>
+                <td>${esc(contSize)}</td>
+                <td class="drive-grid-code">${esc(itemCode)}</td>
+                <td>${esc(location)}</td>
+                <td>${esc(lot)}</td>
+                <td>${esc(priority)}</td>
+                <td class="drive-grid-number">${esc(onHand)}</td>
+                <td class="drive-grid-number">${esc(reviewed)}</td>
+                <td class="drive-grid-number">${esc(available)}</td>
+                <td class="drive-grid-number">${esc(openStock)}</td>
+                <td>${esc(designLocation)}</td>
+                <td class="drive-grid-action" onclick="event.stopPropagation();">${reclassHtml || '<span aria-hidden="true">&mdash;</span>'}</td>
+            </tr>`;
+        }
+
+        function buildDriveSpreadsheetTableHtml(items = []) {
+            const rows = Array.isArray(items) ? items : [];
+            return `<div class="drive-grid-sheet" role="region" aria-label="Drive inventory grid" tabindex="0">
+                <table class="drive-grid-table">
+                    <caption class="sr-only">Drive inventory spreadsheet with ${rows.length} rows</caption>
+                    <thead><tr>
+                        <th scope="col" aria-label="Select"></th>
+                        <th scope="col">Photo</th>
+                        <th scope="col">Common Name</th>
+                        <th scope="col">Container</th>
+                        <th scope="col">Item Code</th>
+                        <th scope="col">Location</th>
+                        <th scope="col">Lot</th>
+                        <th scope="col">Priority</th>
+                        <th scope="col">On Hand</th>
+                        <th scope="col">Review</th>
+                        <th scope="col">Available</th>
+                        <th scope="col">Open Stock</th>
+                        <th scope="col">DESIGLOC</th>
+                        <th scope="col">Action</th>
+                    </tr></thead>
+                    <tbody>${rows.map((item) => buildDriveSpreadsheetRowHtml(item)).join('')}</tbody>
+                </table>
+            </div>`;
+        }
+
+        function renderDriveRecordResults(tokenKey, container, crumb, rows, crumbText, renderKey = '', options = {}) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const nextOptions = options && typeof options === 'object' ? options : {};
+            const prefixHtml = String(nextOptions.prefixHtml || '');
+            const useSpreadsheet = isDriveSpreadsheetGridMode();
+            if (container && container.dataset) {
+                container.dataset.driveDetailedRecords = 'true';
+                container.dataset.driveDisplay = useSpreadsheet ? 'grid' : 'cards';
+            }
+            const displayRenderKey = `${String(renderKey || tokenKey)}::${useSpreadsheet ? 'spreadsheet-v1' : 'cards-v1'}`;
+            if (useSpreadsheet) {
+                cancelChunkRenderWorkForContainer(container, String(tokenKey || 'drive-grid'));
+                applyDriveRenderMarkup(container, crumb, crumbText, `${prefixHtml}${buildDriveSpreadsheetTableHtml(safeRows)}`, displayRenderKey);
+                return true;
+            }
+            const renderRow = typeof nextOptions.renderRow === 'function'
+                ? nextOptions.renderRow
+                : ((item) => generateCard(item, 'drive', getDriveCardStatusClass(item, nextOptions.fallbackStatusClass || 'status-green')));
+            if (shouldUseChunkedCardRender(safeRows.length, 90, 170)) {
+                syncDriveCrumb(crumb, crumbText);
+                if (container.dataset && container.dataset.driveRenderKey === displayRenderKey) return true;
+                if (container.dataset) container.dataset.driveRenderKey = displayRenderKey;
+                renderMarkupChunkedByKey(tokenKey, container, crumb, safeRows, crumbText, renderRow, {
+                    approxCardHeight: Number(nextOptions.approxCardHeight) || 310,
+                    prefixHtml
+                });
+                return true;
+            }
+            applyDriveRenderMarkup(container, crumb, crumbText, `${prefixHtml}${safeRows.map((item) => renderRow(item)).join('')}`, displayRenderKey);
+            return true;
+        }
+
         function syncDriveFilterStrip(container, html = '', signature = '') {
             if (!container) return;
             const nextSignature = String(signature || `drive-filters:${String(html || '').length}`);
@@ -130346,14 +130476,58 @@ ${folderNote ? `Folder Note: ${folderNote}
             return getCurrentSeasonSortRank(normalized, DRIVE_SEASON_OPTIONS);
         }
 
+        function buildDriveGroupSpreadsheetTableHtml(entries = [], modeKey = '') {
+            const rows = Array.isArray(entries) ? entries : [];
+            const mode = String(modeKey || '');
+            let columns = ['Name', 'Rows'];
+            let rowBuilder = (entry) => ({
+                label: String(firstNonEmptyValue(entry && entry.name, entry && entry.location, entry && entry.block, '-') || '-'),
+                values: [String(Number(entry && entry.rowCount) || 0)],
+                attrs: ''
+            });
+            if (mode.includes('drive:name:list')) {
+                columns = ['Common Name', 'Rows', 'Sizes'];
+                rowBuilder = (entry) => ({ label: entry.name, values: [entry.rowCount, entry.sizeCount], attrs: buildFastInvokeAttrs('selectDriveName', [entry.name], `Open ${entry.name}`) });
+            } else if (mode.includes('drive:name:sizes')) {
+                columns = ['Container', 'Rows', 'Seasons'];
+                rowBuilder = (entry) => ({ label: firstNonEmptyValue(entry.displaySize, getDriveDrillDisplayValue(entry.size), '-'), values: [entry.rowCount, entry.seasonCount], attrs: buildFastInvokeAttrs('selectDriveSize', [entry.size], `Open ${entry.displaySize || entry.size}`) });
+            } else if (mode.includes('drive:name:seasons')) {
+                columns = ['Season', 'Rows'];
+                rowBuilder = (entry) => ({ label: firstNonEmptyValue(entry.displaySeason, getDriveDrillDisplayValue(entry.season, 'Unknown'), 'Unknown'), values: [entry.rowCount], attrs: buildFastInvokeAttrs('selectDriveSeason', [entry.season], `Open ${entry.displaySeason || entry.season}`) });
+            } else if (mode.includes('drive:name:programs')) {
+                columns = ['Program', 'Rows', 'Item Codes'];
+                rowBuilder = (entry) => ({ label: entry.label || 'Item Code', values: [entry.rowCount, entry.itemCodeCount], attrs: buildFastInvokeAttrs('selectDriveProgram', [entry.program], `Open ${entry.label || 'program'}`) });
+            } else if (mode.includes('drive:loc:blocks')) {
+                columns = ['Block', 'Rows'];
+                rowBuilder = (entry) => ({ label: entry.block, values: [entry.rowCount], attrs: buildFastInvokeAttrs('selectDriveBlock', [entry.block], `Open block ${entry.block}`) });
+            } else if (mode.includes('drive:loc:locations')) {
+                columns = ['Location', 'Rows'];
+                rowBuilder = (entry) => ({ label: entry.location, values: [entry.rowCount], attrs: buildFastInvokeAttrs('selectDriveLoc', [entry.location], `Open location ${entry.location}`) });
+            }
+            const headerHtml = columns.map((column) => `<th scope="col">${esc(column)}</th>`).join('');
+            const bodyHtml = rows.map((entry) => {
+                const row = rowBuilder(entry);
+                return `<tr class="drive-grid-row drive-grid-summary-row" ${row.attrs || ''}><th scope="row">${esc(row.label)}</th>${row.values.map((value) => `<td class="drive-grid-number">${esc(String(value == null ? '-' : value))}</td>`).join('')}</tr>`;
+            }).join('');
+            return `<div class="drive-grid-sheet drive-grid-summary-sheet" role="region" aria-label="Drive summary grid" tabindex="0"><table class="drive-grid-table drive-grid-summary-table"><caption class="sr-only">Drive summary spreadsheet with ${rows.length} rows</caption><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+        }
+
         function renderDriveDrillEntries(container, crumb, crumbText, entries, modeKey, renderEntry, options = {}) {
             const safeEntries = Array.isArray(entries) ? entries : [];
+            if (container && container.dataset) {
+                delete container.dataset.driveDetailedRecords;
+                container.dataset.driveDisplay = isDriveSpreadsheetGridMode() ? 'grid' : 'cards';
+            }
             const emptyMessage = String(options.emptyMessage || 'No matching Drive rows.');
             if (!safeEntries.length) {
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, `${modeKey}:empty`);
                 return;
             }
             const renderKey = buildDriveRenderKey(modeKey, crumbText, safeEntries);
+            if (isDriveSpreadsheetGridMode()) {
+                applyDriveRenderMarkup(container, crumb, crumbText, buildDriveGroupSpreadsheetTableHtml(safeEntries, modeKey), `${renderKey}::spreadsheet-v1`);
+                return;
+            }
             if (shouldUseChunkedCardRender(safeEntries.length, options.threshold || 110, options.chunkThreshold || 190)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
@@ -130422,17 +130596,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:quick-card:empty');
                 return true;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
-                syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return true;
-                if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
-                return true;
-            }
-            const html = finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join('');
-            applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
+            renderDriveRecordResults('drive-quick-card', container, crumb, finalItems, crumbText, renderKey, {
+                approxCardHeight: 310
+            });
             return true;
         }
 
@@ -130583,16 +130749,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No rows match the selected Q1 / Promo option.</div>`, 'drive:name:program-cards-empty');
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
-                syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-name-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
-                return;
-            }
-            applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
+            renderDriveRecordResults('drive-name-card', container, crumb, finalItems, crumbText, renderKey, {
+                approxCardHeight: 310
+            });
         }
 
         function renderDriveLocationDrill(container, crumb, driveModeLabel = '', viewStateOverride = null) {
@@ -130674,16 +130833,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, `drive:loc:cards-empty:${locationSearchTerm ? 'search' : 'all'}`);
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
-                syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-loc-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
-                return;
-            }
-            applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
+            renderDriveRecordResults('drive-loc-card', container, crumb, finalItems, crumbText, renderKey, {
+                approxCardHeight: 310
+            });
         }
 
         function renderDriveHoldStopCodeView(container, crumb, driveModeLabel = '', viewStateOverride = null) {
@@ -130712,17 +130864,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `${reportTabsHtml}<div class="p-8 text-center text-gray-400">No ${emptyLabel} rows${evalEmptyText} match the current Drive filters.</div>`, `drive:holdstopcode:${reportMode}:${evalFilter}:empty:${resolvedStateKey || ''}`);
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
-                syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-hold-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow')), {
-                    approxCardHeight: 310,
-                    prefixHtml: reportTabsHtml
-                });
-                return;
-            }
-            applyDriveRenderMarkup(container, crumb, crumbText, reportTabsHtml + finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow'))).join(''), renderKey);
+            renderDriveRecordResults('drive-hold-card', container, crumb, finalItems, crumbText, renderKey, {
+                approxCardHeight: 310,
+                prefixHtml: reportTabsHtml,
+                fallbackStatusClass: 'status-yellow'
+            });
         }
 
         function renderDriveSeasonSalesNotesView(container, crumb, driveModeLabel = '', viewStateOverride = null) {
@@ -130752,6 +130898,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDrive() {
             if (ensureViewDataForRender('drive')) return;
+            if (activeDriveTab === 'season-sales-notes') activeDriveTab = 'card';
             syncDriveModeTabs();
             syncDriveTabPills();
             const container = document.getElementById('drive-content');
@@ -130790,12 +130937,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncControls();
                 return;
             }
-            if (activeDriveTab === 'season-sales-notes') {
-                renderDriveQuickRequestBar([]);
-                renderDriveSeasonSalesNotesView(container, crumb, driveModeLabel, driveViewState);
-                syncControls();
-                return;
-            }
             const { finalItems, crumbText, renderKey } = buildDriveResolvedCardState(driveModeLabel, driveViewState);
             renderDriveQuickRequestBar(finalItems);
             if (finalItems.length === 0) {
@@ -130806,21 +130947,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncControls();
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
-                syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) {
-                    syncControls();
-                    return;
-                }
-                if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
-                syncControls();
-                return;
-            }
-            const html = finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join('');
-            applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
+            renderDriveRecordResults('drive-main-card', container, crumb, finalItems, crumbText, renderKey, {
+                approxCardHeight: 310
+            });
             syncControls();
         }
 
