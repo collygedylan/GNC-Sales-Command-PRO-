@@ -3793,3 +3793,639 @@ body.ops-precision-pilot.current-view-chat.chat-conversation-open.keyboard-open 
 body.ops-precision-pilot.current-view-chat.chat-conversation-open.keyboard-open .chat-thread-composer {
   padding-bottom: max(7px, env(safe-area-inset-bottom)) !important;
 }
+
+/* V2026.08.15.14 — global Ag Data Solutions premium presentation system.
+   This is intentionally the final cascade: it supplies semantic materials and
+   device geometry without changing live nodes, handlers, or workflow state. */
+body.ops-precision-pilot,
+body.ag-premium-skin {
+  --ops-canvas: #f3f7f5;
+  --ops-surface: #ffffff;
+  --ops-surface-muted: #f7faf8;
+  --ops-surface-strong: #edf4f0;
+  --ops-text: #13221b;
+  --ops-text-muted: #617068;
+  --ops-border: #cbd8d1;
+  --ops-border-strong: #8fa69a;
+  --ops-brand: #07874f;
+  --ops-brand-strong: #05623c;
+  --ops-brand-soft: #e6f4ed;
+  --ops-info: #2563eb;
+  --ops-success: #168454;
+  --ops-warning: #a85208;
+  --ops-danger: #b83232;
+  --ops-focus: #1d73e8;
+  --ops-radius-xs: 6px;
+  --ops-radius-sm: 10px;
+  --ops-radius-md: 12px;
+  --ui-canvas: var(--ops-canvas);
+  --ui-surface: var(--ops-surface);
+  --ui-surface-muted: var(--ops-surface-muted);
+  --ui-surface-strong: var(--ops-surface-strong);
+  --ui-text: var(--ops-text);
+  --ui-text-muted: var(--ops-text-muted);
+  --ui-border: var(--ops-border);
+  --ui-border-strong: var(--ops-border-strong);
+  --ui-primary: var(--ops-brand);
+  --ui-primary-strong: var(--ops-brand-strong);
+  --ui-primary-soft: var(--ops-brand-soft);
+  --ui-ring: color-mix(in srgb, var(--ops-focus) 30%, transparent);
+  --ui-shadow-card: 0 1px 2px rgba(9, 47, 31, 0.06), 0 8px 24px rgba(9, 47, 31, 0.06);
+  --ui-shadow-float: 0 18px 50px rgba(9, 47, 31, 0.14);
+  --ui-glass: color-mix(in srgb, var(--ops-surface) 88%, transparent);
+  --ui-header: linear-gradient(118deg, #05623c 0%, #07874f 56%, #056f42 100%);
+  --ui-header-text: #ffffff;
+  --ui-header-muted: rgba(255, 255, 255, 0.76);
+  --ui-header-control: rgba(255, 255, 255, 0.12);
+  --ui-header-control-border: rgba(255, 255, 255, 0.32);
+  --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ui-duration-fast: 120ms;
+  --ui-duration: 170ms;
+  color: var(--ui-text);
+  background: var(--ui-canvas);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"],
+body.ag-premium-skin[data-ops-theme="dark"] {
+  --ops-canvas: #07120e;
+  --ops-surface: #111c18;
+  --ops-surface-muted: #16231f;
+  --ops-surface-strong: #1b2b26;
+  --ops-text: #f2fbf6;
+  --ops-text-muted: #9db4aa;
+  --ops-border: rgba(99, 230, 173, 0.34);
+  --ops-border-strong: rgba(99, 230, 173, 0.62);
+  --ops-brand: #19b979;
+  --ops-brand-strong: #63e6ad;
+  --ops-brand-soft: rgba(25, 185, 121, 0.16);
+  --ops-info: #7aafff;
+  --ops-success: #63d9a0;
+  --ops-warning: #ffc06d;
+  --ops-danger: #ff9292;
+  --ops-focus: #72adff;
+  --ui-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.28), 0 10px 28px rgba(0, 0, 0, 0.22);
+  --ui-shadow-float: 0 20px 60px rgba(0, 0, 0, 0.4);
+  --ui-header: linear-gradient(118deg, rgba(6, 27, 19, 0.98) 0%, rgba(10, 48, 33, 0.96) 58%, rgba(7, 33, 23, 0.98) 100%);
+  --ui-header-text: #f2fbf6;
+  --ui-header-muted: #9db4aa;
+  --ui-header-control: rgba(25, 185, 121, 0.09);
+  --ui-header-control-border: rgba(99, 230, 173, 0.34);
+}
+
+body.ops-precision-pilot #app-wrapper,
+body.ops-precision-pilot #main-scroll-area,
+body.ops-precision-pilot #view-wrapper {
+  color: var(--ui-text) !important;
+  background-color: var(--ui-canvas) !important;
+}
+
+body.ops-precision-pilot #main-scroll-area {
+  scrollbar-color: color-mix(in srgb, var(--ui-primary) 44%, transparent) transparent;
+}
+
+body.ops-precision-pilot #app-top-chrome {
+  border-bottom: 1px solid var(--ui-header-control-border) !important;
+  color: var(--ui-header-text) !important;
+  background: var(--ui-header) !important;
+  box-shadow: 0 8px 28px color-mix(in srgb, #001b11 22%, transparent) !important;
+  backdrop-filter: saturate(125%) blur(18px);
+  -webkit-backdrop-filter: saturate(125%) blur(18px);
+}
+
+body.ops-precision-pilot #app-top-chrome :is(.nav-header, #global-header-search-row),
+html.outdoor-mode body.ops-precision-pilot #app-top-chrome .nav-header {
+  color: var(--ui-header-text) !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot #app-top-chrome :is(.nav-header-user, .nav-header-company, #sync-diagnostics-detail) {
+  color: var(--ui-header-text) !important;
+}
+
+body.ops-precision-pilot #app-top-chrome :is(.nav-header-company, #sync-diagnostics-detail) {
+  color: var(--ui-header-muted) !important;
+}
+
+body.ops-precision-pilot #app-top-chrome :is(.nav-outdoor-toggle, #sync-diagnostics-badge, #global-header-inline-back) {
+  min-width: 44px !important;
+  min-height: 44px !important;
+  border: 1px solid var(--ui-header-control-border) !important;
+  color: var(--ui-header-text) !important;
+  background: var(--ui-header-control) !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #app-top-chrome .nav-version-pill {
+  min-height: 38px !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #05623c !important;
+  background: #f2fbf6 !important;
+  box-shadow: 0 4px 18px rgba(0, 40, 25, 0.12) !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot :is(.input-field, input[type="text"], input[type="search"]),
+body.ops-precision-pilot #global-header-inline-title {
+  min-height: 48px !important;
+  border: 1px solid var(--ui-header-control-border) !important;
+  border-radius: 12px !important;
+  color: var(--ui-header-text) !important;
+  background: color-mix(in srgb, #06150f 76%, transparent) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="light"] #global-header-search-slot :is(.input-field, input[type="text"], input[type="search"]),
+body.ops-precision-pilot[data-ops-theme="light"] #global-header-inline-title {
+  color: #13221b !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+body.ops-precision-pilot #global-header-search-slot :is(input, .input-field)::placeholder {
+  color: var(--ui-header-muted) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="light"] #global-header-search-slot :is(input, .input-field)::placeholder {
+  color: #617068 !important;
+}
+
+body.ops-precision-pilot #bottom-nav {
+  border: 1px solid color-mix(in srgb, var(--ui-border) 78%, transparent) !important;
+  border-bottom: 0 !important;
+  color: var(--ui-text-muted) !important;
+  background: var(--ui-glass) !important;
+  box-shadow: 0 -14px 44px color-mix(in srgb, var(--ui-canvas) 64%, transparent) !important;
+  backdrop-filter: saturate(135%) blur(22px) !important;
+  -webkit-backdrop-filter: saturate(135%) blur(22px) !important;
+}
+
+body.ops-precision-pilot .footer-nav-btn {
+  min-width: 0 !important;
+  min-height: 54px !important;
+  border-radius: 12px !important;
+  color: var(--ui-text-muted) !important;
+  transition: color var(--ui-duration) var(--ui-ease), background-color var(--ui-duration) var(--ui-ease), transform var(--ui-duration-fast) var(--ui-ease) !important;
+}
+
+body.ops-precision-pilot .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]) {
+  color: var(--ui-primary-strong) !important;
+  background: var(--ui-primary-soft) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-primary) 28%, transparent) !important;
+}
+
+body.ops-precision-pilot .premium-line-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 1.35em;
+  height: 1.35em;
+  overflow: visible;
+  color: currentColor;
+  vertical-align: -0.2em;
+  pointer-events: none;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div > .premium-line-icon,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button > .premium-line-icon {
+  width: clamp(27px, 2.3vw, 36px) !important;
+  height: clamp(27px, 2.3vw, 36px) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  color: var(--ui-primary-strong) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot .footer-nav-btn > .premium-line-icon {
+  width: 24px !important;
+  height: 24px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #side-drawer .drawer-item > .premium-line-icon {
+  width: 21px !important;
+  height: 21px !important;
+  margin-right: 11px !important;
+  color: var(--ui-primary) !important;
+}
+
+body.ops-precision-pilot .ui-surface,
+body.ops-precision-pilot .ui-panel,
+body.ops-precision-pilot .ui-card,
+body.ops-precision-pilot :is(.modal-content, .app-modal-card, [role="dialog"]:not(.fixed):not([class*="fixed"])) {
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-surface) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot .ui-panel {
+  border-radius: 12px !important;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ui-border) 60%, transparent) !important;
+}
+
+body.ops-precision-pilot .ui-card {
+  border-width: 1px !important;
+  border-radius: 12px !important;
+  box-shadow: var(--ui-shadow-card) !important;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 168px;
+  transition: border-color var(--ui-duration) var(--ui-ease), box-shadow var(--ui-duration) var(--ui-ease), transform var(--ui-duration) var(--ui-ease) !important;
+}
+
+body.ops-precision-pilot .ui-field,
+body.ops-precision-pilot :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 44px;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 10px !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-surface-muted) !important;
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--ui-canvas) 55%, transparent) !important;
+}
+
+body.ops-precision-pilot :is(input, textarea)::placeholder {
+  color: var(--ui-text-muted) !important;
+  opacity: 1;
+}
+
+body.ops-precision-pilot .ui-tab {
+  min-height: 44px;
+  color: var(--ui-text-muted) !important;
+  transition: color var(--ui-duration) var(--ui-ease), background-color var(--ui-duration) var(--ui-ease), border-color var(--ui-duration) var(--ui-ease) !important;
+}
+
+body.ops-precision-pilot .ui-tab:is(.active, [aria-selected="true"]) {
+  border-color: var(--ui-primary) !important;
+  color: var(--ui-primary-strong) !important;
+  background: var(--ui-primary-soft) !important;
+}
+
+body.ops-precision-pilot .ui-action {
+  min-height: 44px;
+  transition: color var(--ui-duration) var(--ui-ease), background-color var(--ui-duration) var(--ui-ease), border-color var(--ui-duration) var(--ui-ease), box-shadow var(--ui-duration) var(--ui-ease), transform var(--ui-duration-fast) var(--ui-ease), opacity var(--ui-duration-fast) ease !important;
+  touch-action: manipulation;
+}
+
+body.ops-precision-pilot :is(.ui-action, button, [role="button"], a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ops-focus) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px var(--ui-ring) !important;
+}
+
+body.ops-precision-pilot :is(.ui-action, button)[disabled],
+body.ops-precision-pilot :is(.ui-action, button)[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+  transform: none !important;
+}
+
+body.ops-precision-pilot .ui-pill {
+  border-color: color-mix(in srgb, var(--ui-border-strong) 72%, transparent) !important;
+  color: var(--ui-text-muted);
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot :is(.app-card-qty-row, .app-card-metrics) {
+  gap: 8px !important;
+}
+
+body.ops-precision-pilot .app-card-qty-chip {
+  min-height: 42px !important;
+  border-width: 1px !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: max-content !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  padding-bottom: 8px !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+  width: 100% !important;
+  min-width: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  border: 2px solid color-mix(in srgb, var(--ui-primary) 78%, var(--ui-border)) !important;
+  border-radius: 12px !important;
+  padding: clamp(10px, 1.6vw, 20px) !important;
+  gap: clamp(8px, 1vw, 14px) !important;
+  color: var(--ui-text) !important;
+  background: linear-gradient(145deg, var(--ui-surface) 0%, var(--ui-surface-muted) 100%) !important;
+  box-shadow: var(--ui-shadow-card) !important;
+  content-visibility: visible;
+  transition: border-color var(--ui-duration) var(--ui-ease), box-shadow var(--ui-duration) var(--ui-ease), transform var(--ui-duration-fast) var(--ui-ease), background-color var(--ui-duration) ease !important;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-grid > div > span,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button > span {
+  max-width: 100% !important;
+  color: var(--ui-text) !important;
+  font-size: clamp(12px, 1.15vw, 16px) !important;
+  font-weight: 800 !important;
+  line-height: 1.18 !important;
+  letter-spacing: -0.01em !important;
+  text-align: center !important;
+  text-transform: none !important;
+  overflow-wrap: anywhere;
+}
+
+body.ops-precision-pilot #view-home #home-dashboard-modules h2,
+body.ops-precision-pilot #view-home #home-rep-dashboard-modules h2 {
+  margin: 0 0 8px !important;
+  color: var(--ui-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.14em !important;
+}
+
+body.ops-precision-pilot #side-drawer {
+  border-right: 1px solid var(--ui-border) !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-glass) !important;
+  box-shadow: var(--ui-shadow-float) !important;
+  backdrop-filter: saturate(125%) blur(22px);
+  -webkit-backdrop-filter: saturate(125%) blur(22px);
+}
+
+body.ops-precision-pilot .drawer-header {
+  color: var(--ui-text) !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot .drawer-item {
+  min-height: 48px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  color: var(--ui-text-muted) !important;
+}
+
+body.ops-precision-pilot .ops-pilot-settings {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 12px !important;
+  background: var(--ui-surface-muted) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent) !important;
+}
+
+body.ops-precision-pilot :is(.modal-content, .app-modal-card, [role="dialog"]:not(.fixed):not([class*="fixed"])) {
+  border-radius: 16px !important;
+  box-shadow: var(--ui-shadow-float) !important;
+}
+
+body.ops-precision-pilot #toast-notification {
+  max-width: min(92vw, 440px) !important;
+  border: 1px solid color-mix(in srgb, white 24%, transparent) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--ui-shadow-float) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+body.ops-precision-pilot .ui-skeleton,
+body.ops-precision-pilot :is(.skeleton, .skeleton-loader, .animate-pulse) {
+  position: relative;
+  overflow: hidden;
+  color: transparent !important;
+  background: var(--ui-surface-strong) !important;
+}
+
+body.ops-precision-pilot .ui-skeleton::after,
+body.ops-precision-pilot :is(.skeleton, .skeleton-loader, .animate-pulse)::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, white 28%, transparent) 48%, transparent 76%);
+  content: "";
+  transform: translateX(-100%);
+  animation: premium-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes premium-skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body.ops-precision-pilot .ui-card:hover,
+  body.ops-precision-pilot #view-home #home-dashboard-grid > div:hover,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button:hover {
+    border-color: var(--ui-primary) !important;
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--ui-primary) 13%, transparent) !important;
+    transform: translateY(-2px) scale(1.01) !important;
+  }
+
+  body.ops-precision-pilot .ui-action:hover:not([disabled]):not([aria-disabled="true"]) {
+    filter: saturate(1.04);
+    transform: translateY(-1px) scale(1.01);
+  }
+}
+
+body.ops-precision-pilot :is(.ui-action, button):active:not([disabled]),
+body.ops-precision-pilot #view-home #home-dashboard-grid > div:active,
+body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button:active {
+  transform: scale(0.98) !important;
+}
+
+@media (min-width: 640px) and (max-width: 839px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+}
+
+@media (min-width: 840px) and (max-width: 1099px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+}
+
+@media (min-width: 1100px) {
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: clamp(10px, 1vw, 16px) !important;
+  }
+
+  body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+    max-height: min(31vh, 360px) !important;
+  }
+}
+
+@media (max-width: 639px) {
+  body.ops-precision-pilot {
+    --ops-nav-clearance: calc(var(--footer-nav-reserve, 6.25rem) + env(safe-area-inset-bottom) + 18px);
+  }
+
+  body.ops-precision-pilot #main-scroll-area {
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  body.ops-precision-pilot:not(.current-view-home) #main-scroll-area {
+    padding-right: max(8px, env(safe-area-inset-right)) !important;
+    padding-left: max(8px, env(safe-area-inset-left)) !important;
+  }
+
+  body.ops-precision-pilot #view-home #home-dashboard-grid,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  body.ops-precision-pilot #view-home #home-dashboard-grid > div,
+  body.ops-precision-pilot #view-home #home-rep-dashboard-grid > button {
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 10px 7px !important;
+  }
+
+  body.ops-precision-pilot #bottom-nav {
+    right: max(0px, env(safe-area-inset-right)) !important;
+    left: max(0px, env(safe-area-inset-left)) !important;
+    width: auto !important;
+    max-width: none !important;
+    border-radius: 22px 22px 0 0 !important;
+    padding: 7px 5px max(7px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.ops-precision-pilot .footer-nav-btn {
+    min-height: 56px !important;
+    padding-inline: 2px !important;
+  }
+
+  body.ops-precision-pilot .footer-nav-btn > span:not(.footer-nav-badge) {
+    max-width: 100% !important;
+    font-size: 8px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.ops-precision-pilot :is(.app-card-qty-row, .app-card-metrics) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.ops-precision-pilot :is(.modal-content, .app-modal-card, [role="dialog"]:not(.fixed):not([class*="fixed"])) {
+    width: min(100% - 16px, 640px) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px) !important;
+    border-radius: 14px !important;
+  }
+}
+
+@media (max-height: 540px) and (orientation: landscape) {
+  body.ops-precision-pilot #main-scroll-area {
+    padding-bottom: calc(var(--footer-nav-reserve, 5.25rem) + env(safe-area-inset-bottom) + 12px) !important;
+  }
+
+  body.ops-precision-pilot #bottom-nav {
+    padding-block: 4px max(4px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.ops-precision-pilot .footer-nav-btn {
+    min-height: 44px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.ops-precision-pilot *,
+  body.ops-precision-pilot *::before,
+  body.ops-precision-pilot *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.ops-precision-pilot #bottom-nav,
+  body.ops-precision-pilot #side-drawer,
+  body.ops-precision-pilot #app-top-chrome {
+    background: var(--ui-surface-strong) !important;
+  }
+
+  body.ops-precision-pilot[data-ops-theme="light"] #app-top-chrome {
+    background: #07874f !important;
+  }
+}
+
+/* V2026.08.15.14 — final keyboard-safe authentication lock. Keep this last so
+   virtual keyboards always win over phone, tablet, and landscape skin rules. */
+body.keyboard-open #view-login,
+body.keyboard-open #view-change-password {
+  inset: 0 0 auto !important;
+  width: 100% !important;
+  height: var(--visual-height, 100dvh) !important;
+  min-height: 0 !important;
+  max-height: var(--visual-height, 100dvh) !important;
+  justify-content: flex-start !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding: max(8px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)) !important;
+  scroll-padding-block: 12px !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.keyboard-open #view-login .login-card,
+body.keyboard-open #view-change-password .login-card {
+  flex: 0 0 auto !important;
+  width: min(100%, 430px) !important;
+  margin: 0 auto !important;
+  padding: 14px 18px 16px !important;
+  border-radius: 14px !important;
+}
+
+body.keyboard-open #view-login .login-brand-lockup,
+body.keyboard-open #view-change-password .login-brand-lockup,
+body.keyboard-open #view-login .login-heading-block p,
+body.keyboard-open #view-change-password .login-heading-block p {
+  display: none !important;
+}
+
+body.keyboard-open #view-login .login-heading-block,
+body.keyboard-open #view-change-password .login-heading-block {
+  margin: 0 0 10px !important;
+}
+
+body.keyboard-open #view-login .login-heading-block h1,
+body.keyboard-open #view-change-password .login-heading-block h1 {
+  font-size: 22px !important;
+  line-height: 1.1 !important;
+}
+
+body.keyboard-open #view-login .login-field-stack,
+body.keyboard-open #view-change-password .login-field-stack {
+  gap: 5px !important;
+}
+
+body.keyboard-open #view-login .login-field-stack .login-field,
+body.keyboard-open #view-change-password .login-field-stack .login-field {
+  height: 44px !important;
+  margin-bottom: 3px !important;
+}
+
+body.keyboard-open #view-login .login-password-toggle,
+body.keyboard-open #view-change-password .login-password-toggle {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+body.keyboard-open #view-login :is(.login-primary-button, .login-secondary-button),
+body.keyboard-open #view-change-password :is(.login-primary-button, .login-secondary-button) {
+  min-height: 44px !important;
+  margin-top: 9px !important;
+}

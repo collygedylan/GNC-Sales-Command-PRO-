@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.13';
+  const release = 'V2026.08.15.14';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.13'/);
-  assert.equal(packageJson.version, '2026.08.15.13');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.14'/);
+  assert.equal(packageJson.version, '2026.08.15.14');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -42,7 +42,7 @@ test('verified Dylan sessions restore the saved theme before the app shell paint
   assert.match(html, /function clearPersistedLoginSession\(\)[\s\S]*removeAttribute\('data-ops-prepaint-theme'\)/);
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v1/);
-  assert.equal(manifest.background_color, '#007a4d');
+  assert.equal(manifest.background_color, '#07874f');
 });
 
 test('verified login primes the saved appearance before Home is revealed', () => {
@@ -53,8 +53,8 @@ test('verified login primes the saved appearance before Home is revealed', () =>
   assert.match(client, /function primeCachedAppearance\(options = \{\}\)/);
   assert.match(client, /preferences: normalizePreferences\(cached \|\| DEFAULT_PREFERENCES\)/);
   assert.match(client, /provisional: true/);
-  assert.match(client, /const skinActive = state\.provisional \|\| \(state\.eligible && state\.flags\.skin\)/);
-  assert.match(client, /state\.provisional \|\| \(state\.eligible && state\.flags\.skin\)[\s\S]*LIST_VIEWS\.has\(state\.activeView\)/);
+  assert.match(client, /const skinActive = true/);
+  assert.match(client, /if \(!LIST_VIEWS\.has\(state\.activeView\)\) return/);
   assert.match(client, /panel\.classList\.toggle\('hidden', state\.provisional/);
   assert.match(client, /if \(serial === initializeSerial && !state\.provisional\) deactivate\(\)/);
 });
@@ -82,7 +82,7 @@ test('restored sessions retry pilot bootstrap only after authenticated session r
   assert.doesNotMatch(html, /currentUser\s*===\s*['"]dylan_collyge['"]/);
 });
 
-test('pilot UI is drawer-only and inactive by default', () => {
+test('premium skin is global while Dylan controls remain drawer-only and server gated', () => {
   assert.match(html, /id="side-drawer"[\s\S]*id="ops-pilot-settings"[\s\S]*id="drawer-logout-btn"/);
   assert.match(html, /id="ops-pilot-settings" class="ops-pilot-settings hidden"/);
   assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-duotone ph-palette"><\/i> Appearance/);
@@ -90,8 +90,9 @@ test('pilot UI is drawer-only and inactive by default', () => {
   assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-home-btn"'));
   assert.match(css, /body\.ops-pilot-active \.ops-pilot-segmented button[\s\S]*min-height: 44px !important/);
   assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible && !state\.provisional\)/);
-  assert.match(client, /body\.classList\.toggle\('ops-precision-pilot', skinActive\)/);
-  assert.doesNotMatch(html, /<body[^>]*ops-precision-pilot/);
+  assert.match(client, /body\.classList\.add\('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v14'\)/);
+  assert.match(html, /<body[^>]*ops-precision-pilot[^>]*ag-premium-skin[^>]*premium-skin-v14/);
+  assert.match(client, /if \(!state\.eligible && !state\.provisional\) return 'light'/);
 });
 
 test('server derives exact pilot eligibility from the authenticated app session', () => {
@@ -290,7 +291,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   assert.doesNotMatch(loginInteractionBlock, /preventScroll: true/);
   assert.match(loginInteractionBlock, /revealLoginFieldAboveKeyboard\(input\)/);
   assert.match(loginInteractionBlock, /revealLoginFieldAboveKeyboard\(usernameInput\)/);
-  const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.12 keyboard-safe authentication cascade');
+  const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.14 — final keyboard-safe authentication lock');
   const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
   assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
   const keyboardCascade = css.slice(keyboardCascadeIndex);
@@ -367,15 +368,14 @@ test('final responsive shell keeps every Home tile square, scrollable above navi
 });
 
 test('top banners and sticky module controls use semantic surfaces in both themes', () => {
-  const finalCascade = css.slice(css.lastIndexOf('V2026.08.15.12 final responsive and theme cascade'));
-  assert.match(finalCascade, /--ops-topbar-surface: linear-gradient\(180deg, #f8fbf9 0%, #edf4f0 100%\)/);
-  assert.match(finalCascade, /data-ops-theme="dark"[\s\S]*--ops-topbar-surface: linear-gradient\(180deg, #07120e 0%, #0d1b15 100%\)/);
-  assert.match(finalCascade, /#app-top-chrome[\s\S]*background: var\(--ops-topbar-surface\) !important/);
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.15.14 — global Ag Data Solutions premium presentation system'));
+  assert.match(finalCascade, /--ui-header: linear-gradient\(118deg, #05623c 0%, #07874f 56%, #056f42 100%\)/);
+  assert.match(finalCascade, /data-ops-theme="dark"[\s\S]*--ui-header: linear-gradient\(118deg, rgba\(6, 27, 19, 0\.98\)/);
+  assert.match(finalCascade, /#app-top-chrome[\s\S]*background: var\(--ui-header\) !important/);
   assert.match(finalCascade, /#app-top-chrome :is\(\.nav-header, #global-header-search-row\)[\s\S]*background: transparent !important/);
-  assert.match(finalCascade, /#view-wrapper :is\(\.freeze-panel, \.drive-controls-sticky[\s\S]*background: var\(--ops-surface\) !important;[\s\S]*background-image: none !important/);
-  assert.match(finalCascade, /#drive-season-filters\.drive-top-inline \.drive-filter-reset-button[\s\S]*background: var\(--ops-surface-muted\) !important/);
-  assert.match(html, /themeColorMeta\.setAttribute\('content', prepaintTheme === 'dark' \? '#07120e' : '#f8fbf9'\)/);
-  assert.match(client, /themeColorMeta\.setAttribute\('content', skinActive \? \(effectiveTheme === 'dark' \? '#07120e' : '#f8fbf9'\) : '#007a4d'\)/);
+  assert.match(finalCascade, /\.ui-panel,[\s\S]*background: var\(--ui-surface\) !important;[\s\S]*background-image: none !important/);
+  assert.match(html, /themeColorMeta\.setAttribute\('content', prepaintTheme === 'dark' \? '#07120e' : '#07874f'\)/);
+  assert.match(client, /themeColorMeta\.setAttribute\('content', effectiveTheme === 'dark' \? '#07120e' : '#07874f'\)/);
 });
 
 test('active Chat is a full-height iPhone-style conversation with keyboard-safe composing', () => {
@@ -406,6 +406,50 @@ test('Chat message groups and Communication calendar use the modern semantic sys
   assert.match(communicationCascade, /@media \(max-width: 767px\)[\s\S]*\.department-calendar-grid[\s\S]*repeat\(7, minmax\(0, 1fr\)\)/);
 });
 
+test('V14 exposes one global semantic component layer without changing workflow nodes', () => {
+  const premiumCascade = css.slice(css.lastIndexOf('V2026.08.15.14 — global Ag Data Solutions premium presentation system'));
+  assert.match(premiumCascade, /--ops-brand: #07874f/);
+  assert.match(premiumCascade, /--ops-canvas: #f3f7f5/);
+  assert.match(premiumCascade, /--ops-surface: #ffffff/);
+  assert.match(premiumCascade, /--ops-text: #13221b/);
+  assert.match(premiumCascade, /data-ops-theme="dark"[\s\S]*--ops-brand: #19b979/);
+  assert.match(premiumCascade, /data-ops-theme="dark"[\s\S]*--ops-surface: #111c18/);
+  assert.match(premiumCascade, /\.ui-surface,[\s\S]*\.ui-panel,[\s\S]*\.ui-card/);
+  assert.match(premiumCascade, /\.ui-field,[\s\S]*input:not\(\[type="checkbox"\]\)/);
+  assert.match(premiumCascade, /\.ui-tab:is\(\.active, \[aria-selected="true"\]\)/);
+  assert.match(client, /function decoratePremiumComponents\(\)/);
+  assert.match(client, /classList\.add\('ui-field'\)/);
+  assert.match(client, /classList\.add\('ui-panel'\)/);
+  assert.match(client, /classList\.add\('ui-card'\)/);
+  assert.doesNotMatch(client, /replaceWith\([^)]*(?:button|form|article)/);
+});
+
+test('V14 uses self-contained single-weight line icons for primary navigation and launchers', () => {
+  assert.match(client, /const PREMIUM_ICON_PATHS = Object\.freeze/);
+  assert.match(client, /const PREMIUM_ICON_SELECTOR = \[/);
+  assert.match(client, /#home-dashboard-grid > div > i/);
+  assert.match(client, /#bottom-nav \.footer-nav-btn > i/);
+  assert.match(client, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'svg'\)/);
+  assert.match(client, /stroke-width', '2'/);
+  assert.match(client, /focusable', 'false'/);
+  assert.match(css, /\.premium-line-icon[\s\S]*pointer-events: none/);
+  assert.match(css, /#view-home #home-dashboard-grid > div > \.premium-line-icon[\s\S]*background: transparent !important/);
+});
+
+test('V14 locks premium responsive grids, safe navigation clearance, motion, and loading states', () => {
+  const premiumCascade = css.slice(css.lastIndexOf('V2026.08.15.14 — global Ag Data Solutions premium presentation system'));
+  assert.match(premiumCascade, /#view-home #home-dashboard-grid > div,[\s\S]*aspect-ratio: 1 \/ 1 !important;[\s\S]*border: 2px solid/);
+  assert.match(premiumCascade, /@media \(min-width: 640px\) and \(max-width: 839px\)[\s\S]*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(premiumCascade, /@media \(min-width: 840px\) and \(max-width: 1099px\)[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(premiumCascade, /@media \(min-width: 1100px\)[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(premiumCascade, /@media \(max-width: 639px\)[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(premiumCascade, /env\(safe-area-inset-bottom\)/);
+  assert.match(premiumCascade, /\.ui-action[\s\S]*--ui-duration-fast/);
+  assert.match(premiumCascade, /premium-skeleton-shimmer 1\.35s/);
+  assert.match(premiumCascade, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(premiumCascade, /focus-visible[\s\S]*outline: 2px solid var\(--ops-focus\)/);
+});
+
 test('static deployment includes the pilot assets and builds the pinned bundle', () => {
   assert.match(workflow, /npm run build:pilot-monitoring/);
   assert.match(workflow, /npm run build:live:assets/);
@@ -413,7 +457,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081513\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081514\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
