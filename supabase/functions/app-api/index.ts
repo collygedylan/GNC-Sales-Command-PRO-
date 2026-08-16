@@ -817,6 +817,35 @@ async function handleLogin(payload: Record<string, unknown>) {
     },
   });
 }
+
+async function handleNativeSessionBridge(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+) {
+  if (!session || session.ver < 2) return errorResponse("Native authentication required.", 401);
+  if (session.mustChangePassword) {
+    return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  }
+
+  const bridgedSession = await createAppSession({
+    username: session.username,
+    displayName: session.displayName || session.username,
+    role: session.role,
+    mustChangePassword: false,
+  });
+
+  return jsonResponse({
+    ok: true,
+    session: {
+      token: bridgedSession.token,
+      username: bridgedSession.claims.username,
+      displayName: bridgedSession.claims.displayName,
+      role: bridgedSession.claims.role,
+      expiresAt: bridgedSession.claims.exp * 1000,
+      mustChangePassword: false,
+    },
+  });
+}
+
 async function handlePasswordChange(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>, payload: Record<string, unknown>) {
   if (!session) return errorResponse("Unauthorized", 401);
   const newPassword = String(payload.newPassword || "").trim();
@@ -952,6 +981,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   const action = String(payload.action || "").trim().toLowerCase();
 
   if (action === "login") return await handleLogin(payload);
+  if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "password_change") return await handlePasswordChange(session, payload);
   if (action === "get_user_preferences" || action === "live_pilot_bootstrap") {
     return await handleGetUserPreferences(session);

@@ -27,12 +27,12 @@ const authMigrationTool = read('scripts/migrate-custom-users-to-supabase-auth.mj
 const authAdmin = read('supabase/functions/auth-admin/index.ts');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.06';
+  const release = 'V2026.08.16.07';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.16.06');
+  assert.equal(packageJson.version, '2026.08.16.07');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -306,7 +306,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.14 — final keyboard-safe authentication lock');
   const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
   assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
-  const releaseCascadeIndex = css.indexOf('V2026.08.16.06 final cascade lock', keyboardCascadeIndex);
+  const releaseCascadeIndex = css.indexOf('V2026.08.16.07 final cascade lock', keyboardCascadeIndex);
   const keyboardCascade = css.slice(keyboardCascadeIndex, releaseCascadeIndex);
   assert.match(keyboardCascade, /body\.keyboard-open #view-login[\s\S]*height: var\(--visual-height, 100dvh\) !important/);
   assert.match(keyboardCascade, /overflow-y: auto !important/);
@@ -366,7 +366,7 @@ test('phone Home tiles fill both columns and Drive cards retain the thumbnail wi
 });
 
 test('final responsive shell measures every Home row against the fixed quick bar', () => {
-  const finalCascadeIndex = css.lastIndexOf('V2026.08.16.06 — measured Home viewport fit with fixed quick navigation');
+  const finalCascadeIndex = css.lastIndexOf('V2026.08.16.07 — measured Home viewport fit with fixed quick navigation');
   assert.ok(finalCascadeIndex > 0, 'the measured Home fit must be the final Home cascade');
   const finalCascade = css.slice(finalCascadeIndex);
   assert.match(finalCascade, /current-view-home\.home-dashboard-mode[\s\S]*#main-scroll-area \{[\s\S]*overflow: hidden !important/);
@@ -467,7 +467,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081606\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081607\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -503,7 +503,7 @@ test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () 
   assert.match(html, /buildDockModeFilterControlHtml/);
   assert.match(html, /id="docks-mode-toggle" class="hidden" aria-hidden="true"/);
   assert.ok(html.indexOf('id="team-selector"') < html.indexOf('id="task-crumb"'), 'Task controls must precede the breadcrumb');
-  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.06 final cascade lock'));
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.07 final cascade lock'));
   assert.match(finalCascade, /workflow-control-rail,[\s\S]*flex-flow: row nowrap !important/);
   assert.match(finalCascade, /#view-tasks \.task-controls-sticky[\s\S]*overflow-x: auto !important/);
 });
@@ -626,8 +626,8 @@ test('V06 request detail fits the viewport and never renders collapsed AV cards'
   assert.match(css, /request-detail-av-options-open[\s\S]*overflow-y: auto !important/);
 });
 
-test('V07 native Auth preparation is additive, dry-run, and RLS-first', () => {
-  assert.match(html, /const NATIVE_AUTH_ENABLED = false/);
+test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
+  assert.match(html, /const NATIVE_AUTH_ENABLED = true/);
   assert.match(html, /const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1'/);
   assert.match(html, /navigator\.onLine === false[\s\S]*readCachedNativeAuthProfile\(session\.user\.id\)/);
   assert.match(html, /cacheNativeAuthProfile\(data\)/);
@@ -636,6 +636,10 @@ test('V07 native Auth preparation is additive, dry-run, and RLS-first', () => {
   assert.match(html, /auth\.registerPasskey\(\)/);
   assert.match(html, /auth\.passkey\.delete\(\{ passkeyId:/);
   assert.match(appAuth, /supabaseAdmin\.auth\.getUser\(bearer\)/);
+  assert.match(edge, /action === "native_session_bridge"/);
+  assert.match(edge, /session\.ver < 2/);
+  assert.match(html, /async function ensureNativeAppSessionBridge\(force = false\)/);
+  assert.match(html, /action: 'native_session_bridge'/);
   assert.match(edge, /DIRECT_RLS_REQUIRED/);
   assert.match(authMigration, /references auth\.users\(id\) on delete cascade/);
   assert.match(authMigration, /alter table public\.profiles enable row level security/);
