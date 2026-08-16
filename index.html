@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081604.min.css?v=V2026.08.16.04">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081605.min.css?v=V2026.08.16.05">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.16.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6556,7 +6556,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.04">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.05">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6658,7 +6658,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.04"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.05"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7411,7 +7411,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.04').trim() || 'V2026.08.16.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.05').trim() || 'V2026.08.16.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8876,7 +8876,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9212,6 +9212,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let homeDashboardFitFrame = 0;
         let homeDashboardFitTimer = null;
         let homeDashboardFitLastKey = '';
+        let homeDashboardFitResizeObserver = null;
+        const homeDashboardFitObservedElements = new Set();
         let horizontalClampFrameQueued = false;
         let deferredChromeSyncTimers = Object.create(null);
         let runAfterTouchInteractionTasks = Object.create(null);
@@ -11744,9 +11746,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 '--home-fit-columns',
                 '--home-fit-tile-height',
                 '--home-fit-row-gap',
-                '--home-fit-col-gap'
+                '--home-fit-col-gap',
+                '--home-fit-card-width',
+                '--home-fit-bottom-clearance',
+                '--home-fit-available-height'
             ].forEach((name) => homeView.style.removeProperty(name));
             delete homeView.dataset.homeFitComplete;
+            delete homeView.dataset.homeFitColumns;
+            delete homeView.dataset.homeFitRows;
+            delete homeView.dataset.homeFitClearance;
             homeDashboardFitLastKey = '';
         }
 
@@ -11798,10 +11806,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
 
             const visibleTiles = Array.from(grid.children || []).filter(isHomeDashboardTileVisible);
-            const columnCount = profile.width < 640
-                ? 2
-                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : 6));
-            const rowCount = Math.max(1, Math.ceil(visibleTiles.length / columnCount));
             const mainRect = mainArea.getBoundingClientRect();
             const gridRect = grid.getBoundingClientRect();
             const navRect = bottomNav && bottomNav.getClientRects && bottomNav.getClientRects().length ? bottomNav.getBoundingClientRect() : null;
@@ -11823,18 +11827,48 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
 
             const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-            const rowGapPx = profile.phone
+            let rowGapPx = profile.phone
                 ? clamp(Math.round(profile.height * (profile.short ? 0.0038 : 0.0048)), 4, 8)
                 : clamp(Math.round(profile.height * 0.012), 10, 16);
             const colGapPx = profile.phone
                 ? clamp(Math.round(profile.width * 0.026), 8, 12)
                 : clamp(Math.round(profile.width * 0.008), 10, 16);
-            const fitTilePx = Math.floor((availableHeight - (rowGapPx * Math.max(0, rowCount - 1))) / rowCount);
-            const maxTilePx = profile.phone ? (profile.short ? 82 : 96) : 210;
-            const preferredMinPx = profile.phone ? (profile.short ? 52 : 58) : 96;
-            const hardMinPx = profile.phone ? 44 : 72;
-            let tilePx = Math.min(maxTilePx, fitTilePx);
-            tilePx = fitTilePx < preferredMinPx ? Math.max(hardMinPx, tilePx) : Math.max(preferredMinPx, tilePx);
+            const desktopLayout = profile.width >= 1100;
+            const portraitPhone = profile.width < 640 && profile.height >= profile.width;
+            const landscapeCompact = profile.width > profile.height * 1.22 && profile.height < 640;
+            let columnCount = profile.width < 640
+                ? 2
+                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : 6));
+            const candidateColumns = desktopLayout
+                ? [6]
+                : (portraitPhone ? [2] : (landscapeCompact ? [columnCount, 4, 6] : [columnCount, 4]));
+            const clearanceTargetPx = desktopLayout
+                ? clamp(Math.round(profile.height * 0.036), 24, 48)
+                : clamp(Math.round(profile.height * 0.018), 8, 18);
+            const hardMinPx = 44;
+            const gridWidth = Math.max(0, Math.floor(gridRect.width || grid.clientWidth || 0));
+            const calculateFit = (columns) => {
+                const rows = Math.max(1, Math.ceil(visibleTiles.length / columns));
+                const height = Math.floor((availableHeight - clearanceTargetPx - (rowGapPx * Math.max(0, rows - 1))) / rows);
+                const width = Math.floor((gridWidth - (colGapPx * Math.max(0, columns - 1))) / columns);
+                return { columns, rows, height, width };
+            };
+            let fit = calculateFit(columnCount);
+            candidateColumns.forEach((candidate) => {
+                if (fit.height >= hardMinPx || candidate <= fit.columns || candidate > visibleTiles.length) return;
+                const next = calculateFit(candidate);
+                if (next.width >= hardMinPx) fit = next;
+            });
+            columnCount = fit.columns;
+            const rowCount = fit.rows;
+            let fitTilePx = fit.height;
+            if (fitTilePx < hardMinPx && rowGapPx > 2) {
+                rowGapPx = 2;
+                fit = calculateFit(columnCount);
+                fitTilePx = fit.height;
+            }
+            const tilePx = Math.max(hardMinPx, fitTilePx);
+            const cardWidthPx = Math.max(hardMinPx, fit.width);
             const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 18 : 28, profile.phone ? 30 : 48);
             const labelPx = clamp(Math.round(tilePx * (profile.phone ? 0.16 : 0.075)), profile.phone ? 9 : 12, profile.phone ? 12 : 16);
             const tileGapPx = clamp(Math.round(tilePx * 0.06), 2, 6);
@@ -11847,6 +11881,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 rowCount,
                 availableHeight,
                 tilePx,
+                cardWidthPx,
+                clearanceTargetPx,
                 rowGapPx,
                 colGapPx,
                 iconPx,
@@ -11858,6 +11894,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             homeView.style.setProperty('--home-fit-tile-height', `${tilePx}px`);
             homeView.style.setProperty('--home-fit-row-gap', `${rowGapPx}px`);
             homeView.style.setProperty('--home-fit-col-gap', `${colGapPx}px`);
+            homeView.style.setProperty('--home-fit-card-width', `${cardWidthPx}px`);
+            homeView.style.setProperty('--home-fit-bottom-clearance', `${clearanceTargetPx}px`);
+            homeView.style.setProperty('--home-fit-available-height', `${availableHeight}px`);
             homeView.style.setProperty('--home-phone-tile-height', `${tilePx}px`);
             homeView.style.setProperty('--home-phone-row-gap', `${rowGapPx}px`);
             homeView.style.setProperty('--home-phone-col-gap', `${colGapPx}px`);
@@ -11866,11 +11905,35 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             homeView.style.setProperty('--home-phone-icon-size', `${iconPx}px`);
             homeView.style.setProperty('--home-phone-label-size', `${labelPx}px`);
             homeView.dataset.homeFitComplete = String(fitTilePx >= hardMinPx);
+            homeView.dataset.homeFitColumns = String(columnCount);
+            homeView.dataset.homeFitRows = String(rowCount);
+            homeView.dataset.homeFitClearance = String(clearanceTargetPx);
+            return true;
+        }
+
+        function observeHomeDashboardFitElements() {
+            if (!window.ResizeObserver) return false;
+            if (!homeDashboardFitResizeObserver) {
+                homeDashboardFitResizeObserver = new ResizeObserver(() => scheduleHomeDashboardFit('resize-observer'));
+            }
+            [
+                document.getElementById('main-scroll-area'),
+                document.getElementById('view-home'),
+                document.getElementById('home-dashboard-modules'),
+                getActiveHomeDashboardGrid(),
+                document.getElementById('bottom-nav'),
+                document.getElementById('app-top-chrome')
+            ].filter(Boolean).forEach((element) => {
+                if (homeDashboardFitObservedElements.has(element)) return;
+                homeDashboardFitObservedElements.add(element);
+                homeDashboardFitResizeObserver.observe(element);
+            });
             return true;
         }
 
         function scheduleHomeDashboardFit(reason = 'default', force = false) {
             const safeReason = normalizeUiSyncReason(reason) || 'default';
+            observeHomeDashboardFitElements();
             if (homeDashboardFitTimer) {
                 clearTimeout(homeDashboardFitTimer);
                 homeDashboardFitTimer = null;
@@ -11903,6 +11966,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 window.visualViewport.addEventListener('resize', () => sync('visual-resize'), { passive: true });
                 window.visualViewport.addEventListener('scroll', () => sync('visual-scroll'), { passive: true });
             }
+            if (document.fonts) {
+                Promise.resolve(document.fonts.ready).then(() => sync('fonts-ready')).catch(() => {});
+                if (typeof document.fonts.addEventListener === 'function') {
+                    document.fonts.addEventListener('loadingdone', () => sync('fonts-loaded'));
+                }
+            }
+            observeHomeDashboardFitElements();
             sync('init');
         }
 
@@ -29206,7 +29276,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.04').trim() || 'V2026.08.16.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.05').trim() || 'V2026.08.16.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

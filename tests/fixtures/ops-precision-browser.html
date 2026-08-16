@@ -79,7 +79,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.16.04</span>
+              <span class="nav-version-pill">V2026.08.16.05</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -285,18 +285,58 @@
         const grid = document.getElementById('home-dashboard-grid');
         const nav = document.getElementById('bottom-nav');
         const width = window.innerWidth;
-        const columns = width < 640 ? 2 : (width < 840 ? 3 : (width < 1100 ? 4 : 6));
-        const rows = Math.ceil(grid.children.length / columns);
-        const gap = width < 640 ? 4 : 12;
-        const available = Math.max(100, nav.getBoundingClientRect().top - grid.getBoundingClientRect().top - 18);
-        const tileHeight = Math.max(width < 640 ? 44 : 72, Math.min(width < 640 ? 96 : 210, Math.floor((available - gap * Math.max(0, rows - 1)) / rows)));
-        home.style.setProperty('--home-fit-columns', String(columns));
+        const height = window.innerHeight;
+        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+        const portraitPhone = width < 640 && height >= width;
+        const landscapeCompact = width > height * 1.22 && height < 640;
+        let columns = width < 640 ? 2 : (width < 840 ? 3 : (width < 1100 ? 4 : 6));
+        let rowGap = width < 640 ? clamp(Math.round(height * .0048), 4, 8) : clamp(Math.round(height * .012), 10, 16);
+        const columnGap = width < 640 ? clamp(Math.round(width * .026), 8, 12) : clamp(Math.round(width * .008), 10, 16);
+        const clearance = width >= 1100 ? clamp(Math.round(height * .036), 24, 48) : clamp(Math.round(height * .018), 8, 18);
+        const available = Math.max(44, Math.floor(nav.getBoundingClientRect().top - grid.getBoundingClientRect().top - 4));
+        const gridWidth = Math.max(44, Math.floor(grid.getBoundingClientRect().width));
+        const calculate = (candidate) => {
+          const rows = Math.ceil(grid.children.length / candidate);
+          return {
+            columns: candidate,
+            rows,
+            tileHeight: Math.floor((available - clearance - rowGap * Math.max(0, rows - 1)) / rows),
+            cardWidth: Math.floor((gridWidth - columnGap * Math.max(0, candidate - 1)) / candidate),
+          };
+        };
+        const candidates = width >= 1100 ? [6] : (portraitPhone ? [2] : (landscapeCompact ? [columns, 4, 6] : [columns, 4]));
+        let fit = calculate(columns);
+        candidates.forEach((candidate) => {
+          if (fit.tileHeight >= 44 || candidate <= fit.columns || candidate > grid.children.length) return;
+          const next = calculate(candidate);
+          if (next.cardWidth >= 44) fit = next;
+        });
+        columns = fit.columns;
+        if (fit.tileHeight < 44 && rowGap > 2) {
+          rowGap = 2;
+          fit = calculate(columns);
+        }
+        const tileHeight = Math.max(44, fit.tileHeight);
+        home.style.setProperty('--home-fit-columns', String(fit.columns));
         home.style.setProperty('--home-fit-tile-height', `${tileHeight}px`);
-        home.style.setProperty('--home-fit-row-gap', `${gap}px`);
-        home.style.setProperty('--home-fit-col-gap', `${gap}px`);
+        home.style.setProperty('--home-fit-row-gap', `${rowGap}px`);
+        home.style.setProperty('--home-fit-col-gap', `${columnGap}px`);
+        home.style.setProperty('--home-fit-card-width', `${Math.max(44, fit.cardWidth)}px`);
+        home.style.setProperty('--home-fit-bottom-clearance', `${clearance}px`);
+        home.style.setProperty('--home-fit-available-height', `${available}px`);
+        home.dataset.homeFitComplete = String(fit.tileHeight >= 44);
+        home.dataset.homeFitColumns = String(fit.columns);
+        home.dataset.homeFitRows = String(fit.rows);
+        home.dataset.homeFitClearance = String(clearance);
       };
       requestAnimationFrame(syncFixtureHomeFit);
       window.addEventListener('resize', () => requestAnimationFrame(syncFixtureHomeFit));
+      window.addEventListener('orientationchange', () => requestAnimationFrame(syncFixtureHomeFit));
+      if (window.ResizeObserver) {
+        const homeFitObserver = new ResizeObserver(() => requestAnimationFrame(syncFixtureHomeFit));
+        [document.getElementById('main-scroll-area'), document.getElementById('home-dashboard-grid'), document.getElementById('bottom-nav')].forEach((element) => homeFitObserver.observe(element));
+      }
+      if (document.fonts) Promise.resolve(document.fonts.ready).then(() => requestAnimationFrame(syncFixtureHomeFit));
       window.handleDriveSpreadsheetHeaderFilter = (event) => {
         const sheet = event.target.closest('.drive-grid-sheet');
         const controls = Array.from(sheet.querySelectorAll('[data-drive-grid-filter]'));

@@ -38,7 +38,7 @@ jobs:
           npm ci
           npm run check:inline
           npm run test:pilot
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium firefox webkit
           npm run test:v2:e2e
           npm run build:pilot-monitoring
           npm run build:live:assets

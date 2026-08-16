@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.16.04';
+  const RELEASE = 'V2026.08.16.05';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -35,7 +35,7 @@
   const DEFAULT_FLAGS = Object.freeze({ skin: false, preferences: false, card_grid: false, monitoring: false });
   const DEFAULT_PREFERENCES = Object.freeze({ themeMode: 'dark', displayMode: 'cards', updatedAt: '' });
   const PERFORMANCE_KINDS = new Set(['viewSwitches', 'renders', 'chunks', 'longTasks', 'staleSkips', 'search', 'webVitals']);
-  const HEALTH_ASSERTIONS = new Set(['chat_composer', 'home_modules', 'nav_theme', 'toolbar_row', 'drive_card_width']);
+  const HEALTH_ASSERTIONS = new Set(['chat_composer', 'home_modules', 'home_fit', 'nav_theme', 'toolbar_row', 'drive_card_width']);
   const SENSITIVE_KEY_PATTERN = /(user(name)?|name|note|item|code|customer|consignee|row|record|photo|image|body|header|query|payload|request|url|uri|email|token|password|pin|authorization|cookie)/i;
   const RECORD_CLASS_PATTERN = /(^|\s)(inv-card|drill-item|item-row|task-card|request-card|dock-card|manager-card|approval-card|low-stock-card|communication-card|sales-office-card|rounded-(?:lg|xl|2xl).*border)(\s|$)/i;
   const PREMIUM_ICON_PATHS = Object.freeze({
@@ -709,8 +709,35 @@
       const grid = document.getElementById('home-dashboard-grid');
       if (grid) {
         const expected = Number(grid.dataset.authorizedModuleCount || 0);
-        const rendered = grid.querySelectorAll('[data-home-module-view]:not([hidden])').length;
+        const tiles = Array.from(grid.querySelectorAll('[data-home-module-view]:not([hidden])')).filter((element) => element instanceof HTMLElement && element.offsetParent !== null);
+        const rendered = tiles.length;
         captureHealth('home_modules', expected === rendered, { expected_count: expected, rendered_count: rendered });
+        const rects = tiles.map((element) => element.getBoundingClientRect()).filter((rect) => rect.width > 0 && rect.height > 0);
+        const mainArea = document.getElementById('main-scroll-area');
+        const navRect = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
+        const lastBottom = rects.length ? Math.max(...rects.map((rect) => rect.bottom)) : 0;
+        const navTop = navRect ? navRect.top : Number(window.innerHeight || 0);
+        const clearance = Math.max(0, navTop - lastBottom);
+        const overlap = Math.max(0, lastBottom - navTop);
+        const minWidth = rects.length ? Math.min(...rects.map((rect) => rect.width)) : 0;
+        const minHeight = rects.length ? Math.min(...rects.map((rect) => rect.height)) : 0;
+        const overflowX = Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        const overflowY = mainArea ? Math.max(0, mainArea.scrollHeight - mainArea.clientHeight) : 0;
+        const desktop = window.innerWidth >= 1100;
+        const clearancePass = desktop ? clearance >= 20 && clearance <= 52 : clearance >= 0;
+        const fitPass = expected === rendered && rendered > 0 && minWidth >= 44 && minHeight >= 44 && overlap <= 1 && overflowX <= 2 && overflowY <= 2 && clearancePass;
+        captureHealth('home_fit', fitPass, {
+          authorized_count: expected,
+          rendered_count: rendered,
+          clearance_px: clearance,
+          tile_width_px: minWidth,
+          tile_height_px: minHeight,
+          overlap_px: overlap,
+          overflow_x_px: overflowX,
+          overflow_y_px: overflowY,
+          columns: Number(document.getElementById('view-home') && document.getElementById('view-home').dataset.homeFitColumns || 0),
+          bands: Number(document.getElementById('view-home') && document.getElementById('view-home').dataset.homeFitRows || 0)
+        });
       }
     }
     if (state.activeView === 'chat') {
@@ -779,7 +806,7 @@
     }
     if (!viewportResizeObserver && window.ResizeObserver) {
       viewportResizeObserver = new ResizeObserver(scheduleLayoutHealthCheck);
-      [document.getElementById('bottom-nav'), document.getElementById('app-top-chrome'), document.getElementById('chat-content')].filter(Boolean).forEach((element) => viewportResizeObserver.observe(element));
+      [document.getElementById('bottom-nav'), document.getElementById('app-top-chrome'), document.getElementById('chat-content'), document.getElementById('home-dashboard-grid')].filter(Boolean).forEach((element) => viewportResizeObserver.observe(element));
     }
     scheduleLayoutHealthCheck('install');
   }

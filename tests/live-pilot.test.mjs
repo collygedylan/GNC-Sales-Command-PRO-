@@ -14,17 +14,18 @@ const darkDefaultMigration = read('supabase/migrations/20260815121724_dylan_ops_
 const manifest = JSON.parse(read('manifest.json'));
 const serviceWorker = read('sw.js');
 const workflow = read('.github/workflows/pages-static.yml');
+const playwrightConfig = read('playwright.config.ts');
 const packageJson = JSON.parse(read('package.json'));
 const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.04';
+  const release = 'V2026.08.16.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.16\.04'/);
-  assert.equal(packageJson.version, '2026.08.16.04');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.16\.05'/);
+  assert.equal(packageJson.version, '2026.08.16.05');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -298,7 +299,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   const keyboardCascadeIndex = css.lastIndexOf('V2026.08.15.14 — final keyboard-safe authentication lock');
   const finalPhoneCascadeIndex = css.lastIndexOf('mobile cascade lock');
   assert.ok(keyboardCascadeIndex > finalPhoneCascadeIndex, 'keyboard cascade must follow all phone and tablet breakpoints');
-  const releaseCascadeIndex = css.indexOf('V2026.08.16.04 final cascade lock', keyboardCascadeIndex);
+  const releaseCascadeIndex = css.indexOf('V2026.08.16.05 final cascade lock', keyboardCascadeIndex);
   const keyboardCascade = css.slice(keyboardCascadeIndex, releaseCascadeIndex);
   assert.match(keyboardCascade, /body\.keyboard-open #view-login[\s\S]*height: var\(--visual-height, 100dvh\) !important/);
   assert.match(keyboardCascade, /overflow-y: auto !important/);
@@ -357,19 +358,16 @@ test('phone Home tiles fill both columns and Drive cards retain the thumbnail wi
   assert.match(css, /grid-template-areas: "photo main reclass" "bottom bottom bottom"/);
 });
 
-test('final responsive shell keeps every Home tile square, scrollable above navigation, and device-aware', () => {
-  const finalCascadeIndex = css.lastIndexOf('V2026.08.15.12 final responsive and theme cascade');
-  const legacyFixedGridIndex = css.lastIndexOf('height: min(760px, calc(100dvh - 284px)) !important');
-  assert.ok(finalCascadeIndex > legacyFixedGridIndex, 'responsive cascade must override the legacy fixed-height Home grid');
+test('final responsive shell measures every Home row against the fixed quick bar', () => {
+  const finalCascadeIndex = css.lastIndexOf('V2026.08.16.05 — measured Home viewport fit with fixed quick navigation');
+  assert.ok(finalCascadeIndex > 0, 'the measured Home fit must be the final Home cascade');
   const finalCascade = css.slice(finalCascadeIndex);
-  assert.match(finalCascade, /--ops-nav-clearance: calc\(var\(--footer-nav-reserve, 8\.75rem\) \+ env\(safe-area-inset-bottom\) \+ 24px\)/);
-  assert.match(finalCascade, /current-view-home\.home-dashboard-mode[\s\S]*overflow-y: auto !important;[\s\S]*padding-bottom: var\(--ops-nav-clearance\) !important/);
-  assert.match(finalCascade, /#view-home #home-dashboard-grid,[\s\S]*height: auto !important;[\s\S]*grid-auto-rows: max-content !important;[\s\S]*align-content: start !important/);
-  assert.match(finalCascade, /#view-home #home-dashboard-grid > div,[\s\S]*height: auto !important;[\s\S]*aspect-ratio: 1 \/ 1 !important;[\s\S]*border-width: 2px !important/);
-  assert.match(finalCascade, /viewport-phone #view-home #home-dashboard-grid,[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(finalCascade, /viewport-tablet\.viewport-portrait[\s\S]*repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(finalCascade, /viewport-tablet\.viewport-landscape[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(finalCascade, /min-width: 1024px[\s\S]*max-height: 900px[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(finalCascade, /current-view-home\.home-dashboard-mode[\s\S]*#main-scroll-area \{[\s\S]*overflow: hidden !important/);
+  assert.match(finalCascade, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\), minmax\(0, 1fr\)\)/);
+  assert.match(finalCascade, /grid-auto-rows: var\(--home-fit-tile-height, 44px\)/);
+  assert.match(finalCascade, /min-height: 44px !important;[\s\S]*max-height: none !important/);
+  assert.match(finalCascade, /@media \(min-width: 1100px\)[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(finalCascade, /max-height: 210px/);
 });
 
 test('top banners and sticky module controls use semantic surfaces in both themes', () => {
@@ -462,7 +460,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081604\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081605\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -498,7 +496,7 @@ test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () 
   assert.match(html, /buildDockModeFilterControlHtml/);
   assert.match(html, /id="docks-mode-toggle" class="hidden" aria-hidden="true"/);
   assert.ok(html.indexOf('id="team-selector"') < html.indexOf('id="task-crumb"'), 'Task controls must precede the breadcrumb');
-  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.04 final cascade lock'));
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.16.05 final cascade lock'));
   assert.match(finalCascade, /workflow-control-rail,[\s\S]*flex-flow: row nowrap !important/);
   assert.match(finalCascade, /#view-tasks \.task-controls-sticky[\s\S]*overflow-x: auto !important/);
 });
@@ -534,8 +532,14 @@ test('V16 Drive controls share one horizontal rail and Home uses measured adapti
   assert.match(css, /#drive-toolbar-rail[\s\S]*overflow-x: auto !important/);
   assert.match(html, /--home-fit-columns/);
   assert.match(html, /--home-fit-tile-height/);
+  assert.match(html, /--home-fit-card-width/);
+  assert.match(html, /--home-fit-bottom-clearance/);
+  assert.match(html, /const clearanceTargetPx = desktopLayout/);
+  assert.match(html, /clamp\(Math\.round\(profile\.height \* 0\.036\), 24, 48\)/);
+  assert.match(html, /homeDashboardFitResizeObserver = new ResizeObserver/);
+  assert.match(html, /document\.fonts\.addEventListener\('loadingdone'/);
   assert.match(css, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\)/);
-  assert.match(css, /current-view-home\.home-dashboard-mode #main-scroll-area[\s\S]*overflow-y: auto !important/);
+  assert.match(css, /current-view-home\.home-dashboard-mode[\s\S]*#main-scroll-area \{[\s\S]*overflow: hidden !important/);
 });
 
 test('V15 Chat and navigation are measured against the visible viewport', () => {
@@ -555,11 +559,21 @@ test('V15 monitoring is authenticated for all users and remains anonymous', () =
   assert.match(client, /sessionId: createSessionId\(\)/);
   assert.match(client, /session_id: state\.sessionId/);
   assert.match(client, /const HEALTH_ASSERTIONS/);
-  for (const assertion of ['chat_composer', 'home_modules', 'nav_theme', 'toolbar_row', 'drive_card_width']) {
+  for (const assertion of ['chat_composer', 'home_modules', 'home_fit', 'nav_theme', 'toolbar_row', 'drive_card_width']) {
     assert.match(client, new RegExp(assertion));
+  }
+  for (const metric of ['clearance_px', 'tile_width_px', 'tile_height_px', 'overlap_px', 'overflow_x_px', 'overflow_y_px']) {
+    assert.match(client, new RegExp(metric));
   }
   assert.doesNotMatch(client, /state\.cohortId|cohort_id:/);
   assert.match(client, /sendDefaultPii: false/);
   assert.match(client, /replaysSessionSampleRate: 0/);
   assert.match(html, /recordPerformance\('search',[\s\S]*cancelled: true/);
+});
+
+test('CI gates responsive release checks in Chromium, Firefox, and WebKit', () => {
+  assert.match(workflow, /playwright install --with-deps chromium firefox webkit/);
+  assert.match(playwrightConfig, /name: 'chromium'/);
+  assert.match(playwrightConfig, /name: 'firefox'/);
+  assert.match(playwrightConfig, /name: 'webkit'/);
 });
