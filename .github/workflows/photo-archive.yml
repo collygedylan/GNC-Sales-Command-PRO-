@@ -1,0 +1,76 @@
+name: Archive Expired Photos
+
+on:
+  # GitHub schedules are UTC. Running both candidates plus the script's
+  # America/Chicago DST gate preserves 1:00 a.m. Central year-round.
+  schedule:
+    - cron: "0 6 * * *"
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Inspect candidates and verify both services without copying or deleting"
+        required: true
+        default: true
+        type: boolean
+      delete_after_quarantine:
+        description: "Allow deletion only after verified Drive copy, 30-day quarantine, and two scans"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: photo-archive-daily
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    name: Copy, verify, quarantine, and retire expired photos
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+      GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
+      ARCHIVE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      ARCHIVE_DELETE_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.delete_after_quarantine }}
+      PHOTO_ARCHIVE_REPORT_PATH: artifacts/photo-archive-run.json
+      GDRIVE_REQUEST_PHOTOS_FOLDER_ID: 1snWsk0DHPXfa8G9gWXMVPXcFiOou7dFw
+      GDRIVE_FLYER_PHOTOS_FOLDER_ID: 1pN_5d2P9xylC0npQCIaLw9t7LQdcQtnR
+      GDRIVE_SEASON_SALES_NOTES_FOLDER_ID: 1Zu3CiUH_cMeS5PFWVfSbuvL0x4ypROtv
+      GDRIVE_LOCATION_SALES_NOTES_FOLDER_ID: 1pWRtlUCW8xS8zQXFxiDt6RwZb_PJbSMq
+      GDRIVE_CREDIT_PHOTOS_FOLDER_ID: 1Ogwf6JzEIAgBv5k-ofJ-iuYpmoS5TdvK
+      GDRIVE_DOCK_PHOTOS_FOLDER_ID: 1IWW6gUP3FFf1J0qUx-y2WRKubnjd0_Am
+      GDRIVE_GROWER_SCOUT_PHOTOS_FOLDER_ID: 1N8tp00CiTgD7IYEflqfyhsjGa2fszU1Y
+      GDRIVE_MARKETING_MATERIALS_FOLDER_ID: 1ITTElK_Kv4wIj9UIQiulaNeisR5zYZtT
+      GDRIVE_MANIFEST_FOLDER_ID: 1ccCOhMmJtaoptcyBPykQAiifDp7gqfZy
+      GDRIVE_FAILED_FOLDER_ID: 13I72WbWsyctMT7h-k4WHPAXIyO94W65P
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run protected photo archive lifecycle
+        run: node scripts/archive-expired-photos.mjs
+
+      - name: Upload sanitized run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: photo-archive-${{ github.run_id }}
+          path: artifacts/photo-archive-run.json
+          if-no-files-found: warn
+          retention-days: 30
