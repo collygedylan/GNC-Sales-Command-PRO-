@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.15.14';
+  const RELEASE = 'V2026.08.15.15';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LIST_VIEWS = new Set([
@@ -34,7 +34,8 @@
   });
   const DEFAULT_FLAGS = Object.freeze({ skin: false, preferences: false, card_grid: false, monitoring: false });
   const DEFAULT_PREFERENCES = Object.freeze({ themeMode: 'dark', displayMode: 'cards', updatedAt: '' });
-  const PERFORMANCE_KINDS = new Set(['viewSwitches', 'renders', 'chunks', 'longTasks', 'staleSkips']);
+  const PERFORMANCE_KINDS = new Set(['viewSwitches', 'renders', 'chunks', 'longTasks', 'staleSkips', 'search', 'webVitals']);
+  const HEALTH_ASSERTIONS = new Set(['chat_composer', 'home_modules', 'nav_theme', 'toolbar_row', 'drive_card_width']);
   const SENSITIVE_KEY_PATTERN = /(user(name)?|name|note|item|code|customer|consignee|row|record|photo|image|body|header|query|payload|request|url|uri|email|token|password|pin|authorization|cookie)/i;
   const RECORD_CLASS_PATTERN = /(^|\s)(inv-card|drill-item|item-row|task-card|request-card|dock-card|manager-card|approval-card|low-stock-card|communication-card|sales-office-card|rounded-(?:lg|xl|2xl).*border)(\s|$)/i;
   const PREMIUM_ICON_PATHS = Object.freeze({
@@ -69,7 +70,7 @@
     'users-three': '<circle cx="12" cy="8" r="3"/><circle cx="5" cy="10" r="2"/><circle cx="19" cy="10" r="2"/><path d="M6 20a6 6 0 0 1 12 0M1 19a4 4 0 0 1 5-4M23 19a4 4 0 0 0-5-4"/>'
   });
   const PREMIUM_ICON_SELECTOR = [
-    '#home-dashboard-grid > div > i',
+    '#home-dashboard-grid > :is(div, button) > i',
     '#home-rep-dashboard-grid > button > i',
     '#bottom-nav .footer-nav-btn > i',
     '#side-drawer .drawer-item > i',
@@ -80,11 +81,24 @@
   ].join(',');
 
   let bridge = null;
+  function createSessionId() {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+      if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+        const values = new Uint32Array(4);
+        window.crypto.getRandomValues(values);
+        return Array.from(values, (value) => value.toString(16).padStart(8, '0')).join('-');
+      }
+    } catch (_error) {}
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+  }
+
   let state = {
     eligible: false,
+    monitoringEligible: false,
     flags: { ...DEFAULT_FLAGS },
     preferences: { ...DEFAULT_PREFERENCES },
-    cohortId: '',
+    sessionId: createSessionId(),
     activeView: 'home',
     initialized: false,
     provisional: false
@@ -99,8 +113,11 @@
   let monitoringLoadPromise = null;
   let longTaskCount = 0;
   let premiumDecorateFrame = 0;
+  let layoutHealthTimer = 0;
+  let viewportResizeObserver = null;
+  const healthDedupe = new Map();
 
-  if (document.body) document.body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v14');
+  if (document.body) document.body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v15');
 
   function normalizeThemeMode(value) {
     const mode = String(value || '').trim().toLowerCase();
@@ -198,7 +215,8 @@
     const effectiveDisplay = getEffectiveDisplayMode();
     const skinActive = true;
     body.classList.toggle('ops-pilot-active', state.eligible && !state.provisional);
-    body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v14');
+    body.classList.remove('premium-skin-v14');
+    body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v15');
     body.classList.toggle('ops-grid-effective', skinActive && effectiveDisplay === 'grid');
     body.dataset.opsTheme = effectiveTheme;
     body.dataset.opsThemeMode = state.preferences.themeMode;
@@ -325,6 +343,7 @@
     mutationObserver = new MutationObserver(() => {
       schedulePremiumDecorations();
       scheduleDecorateRecordCollections();
+      scheduleLayoutHealthCheck('mutation');
     });
     mutationObserver.observe(wrapper, { childList: true, subtree: true });
   }
@@ -471,7 +490,7 @@
       theme: getEffectiveTheme(),
       theme_mode: state.preferences.themeMode,
       display_mode: getEffectiveDisplayMode(),
-      cohort_id: state.cohortId
+      session_id: state.sessionId
     };
     const scrubbedEvent = scrubValue(event, 0, '');
     scrubbedEvent.tags = tags;
@@ -505,13 +524,12 @@
       theme: getEffectiveTheme(),
       theme_mode: state.preferences.themeMode,
       display_mode: getEffectiveDisplayMode(),
-      cohort_id: state.cohortId
+      session_id: state.sessionId
     });
   }
 
   function initializeMonitoring(config) {
-    if (monitoringReady || !state.eligible || !state.flags.monitoring || !config || !config.dsn) return Promise.resolve(false);
-    state.cohortId = String(config.cohortId || config.cohort_id || '').trim().slice(0, 80);
+    if (monitoringReady || !state.monitoringEligible || !state.flags.monitoring || !config || !config.dsn) return Promise.resolve(false);
     return loadMonitoringBundle().then((sentry) => {
       if (!sentry || typeof sentry.init !== 'function') return false;
       const defaultIntegrationsFilter = (integrations) => (integrations || []).filter((integration) => {
@@ -557,13 +575,14 @@
             theme: getEffectiveTheme(),
             theme_mode: state.preferences.themeMode,
             display_mode: getEffectiveDisplayMode(),
-            cohort_id: state.cohortId
+            session_id: state.sessionId
           }
         }
       });
       if (typeof sentry.setUser === 'function') sentry.setUser(null);
       monitoringReady = true;
       updateMonitoringTags();
+      scheduleLayoutHealthCheck('monitoring-ready');
       return true;
     }).catch(() => false);
   }
@@ -604,23 +623,162 @@
         attributes: {
           duration_ms: Math.round(duration * 100) / 100,
           active_view: state.activeView,
-          sample_index: safeKind === 'longTasks' ? longTaskCount : undefined
+          sample_index: safeKind === 'longTasks' ? longTaskCount : undefined,
+          metric_type: typeof safePayload.metricType === 'string' ? safePayload.metricType.slice(0, 24) : undefined,
+          cancelled: typeof safePayload.cancelled === 'boolean' ? safePayload.cancelled : undefined
         }
       }, function () {});
     }
   }
 
+  function captureHealth(assertion, passed, metrics = {}) {
+    const sentry = window.GncSentry;
+    const safeAssertion = String(assertion || '').trim().toLowerCase();
+    if (!monitoringReady || !sentry || !HEALTH_ASSERTIONS.has(safeAssertion)) return false;
+    if (passed && Math.random() > 0.1) return false;
+    const dedupeKey = `${RELEASE}|${state.activeView}|${getEffectiveTheme()}|${viewportClass()}|${safeAssertion}|${passed ? 'pass' : 'fail'}`;
+    const now = Date.now();
+    if (now - Number(healthDedupe.get(dedupeKey) || 0) < 300000) return false;
+    healthDedupe.set(dedupeKey, now);
+    while (healthDedupe.size > 80) healthDedupe.delete(healthDedupe.keys().next().value);
+    const safeMetrics = {};
+    Object.entries(metrics && typeof metrics === 'object' ? metrics : {}).slice(0, 12).forEach(([key, value]) => {
+      const safeKey = String(key || '').replace(/[^a-z0-9_]/gi, '').slice(0, 30);
+      if (!safeKey || SENSITIVE_KEY_PATTERN.test(safeKey)) return;
+      if (typeof value === 'boolean' || Number.isFinite(Number(value))) safeMetrics[safeKey] = typeof value === 'boolean' ? value : Math.round(Number(value) * 100) / 100;
+    });
+    if (typeof sentry.captureMessage === 'function') {
+      sentry.captureMessage(`layout.${safeAssertion}.${passed ? 'pass' : 'fail'}`, {
+        level: passed ? 'info' : 'warning',
+        tags: { health_assertion: safeAssertion, health_status: passed ? 'pass' : 'fail' },
+        extra: safeMetrics
+      });
+    }
+    return true;
+  }
+
+  function measureRuntimeViewport() {
+    const root = document.documentElement;
+    const body = document.body;
+    if (!root || !body) return;
+    const viewport = window.visualViewport;
+    const visibleHeight = Math.max(1, Number(viewport && viewport.height || window.innerHeight || root.clientHeight || 1));
+    const visibleOffsetTop = Math.max(0, Number(viewport && viewport.offsetTop || 0));
+    root.style.setProperty('--ops-visible-height', `${visibleHeight}px`);
+    root.style.setProperty('--ops-visible-offset-top', `${visibleOffsetTop}px`);
+    const nav = document.getElementById('bottom-nav');
+    const navVisible = !!(nav && getComputedStyle(nav).display !== 'none');
+    const navHeight = navVisible ? Math.max(0, Number(nav.getBoundingClientRect().height || 0)) : 0;
+    root.style.setProperty('--footer-nav-reserve', `${navHeight}px`);
+    const mainArea = document.getElementById('main-scroll-area');
+    const mainTop = mainArea ? Math.max(0, Number(mainArea.getBoundingClientRect().top || 0) - visibleOffsetTop) : 0;
+    root.style.setProperty('--ops-main-top', `${mainTop}px`);
+    root.style.setProperty('--ops-content-available-height', `${Math.max(180, visibleHeight - mainTop - navHeight)}px`);
+    if (nav) nav.dataset.resolvedTheme = getEffectiveTheme();
+  }
+
+  function runLayoutHealthAssertions() {
+    layoutHealthTimer = 0;
+    measureRuntimeViewport();
+    const nav = document.getElementById('bottom-nav');
+    if (nav && getComputedStyle(nav).display !== 'none') {
+      const background = String(getComputedStyle(nav).backgroundColor || '').toLowerCase();
+      const hasSurface = background !== 'transparent' && background !== 'rgba(0, 0, 0, 0)';
+      captureHealth('nav_theme', hasSurface && nav.dataset.resolvedTheme === getEffectiveTheme(), { has_surface: hasSurface });
+    }
+    if (state.activeView === 'home') {
+      const grid = document.getElementById('home-dashboard-grid');
+      if (grid) {
+        const expected = Number(grid.dataset.authorizedModuleCount || 0);
+        const rendered = grid.querySelectorAll('[data-home-module-view]:not([hidden])').length;
+        captureHealth('home_modules', expected === rendered, { expected_count: expected, rendered_count: rendered });
+      }
+    }
+    if (state.activeView === 'chat') {
+      const composer = document.querySelector('#view-chat .chat-thread-composer');
+      const navRect = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
+      const visualBottom = Number(window.visualViewport && (window.visualViewport.offsetTop + window.visualViewport.height) || window.innerHeight || 0);
+      const boundary = navRect ? Math.min(visualBottom, navRect.top) : visualBottom;
+      const rect = composer ? composer.getBoundingClientRect() : null;
+      const visible = !!(composer && rect && getComputedStyle(composer).display !== 'none' && rect.height >= 40 && rect.top < boundary && rect.bottom <= boundary + 3);
+      captureHealth('chat_composer', visible, { composer_height: rect ? rect.height : 0, overlap_px: rect ? Math.max(0, rect.bottom - boundary) : boundary });
+    }
+    document.querySelectorAll('#request-filter-toolbar, #docks-filter-controls .docks-filter-row, #view-tasks .task-workflow-rail, #view-tasks #task-tabs-container').forEach((rail) => {
+      if (!(rail instanceof HTMLElement) || rail.offsetParent === null) return;
+      const children = Array.from(rail.children).filter((child) => child instanceof HTMLElement && child.offsetParent !== null);
+      if (children.length < 2) return;
+      const top = children[0].getBoundingClientRect().top;
+      const singleRow = children.every((child) => Math.abs(child.getBoundingClientRect().top - top) <= 4);
+      captureHealth('toolbar_row', singleRow, { control_count: children.length, scroll_width: rail.scrollWidth, client_width: rail.clientWidth });
+    });
+    if (state.activeView === 'drive' && window.innerWidth >= 840) {
+      const mains = Array.from(document.querySelectorAll('#drive-content[data-drive-detailed-records="true"] .app-drive-card-main')).filter((element) => element instanceof HTMLElement && element.offsetParent !== null);
+      if (mains.length) {
+        const minimum = Math.min(...mains.slice(0, 12).map((element) => element.getBoundingClientRect().width));
+        captureHealth('drive_card_width', minimum >= 180, { minimum_width: minimum, sampled_cards: Math.min(12, mains.length) });
+      }
+    }
+  }
+
+  function scheduleLayoutHealthCheck() {
+    if (layoutHealthTimer) clearTimeout(layoutHealthTimer);
+    layoutHealthTimer = setTimeout(runLayoutHealthAssertions, 120);
+  }
+
+  function installWebVitalObservers() {
+    if (!window.PerformanceObserver || document.documentElement.dataset.opsVitalObservers === 'true') return;
+    document.documentElement.dataset.opsVitalObservers = 'true';
+    try {
+      let clsValue = 0;
+      new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => { if (!entry.hadRecentInput) clsValue += Number(entry.value || 0); });
+        recordPerformance('webVitals', { metricType: 'cls', durationMs: clsValue * 1000 });
+      }).observe({ type: 'layout-shift', buffered: true });
+    } catch (_error) {}
+    try {
+      new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        const last = entries[entries.length - 1];
+        if (last) recordPerformance('webVitals', { metricType: 'lcp', durationMs: Number(last.startTime || 0) });
+      }).observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch (_error) {}
+    try {
+      new PerformanceObserver((list) => {
+        const longest = Math.max(0, ...list.getEntries().map((entry) => Number(entry.duration || 0)));
+        if (longest) recordPerformance('webVitals', { metricType: 'inp', durationMs: longest });
+      }).observe({ type: 'event', buffered: true, durationThreshold: 40 });
+    } catch (_error) {}
+  }
+
+  function installRuntimeHealthMonitoring() {
+    measureRuntimeViewport();
+    installWebVitalObservers();
+    if (window.visualViewport && !window.visualViewport.__opsHealthBound) {
+      window.visualViewport.__opsHealthBound = true;
+      window.visualViewport.addEventListener('resize', scheduleLayoutHealthCheck, { passive: true });
+      window.visualViewport.addEventListener('scroll', scheduleLayoutHealthCheck, { passive: true });
+    }
+    if (!viewportResizeObserver && window.ResizeObserver) {
+      viewportResizeObserver = new ResizeObserver(scheduleLayoutHealthCheck);
+      [document.getElementById('bottom-nav'), document.getElementById('app-top-chrome'), document.getElementById('chat-content')].filter(Boolean).forEach((element) => viewportResizeObserver.observe(element));
+    }
+    scheduleLayoutHealthCheck('install');
+  }
+
   function setActiveView(viewId) {
     state.activeView = String(viewId || 'home').trim().toLowerCase() || 'home';
     applyUiState();
+    scheduleLayoutHealthCheck('view');
   }
 
   function deactivate() {
+    const sessionId = state.sessionId || createSessionId();
     state = {
       eligible: false,
+      monitoringEligible: false,
       flags: { ...DEFAULT_FLAGS },
       preferences: { ...DEFAULT_PREFERENCES },
-      cohortId: '',
+      sessionId,
       activeView: 'home',
       initialized: false,
       provisional: false
@@ -633,9 +791,10 @@
     const cached = readCachedPreferences();
     state = {
       eligible: false,
+      monitoringEligible: false,
       flags: { ...DEFAULT_FLAGS },
       preferences: normalizePreferences(cached || DEFAULT_PREFERENCES),
-      cohortId: '',
+      sessionId: state.sessionId || createSessionId(),
       activeView: String(safeOptions.activeView || 'home').trim().toLowerCase() || 'home',
       initialized: false,
       provisional: true
@@ -663,40 +822,46 @@
     try {
       const response = await bridge.request('get_user_preferences', {});
       if (serial !== initializeSerial) return false;
-      if (!response || response.ok !== true || response.eligible !== true) {
+      if (!response || response.ok !== true) {
         deactivate();
         clearPrepaintTheme();
         return false;
       }
       const flags = response.flags && typeof response.flags === 'object' ? response.flags : {};
-      const serverPreferences = normalizePreferences(response.preferences);
-      const cached = readCachedPreferences();
-      const useDirtyCache = !!(cached && cached.dirty && timestampIsNewer(cached.updatedAt, serverPreferences.updatedAt));
-      state.eligible = true;
+      const appearanceEligible = response.eligible === true;
+      const monitoringEligible = response.monitoringEligible === true && !!(response.monitoring && response.monitoring.dsn);
+      const serverPreferences = appearanceEligible ? normalizePreferences(response.preferences) : { ...DEFAULT_PREFERENCES, themeMode: 'light' };
+      const cached = appearanceEligible ? readCachedPreferences() : null;
+      const useDirtyCache = !!(appearanceEligible && cached && cached.dirty && timestampIsNewer(cached.updatedAt, serverPreferences.updatedAt));
+      state.eligible = appearanceEligible;
+      state.monitoringEligible = monitoringEligible;
       state.flags = {
         skin: flags.skin === true,
-        preferences: flags.preferences === true,
-        card_grid: flags.card_grid === true,
-        monitoring: flags.monitoring === true
+        preferences: appearanceEligible && flags.preferences === true,
+        card_grid: appearanceEligible && flags.card_grid === true,
+        monitoring: monitoringEligible
       };
       state.preferences = useDirtyCache ? normalizePreferences(cached) : serverPreferences;
-      state.cohortId = String(response.monitoring && (response.monitoring.cohortId || response.monitoring.cohort_id) || '').trim().slice(0, 80);
       state.activeView = String(bridge.getActiveView && bridge.getActiveView() || 'home').trim().toLowerCase() || 'home';
       state.initialized = true;
       state.provisional = false;
-      writeCachedPreferences(state.preferences, useDirtyCache);
+      if (appearanceEligible) writeCachedPreferences(state.preferences, useDirtyCache);
       applyUiState();
       clearPrepaintTheme();
       if (useDirtyCache) requestPreferenceSave();
-      if (state.flags.monitoring) initializeMonitoring(response.monitoring);
-      return true;
+      if (monitoringEligible) initializeMonitoring(response.monitoring);
+      installRuntimeHealthMonitoring();
+      return appearanceEligible || monitoringEligible;
     } catch (_error) {
       if (serial === initializeSerial && !state.provisional) deactivate();
       return false;
     }
   }
 
-  window.addEventListener('resize', applyUiState, { passive: true });
+  window.addEventListener('resize', () => {
+    applyUiState();
+    scheduleLayoutHealthCheck('resize');
+  }, { passive: true });
   window.addEventListener('online', () => requestPreferenceSave(), { passive: true });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -714,6 +879,7 @@
     primeCachedAppearance,
     setActiveView,
     captureFailure,
+    captureHealth,
     observeToast,
     recordPerformance,
     applyUiState,
@@ -722,6 +888,7 @@
         initialized: state.initialized,
         provisional: state.provisional,
         eligible: state.eligible,
+        monitoringEligible: state.monitoringEligible,
         flags: { ...state.flags },
         preferences: { ...state.preferences },
         activeView: state.activeView,

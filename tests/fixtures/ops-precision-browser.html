@@ -64,7 +64,7 @@
   </style>
   <link rel="stylesheet" href="../../assets/ops-precision-pilot.css">
 </head>
-<body class="ops-precision-pilot ag-premium-skin premium-skin-v14" data-ops-theme="light">
+<body class="ops-precision-pilot ag-premium-skin premium-skin-v15" data-ops-theme="light">
   <div id="app-wrapper">
     <div id="app-top-chrome">
     <header class="nav-header">
@@ -78,7 +78,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.15.14</span>
+              <span class="nav-version-pill">V2026.08.15.15</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -272,9 +272,10 @@
             return {
               ok: true,
               eligible,
+              monitoringEligible: flags.monitoring,
               flags,
               preferences: persistedServerPreferences || preferences,
-              monitoring: flags.monitoring ? { dsn: 'https://public@example.invalid/1', cohortId: 'qa-cohort', tracesSampleRate: 0.1 } : null
+              monitoring: flags.monitoring ? { dsn: 'https://public@example.invalid/1', tracesSampleRate: 0.1 } : null
             };
           }
           if (action === 'set_user_preferences') {

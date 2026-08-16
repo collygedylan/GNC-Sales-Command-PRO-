@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest } from "../_shared/app-auth.ts";
 
 const corsHeaders = {
@@ -533,39 +533,42 @@ async function handleGetUserPreferences(
 ) {
   if (!session) return errorResponse("Authentication required.", 401);
   const username = getSessionUserKey(session);
-  if (username !== LIVE_PILOT_USERNAME) {
-    return jsonResponse({
-      ok: true,
-      eligible: false,
-      flags: getDisabledLivePilotFlags(),
-      preferences: null,
-      monitoring: null,
-    });
-  }
-
   try {
     const flags = await loadLivePilotFlags();
-    const preferenceRow = (flags.preferences || flags.card_grid || flags.monitoring)
+    const monitoringEligible = !!(flags.monitoring && LIVE_PILOT_SENTRY_DSN);
+    const monitoring = monitoringEligible
+      ? {
+        dsn: LIVE_PILOT_SENTRY_DSN,
+        tracesSampleRate: 0.1,
+      }
+      : null;
+    if (username !== LIVE_PILOT_USERNAME) {
+      return jsonResponse({
+        ok: true,
+        eligible: false,
+        monitoringEligible,
+        flags: { ...getDisabledLivePilotFlags(), monitoring: monitoringEligible },
+        preferences: null,
+        monitoring,
+      });
+    }
+    const preferenceRow = (flags.preferences || flags.card_grid)
       ? await readOrCreateLivePilotPreferenceRow()
       : null;
     return jsonResponse({
       ok: true,
       eligible: true,
+      monitoringEligible,
       flags,
       preferences: preferenceRow ? serializeLivePilotPreferenceRow(preferenceRow) : null,
-      monitoring: flags.monitoring && LIVE_PILOT_SENTRY_DSN && preferenceRow
-        ? {
-          dsn: LIVE_PILOT_SENTRY_DSN,
-          tracesSampleRate: 0.1,
-          cohortId: String(preferenceRow.cohort_id || ""),
-        }
-        : null,
+      monitoring,
     });
   } catch (error) {
     console.error("Live pilot bootstrap failed closed.", error);
     return jsonResponse({
       ok: true,
       eligible: false,
+      monitoringEligible: false,
       flags: getDisabledLivePilotFlags(),
       preferences: null,
       monitoring: null,

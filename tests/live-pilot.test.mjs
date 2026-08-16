@@ -19,12 +19,12 @@ const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.15.14';
+  const release = 'V2026.08.15.15';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.14'/);
-  assert.equal(packageJson.version, '2026.08.15.14');
+  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.08\.15\.15'/);
+  assert.equal(packageJson.version, '2026.08.15.15');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -90,8 +90,8 @@ test('premium skin is global while Dylan controls remain drawer-only and server 
   assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-home-btn"'));
   assert.match(css, /body\.ops-pilot-active \.ops-pilot-segmented button[\s\S]*min-height: 44px !important/);
   assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible && !state\.provisional\)/);
-  assert.match(client, /body\.classList\.add\('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v14'\)/);
-  assert.match(html, /<body[^>]*ops-precision-pilot[^>]*ag-premium-skin[^>]*premium-skin-v14/);
+  assert.match(client, /body\.classList\.add\('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v15'\)/);
+  assert.match(html, /<body[^>]*ops-precision-pilot[^>]*ag-premium-skin[^>]*premium-skin-v15/);
   assert.match(client, /if \(!state\.eligible && !state\.provisional\) return 'light'/);
 });
 
@@ -128,7 +128,8 @@ test('remote controls are independent and seeded only for the explicit pilot', (
   assert.match(client, /panel\.classList\.toggle\('hidden', state\.provisional \|\| !state\.eligible \|\| \(!state\.flags\.preferences && !state\.flags\.card_grid\)\)/);
   assert.match(client, /themeGroup\.classList\.toggle\('hidden', !state\.flags\.preferences\)/);
   assert.match(client, /displayGroup\.classList\.toggle\('hidden', !state\.flags\.card_grid\)/);
-  assert.match(edge, /flags\.preferences \|\| flags\.card_grid \|\| flags\.monitoring/);
+  assert.match(edge, /flags\.preferences \|\| flags\.card_grid/);
+  assert.match(edge, /monitoringEligible/);
 });
 
 test('Dylan receives the full dark Ops Precision composition by default', () => {
@@ -243,10 +244,10 @@ test('grid reuses mounted record nodes and enforces cards on narrow coarse point
   assert.doesNotMatch(client, /innerHTML\s*=|insertAdjacentHTML/);
 });
 
-test('monitoring is exact-pinned, pilot gated, and replay/PII capture is disabled', () => {
+test('monitoring is exact-pinned, authenticated-session gated, and replay/PII capture is disabled', () => {
   assert.equal(packageJson.dependencies['@sentry/browser'], '10.70.0');
   assert.match(client, /sentry-browser-10\.70\.0\.min\.js/);
-  assert.match(client, /!state\.eligible \|\| !state\.flags\.monitoring/);
+  assert.match(client, /!state\.monitoringEligible \|\| !state\.flags\.monitoring/);
   assert.match(client, /sendDefaultPii: false/);
   assert.match(client, /sampleRate: 1/);
   assert.match(client, /replaysSessionSampleRate: 0/);
@@ -427,7 +428,7 @@ test('V14 exposes one global semantic component layer without changing workflow 
 test('V14 uses self-contained single-weight line icons for primary navigation and launchers', () => {
   assert.match(client, /const PREMIUM_ICON_PATHS = Object\.freeze/);
   assert.match(client, /const PREMIUM_ICON_SELECTOR = \[/);
-  assert.match(client, /#home-dashboard-grid > div > i/);
+  assert.match(client, /#home-dashboard-grid > :is\(div, button\) > i/);
   assert.match(client, /#bottom-nav \.footer-nav-btn > i/);
   assert.match(client, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'svg'\)/);
   assert.match(client, /stroke-width', '2'/);
@@ -457,9 +458,72 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081514\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081515\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
   assert.match(liveVendorBuild, /@phosphor-icons/);
+});
+
+test('V15 Home uses one authorization-backed first-level module registry', () => {
+  assert.match(html, /const HOME_MODULE_REGISTRY = Object\.freeze\(\[/);
+  for (const view of ['drive', 'tasks', 'docks', 'request', 'communication', 'sales', 'crop-roll', 'take-back', 'reserves', 'sales-office', 'hours', 'advertisement']) {
+    assert.match(html, new RegExp(`\\{ view: '${view}'`));
+  }
+  assert.match(html, /function ensureHomeModuleRegistry\(\)/);
+  assert.match(html, /data-home-module-view=/);
+  assert.match(html, /const isAllowed = canAccessView\(module\.view\)/);
+  assert.match(html, /authorizedModuleCount/);
+  assert.match(html, /renderedModuleCount/);
+});
+
+test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () => {
+  assert.match(html, /id="request-filter-toolbar"[^>]*workflow-control-rail/);
+  assert.match(html, /id="request-category-select"/);
+  assert.match(html, /function getAuthorizedRequestCategories/);
+  assert.match(html, /const filteredRequestItems = baseRequestItems/);
+  assert.match(html, /id="dock-mode-select"/);
+  assert.match(html, /buildDockModeFilterControlHtml/);
+  assert.match(html, /id="docks-mode-toggle" class="hidden" aria-hidden="true"/);
+  assert.ok(html.indexOf('id="team-selector"') < html.indexOf('id="task-crumb"'), 'Task controls must precede the breadcrumb');
+  const finalCascade = css.slice(css.lastIndexOf('V2026.08.15.15 final cascade lock'));
+  assert.match(finalCascade, /workflow-control-rail,[\s\S]*flex-flow: row nowrap !important/);
+  assert.match(finalCascade, /#view-tasks \.task-controls-sticky[\s\S]*overflow-x: auto !important/);
+});
+
+test('V15 preserves mobile search state and limits detailed Drive records to readable columns', () => {
+  assert.match(html, /let docksSearchRestoreState=null/);
+  assert.match(html, /debounceDelay: 100/);
+  assert.match(html, /event && event\.isComposing/);
+  assert.match(html, /allowWhileTyping: true/);
+  assert.match(html, /container\.dataset\.driveDetailedRecords = 'true'/);
+  assert.match(html, /delete inactiveContainer\.dataset\.driveDetailedRecords/);
+  assert.match(css, /#drive-content\[data-drive-detailed-records="true"\][\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /@media \(max-width: 839px\)[\s\S]*#drive-content\[data-drive-detailed-records="true"\][\s\S]*minmax\(0, 1fr\)/);
+});
+
+test('V15 Chat and navigation are measured against the visible viewport', () => {
+  assert.match(client, /--ops-content-available-height/);
+  assert.match(client, /--footer-nav-reserve/);
+  assert.match(client, /window\.visualViewport\.addEventListener\('resize'/);
+  assert.match(client, /new ResizeObserver\(scheduleLayoutHealthCheck\)/);
+  assert.match(css, /current-view-chat[\s\S]*grid-template-rows: auto minmax\(0, 1fr\) auto !important/);
+  assert.match(css, /current-view-chat \.chat-thread-composer[\s\S]*visibility: visible !important/);
+  assert.match(css, /data-ops-theme="dark"\] #bottom-nav[\s\S]*rgba\(10, 28, 21, \.96\)/);
+});
+
+test('V15 monitoring is authenticated for all users and remains anonymous', () => {
+  assert.match(edge, /monitoringEligible/);
+  assert.match(edge, /username !== LIVE_PILOT_USERNAME[\s\S]*eligible: false,[\s\S]*monitoringEligible/);
+  assert.match(edge, /tracesSampleRate: 0\.1/);
+  assert.match(client, /sessionId: createSessionId\(\)/);
+  assert.match(client, /session_id: state\.sessionId/);
+  assert.match(client, /const HEALTH_ASSERTIONS/);
+  for (const assertion of ['chat_composer', 'home_modules', 'nav_theme', 'toolbar_row', 'drive_card_width']) {
+    assert.match(client, new RegExp(assertion));
+  }
+  assert.doesNotMatch(client, /state\.cohortId|cohort_id:/);
+  assert.match(client, /sendDefaultPii: false/);
+  assert.match(client, /replaysSessionSampleRate: 0/);
+  assert.match(html, /recordPerformance\('search',[\s\S]*cancelled: true/);
 });

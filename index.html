@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081514.min.css?v=V2026.08.15.14">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081515.min.css?v=V2026.08.15.15">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.15.14';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.15.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6555,9 +6555,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.14">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.15.15">
 </head>
-<body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v14" data-ops-theme="light">
+<body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v15" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
     <div id="request-open-info-modal" class="hidden fixed inset-0 z-[17000] flex items-center justify-center p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="request-open-info-title">
@@ -6657,7 +6657,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.14"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.15.15"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7410,7 +7410,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.14').trim() || 'V2026.08.15.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.15.15').trim() || 'V2026.08.15.15';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7663,7 +7663,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <i id="request-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearRequestHeaderSearch()"></i>
                     </div>
                     <div class="freeze-panel">
-                    <div class="task-tabs mb-2 mt-2">
+                    <div id="request-filter-toolbar" class="workflow-control-rail request-filter-toolbar" aria-label="Queue filters"></div>
+                    <div class="task-tabs mb-2 mt-2 hidden" aria-hidden="true">
                         <div id="tab-req-pending" class="task-tab active" onclick="setReqTab('pending')">Request</div>
                         <div id="tab-req-reps" class="task-tab" onclick="setReqTab('reps')">Sales Reps</div>
                         <div id="tab-req-suspend-tag" class="task-tab hidden" onclick="setReqTab('suspend-tag')">Suspend Tag</div>
@@ -7672,7 +7673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="tab-req-av-check" class="task-tab hidden" onclick="setReqTab('av-check')">AV Check</div>
                         <div id="tab-req-shear-list" class="task-tab hidden" onclick="setReqTab('shear-list')">Shear List</div>
                     </div>
-                    <div id="request-dylan-filter-panel" class="hidden mb-3"></div>
+                    <div id="request-dylan-filter-panel" class="hidden" aria-hidden="true"></div>
                     <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     </div>
                     <div id="request-content"></div>
@@ -7845,11 +7846,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <div id="view-docks" class="hidden">
                     <div class="freeze-panel">
                     <div id="docks-search-container" class="sticky-search relative mb-2">
-                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search common name or location..." oninput="handleDocksSearch()" onkeydown="dismissSearchKeyboard(event)">
+                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search common name or location..." oninput="handleDocksSearch(event)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
                     </div>
-                    <div id="docks-filter-controls" class="docks-top-inline mb-3 hidden"></div>
-                    <div id="docks-mode-toggle" class="mb-3 grid grid-cols-3 gap-2">
+                    <div id="docks-filter-controls" class="docks-top-inline workflow-control-rail mb-3"></div>
+                    <div id="docks-mode-toggle" class="hidden" aria-hidden="true">
                         <button id="dock-mode-btn-docks" class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-95" onclick="setDockViewMode('docks')">Docks</button>
                         <button id="dock-mode-btn-mistakes" class="rounded-xl border border-red-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-95" onclick="setDockViewMode('mistakes')">Mistake</button>
                         <button id="dock-mode-btn-dropoff" class="rounded-xl border border-green-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#007a4d] shadow-sm active:scale-95" onclick="setDockViewMode('dropoff')">Drop Off</button>
@@ -8223,9 +8224,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="tasks-search-input" class="input-field w-full pr-10 !mb-0" placeholder="Search common name..." oninput="setTaskLocationDetailSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)">
                         <i id="tasks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="return clearTaskLocationDetailSearch()"></i>
                     </div>
-                    <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                    <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                     <div class="freeze-panel task-controls-sticky">
+                    <div id="team-selector" class="hidden task-workflow-rail"></div>
                     <div id="task-approval-mode-toggles" class="hidden mb-2"></div>
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                         <div id="task-eval-user-filter" class="hidden min-w-0"></div>
@@ -8242,6 +8242,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="task-reserves-mode-filters" class="hidden"></div>
                     </div>
                     </div>
+                    <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="task-content"></div>
                 </div>
 
@@ -8873,7 +8874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.15.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -28037,7 +28038,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsig
             requestDylanPendingEntriesCache = [];
             lastRequestHeaderSearchMode = '';
         }
-let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let selectedDockReps=new Set(); let dockRepSearchTerm=""; let dockRepFilterOpen=false; let selectedDockCustomers=new Set(); let dockCustomerSearchTerm=""; let dockCustomerFilterOpen=false; let dockColumnFilters={}; let dockColumnFilterDrafts={}; let dockColumnFilterSelectedHeaders=new Set(); let dockColumnFilterDropdownOpen=false; let dockColumnFilterStep='select'; let dockColumnFilterFieldKey=''; let dockColumnFilterMode='values'; let dockColumnFilterValueSearchTerm=''; let dockColumnFilterFieldSearchTerm=''; let dockColumnFilterHeaderFieldsCache=[]; let dockFilterItemsCache=[]; let dockFilterStateCacheKey=""; let dockFilterStateCache=null; let lastDockFilterRenderSignature=""; let lastSyncTime=new Date().toISOString();
+let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let selectedDockReps=new Set(); let dockRepSearchTerm=""; let dockRepFilterOpen=false; let selectedDockCustomers=new Set(); let dockCustomerSearchTerm=""; let dockCustomerFilterOpen=false; let dockColumnFilters={}; let dockColumnFilterDrafts={}; let dockColumnFilterSelectedHeaders=new Set(); let dockColumnFilterDropdownOpen=false; let dockColumnFilterStep='select'; let dockColumnFilterFieldKey=''; let dockColumnFilterMode='values'; let dockColumnFilterValueSearchTerm=''; let dockColumnFilterFieldSearchTerm=''; let dockColumnFilterHeaderFieldsCache=[]; let dockFilterItemsCache=[]; let dockFilterStateCacheKey=""; let dockFilterStateCache=null; let lastDockFilterRenderSignature=""; let docksSearchRestoreState=null; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
@@ -29188,7 +29189,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.14').trim() || 'V2026.08.15.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.15.15').trim() || 'V2026.08.15.15';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32077,6 +32078,33 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             });
         }
 
+        function getAuthorizedRequestCategories(access = getRoleAccessState()) {
+            const categories = [];
+            if (canSeeRegularRequestTabs(access)) categories.push('pending');
+            if (canSeeRegularRequestTabs(access) && !isRestrictedEvalUser(access)) categories.push('reps');
+            if (canSeeSuspendTagRequestTab(access)) categories.push('suspend-tag');
+            if (canSeeMovesRequestTab(access)) categories.push('moves');
+            if (canSeeRecountRequestTab(access)) categories.push('recount');
+            if (canSeeAvOptionEvalRequestTab(access)) categories.push('av-check');
+            if (canSeeShearListRequestTab(access)) categories.push('shear-list');
+            return categories.length ? categories : ['pending'];
+        }
+
+        function renderRequestCategoryToolbar(extraControlsHtml = '') {
+            const toolbar = document.getElementById('request-filter-toolbar');
+            if (!toolbar) return false;
+            const counts = getRequestTabQueueCounts();
+            const categories = getAuthorizedRequestCategories();
+            const optionsHtml = categories.map((category) => {
+                const count = Math.max(0, Number(counts[category]) || 0);
+                const label = `${REQUEST_TAB_LABELS[category]} (${formatRequestTabCount(count)})`;
+                return `<option value="${category}"${activeReqTab === category ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+            }).join('');
+            toolbar.innerHTML = `<label class="workflow-control workflow-control--category"><span>Category</span><select id="request-category-select" onchange="return setReqTab(this.value)" aria-label="Queue category">${optionsHtml}</select></label>${extraControlsHtml}`;
+            toolbar.dataset.toolbarSingleRow = 'true';
+            return true;
+        }
+
         function normalizeRequestTabValue(tab = activeReqTab) {
             const access = getRoleAccessState();
             const requested = String(tab || '').trim().toLowerCase();
@@ -32127,6 +32155,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (avCheckTab) avCheckTab.classList.toggle('active', activeReqTab === 'av-check');
             if (shearListTab) shearListTab.classList.toggle('active', activeReqTab === 'shear-list');
             updateRequestTabButtonLabels();
+            renderRequestCategoryToolbar();
         }
 
         function forcePendingRequestRoot(options = {}) {
@@ -37581,6 +37610,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 let searchRenderFrame = {};
 let searchRenderTimer = {};
 let searchRenderLastTerm = {};
+let searchMonitoringStartedAt = {};
 let searchRenderToken = {};
 let avTopControlsRenderTimer = null;
 let avTopControlsRenderFrame = null;
@@ -47727,6 +47757,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         function scheduleSearchRender(key, renderFn, term = null, options = {}) {
             const safeKey = String(key || 'search');
+            const monitoringNow = (window.performance && typeof window.performance.now === 'function') ? window.performance.now() : Date.now();
+            const previousMonitoringStart = Number(searchMonitoringStartedAt[safeKey] || 0);
+            if (previousMonitoringStart && window.__gncOpsPilot && typeof window.__gncOpsPilot.recordPerformance === 'function') {
+                window.__gncOpsPilot.recordPerformance('search', { durationMs: Math.max(0, monitoringNow - previousMonitoringStart), cancelled: true });
+            }
+            searchMonitoringStartedAt[safeKey] = monitoringNow;
             if (Object.keys(searchRenderLastTerm || {}).length > LONG_SESSION_CACHE_LIMIT || Object.keys(searchRenderToken || {}).length > LONG_SESSION_CACHE_LIMIT) {
                 scheduleAppSessionHousekeeping('search-render-state', 900);
             }
@@ -47771,6 +47807,12 @@ function toggleDriveQuickRequestItem(domId) {
                         const searchRenderStartedAt = beginInternalPerfMeasure();
                         renderFn();
                         recordInternalPerfDuration('searchRenderDurations', searchRenderStartedAt, safeKey);
+                        const monitoringStart = Number(searchMonitoringStartedAt[safeKey] || 0);
+                        if (monitoringStart && window.__gncOpsPilot && typeof window.__gncOpsPilot.recordPerformance === 'function') {
+                            const monitoringEnd = (window.performance && typeof window.performance.now === 'function') ? window.performance.now() : Date.now();
+                            window.__gncOpsPilot.recordPerformance('search', { durationMs: Math.max(0, monitoringEnd - monitoringStart), cancelled: false });
+                            if (Number(searchRenderToken[safeKey] || 0) === renderToken) delete searchMonitoringStartedAt[safeKey];
+                        }
                     }, 0, typingDelay, {
                         allowWhileTyping,
                         allowWhileTouching,
@@ -52233,10 +52275,21 @@ function toggleDriveQuickRequestItem(domId) {
             return `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-dock-filter-shell="columns"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full ${buttonTone} px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] shadow-sm sm:px-3 sm:text-[10px]" ${buildExcelFilterFastAttrs('openDockColumnFilterWindow')}><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Filter</span><span class="task-top-control-summary mt-1 truncate text-[9px] font-bold normal-case tracking-normal text-slate-500" data-dock-column-summary>${escapeHtml(getDockColumnFilterSummaryLabel())}</span></span><i class="ph-bold ph-sliders-horizontal text-xs opacity-80"></i></button></div>`;
         }
 
+        function buildDockModeFilterControlHtml() {
+            const access = getRoleAccessState();
+            const mistakeCount = getDockMistakeQueueCards().length;
+            const dropOffCount = getDockDropOffQueueCards().length;
+            const restrictedOptions = access.isRep ? '' : `
+                <option value="mistakes"${dockViewMode === 'mistakes' ? ' selected' : ''}>Mistake (${mistakeCount})</option>
+                <option value="dropoff"${dockViewMode === 'dropoff' ? ' selected' : ''}>Drop Off (${dropOffCount})</option>`;
+            return `<label class="workflow-control workflow-control--mode" data-dock-filter-shell="mode"><span>Mode</span><select id="dock-mode-select" onchange="return setDockViewMode(this.value)" aria-label="Dock mode"><option value="docks"${dockViewMode === 'docks' ? ' selected' : ''}>Docks</option>${restrictedOptions}</select></label>`;
+        }
+
         function ensureDockFilterControlsShell(controls) {
             if (!controls || controls.dataset.docksFiltersReady === '1') return;
             controls.dataset.docksFiltersReady = '1';
             controls.innerHTML = `<div class="docks-filter-row">
+                ${buildDockModeFilterControlHtml()}
                 ${buildDockFilterControlHtml('rep', 'Rep', 'data-dock-rep-summary', 'data-dock-rep-panel', 'data-dock-rep-options', 'data-dock-rep-clear onclick="return selectAllDockRepFilters()"', 'dock-rep-search', dockRepSearchTerm, 'Search rep...', 'setDockRepSearchTerm', 'handleDockRepSearchKeydown', 'toggleDockRepDropdown', 'ph-bold ph-user')}
                 ${buildDockFilterControlHtml('customer', 'Customer', 'data-dock-customer-summary', 'data-dock-customer-panel', 'data-dock-customer-options', 'data-dock-customer-clear onclick="return selectAllDockCustomerFilters()"', 'dock-customer-search', dockCustomerSearchTerm, 'Search customer...', 'setDockCustomerSearchTerm', 'handleDockCustomerSearchKeydown', 'toggleDockCustomerDropdown', 'ph-bold ph-storefront')}
                 ${buildDockColumnFilterControlHtml()}
@@ -52273,8 +52326,9 @@ function toggleDriveQuickRequestItem(domId) {
 
         function updateDockFilterControlsUi(state, controls) {
             if (!controls) return;
-            controls.classList.toggle('hidden', dockViewMode !== 'docks');
-            if (dockViewMode !== 'docks') return;
+            controls.classList.remove('hidden');
+            const modeSelect = controls.querySelector('#dock-mode-select');
+            if (modeSelect && modeSelect.value !== dockViewMode) modeSelect.value = dockViewMode;
             updateDockFilterPanelUi(controls, {
                 summarySelector: '[data-dock-rep-summary]',
                 panelSelector: '[data-dock-rep-panel]',
@@ -52325,8 +52379,7 @@ function toggleDriveQuickRequestItem(domId) {
             const controls = document.getElementById('docks-filter-controls');
             dockFilterItemsCache = Array.isArray(baseItems) ? baseItems : [];
             clearRemovedDockTopFilterState();
-            if (controls) controls.classList.toggle('hidden', dockViewMode !== 'docks');
-            if (dockViewMode !== 'docks') return;
+            if (controls) controls.classList.remove('hidden');
             ensureDockFilterControlsShell(controls);
             const state = buildDockFilterState(dockFilterItemsCache);
             const renderSignature = [
@@ -52338,6 +52391,7 @@ function toggleDriveQuickRequestItem(domId) {
                 String(dockCustomerSearchTerm || '').trim(),
                 dockRepFilterOpen ? 'rep-open' : 'rep-closed',
                 dockCustomerFilterOpen ? 'customer-open' : 'customer-closed',
+                dockViewMode,
                 buildDockColumnFilterStateKey(),
                 dockColumnFilterDropdownOpen ? 'columns-open' : 'columns-closed'
             ].join('|');
@@ -52873,7 +52927,23 @@ function toggleDriveQuickRequestItem(domId) {
             const mistakeBtn = document.getElementById('dock-mode-btn-mistakes');
             const dropOffBtn = document.getElementById('dock-mode-btn-dropoff');
             const filterControls = document.getElementById('docks-filter-controls');
-            if (filterControls) filterControls.classList.toggle('hidden', dockViewMode !== 'docks');
+            if (filterControls) {
+                filterControls.classList.remove('hidden');
+                ensureDockFilterControlsShell(filterControls);
+                const modeSelect = filterControls.querySelector('#dock-mode-select');
+                if (modeSelect && document.activeElement !== modeSelect) {
+                    const access = getRoleAccessState();
+                    const options = [`<option value="docks"${dockViewMode === 'docks' ? ' selected' : ''}>Docks</option>`];
+                    if (!access.isRep) {
+                        const mistakeCount = getDockMistakeQueueCards().length;
+                        const dropOffCount = getDockDropOffQueueCards().length;
+                        options.push(`<option value="mistakes"${dockViewMode === 'mistakes' ? ' selected' : ''}>Mistake (${mistakeCount})</option>`);
+                        options.push(`<option value="dropoff"${dockViewMode === 'dropoff' ? ' selected' : ''}>Drop Off (${dropOffCount})</option>`);
+                    }
+                    modeSelect.innerHTML = options.join('');
+                    modeSelect.value = dockViewMode;
+                }
+            }
             if (docksBtn) {
                 const isActive = dockViewMode === 'docks';
                 docksBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-green-200 bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}`;
@@ -53197,6 +53267,48 @@ function toggleDriveQuickRequestItem(domId) {
             chat: []
         });
 
+        const HOME_MODULE_REGISTRY = Object.freeze([
+            { view: 'drive', label: 'Drive Mode', icon: 'ph-car', action: "switchView('drive')" },
+            { view: 'tasks', label: 'My Tasks', icon: 'ph-clipboard-text', action: "switchView('tasks')" },
+            { view: 'docks', label: 'Docks', icon: 'ph-truck', action: "switchView('docks')" },
+            { view: 'request', label: 'Que', icon: 'ph-list-checks', action: "switchView('request')" },
+            { view: 'communication', label: 'Communication', icon: 'ph-chat-circle-dots', action: "switchView('communication')" },
+            { view: 'sales', label: 'Sales', icon: 'ph-handshake', action: "switchView('sales')" },
+            { view: 'crop-roll', label: 'Crop Roll', icon: 'ph-plant', action: "switchView('crop-roll')" },
+            { view: 'managers', label: 'Managers', icon: 'ph-users-three', action: "switchView('managers')" },
+            { view: 'building', label: 'Building', icon: 'ph-hammer', action: "switchView('building')" },
+            { view: 'qc', label: 'QC', icon: 'ph-shield-check', action: "switchView('qc')" },
+            { view: 'take-back', label: 'Take Back', icon: 'ph-arrow-u-up-left', action: "switchView('take-back')" },
+            { view: 'av', label: 'AV', icon: 'ph-notebook', action: "switchView('av')" },
+            { view: 'reserves', label: 'Reserves', icon: 'ph-package', action: "switchView('reserves')" },
+            { view: 'office', label: 'Office', icon: 'ph-buildings', action: "switchView('office')" },
+            { view: 'sales-inventory', label: 'Inventory', icon: 'ph-storefront', action: 'openInventoryHubView()' },
+            { view: 'production', label: 'Production', icon: 'ph-plant', action: "switchView('production')" },
+            { view: 'disease-pest', label: 'Disease & Pest', icon: 'ph-first-aid', action: "switchView('disease-pest')" },
+            { view: 'sales-office', label: 'Sales Office', icon: 'ph-briefcase', action: 'openSalesOfficeView()' },
+            { view: 'moves', label: 'Location Move', icon: 'ph-map-pin-line', action: 'openDrawerMovesView()' },
+            { view: 'reports', label: 'Reports', icon: 'ph-chart-bar', action: "switchView('reports')" },
+            { view: 'hours', label: 'Labor Hours', icon: 'ph-clock', action: "switchView('hours')" },
+            { view: 'low-stock', label: 'NCR', icon: 'ph-warning-circle', action: "switchView('low-stock')" },
+            { view: 'review', label: 'New Crop Release', icon: 'ph-sparkle', action: "switchView('review')" },
+            { view: 'move-up', label: 'Move Up', icon: 'ph-arrow-up', action: "switchView('move-up')" },
+            { view: 'advertisement', label: 'Advertisement', icon: 'ph-megaphone', action: "switchView('advertisement')" },
+            { view: 'grower', label: 'Grower', icon: 'ph-leaf', action: "switchView('grower')" },
+            { view: 'pest-management', label: 'Pest Management', icon: 'ph-bug', action: "switchView('pest-management')" }
+        ]);
+
+        function ensureHomeModuleRegistry() {
+            const grid = document.getElementById('home-dashboard-grid');
+            if (!grid || grid.dataset.homeRegistryRelease === '15') return grid;
+            grid.dataset.homeRegistryRelease = '15';
+            grid.innerHTML = HOME_MODULE_REGISTRY.map((module) => `
+                <button type="button" id="home-tile-${module.view}" class="home-module-tile hidden" data-home-module-view="${module.view}" onclick="${module.action}" aria-label="Open ${module.label}">
+                    <i class="ph ${module.icon}" aria-hidden="true"></i>
+                    <span>${module.label}</span>
+                </button>`).join('');
+            return grid;
+        }
+
         function normalizeRoleAccessToken(value = '') {
             return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, '');
         }
@@ -53513,6 +53625,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function syncRoleAccessUi(access = getRoleAccessState()) {
+            const homeGrid = ensureHomeModuleRegistry();
             const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
                 const isEvalInventoryUser = !!(access && access.isEval && !access.isAdmin);
@@ -53529,6 +53642,20 @@ function toggleDriveQuickRequestItem(domId) {
             });
             const homeDrawer = document.getElementById('drawer-home-btn');
             if (homeDrawer) homeDrawer.classList.toggle('hidden', isSalesShellAccess(access));
+            let authorizedHomeModules = 0;
+            HOME_MODULE_REGISTRY.forEach((module) => {
+                const tile = document.getElementById(`home-tile-${module.view}`);
+                if (!tile) return;
+                const isAllowed = canAccessView(module.view) && !isSalesShellAccess(access);
+                tile.classList.toggle('hidden', !isAllowed);
+                tile.hidden = !isAllowed;
+                tile.setAttribute('aria-hidden', String(!isAllowed));
+                if (isAllowed) authorizedHomeModules += 1;
+            });
+            if (homeGrid) {
+                homeGrid.dataset.authorizedModuleCount = String(authorizedHomeModules);
+                homeGrid.dataset.renderedModuleCount = String(homeGrid.querySelectorAll('[data-home-module-view]:not([hidden])').length);
+            }
             scheduleHomeDashboardFitSettle('role-access-ui');
         }
         function isDrawerOpen() {
@@ -77900,9 +78027,57 @@ function toggleDriveQuickRequestItem(domId) {
             scheduleDeferredCardPhotoHydration(container);
             return;
         }
-        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); if (dockViewMode === 'docks') { dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; } scheduleTrackedSearchViewRender('docks', 'docks', '', { force: true, skipDebounce: true, typingDelay: 80, allowWhileTyping: true }); }
-        function handleDocksSearch(){ const input=document.getElementById('docks-search'); const term=input ? input.value.toLowerCase() : ''; const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){if(clearBtn)clearBtn.classList.remove('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;}else{if(clearBtn)clearBtn.classList.add('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;} const touchOptimized=isIOSDevice()||isStandaloneApp()||(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches); scheduleTrackedSearchViewRender('docks', 'docks', term, { debounceDelay: touchOptimized ? 180 : 110, typingDelay: touchOptimized ? 260 : 170, allowWhileTyping: false, allowDuringExtendedBlock: false }); }
-        function resetDockView(shouldRender = true) { dockViewMode = 'docks'; selectedDockIssueUid = null; selectedDockIssueAllocationId = ''; dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); updateDockModeToggleUi(); if (shouldRender) scheduleDocksRender(0); }
+        function clearDocksSearch(){
+            const input = document.getElementById('docks-search');
+            if (input) input.value = '';
+            const clearButton = document.getElementById('docks-search-clear');
+            if (clearButton) clearButton.classList.add('hidden');
+            const restore = docksSearchRestoreState;
+            docksSearchRestoreState = null;
+            if (restore) {
+                dockViewMode = restore.dockViewMode || 'docks';
+                dockViewLevel = Number(restore.dockViewLevel || 0);
+                selectedDockNum = restore.selectedDockNum || null;
+                selectedDockStop = restore.selectedDockStop || null;
+            }
+            scheduleTrackedSearchViewRender('docks', 'docks', '', { force: true, skipDebounce: true, typingDelay: 0, allowWhileTyping: true });
+            if (restore) requestAnimationFrame(() => {
+                const scrollArea = document.getElementById('main-scroll-area');
+                if (scrollArea) scrollArea.scrollTop = Math.max(0, Number(restore.scrollTop || 0));
+            });
+            return false;
+        }
+        function handleDocksSearch(event){
+            const input = document.getElementById('docks-search');
+            const term = input ? String(input.value || '') : '';
+            const clearButton = document.getElementById('docks-search-clear');
+            if (clearButton) clearButton.classList.toggle('hidden', !term);
+            if (event && event.isComposing) return false;
+            if (term && !docksSearchRestoreState) {
+                const scrollArea = document.getElementById('main-scroll-area');
+                docksSearchRestoreState = {
+                    dockViewMode,
+                    dockViewLevel,
+                    selectedDockNum,
+                    selectedDockStop,
+                    scrollTop: scrollArea ? Number(scrollArea.scrollTop || 0) : 0
+                };
+            }
+            if (!term) return clearDocksSearch();
+            if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel = 0;
+            scheduleTrackedSearchViewRender('docks', 'docks', term, {
+                debounceDelay: 100,
+                typingDelay: 0,
+                allowWhileTyping: true,
+                allowDuringExtendedBlock: true,
+                allowDuringLiveGesture: true,
+                allowWhileTouching: true,
+                allowWhileScrolling: true,
+                maxDeferMs: 240
+            });
+            return false;
+        }
+        function resetDockView(shouldRender = true) { docksSearchRestoreState = null; dockViewMode = 'docks'; selectedDockIssueUid = null; selectedDockIssueAllocationId = ''; dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); updateDockModeToggleUi(); if (shouldRender) scheduleDocksRender(0); }
         function selectDock(dock) {
             const normalizedDock = normalizeDockViewDockKey(dock);
             return runDirectTrackedNavigation('docks', `dock:${normalizedDock}`, () => {
@@ -97389,17 +97564,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const gridColsClass = precisionSearch
                 ? (canFilterAssigned ? 'md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]' : 'md:grid-cols-[minmax(0,1fr)_auto]')
                 : (canFilterAssigned ? 'md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)_auto]' : 'md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]');
-            return `<div class="mb-3 grid grid-cols-1 gap-2 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm ${gridColsClass}">
-                ${commonSearchHtml}
-                ${assignedFilterHtml}
-                <label class="block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Dock
-                    <select id="request-suspend-tag-dock-filter" class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[15px] font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()">
-                        <option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeAssignedItems.length))})</option>
-                        ${dockOptionsHtml}
-                    </select>
-                </label>
-                <div id="request-suspend-tag-filter-count" class="flex min-h-[46px] flex-col justify-center rounded-xl border border-emerald-100 bg-emerald-50 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(countLabel)}${totalLabel}</div>
-            </div>`;
+            const dockFilterHtml = `<label class="workflow-control"><span>Dock</span>
+                <select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()">
+                    <option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeAssignedItems.length))})</option>
+                    ${dockOptionsHtml}
+                </select>
+            </label>`;
+            const assignedToolbarHtml = assignedFilterHtml
+                .replace('class="block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"', 'class="workflow-control"')
+                .replace(/ class="mt-1 min-h-\[46px\][^"]+"/, '');
+            const countHtml = `<div id="request-suspend-tag-filter-count" class="workflow-control-count">${escapeHtml(countLabel)}${totalLabel}</div>`;
+            renderRequestCategoryToolbar(`${assignedToolbarHtml}${dockFilterHtml}${countHtml}`);
+            return '';
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], visibleItems = []) {
@@ -99837,9 +100013,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             bumpChunkRenderTokenByKey('request-main');
 
             const baseRequestItems = getScopedRequestItems(requestsInventory);
-            renderRequestDylanViewerFilterPanel(baseRequestItems);
-            const requestFilterSuffix = getRequestDylanViewerFilterCrumbSuffix();
-            const filteredRequestItems = getRequestDylanFilteredRequestItems(baseRequestItems);
+            const legacyViewerPanel = document.getElementById('request-dylan-filter-panel');
+            if (legacyViewerPanel) {
+                legacyViewerPanel.innerHTML = '';
+                legacyViewerPanel.classList.add('hidden');
+            }
+            const requestFilterSuffix = '';
+            const filteredRequestItems = baseRequestItems;
             const reconciledRequestState = reconcileRequestDrillState(filteredRequestItems);
             if (reconciledRequestState.changed) syncRequestHeaderSearchChrome({ forceHeader: true });
             let items = reconciledRequestState.items;
@@ -126014,11 +126194,16 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveUniversalSearchResultsOnly() {
             const term = getDriveSearchTerm();
-            if (!term || activeDriveMode !== 'ok') return false;
+            if (!term || activeDriveMode !== 'ok') {
+                const inactiveContainer = document.getElementById('drive-content');
+                if (inactiveContainer && inactiveContainer.dataset) delete inactiveContainer.dataset.driveDetailedRecords;
+                return false;
+            }
             const container = document.getElementById('drive-content');
             const crumb = document.getElementById('drive-crumb');
             const filtersDiv = document.getElementById('drive-season-filters');
             if (!container || !crumb) return false;
+            container.dataset.driveDetailedRecords = 'true';
             captureDriveStateBeforeUniversalSearch();
             const state = buildDriveUniversalSearchState(term);
             const { baseItems, drivePlantFilterState, finalItems, cacheKey } = state;

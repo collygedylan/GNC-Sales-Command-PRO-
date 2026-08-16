@@ -15,4 +15,6 @@ rollback-backup-*/
 tmp-video-frames*/
 node_modules/
 v2/dist/
+test-results/
+playwright-report/
 
