@@ -187,6 +187,43 @@ async function getGoogleAccessToken(serviceAccount) {
   return body.access_token;
 }
 
+export function extractClaspCredentials(claspRc) {
+  const tokens = claspRc?.tokens && typeof claspRc.tokens === 'object' ? claspRc.tokens : {};
+  const mappedToken = tokens.default && typeof tokens.default === 'object'
+    ? tokens.default
+    : Object.values(tokens).find((candidate) => candidate && typeof candidate === 'object' && candidate.refresh_token);
+  const token = claspRc?.token || (tokens.refresh_token ? tokens : mappedToken) || {};
+  const settings = claspRc?.oauth2ClientSettings || claspRc?.oauth2Client || {};
+  return {
+    clientId: String(settings.clientId || settings.client_id || token.client_id || '').trim(),
+    clientSecret: String(settings.clientSecret || settings.client_secret || token.client_secret || '').trim(),
+    refreshToken: String(token.refresh_token || '').trim()
+  };
+}
+
+async function getGoogleAccessTokenFromClasp(claspRc) {
+  const credentials = extractClaspCredentials(claspRc);
+  if (!credentials.clientId || !credentials.clientSecret || !credentials.refreshToken) {
+    const error = new Error('Apps Script OAuth secret is missing client ID, client secret, or refresh token.');
+    error.code = 'google_oauth_credentials_incomplete';
+    throw error;
+  }
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
+      refresh_token: credentials.refreshToken,
+      grant_type: 'refresh_token'
+    })
+  });
+  if (!response.ok) throw new Error(`Google OAuth refresh ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  const body = await response.json();
+  if (!body.access_token) throw new Error('Google OAuth refresh returned no access token.');
+  return body.access_token;
+}
+
 async function driveFetch(accessToken, url, options = {}) {
   return retry('Google Drive request', async () => {
     const response = await fetch(url, {
@@ -398,8 +435,9 @@ async function main() {
   const supabaseUrl = String(process.env.SUPABASE_URL || '').trim();
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const serviceAccountRaw = String(process.env.GDRIVE_SERVICE_ACCOUNT_JSON || '').trim();
-  if (!supabaseUrl || !serviceRoleKey || !serviceAccountRaw) {
-    throw new Error('SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and GDRIVE_SERVICE_ACCOUNT_JSON are required.');
+  const appsScriptOauthRaw = String(process.env.APPS_SCRIPT_CLASPRC_JSON || '').trim();
+  if (!supabaseUrl || !serviceRoleKey || !serviceAccountRaw && !appsScriptOauthRaw) {
+    throw new Error('Supabase credentials and one Google Drive credential are required.');
   }
   const driveFolders = Object.fromEntries(Object.entries(DRIVE_FOLDER_ENV).map(([bucket, envName]) => [bucket, String(process.env[envName] || '').trim()]));
   for (const [bucket, folderId] of Object.entries(driveFolders)) if (!folderId) throw new Error(`Missing Drive folder ID for ${bucket}.`);
@@ -407,8 +445,15 @@ async function main() {
   const failedFolderId = String(process.env.GDRIVE_FAILED_FOLDER_ID || '').trim();
   if (!manifestFolderId || !failedFolderId) throw new Error('Drive manifest and failed-job folder IDs are required.');
 
-  const serviceAccount = JSON.parse(serviceAccountRaw);
-  const accessToken = await retry('Google OAuth', () => getGoogleAccessToken(serviceAccount), { attempts: 3, baseMs: 1000 });
+  const serviceAccount = serviceAccountRaw ? JSON.parse(serviceAccountRaw) : null;
+  const claspRc = appsScriptOauthRaw ? JSON.parse(appsScriptOauthRaw) : null;
+  const accessToken = await retry('Google OAuth', () => {
+    if (serviceAccount?.client_email && serviceAccount?.private_key) return getGoogleAccessToken(serviceAccount);
+    if (claspRc) return getGoogleAccessTokenFromClasp(claspRc);
+    const error = new Error('Google Drive service-account secret is not a service-account key and no Apps Script OAuth fallback is configured.');
+    error.code = 'google_credentials_invalid';
+    throw error;
+  }, { attempts: 3, baseMs: 1000 });
   for (const folderId of [...new Set([...Object.values(driveFolders), manifestFolderId, failedFolderId])]) {
     await verifyDriveFolder(accessToken, folderId);
   }

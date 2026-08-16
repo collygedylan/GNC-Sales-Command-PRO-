@@ -2,10 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   determineInvalidReasons,
+  extractClaspCredentials,
   getChicagoSchedule,
   parseStorageObjectUrl,
   splitPhotoLinks
 } from '../scripts/archive-expired-photos.mjs';
+
+test('Apps Script OAuth credentials support the repository clasp secret shape', () => {
+  assert.deepEqual(extractClaspCredentials({
+    tokens: { default: { client_id: 'id', client_secret: 'secret', refresh_token: 'refresh' } }
+  }), { clientId: 'id', clientSecret: 'secret', refreshToken: 'refresh' });
+});
 
 test('Central schedule selects the correct UTC cron across DST', () => {
   assert.equal(getChicagoSchedule(new Date('2026-08-16T12:00:00Z')).expectedGithubCron, '0 6 * * *');
@@ -32,4 +39,3 @@ test('comma-separated master photo links remain individually addressable', () =>
     'https://a.test/two.webp'
   ]);
 });
-
