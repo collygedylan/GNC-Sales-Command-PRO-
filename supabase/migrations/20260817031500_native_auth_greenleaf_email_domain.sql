@@ -51,8 +51,7 @@ where p.id = u.id
   and lower(coalesce(u.email, '')) <> lower(trim(p.username)) || '@greenleafnursery.com';
 
 update auth.identities i
-set email = lower(trim(p.username)) || '@greenleafnursery.com',
-    identity_data = jsonb_set(
+set identity_data = jsonb_set(
       coalesce(i.identity_data, '{}'::jsonb),
       '{email}',
       to_jsonb(lower(trim(p.username)) || '@greenleafnursery.com'),
@@ -90,8 +89,7 @@ $$;
 -- set email = lower(trim(p.username)) || '@auth.agmetricapp.invalid', updated_at = now()
 -- from public.profiles p where p.id = u.id;
 -- update auth.identities i
--- set email = lower(trim(p.username)) || '@auth.agmetricapp.invalid',
---     identity_data = jsonb_set(coalesce(i.identity_data, '{}'::jsonb), '{email}',
+-- set identity_data = jsonb_set(coalesce(i.identity_data, '{}'::jsonb), '{email}',
 --       to_jsonb(lower(trim(p.username)) || '@auth.agmetricapp.invalid'), true),
 --     updated_at = now()
 -- from public.profiles p where p.id = i.user_id and i.provider = 'email';
