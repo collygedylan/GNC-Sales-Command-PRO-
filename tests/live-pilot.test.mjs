@@ -29,17 +29,19 @@ const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.13';
+  const release = 'V2026.08.16.14';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.16.13');
+  assert.equal(packageJson.version, '2026.08.16.14');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
-  assert.match(html, /verifiedUsername && localStorage\.getItem\('gnc_explicit_logout_v1'\) !== '1'/);
+  assert.match(html, /localStorage\.getItem\('gnc_last_appearance_user_v1'\)/);
+  assert.match(html, /\(verifiedLogin && verifiedLogin\.username\) \|\| rememberedAppearanceUser/);
+  assert.doesNotMatch(html, /verifiedUsername && localStorage\.getItem\('gnc_explicit_logout_v1'\) !== '1'/);
   assert.match(html, /const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' \+ verifiedUsername/);
   assert.match(html, /verifiedUsername === 'dylan_collyge' \? \(localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
   assert.match(html, /const prepaintTheme = cachedTheme === 'dark'/);
@@ -50,9 +52,9 @@ test('every verified session restores its user-scoped theme before the app shell
   assert.match(html, /data-ops-prepaint-theme="light"[\s\S]*background:#f3f7f5 !important/);
   assert.match(client, /function clearPrepaintTheme\(\)/);
   assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
-  assert.match(html, /function clearPersistedLoginSession\(\)[\s\S]*removeAttribute\('data-ops-prepaint-theme'\)/);
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
+  assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
   assert.equal(manifest.background_color, '#07874f');
 });
 
@@ -486,7 +488,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081613\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081614\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -515,7 +517,10 @@ test('V16 Home uses one authorization-backed primary module registry and leaves 
 
 test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () => {
   assert.match(html, /id="request-filter-toolbar"[^>]*workflow-control-rail/);
-  assert.match(html, /id="request-category-select"/);
+  assert.match(html, /class="request-category-options" role="group" aria-label="Queue category"/);
+  assert.match(html, /class="request-category-chip/);
+  assert.doesNotMatch(html, /id="request-category-select"/);
+  assert.match(html, /request: 'request-filter-toolbar'/);
   assert.match(html, /function getAuthorizedRequestCategories/);
   assert.match(html, /const filteredRequestItems = baseRequestItems/);
   assert.match(html, /id="dock-mode-select"/);
@@ -659,7 +664,7 @@ test('V09 avoids billable Storage transforms and unifies Columns and Excel contr
   assert.match(html, /ops-view-option-action drive-mode-export-button/);
   assert.match(html, /id="av-export-btn" class="ops-view-option-action/);
   assert.match(html, /id="sales-office-export-btn" class="ops-view-option-action/);
-  const sharedControlCss = css.slice(css.lastIndexOf('V2026.08.16.13 — shared View / Columns / Excel control contract'));
+  const sharedControlCss = css.slice(css.lastIndexOf('V2026.08.16.14 — shared View / Columns / Excel control contract'));
   assert.match(sharedControlCss, /\.ops-view-option-control, \.ops-view-option-action/);
   assert.match(sharedControlCss, /min-height: 44px !important/);
   assert.match(sharedControlCss, /background: var\(--ops-surface\) !important/);
@@ -668,6 +673,7 @@ test('V09 avoids billable Storage transforms and unifies Columns and Excel contr
 
 test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.match(html, /const NATIVE_AUTH_ENABLED = true/);
+  assert.match(html, /const NATIVE_AUTH_ALIAS_DOMAIN = 'greenleafnursery\.com'/);
   assert.match(html, /const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1'/);
   assert.match(html, /navigator\.onLine === false[\s\S]*readCachedNativeAuthProfile\(session\.user\.id\)/);
   assert.match(html, /cacheNativeAuthProfile\(data\)/);
@@ -692,12 +698,14 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.doesNotMatch(authMigration, /create policy profiles_update_safe_self/);
   assert.match(authMigrationTool, /const execute = process\.argv\.includes\('--execute'\)/);
   assert.match(authMigrationTool, /email_confirm: true/);
+  assert.match(authMigrationTool, /@greenleafnursery\.com/);
   assert.match(authMigrationTool, /--sync-existing-passwords/);
   assert.match(authMigrationTool, /admin\.auth\.admin\.updateUserById\(authUser\.id/);
   assert.doesNotMatch(authMigrationTool, /password[^\n]*process\.stdout/);
   assert.match(authAdmin, /admin\.auth\.getUser\(token\)/);
   assert.match(authAdmin, /app_metadata\?\.auth_admin === true/);
   assert.match(authAdmin, /admin\.auth\.admin\.createUser/);
+  assert.match(authAdmin, /@greenleafnursery\.com/);
   assert.match(authAdmin, /admin\.auth\.admin\.updateUserById/);
   assert.doesNotMatch(authAdmin, /readSupabaseOrAppSessionFromRequest/);
 });

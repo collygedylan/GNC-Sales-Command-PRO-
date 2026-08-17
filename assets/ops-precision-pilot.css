@@ -5749,7 +5749,7 @@ body.ops-precision-pilot.request-detail-av-options-open #view-detail.detail-requ
   }
 }
 
-/* V2026.08.16.13 — shared View / Columns / Excel control contract. */
+/* V2026.08.16.14 — shared View / Columns / Excel control contract. */
 body.ops-precision-pilot :is(.ops-view-option-control, .ops-view-option-action) {
   box-sizing: border-box !important;
   min-width: 112px !important;
@@ -5845,5 +5845,324 @@ body.ops-precision-pilot #drive-toolbar-rail :is(.ops-view-option-control, .ops-
 @media (prefers-reduced-motion: reduce) {
   body.ops-precision-pilot :is(.ops-view-option-control, .ops-view-option-action) {
     transition: none !important;
+  }
+}
+
+/* V2026.08.16.14 — sunlight display, remembered first paint, and compact Queue command rail. */
+body.ops-precision-pilot.current-view-request #global-header-search-slot {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-precision-pilot.current-view-request #global-header-search-slot .request-filter-toolbar {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  scrollbar-width: none;
+  scroll-snap-type: inline proximity;
+}
+
+body.ops-precision-pilot.current-view-request #global-header-search-slot .request-filter-toolbar::-webkit-scrollbar,
+body.ops-precision-pilot .request-category-options::-webkit-scrollbar {
+  display: none;
+}
+
+body.ops-precision-pilot .request-category-options {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  height: 44px !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  overflow: visible !important;
+}
+
+body.ops-precision-pilot .request-category-chip {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  min-width: auto !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ops-border-strong) !important;
+  border-radius: 10px !important;
+  color: var(--ops-text-muted) !important;
+  background: var(--ops-surface) !important;
+  box-shadow: none !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+  letter-spacing: .055em !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  scroll-snap-align: start;
+}
+
+body.ops-precision-pilot .request-category-chip.is-active {
+  border-color: var(--ops-brand) !important;
+  color: var(--ops-brand-strong) !important;
+  background: var(--ops-brand-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--ops-brand) !important;
+}
+
+body.ops-precision-pilot .request-category-chip__count {
+  display: inline-flex !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 6px !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 999px !important;
+  color: var(--ops-text-muted) !important;
+  background: var(--ops-surface-strong) !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+}
+
+body.ops-precision-pilot .request-category-chip__count.has-count {
+  border-color: #ff5c64 !important;
+  color: #fff !important;
+  background: #e93f49 !important;
+}
+
+body.ops-precision-pilot.current-view-request #global-header-search-slot .request-filter-toolbar > .workflow-control {
+  flex: 0 0 clamp(148px, 18vw, 220px) !important;
+  min-width: clamp(148px, 18vw, 220px) !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 3px 9px !important;
+  border-color: var(--ops-border-strong) !important;
+  border-radius: 10px !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+}
+
+body.ops-precision-pilot.current-view-request #global-header-search-slot .request-filter-toolbar > .workflow-control > span {
+  font-size: 8px !important;
+  line-height: 1 !important;
+}
+
+body.ops-precision-pilot.current-view-request #global-header-search-slot .request-filter-toolbar > .workflow-control select {
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 0 24px 0 0 !important;
+  border: 0 !important;
+  background-color: transparent !important;
+  font-size: 11px !important;
+}
+
+body.ops-precision-pilot.current-view-request #global-header-search-slot .workflow-control-count {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  min-width: 84px !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--ops-border-strong) !important;
+  border-radius: 10px !important;
+  color: var(--ops-text-muted) !important;
+  background: var(--ops-surface) !important;
+  white-space: nowrap !important;
+}
+
+body.ops-precision-pilot.current-view-request #view-request > .freeze-panel.ops-module-filter-band {
+  min-height: 0 !important;
+  margin: 0 0 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot.current-view-request #view-request > .freeze-panel :is(.task-tabs, #request-dylan-filter-panel) {
+  display: none !important;
+}
+
+body.ops-precision-pilot.current-view-request #request-crumb {
+  margin: 0 !important;
+}
+
+body.ops-precision-pilot #view-request :is(.request-swipe-row, .request-swipe-surface) {
+  border-color: var(--ops-border) !important;
+  background: var(--ops-surface) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #view-request :is(.request-swipe-row, .request-swipe-surface, .request-swipe-row > div:first-child) {
+  color: var(--ops-text) !important;
+  background: #0d1a15 !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #view-request .request-swipe-row {
+  border: 1px solid var(--ops-border) !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot {
+  --field-canvas: #eff9f3;
+  --field-surface: #ffffff;
+  --field-surface-strong: #e0f5e8;
+  --field-text: #06150e;
+  --field-muted: #29473a;
+  --field-border: #057a4c;
+  --field-accent: #006f45;
+  --ops-canvas: var(--field-canvas);
+  --ops-surface: var(--field-surface);
+  --ops-surface-muted: #f4fbf7;
+  --ops-surface-strong: var(--field-surface-strong);
+  --ops-text: var(--field-text);
+  --ops-text-muted: var(--field-muted);
+  --ops-border: rgba(5, 122, 76, .66);
+  --ops-border-strong: var(--field-border);
+  --ops-brand: var(--field-accent);
+  --ops-brand-strong: #004f31;
+  --ops-brand-soft: #d9f5e5;
+  --ops-focus: #005fcc;
+  color-scheme: light;
+}
+
+html.outdoor-mode body.ops-precision-pilot[data-ops-theme="dark"] {
+  --field-canvas: #020b07;
+  --field-surface: #0a1711;
+  --field-surface-strong: #123225;
+  --field-text: #ffffff;
+  --field-muted: #c2d9cf;
+  --field-border: #5df0ad;
+  --field-accent: #36e79b;
+  --ops-canvas: var(--field-canvas);
+  --ops-surface: var(--field-surface);
+  --ops-surface-muted: #0d2018;
+  --ops-surface-strong: var(--field-surface-strong);
+  --ops-text: var(--field-text);
+  --ops-text-muted: var(--field-muted);
+  --ops-border: rgba(93, 240, 173, .7);
+  --ops-border-strong: var(--field-border);
+  --ops-brand: var(--field-accent);
+  --ops-brand-strong: #8fffc9;
+  --ops-brand-soft: #123d2d;
+  --ops-focus: #9ac5ff;
+  color-scheme: dark;
+}
+
+html.outdoor-mode body.ops-precision-pilot {
+  color: var(--field-text) !important;
+  background: var(--field-canvas) !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot[data-ops-theme="light"] #app-top-chrome .nav-header {
+  border-bottom: 2px solid #9af0bd !important;
+  background: #006b45 !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot[data-ops-theme="dark"] #app-top-chrome .nav-header {
+  border-bottom: 2px solid var(--field-border) !important;
+  background: #032118 !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot :is(#app-wrapper, #main-scroll-area, #view-wrapper) {
+  color: var(--field-text) !important;
+  background: var(--field-canvas) !important;
+  background-image: none !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot :is(
+  .app-smart-card,
+  .app-card-shell,
+  .inv-card,
+  .item-row,
+  .drill-item,
+  .freeze-panel,
+  .task-top-control-shell,
+  .drive-filter-shell,
+  .av-filter-shell,
+  .crop-roll-filter-shell,
+  .manager-crop-roll-review-filter-shell,
+  .request-swipe-row,
+  .request-swipe-surface
+) {
+  border-color: var(--field-border) !important;
+  color: var(--field-text) !important;
+  background: var(--field-surface) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea, button) {
+  border-color: var(--field-border) !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  color: var(--field-text) !important;
+  background: var(--field-surface) !important;
+  box-shadow: none !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot :is(.overview-label, .task-top-control-title, .text-slate-400, .text-slate-500, .text-gray-400, .text-gray-500) {
+  color: var(--field-muted) !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot :is(.overview-val, .task-top-control-summary, .text-slate-700, .text-slate-800, .text-gray-700, .text-gray-800) {
+  color: var(--field-text) !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot[data-ops-theme="dark"] :is(.bg-white, .bg-slate-50, .bg-gray-50, .bg-emerald-50, .bg-green-50) {
+  color: var(--field-text) !important;
+  background: var(--field-surface) !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot :is(.footer-nav-btn, .request-category-chip, .workflow-control) {
+  font-weight: 900 !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot #bottom-nav {
+  border-color: var(--field-border) !important;
+  color: var(--field-muted) !important;
+  background: var(--field-surface) !important;
+  box-shadow: none !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot #bottom-nav .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]) {
+  border-color: var(--field-border) !important;
+  color: var(--field-text) !important;
+  background: var(--field-surface-strong) !important;
+}
+
+@media (max-width: 640px) {
+  body.ops-precision-pilot.current-view-request #global-header-search-row {
+    padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)) !important;
+  }
+
+  body.ops-precision-pilot.current-view-request #global-header-search-slot .request-filter-toolbar {
+    gap: 6px !important;
+  }
+
+  body.ops-precision-pilot .request-category-chip {
+    padding-inline: 10px !important;
+  }
+
+  body.ops-precision-pilot.current-view-request #view-request {
+    padding-inline: 0 !important;
   }
 }

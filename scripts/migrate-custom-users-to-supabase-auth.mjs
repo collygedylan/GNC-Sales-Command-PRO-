@@ -64,7 +64,7 @@ function authAlias(username) {
     .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/^[.-]+|[.-]+$/g, '');
   if (!localPart) throw new Error('Cannot generate an Auth alias for an empty username.');
-  return `${localPart}@auth.agmetricapp.invalid`;
+  return `${localPart}@greenleafnursery.com`;
 }
 
 async function listAuthUsers() {

@@ -22,7 +22,7 @@ const browser = createClient(url, publishableKey, {
 });
 
 const nonce = crypto.randomBytes(12).toString('hex');
-const email = `native-bridge-smoke-${nonce}@auth.agmetricapp.invalid`;
+const email = `native-bridge-smoke-${nonce}@greenleafnursery.com`;
 const username = `native_bridge_smoke_${nonce}`;
 const password = `T3st-${crypto.randomBytes(18).toString('base64url')}`;
 let userId = '';

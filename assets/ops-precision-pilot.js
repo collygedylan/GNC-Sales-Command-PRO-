@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.16.13';
+  const RELEASE = 'V2026.08.16.14';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';
   const LEGACY_PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';

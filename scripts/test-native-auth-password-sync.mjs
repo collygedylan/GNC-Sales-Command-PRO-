@@ -22,7 +22,7 @@ const createBrowser = () => createClient(url, publishableKey, {
 
 const nonce = crypto.randomBytes(12).toString('hex');
 const username = `native_password_sync_${nonce}`;
-const email = `${username}@auth.agmetricapp.invalid`;
+const email = `${username}@greenleafnursery.com`;
 const originalPassword = `Original-${crypto.randomBytes(18).toString('base64url')}`;
 const nextPassword = `Updated-${crypto.randomBytes(18).toString('base64url')}`;
 let authUserId = '';

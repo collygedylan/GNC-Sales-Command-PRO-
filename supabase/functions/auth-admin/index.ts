@@ -29,7 +29,7 @@ function authAlias(username: string) {
     .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/^[.-]+|[.-]+$/g, "");
   if (!localPart) throw new Error("invalid_username");
-  return `${localPart}@auth.agmetricapp.invalid`;
+  return `${localPart}@greenleafnursery.com`;
 }
 
 async function requireNativeAuthAdmin(req: Request) {

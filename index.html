@@ -11,14 +11,14 @@
     <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081613.min.css?v=V2026.08.16.13">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081614.min.css?v=V2026.08.16.14">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.16.13';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -32,8 +32,9 @@
             } catch (error) {}
             try {
                 const verifiedLogin = JSON.parse(localStorage.getItem('gnc_verified_login_v1') || 'null');
-                const verifiedUsername = String(verifiedLogin && verifiedLogin.username || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-                if (verifiedUsername && localStorage.getItem('gnc_explicit_logout_v1') !== '1') {
+                const rememberedAppearanceUser = localStorage.getItem('gnc_last_appearance_user_v1') || '';
+                const verifiedUsername = String((verifiedLogin && verifiedLogin.username) || rememberedAppearanceUser || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+                if (verifiedUsername) {
                     const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' + verifiedUsername;
                     const scopedPreferences = localStorage.getItem(scopedPreferenceKey) || '';
                     const legacyPreferences = verifiedUsername === 'dylan_collyge' ? (localStorage.getItem('gnc_ops_precision_preferences_v1') || '') : '';
@@ -6559,7 +6560,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.13">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.14">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -6662,7 +6663,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.13"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.14"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7415,8 +7416,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.13').trim() || 'V2026.08.16.13';</script>
-                            <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.14').trim() || 'V2026.08.16.14';</script>
+                            <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -7467,7 +7468,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
             <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-duotone ph-house"></i> Home</div>
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-duotone ph-arrows-clockwise"></i> Force Data Sync</div>
-            <div id="drawer-outdoor-mode-btn" class="drawer-item text-emerald-700 font-bold" onclick="return toggleOutdoorMode()" role="button" aria-pressed="false"><i class="ph-duotone ph-sun"></i> <span id="drawer-outdoor-mode-label">Field Mode Off</span></div>
+            <div id="drawer-outdoor-mode-btn" class="drawer-item text-emerald-700 font-bold" onclick="return toggleOutdoorMode()" role="button" aria-pressed="false"><i class="ph-duotone ph-sun"></i> <span id="drawer-outdoor-mode-label">Outdoor Mode Off</span></div>
             <div id="drawer-enable-push-btn" class="drawer-item text-blue-600 font-bold" onclick="manuallyEnablePushNotifications(); toggleMenu();"><i class="ph-duotone ph-bell-ringing"></i> Enable Notifications</div>
             <div id="drawer-communication-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('communication'); toggleMenu();"><i class="ph-duotone ph-chat-circle-dots"></i> Communication</div>
             <div id="drawer-sales-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('sales'); toggleMenu();"><i class="ph-duotone ph-handshake"></i> Sales</div>
@@ -8894,7 +8895,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8916,7 +8917,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         // password-parity reconciliation, and dual-auth workflow checks passed.
         const NATIVE_AUTH_ENABLED = true;
         const LEGACY_SESSION_BRIDGE_ENABLED = true;
-        const NATIVE_AUTH_ALIAS_DOMAIN = 'auth.agmetricapp.invalid';
+        const NATIVE_AUTH_ALIAS_DOMAIN = 'greenleafnursery.com';
         const PASSKEY_ENROLLED_STORAGE_KEY = 'gnc_passkey_enrolled_v1';
         const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1';
         let nativeAuthSessionActive = false;
@@ -9402,7 +9403,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const PHOTO_MAX_WIDTH = 1920;
         const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081613.js';
+        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081614.js';
         let photoOptimizerWorker = null;
         let photoOptimizerRequestId = 0;
         const photoOptimizerPending = new Map();
@@ -26543,8 +26544,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             ].forEach((key) => {
                 try { localStorage.removeItem(key); } catch (error) {}
             });
-            document.documentElement.removeAttribute('data-ops-prepaint-theme');
-            document.documentElement.style.removeProperty('color-scheme');
         }
 
         function primeOpsPilotAppearanceForVerifiedUser(username = '') {
@@ -26552,11 +26551,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ? normalizeSessionIdentity(username)
                 : String(username || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
             const pilot = window.__gncOpsPilot;
-            if (!normalizedUsername || !pilot || typeof pilot.primeCachedAppearance !== 'function') {
-                document.documentElement.removeAttribute('data-ops-prepaint-theme');
-                document.documentElement.style.removeProperty('color-scheme');
-                return false;
-            }
+            if (!normalizedUsername || !pilot || typeof pilot.primeCachedAppearance !== 'function') return false;
+            try { localStorage.setItem('gnc_last_appearance_user_v1', normalizedUsername); } catch (error) {}
             return pilot.primeCachedAppearance({
                 userKey: normalizedUsername,
                 activeView: typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : 'home'
@@ -29823,7 +29819,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.13').trim() || 'V2026.08.16.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.14').trim() || 'V2026.08.16.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29850,7 +29846,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (headerToggle) {
                 headerToggle.classList.toggle('active', enabled);
                 headerToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-                headerToggle.title = enabled ? 'Field Mode On' : 'Field Mode Off';
+                headerToggle.title = enabled ? 'Outdoor Mode On' : 'Outdoor Mode Off';
             }
 
             const drawerToggle = document.getElementById('drawer-outdoor-mode-btn');
@@ -29860,7 +29856,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
 
             const drawerLabel = document.getElementById('drawer-outdoor-mode-label');
-            if (drawerLabel) drawerLabel.textContent = enabled ? 'Field Mode On' : 'Field Mode Off';
+            if (drawerLabel) drawerLabel.textContent = enabled ? 'Outdoor Mode On' : 'Outdoor Mode Off';
         }
 
         function setOutdoorMode(enabled, options = {}) {
@@ -29869,8 +29865,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             syncOutdoorModeUi();
             if (!options.silent && typeof showToast === 'function') {
                 showToast(
-                    'Field Mode',
-                    outdoorModeEnabled ? 'Outdoor visibility is on for this device.' : 'Field Mode is off for this device.'
+                    'Outdoor Mode',
+                    outdoorModeEnabled ? 'Sunlight-ready contrast is on for this device.' : 'Outdoor Mode is off for this device.'
                 );
             }
             return false;
@@ -30547,7 +30543,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             managers: 'managers-search-container',
             review: 'review-search-container',
             'move-up': 'move-up-search-container',
-            request: 'request-search-container',
+            request: 'request-filter-toolbar',
             tasks: 'tasks-search-container'
         };
 
@@ -32721,12 +32717,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!toolbar) return false;
             const counts = getRequestTabQueueCounts();
             const categories = getAuthorizedRequestCategories();
-            const optionsHtml = categories.map((category) => {
+            const categoryButtonsHtml = categories.map((category) => {
                 const count = Math.max(0, Number(counts[category]) || 0);
-                const label = `${REQUEST_TAB_LABELS[category]} (${formatRequestTabCount(count)})`;
-                return `<option value="${category}"${activeReqTab === category ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+                const active = activeReqTab === category;
+                return `<button type="button" class="request-category-chip${active ? ' is-active' : ''}" data-request-category="${escapeHtml(category)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return setReqTab('${escapeHtml(category)}')"><span>${escapeHtml(REQUEST_TAB_LABELS[category])}</span><span class="request-category-chip__count${count > 0 ? ' has-count' : ''}">${escapeHtml(formatRequestTabCount(count))}</span></button>`;
             }).join('');
-            toolbar.innerHTML = `<label class="workflow-control workflow-control--category"><span>Category</span><select id="request-category-select" onchange="return setReqTab(this.value)" aria-label="Queue category">${optionsHtml}</select></label>${extraControlsHtml}`;
+            toolbar.innerHTML = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}</div>${extraControlsHtml}`;
             toolbar.dataset.toolbarSingleRow = 'true';
             return true;
         }

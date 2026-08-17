@@ -1,12 +1,12 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.08.16.13",
+  "version": "2026.08.16.14",
   "type": "module",
   "scripts": {
     "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
     "build:pilot-monitoring": "esbuild scripts/ops-precision-sentry-entry.js --bundle --format=iife --global-name=GncSentry --minify --outfile=assets/vendor/sentry-browser-10.70.0.min.js",
-    "build:live:css": "tailwindcss -i assets/live-tailwind-source.css -o assets/live-tailwind-v2026081613.min.css --minify",
+    "build:live:css": "tailwindcss -i assets/live-tailwind-source.css -o assets/live-tailwind-v2026081614.min.css --minify",
     "build:live:vendor": "node scripts/vendor-live-assets.mjs && esbuild scripts/live-supabase-entry.js --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=assets/vendor/supabase-browser-2.112.3.min.js",
     "build:live:assets": "npm run build:live:css && npm run build:live:vendor",
     "build:live:shell": "node scripts/build-live-shell.mjs",
@@ -20,7 +20,8 @@
     "build:storybook:v2": "storybook build -c v2/.storybook -o v2/storybook-static",
     "lighthouse:v2": "lhci autorun --config=v2/lighthouserc.json",
     "check:inline": "node scripts/check-inline-scripts.mjs",
-    "test:pilot": "node --test tests/live-pilot.test.mjs"
+    "test:pilot": "node --test tests/live-pilot.test.mjs",
+    "migrate:auth-domain": "node scripts/migrate-native-auth-email-domain.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "5.8.0",

@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 const execute = process.argv.includes('--execute');
 const url = String(process.env.SUPABASE_URL || '').trim();
 const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-const aliasDomain = '@auth.agmetricapp.invalid';
+const aliasDomain = '@greenleafnursery.com';
 
 if (!url || !serviceRoleKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
