@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
-    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026081701.png">
+    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026081702.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081701.min.css?v=V2026.08.17.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081702.min.css?v=V2026.08.17.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.17.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.17.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.17.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.17.02">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.17.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.17.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.17.01').trim() || 'V2026.08.17.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.17.02').trim() || 'V2026.08.17.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8261,7 +8261,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 
                 <div id="view-tasks" class="hidden">
                     <div id="tasks-search-container" class="sticky-search relative mb-2 hidden tasks-search-static">
-                        <input type="text" id="tasks-search-input" class="input-field w-full pr-10 !mb-0" placeholder="Search common name..." oninput="setTaskLocationDetailSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)">
+                        <input type="text" id="tasks-search-input" class="input-field w-full pr-10 !mb-0" placeholder="Search common name..." oninput="setTaskLocationDetailSearchTerm(this.value)" oncompositionstart="beginTaskHeaderSearchComposition()" oncompositionend="endTaskHeaderSearchComposition(this.value)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" enterkeyhint="search">
                         <i id="tasks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="return clearTaskLocationDetailSearch()"></i>
                     </div>
                     <div class="freeze-panel task-controls-sticky ops-module-filter-band">
@@ -8917,7 +8917,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.17.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.17.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9425,7 +9425,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const PHOTO_MAX_WIDTH = 1920;
         const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081701.js';
+        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081702.js';
         let photoOptimizerWorker = null;
         let photoOptimizerRequestId = 0;
         const photoOptimizerPending = new Map();
@@ -9730,6 +9730,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let avSharedFilteredRowsCache = null;
         let taskResolvedStateKey = '';
         let taskResolvedStateCache = null;
+        let taskHeaderSearchRevision = 0;
+        let taskHeaderSearchCommittedRevision = 0;
+        let taskHeaderSearchRequestedAt = 0;
+        let taskHeaderSearchCompositionActive = false;
         let taskScopedQueueItemsCache = new Map();
         let ncrApprovalTaskQueueCacheKey = '';
         let ncrApprovalTaskQueueCacheByView = new Map();
@@ -13573,6 +13577,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const view = document.getElementById('view-tasks');
             const rail = document.querySelector('#view-tasks .task-controls-sticky');
             if (!view || !rail) return;
+            releaseFixedFilterRail(rail);
+            view.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => spacer.remove());
+            rail.style.removeProperty('--freeze-panel-offset');
             view.style.setProperty('--task-filter-fixed-space', '0px');
             rail.style.setProperty('--task-filter-fixed-top', '0px');
         }
@@ -13593,7 +13600,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             } else if (currentViewId === 'crop-roll') {
                 applyStickyRailOffset(document.querySelector('#view-crop-roll .drive-controls-sticky'), globalSearchRow);
             } else if (currentViewId === 'tasks') {
-                applyStickyRailOffset(document.querySelector('#view-tasks .task-controls-sticky'), globalSearchRow);
                 syncTaskFixedFilterToolbar();
             } else if (currentViewId) {
                 const currentView = document.getElementById('view-' + currentViewId);
@@ -29841,7 +29847,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.17.01').trim() || 'V2026.08.17.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.17.02').trim() || 'V2026.08.17.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -135333,10 +135339,67 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
         }
 
-        function setTaskLocationDetailSearchTerm(value = '') {
+        function beginTaskHeaderSearchComposition() {
+            taskHeaderSearchCompositionActive = true;
+        }
+
+        function endTaskHeaderSearchComposition(value = '') {
+            taskHeaderSearchCompositionActive = false;
+            return setTaskLocationDetailSearchTerm(value, { force: true });
+        }
+
+        function reportTaskHeaderSearchHealth(revision = 0, visibleCount = 0) {
+            const expectedRevision = Number(revision || 0);
+            if (!expectedRevision || expectedRevision !== taskHeaderSearchRevision) return;
+            const expectedTerm = String(taskLocationDetailSearchTerm || '');
+            const startedAt = Number(taskHeaderSearchRequestedAt || 0);
+            requestAnimationFrame(() => {
+                if (expectedRevision !== taskHeaderSearchRevision) return;
+                const input = document.getElementById('tasks-search-input');
+                const container = document.getElementById('task-content');
+                const inputMatches = !!input && normalizeSearchValue(input.value) === normalizeSearchValue(expectedTerm);
+                const hasCommittedContent = !!container && container.getClientRects().length > 0 && container.childNodes.length > 0;
+                const committed = taskHeaderSearchCommittedRevision >= expectedRevision && inputMatches && hasCommittedContent;
+                const pilot = window.__gncOpsPilot;
+                if (pilot && typeof pilot.captureHealth === 'function') {
+                    const now = (window.performance && typeof window.performance.now === 'function') ? window.performance.now() : Date.now();
+                    pilot.captureHealth('task_search', committed, {
+                        term_length: normalizeSearchValue(expectedTerm).length,
+                        visible_count: Math.max(0, Number(visibleCount) || 0),
+                        latency_ms: startedAt ? Math.max(0, now - startedAt) : 0,
+                        input_match: inputMatches,
+                        content_ready: hasCommittedContent
+                    });
+                }
+            });
+        }
+
+        function setTaskLocationDetailSearchTerm(value = '', options = {}) {
             taskLocationDetailSearchTerm = String(value || '');
             syncTaskLocationDetailFilterUi();
-            scheduleTasksRenderWithOptions({ skipTaskLocationDetailFilterRender: true }, 0, 100, false, 'tasks:location-detail-search');
+            if (taskHeaderSearchCompositionActive && !(options && options.force === true)) return false;
+            const revision = ++taskHeaderSearchRevision;
+            taskHeaderSearchRequestedAt = (window.performance && typeof window.performance.now === 'function') ? window.performance.now() : Date.now();
+            scheduleSearchRender('task-header-search', () => {
+                if (revision !== taskHeaderSearchRevision) return;
+                pendingTasksRenderOptions = { ...(pendingTasksRenderOptions || {}), skipTaskLocationDetailFilterRender: true };
+                prepareLatestViewRender('tasks');
+                markViewDirty('tasks');
+                taskHeaderSearchCommittedRevision = revision;
+                renderViewContent('tasks', false, true);
+            }, taskLocationDetailSearchTerm, {
+                force: !!(options && options.force),
+                debounceDelay: 100,
+                typingDelay: 16,
+                interactiveCritical: true,
+                allowWhileTyping: true,
+                allowWhileTouching: true,
+                allowWhileScrolling: true,
+                allowDuringRecentInteraction: true,
+                allowDuringExtendedBlock: true,
+                maxDeferMs: 220
+            });
+            return false;
         }
 
         function clearTaskLocationDetailSearch() {
@@ -137359,7 +137422,11 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const taskPerfKey = `${activeTaskTab}:${activeTaskSubview || 'all'}:level${taskViewLevel}`;
             const taskRenderToken = Number(latestViewRenderTokensByView.tasks || 0);
-            const finishTaskPerf = () => recordInternalPerfDuration('taskDrilldownDurations', taskRenderStartedAt, taskPerfKey);
+            const activeTaskSearchRevision = taskHeaderSearchRevision;
+            const finishTaskPerf = () => {
+                recordInternalPerfDuration('taskDrilldownDurations', taskRenderStartedAt, taskPerfKey);
+                reportTaskHeaderSearchHealth(activeTaskSearchRevision, tabItems.length);
+            };
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
             cancelChunkRenderWorkForView('tasks');

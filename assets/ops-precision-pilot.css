@@ -5537,6 +5537,30 @@ body.ops-precision-pilot .ops-module-filter-band:not(.fixed-filter-rail) {
   margin-top: var(--ops-module-search-filter-gap) !important;
 }
 
+/* Task search is mounted in the global command bar. Keep its single filter rail
+   immediately below that bar and pinned to the top of the content scroller. */
+body.ops-precision-pilot.current-view-tasks #view-tasks .task-controls-sticky.ops-module-filter-band {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  margin: 10px 0 8px !important;
+  z-index: 82 !important;
+  background: var(--ui-surface, #fff) !important;
+  border: 1px solid var(--ui-border, #cbd8d1) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 18px rgba(7, 50, 34, .08) !important;
+}
+
+body.ops-precision-pilot.current-view-tasks #view-tasks .task-controls-sticky.ops-module-filter-band::before {
+  display: none !important;
+}
+
+html[data-ops-theme="dark"] body.ops-precision-pilot.current-view-tasks #view-tasks .task-controls-sticky.ops-module-filter-band,
+body.ops-precision-pilot[data-ops-theme="dark"].current-view-tasks #view-tasks .task-controls-sticky.ops-module-filter-band {
+  background: var(--ui-surface, #111c18) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .24) !important;
+}
+
 body.ops-precision-pilot.keyboard-open,
 body.ops-precision-pilot.detail-field-active,
 body.ops-precision-pilot.measurement-keyboard-open {
@@ -6167,7 +6191,7 @@ html.outdoor-mode body.ops-precision-pilot #bottom-nav .footer-nav-btn:is(.activ
   }
 }
 
-/* V2026.08.17.01 — no-flash theme surfaces and Queue card photo rail. */
+/* V2026.08.17.02 — no-flash theme surfaces and Queue card photo rail. */
 body.ops-precision-pilot {
   --ops-request-card-surface: #ffffff;
   --ops-photo-rail: #ffffff;
@@ -6255,7 +6279,7 @@ html.outdoor-mode body.ops-precision-pilot #view-request :is(
   background-image: none !important;
 }
 
-/* V2026.08.17.01 — responsive Item Inquiry ledger. */
+/* V2026.08.17.02 — responsive Item Inquiry ledger. */
 body.ops-precision-pilot #view-detail #det-item-inquiry-content {
   box-sizing: border-box !important;
   grid-column: 1 / -1 !important;
