@@ -32,17 +32,17 @@ const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enab
 const appsScriptBackend = read('Code.gs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.17.07';
+  const release = 'V2026.08.17.08';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.17.07');
+  assert.equal(packageJson.version, '2026.08.17.08');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081707.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081708.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -61,7 +61,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081707\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081708\.png"/);
   assert.equal(manifest.background_color, '#07120e');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -603,7 +603,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081707\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081708\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -964,6 +964,8 @@ test('Task View lists active assignment-sheet users and scopes Drive rows withou
   assert.match(evalDirectory, /fetchNativeAppUserDirectory\(nativeHeaders, '', SUPABASE_READ_TIMEOUT_MS\)/);
   assert.match(evalDirectory, /const assignedUserSet = new Set\(getWarehouseAssignmentSourceUsers\(\)\)/);
   assert.match(evalDirectory, /assignedUserSet\.size && !assignedUserSet\.has\(username\)/);
+  assert.match(evalDirectory, /const authoritativeUsers = assignedUserSet\.size \? Array\.from\(assignedUserSet\) : fetchedUsers/);
+  assert.match(evalDirectory, /fetchedLabels\.get\(username\) \|\| formatAppUserDisplayName\(username\)/);
   assert.match(evalDirectory, /evalAssignableUsersDirectoryResolved = true/);
   assert.doesNotMatch(evalDirectory, /fetchedUsers\.concat\(EVAL_TASK_FALLBACK_USERS/);
   assert.match(evalDirectory, /sourceUsers\.length \? sourceUsers : EVAL_TASK_FALLBACK_USERS\.slice\(\)/);
@@ -1005,6 +1007,13 @@ test('Task View lists active assignment-sheet users and scopes Drive rows withou
   assert.match(assignmentResolver, /hasWarehouseAssignmentSourceRows\(\)/);
   assert.match(assignmentResolver, /getEvalTaskRuleAssigneeForItem/);
   assert.match(html, /function getWarehouseAssignedRowsForItem/);
+  const evalViewerUsers = html.slice(
+    html.indexOf('function getEvalAssignableUserList'),
+    html.indexOf('function getEvalAssignableUserLabel')
+  );
+  assert.match(evalViewerUsers, /const assignmentUsers = getWarehouseAssignmentSourceUsers\(\)/);
+  assert.match(evalViewerUsers, /assignmentsAreAuthoritative\s*\? assignmentUsers/);
+  assert.match(evalViewerUsers, /assignmentsAreAuthoritative \|\| !EVAL_TASK_INACTIVE_USERS\.has\(user\)/);
   assert.match(html, /pushKey\('wi', parts\.warehouse, parts\.itemcode\)/);
   assert.match(html, /pushKey\('ig', parts\.itemcode, parts\.genusname\)/);
   assert.match(html, /return item\.WAREHOUSE_ASSIGNED_USER && item\.ITEMCODE \? item : null/);
