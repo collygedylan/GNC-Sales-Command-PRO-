@@ -29,17 +29,17 @@ const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.15';
+  const release = 'V2026.08.17.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.16.15');
+  assert.equal(packageJson.version, '2026.08.17.01');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081615.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081701.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -58,7 +58,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081615\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081701\.png"/);
   assert.equal(manifest.background_color, '#07120e');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -74,7 +74,7 @@ test('V15 Queue cards and photo rails use semantic Light and Dark surfaces', () 
   assert.doesNotMatch(html, /isSeasonSalesNoteCard \? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'/);
   assert.match(html, /app-inline-thumb-box app-inline-thumb-box--empty/);
   assert.match(html, /app-inline-thumb-label app-inline-thumb-date/);
-  const queueThemeCss = css.slice(css.lastIndexOf('V2026.08.16.15 — no-flash theme surfaces and Queue card photo rail'));
+  const queueThemeCss = css.slice(css.lastIndexOf('V2026.08.17.01 — no-flash theme surfaces and Queue card photo rail'));
   assert.match(queueThemeCss, /--ops-request-card-surface: #111c18/);
   assert.match(queueThemeCss, /--ops-photo-placeholder: #16231f/);
   assert.match(queueThemeCss, /\.request-swipe-row\.app-request-card-surface > \.request-swipe-surface/);
@@ -512,7 +512,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081615\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081701\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -618,6 +618,30 @@ test('V15 Chat and navigation are measured against the visible viewport', () => 
   assert.match(css, /current-view-chat[\s\S]*grid-template-rows: auto minmax\(0, 1fr\) auto !important/);
   assert.match(css, /current-view-chat \.chat-thread-composer[\s\S]*visibility: visible !important/);
   assert.match(css, /data-ops-theme="dark"\] #bottom-nav[\s\S]*rgba\(10, 28, 21, \.96\)/);
+});
+
+test('Item Inquiry groups Drive rows by location with adaptive grid lines and computed totals', () => {
+  const renderer = html.slice(
+    html.indexOf('function parseItemInquiryQuantity'),
+    html.indexOf('function setDriveAltLocSeason')
+  );
+  for (const field of ['COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'ITEMSPEC', 'FIELDTAGCOLOR', 'HOLDSTOPCODE', 'HOLDSTOPBEGINDATE', 'HOLDSTOPREASON', 'SUSPENDTO', 'SPECIALPULLER']) {
+    assert.match(renderer, new RegExp(`\\['${field}'`));
+  }
+  for (const field of ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DesigItem', 'DesigCust', 'DesigLoc', 'PRIORITY', 'PTRONHAND', 'PTRREVIEWED', 'PRISETBY', 'PRIUPDATED', 'LOCATIONNOTE', 'LOCATIONPTN1']) {
+    assert.match(renderer, new RegExp(`'${field}'`));
+  }
+  assert.match(renderer, /function groupItemInquiryRowsByLocation/);
+  assert.match(renderer, /group\.ptrOnHand \+= parseItemInquiryQuantity/);
+  assert.match(renderer, /group\.ptrReviewed \+= parseItemInquiryQuantity/);
+  assert.match(renderer, /data-item-inquiry-location-total-onhand/);
+  assert.match(renderer, /formatItemInquiryQuantity\(ptrReviewedAmount, \{ blankZero: true \}\)/);
+  const inquiryCss = css.slice(css.lastIndexOf('V2026.08.17.01 — responsive Item Inquiry ledger'));
+  assert.match(inquiryCss, /overflow-x: hidden !important/);
+  assert.match(inquiryCss, /grid-template-columns: minmax\(62px,\.72fr\)[\s\S]*minmax\(68px,\.8fr\)/);
+  assert.match(inquiryCss, /@media \(max-width: 1099px\)[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(inquiryCss, /@media \(max-width: 640px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(inquiryCss, /border-right: 1px solid var\(--ops-border\)/);
 });
 
 test('V15 monitoring is authenticated for all users and remains anonymous', () => {

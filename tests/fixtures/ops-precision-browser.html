@@ -79,7 +79,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.16.15</span>
+              <span class="nav-version-pill">V2026.08.17.01</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -221,6 +221,9 @@
               </div>
             </div>
           </div>
+          <div id="det-item-inquiry-content" class="hidden">
+            <div id="item-inquiry-panel"></div>
+          </div>
           <div id="det-request-content">
             <div id="req-input-container">
               <div class="request-detail-field"><label for="req-spec">Spec (size/dims)</label><input id="req-spec" class="input-field" placeholder="e.g. 24-30 inch"></div>
@@ -319,9 +322,41 @@
       document.getElementById('view-home').classList.toggle('hidden', activeView !== 'home');
       document.getElementById('view-drive').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('view-chat').classList.toggle('hidden', activeView !== 'chat');
-      document.getElementById('view-detail').classList.toggle('hidden', activeView !== 'detail');
+      const fixtureDetailActive = activeView === 'detail' || activeView === 'item-inquiry';
+      document.getElementById('view-detail').classList.toggle('hidden', !fixtureDetailActive);
+      document.getElementById('det-request-content').classList.toggle('hidden', activeView !== 'detail');
+      document.getElementById('det-item-inquiry-content').classList.toggle('hidden', activeView !== 'item-inquiry');
       document.getElementById('global-header-search-slot').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('global-header-inline-title').classList.toggle('hidden', activeView === 'drive');
+      if (activeView === 'item-inquiry') {
+        document.body.classList.add('current-view-detail');
+        document.getElementById('global-header-view-title').textContent = 'Item Inquiry';
+        const rows = [
+          { lot: '27.F1', location: 'F.19.000', source: 'GNC', desigItem: 'FIELD', desigCust: 'GREENLEAF', desigLoc: 'OUTSIDE', priority: '1', onHand: 1580, reviewed: 80, setBy: 'JD', updated: 'Aug 17, 2026', note: 'North block', ptn1: 'PTN-A' },
+          { lot: '27.S1', location: 'F.19.000', source: 'GNC', desigItem: 'FIELD', desigCust: 'GREENLEAF', desigLoc: 'OUTSIDE', priority: '—', onHand: 149, reviewed: 0, setBy: '—', updated: '—', note: 'North block', ptn1: 'PTN-A' },
+          { lot: '27.X', location: 'F.19.000', source: 'GNC', desigItem: 'FIELD', desigCust: 'GREENLEAF', desigLoc: 'OUTSIDE', priority: '—', onHand: 37, reviewed: 0, setBy: '—', updated: '—', note: 'North block', ptn1: 'PTN-A' },
+          { lot: '27.F1', location: 'H.06.000', source: 'GNC', desigItem: 'FIELD', desigCust: 'GREENLEAF', desigLoc: 'HOUSE', priority: '2', onHand: 420, reviewed: 25, setBy: 'JD', updated: 'Aug 17, 2026', note: 'House six', ptn1: 'PTN-H' },
+        ];
+        const headers = ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DesigItem', 'DesigCust', 'DesigLoc', 'PRIORITY', 'PTRONHAND', 'PTRREVIEWED', 'PRISETBY', 'PRIUPDATED', 'LOCATIONNOTE', 'LOCATIONPTN1'];
+        const summary = [
+          ['COMMONNAME', 'Karl Foerster Feather Reed Grass'], ['CONTSIZE', '1 Gal'], ['ITEMCODE', '000507.051.1'], ['ITEMSPEC', '24–30 inch'], ['FIELDTAGCOLOR', 'Blue'],
+          ['HOLDSTOPCODE', '—'], ['HOLDSTOPBEGINDATE', '—'], ['HOLDSTOPREASON', '—'], ['SUSPENDTO', '—'], ['SPECIALPULLER', 'JD'],
+        ];
+        const formatQty = (value, blankZero = false) => blankZero && value === 0 ? '—' : Number(value).toLocaleString();
+        const cell = (label, value, numeric = false) => `<div class="item-inquiry-ledger-cell${numeric ? ' item-inquiry-ledger-cell--numeric' : ''}" data-item-inquiry-column="${label}"><span class="item-inquiry-cell-label">${label}</span><span class="item-inquiry-cell-value">${value}</span></div>`;
+        const groups = Array.from(rows.reduce((map, row) => {
+          if (!map.has(row.location)) map.set(row.location, []);
+          map.get(row.location).push(row);
+          return map;
+        }, new Map()).entries());
+        const groupsHtml = groups.map(([location, groupRows]) => {
+          const onHand = groupRows.reduce((sum, row) => sum + row.onHand, 0);
+          const reviewed = groupRows.reduce((sum, row) => sum + row.reviewed, 0);
+          const rowHtml = groupRows.map((row) => `<div class="item-inquiry-ledger-row-shell" data-item-inquiry-row-line="true"><div class="item-inquiry-ledger-row" role="row">${cell('LOTCODE', row.lot)}${cell('LOCATIONCODE', row.location)}${cell('SOURCE', row.source)}${cell('DesigItem', row.desigItem)}${cell('DesigCust', row.desigCust)}${cell('DesigLoc', row.desigLoc)}${cell('PRIORITY', row.priority)}${cell('PTRONHAND', formatQty(row.onHand), true)}${cell('PTRREVIEWED', formatQty(row.reviewed, true), true)}${cell('PRISETBY', row.setBy)}${cell('PRIUPDATED', row.updated)}${cell('LOCATIONNOTE', row.note)}${cell('LOCATIONPTN1', row.ptn1)}</div></div>`).join('');
+          return `<section class="item-inquiry-location-group" data-item-inquiry-location="${location}"><div class="item-inquiry-location-header"><div><span class="item-inquiry-location-label">LOCATIONCODE</span><strong>${location}</strong><span class="item-inquiry-location-count">${groupRows.length} lots</span></div><div class="item-inquiry-location-totals"><span>PTRONHAND <strong data-item-inquiry-location-total-onhand="${onHand}">${formatQty(onHand)}</strong></span><span>PTRREVIEWED <strong data-item-inquiry-location-total-reviewed="${reviewed}">${formatQty(reviewed, true)}</strong></span></div></div><div class="item-inquiry-ledger-header" role="row">${headers.map((header) => `<div role="columnheader">${header}</div>`).join('')}</div>${rowHtml}<div class="item-inquiry-location-total-row"><span>LOCATION TOTAL — ${location}</span><span>PTRONHAND <strong>${formatQty(onHand)}</strong></span><span>PTRREVIEWED <strong>${formatQty(reviewed, true)}</strong></span></div></section>`;
+        }).join('');
+        document.getElementById('item-inquiry-panel').innerHTML = `<div class="item-inquiry-workspace"><section class="item-inquiry-summary" data-item-inquiry-summary="true"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>Karl Foerster Feather Reed Grass</strong></div><span>4 rows · 2 locations</span></div><div class="item-inquiry-summary-grid">${summary.map(([label, value]) => `<div class="item-inquiry-summary-cell" data-item-inquiry-field="${label}"><span class="item-inquiry-summary-label">${label}</span><span class="item-inquiry-summary-value">${value}</span></div>`).join('')}</div></section><div class="item-inquiry-ledger" role="table">${groupsHtml}</div></div>`;
+      }
       const syncFixtureViewportContracts = () => {
         const root = document.documentElement;
         const topChrome = document.getElementById('app-top-chrome');
