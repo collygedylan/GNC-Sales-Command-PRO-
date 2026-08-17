@@ -29,19 +29,20 @@ const authMigrationTool = read('scripts/migrate-custom-users-to-supabase-auth.mj
 const authAdmin = read('supabase/functions/auth-admin/index.ts');
 const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_passkeys_for_active_profiles.sql');
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
+const appsScriptBackend = read('Code.gs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.17.06';
+  const release = 'V2026.08.17.07';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.17.06');
+  assert.equal(packageJson.version, '2026.08.17.07');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081706.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081707.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -60,7 +61,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081706\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081707\.png"/);
   assert.equal(manifest.background_color, '#07120e');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -602,7 +603,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081706\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081707\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -951,4 +952,82 @@ test('hosted performance monitoring pins CLI and emits bounded anonymous functio
   for (const field of ['request_id', 'function', 'action', 'status', 'duration_ms', 'retry_count', 'release', 'error_code']) {
     assert.match(observability, new RegExp(field));
   }
+});
+
+test('Task View lists active assignment-sheet users and scopes Drive rows without broadening mutations', () => {
+  const evalDirectory = html.slice(
+    html.indexOf('async function ensureEvalAssignableUsers'),
+    html.indexOf('function renderEvalTaskAssigneeOptions')
+  );
+  assert.match(evalDirectory, /getNativeAuthRequestHeaders\(\)/);
+  assert.match(evalDirectory, /ensureDatasetLoaded\('warehouseAssignedItems', 'full'/);
+  assert.match(evalDirectory, /fetchNativeAppUserDirectory\(nativeHeaders, '', SUPABASE_READ_TIMEOUT_MS\)/);
+  assert.match(evalDirectory, /const assignedUserSet = new Set\(getWarehouseAssignmentSourceUsers\(\)\)/);
+  assert.match(evalDirectory, /assignedUserSet\.size && !assignedUserSet\.has\(username\)/);
+  assert.match(evalDirectory, /evalAssignableUsersDirectoryResolved = true/);
+  assert.doesNotMatch(evalDirectory, /fetchedUsers\.concat\(EVAL_TASK_FALLBACK_USERS/);
+  assert.match(evalDirectory, /sourceUsers\.length \? sourceUsers : EVAL_TASK_FALLBACK_USERS\.slice\(\)/);
+  assert.match(html, /ensureEvalAssignableUsers\(true\)[\s\S]*reconcileEvalTaskViewerUser\(\)/);
+
+  const taskMode = html.slice(
+    html.indexOf('function getTaskModeDropdownOptions'),
+    html.indexOf('function getTaskFilterValues')
+  );
+  assert.match(taskMode, /group: 'Eval Users'/);
+  assert.match(taskMode, /getEvalTaskViewOptionValue\(option\.value\)/);
+  assert.doesNotMatch(taskMode, /All Eval Users/);
+
+  const taskSelection = html.slice(
+    html.indexOf('function setTaskTab'),
+    html.indexOf('function setTaskFilter')
+  );
+  assert.match(taskSelection, /getEvalTaskUserFromViewOption\(tab\)/);
+  assert.match(taskSelection, /activeUsers\.includes\(normalized\)/);
+  assert.match(taskSelection, /taskViewTargetUser = normalized/);
+  assert.match(taskSelection, /setTaskView\(EVAL_TASK_ASSIGNMENT\)/);
+
+  const scopedQueue = html.slice(
+    html.indexOf('function getScopedTaskQueueItems'),
+    html.indexOf('function getTaskTabLabel')
+  );
+  assert.match(scopedQueue, /safeView === EVAL_TASK_ASSIGNMENT[\s\S]*doesEvalTaskItemMatchOwner\(item, evalOwner\)/);
+  assert.match(scopedQueue, /safeView !== EVAL_TASK_ASSIGNMENT[\s\S]*canRestrictedEvalUserUpdateItem/);
+  assert.match(scopedQueue, /mergeEvalTaskRequestMirrorItems\(baseTaskItems, getEvalTaskRequestMirrorItems\(owner\)\)/);
+  assert.doesNotMatch(scopedQueue, /safeView === EVAL_TASK_ASSIGNMENT && canUseEvalTaskAssignment/);
+
+  assert.match(html, /function shouldShowEvalTaskUserSelector[\s\S]*?return false;/);
+  assert.match(html, /No Drive rows are assigned to \$\{getEvalTaskViewerUserLabel\(targetUser\)\}/);
+  const assignmentResolver = html.slice(
+    html.indexOf('function getEvalTaskAssignedUsersFromItem'),
+    html.indexOf('function getEvalTaskAssignedUserFromItem')
+  );
+  assert.match(assignmentResolver, /getWarehouseAssignedUsersForItem/);
+  assert.match(assignmentResolver, /hasWarehouseAssignmentSourceRows\(\)/);
+  assert.match(assignmentResolver, /getEvalTaskRuleAssigneeForItem/);
+  assert.match(html, /function getWarehouseAssignedRowsForItem/);
+  assert.match(html, /pushKey\('wi', parts\.warehouse, parts\.itemcode\)/);
+  assert.match(html, /pushKey\('ig', parts\.itemcode, parts\.genusname\)/);
+  assert.match(html, /return item\.WAREHOUSE_ASSIGNED_USER && item\.ITEMCODE \? item : null/);
+  assert.match(html, /function canRestrictedEvalUserUpdateItem/);
+  assert.match(html, /function completeEvalTaskFromDetail/);
+});
+
+test('Warehouse assignment sync uses the 08-17 assignment sheet four-column contract', () => {
+  assert.match(appsScriptBackend, /WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '16mK_5MWcIwVsbok0lGkBG65UeZt553nf5IEPiv0k34Q'/);
+  assert.match(appsScriptBackend, /WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1PLQJjNIM4dBTBlFOYiumLb-ICccPZbgn'/);
+  const headerMatcher = appsScriptBackend.slice(
+    appsScriptBackend.indexOf('function isWarehouseAssignedItemsHeaderRow_'),
+    appsScriptBackend.indexOf('function getWarehouseAssignedItemsSelectColumns_')
+  );
+  assert.match(headerMatcher, /knownHeaderCount >= 4/);
+  assert.match(headerMatcher, /headers\.indexOf\('assignedto'\)/);
+  assert.match(headerMatcher, /headers\.indexOf\('warehousei'\)/);
+  assert.match(headerMatcher, /headers\.indexOf\('itemcode'\)/);
+  assert.match(headerMatcher, /headers\.indexOf\('genusname'\)/);
+  const payloadBuilder = appsScriptBackend.slice(
+    appsScriptBackend.indexOf('function buildWarehouseAssignedItemsPayload'),
+    appsScriptBackend.indexOf('function syncWarehouseAssignedItemsSheet_')
+  );
+  assert.match(payloadBuilder, /if \(!assignedTo \|\| !itemCode\)/);
+  assert.doesNotMatch(payloadBuilder, /if \(!itemCode \|\| !locationCode\)/);
 });

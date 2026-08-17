@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
-    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026081706.png">
+    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026081707.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081706.min.css?v=V2026.08.17.06">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081707.min.css?v=V2026.08.17.07">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.17.06';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.17.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.17.06">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.17.07">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.17.06"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.17.07"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.17.06').trim() || 'V2026.08.17.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.17.07').trim() || 'V2026.08.17.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8917,7 +8917,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.17.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.17.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9425,7 +9425,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const PHOTO_MAX_WIDTH = 1920;
         const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081706.js';
+        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081707.js';
         let photoOptimizerWorker = null;
         let photoOptimizerRequestId = 0;
         const photoOptimizerPending = new Map();
@@ -19430,6 +19430,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             pushKey('isl', parts.itemcode, parts.contsize, parts.locationcode, parts.source);
             pushKey('wil', parts.warehouse, parts.itemcode, parts.contsize, parts.locationcode);
             pushKey('il', parts.itemcode, parts.contsize, parts.locationcode);
+            pushKey('wig', parts.warehouse, parts.itemcode, parts.genusname);
+            pushKey('wi', parts.warehouse, parts.itemcode);
+            pushKey('ig', parts.itemcode, parts.genusname);
+            pushKey('i', parts.itemcode);
             return keys;
         }
 
@@ -19462,7 +19466,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             item.genusname = item.GENUSNAME;
             item.WAREHOUSE_ASSIGNED_USER = normalizeEvalAssignableUser(item.ASSIGNEDTO);
             item._search = `${item.ASSIGNEDTO} ${item.WAREHOUSEI} ${item.ITEMCODE} ${item.CONTSIZE} ${item.COMMONNAME} ${item.LOCATIONCODE} ${item.SOURCE} ${item.GENUSNAME}`.toLowerCase();
-            return item.WAREHOUSE_ASSIGNED_USER && item.ITEMCODE && item.CONTSIZE && item.LOCATIONCODE ? item : null;
+            return item.WAREHOUSE_ASSIGNED_USER && item.ITEMCODE ? item : null;
         }
 
         function rebuildWarehouseAssignedItemIndexes(force = false) {
@@ -19484,10 +19488,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
 
-        function chooseWarehouseAssignedRowForItem(candidates = [], itemParts = {}) {
+        function chooseWarehouseAssignedRowsForItem(candidates = [], itemParts = {}) {
             const rows = (Array.isArray(candidates) ? candidates : []).filter((row) => row && row.WAREHOUSE_ASSIGNED_USER);
-            if (!rows.length) return null;
-            if (rows.length === 1) return rows[0];
+            if (!rows.length) return [];
+            if (rows.length === 1) return rows;
             let narrowed = rows;
             if (itemParts.source) {
                 const sourceMatches = narrowed.filter((row) => getWarehouseAssignedIdentityParts(row).source === itemParts.source);
@@ -19511,29 +19515,49 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 });
                 if (genusMatches.length) narrowed = genusMatches;
             }
-            return narrowed[0] || rows[0] || null;
+            return narrowed.length ? narrowed : rows;
+        }
+
+        function getWarehouseAssignedRowsForItem(item = null) {
+            if (!item || typeof item !== 'object') return [];
+            rebuildWarehouseAssignedItemIndexes();
+            if (warehouseAssignedItemMatchCache.has(item)) return warehouseAssignedItemMatchCache.get(item) || [];
+            const parts = getWarehouseAssignedIdentityParts(item);
+            let matchedRows = [];
+            if (parts.itemcode) {
+                for (const key of buildWarehouseAssignedLookupKeys(parts)) {
+                    const candidates = warehouseAssignedItemsByLookupKey.get(key);
+                    matchedRows = chooseWarehouseAssignedRowsForItem(candidates, parts);
+                    if (matchedRows.length) break;
+                }
+            }
+            warehouseAssignedItemMatchCache.set(item, matchedRows);
+            return matchedRows;
         }
 
         function getWarehouseAssignedRowForItem(item = null) {
-            if (!item || typeof item !== 'object') return null;
-            rebuildWarehouseAssignedItemIndexes();
-            if (warehouseAssignedItemMatchCache.has(item)) return warehouseAssignedItemMatchCache.get(item) || null;
-            const parts = getWarehouseAssignedIdentityParts(item);
-            let matchedRow = null;
-            if (parts.itemcode && parts.contsize && parts.locationcode) {
-                for (const key of buildWarehouseAssignedLookupKeys(parts)) {
-                    const candidates = warehouseAssignedItemsByLookupKey.get(key);
-                    matchedRow = chooseWarehouseAssignedRowForItem(candidates, parts);
-                    if (matchedRow) break;
-                }
-            }
-            warehouseAssignedItemMatchCache.set(item, matchedRow || null);
-            return matchedRow || null;
+            return getWarehouseAssignedRowsForItem(item)[0] || null;
         }
 
         function getWarehouseAssignedUserForItem(item = null) {
             const matchedRow = getWarehouseAssignedRowForItem(item);
             return matchedRow ? String(firstNonEmptyValue(matchedRow.WAREHOUSE_ASSIGNED_USER, matchedRow.ASSIGNEDTO, matchedRow.assignedto, '') || '').trim() : '';
+        }
+
+        function getWarehouseAssignedUsersForItem(item = null) {
+            return Array.from(new Set(getWarehouseAssignedRowsForItem(item)
+                .map((row) => normalizeEvalAssignableUser(firstNonEmptyValue(row && row.WAREHOUSE_ASSIGNED_USER, row && row.ASSIGNEDTO, row && row.assignedto, '')))
+                .filter(Boolean)));
+        }
+
+        function getWarehouseAssignmentSourceUsers() {
+            return Array.from(new Set((Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [])
+                .map((row) => normalizeEvalAssignableUser(firstNonEmptyValue(row && row.WAREHOUSE_ASSIGNED_USER, row && row.ASSIGNEDTO, row && row.assignedto, '')))
+                .filter(Boolean)));
+        }
+
+        function hasWarehouseAssignmentSourceRows() {
+            return Array.isArray(warehouseAssignedItemsInventory) && warehouseAssignedItemsInventory.length > 0;
         }
 
         function normalizeSocDockRowAliases(item) {
@@ -25257,6 +25281,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         const EVAL_TASK_ASSIGNMENT = 'eval-task';
+        const EVAL_TASK_VIEW_OPTION_PREFIX = 'eval-user:';
         const EVAL_TASK_STATUS_OPEN = 'Open';
         const EVAL_TASK_STATUS_COMPLETE = 'Complete';
         const EVAL_TASK_TYPES = Object.freeze([
@@ -25278,7 +25303,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             hold: 'Hold',
             'stop-ship': 'Stop Ship'
         });
-        const EVAL_TASK_FALLBACK_USERS = Object.freeze(['dylan_collyge', 'josh_vann', 'abbey_sartain', 'abigail_vazquez', 'ellen_ward', 'bobby_adair', 'jorge_colunga', 'charley_robertson', 'zoe_green', 'mitch_kaiser', 'matt_stubblefield']);
+        const EVAL_TASK_FALLBACK_USERS = Object.freeze(['abigail_vazquez', 'bobby_adair', 'charley_robertson', 'dylan_collyge', 'ellen_ward', 'jorge_colunga', 'josh_vann', 'megan_kelly', 'mitch_kaiser', 'zoe_green']);
         const EVAL_TASK_INACTIVE_USERS = Object.freeze(new Set(['murphy_stanley']));
         const EVAL_TASK_USER_ALIASES = Object.freeze({
             abigal_sartain: 'abbey_sartain',
@@ -25553,25 +25578,23 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function getEvalAssignableUserList() {
-            return Array.from(new Set((evalAssignableUsers.length ? evalAssignableUsers : EVAL_TASK_FALLBACK_USERS)
+            const sourceUsers = evalAssignableUsersDirectoryResolved
+                ? evalAssignableUsers
+                : (evalAssignableUsers.length ? evalAssignableUsers : EVAL_TASK_FALLBACK_USERS);
+            return Array.from(new Set(sourceUsers
                 .map(normalizeEvalAssignableUser)
                 .filter((user) => user && !EVAL_TASK_INACTIVE_USERS.has(user))))
                 .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         }
 
+        function getEvalAssignableUserLabel(value = '') {
+            const normalized = normalizeEvalAssignableUser(value);
+            if (!normalized) return '';
+            return evalAssignableUserLabels.get(normalized) || formatAppUserDisplayName(normalized) || normalized;
+        }
+
         function shouldShowEvalTaskUserSelector(tab = activeTaskView) {
-            const safeView = normalizeTaskViewValue(tab);
-            if (!canUseEvalTaskAssignment()) return false;
-            if (isApprovalTaskView(safeView) || isTaskDiagnosticsView(safeView)) return false;
-            if (safeView !== EVAL_TASK_ASSIGNMENT && isPrivilegedManagerUser()) return false;
-            return safeView === EVAL_TASK_ASSIGNMENT
-                || safeView === 'hot-price'
-                || safeView === 'positive-lts'
-                || safeView === 'hold'
-                || safeView === 'av-blanks'
-                || safeView === 'ncr'
-                || safeView === 'colorwalk'
-                || safeView === 'endcap';
+            return false;
         }
 
         function parseEvalTaskLocationBlock(locationCode = '') {
@@ -25611,10 +25634,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function getEvalTaskAssignedUsersFromItem(item = null) {
-            const warehouseAssignee = normalizeEvalAssignableUser(getWarehouseAssignedUserForItem(item));
-            if (warehouseAssignee) return [warehouseAssignee];
-            const overrideAssignee = normalizeEvalAssignableUser(getEvalTaskAssignmentOverrideForItem(item));
-            if (overrideAssignee) return [overrideAssignee];
+            const warehouseAssignees = getWarehouseAssignedUsersForItem(item);
+            if (warehouseAssignees.length) return warehouseAssignees;
             const explicitAssignees = getEvalTaskAssignedUsersFromValue(firstNonEmptyValue(
                 item && item.ASSIGNEDTO,
                 item && item.assignedto,
@@ -25630,6 +25651,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 item && item.requested_by,
                 ''
             ));
+            if (hasWarehouseAssignmentSourceRows()) {
+                return (isEvalTaskItem(item) || hasEvalTaskRequestMeta(item)) ? explicitAssignees : [];
+            }
+            const overrideAssignee = normalizeEvalAssignableUser(getEvalTaskAssignmentOverrideForItem(item));
+            if (overrideAssignee) return [overrideAssignee];
             const users = new Set(explicitAssignees);
             getEvalTaskAssignedUsersFromValue(getEvalTaskRuleAssigneeForItem(item)).forEach((user) => users.add(user));
             return Array.from(users);
@@ -25639,29 +25665,25 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return getEvalTaskAssignedUsersFromItem(item)[0] || '';
         }
 
-        function getEvalTaskViewerUserOptions(items = fullInventory) {
-            const userMap = new Map();
-            const addUser = (value = '') => {
-                const normalized = normalizeEvalAssignableUser(value);
-                if (!normalized || normalized === 'all') return;
-                if (!userMap.has(normalized)) userMap.set(normalized, normalized);
-            };
-            getEvalAssignableUserList().forEach(addUser);
-            (Array.isArray(items) ? items : []).forEach((item) => {
-                if (!isEvalTaskItem(item)) return;
-                getEvalTaskAssignedUsersFromItem(item).forEach(addUser);
-            });
-            const userOptions = Array.from(userMap.entries())
-                .sort((left, right) => String(left[1]).localeCompare(String(right[1]), undefined, { sensitivity: 'base' }))
-                .map(([value, label]) => ({ value, label }));
-            return [{ value: 'all', label: 'All Eval Users' }].concat(userOptions);
+        function getEvalTaskViewerUserOptions() {
+            return getEvalAssignableUserList()
+                .map((value) => ({ value, label: getEvalAssignableUserLabel(value) }))
+                .sort((left, right) => String(left.label).localeCompare(String(right.label), undefined, { sensitivity: 'base' }));
         }
 
-        function normalizeEvalTaskViewerUser(value = taskViewTargetUser, items = null) {
+        function getPreferredEvalTaskViewerUser(value = taskViewTargetUser) {
+            const options = getEvalTaskViewerUserOptions();
+            if (!options.length) return '';
             const normalized = normalizeEvalAssignableUser(value);
-            if (!normalized || normalized === 'all') return 'all';
-            const options = getEvalTaskViewerUserOptions(items == null ? fullInventory : items).map((option) => option.value);
-            return options.includes(normalized) ? normalized : normalized;
+            if (normalized && options.some((option) => option.value === normalized)) return normalized;
+            const signedInUser = normalizeEvalAssignableUser(currentUser || currentUserDisplay);
+            if ((isEvalRoleValue(safeRole) || isRestrictedEvalUser(getRoleAccessState()))
+                && options.some((option) => option.value === signedInUser)) return signedInUser;
+            return options[0].value;
+        }
+
+        function normalizeEvalTaskViewerUser(value = taskViewTargetUser) {
+            return getPreferredEvalTaskViewerUser(value);
         }
 
         function getActiveEvalTaskViewerUser() {
@@ -25670,9 +25692,44 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         function getEvalTaskViewerUserLabel(value = taskViewTargetUser) {
             const normalized = normalizeEvalTaskViewerUser(value);
-            if (normalized === 'all') return 'All Eval Users';
+            if (!normalized) return 'Eval User';
             const option = getEvalTaskViewerUserOptions().find((entry) => entry.value === normalized);
-            return option ? option.label : normalized;
+            return option ? option.label : getEvalAssignableUserLabel(normalized);
+        }
+
+        function getEvalTaskViewOptionValue(value = '') {
+            const normalized = normalizeEvalAssignableUser(value);
+            return normalized ? `${EVAL_TASK_VIEW_OPTION_PREFIX}${normalized}` : '';
+        }
+
+        function getEvalTaskUserFromViewOption(value = '') {
+            const rawValue = String(value || '').trim().toLowerCase();
+            if (!rawValue.startsWith(EVAL_TASK_VIEW_OPTION_PREFIX)) return '';
+            return normalizeEvalAssignableUser(rawValue.slice(EVAL_TASK_VIEW_OPTION_PREFIX.length));
+        }
+
+        function getActiveTaskModeOptionValue(tab = activeTaskView) {
+            const safeView = normalizeTaskViewValue(tab);
+            if (safeView !== EVAL_TASK_ASSIGNMENT) return safeView;
+            return getEvalTaskViewOptionValue(getActiveEvalTaskViewerUser());
+        }
+
+        function getActiveTaskModeOptionLabel(tab = activeTaskView) {
+            const selectedValue = getActiveTaskModeOptionValue(tab);
+            const selectedOption = getTaskModeDropdownOptions().find((option) => option.value === selectedValue);
+            return selectedOption ? selectedOption.label : getTaskTabLabel(tab);
+        }
+
+        function reconcileEvalTaskViewerUser() {
+            if (normalizeTaskViewValue(activeTaskView) !== EVAL_TASK_ASSIGNMENT) return false;
+            const nextTarget = getPreferredEvalTaskViewerUser(taskViewTargetUser);
+            if (String(taskViewTargetUser || '').trim() === nextTarget) return false;
+            taskViewTargetUser = nextTarget;
+            taskScopedQueueItemsCache.clear();
+            taskHotStateCache.clear();
+            taskResolvedStateCache = null;
+            taskResolvedStateKey = '';
+            return true;
         }
 
         function isEvalAssignableUserName(value = '') {
@@ -25757,6 +25814,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         function getEvalTaskAutoAssigneeForItem(item = null) {
             if (!item) return '';
+            const warehouseAssigned = pickPreferredEvalAssignableUser(getWarehouseAssignedUsersForItem(item));
+            if (warehouseAssigned) return warehouseAssigned;
+            if (hasWarehouseAssignmentSourceRows()) return '';
             const assignedTo = pickPreferredEvalAssignableUser(getEvalTaskAssignedUsersFromValue(getMasterAssignedToValue(item)));
             if (assignedTo) return assignedTo;
             const linkedMaster = findLinkedMasterRow(item);
@@ -28661,7 +28721,7 @@ const DEFAULT_TASK_VIEW="av-blanks"; const DEFAULT_TASK_FILTER="all";
 let activeTaskView=DEFAULT_TASK_VIEW; let activeTaskFilter=DEFAULT_TASK_FILTER; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveCustomerFilters=new Set(); let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskEvalUserDropdownOpen=false; let taskSubviewDropdownOpen=false; let taskModeSearchTerm=""; let taskEvalUserSearchTerm=""; let taskSubviewSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let taskReserveCustomerSearchTerm=''; let taskReserveCustomerDropdownOpen=false; let taskReserveCustomerDraftFilters=new Set(); let lastTaskReserveCustomerRenderSignature=''; let taskRenderedRowsByDomId=new Map(); let taskRenderedRowsByUid=new Map();
 let iosTaskFilterSheetState={ open:false, kind:'', search:'' }; let iosTaskFilterSheetTriggersInitialized=false; let iosTaskFilterLastTriggerKey=''; let iosTaskFilterLastTriggerAt=0; let iosTaskFilterBodyOverflow=''; let iosTaskFilterSheetSearchTimer=null;
 let dockMobileFilterSheetState={ open:false, kind:'', search:'' }; let dockMobileFilterBodyOverflow='';
-let evalAssignableUsers=[]; let evalAssignableUsersPromise=null; let evalTaskModalSeeded=false; let evalTaskRuleAssigneeCacheKey=''; let evalTaskRuleAssigneeCache=new WeakMap();
+let evalAssignableUsers=[]; let evalAssignableUserLabels=new Map(); let evalAssignableUsersPromise=null; let evalAssignableUsersDirectoryResolved=false; let evalAssignableUsersLastAttemptAt=0; let evalTaskModalSeeded=false; let evalTaskRuleAssigneeCacheKey=''; let evalTaskRuleAssigneeCache=new WeakMap();
 let lastNonApprovalTaskView=DEFAULT_TASK_VIEW;
 let detailReturnState = { viewId: '', scrollTop: 0 };
 let viewHistoryStack = [];
@@ -29866,7 +29926,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.17.06').trim() || 'V2026.08.17.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.17.07').trim() || 'V2026.08.17.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31347,6 +31407,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
+                setTimeout(() => {
+                    ensureEvalAssignableUsers(true).then(() => {
+                        const targetChanged = reconcileEvalTaskViewerUser();
+                        if (activeView === 'tasks') {
+                            syncTaskModeControls(activeTaskTab);
+                            if (targetChanged || activeTaskTab === EVAL_TASK_ASSIGNMENT) scheduleTasksRender(0, 8, true);
+                        }
+                    }).catch(() => {});
+                }, 1200);
                 queueForegroundRefresh(isIOSDevice() ? 360 : 80);
                 syncAlwaysOnRequestData(isIOSDevice() ? 420 : 120, { minIntervalMs: 0 });
             }
@@ -70838,6 +70907,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             activeTaskView = normalizedView;
             activeTaskTab = normalizedView;
+            if (previousTaskView === EVAL_TASK_ASSIGNMENT && normalizedView !== EVAL_TASK_ASSIGNMENT) taskViewTargetUser = null;
             markViewDirty('tasks');
             if (!isApprovalTaskView(normalizedView) && !isTaskDiagnosticsView(normalizedView)) lastNonApprovalTaskView = normalizedView;
             taskTabDropdownOpen = false;
@@ -70904,7 +70974,39 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function setTaskTab(tab) {
+            const evaluator = getEvalTaskUserFromViewOption(tab);
+            if (evaluator) return setTaskEvaluatorView(evaluator);
             return setTaskView(tab);
+        }
+
+        function setTaskEvaluatorView(value = '') {
+            const normalized = normalizeEvalAssignableUser(value);
+            const activeUsers = getEvalAssignableUserList();
+            if (!normalized || !activeUsers.includes(normalized)) return false;
+            const wasEvalView = normalizeTaskViewValue(activeTaskView) === EVAL_TASK_ASSIGNMENT;
+            beginDirectNavigationActivity();
+            taskViewTargetUser = normalized;
+            taskTabDropdownOpen = false;
+            taskEvalUserDropdownOpen = false;
+            taskModeSearchTerm = '';
+            taskEvalUserSearchTerm = '';
+            selectedTaskBlock = null;
+            selectedTaskLoc = null;
+            taskViewLevel = 0;
+            resetTaskLocationDetailFilters();
+            taskScopedQueueItemsCache.clear();
+            taskHotStateCache.clear();
+            taskResolvedStateCache = null;
+            taskResolvedStateKey = '';
+            if (!wasEvalView) setTaskView(EVAL_TASK_ASSIGNMENT);
+            else {
+                markViewDirty('tasks');
+                syncTaskModeControls(EVAL_TASK_ASSIGNMENT);
+                syncTaskSubviewControls(EVAL_TASK_ASSIGNMENT);
+                scheduleTasksRender(0, 8, true);
+            }
+            queueScrollMainAreaToTop(`task-evaluator:${normalized}`);
+            return false;
         }
 
         function setTaskFilter(filter) {
@@ -83215,26 +83317,47 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureEvalAssignableUsers(forceRefresh = false) {
-            if (!forceRefresh && evalAssignableUsers.length) return evalAssignableUsers;
+            if (!forceRefresh && evalAssignableUsersDirectoryResolved) return evalAssignableUsers;
             if (!forceRefresh && evalAssignableUsersPromise) return evalAssignableUsersPromise;
             const previousUsers = evalAssignableUsers.slice();
+            const previousLabels = new Map(evalAssignableUserLabels);
+            evalAssignableUsersLastAttemptAt = Date.now();
             evalAssignableUsersPromise = (async () => {
-                let rows = [];
-                try {
-                    rows = await supabaseFetch('ph_app_users', 'GET', null, 'select=username,role');
-                } catch (error) {
-                    rows = [];
-                }
-                const fetchedUsers = (rows || [])
-                    .filter((user) => isEvalRoleValue(user.role || user.ROLE || ''))
-                    .map((user) => normalizeEvalAssignableUser(firstNonEmptyValue(user.username, user.USERNAME, '')))
+                await ensureDatasetLoaded('warehouseAssignedItems', 'full', { preserveRequestedMode: true }).catch(() => {});
+                const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+                if (!nativeHeaders) throw new Error('Authenticated Eval directory session unavailable.');
+                const rows = await fetchNativeAppUserDirectory(nativeHeaders, '', SUPABASE_READ_TIMEOUT_MS);
+                const assignedUserSet = new Set(getWarehouseAssignmentSourceUsers());
+                const fetchedLabels = new Map();
+                const fetchedUsers = (Array.isArray(rows) ? rows : [])
+                    .map((user) => {
+                        const username = normalizeEvalAssignableUser(firstNonEmptyValue(user.username, user.USERNAME, ''));
+                        if (!username || EVAL_TASK_INACTIVE_USERS.has(username)) return '';
+                        if (assignedUserSet.size && !assignedUserSet.has(username)) return '';
+                        if (!assignedUserSet.size && !isEvalRoleValue(user.role || user.ROLE || '')) return '';
+                        const directoryLabel = String(firstNonEmptyValue(user.display_name, user.DISPLAY_NAME, '') || '').trim();
+                        const label = (directoryLabel && directoryLabel !== '-' ? directoryLabel : '')
+                            || formatAppUserDisplayName(username)
+                            || username;
+                        fetchedLabels.set(username, label);
+                        return username;
+                    })
                     .filter(Boolean);
-                evalAssignableUsers = Array.from(new Set(fetchedUsers.concat(EVAL_TASK_FALLBACK_USERS.map(normalizeEvalAssignableUser).filter(Boolean))))
+                evalAssignableUsers = Array.from(new Set(fetchedUsers))
                     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+                evalAssignableUserLabels = fetchedLabels;
+                evalAssignableUsersDirectoryResolved = true;
                 if (typeof applyEvalRecipientUsersToRepGroups === 'function') applyEvalRecipientUsersToRepGroups(evalAssignableUsers);
                 return evalAssignableUsers;
             })().catch(() => {
-                evalAssignableUsers = previousUsers.length ? previousUsers : EVAL_TASK_FALLBACK_USERS.slice();
+                const sourceUsers = getWarehouseAssignmentSourceUsers();
+                evalAssignableUsers = previousUsers.length
+                    ? previousUsers
+                    : (sourceUsers.length ? sourceUsers : EVAL_TASK_FALLBACK_USERS.slice());
+                evalAssignableUserLabels = previousLabels.size
+                    ? previousLabels
+                    : new Map(evalAssignableUsers.map((username) => [normalizeEvalAssignableUser(username), formatAppUserDisplayName(username)]));
+                evalAssignableUsersDirectoryResolved = false;
                 if (typeof applyEvalRecipientUsersToRepGroups === 'function') applyEvalRecipientUsersToRepGroups(evalAssignableUsers);
                 return evalAssignableUsers;
             }).finally(() => {
@@ -83250,7 +83373,7 @@ function toggleDriveQuickRequestItem(domId) {
             const users = getEvalAssignableUserList();
             select.innerHTML = '';
             select.add(new Option('Select EVAL user for unassigned rows', ''));
-            users.forEach((name) => select.add(new Option(name, name)));
+            users.forEach((name) => select.add(new Option(getEvalAssignableUserLabel(name), name)));
             if (currentValue && users.includes(currentValue)) select.value = currentValue;
         }
 
@@ -129162,11 +129285,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${esc(emptyText)}</div>`;
             }
             const current = String(selectedValue || '').trim();
+            let previousGroup = '';
             return options.map((option) => {
                 const value = String(option && option.value != null ? option.value : '').trim();
                 const label = String(option && option.label != null ? option.label : value).trim();
+                const group = String(option && option.group != null ? option.group : '').trim();
+                const groupHtml = group && group !== previousGroup
+                    ? `<div class="task-filter-option-group border-b px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em]" style="background:var(--ops-surface-muted,#f8fafc);color:var(--ops-text-muted,#64748b);border-color:var(--ops-border,#d1d5db)">${esc(group)}</div>`
+                    : '';
+                previousGroup = group;
                 const isSelected = value === current;
-                return `<div role="button" tabindex="0" class="excel-filter-option flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" data-excel-value="${esc(encodeURIComponent(value))}" ${buildExcelFilterFastAttrs(clickHandler, value)} onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return ${clickHandler}(decodeURIComponent(this.dataset.excelValue || ''))}"><span class="min-w-0 break-words text-[12px] font-bold">${esc(label)}</span><input type="checkbox" class="pointer-events-none h-4 w-4 shrink-0 accent-emerald-600" tabindex="-1" aria-hidden="true" ${isSelected ? 'checked' : ''}></div>`;
+                return `${groupHtml}<div role="button" tabindex="0" class="excel-filter-option flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" data-excel-value="${esc(encodeURIComponent(value))}" ${buildExcelFilterFastAttrs(clickHandler, value)} onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return ${clickHandler}(decodeURIComponent(this.dataset.excelValue || ''))}"><span class="min-w-0 break-words text-[12px] font-bold">${esc(label)}</span><input type="checkbox" class="pointer-events-none h-4 w-4 shrink-0 accent-emerald-600" tabindex="-1" aria-hidden="true" ${isSelected ? 'checked' : ''}></div>`;
             }).join('');
         }
 
@@ -132113,7 +132242,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             const access = getRoleAccessState();
             if (isRestrictedEvalUser(access)) return [EVAL_TASK_ASSIGNMENT];
             const taskViews = TASK_VIEW_VALUES.filter((value) => {
-                if (value === EVAL_TASK_ASSIGNMENT) return false;
                 if (value === 'ncr') return canUseNcrTaskView();
                 return true;
             });
@@ -132220,11 +132348,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getTaskViewTargetUser(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
             if (safeView === EVAL_TASK_ASSIGNMENT) {
-                if (canUseEvalTaskAssignment()) {
-                    const evalTarget = normalizeEvalTaskViewerUser(taskViewTargetUser);
-                    return evalTarget === 'all' ? '' : evalTarget;
-                }
-                return currentUser;
+                return normalizeEvalTaskViewerUser(taskViewTargetUser);
             }
             const useSharedTaskQueue = shouldUseSharedTaskQueue(safeView);
             const access = getRoleAccessState();
@@ -132235,6 +132359,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getTaskEvalUserFilterValue(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
+            if (safeView === EVAL_TASK_ASSIGNMENT) return normalizeEvalTaskViewerUser(taskViewTargetUser);
             if (!shouldShowEvalTaskUserSelector(safeView)) return 'all';
             return normalizeEvalTaskViewerUser(taskViewTargetUser);
         }
@@ -132583,6 +132708,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             activeTaskTab = activeTaskView;
             if (!isApprovalTaskView(activeTaskView) && !isTaskDiagnosticsView(activeTaskView)) lastNonApprovalTaskView = activeTaskView;
             if (activeTaskView === EVAL_TASK_ASSIGNMENT) {
+                reconcileEvalTaskViewerUser();
                 activeTaskFilter = normalizeEvalTaskFilterValue(activeTaskFilter || activeTaskSubview || getDefaultTaskSubviewForView(activeTaskView));
                 activeTaskSubview = activeTaskFilter;
                 return;
@@ -132650,7 +132776,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function shouldUseSharedTaskQueue(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
             if (safeView === 'ncr') return canUseNcrTaskView();
-            if (safeView === EVAL_TASK_ASSIGNMENT && canUseEvalTaskAssignment()) return false;
+            if (safeView === EVAL_TASK_ASSIGNMENT) return false;
             if (isNcrApprovalTaskView(safeView)) return canUseNcrApprovalTaskView();
             if (isNotOnInventoryApprovalTaskView(safeView)) return canUseNotOnInventoryApprovalTaskView();
             if (isTaskDiagnosticsView(safeView)) return canUseMlAdminViews();
@@ -133060,15 +133186,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             const regularTaskItems = safeView === EVAL_TASK_ASSIGNMENT
                 ? mergeEvalTaskRequestMirrorItems(baseTaskItems, getEvalTaskRequestMirrorItems(owner))
                 : baseTaskItems;
-            const taskAssignableItems = isRestrictedEvalTaskQueue
+            const taskAssignableItems = isRestrictedEvalTaskQueue && safeView !== EVAL_TASK_ASSIGNMENT
                 ? regularTaskItems.filter((item) => canRestrictedEvalUserUpdateItem(item, currentUser, currentUserDisplay))
                 : regularTaskItems;
             let nextItems = [];
-            if (safeView === EVAL_TASK_ASSIGNMENT && canUseEvalTaskAssignment()) {
+            if (safeView === EVAL_TASK_ASSIGNMENT) {
                 const evalOwner = normalizeEvalAssignableUser(owner);
                 nextItems = evalOwner
                     ? taskAssignableItems.filter((item) => doesEvalTaskItemMatchOwner(item, evalOwner))
-                    : taskAssignableItems;
+                    : [];
             } else if (useSharedQueue) {
                 nextItems = safeView === 'flyer' ? taskAssignableItems.filter((item) => isFlyerTaskItem(item)) : taskAssignableItems;
             } else if (owner) {
@@ -133197,6 +133323,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!safeOwner || safeOwner === 'all') return true;
             const assignedUsers = getEvalTaskAssignedUsersFromItem(item);
             if (assignedUsers.includes(safeOwner)) return true;
+            if (hasWarehouseAssignmentSourceRows() && !isEvalTaskItem(item) && !hasEvalTaskRequestMeta(item)) return false;
             return isAssignedToCurrentUser(firstNonEmptyValue(
                 getMasterAssignedToValue(item),
                 item && item.ASSIGNEDTO,
@@ -133561,13 +133688,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === EVAL_TASK_ASSIGNMENT) {
                 const safeSubtype = normalizeEvalTaskFilterValue(subview);
                 const access = getRoleAccessState();
-                const showAssignedInventoryRows = isRestrictedEvalUser(access);
-                if (showAssignedInventoryRows && shouldUseSimplifiedEvalTaskFilters(access)) {
+                const showAssignedInventoryRows = true;
+                if (shouldUseSimplifiedEvalTaskFilters(access)) {
                     return getEvalSimpleTaskFilterItems(scopedItems, safeSubtype);
                 }
-                const evalOwner = canUseEvalTaskAssignment()
-                    ? getActiveEvalTaskViewerUser()
-                    : (showAssignedInventoryRows ? normalizeEvalAssignableUser(currentUser || currentUserDisplay) : '');
+                const evalOwner = getActiveEvalTaskViewerUser();
                 const derivedNcrRows = (safeSubtype === 'all' || safeSubtype === 'new-crop')
                     ? getEvalNcrDerivedFutureRows(evalOwner)
                     : [];
@@ -133576,7 +133701,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     : scopedItems;
                 return evalScopedItems.filter((item) => {
                     const explicitEvalTask = isEvalTaskItem(item);
-                    const assignedInventoryTask = showAssignedInventoryRows && canRestrictedEvalUserUpdateItem(item, currentUser, currentUserDisplay);
+                    const assignedInventoryTask = showAssignedInventoryRows && doesEvalTaskItemMatchOwner(item, evalOwner);
                     if (!explicitEvalTask && !assignedInventoryTask) return false;
                     if (safeSubtype === 'all') return true;
                     if (!explicitEvalTask) return false;
@@ -133645,10 +133770,19 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskModeDropdownOptions() {
-            return getAvailableTaskViewValues().map((value) => ({
-                value,
-                label: getTaskTabLabel(value)
+            const taskViewOptions = getAvailableTaskViewValues()
+                .filter((value) => value !== EVAL_TASK_ASSIGNMENT)
+                .map((value) => ({
+                    value,
+                    label: getTaskTabLabel(value),
+                    group: 'Task Views'
+                }));
+            const evaluatorOptions = getEvalTaskViewerUserOptions().map((option) => ({
+                value: getEvalTaskViewOptionValue(option.value),
+                label: option.label,
+                group: 'Eval Users'
             }));
+            return taskViewOptions.concat(evaluatorOptions);
         }
 
         function getTaskFilterValues(tab = activeTaskView) {
@@ -133814,8 +133948,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!container) return;
             const simpleEvalShell = shouldUseSimplifiedEvalTaskFilters();
             const safeTab = simpleEvalShell ? EVAL_TASK_ASSIGNMENT : normalizeTaskViewValue(tab);
-            const shouldShowTaskMode = !simpleEvalShell && getTaskModeDropdownOptions().length > 1;
-            const shouldShowEvalUser = !simpleEvalShell && shouldShowEvalTaskUserSelector(safeTab);
+            const shouldShowTaskMode = getTaskModeDropdownOptions().length > 0;
+            const shouldShowEvalUser = false;
             const shouldShowSubview = shouldShowTaskSubviewDropdown(safeTab);
             const shouldShowGenus = !simpleEvalShell && shouldShowTaskInlineGenusFilter(safeTab, taskViewLevel);
             const shouldShowContSize = !simpleEvalShell && shouldShowTaskInlineContSizeFilter(safeTab, taskViewLevel);
@@ -134008,47 +134142,17 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskEvalUserDropdownOptions(tab = activeTaskTab) {
-            const safeTab = normalizeTaskViewValue(tab);
-            if (safeTab === EVAL_TASK_ASSIGNMENT) return getEvalTaskViewerUserOptions();
-            const userMap = new Map();
-            const addUser = (value = '') => {
-                const normalized = normalizeEvalAssignableUser(value);
-                if (!normalized || normalized === 'all') return;
-                if (!userMap.has(normalized)) userMap.set(normalized, normalized);
-            };
-            getEvalAssignableUserList().forEach(addUser);
-            const sourceItems = Array.isArray(fullInventory) ? fullInventory : [];
-            sourceItems.forEach((item) => {
-                getEvalTaskAssignedUsersFromItem(item).forEach(addUser);
-            });
-            const userOptions = Array.from(userMap.entries())
-                .sort((left, right) => String(left[1]).localeCompare(String(right[1]), undefined, { sensitivity: 'base' }))
-                .map(([value, label]) => ({ value, label }));
-            return [{ value: 'all', label: 'All Eval Users' }].concat(userOptions);
+            return getEvalTaskViewerUserOptions();
         }
 
         function syncTaskEvalUserControls(tab = activeTaskTab) {
             const container = document.getElementById('task-eval-user-filter');
             if (!container) return;
             syncTaskSelectorRowLayout(tab);
-            if (!shouldShowEvalTaskUserSelector(tab)) {
-                taskEvalUserDropdownOpen = false;
-                taskEvalUserSearchTerm = '';
-                container.classList.add('hidden');
-                setContainerHtmlWithSignature(container, '', `task-eval-user:hidden:${String(tab || activeTaskTab || '').trim().toLowerCase()}`);
-                return;
-            }
-            container.classList.remove('hidden');
-            const currentValue = getActiveEvalTaskViewerUser();
-            const currentLabel = getEvalTaskViewerUserLabel(currentValue);
-            const filteredOptions = filterExcelOptionValues(getTaskEvalUserDropdownOptions(tab), taskEvalUserSearchTerm);
-            const optionsHtml = buildExcelFilterOptionButtonsHtml(filteredOptions, currentValue, 'setTaskEvalUser', 'No EVAL users match.');
-            const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-ios-task-filter-trigger="eval-user" ${buildExcelFilterFastAttrs('toggleTaskEvalUserDropdown')}><i class="ph-bold ph-user-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Eval User</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 ${taskEvalUserDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">${buildExcelFilterSearchHtml('task-eval-user-search', taskEvalUserSearchTerm, 'Search eval user...', 'setTaskEvalUserSearchTerm', 'handleTaskEvalUserSearchKeydown')}<div class="excel-filter-options">${optionsHtml}</div><div class="excel-filter-footer"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeTaskEvalUserDropdown')}>Done</button></div></div></div>`;
-            setContainerHtmlWithSignature(container, html, `task-eval-user:${currentValue}:${String(taskEvalUserSearchTerm || '').trim().toLowerCase()}:${taskEvalUserDropdownOpen ? 'open' : 'closed'}`);
-            scheduleCompactTaskTopControlPanelSync('task-eval-user');
-            if (!evalAssignableUsers.length && !evalAssignableUsersPromise) ensureEvalAssignableUsers().then(() => {
-                if (shouldShowEvalTaskUserSelector(activeTaskTab)) syncTaskEvalUserControls(activeTaskTab);
-            }).catch(() => {});
+            taskEvalUserDropdownOpen = false;
+            taskEvalUserSearchTerm = '';
+            container.classList.add('hidden');
+            setContainerHtmlWithSignature(container, '', `task-eval-user:hidden:${String(tab || activeTaskTab || '').trim().toLowerCase()}`);
         }
 
         function toggleTaskEvalUserDropdown() {
@@ -134108,28 +134212,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             handleSearchEnterApply(event, applyVisibleTaskEvalUserResult);
         }
 
-        function setTaskEvalUser(value = 'all') {
-            const normalized = normalizeEvalTaskViewerUser(value);
-            const nextTarget = normalized === 'all' ? '' : normalized;
-            if (String(taskViewTargetUser || '').trim() === nextTarget && !taskEvalUserDropdownOpen) return false;
-            beginDirectNavigationActivity();
-            taskViewTargetUser = nextTarget;
-            taskEvalUserDropdownOpen = false;
-            taskEvalUserSearchTerm = '';
-            selectedTaskBlock = null;
-            selectedTaskLoc = null;
-            taskViewLevel = 0;
-            selectedTaskGenusNames = new Set();
-            selectedTaskContSizes = new Set();
-            resetTaskLocationDetailFilters();
-            taskScopedQueueItemsCache.clear();
-            taskHotStateCache.clear();
-            taskResolvedStateCache = null;
-            taskResolvedStateKey = '';
-            syncTaskEvalUserControls(activeTaskTab);
-            scheduleTasksRender(0, 8, true);
-            queueScrollMainAreaToTop(`task-eval-user:${nextTarget || 'all'}`);
-            return false;
+        function setTaskEvalUser(value = '') {
+            return setTaskEvaluatorView(value);
         }
 
         function toggleTaskSubviewDropdown() {
@@ -134237,7 +134321,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!host) return;
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
             const modeOptions = getTaskModeDropdownOptions();
-            if (shouldUseSimplifiedEvalTaskFilters() || modeOptions.length <= 1) {
+            if (!modeOptions.length) {
                 taskTabDropdownOpen = false;
                 host.classList.add('hidden');
                 setContainerHtmlWithSignature(host, '', `task-mode:hidden:${safeTab}`);
@@ -134246,12 +134330,21 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             host.classList.remove('hidden');
             syncTaskSelectorRowLayout(safeTab);
-            const currentLabel = getTaskTabLabel(safeTab);
+            const currentValue = getActiveTaskModeOptionValue(safeTab);
+            const currentLabel = getActiveTaskModeOptionLabel(safeTab);
             const filteredOptions = filterExcelOptionValues(modeOptions, taskModeSearchTerm);
-            const optionsHtml = buildExcelFilterOptionButtonsHtml(filteredOptions, safeTab, 'setTaskTab', 'No task views match.');
+            const optionsHtml = buildExcelFilterOptionButtonsHtml(filteredOptions, currentValue, 'setTaskTab', 'No task views match.');
             const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-ios-task-filter-trigger="mode" ${buildExcelFilterFastAttrs('toggleTaskModeDropdown')}><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task View</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">${buildExcelFilterSearchHtml('task-mode-search', taskModeSearchTerm, 'Search task view...', 'setTaskModeSearchTerm', 'handleTaskModeSearchKeydown')}<div class="excel-filter-options">${optionsHtml}</div><div class="excel-filter-footer"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeTaskModeDropdown')}>Done</button></div></div></div>`;
-            setContainerHtmlWithSignature(host, html, `task-mode:${safeTab}:${String(taskModeSearchTerm || '').trim().toLowerCase()}:${taskTabDropdownOpen ? 'open' : 'closed'}`);
+            setContainerHtmlWithSignature(host, html, `task-mode:${currentValue}:${String(taskModeSearchTerm || '').trim().toLowerCase()}:${taskTabDropdownOpen ? 'open' : 'closed'}`);
             scheduleCompactTaskTopControlPanelSync('task-mode');
+            const now = Date.now();
+            if (!evalAssignableUsersDirectoryResolved && !evalAssignableUsersPromise && navigator.onLine !== false && (now - evalAssignableUsersLastAttemptAt) >= 30000) {
+                ensureEvalAssignableUsers().then(() => {
+                    const targetChanged = reconcileEvalTaskViewerUser();
+                    syncTaskModeControls(activeTaskTab);
+                    if (targetChanged || activeTaskTab === EVAL_TASK_ASSIGNMENT) scheduleTasksRender(0, 8, true);
+                }).catch(() => {});
+            }
         }
 
         function syncTaskSubviewControls(tab = activeTaskTab) {
@@ -134363,7 +134456,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return {
                     kind: safeKind,
                     type: 'single',
-                    selectedValue: normalizeTaskViewValue(activeTaskTab),
+                    selectedValue: getActiveTaskModeOptionValue(activeTaskTab),
                     options: getTaskModeDropdownOptions(),
                     emptyText: 'No task views available.'
                 };
@@ -134434,15 +134527,21 @@ ${folderNote ? `Folder Note: ${folderNote}
             const optionCount = Array.isArray(safeConfig.options) ? safeConfig.options.length : 0;
             const selectedCount = safeConfig.selectedSet instanceof Set ? safeConfig.selectedSet.size : 0;
             const hasSearch = String(search || '').trim() !== '';
+            let previousGroup = '';
             const optionsHtml = filteredOptions.length
                 ? filteredOptions.map((option) => {
                     const value = String(option && option.value || '').trim();
                     const label = String(option && option.label || value || '').trim();
+                    const group = String(option && option.group || '').trim();
+                    const groupHtml = group && group !== previousGroup
+                        ? `<div class="task-filter-option-group border-b px-4 py-2 text-[9px] font-black uppercase tracking-[0.14em]" style="background:var(--ops-surface-muted,#f8fafc);color:var(--ops-text-muted,#64748b);border-color:var(--ops-border,#d1d5db)">${escapeHtml(group)}</div>`
+                        : '';
+                    previousGroup = group;
                     const selected = safeConfig.type === 'single'
                         ? value === String(safeConfig.selectedValue || '').trim()
                         : safeConfig.selectedSet.has(value);
                     const action = safeConfig.type === 'single' ? 'selectIosTaskFilterSheetOption' : 'toggleIosTaskFilterSheetOption';
-                    return `<button type="button" class="flex min-h-[48px] w-full items-center justify-between gap-3 border-b border-emerald-50 px-4 py-3 text-left ${selected ? 'bg-emerald-50 text-emerald-800' : 'bg-white text-slate-700'}" onclick="return ${action}('${escJsAttrValue(safeKind)}','${escJsAttrValue(value)}')"><span class="min-w-0 flex-1 truncate text-[13px] font-black">${escapeHtml(label)}</span><span class="grid h-6 w-6 place-items-center rounded-full border ${selected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-transparent'}"><i class="ph-bold ph-check text-sm"></i></span></button>`;
+                    return `${groupHtml}<button type="button" class="flex min-h-[48px] w-full items-center justify-between gap-3 border-b border-emerald-50 px-4 py-3 text-left ${selected ? 'bg-emerald-50 text-emerald-800' : 'bg-white text-slate-700'}" onclick="return ${action}('${escJsAttrValue(safeKind)}','${escJsAttrValue(value)}')"><span class="min-w-0 flex-1 truncate text-[13px] font-black">${escapeHtml(label)}</span><span class="grid h-6 w-6 place-items-center rounded-full border ${selected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-transparent'}"><i class="ph-bold ph-check text-sm"></i></span></button>`;
                 }).join('')
                 : `<div class="px-4 py-6 text-center text-[12px] font-bold text-slate-400">${escapeHtml(hasSearch ? 'No matches for this search.' : safeConfig.emptyText)}</div>`;
             const footerDoneLabel = selectedCount ? `Done (${selectedCount})` : 'Done';
@@ -137494,8 +137593,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 taskContSizeScopeKey,
                 taskLocationDetailScopeKey
             } = buildResolvedTaskState({ skipSelectorSync: true });
-            const canRenderAllEvalUsers = activeTaskTab === EVAL_TASK_ASSIGNMENT && canUseEvalTaskAssignment();
-            if (!useSharedTaskQueue && !targetUser && !canRenderAllEvalUsers) return;
+            if (!useSharedTaskQueue && !targetUser && activeTaskTab !== EVAL_TASK_ASSIGNMENT) return;
 
             const taskPerfKey = `${activeTaskTab}:${activeTaskSubview || 'all'}:level${taskViewLevel}`;
             const taskRenderToken = Number(latestViewRenderTokensByView.tasks || 0);
@@ -137524,8 +137622,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                         ? `${notesTitle} > ${selectedEndCapFolder}`
                         : notesTitle;
                 } else {
-                    const ownerLabel = canRenderAllEvalUsers
-                        ? (getActiveEvalTaskViewerUser() === 'all' ? 'All Eval Users' : `${getEvalTaskViewerUserLabel()} Tasks`)
+                    const ownerLabel = activeTaskTab === EVAL_TASK_ASSIGNMENT
+                        ? (targetUser ? `${getEvalTaskViewerUserLabel(targetUser)} Tasks` : 'Eval Tasks')
                         : (getRoleAccessState().isAdmin
                             ? `${targetUser}'s Tasks`
                             : 'My Tasks');
@@ -137719,7 +137817,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
 
             if (activeTaskTab !== 'flyer' && tabItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
+                const evaluatorHasAssignedRows = activeTaskTab === EVAL_TASK_ASSIGNMENT && targetUser
+                    ? getScopedTaskQueueItems(activeTaskTab, targetUser).length > 0
+                    : false;
+                const emptyMessage = activeTaskTab === EVAL_TASK_ASSIGNMENT
+                    ? (targetUser
+                        ? (evaluatorHasAssignedRows
+                            ? `No rows assigned to ${getEvalTaskViewerUserLabel(targetUser)} match the current Eval filters.`
+                            : `No Drive rows are assigned to ${getEvalTaskViewerUserLabel(targetUser)}.`)
+                        : 'No active Eval users are available.')
+                    : `No active ${notesTitle} rows.`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">${esc(emptyMessage)}</div>`;
                 scheduleTaskFilterSync();
                 finishTaskPerf();
                 return;
@@ -137803,9 +137911,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : '';
 
             if (taskViewLevel === 0) {
+                const evalEmptyHtml = activeTaskTab === EVAL_TASK_ASSIGNMENT && targetUser
+                    ? `<div class="p-8 text-center text-gray-400">No Drive rows are assigned to ${esc(getEvalTaskViewerUserLabel(targetUser))}.</div>`
+                    : `<div class="p-8 text-center text-gray-400">No task blocks found.</div>`;
                 renderMarkupChunkedByKey('tasks-blocks', container, null, blockRows, '', (blockRow) => {
                     return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openTaskBlockView', [blockRow.blockAlpha], 'Open block ' + blockRow.blockAlpha)}><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockRow.blockAlpha}</div><span class="font-bold text-lg text-gray-700">Block ${blockRow.blockAlpha}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blockRow.count} Items</span></div>`;
-                }, { prefixHtml: buildTaskCustomerOutreachPrefix(tabItems), approxCardHeight: 88, emptyHtml: `<div class="p-8 text-center text-gray-400">No task blocks found.</div>` });
+                }, { prefixHtml: buildTaskCustomerOutreachPrefix(tabItems), approxCardHeight: 88, emptyHtml: evalEmptyHtml });
             } else if (taskViewLevel === 1) {
                 const locRows = locationRowsByBlock.get(selectedTaskBlock) || [];
                 const blockScopeRows = getTaskCustomerOutreachScopeRows(tabItems, itemsByLocation, locationRowsByBlock);

@@ -129,8 +129,9 @@ const DRIVE_AROUND_MACHINE_NAME_PATTERN = /^drivearoundmc\b/i;
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
-const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '1gZ2qeKnsOdEYKMMxXerUUTU5Fq7aeeNz9yVOxKK76OQ';
-const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1zDQbk9alVLqd6rW0O9QbJa9ZN6hax5P2';
+// Authoritative Eval assignment sheet: GNC/PLANT GROUP ITEMCODE EVAL/assignments 08-17-26.
+const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '16mK_5MWcIwVsbok0lGkBG65UeZt553nf5IEPiv0k34Q';
+const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1PLQJjNIM4dBTBlFOYiumLb-ICccPZbgn';
 const HL_PO_PARSED_TABLE = 'ph_27f1_hl_po';
 const HL_PO_PARSED_SOURCE_FOLDER_ID = '1681oPSyfz7mURdywOKH_9FQNnBQmmSWO';
 const HL_PO_PARSED_PROCESSED_FOLDER_ID = '13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2';
@@ -2480,10 +2481,11 @@ function isWarehouseAssignedItemsHeaderRow_(row) {
   const knownHeaderCount = headers.filter(function(header) {
     return WAREHOUSE_ASSIGNED_ITEM_COLUMN_SET.has(header);
   }).length;
-  return knownHeaderCount >= 6 &&
+  return knownHeaderCount >= 4 &&
     headers.indexOf('assignedto') !== -1 &&
+    headers.indexOf('warehousei') !== -1 &&
     headers.indexOf('itemcode') !== -1 &&
-    headers.indexOf('locationcode') !== -1;
+    headers.indexOf('genusname') !== -1;
 }
 
 function getWarehouseAssignedItemsSelectColumns_() {
@@ -2492,11 +2494,10 @@ function getWarehouseAssignedItemsSelectColumns_() {
 
 function getWarehouseAssignedItemsRowIdentity_(fields, idTracker, rowNumber) {
   const baseParts = [
+    fields.assignedto,
     fields.warehousei,
     fields.itemcode,
-    fields.contsize,
-    fields.locationcode,
-    fields.source
+    fields.genusname
   ].map(function(value) {
     return String(value || '').trim();
   });
@@ -2514,8 +2515,8 @@ function buildWarehouseAssignedItemsPayload(rawData, tableName, existingRows, sy
   const getIdx = function(columnName) {
     return normalizedHeaders.indexOf(String(columnName || '').trim().toLowerCase());
   };
+  const assignedToIdx = getIdx('assignedto');
   const itemCodeIdx = getIdx('itemcode');
-  const locationCodeIdx = getIdx('locationcode');
   const upserts = [];
   const seenIds = new Set();
   const existingMap = buildExistingRowMap_(existingRows);
@@ -2526,14 +2527,14 @@ function buildWarehouseAssignedItemsPayload(rawData, tableName, existingRows, sy
 
   for (let i = 1; i < rawData.length; i++) {
     const row = rawData[i] || [];
+    const assignedTo = assignedToIdx > -1 ? String(row[assignedToIdx] || '').trim() : '';
     const itemCode = itemCodeIdx > -1 ? String(row[itemCodeIdx] || '').trim() : '';
-    const locationCode = locationCodeIdx > -1 ? String(row[locationCodeIdx] || '').trim() : '';
     const hasAnyValue = row.some(function(value) { return String(value || '').trim() !== ''; });
     if (!hasAnyValue) {
       stats.skippedRows++;
       continue;
     }
-    if (!itemCode || !locationCode) {
+    if (!assignedTo || !itemCode) {
       stats.skippedRows++;
       continue;
     }
