@@ -6191,7 +6191,7 @@ html.outdoor-mode body.ops-precision-pilot #bottom-nav .footer-nav-btn:is(.activ
   }
 }
 
-/* V2026.08.17.03 — no-flash theme surfaces and Queue card photo rail. */
+/* V2026.08.17.04 — no-flash theme surfaces and Queue card photo rail. */
 body.ops-precision-pilot {
   --ops-request-card-surface: #ffffff;
   --ops-photo-rail: #ffffff;
@@ -6279,7 +6279,7 @@ html.outdoor-mode body.ops-precision-pilot #view-request :is(
   background-image: none !important;
 }
 
-/* V2026.08.17.03 — responsive Item Inquiry ledger. */
+/* V2026.08.17.04 — responsive Item Inquiry ledger. */
 body.ops-precision-pilot #view-detail #det-item-inquiry-content {
   box-sizing: border-box !important;
   grid-column: 1 / -1 !important;

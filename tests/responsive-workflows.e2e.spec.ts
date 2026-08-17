@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.17.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.17.04', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -34,7 +34,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
     };
     window.setInterval(sample, 25);
   });
-  await page.goto('/?e2e=V2026.08.17.03&theme=dark', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.17.04&theme=dark', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
 
   const result = await page.evaluate(() => ({
@@ -48,6 +48,46 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
   expect(visibleSamples.length).toBeGreaterThan(10);
   expect(visibleSamples.some((sample) => /rgb\(255, 255, 255\)|rgba\(255, 255, 255, 1\)/.test(`${sample.root}|${sample.body}`)), JSON.stringify(visibleSamples.slice(0, 12))).toBe(false);
   expect(visibleSamples.every((sample) => sample.theme === 'dark')).toBe(true);
+});
+
+test('Android keyboard viewport changes retain Drive search focus, node identity, value, and caret', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${fixtureUrl}?view=drive&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
+  const search = page.locator('#drive-search');
+  await search.focus();
+  await search.fill('Karl Foerster');
+  await search.evaluate((input) => {
+    const typed = input as HTMLInputElement;
+    typed.setSelectionRange(4, 4);
+    (window as typeof window & { __qaDriveSearchNode?: HTMLInputElement }).__qaDriveSearchNode = typed;
+  });
+
+  await page.setViewportSize({ width: 390, height: 500 });
+  await page.waitForTimeout(280);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(280);
+
+  const result = await search.evaluate((input) => {
+    const typed = input as HTMLInputElement;
+    return {
+      sameNode: (window as typeof window & { __qaDriveSearchNode?: HTMLInputElement }).__qaDriveSearchNode === typed,
+      connected: typed.isConnected,
+      focused: document.activeElement === typed,
+      value: typed.value,
+      selectionStart: typed.selectionStart,
+      selectionEnd: typed.selectionEnd,
+      mountedInCommandSlot: !!typed.closest('#global-header-search-slot'),
+    };
+  });
+  expect(result).toEqual({
+    sameNode: true,
+    connected: true,
+    focused: true,
+    value: 'Karl Foerster',
+    selectionStart: 4,
+    selectionEnd: 4,
+    mountedInCommandSlot: true,
+  });
 });
 
 test('Home adaptively fits all 12 launch modules without scrolling or quick-bar overlap', async ({ page }) => {
