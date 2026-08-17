@@ -1680,7 +1680,10 @@ function buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, nowIso
       holdstopbegindate_raw: getDriveAroundHistoryCell_(row, headers, ['holdstopbegindate', 'hold stop begin date']) || null,
       hold_reason_category: classifyDriveAroundHoldReason_(holdstopreason),
       row_hash: rowHash,
-      raw: raw,
+      // The normalized columns above plus row_hash are the durable database
+      // record. The source report remains in Google Drive, so duplicating the
+      // complete source row in Postgres adds no recovery value and caused the
+      // Drive Around relation to grow by many gigabytes.
       created_at: nowIso,
       updated_at: nowIso
     });

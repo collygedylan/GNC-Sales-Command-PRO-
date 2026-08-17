@@ -44,4 +44,5 @@ jobs:
           WEATHER_FORECAST_DAYS: "16"
           HOLD_WEATHER_REFRESH_LIMIT: "2000"
           HOLD_HISTORY_REFRESH_LIMIT: "100000"
+          HOLD_HISTORY_REFRESH_ENABLED: "false"
         run: python sync_weather_hold_learning.py

@@ -485,11 +485,23 @@ def run() -> int:
             print(f"{label} failed after weather data synced; continuing scheduled sync. {message}", file=sys.stderr)
             return None
 
-    call_optional_rpc(
-        "v2_refresh_hold_learning_from_drive_around_rows",
-        {"p_limit": history_refresh_limit},
-        "Refreshed Drive Around hold learning from ph_drive_around_report_rows",
-    )
+    history_refresh_enabled = os.environ.get("HOLD_HISTORY_REFRESH_ENABLED", "true").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if history_refresh_enabled:
+        call_optional_rpc(
+            "v2_refresh_hold_learning_from_drive_around_rows",
+            {"p_limit": history_refresh_limit},
+            "Refreshed Drive Around hold learning from ph_drive_around_report_rows",
+        )
+    else:
+        print(
+            "Skipped the full Drive Around history rebuild so the verified "
+            "pre-compaction hold-learning baseline remains intact."
+        )
     call_optional_rpc(
         "v2_refresh_hold_learning_weather_features",
         {"p_limit": refresh_limit},
