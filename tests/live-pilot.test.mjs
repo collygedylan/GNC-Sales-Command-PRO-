@@ -29,22 +29,25 @@ const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.14';
+  const release = 'V2026.08.16.15';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.16.14');
+  assert.equal(packageJson.version, '2026.08.16.15');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
+  assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081615.min.css'));
+  assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
+  assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
   assert.match(html, /localStorage\.getItem\('gnc_last_appearance_user_v1'\)/);
   assert.match(html, /\(verifiedLogin && verifiedLogin\.username\) \|\| rememberedAppearanceUser/);
   assert.doesNotMatch(html, /verifiedUsername && localStorage\.getItem\('gnc_explicit_logout_v1'\) !== '1'/);
   assert.match(html, /const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' \+ verifiedUsername/);
   assert.match(html, /verifiedUsername === 'dylan_collyge' \? \(localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
-  assert.match(html, /const prepaintTheme = cachedTheme === 'dark'/);
   assert.match(html, /document\.documentElement\.dataset\.opsPrepaintTheme = prepaintTheme/);
   assert.match(html, /id="ops-theme-prepaint"[\s\S]*data-ops-prepaint-theme="dark"[\s\S]*background:#07120e !important/);
   assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#111c18 !important/);
@@ -55,7 +58,28 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.equal(manifest.background_color, '#07874f');
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081615\.png"/);
+  assert.equal(manifest.background_color, '#07120e');
+  assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
+  assert.match(client, /function readRememberedDeviceTheme\(\)/);
+  assert.match(client, /function writeRememberedDeviceTheme\(theme\)/);
+  assert.match(client, /if \(!state\.eligible && !state\.provisional\) return readRememberedDeviceTheme\(\)/);
+  assert.match(client, /preferences: getRememberedDevicePreferences\(\)/);
+  assert.match(client, /const rememberedTheme = readRememberedDeviceTheme\(\)/);
+  assert.match(client, /preferences: normalizePreferences\(\{ \.\.\.\(cached \|\| getRememberedDevicePreferences\(\)\), themeMode: rememberedTheme \}\)/);
+});
+
+test('V15 Queue cards and photo rails use semantic Light and Dark surfaces', () => {
+  assert.match(html, /app-request-card-surface border-purple-200/);
+  assert.doesNotMatch(html, /isSeasonSalesNoteCard \? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'/);
+  assert.match(html, /app-inline-thumb-box app-inline-thumb-box--empty/);
+  assert.match(html, /app-inline-thumb-label app-inline-thumb-date/);
+  const queueThemeCss = css.slice(css.lastIndexOf('V2026.08.16.15 — no-flash theme surfaces and Queue card photo rail'));
+  assert.match(queueThemeCss, /--ops-request-card-surface: #111c18/);
+  assert.match(queueThemeCss, /--ops-photo-placeholder: #16231f/);
+  assert.match(queueThemeCss, /\.request-swipe-row\.app-request-card-surface > \.request-swipe-surface/);
+  assert.match(queueThemeCss, /#view-request :is\(\.app-inline-thumb-box, \.app-inline-thumb\)/);
+  assert.match(queueThemeCss, /#request-crumb:not\(:empty\)/);
 });
 
 test('verified login primes the saved appearance before Home is revealed', () => {
@@ -64,7 +88,7 @@ test('verified login primes the saved appearance before Home is revealed', () =>
   assert.match(html, /pilot\.primeCachedAppearance\(\{[\s\S]*userKey: normalizedUsername,[\s\S]*activeView:/);
   assert.match(html, /persistVerifiedLoginRecord\(username[\s\S]*primeOpsPilotAppearanceForVerifiedUser\(normalizedUsername\)/);
   assert.match(client, /function primeCachedAppearance\(options = \{\}\)/);
-  assert.match(client, /preferences: normalizePreferences\(cached \|\| getDefaultPreferencesForUser\(userKey\)\)/);
+  assert.match(client, /preferences: normalizePreferences\(\{ \.\.\.\(cached \|\| getRememberedDevicePreferences\(\)\), themeMode: rememberedTheme \}\)/);
   assert.match(client, /provisional: true/);
   assert.match(client, /const skinActive = true/);
   assert.match(client, /if \(!LIST_VIEWS\.has\(state\.activeView\)\) return/);
@@ -109,7 +133,7 @@ test('premium skin and Appearance controls are global and remain drawer-only and
   assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible && !state\.provisional\)/);
   assert.match(client, /body\.classList\.add\('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v16'\)/);
   assert.match(html, /<body[^>]*ops-precision-pilot[^>]*ag-premium-skin[^>]*premium-skin-v16/);
-  assert.match(client, /if \(!state\.eligible && !state\.provisional\) return 'light'/);
+  assert.match(client, /if \(!state\.eligible && !state\.provisional\) return readRememberedDeviceTheme\(\)/);
 });
 
 test('server derives global Appearance eligibility from the authenticated session identity', () => {
@@ -488,7 +512,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081614\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081615\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
