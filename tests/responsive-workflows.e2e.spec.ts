@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.15', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.17.01', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -34,7 +34,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
     };
     window.setInterval(sample, 25);
   });
-  await page.goto('/?e2e=V2026.08.16.15&theme=dark', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.17.01&theme=dark', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
 
   const result = await page.evaluate(() => ({
@@ -196,6 +196,71 @@ test('phone Chat composer fills the shell and never overlaps quick navigation', 
   expect(desktopComposer).not.toBeNull();
   expect(desktopNav).not.toBeNull();
   expect(desktopComposer!.y + desktopComposer!.height).toBeLessThanOrEqual(desktopNav!.y);
+});
+
+test('Item Inquiry fits every viewport and groups lot rows with accurate location totals', async ({ page }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1366, height: 768 },
+    { width: 1920, height: 1080 },
+  ];
+  const itemFields = ['COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'ITEMSPEC', 'FIELDTAGCOLOR', 'HOLDSTOPCODE', 'HOLDSTOPBEGINDATE', 'HOLDSTOPREASON', 'SUSPENDTO', 'SPECIALPULLER'];
+  const rowFields = ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DesigItem', 'DesigCust', 'DesigLoc', 'PRIORITY', 'PTRONHAND', 'PTRREVIEWED', 'PRISETBY', 'PRIUPDATED', 'LOCATIONNOTE', 'LOCATIONPTN1'];
+
+  for (const theme of ['light', 'dark']) {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${fixtureUrl}?view=item-inquiry&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('#item-inquiry-panel')).toBeVisible();
+      await expect(page.locator('[data-item-inquiry-summary] [data-item-inquiry-field]')).toHaveCount(itemFields.length);
+      expect(await page.locator('[data-item-inquiry-summary] [data-item-inquiry-field]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-item-inquiry-field')))).toEqual(itemFields);
+      await expect(page.locator('[data-item-inquiry-location]')).toHaveCount(2);
+      const f19 = page.locator('[data-item-inquiry-location="F.19.000"]');
+      await expect(f19.locator('[data-item-inquiry-row-line]')).toHaveCount(3);
+      await expect(f19.locator('[data-item-inquiry-location-total-onhand]')).toHaveText('1,766');
+      await expect(f19.locator('[data-item-inquiry-location-total-reviewed]')).toHaveText('80');
+      await expect(f19.locator('[data-item-inquiry-column="PTRREVIEWED"] .item-inquiry-cell-value')).toHaveText(['80', '—', '—']);
+      const firstRowLabels = await f19.locator('[data-item-inquiry-row-line]').first().locator('[data-item-inquiry-column]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-item-inquiry-column')));
+      expect(firstRowLabels).toEqual(rowFields);
+
+      const layout = await page.locator('#item-inquiry-panel').evaluate((panel) => {
+        const panelRect = panel.getBoundingClientRect();
+        const ledger = panel.querySelector('.item-inquiry-ledger') as HTMLElement;
+        const firstRow = panel.querySelector('.item-inquiry-ledger-row') as HTMLElement;
+        const cellValues = Array.from(panel.querySelectorAll('.item-inquiry-cell-value')) as HTMLElement[];
+        return {
+          viewportWidth: window.innerWidth,
+          documentOverflowX: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          panelLeft: panelRect.left,
+          panelRight: panelRect.right,
+          panelWidth: panelRect.width,
+          ledgerClientWidth: ledger.clientWidth,
+          ledgerScrollWidth: ledger.scrollWidth,
+          ledgerClientHeight: ledger.clientHeight,
+          rowColumns: getComputedStyle(firstRow).gridTemplateColumns.split(' ').filter(Boolean).length,
+          headerDisplay: getComputedStyle(panel.querySelector('.item-inquiry-ledger-header')!).display,
+          smallestFont: Math.min(...cellValues.map((cell) => Number.parseFloat(getComputedStyle(cell).fontSize))),
+          verticalWord: cellValues.some((cell) => getComputedStyle(cell).wordBreak === 'break-all'),
+        };
+      });
+      expect(layout.documentOverflowX, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBe(0);
+      expect(layout.panelLeft).toBeGreaterThanOrEqual(-1);
+      expect(layout.panelRight).toBeLessThanOrEqual(viewport.width + 1);
+      expect(layout.panelWidth).toBeGreaterThan(250);
+      expect(layout.ledgerScrollWidth).toBeLessThanOrEqual(layout.ledgerClientWidth + 1);
+      expect(layout.ledgerClientHeight).toBeGreaterThan(80);
+      expect(layout.smallestFont).toBeGreaterThanOrEqual(8);
+      expect(layout.verticalWord).toBe(false);
+      if (viewport.width >= 1100) {
+        expect(layout.headerDisplay).toBe('grid');
+        expect(layout.rowColumns).toBe(13);
+      } else {
+        expect(layout.headerDisplay).toBe('none');
+        expect(layout.rowColumns).toBe(viewport.width <= 640 ? 2 : 4);
+      }
+    }
+  }
 });
 
 test('Drive Grid is a readable spreadsheet and every control stays on one rail', async ({ page }) => {
