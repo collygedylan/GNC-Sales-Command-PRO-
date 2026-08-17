@@ -32,17 +32,17 @@ const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enab
 const appsScriptBackend = read('Code.gs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.17.08';
+  const release = 'V2026.08.17.09';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.17.08');
+  assert.equal(packageJson.version, '2026.08.17.09');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081708.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081709.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -61,7 +61,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081708\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081709\.png"/);
   assert.equal(manifest.background_color, '#07120e');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -486,6 +486,30 @@ test('design pills and Drive metrics use the professional responsive card system
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
 });
 
+test('authorized reps can select any Drive row for Request without gaining inventory mutation controls', () => {
+  const selectionPolicy = html.slice(
+    html.indexOf('function canCurrentUserSelectDriveWorkflowRow'),
+    html.indexOf('function isCurrentDriveCardOptionsContext')
+  );
+  const mutationPolicy = html.slice(
+    html.indexOf('function canCurrentUserUseDriveCardOptions'),
+    html.indexOf('function canCurrentUserSelectDriveWorkflowRow')
+  );
+  const driveCardBuilder = html.slice(
+    html.indexOf('const canUseDriveOptions = canCurrentUserUseDriveCardOptions(item, sourceView);'),
+    html.indexOf("if(sourceView==='tasks')")
+  );
+  assert.match(selectionPolicy, /access && access\.isRepLike && canUseDriveQuickRequest\(\)/);
+  assert.match(selectionPolicy, /return canCurrentUserUseDriveCardOptions\(/);
+  assert.match(mutationPolicy, /return isWarehouseAssignedDriveCardForCurrentUser\(/);
+  assert.match(driveCardBuilder, /const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow\(item, sourceView\)/);
+  assert.match(driveCardBuilder, /driveCheckboxHtml = canSelectDriveWorkflow \?/);
+  assert.match(driveCardBuilder, /driveArgosRailHtml = canUseDriveOptions \?/);
+  assert.doesNotMatch(driveCardBuilder, /driveArgosRailHtml = canSelectDriveWorkflow \?/);
+  assert.match(html, /canAddItemToBloomPicker[\s\S]*canCurrentUserSelectDriveWorkflowRow\(item, 'drive'\)/);
+  assert.match(html, /toggleGlobalItem[\s\S]*canCurrentUserSelectDriveWorkflowRow\(item, 'drive'\)/);
+});
+
 test('phone Home tiles fill both columns and Drive cards retain the thumbnail with Reclass at top right', () => {
   const cascadeLockIndex = css.lastIndexOf('V2026.08.15.12 final responsive and theme cascade');
   const driveMobileCascadeIndex = css.lastIndexOf('V2026.08.15.11 mobile cascade lock');
@@ -603,7 +627,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081708\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081709\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
