@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const execute = process.argv.includes('--execute');
+const synchronizeExistingPasswords = process.argv.includes('--sync-existing-passwords');
 const url = String(process.env.SUPABASE_URL || '').trim();
 const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const publishableKey = String(process.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
@@ -134,6 +135,26 @@ for (const legacy of legacyUsers || []) {
   }
 
   if (execute && authUser) {
+    if (existing && synchronizeExistingPasswords) {
+      if (!password || password.length < nativePasswordMinimum) {
+        throw new Error(`Existing Auth password cannot be synchronized for legacy user ${legacy.id}: password is below the native minimum.`);
+      }
+      const { error: passwordSyncError } = await admin.auth.admin.updateUserById(authUser.id, {
+        password,
+        email_confirm: true,
+        app_metadata: {
+          ...(authUser.app_metadata || {}),
+          role: String(legacy.role || 'User'),
+          legacy_user_id: legacy.id
+        },
+        user_metadata: {
+          ...(authUser.user_metadata || {}),
+          username
+        }
+      });
+      if (passwordSyncError) throw new Error(`Auth password synchronization failed for legacy user ${legacy.id}: ${passwordSyncError.message}`);
+      action = 'synchronize';
+    }
     const { error } = await admin.from('profiles').upsert({
       id: authUser.id,
       legacy_user_id: legacy.id,
@@ -184,6 +205,7 @@ for (const legacy of legacyUsers || []) {
 const summary = {
   create: report.filter((row) => row.action === 'create' || row.action === 'dry_run_create').length,
   reconcile: report.filter((row) => row.action === 'reconcile' || row.action === 'dry_run_reconcile').length,
+  synchronize: report.filter((row) => row.action === 'synchronize').length,
   deferred: report.filter((row) => row.action === 'deferred').length,
   blocked: report.filter((row) => row.action === 'blocked').length,
   parityVerified: report.filter((row) => row.passwordParityVerified === true).length

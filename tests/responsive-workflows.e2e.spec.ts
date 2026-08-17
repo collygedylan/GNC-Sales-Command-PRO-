@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.16.11', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');

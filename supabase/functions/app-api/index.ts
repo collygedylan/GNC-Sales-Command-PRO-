@@ -846,22 +846,68 @@ async function handleNativeSessionBridge(
   });
 }
 
-async function handlePasswordChange(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>, payload: Record<string, unknown>) {
+async function handlePasswordChange(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
   if (!session) return errorResponse("Unauthorized", 401);
   const newPassword = String(payload.newPassword || "").trim();
   const confirmPassword = String(payload.confirmPassword || "").trim();
-  if (!newPassword || newPassword.length < 4) return errorResponse("Password must be at least 4 characters.", 400);
+  if (!newPassword || newPassword.length < 6) return errorResponse("Password must be at least 6 characters.", 400);
   if (newPassword !== confirmPassword) return errorResponse("Passwords do not match.", 400);
   if (isForcedPasswordValue(newPassword)) return errorResponse("Choose a password other than the shared starter password.", 400);
 
-  const response = await restRequest(
-    "ph_app_users",
-    "PATCH",
-    `username=eq.${encodeURIComponent(session.displayName || session.username)}`,
-    { password: newPassword },
-  );
-  if (!response.ok) {
-    return errorResponse("Password update failed.", response.status, { details: await readResponsePayload(response) });
+  const username = normalizeUsername(session.username || session.displayName || "");
+  const { data: profile, error: profileLookupError } = await supabase
+    .from("profiles")
+    .select("id,legacy_user_id,username")
+    .eq("username", username)
+    .maybeSingle();
+  if (profileLookupError || !profile?.id || !profile.legacy_user_id) {
+    return errorResponse("The linked account profile could not be verified.", 409, { code: "AUTH_PROFILE_NOT_LINKED" });
+  }
+  if (session.authUserId && String(session.authUserId) !== String(profile.id)) {
+    return errorResponse("The authenticated account does not match this profile.", 403, { code: "AUTH_PROFILE_MISMATCH" });
+  }
+
+  const { error: nativePasswordError } = await supabase.auth.admin.updateUserById(String(profile.id), {
+    password: newPassword,
+  });
+  if (nativePasswordError) {
+    return errorResponse("Native password update failed.", 502, { code: "NATIVE_PASSWORD_UPDATE_FAILED" });
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error: legacyPasswordError } = await supabase
+    .from("ph_app_users")
+    .update({
+      password: newPassword,
+      password_hash: null,
+      password_salt: null,
+      password_changed_at: nowIso,
+      must_change_password: false,
+      failed_login_count: 0,
+      locked_until: null,
+    })
+    .eq("id", profile.legacy_user_id);
+  if (legacyPasswordError) {
+    return errorResponse("Password synchronization requires reconciliation.", 502, {
+      code: "LEGACY_PASSWORD_SYNC_REQUIRED",
+    });
+  }
+
+  const { error: profileUpdateError } = await supabase
+    .from("profiles")
+    .update({
+      must_change_password: false,
+      locked_until: null,
+      updated_at: nowIso,
+    })
+    .eq("id", profile.id);
+  if (profileUpdateError) {
+    return errorResponse("Password synchronization requires reconciliation.", 502, {
+      code: "PROFILE_PASSWORD_SYNC_REQUIRED",
+    });
   }
 
   const nextSession = await createAppSession({

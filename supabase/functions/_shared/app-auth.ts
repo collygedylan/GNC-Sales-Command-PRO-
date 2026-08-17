@@ -12,6 +12,7 @@ const FORCED_PASSWORD_CHANGE_VALUES = new Set([
 
 export type AppSessionClaims = {
   ver: number;
+  authUserId?: string;
   username: string;
   displayName: string;
   role: string;
@@ -120,6 +121,7 @@ async function signPayload(payload = "") {
 }
 
 export async function createAppSession(input: {
+  authUserId?: string;
   username: string;
   displayName?: string;
   role?: string;
@@ -128,6 +130,7 @@ export async function createAppSession(input: {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const claims: AppSessionClaims = {
     ver: 1,
+    ...(String(input.authUserId || "").trim() ? { authUserId: String(input.authUserId).trim() } : {}),
     username: normalizeUsername(input.username),
     displayName: String(input.displayName || input.username || "").trim() || normalizeUsername(input.username),
     role: String(input.role || "User").trim() || "User",
@@ -154,6 +157,9 @@ export async function verifyAppSessionToken(token = ""): Promise<AppSessionClaim
     if (!claims.username || !claims.exp || claims.exp <= Math.floor(Date.now() / 1000)) return null;
     return {
       ver: Number(claims.ver || 1),
+      ...(Number(claims.ver || 1) >= 2 && String(claims.authUserId || "").trim()
+        ? { authUserId: String(claims.authUserId).trim() }
+        : {}),
       username: normalizeUsername(claims.username),
       displayName: String(claims.displayName || claims.username || "").trim() || normalizeUsername(claims.username),
       role: String(claims.role || "User").trim() || "User",
@@ -182,14 +188,11 @@ export async function readSupabaseOrAppSessionFromRequest(
   req: Request,
   supabaseAdmin: { auth: { getUser: (token: string) => Promise<any> }; from: (table: string) => any },
 ): Promise<AppSessionClaims | null> {
-  const legacy = await readAppSessionFromRequest(req);
-  if (legacy) return legacy;
   const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!bearer || !supabaseAdmin) return null;
-  try {
+  if (bearer && supabaseAdmin) try {
     const { data, error } = await supabaseAdmin.auth.getUser(bearer);
     const user = data?.user;
-    if (error || !user?.id) return null;
+    if (error || !user?.id) throw new Error("native_session_unavailable");
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("username,display_name,role,must_change_password,disabled_at,locked_until")
@@ -200,6 +203,7 @@ export async function readSupabaseOrAppSessionFromRequest(
     const nowSeconds = Math.floor(Date.now() / 1000);
     return {
       ver: 2,
+      authUserId: String(user.id),
       username: normalizeUsername(profile.username),
       displayName: String(profile.display_name || profile.username || "").trim(),
       role: String(profile.role || "User").trim() || "User",
@@ -208,6 +212,7 @@ export async function readSupabaseOrAppSessionFromRequest(
       exp: nowSeconds + 300,
     };
   } catch (_error) {
-    return null;
+    // Fall through to the signed legacy session during the dual-auth window.
   }
+  return await readAppSessionFromRequest(req);
 }

@@ -5731,7 +5731,7 @@ body.ops-precision-pilot.request-detail-av-options-open #view-detail.detail-requ
   }
 }
 
-/* V2026.08.16.09 — shared View / Columns / Excel control contract. */
+/* V2026.08.16.11 — shared View / Columns / Excel control contract. */
 body.ops-precision-pilot :is(.ops-view-option-control, .ops-view-option-action) {
   box-sizing: border-box !important;
   min-width: 112px !important;

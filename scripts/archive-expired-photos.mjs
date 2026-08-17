@@ -5,7 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const RELEASE = 'V2026.08.16.09-photo-archive-1';
+const RELEASE = 'V2026.08.16.11-photo-archive-1';
 const CHICAGO_TIME_ZONE = 'America/Chicago';
 const RETENTION_DAYS = 10;
 const QUARANTINE_DAYS = 30;

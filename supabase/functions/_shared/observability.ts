@@ -32,7 +32,7 @@ export function recordHandledError(functionName: string, action: string, error: 
     status,
     duration_ms: 0,
     retry_count: 0,
-    release: "V2026.08.16.09",
+    release: "V2026.08.16.11",
     error_code: normalizeErrorCode(error),
     handled: true,
   });
@@ -68,7 +68,7 @@ export async function withObservedRequest(
         status,
         duration_ms: Math.round(performance.now() - startedAt),
         retry_count: Number(req.headers.get("x-retry-count") || 0),
-        release: "V2026.08.16.09",
+        release: "V2026.08.16.11",
         error_code: status >= 400 ? `http_${status}` : null,
       });
     }
@@ -83,7 +83,7 @@ export async function withObservedRequest(
       status: 500,
       duration_ms: Math.round(performance.now() - startedAt),
       retry_count: Number(req.headers.get("x-retry-count") || 0),
-      release: "V2026.08.16.09",
+      release: "V2026.08.16.11",
       error_code: normalizeErrorCode(error),
     });
     return new Response(JSON.stringify({ error: "Internal server error", requestId }), {
