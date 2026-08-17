@@ -26,21 +26,23 @@ const compactionMigration = read('supabase/migrations/20260816172825_database_co
 const authMigrationTool = read('scripts/migrate-custom-users-to-supabase-auth.mjs');
 const authAdmin = read('supabase/functions/auth-admin/index.ts');
 const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_passkeys_for_active_profiles.sql');
+const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.12';
+  const release = 'V2026.08.16.13';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.16.12');
+  assert.equal(packageJson.version, '2026.08.16.13');
 });
 
-test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
+test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
-  assert.match(html, /verifiedUsername === 'dylan_collyge' && localStorage\.getItem\('gnc_explicit_logout_v1'\) !== '1'/);
-  assert.match(html, /localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
-  assert.match(html, /const prepaintTheme = cachedTheme === 'light' \? 'light' : 'dark'/);
+  assert.match(html, /verifiedUsername && localStorage\.getItem\('gnc_explicit_logout_v1'\) !== '1'/);
+  assert.match(html, /const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' \+ verifiedUsername/);
+  assert.match(html, /verifiedUsername === 'dylan_collyge' \? \(localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
+  assert.match(html, /const prepaintTheme = cachedTheme === 'dark'/);
   assert.match(html, /document\.documentElement\.dataset\.opsPrepaintTheme = prepaintTheme/);
   assert.match(html, /id="ops-theme-prepaint"[\s\S]*data-ops-prepaint-theme="dark"[\s\S]*background:#07120e !important/);
   assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#111c18 !important/);
@@ -50,17 +52,17 @@ test('verified Dylan sessions restore the saved theme before the app shell paint
   assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
   assert.match(html, /function clearPersistedLoginSession\(\)[\s\S]*removeAttribute\('data-ops-prepaint-theme'\)/);
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
-  assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v1/);
+  assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.equal(manifest.background_color, '#07874f');
 });
 
 test('verified login primes the saved appearance before Home is revealed', () => {
   assert.match(html, /function primeOpsPilotAppearanceForVerifiedUser\(username = ''\)/);
-  assert.match(html, /normalizedUsername !== 'dylan_collyge'/);
-  assert.match(html, /pilot\.primeCachedAppearance\(\{[\s\S]*activeView:/);
+  assert.doesNotMatch(html.slice(html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'), html.indexOf('function clearInMemorySessionIdentity')), /normalizedUsername !== 'dylan_collyge'/);
+  assert.match(html, /pilot\.primeCachedAppearance\(\{[\s\S]*userKey: normalizedUsername,[\s\S]*activeView:/);
   assert.match(html, /persistVerifiedLoginRecord\(username[\s\S]*primeOpsPilotAppearanceForVerifiedUser\(normalizedUsername\)/);
   assert.match(client, /function primeCachedAppearance\(options = \{\}\)/);
-  assert.match(client, /preferences: normalizePreferences\(cached \|\| DEFAULT_PREFERENCES\)/);
+  assert.match(client, /preferences: normalizePreferences\(cached \|\| getDefaultPreferencesForUser\(userKey\)\)/);
   assert.match(client, /provisional: true/);
   assert.match(client, /const skinActive = true/);
   assert.match(client, /if \(!LIST_VIEWS\.has\(state\.activeView\)\) return/);
@@ -91,7 +93,7 @@ test('restored sessions retry pilot bootstrap only after authenticated session r
   assert.doesNotMatch(html, /currentUser\s*===\s*['"]dylan_collyge['"]/);
 });
 
-test('premium skin is global while Dylan controls remain drawer-only and server gated', () => {
+test('premium skin and Appearance controls are global and remain drawer-only and server gated', () => {
   assert.match(html, /id="side-drawer"[\s\S]*id="ops-pilot-settings"[\s\S]*id="drawer-logout-btn"/);
   assert.match(html, /id="ops-pilot-settings" class="ops-pilot-settings hidden"/);
   assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-duotone ph-palette"><\/i> Appearance/);
@@ -108,12 +110,15 @@ test('premium skin is global while Dylan controls remain drawer-only and server 
   assert.match(client, /if \(!state\.eligible && !state\.provisional\) return 'light'/);
 });
 
-test('server derives exact pilot eligibility from the authenticated app session', () => {
+test('server derives global Appearance eligibility from the authenticated session identity', () => {
   const pilotBlock = edge.slice(edge.indexOf('type LivePilotFeatureKey'), edge.indexOf('function getSessionDisplayName'));
-  assert.match(edge, /const LIVE_PILOT_USERNAME = "dylan_collyge"/);
+  assert.match(edge, /const LEGACY_DARK_DEFAULT_USERNAME = "dylan_collyge"/);
   assert.match(pilotBlock, /getSessionUserKey\(session\)/);
-  assert.match(pilotBlock, /username !== LIVE_PILOT_USERNAME/);
+  assert.doesNotMatch(pilotBlock, /username !== (?:LIVE_PILOT_USERNAME|LEGACY_DARK_DEFAULT_USERNAME)/);
   assert.match(pilotBlock, /if \(!session\) return errorResponse\("Authentication required\.", 401\)/);
+  assert.match(pilotBlock, /if \(!username\) return errorResponse\("Authenticated user identity is required\.", 403\)/);
+  assert.match(pilotBlock, /readOrCreateLivePilotPreferenceRow\(username\)/);
+  assert.match(pilotBlock, /\.eq\("user_key", username\)/);
   assert.doesNotMatch(pilotBlock, /payload\.(?:username|user_key)/);
   assert.match(edge, /action === "get_user_preferences"/);
   assert.match(edge, /action === "set_user_preferences"/);
@@ -132,12 +137,16 @@ test('preference table is canonical, RLS protected, and direct browser access is
   assert.doesNotMatch(migration, /grant (?:all|select|insert|update|delete)[^;]* to anon|grant (?:all|select|insert|update|delete)[^;]* to authenticated/i);
 });
 
-test('remote controls are independent and seeded only for the explicit pilot', () => {
+test('remote controls are independent and preferences are seeded for every active profile', () => {
   for (const key of ['skin', 'preferences', 'card_grid', 'monitoring']) {
     assert.match(migration, new RegExp(`\\('${key}', true\\)`));
   }
   assert.match(migration, /values \('dylan_collyge', 'system', 'cards'\)/);
-  assert.doesNotMatch(migration, /kayla_knepp|megan_kelly|mitch_kaiser|jd_jones/);
+  assert.match(appearanceRolloutMigration, /from public\.profiles p/);
+  assert.match(appearanceRolloutMigration, /where p\.disabled_at is null/);
+  assert.match(appearanceRolloutMigration, /on conflict \(user_key\) do nothing/);
+  assert.match(appearanceRolloutMigration, /'preferences', true/);
+  assert.match(appearanceRolloutMigration, /'card_grid', true/);
   assert.match(client, /panel\.classList\.toggle\('hidden', state\.provisional \|\| !state\.eligible \|\| \(!state\.flags\.preferences && !state\.flags\.card_grid\)\)/);
   assert.match(client, /themeGroup\.classList\.toggle\('hidden', !state\.flags\.preferences\)/);
   assert.match(client, /displayGroup\.classList\.toggle\('hidden', !state\.flags\.card_grid\)/);
@@ -145,10 +154,15 @@ test('remote controls are independent and seeded only for the explicit pilot', (
   assert.match(edge, /monitoringEligible/);
 });
 
-test('Dylan receives the full dark Ops Precision composition by default', () => {
-  assert.match(client, /DEFAULT_PREFERENCES = Object\.freeze\(\{ themeMode: 'dark'/);
+test('all users receive Light/Dark and Cards/Grid with a preserved Dylan dark default', () => {
+  assert.match(client, /DEFAULT_PREFERENCES = Object\.freeze\(\{ themeMode: 'light'/);
+  assert.match(client, /LEGACY_DARK_DEFAULT_USERNAME = 'dylan_collyge'/);
+  assert.match(client, /PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:'/);
+  assert.match(client, /getDefaultPreferencesForUser\(userKey\)/);
+  assert.match(client, /getPreferenceStorageKey\(userKey = state\.userKey\)/);
+  assert.match(html, /getUserKey: \(\) => normalizeSessionIdentity\(currentUser\)/);
   assert.match(client, /return mode === 'light' \? 'light' : 'dark'/);
-  assert.match(edge, /theme_mode: "dark"/);
+  assert.match(edge, /theme_mode: userKey === LEGACY_DARK_DEFAULT_USERNAME \? "dark" : "light"/);
   assert.match(darkDefaultMigration, /theme_mode = 'dark'/);
   assert.match(darkDefaultMigration, /where user_key = 'dylan_collyge'/);
   assert.match(css, /--ops-canvas: #07120e/);
@@ -162,7 +176,7 @@ test('Dylan receives the full dark Ops Precision composition by default', () => 
   assert.match(css, /--ops-wide-content: 1880px/);
 });
 
-test('Dylan receives one menu-only Light and Dark selector with legacy System mapped to Dark', () => {
+test('all users receive one menu-only Light and Dark selector with legacy System mapped to Dark', () => {
   const themeButtons = html.match(/data-ops-theme-mode="[^"]+"/g) || [];
   assert.deepEqual(themeButtons, ['data-ops-theme-mode="light"', 'data-ops-theme-mode="dark"']);
   assert.doesNotMatch(html, /data-ops-theme-mode="system"/);
@@ -472,7 +486,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081612\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081613\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -579,7 +593,7 @@ test('V15 Chat and navigation are measured against the visible viewport', () => 
 
 test('V15 monitoring is authenticated for all users and remains anonymous', () => {
   assert.match(edge, /monitoringEligible/);
-  assert.match(edge, /username !== LIVE_PILOT_USERNAME[\s\S]*eligible: false,[\s\S]*monitoringEligible/);
+  assert.doesNotMatch(edge, /username !== (?:LIVE_PILOT_USERNAME|LEGACY_DARK_DEFAULT_USERNAME)[\s\S]*eligible: false/);
   assert.match(edge, /tracesSampleRate: 0\.1/);
   assert.match(client, /sessionId: createSessionId\(\)/);
   assert.match(client, /session_id: state\.sessionId/);
@@ -645,7 +659,7 @@ test('V09 avoids billable Storage transforms and unifies Columns and Excel contr
   assert.match(html, /ops-view-option-action drive-mode-export-button/);
   assert.match(html, /id="av-export-btn" class="ops-view-option-action/);
   assert.match(html, /id="sales-office-export-btn" class="ops-view-option-action/);
-  const sharedControlCss = css.slice(css.lastIndexOf('V2026.08.16.12 — shared View / Columns / Excel control contract'));
+  const sharedControlCss = css.slice(css.lastIndexOf('V2026.08.16.13 — shared View / Columns / Excel control contract'));
   assert.match(sharedControlCss, /\.ops-view-option-control, \.ops-view-option-action/);
   assert.match(sharedControlCss, /min-height: 44px !important/);
   assert.match(sharedControlCss, /background: var\(--ops-surface\) !important/);

@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
-const LIVE_PILOT_USERNAME = "dylan_collyge";
+const LEGACY_DARK_DEFAULT_USERNAME = "dylan_collyge";
 const LIVE_PILOT_FEATURE_KEYS = ["skin", "preferences", "card_grid", "monitoring"] as const;
 const LIVE_PILOT_SENTRY_DSN = String(Deno.env.get("LIVE_PILOT_SENTRY_DSN") || "").trim();
 const PHOTO_BUCKETS: Record<string, string> = {
@@ -498,24 +498,24 @@ function serializeLivePilotPreferenceRow(row: Partial<LivePilotPreferenceRow> | 
   };
 }
 
-async function readLivePilotPreferenceRow() {
+async function readLivePilotPreferenceRow(userKey: string) {
   const { data, error } = await supabase
     .from("ph_app_user_preferences")
     .select("user_key,theme_mode,display_mode,updated_at,cohort_id")
-    .eq("user_key", LIVE_PILOT_USERNAME)
+    .eq("user_key", userKey)
     .maybeSingle();
   if (error) throw error;
   return data as LivePilotPreferenceRow | null;
 }
 
-async function readOrCreateLivePilotPreferenceRow() {
-  const existing = await readLivePilotPreferenceRow();
+async function readOrCreateLivePilotPreferenceRow(userKey: string) {
+  const existing = await readLivePilotPreferenceRow(userKey);
   if (existing) return existing;
   const { data, error } = await supabase
     .from("ph_app_user_preferences")
     .insert({
-      user_key: LIVE_PILOT_USERNAME,
-      theme_mode: "dark",
+      user_key: userKey,
+      theme_mode: userKey === LEGACY_DARK_DEFAULT_USERNAME ? "dark" : "light",
       display_mode: "cards",
       updated_at: new Date().toISOString(),
     })
@@ -523,7 +523,7 @@ async function readOrCreateLivePilotPreferenceRow() {
     .single();
   if (error) {
     if (String(error.code || "") === "23505") {
-      const racedRow = await readLivePilotPreferenceRow();
+      const racedRow = await readLivePilotPreferenceRow(userKey);
       if (racedRow) return racedRow;
     }
     throw error;
@@ -536,6 +536,7 @@ async function handleGetUserPreferences(
 ) {
   if (!session) return errorResponse("Authentication required.", 401);
   const username = getSessionUserKey(session);
+  if (!username) return errorResponse("Authenticated user identity is required.", 403);
   try {
     const flags = await loadLivePilotFlags();
     const monitoringEligible = !!(flags.monitoring && LIVE_PILOT_SENTRY_DSN);
@@ -545,18 +546,8 @@ async function handleGetUserPreferences(
         tracesSampleRate: 0.1,
       }
       : null;
-    if (username !== LIVE_PILOT_USERNAME) {
-      return jsonResponse({
-        ok: true,
-        eligible: false,
-        monitoringEligible,
-        flags: { ...getDisabledLivePilotFlags(), monitoring: monitoringEligible },
-        preferences: null,
-        monitoring,
-      });
-    }
     const preferenceRow = (flags.preferences || flags.card_grid)
-      ? await readOrCreateLivePilotPreferenceRow()
+      ? await readOrCreateLivePilotPreferenceRow(username)
       : null;
     return jsonResponse({
       ok: true,
@@ -584,22 +575,21 @@ async function handleSetUserPreferences(
   payload: Record<string, unknown>,
 ) {
   if (!session) return errorResponse("Authentication required.", 401);
-  if (getSessionUserKey(session) !== LIVE_PILOT_USERNAME) {
-    return errorResponse("Pilot access denied.", 403);
-  }
+  const username = getSessionUserKey(session);
+  if (!username) return errorResponse("Authenticated user identity is required.", 403);
 
   try {
     const flags = await loadLivePilotFlags();
-    if (!flags.preferences && !flags.card_grid) return errorResponse("Pilot preferences are disabled.", 403);
+    if (!flags.preferences && !flags.card_grid) return errorResponse("Appearance preferences are disabled.", 403);
     const preferences = sanitizeLivePilotPreferences(payload.preferences);
     if (!preferences.updatedAt) return errorResponse("A valid updatedAt timestamp is required.", 400);
 
-    const existing = await readLivePilotPreferenceRow();
+    const existing = await readLivePilotPreferenceRow(username);
     if (!existing) {
       const { data, error } = await supabase
         .from("ph_app_user_preferences")
         .insert({
-          user_key: LIVE_PILOT_USERNAME,
+          user_key: username,
           theme_mode: preferences.themeMode,
           display_mode: preferences.displayMode,
           updated_at: preferences.updatedAt,
@@ -612,7 +602,7 @@ async function handleSetUserPreferences(
       if (String(error?.code || "") !== "23505") throw error;
     }
 
-    const latestBeforeUpdate = existing || await readLivePilotPreferenceRow();
+    const latestBeforeUpdate = existing || await readLivePilotPreferenceRow(username);
     if (latestBeforeUpdate && Date.parse(latestBeforeUpdate.updated_at) >= Date.parse(preferences.updatedAt)) {
       return jsonResponse({
         ok: true,
@@ -628,13 +618,13 @@ async function handleSetUserPreferences(
         display_mode: preferences.displayMode,
         updated_at: preferences.updatedAt,
       })
-      .eq("user_key", LIVE_PILOT_USERNAME)
+      .eq("user_key", username)
       .lt("updated_at", preferences.updatedAt)
       .select("user_key,theme_mode,display_mode,updated_at,cohort_id")
       .maybeSingle();
     if (updateError) throw updateError;
-    const current = updated || await readLivePilotPreferenceRow();
-    if (!current) throw new Error("Pilot preference row was not found.");
+    const current = updated || await readLivePilotPreferenceRow(username);
+    if (!current) throw new Error("Appearance preference row was not found.");
     return jsonResponse({
       ok: true,
       applied: !!updated,
@@ -642,7 +632,7 @@ async function handleSetUserPreferences(
     });
   } catch (error) {
     recordHandledError("app-api", "set_user_preferences", error, 503);
-    return errorResponse("Unable to save pilot preferences.", 500);
+    return errorResponse("Unable to save appearance preferences.", 500);
   }
 }
 

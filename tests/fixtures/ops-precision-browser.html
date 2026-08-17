@@ -79,7 +79,7 @@
           </div>
           <div class="nav-header-meta">
             <div class="nav-header-meta-row">
-              <span class="nav-version-pill">V2026.08.16.12</span>
+              <span class="nav-version-pill">V2026.08.16.13</span>
               <button class="nav-outdoor-toggle" type="button">FIELD</button>
             </div>
             <div id="sync-diagnostics-detail">AUTO 7/7</div>
@@ -300,8 +300,10 @@
         updatedAt: '2026-08-15T04:00:00.000Z'
       };
       const serverStorageKey = 'ops_precision_qa_server_preferences';
+      const fixtureUserKey = 'qa_non_dylan_user';
       if (params.get('reset') === '1') {
         localStorage.removeItem('gnc_ops_precision_preferences_v1');
+        localStorage.removeItem(`gnc_ops_precision_preferences_v2:${fixtureUserKey}`);
         localStorage.removeItem(serverStorageKey);
       }
       const persistedServerPreferences = params.get('persist') === '1'
@@ -432,6 +434,7 @@
       }
       const bridge = {
         getActiveView() { return activeView; },
+        getUserKey() { return fixtureUserKey; },
         async request(action, payload) {
           if (action === 'get_user_preferences') {
             if (!authorized) throw new Error('Authentication required');
@@ -454,8 +457,8 @@
         }
       };
       if (params.get('prime') === '1') {
-        localStorage.setItem('gnc_ops_precision_preferences_v1', JSON.stringify({ ...preferences, dirty: false }));
-        window.__gncOpsPilot.primeCachedAppearance({ activeView });
+        localStorage.setItem(`gnc_ops_precision_preferences_v2:${fixtureUserKey}`, JSON.stringify({ ...preferences, dirty: false }));
+        window.__gncOpsPilot.primeCachedAppearance({ activeView, userKey: fixtureUserKey });
         document.body.dataset.qaPrimeReady = 'true';
       }
       window.__qaAuthorizePilot = () => {

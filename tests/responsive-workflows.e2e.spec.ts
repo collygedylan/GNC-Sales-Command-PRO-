@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.12', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.16.13', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -353,4 +353,20 @@ test('anonymous monitoring activates for non-Dylan sessions without PII', async 
   expect(payload).not.toContain('dylan_collyge');
   expect(payload).not.toContain('private note');
   expect(payload).not.toContain('ABC-123456');
+});
+
+test('non-Dylan users receive Appearance controls with phone-safe Grid behavior', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${fixtureUrl}?pilot=1&monitoring=0&theme=light&display=cards&reset=1`, { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.locator('body').getAttribute('data-qa-ready')).toBe('true');
+  await expect(page.locator('#ops-pilot-settings')).toBeVisible();
+  await expect(page.locator('button[data-ops-theme-mode="light"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('button[data-ops-display-mode="grid"]')).toBeDisabled();
+  await page.locator('button[data-ops-theme-mode="dark"]').click();
+  await expect(page.locator('body')).toHaveAttribute('data-ops-theme', 'dark');
+
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await expect(page.locator('button[data-ops-display-mode="grid"]')).toBeEnabled();
+  await page.locator('button[data-ops-display-mode="grid"]').click();
+  await expect(page.locator('body')).toHaveClass(/ops-grid-effective/);
 });

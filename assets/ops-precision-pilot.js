@@ -1,9 +1,11 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.16.12';
+  const RELEASE = 'V2026.08.16.13';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
-  const PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
+  const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';
+  const LEGACY_PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
+  const LEGACY_DARK_DEFAULT_USERNAME = 'dylan_collyge';
   const LIST_VIEWS = new Set([
     'drive',
     'docks',
@@ -33,7 +35,7 @@
     'po-management': 'po-management-content'
   });
   const DEFAULT_FLAGS = Object.freeze({ skin: false, preferences: false, card_grid: false, monitoring: false });
-  const DEFAULT_PREFERENCES = Object.freeze({ themeMode: 'dark', displayMode: 'cards', updatedAt: '' });
+  const DEFAULT_PREFERENCES = Object.freeze({ themeMode: 'light', displayMode: 'cards', updatedAt: '' });
   const PERFORMANCE_KINDS = new Set(['viewSwitches', 'renders', 'chunks', 'longTasks', 'staleSkips', 'search', 'webVitals']);
   const HEALTH_ASSERTIONS = new Set(['chat_composer', 'home_modules', 'home_fit', 'nav_theme', 'toolbar_row', 'drive_card_width']);
   const SENSITIVE_KEY_PATTERN = /(user(name)?|name|note|item|code|customer|consignee|row|record|photo|image|body|header|query|payload|request|url|uri|email|token|password|pin|authorization|cookie)/i;
@@ -95,6 +97,7 @@
 
   let state = {
     eligible: false,
+    userKey: '',
     monitoringEligible: false,
     flags: { ...DEFAULT_FLAGS },
     preferences: { ...DEFAULT_PREFERENCES },
@@ -142,9 +145,33 @@
     };
   }
 
-  function readCachedPreferences() {
+  function normalizePreferenceUserKey(value) {
+    return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  function getDefaultPreferencesForUser(userKey) {
+    return {
+      ...DEFAULT_PREFERENCES,
+      themeMode: normalizePreferenceUserKey(userKey) === LEGACY_DARK_DEFAULT_USERNAME ? 'dark' : 'light'
+    };
+  }
+
+  function getPreferenceStorageKey(userKey = state.userKey) {
+    const normalizedUserKey = normalizePreferenceUserKey(userKey);
+    return normalizedUserKey ? `${PREFERENCE_STORAGE_KEY_PREFIX}${normalizedUserKey}` : '';
+  }
+
+  function readCachedPreferences(userKey = state.userKey) {
     try {
-      const parsed = JSON.parse(localStorage.getItem(PREFERENCE_STORAGE_KEY) || 'null');
+      const normalizedUserKey = normalizePreferenceUserKey(userKey);
+      const storageKey = getPreferenceStorageKey(normalizedUserKey);
+      if (!storageKey) return null;
+      let raw = localStorage.getItem(storageKey) || '';
+      if (!raw && normalizedUserKey === LEGACY_DARK_DEFAULT_USERNAME) {
+        raw = localStorage.getItem(LEGACY_PREFERENCE_STORAGE_KEY) || '';
+        if (raw) localStorage.setItem(storageKey, raw);
+      }
+      const parsed = JSON.parse(raw || 'null');
       if (!parsed || typeof parsed !== 'object') return null;
       return { ...normalizePreferences(parsed), dirty: parsed.dirty === true };
     } catch (_error) {
@@ -152,9 +179,11 @@
     }
   }
 
-  function writeCachedPreferences(preferences, dirty) {
+  function writeCachedPreferences(preferences, dirty, userKey = state.userKey) {
     try {
-      localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify({
+      const storageKey = getPreferenceStorageKey(userKey);
+      if (!storageKey) return;
+      localStorage.setItem(storageKey, JSON.stringify({
         ...normalizePreferences(preferences),
         dirty: dirty === true
       }));
@@ -821,6 +850,7 @@
     const sessionId = state.sessionId || createSessionId();
     state = {
       eligible: false,
+      userKey: '',
       monitoringEligible: false,
       flags: { ...DEFAULT_FLAGS },
       preferences: { ...DEFAULT_PREFERENCES },
@@ -834,12 +864,15 @@
 
   function primeCachedAppearance(options = {}) {
     const safeOptions = options && typeof options === 'object' ? options : {};
-    const cached = readCachedPreferences();
+    const userKey = normalizePreferenceUserKey(safeOptions.userKey);
+    if (!userKey) return false;
+    const cached = readCachedPreferences(userKey);
     state = {
       eligible: false,
+      userKey,
       monitoringEligible: false,
       flags: { ...DEFAULT_FLAGS },
-      preferences: normalizePreferences(cached || DEFAULT_PREFERENCES),
+      preferences: normalizePreferences(cached || getDefaultPreferencesForUser(userKey)),
       sessionId: state.sessionId || createSessionId(),
       activeView: String(safeOptions.activeView || 'home').trim().toLowerCase() || 'home',
       initialized: false,
@@ -858,6 +891,8 @@
   async function initialize(options) {
     const serial = ++initializeSerial;
     bridge = options && typeof options === 'object' ? options : null;
+    const userKey = normalizePreferenceUserKey(bridge && typeof bridge.getUserKey === 'function' ? bridge.getUserKey() : state.userKey);
+    if (userKey) state.userKey = userKey;
     installControlHandlers();
     installMutationObserver();
     if (!bridge || typeof bridge.request !== 'function') {
@@ -877,9 +912,10 @@
       const appearanceEligible = response.eligible === true;
       const monitoringEligible = response.monitoringEligible === true && !!(response.monitoring && response.monitoring.dsn);
       const serverPreferences = appearanceEligible ? normalizePreferences(response.preferences) : { ...DEFAULT_PREFERENCES, themeMode: 'light' };
-      const cached = appearanceEligible ? readCachedPreferences() : null;
+      const cached = appearanceEligible ? readCachedPreferences(state.userKey) : null;
       const useDirtyCache = !!(appearanceEligible && cached && cached.dirty && timestampIsNewer(cached.updatedAt, serverPreferences.updatedAt));
       state.eligible = appearanceEligible;
+      state.userKey = userKey;
       state.monitoringEligible = monitoringEligible;
       state.flags = {
         skin: flags.skin === true,
@@ -934,6 +970,7 @@
         initialized: state.initialized,
         provisional: state.provisional,
         eligible: state.eligible,
+        userKey: state.userKey,
         monitoringEligible: state.monitoringEligible,
         flags: { ...state.flags },
         preferences: { ...state.preferences },
