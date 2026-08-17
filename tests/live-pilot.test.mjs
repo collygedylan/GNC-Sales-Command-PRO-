@@ -29,17 +29,17 @@ const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.17.02';
+  const release = 'V2026.08.17.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.17.02');
+  assert.equal(packageJson.version, '2026.08.17.03');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081702.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081703.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -58,7 +58,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081702\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081703\.png"/);
   assert.equal(manifest.background_color, '#07120e');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -74,7 +74,7 @@ test('V15 Queue cards and photo rails use semantic Light and Dark surfaces', () 
   assert.doesNotMatch(html, /isSeasonSalesNoteCard \? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'/);
   assert.match(html, /app-inline-thumb-box app-inline-thumb-box--empty/);
   assert.match(html, /app-inline-thumb-label app-inline-thumb-date/);
-  const queueThemeCss = css.slice(css.lastIndexOf('V2026.08.17.02 — no-flash theme surfaces and Queue card photo rail'));
+  const queueThemeCss = css.slice(css.lastIndexOf('V2026.08.17.03 — no-flash theme surfaces and Queue card photo rail'));
   assert.match(queueThemeCss, /--ops-request-card-surface: #111c18/);
   assert.match(queueThemeCss, /--ops-photo-placeholder: #16231f/);
   assert.match(queueThemeCss, /\.request-swipe-row\.app-request-card-surface > \.request-swipe-surface/);
@@ -512,7 +512,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081702\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081703\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -636,7 +636,7 @@ test('Item Inquiry groups Drive rows by location with adaptive grid lines and co
   assert.match(renderer, /group\.ptrReviewed \+= parseItemInquiryQuantity/);
   assert.match(renderer, /data-item-inquiry-location-total-onhand/);
   assert.match(renderer, /formatItemInquiryQuantity\(ptrReviewedAmount, \{ blankZero: true \}\)/);
-  const inquiryCss = css.slice(css.lastIndexOf('V2026.08.17.02 — responsive Item Inquiry ledger'));
+  const inquiryCss = css.slice(css.lastIndexOf('V2026.08.17.03 — responsive Item Inquiry ledger'));
   assert.match(inquiryCss, /overflow-x: hidden !important/);
   assert.match(inquiryCss, /grid-template-columns: minmax\(62px,\.72fr\)[\s\S]*minmax\(68px,\.8fr\)/);
   assert.match(inquiryCss, /@media \(max-width: 1099px\)[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
@@ -675,6 +675,7 @@ test('Task command search commits the latest term and keeps its filter rail pinn
   assert.match(taskSearch, /renderViewContent\('tasks', false, true\)/);
   assert.match(taskSearch, /captureHealth\('task_search', committed/);
   assert.match(taskSearch, /term_length:/);
+  assert.match(taskSearch, /search_applied: semanticSearchApplied/);
   assert.doesNotMatch(taskSearch, /query:/);
   assert.match(html, /oncompositionstart="beginTaskHeaderSearchComposition\(\)"/);
   assert.match(html, /oncompositionend="endTaskHeaderSearchComposition\(this\.value\)"/);
@@ -682,6 +683,45 @@ test('Task command search commits the latest term and keeps its filter rail pinn
   assert.match(taskRailCss, /current-view-tasks #view-tasks \.task-controls-sticky\.ops-module-filter-band[\s\S]*position: sticky !important/);
   assert.match(taskRailCss, /top: 0 !important/);
   assert.match(taskRailCss, /margin: 10px 0 8px !important/);
+});
+
+test('Task command search filters every visible drill level, including All at location detail', () => {
+  const resolvedState = html.slice(
+    html.indexOf('function buildResolvedTaskState'),
+    html.indexOf('function buildNcrApprovalColumnHeaderReviewHtml')
+  );
+  assert.match(resolvedState, /const taskSearchApplicationMode = getTaskHeaderSearchApplicationMode/);
+  assert.match(resolvedState, /const shouldApplyTopTaskSearch = taskSearchApplicationMode === 'collection'/);
+  assert.doesNotMatch(resolvedState, /taskSearchProfile === 'task_commonname'/);
+  assert.match(resolvedState, /nextTabItems = filterBySearch\(nextTabItems, taskSearchTerm, taskSearchProfile\)/);
+  const taskRenderer = html.slice(
+    html.indexOf('function renderTasks('),
+    html.indexOf('function renderReserves(')
+  );
+  assert.match(taskRenderer, /const taskLocationDetailSearchActive = !!selectedTaskLoc[\s\S]*getTaskHeaderSearchApplicationMode[\s\S]*=== 'detail'/);
+  assert.match(taskRenderer, /filterBySearch\(taskLocationDetailBaseItems, taskLocationDetailSearchTerm, 'task_location_detail'\)/);
+  assert.match(taskRenderer, /shouldRenderTaskLocationDetailFilters \|\| taskLocationDetailSearchActive[\s\S]*\? taskLocationDetailItems/);
+  assert.match(taskRenderer, /reportTaskHeaderSearchHealth\(activeTaskSearchRevision, taskSearchVisibleCount, taskSearchAppliedForRender\)/);
+});
+
+test('Task search application mode executes the production level contract', () => {
+  const match = html.match(/function getTaskHeaderSearchApplicationMode\([\s\S]*?\n        \}/);
+  assert.ok(match, 'Task search application mode should exist');
+  const createMode = new Function(
+    'activeTaskView',
+    'taskViewLevel',
+    'taskLocationDetailSearchTerm',
+    'shouldShowTaskHeaderSearch',
+    'taskViewUsesBlockDrill',
+    `return (${match[0]});`
+  );
+  const mode = createMode('av-blanks', 0, '', () => true, () => true);
+  assert.equal(mode('av-blanks', 0, 'karl'), 'collection');
+  assert.equal(mode('av-blanks', 1, 'karl'), 'collection');
+  assert.equal(mode('av-blanks', 2, 'karl'), 'detail');
+  assert.equal(mode('av-blanks', 2, ''), 'none');
+  const hiddenMode = createMode('av-blanks', 0, '', () => false, () => true);
+  assert.equal(hiddenMode('av-blanks', 0, 'karl'), 'none');
 });
 
 test('CI gates responsive release checks in Chromium, Firefox, and WebKit', () => {
