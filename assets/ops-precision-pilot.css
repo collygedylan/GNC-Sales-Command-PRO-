@@ -382,6 +382,24 @@ body.ops-precision-pilot .border-emerald-100 {
   background: var(--ops-surface-muted, #f7faf8);
 }
 
+.ops-security-settings {
+  display: none;
+  margin: 8px 12px 12px;
+  border: 1px solid var(--ops-border, #d1d5db);
+  border-radius: var(--ops-radius-md, 8px);
+  padding: 10px;
+  color: var(--ops-text, #13221b);
+  background: var(--ops-surface-muted, #f7faf8);
+}
+
+.ops-security-settings:not(.hidden) {
+  display: block;
+}
+
+.ops-security-settings .hidden {
+  display: none !important;
+}
+
 .ops-pilot-settings .hidden {
   display: none !important;
 }
@@ -5731,7 +5749,7 @@ body.ops-precision-pilot.request-detail-av-options-open #view-detail.detail-requ
   }
 }
 
-/* V2026.08.16.11 — shared View / Columns / Excel control contract. */
+/* V2026.08.16.12 — shared View / Columns / Excel control contract. */
 body.ops-precision-pilot :is(.ops-view-option-control, .ops-view-option-action) {
   box-sizing: border-box !important;
   min-width: 112px !important;

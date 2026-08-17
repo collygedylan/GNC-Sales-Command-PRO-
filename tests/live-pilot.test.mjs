@@ -28,12 +28,12 @@ const authAdmin = read('supabase/functions/auth-admin/index.ts');
 const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_passkeys_for_active_profiles.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.16.11';
+  const release = 'V2026.08.16.12';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.16.11');
+  assert.equal(packageJson.version, '2026.08.16.12');
 });
 
 test('verified Dylan sessions restore the saved theme before the app shell paints', () => {
@@ -97,6 +97,10 @@ test('premium skin is global while Dylan controls remain drawer-only and server 
   assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-duotone ph-palette"><\/i> Appearance/);
   assert.ok(html.indexOf('<div class="drawer-header">Menu</div>') < html.indexOf('id="ops-pilot-settings"'));
   assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-home-btn"'));
+  assert.ok(html.indexOf('id="ops-security-settings"') > html.indexOf('id="ops-pilot-settings"'));
+  assert.ok(html.indexOf('id="ops-passkey-settings"') > html.indexOf('id="ops-security-settings"'));
+  assert.match(html, /id="ops-security-settings" class="ops-security-settings hidden"/);
+  assert.match(css, /\.ops-security-settings:not\(\.hidden\)\s*\{[\s\S]*?display: block/);
   assert.match(css, /body\.ops-pilot-active \.ops-pilot-segmented button[\s\S]*min-height: 44px !important/);
   assert.match(client, /body\.classList\.toggle\('ops-pilot-active', state\.eligible && !state\.provisional\)/);
   assert.match(client, /body\.classList\.add\('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v16'\)/);
@@ -468,7 +472,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081611\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081612\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -641,7 +645,7 @@ test('V09 avoids billable Storage transforms and unifies Columns and Excel contr
   assert.match(html, /ops-view-option-action drive-mode-export-button/);
   assert.match(html, /id="av-export-btn" class="ops-view-option-action/);
   assert.match(html, /id="sales-office-export-btn" class="ops-view-option-action/);
-  const sharedControlCss = css.slice(css.lastIndexOf('V2026.08.16.11 — shared View / Columns / Excel control contract'));
+  const sharedControlCss = css.slice(css.lastIndexOf('V2026.08.16.12 — shared View / Columns / Excel control contract'));
   assert.match(sharedControlCss, /\.ops-view-option-control, \.ops-view-option-action/);
   assert.match(sharedControlCss, /min-height: 44px !important/);
   assert.match(sharedControlCss, /background: var\(--ops-surface\) !important/);
@@ -684,7 +688,7 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.doesNotMatch(authAdmin, /readSupabaseOrAppSessionFromRequest/);
 });
 
-test('V11 synchronizes password changes and enables user-initiated passkeys for active accounts', () => {
+test('V12 synchronizes password changes and exposes user-initiated passkeys to every eligible account', () => {
   assert.match(edge, /newPassword\.length < 6/);
   assert.match(edge, /supabase\.auth\.admin\.updateUserById\(String\(profile\.id\)/);
   assert.match(edge, /\.from\("ph_app_users"\)[\s\S]*must_change_password: false/);
@@ -693,7 +697,9 @@ test('V11 synchronizes password changes and enables user-initiated passkeys for 
   assert.doesNotMatch(html, /nativeClient\.auth\.updateUser\(\{ password: newPass \}\)/);
   const passkeyUi = html.slice(html.indexOf('function syncPasskeyPilotUi'), html.indexOf('async function signInWithAppPasskey'));
   assert.match(passkeyUi, /loginButton\.classList\.toggle\('hidden', !supported\)/);
+  assert.match(passkeyUi, /securityPanel\.classList\.toggle\('hidden', !eligible\)/);
   assert.doesNotMatch(passkeyUi, /PASSKEY_ENROLLED_STORAGE_KEY/);
+  assert.match(html, /getSupabaseBrowserClient\(\);\s*syncPasskeyPilotUi\(null\);/);
   assert.match(passkeyRolloutMigration, /where disabled_at is null/);
   assert.match(passkeyRolloutMigration, /'passkey_pilot',[\s\S]*true,[\s\S]*100/);
   assert.match(passkeyRolloutMigration, /"user_gesture_required":true/);
