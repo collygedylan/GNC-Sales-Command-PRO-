@@ -8,17 +8,48 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
-    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
+    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026081615.png">
     <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081614.min.css?v=V2026.08.16.14">
+    <script>
+      (function applyRememberedThemeBeforePaint() {
+        const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
+        let prepaintTheme = 'light';
+        try {
+          const rememberedDeviceTheme = String(localStorage.getItem(DEVICE_THEME_STORAGE_KEY) || '').trim().toLowerCase();
+          const hasRememberedDeviceTheme = rememberedDeviceTheme === 'dark' || rememberedDeviceTheme === 'light';
+          if (hasRememberedDeviceTheme) prepaintTheme = rememberedDeviceTheme;
+          const verifiedLogin = JSON.parse(localStorage.getItem('gnc_verified_login_v1') || 'null');
+          const rememberedAppearanceUser = localStorage.getItem('gnc_last_appearance_user_v1') || '';
+          const verifiedUsername = String((verifiedLogin && verifiedLogin.username) || rememberedAppearanceUser || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+          if (!hasRememberedDeviceTheme && verifiedUsername) {
+            const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' + verifiedUsername;
+            const scopedPreferences = localStorage.getItem(scopedPreferenceKey) || '';
+            const legacyPreferences = verifiedUsername === 'dylan_collyge' ? (localStorage.getItem('gnc_ops_precision_preferences_v1') || '') : '';
+            const cachedPreferences = JSON.parse(scopedPreferences || legacyPreferences || 'null');
+            const cachedTheme = String(cachedPreferences && (cachedPreferences.themeMode || cachedPreferences.theme_mode || cachedPreferences.theme) || '').trim().toLowerCase();
+            if (cachedTheme === 'dark' || cachedTheme === 'light') {
+              prepaintTheme = cachedTheme;
+              localStorage.setItem(DEVICE_THEME_STORAGE_KEY, prepaintTheme);
+            }
+          }
+        } catch (error) {}
+        window.__GNC_PREPAINT_THEME__ = prepaintTheme;
+        document.documentElement.dataset.opsPrepaintTheme = prepaintTheme;
+        document.documentElement.style.colorScheme = prepaintTheme;
+        document.documentElement.style.backgroundColor = prepaintTheme === 'dark' ? '#07120e' : '#f3f7f5';
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
+      })();
+    </script>
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026081615.min.css?v=V2026.08.16.15">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.16.14';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.16.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -28,23 +59,6 @@
             try {
                 if (localStorage.getItem('gnc_outdoor_mode_v1') === '1') {
                     document.documentElement.classList.add('outdoor-mode');
-                }
-            } catch (error) {}
-            try {
-                const verifiedLogin = JSON.parse(localStorage.getItem('gnc_verified_login_v1') || 'null');
-                const rememberedAppearanceUser = localStorage.getItem('gnc_last_appearance_user_v1') || '';
-                const verifiedUsername = String((verifiedLogin && verifiedLogin.username) || rememberedAppearanceUser || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-                if (verifiedUsername) {
-                    const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' + verifiedUsername;
-                    const scopedPreferences = localStorage.getItem(scopedPreferenceKey) || '';
-                    const legacyPreferences = verifiedUsername === 'dylan_collyge' ? (localStorage.getItem('gnc_ops_precision_preferences_v1') || '') : '';
-                    const cachedPreferences = JSON.parse(scopedPreferences || legacyPreferences || 'null');
-                    const cachedTheme = String(cachedPreferences && (cachedPreferences.themeMode || cachedPreferences.theme_mode || cachedPreferences.theme) || '').trim().toLowerCase();
-                    const prepaintTheme = cachedTheme === 'dark' || (!cachedTheme && verifiedUsername === 'dylan_collyge') ? 'dark' : 'light';
-                    document.documentElement.dataset.opsPrepaintTheme = prepaintTheme;
-                    document.documentElement.style.colorScheme = prepaintTheme;
-                    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-                    if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
                 }
             } catch (error) {}
         })();
@@ -6560,9 +6574,17 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.14">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.16.15">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
+    <script>
+      (function applyRememberedThemeToBody() {
+        const theme = window.__GNC_PREPAINT_THEME__ === 'dark' ? 'dark' : 'light';
+        document.body.dataset.opsTheme = theme;
+        document.body.dataset.opsThemeMode = theme;
+        document.body.style.colorScheme = theme;
+      })();
+    </script>
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
     <div id="request-open-info-modal" class="hidden fixed inset-0 z-[17000] flex items-center justify-center p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="request-open-info-title">
@@ -6663,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.14"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.16.15"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7416,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.14').trim() || 'V2026.08.16.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.16.15').trim() || 'V2026.08.16.15';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8895,7 +8917,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.16.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9403,7 +9425,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const PHOTO_MAX_WIDTH = 1920;
         const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081614.js';
+        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081615.js';
         let photoOptimizerWorker = null;
         let photoOptimizerRequestId = 0;
         const photoOptimizerPending = new Map();
@@ -29819,7 +29841,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.14').trim() || 'V2026.08.16.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.16.15').trim() || 'V2026.08.16.15';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -122626,7 +122648,7 @@ C.14.043 C.15.000
             if (['tasks', 'crop-roll'].includes(String(sourceView || '').trim().toLowerCase())) rememberTaskRenderedRow(item);
             const cardSourceViewKey = String(sourceView || '').trim().toLowerCase();
             const safeCardSourceViewKey = escJsAttrValue(cardSourceViewKey);
-            let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView); const photoDateLabel = getRowPhotoDateLabel(item, sourceView, photoLink); const photoDateHtml = photoDateLabel ? `<div class="text-center text-[9px] font-black text-slate-500 mt-1 uppercase tracking-[0.14em] bg-white px-2 py-0.5 rounded-md border border-slate-200">PHOTO ${photoDateLabel}</div>` : '';
+            let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView); const photoDateLabel = getRowPhotoDateLabel(item, sourceView, photoLink); const photoDateHtml = photoDateLabel ? `<div class="app-inline-thumb-label app-inline-thumb-date">PHOTO ${photoDateLabel}</div>` : '';
             const hasCardPhotoEvidence = getPhotoUrlList(photoLink).length > 0;
 
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':'';
@@ -122671,7 +122693,7 @@ C.14.043 C.15.000
             const suspendTagPlanstartToneDataAttr = suspendTagPlanstartInfo ? ` data-planstart-value="${escJsAttrValue(suspendTagPlanstartInfo.value)}" data-planstart-tone="${escJsAttrValue(suspendTagPlanstartInfo.tone)}" data-planstart-valid="${suspendTagPlanstartInfo.valid ? 'true' : 'false'}"` : '';
             const requestCardToneClass = suspendTagPlanstartToneClass ? `${suspendTagPlanstartToneClass} ${suspendTagLegacyPlanstartToneClass}` : (isDocksRequestCard
                 ? 'bg-red-50 border-red-300 ring-1 ring-red-200'
-                : (isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'));
+                : (isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'app-request-card-surface border-purple-200'));
             const requestBorderClass = suspendTagPlanstartToneClass ? '' : (isDocksRequestCard ? 'app-card-stop' : holdBorderClass);
             const salesOfficeCardToneClass = isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-purple-50/40 border-purple-200';
             const salesOfficeChipToneClass = isSeasonSalesNoteCard ? 'border-orange-400 bg-orange-100 text-orange-900' : 'border-purple-200 bg-white text-purple-700';
@@ -122849,7 +122871,7 @@ C.14.043 C.15.000
                     thumbHtml=`<div class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="app-inline-thumb-box">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform' })}</div>${photoDateHtml}</div>`;
                 }
             }
-            const inlineThumbHtml = thumbHtml || `<div class="app-inline-thumb-column"><div class="app-inline-thumb-box px-1 text-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
+            const inlineThumbHtml = thumbHtml || `<div class="app-inline-thumb-column app-inline-thumb-column--empty"><div class="app-inline-thumb-box app-inline-thumb-box--empty px-1 text-center text-[8px] font-black uppercase tracking-[0.12em]">No Photo</div></div>`;
             if(sourceView === 'request') {
                 let reqQty = item.REQ_QTY || '0';
                 let cust = item.REQ_CUSTOMER || 'Unknown';

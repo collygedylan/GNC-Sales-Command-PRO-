@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.16.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.16.15', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -15,6 +15,39 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 
   const controls = await Promise.all([username, accessCode, submit].map((control) => control.boundingBox()));
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
+});
+
+test('saved Dark theme owns the first two seconds without a white frame', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => localStorage.setItem('gnc_last_theme_v1', 'dark'));
+  await page.addInitScript(() => {
+    (window as typeof window & { __themePaintSamples?: Array<{ root: string; body: string; theme: string }> }).__themePaintSamples = [];
+    const sample = () => {
+      const rootStyle = getComputedStyle(document.documentElement);
+      const bodyStyle = document.body ? getComputedStyle(document.body) : null;
+      (window as typeof window & { __themePaintSamples?: Array<{ root: string; body: string; theme: string }> }).__themePaintSamples?.push({
+        root: rootStyle.backgroundColor,
+        body: bodyStyle?.backgroundColor || '',
+        theme: document.documentElement.dataset.opsPrepaintTheme || document.body?.dataset.opsTheme || '',
+      });
+    };
+    window.setInterval(sample, 25);
+  });
+  await page.goto('/?e2e=V2026.08.16.15&theme=dark', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2000);
+
+  const result = await page.evaluate(() => ({
+    saved: localStorage.getItem('gnc_last_theme_v1'),
+    bodyTheme: document.body.dataset.opsTheme,
+    samples: (window as typeof window & { __themePaintSamples?: Array<{ root: string; body: string; theme: string }> }).__themePaintSamples || [],
+  }));
+  const visibleSamples = result.samples.filter((sample) => sample.body);
+  expect(result.saved).toBe('dark');
+  expect(result.bodyTheme).toBe('dark');
+  expect(visibleSamples.length).toBeGreaterThan(10);
+  expect(visibleSamples.some((sample) => /rgb\(255, 255, 255\)|rgba\(255, 255, 255, 1\)/.test(`${sample.root}|${sample.body}`)), JSON.stringify(visibleSamples.slice(0, 12))).toBe(false);
+  expect(visibleSamples.every((sample) => sample.theme === 'dark')).toBe(true);
 });
 
 test('Home adaptively fits all 12 launch modules without scrolling or quick-bar overlap', async ({ page }) => {

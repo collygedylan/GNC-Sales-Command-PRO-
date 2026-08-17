@@ -6166,3 +6166,91 @@ html.outdoor-mode body.ops-precision-pilot #bottom-nav .footer-nav-btn:is(.activ
     padding-inline: 0 !important;
   }
 }
+
+/* V2026.08.16.15 — no-flash theme surfaces and Queue card photo rail. */
+body.ops-precision-pilot {
+  --ops-request-card-surface: #ffffff;
+  --ops-photo-rail: #ffffff;
+  --ops-photo-placeholder: #eef4f1;
+  --ops-photo-border: #cbd8d1;
+  --ops-photo-text: #617068;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-request-card-surface: #111c18;
+  --ops-photo-rail: #111c18;
+  --ops-photo-placeholder: #16231f;
+  --ops-photo-border: rgba(99, 230, 173, .34);
+  --ops-photo-text: #9db4aa;
+}
+
+body.ops-precision-pilot #view-request :is(
+  .app-request-card-surface,
+  .request-swipe-row.app-request-card-surface,
+  .request-swipe-row.app-request-card-surface > .request-swipe-surface
+) {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-request-card-surface) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot #view-request .request-swipe-action {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-danger) !important;
+  background: var(--ops-surface-strong) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot #view-request .app-inline-thumb-column {
+  color: var(--ops-photo-text) !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot #view-request :is(.app-inline-thumb-box, .app-inline-thumb) {
+  border-color: var(--ops-photo-border) !important;
+  color: var(--ops-photo-text) !important;
+  background: var(--ops-photo-placeholder) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+body.ops-precision-pilot #view-request :is(.app-inline-thumb-box, .app-inline-thumb) img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  background: transparent !important;
+}
+
+body.ops-precision-pilot #view-request :is(.app-inline-thumb-label, .app-inline-thumb-date) {
+  border-color: var(--ops-photo-border) !important;
+  color: var(--ops-photo-text) !important;
+  background: var(--ops-photo-rail) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot.current-view-request #request-crumb:not(:empty) {
+  width: max-content !important;
+  max-width: 100% !important;
+  padding: 6px 10px !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 999px !important;
+  color: var(--ops-brand-strong) !important;
+  background: var(--ops-surface-strong) !important;
+  background-image: none !important;
+}
+
+html.outdoor-mode body.ops-precision-pilot #view-request :is(
+  .app-request-card-surface,
+  .request-swipe-row.app-request-card-surface,
+  .request-swipe-row.app-request-card-surface > .request-swipe-surface,
+  .app-inline-thumb-box,
+  .app-inline-thumb,
+  .app-inline-thumb-label,
+  .app-inline-thumb-date
+) {
+  border-color: var(--field-border) !important;
+  color: var(--field-text) !important;
+  background: var(--field-surface) !important;
+  background-image: none !important;
+}

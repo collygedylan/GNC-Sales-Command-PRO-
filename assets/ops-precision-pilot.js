@@ -1,8 +1,9 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'V2026.08.16.14';
+  const RELEASE = 'V2026.08.16.15';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
+  const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
   const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';
   const LEGACY_PREFERENCE_STORAGE_KEY = 'gnc_ops_precision_preferences_v1';
   const LEGACY_DARK_DEFAULT_USERNAME = 'dylan_collyge';
@@ -161,6 +162,28 @@
     return normalizedUserKey ? `${PREFERENCE_STORAGE_KEY_PREFIX}${normalizedUserKey}` : '';
   }
 
+  function readRememberedDeviceTheme() {
+    try {
+      const remembered = String(localStorage.getItem(DEVICE_THEME_STORAGE_KEY) || '').trim().toLowerCase();
+      if (remembered === 'dark' || remembered === 'light') return remembered;
+    } catch (_error) {}
+    const prepaintTheme = String(window.__GNC_PREPAINT_THEME__ || document.documentElement?.dataset?.opsPrepaintTheme || '').trim().toLowerCase();
+    return prepaintTheme === 'dark' ? 'dark' : 'light';
+  }
+
+  function writeRememberedDeviceTheme(theme) {
+    const normalizedTheme = normalizeThemeMode(theme);
+    try {
+      localStorage.setItem(DEVICE_THEME_STORAGE_KEY, normalizedTheme);
+    } catch (_error) {}
+    window.__GNC_PREPAINT_THEME__ = normalizedTheme;
+    return normalizedTheme;
+  }
+
+  function getRememberedDevicePreferences() {
+    return { ...DEFAULT_PREFERENCES, themeMode: readRememberedDeviceTheme() };
+  }
+
   function readCachedPreferences(userKey = state.userKey) {
     try {
       const normalizedUserKey = normalizePreferenceUserKey(userKey);
@@ -181,10 +204,12 @@
 
   function writeCachedPreferences(preferences, dirty, userKey = state.userKey) {
     try {
+      const normalizedPreferences = normalizePreferences(preferences);
+      writeRememberedDeviceTheme(normalizedPreferences.themeMode);
       const storageKey = getPreferenceStorageKey(userKey);
       if (!storageKey) return;
       localStorage.setItem(storageKey, JSON.stringify({
-        ...normalizePreferences(preferences),
+        ...normalizedPreferences,
         dirty: dirty === true
       }));
     } catch (_error) {}
@@ -200,7 +225,7 @@
   }
 
   function getEffectiveTheme() {
-    if (!state.eligible && !state.provisional) return 'light';
+    if (!state.eligible && !state.provisional) return readRememberedDeviceTheme();
     return state.preferences.themeMode === 'light' ? 'light' : 'dark';
   }
 
@@ -255,7 +280,7 @@
     body.classList.add('ops-precision-pilot', 'ag-premium-skin', 'premium-skin-v16');
     body.classList.toggle('ops-grid-effective', skinActive && effectiveDisplay === 'grid');
     body.dataset.opsTheme = effectiveTheme;
-    body.dataset.opsThemeMode = state.preferences.themeMode;
+    body.dataset.opsThemeMode = effectiveTheme;
     body.dataset.opsDisplayMode = state.preferences.displayMode;
     body.dataset.opsEffectiveDisplay = effectiveDisplay;
     const bottomNav = document.getElementById('bottom-nav');
@@ -271,6 +296,7 @@
     if (themeColorMeta) {
       themeColorMeta.setAttribute('content', effectiveTheme === 'dark' ? '#07120e' : '#07874f');
     }
+    writeRememberedDeviceTheme(effectiveTheme);
     if (typeof window.syncGlobalHeaderChrome === 'function') {
       window.requestAnimationFrame(() => {
         window.syncGlobalHeaderChrome({ reason: 'ops-precision-state', force: true });
@@ -853,7 +879,7 @@
       userKey: '',
       monitoringEligible: false,
       flags: { ...DEFAULT_FLAGS },
-      preferences: { ...DEFAULT_PREFERENCES },
+      preferences: getRememberedDevicePreferences(),
       sessionId,
       activeView: 'home',
       initialized: false,
@@ -867,12 +893,13 @@
     const userKey = normalizePreferenceUserKey(safeOptions.userKey);
     if (!userKey) return false;
     const cached = readCachedPreferences(userKey);
+    const rememberedTheme = readRememberedDeviceTheme();
     state = {
       eligible: false,
       userKey,
       monitoringEligible: false,
       flags: { ...DEFAULT_FLAGS },
-      preferences: normalizePreferences(cached || getDefaultPreferencesForUser(userKey)),
+      preferences: normalizePreferences({ ...(cached || getRememberedDevicePreferences()), themeMode: rememberedTheme }),
       sessionId: state.sessionId || createSessionId(),
       activeView: String(safeOptions.activeView || 'home').trim().toLowerCase() || 'home',
       initialized: false,
@@ -911,7 +938,7 @@
       const flags = response.flags && typeof response.flags === 'object' ? response.flags : {};
       const appearanceEligible = response.eligible === true;
       const monitoringEligible = response.monitoringEligible === true && !!(response.monitoring && response.monitoring.dsn);
-      const serverPreferences = appearanceEligible ? normalizePreferences(response.preferences) : { ...DEFAULT_PREFERENCES, themeMode: 'light' };
+      const serverPreferences = appearanceEligible ? normalizePreferences(response.preferences) : getRememberedDevicePreferences();
       const cached = appearanceEligible ? readCachedPreferences(state.userKey) : null;
       const useDirtyCache = !!(appearanceEligible && cached && cached.dirty && timestampIsNewer(cached.updatedAt, serverPreferences.updatedAt));
       state.eligible = appearanceEligible;

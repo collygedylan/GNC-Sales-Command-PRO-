@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.08.16.14';
+const APP_SHELL_BUILD = 'V2026.08.16.15';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -21,9 +21,9 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   './assets/ops-precision-pilot.css',
   './assets/ops-precision-pilot.js',
-  './assets/live-tailwind-v2026081614.min.css',
-  './assets/live-app-runtime-v2026081614.min.js',
-  './assets/image-optimize-worker-v2026081614.js',
+  './assets/live-tailwind-v2026081615.min.css',
+  './assets/live-app-runtime-v2026081615.min.js',
+  './assets/image-optimize-worker-v2026081615.js',
   './assets/vendor/supabase-browser-2.112.3.min.js',
   './assets/vendor/phosphor/regular/style.css',
   './assets/vendor/phosphor/regular/Phosphor.woff2',
@@ -36,7 +36,7 @@ const ASSETS_TO_CACHE = [
   './assets/vendor/phosphor/light/style.css',
   './assets/vendor/phosphor/light/Phosphor-Light.woff2',
   './ag-data-solutions-logo-v2026080925.png',
-  './ag-data-solutions-splash-v2026080925.png',
+  './ag-data-solutions-splash-v2026081615.png',
   './ag-data-solutions-icon-v2026080925-32.png',
   './ag-data-solutions-icon-v2026080925-180.png',
   './ag-data-solutions-icon-v2026080925-192.png',
