@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.17.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.17.06', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -34,7 +34,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
     };
     window.setInterval(sample, 25);
   });
-  await page.goto('/?e2e=V2026.08.17.05&theme=dark', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.17.06&theme=dark', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
 
   const result = await page.evaluate(() => ({
@@ -48,6 +48,27 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
   expect(visibleSamples.length).toBeGreaterThan(10);
   expect(visibleSamples.some((sample) => /rgb\(255, 255, 255\)|rgba\(255, 255, 255, 1\)/.test(`${sample.root}|${sample.body}`)), JSON.stringify(visibleSamples.slice(0, 12))).toBe(false);
   expect(visibleSamples.every((sample) => sample.theme === 'dark')).toBe(true);
+});
+
+test('Drive Common Name search preserves grouped drill results', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.17.06', { waitUntil: 'domcontentloaded' });
+  const result = await page.evaluate(() => {
+    const appWindow = window as typeof window & {
+      shouldRenderDriveUniversalDetailedSearch?: () => boolean;
+      renderDriveCommonNameDrill?: () => void;
+      selectDriveName?: (name: string) => void;
+    };
+    return {
+      detailedSearchOnDefaultCommonNameTab: appWindow.shouldRenderDriveUniversalDetailedSearch?.(),
+      hasGroupedRenderer: typeof appWindow.renderDriveCommonNameDrill === 'function',
+      hasDrillSelection: typeof appWindow.selectDriveName === 'function',
+    };
+  });
+  expect(result).toEqual({
+    detailedSearchOnDefaultCommonNameTab: false,
+    hasGroupedRenderer: true,
+    hasDrillSelection: true,
+  });
 });
 
 test('Android keyboard viewport changes retain Drive search focus, node identity, value, and caret', async ({ page }) => {
