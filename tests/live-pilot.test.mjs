@@ -31,17 +31,17 @@ const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.17.05';
+  const release = 'V2026.08.17.06';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.17.05');
+  assert.equal(packageJson.version, '2026.08.17.06');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081705.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081706.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -60,7 +60,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081705\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081706\.png"/);
   assert.equal(manifest.background_color, '#07120e');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -381,6 +381,18 @@ test('Drive universal search preserves drill state and renders only its results 
   assert.match(html, /\? 100 : 60/);
 });
 
+test('Drive Common Name search keeps the grouped drill workflow instead of opening row cards', () => {
+  assert.match(html, /function shouldRenderDriveUniversalDetailedSearch\(\)\s*\{\s*return activeDriveTab !== 'name';\s*\}/);
+  const universalRenderer = html.slice(
+    html.indexOf('function renderDriveUniversalSearchResultsOnly'),
+    html.indexOf('function scheduleDriveSearchRequest')
+  );
+  assert.match(universalRenderer, /!shouldRenderDriveUniversalDetailedSearch\(\)/);
+  assert.match(html, /if \(activeDriveTab === 'name'\) \{[\s\S]*renderDriveCommonNameDrill\(container, crumb, driveModeLabel, driveViewState\)/);
+  assert.match(html, /function selectDriveName\(name\)[\s\S]*selectedDriveName = name;[\s\S]*driveViewLevel = 1/);
+  assert.match(html, /function getDriveSearchProfile\(\)[\s\S]*activeDriveTab === 'name'\) return 'drive_name'/);
+});
+
 test('native Auth Request workflow preserves role-gated create, photo/spec update, completion, and history writes', () => {
   assert.match(requestWorkflowMigration, /create or replace function private\.can_write_requests\(\)/);
   assert.match(requestWorkflowMigration, /grant select, insert, update, delete on table public\.ph_active_request to authenticated/);
@@ -590,7 +602,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081705\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081706\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
