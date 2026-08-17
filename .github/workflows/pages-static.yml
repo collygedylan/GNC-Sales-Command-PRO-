@@ -56,6 +56,7 @@ jobs:
           cp .nojekyll _site/.nojekyll
           cp OneSignalSDKWorker.js _site/OneSignalSDKWorker.js
           cp -r assets _site/assets
+          cp -r reports _site/reports
           cp ag-data-solutions-logo-v2026080923.png _site/ag-data-solutions-logo-v2026080923.png
           cp ag-data-solutions-splash-v2026080923.png _site/ag-data-solutions-splash-v2026080923.png
           cp ag-data-solutions-icon-v2026080923-32.png _site/ag-data-solutions-icon-v2026080923-32.png
