@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { JSDOM } from 'jsdom';
 
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -11,6 +12,7 @@ const client = read('assets/ops-precision-pilot.js');
 const edge = read('supabase/functions/app-api/index.ts');
 const migration = read('supabase/migrations/20260815043342_dylan_live_pilot_preferences.sql');
 const darkDefaultMigration = read('supabase/migrations/20260815121724_dylan_ops_precision_dark_default.sql');
+const requestWorkflowMigration = read('supabase/migrations/20260817154154_restore_native_request_workflow.sql');
 const manifest = JSON.parse(read('manifest.json'));
 const serviceWorker = read('sw.js');
 const workflow = read('.github/workflows/pages-static.yml');
@@ -29,17 +31,17 @@ const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.17.04';
+  const release = 'V2026.08.17.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.17.04');
+  assert.equal(packageJson.version, '2026.08.17.05');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081704.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081705.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -58,7 +60,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081704\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081705\.png"/);
   assert.equal(manifest.background_color, '#07120e');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -371,6 +373,50 @@ test('Drive universal search preserves drill state and renders only its results 
   assert.match(html, /if \(renderDriveUniversalSearchResultsOnly\(\)\) return;[\s\S]*renderViewContent\('drive'/);
   const searchHandler = html.slice(html.indexOf('function handleDriveSearch'), html.indexOf('function selectDriveName'));
   assert.doesNotMatch(searchHandler, /resetDriveDrillSelectionState\(\)/);
+  assert.match(html, /oncompositionstart="beginDriveSearchComposition\(\)"/);
+  assert.match(html, /oncompositionend="endDriveSearchComposition\(event\)"/);
+  assert.match(searchHandler, /driveSearchCompositionActive \|\| \(event && event\.isComposing\)/);
+  assert.match(html, /currentInput === input && input\.isConnected\) return/);
+  assert.match(html, /String\(replacement\.value \|\| ''\) !== valueBeforeRender/);
+  assert.match(html, /\? 100 : 60/);
+});
+
+test('native Auth Request workflow preserves role-gated create, photo/spec update, completion, and history writes', () => {
+  assert.match(requestWorkflowMigration, /create or replace function private\.can_write_requests\(\)/);
+  assert.match(requestWorkflowMigration, /grant select, insert, update, delete on table public\.ph_active_request to authenticated/);
+  assert.match(requestWorkflowMigration, /grant select, insert, update, delete on table public\.ph_request_history to authenticated/);
+  assert.match(requestWorkflowMigration, /create policy ph_active_request_native_insert[\s\S]*with check \(\(select private\.can_write_requests\(\)\)\)/);
+  assert.match(requestWorkflowMigration, /create policy ph_active_request_native_update[\s\S]*using \(\(select private\.can_write_requests\(\)\)\)[\s\S]*with check \(\(select private\.can_write_requests\(\)\)\)/);
+  assert.match(requestWorkflowMigration, /drop policy if exists "Allow app write request history"/);
+  assert.match(html, /REQ_DESIRED_SPEC/);
+  assert.match(html, /REQ_PHOTO_LINK/);
+  assert.match(html, /window\.__gncOpsPilot\.captureFailure\('commit', firstError \|\| new Error\('Request save failed'\)\)/);
+});
+
+test('Drive results rendering never rewinds a later mobile search keystroke', () => {
+  const start = html.indexOf('function preserveDriveSearchCaret');
+  const end = html.indexOf('function renderDriveUniversalSearchResultsOnly', start);
+  assert.ok(start > 0 && end > start);
+  const dom = new JSDOM('<input id="drive-search" value="a">', { pretendToBeVisual: true });
+  const input = dom.window.document.getElementById('drive-search');
+  input.focus();
+  input.setSelectionRange(1, 1);
+  let scheduledFrames = 0;
+  const preserve = new Function(
+    'document',
+    'requestAnimationFrame',
+    `${html.slice(start, end)}; return preserveDriveSearchCaret;`
+  )(dom.window.document, () => { scheduledFrames += 1; });
+
+  preserve(() => {
+    input.value = 'ar';
+    input.setSelectionRange(2, 2);
+  });
+
+  assert.equal(input.value, 'ar');
+  assert.equal(input.selectionStart, 2);
+  assert.equal(input.selectionEnd, 2);
+  assert.equal(scheduledFrames, 0);
 });
 
 test('installed Android keyboard changes cannot replace or blur the active command search', () => {
@@ -544,7 +590,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081704\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026081705\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
