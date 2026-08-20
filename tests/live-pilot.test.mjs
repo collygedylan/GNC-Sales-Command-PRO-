@@ -32,6 +32,7 @@ const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enab
 const appsScriptBackend = read('Code.gs');
 const requestRetryGuardMigration = read('supabase/migrations/20260820190857_acknowledge_stale_completed_request_work.sql');
 const completeAssignmentSheetMigration = read('supabase/migrations/20260820195456_complete_eval_assignment_sheet_import.sql');
+const exactAssignmentSheetMigration = read('supabase/migrations/20260820202902_reconcile_exact_assignment_sheet.sql');
 const productionAuthHealthWorkflow = read('.github/workflows/production-auth-health.yml');
 const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
 
@@ -1169,6 +1170,12 @@ test('Eval assignment management uses the requested roster and ItemCode + GenusN
   assert.match(completeAssignmentSheetMigration, /'distinct_itemcode_genus_keys', 3307/);
   assert.match(completeAssignmentSheetMigration, /public\.ph_warehouse_assigned_items\.source = 'supabase_assignment_manager'/);
   assert.match(completeAssignmentSheetMigration, /"assignedto": "bobby_adair"/);
+  assert.match(exactAssignmentSheetMigration, /ASSSIGNMENTS 08-20-2026 \/ Sheet3 \(9857 rows\)/);
+  assert.match(exactAssignmentSheetMigration, /'008267\.070\.1', 'Rosa', 'mitch_kaiser', 9027/);
+  assert.match(exactAssignmentSheetMigration, /'002050\.020\.1', 'Rosa', 'mitch_kaiser', 9114/);
+  assert.match(exactAssignmentSheetMigration, /'002050\.050\.1', 'Rosa', 'mitch_kaiser', 9116/);
+  assert.match(exactAssignmentSheetMigration, /assignment\.source = 'google_sheet_cutover_20260820'/);
+  assert.match(exactAssignmentSheetMigration, /updated_count <> 3/);
 });
 
 test('stale request work is quarantined client-side and completed rows are acknowledged server-side', () => {
