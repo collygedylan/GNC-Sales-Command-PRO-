@@ -88,6 +88,40 @@ test.describe('Drive-canonical request transactions', () => {
     });
     expect(master.response.ok, JSON.stringify(master.body)).toBeTruthy();
 
+    const legacyRequestId = `REQ-LEGACY-${suffix}`;
+    const legacyComplete = await jsonFetch(`${localUrl}/rest/v1/ph_active_request`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation'
+      },
+      body: JSON.stringify({
+        unique_id: legacyRequestId,
+        master_id: masterId,
+        requested_by: 'legacy_ci',
+        request_folder: `LEGACY-${suffix}`,
+        req_status: 'Complete',
+        date_completed: new Date().toISOString(),
+        req_photo_link: 'https://example.invalid/legacy-photo.jpg',
+        req_photo_name: 'legacy-photo.jpg'
+      })
+    });
+    expect(legacyComplete.response.ok, JSON.stringify(legacyComplete.body)).toBeTruthy();
+    const legacyHistory = await jsonFetch(`${localUrl}/rest/v1/ph_request_history?select=last_event,delivery_state,snapshot&unique_id=eq.${encodeURIComponent(legacyRequestId)}`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    });
+    expect(legacyHistory.body[0].last_event).toBe('completed');
+    expect(legacyHistory.body[0].delivery_state).toBe('pending');
+    expect(legacyHistory.body[0].snapshot.req_photo_link).toContain('legacy-photo.jpg');
+    const legacyOutbox = await jsonFetch(`${localUrl}/rest/v1/ph_request_delivery_outbox?select=status,event_type&request_id=eq.${encodeURIComponent(legacyRequestId)}`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    });
+    expect(legacyOutbox.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({ status: 'pending', event_type: 'request_completed' })
+    ]));
+
     const repToken = await signIn(rep);
     const repRequestId = `REQ-REP-${suffix}`;
     const repBatchId = crypto.randomUUID();
