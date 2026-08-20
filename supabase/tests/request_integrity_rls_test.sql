@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(32);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -65,6 +65,18 @@ set local role postgres;
 select is((select count(*)::integer from public.ph_request_delivery_outbox where event_key = 'request-created:20000000-0000-0000-0000-000000000003'), 1, 'creation transaction persisted delivery outbox');
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);
+
+select is(
+  (select count(*)::integer from public.ph_request_queue_live_rows where unique_id = 'REQ-CSR-1'),
+  1,
+  'completed request remains visible while its delivery is pending'
+);
+
+select throws_ok(
+  $q$select * from public.claim_request_delivery_events(1, 'untrusted-client')$q$,
+  '42501', 'DELIVERY_WORKER_FORBIDDEN',
+  'authenticated clients cannot claim service delivery work'
+);
 
 select lives_ok(
   $q$select public.create_request_batch(
@@ -146,6 +158,49 @@ select is(
   ) duplicate_keys),
   0,
   'ItemCode + GenusName assignments remain unique after the complete backfill'
+);
+
+set local role postgres;
+select set_config('request.jwt.claim.role', 'service_role', true);
+update public.ph_request_delivery_outbox
+set next_attempt_at = now() + interval '1 day'
+where status = 'pending';
+insert into public.ph_request_delivery_outbox (
+  event_key, event_type, payload, status, next_attempt_at
+) values (
+  'ci:delivery-lease', 'delivery_canary', '{}'::jsonb, 'pending', now()
+);
+
+select is(
+  (select count(*)::integer from public.claim_request_delivery_events(1, 'ci-worker-a')),
+  1,
+  'service worker atomically claims one due delivery event'
+);
+select is(
+  (select count(*)::integer from public.claim_request_delivery_events(1, 'ci-worker-b')),
+  0,
+  'a second worker cannot claim the active lease'
+);
+select lives_ok(
+  $q$select public.record_request_delivery_channel_result(
+    (select event_id from public.ph_request_delivery_outbox where event_key = 'ci:delivery-lease'),
+    (select lease_token from public.ph_request_delivery_outbox where event_key = 'ci:delivery-lease'),
+    '{"email":{"delivered_at":"2026-08-20T20:00:00Z","gmail_message_id":"ci-message","thread_id":"ci-thread","message_id_header":"<ci@test>"}}'::jsonb
+  )$q$,
+  'worker durably records a channel result before final acknowledgment'
+);
+select lives_ok(
+  $q$select public.complete_request_delivery_event(
+    (select event_id from public.ph_request_delivery_outbox where event_key = 'ci:delivery-lease'),
+    (select lease_token from public.ph_request_delivery_outbox where event_key = 'ci:delivery-lease'),
+    '{"push":{"delivered_at":"2026-08-20T20:00:01Z"}}'::jsonb
+  )$q$,
+  'worker acknowledges a leased event after channel delivery'
+);
+select is(
+  (select status || '|' || gmail_message_id from public.ph_request_delivery_outbox where event_key = 'ci:delivery-lease'),
+  'delivered|ci-message',
+  'delivery acknowledgment preserves the idempotent Gmail result'
 );
 
 select * from finish();

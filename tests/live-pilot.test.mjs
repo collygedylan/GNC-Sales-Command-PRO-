@@ -33,21 +33,23 @@ const appsScriptBackend = read('Code.gs');
 const requestRetryGuardMigration = read('supabase/migrations/20260820190857_acknowledge_stale_completed_request_work.sql');
 const completeAssignmentSheetMigration = read('supabase/migrations/20260820195456_complete_eval_assignment_sheet_import.sql');
 const exactAssignmentSheetMigration = read('supabase/migrations/20260820202902_reconcile_exact_assignment_sheet.sql');
+const reliableDeliveryMigration = read('supabase/migrations/20260820230245_reliable_request_delivery_worker.sql');
+const deliveryWorker = read('supabase/functions/request-delivery-worker/index.ts');
 const productionAuthHealthWorkflow = read('.github/workflows/production-auth-health.yml');
 const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.20.09';
+  const release = 'V2026.08.20.10';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.20.09');
+  assert.equal(packageJson.version, '2026.08.20.10');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
-  assert.match(html, /requests: \{ table: ACTIVE_REQUEST_LIVE_ROWS_TABLE,[^\n]*initialQuery: \(\) => buildActiveRequestLiveRowsQuery\('\*'\), fullQuery: \(\) => buildActiveRequestLiveRowsQuery\('\*'\)/);
-  assert.match(html, /function buildActiveRequestLiveRowsQuery\(selectFields = '\*'\)[\s\S]*date_completed=is\.null/);
+  assert.match(html, /requests: \{ table: REQUEST_QUEUE_LIVE_ROWS_TABLE,[^\n]*initialQuery: \(\) => buildActiveRequestLiveRowsQuery\('\*'\), fullQuery: \(\) => buildActiveRequestLiveRowsQuery\('\*'\)/);
+  assert.match(html, /function buildActiveRequestLiveRowsQuery\(selectFields = '\*'\)[\s\S]*order=unique_id\.desc/);
   const requestLoading = html.slice(html.indexOf('function getRequestViewLoadingConfig'), html.indexOf('function getViewLoadingConfig'));
   assert.match(requestLoading, /safeTab === 'reps'[\s\S]*requestHistory[\s\S]*salesCredits/);
   assert.match(requestLoading, /safeTab === 'suspend-tag'[\s\S]*\{ key: 'soc', mode: 'full' \}/);
@@ -71,7 +73,7 @@ test('hosted performance monitoring covers real data readiness and row saves alw
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082009.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082010.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -656,7 +658,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026082009\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026082010\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -1002,7 +1004,10 @@ test('V03 request-manager Queue renders the complete canonical pending set', () 
     html.indexOf('function buildActiveRequestLiveRowsQuery'),
     html.indexOf('async function fetchActiveRequestLiveRows')
   );
-  assert.match(liveQuery, /date_completed=is\.null/);
+  assert.match(liveQuery, /order=unique_id\.desc/);
+  assert.doesNotMatch(liveQuery, /date_completed=is\.null/);
+  assert.match(reliableDeliveryMigration, /create or replace view public\.ph_request_queue_live_rows/);
+  assert.match(reliableDeliveryMigration, /delivery_status in \('pending', 'processing', 'failed'\)/);
 
   const globalAccess = html.slice(
     html.indexOf('function canUseGlobalRequestAccess'),
@@ -1041,6 +1046,24 @@ test('V03 request-manager Queue renders the complete canonical pending set', () 
   assert.match(catchup, /force: false/);
   assert.match(html, /const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = 5000/);
   assert.match(html, /getSanitizedClientRuntimeCode\(event && event\.reason/);
+});
+
+test('request completion delivery is leased, idempotent, threaded, and independent of Drive sync', () => {
+  assert.match(reliableDeliveryMigration, /for update skip locked/);
+  assert.match(reliableDeliveryMigration, /lease_expires_at = now\(\) \+ interval '2 minutes'/);
+  assert.match(reliableDeliveryMigration, /DELIVERY_WORKER_STALLED/);
+  assert.match(reliableDeliveryMigration, /gnc-request-delivery-worker/);
+  assert.match(deliveryWorker, /stableMessageId/);
+  assert.match(deliveryWorker, /REQUEST_DELIVERY_SIGNING_SECRET/);
+  assert.match(deliveryWorker, /record_request_delivery_channel_result/);
+  assert.match(deliveryWorker, /request_completed" \? "ph_request_history"/);
+  assert.match(appsScriptBackend, /handleSignedRequestDeliveryEvent_/);
+  assert.match(appsScriptBackend, /gmail_api_idempotent_recovery/);
+  assert.match(appsScriptBackend, /apps_script_receipt_recovery/);
+  assert.match(appsScriptBackend, /thread_recovery_fallback/);
+  assert.match(appsScriptBackend, /worker: 'supabase_edge_request_delivery'/);
+  assert.match(html, /Completed &mdash; Sending/);
+  assert.match(html, /Delivery Needs Attention/);
 });
 
 test('V12 synchronizes password changes and exposes user-initiated passkeys to every eligible account', () => {

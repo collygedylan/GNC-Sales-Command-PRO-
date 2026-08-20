@@ -104,6 +104,8 @@ function doesLoginPasswordMatch(dbPassword = "", inputPassword = "") {
 const READABLE_TABLES = new Set([
   "ph_master_inventory",
   "ph_active_request_live_rows",
+  "ph_request_queue_live_rows",
+  "ph_request_delivery_status",
   "ph_crop_roll_drive_rows",
   "ph_crop_roll_open_rows",
   "ph_crop_roll_runs",
@@ -241,6 +243,8 @@ const REP_READ_TABLES = new Set([
   "ph_master_inventory",
   "ph_active_request",
   "ph_active_request_live_rows",
+  "ph_request_queue_live_rows",
+  "ph_request_delivery_status",
   "ph_customer_consignee_sales_reps",
   "ph_request_history",
   "ph_sales_credit_requests",

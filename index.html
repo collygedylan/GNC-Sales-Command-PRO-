@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082009.min.css?v=V2026.08.20.09">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.20.10">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.20.09';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.20.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.09">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.10">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.09"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.10"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.09').trim() || 'V2026.08.20.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.10').trim() || 'V2026.08.20.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8839,6 +8839,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
         const ACTIVE_REQUEST_TABLE = 'ph_active_request';
         const ACTIVE_REQUEST_LIVE_ROWS_TABLE = 'ph_active_request_live_rows';
+        const REQUEST_QUEUE_LIVE_ROWS_TABLE = 'ph_request_queue_live_rows';
         const FLYER_FOLDER_ROWS_TABLE = 'ph_flyer_folder_rows';
         const REQUEST_HISTORY_TABLE = 'ph_request_history';
         const SALES_CREDIT_REQUESTS_TABLE = 'ph_sales_credit_requests';
@@ -8918,7 +8919,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -29110,7 +29111,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_EMAIL_THREAD_TABLE = 'ph_request_email_threads';
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_HISTORY_SELECT_FIELDS = '*';
-        const REQUEST_LIVE_SIGNATURE_SELECT_FIELDS = 'unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by';
+        const REQUEST_LIVE_SIGNATURE_SELECT_FIELDS = 'unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,delivery_status,delivery_attempt_count,delivery_error_code,delivery_display_state,delivery_delivered_at';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com', 'megan_kelly@greenleafnursery.com']);
         const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS = Object.freeze(['sunday_ellis', 'sharon_combs', 'mitch_kaiser', 'jd_jones', 'megan_kelly']);
         const REQUEST_EMAIL_LINKED_REP_RECIPIENTS = Object.freeze({
@@ -30194,7 +30195,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.09').trim() || 'V2026.08.20.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.10').trim() || 'V2026.08.20.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31722,7 +31723,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             master: { table: 'ph_master_inventory', sourceTable: 'ph_master_inventory', initialQuery: buildMasterInitialDatasetQuery, fullQuery: buildMasterFullDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true, mergeInitialRows: true },
             cropRollDrive: { table: CROP_ROLL_DRIVE_OPEN_ROWS_TABLE, sourceTable: CROP_ROLL_DRIVE_SOURCE_TABLE, initialQuery: buildCropRollDriveDatasetQuery, fullQuery: buildCropRollDriveDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true },
             avOpen: { table: 'ph_master_inventory', sourceTable: 'ph_master_inventory', initialQuery: buildAvSeasonDatasetQuery, fullQuery: buildAvSeasonDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit },
-            requests: { table: ACTIVE_REQUEST_LIVE_ROWS_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: () => buildActiveRequestLiveRowsQuery('*'), fullQuery: () => buildActiveRequestLiveRowsQuery('*') },
+            requests: { table: REQUEST_QUEUE_LIVE_ROWS_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: () => buildActiveRequestLiveRowsQuery('*'), fullQuery: () => buildActiveRequestLiveRowsQuery('*') },
             requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: 'ph_active_request', initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             salesCredits: { table: SALES_CREDIT_REQUESTS_TABLE, sourceTable: SALES_CREDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=updated_at.desc', fullQuery: 'select=*&order=updated_at.desc' },
             inventoryEditRequests: { table: INVENTORY_EDIT_REQUESTS_TABLE, sourceTable: INVENTORY_EDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=stage_updated_at.desc', fullQuery: 'select=*&order=stage_updated_at.desc', initialFetchAll: true },
@@ -31884,8 +31885,39 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return hasRequestCompletionState(item);
         }
 
+        function getRequestDeliveryStatus(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.DELIVERY_STATUS,
+                item && item.delivery_status,
+                item && item.DELIVERY_STATE,
+                item && item.delivery_state,
+                ''
+            ) || '').trim().toLowerCase();
+        }
+
+        function isRequestDeliverySending(item = null) {
+            const status = getRequestDeliveryStatus(item);
+            const display = String(firstNonEmptyValue(item && item.DELIVERY_DISPLAY_STATE, item && item.delivery_display_state, '') || '').trim().toLowerCase();
+            return status === 'pending' || status === 'processing' || display === 'sending';
+        }
+
+        function isRequestDeliveryNeedsAttention(item = null) {
+            const status = getRequestDeliveryStatus(item);
+            const display = String(firstNonEmptyValue(item && item.DELIVERY_DISPLAY_STATE, item && item.delivery_display_state, '') || '').trim().toLowerCase();
+            return status === 'failed' || display === 'needs_attention';
+        }
+
+        function isRequestDeliveryAwaiting(item = null) {
+            return isRequestComplete(item) && (isRequestDeliverySending(item) || isRequestDeliveryNeedsAttention(item));
+        }
+
         function isRequestPendingVisible(item) {
-            return !!(item && isRequestVisibleForCurrentUser(item) && !isMoveRequestRow(item) && !item.REQUEST_HISTORY && !item.REQ_ARCHIVED && !isRequestComplete(item));
+            return !!(item
+                && isRequestVisibleForCurrentUser(item)
+                && !isMoveRequestRow(item)
+                && !item.REQUEST_HISTORY
+                && !item.REQ_ARCHIVED
+                && (!isRequestComplete(item) || isRequestDeliveryAwaiting(item)));
         }
 
         function applyRequestStatusHintsToLocalRows(rows = [], options = {}) {
@@ -31992,7 +32024,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const moveJdAt = String(firstNonEmptyValue(row.MOVE_JD_APPROVED_AT, row.move_jd_approved_at, '')).trim();
                 const moveCompletedAt = String(firstNonEmptyValue(row.MOVE_COMPLETED_AT, row.move_completed_at, '')).trim();
                 const moveCompletedBy = String(firstNonEmptyValue(row.MOVE_COMPLETED_BY, row.move_completed_by, '')).trim();
-                return [uniqueId, status, archived ? '1' : '0', repAction, folder, customer, qty, completedAt, match, spec, caliper, desiredSpec, desiredCaliper, pick, comments, requestNote, avNote, photoLink, photoName, moveBatchId, moveStage, moveStatus, moveGroup, moveFrom, moveTo, movePlanned, moveActual, moveNeedsRow, moveDylanAt, moveJdAt, moveCompletedAt, moveCompletedBy].join('|');
+                const deliveryStatus = getRequestDeliveryStatus(row);
+                const deliveryAttempts = String(firstNonEmptyValue(row.DELIVERY_ATTEMPT_COUNT, row.delivery_attempt_count, '')).trim();
+                const deliveryError = String(firstNonEmptyValue(row.DELIVERY_ERROR_CODE, row.delivery_error_code, '')).trim();
+                const deliveryCompletedAt = String(firstNonEmptyValue(row.DELIVERY_DELIVERED_AT, row.delivery_delivered_at, '')).trim();
+                return [uniqueId, status, archived ? '1' : '0', repAction, folder, customer, qty, completedAt, match, spec, caliper, desiredSpec, desiredCaliper, pick, comments, requestNote, avNote, photoLink, photoName, moveBatchId, moveStage, moveStatus, moveGroup, moveFrom, moveTo, movePlanned, moveActual, moveNeedsRow, moveDylanAt, moveJdAt, moveCompletedAt, moveCompletedBy, deliveryStatus, deliveryAttempts, deliveryError, deliveryCompletedAt].join('|');
             }).sort().join('||');
         }
 
@@ -33141,6 +33177,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let requestDeliveryRecoveryLoading = false;
         let requestDeliveryRecoveryRows = [];
         let requestDeliveryRecoveryError = '';
+        let requestDeliveryRecoverySummary = { pending: 0, processing: 0, failed: 0, delivered: 0 };
 
         function canManageRequestDeliveryRecovery() {
             const access = getRoleAccessState();
@@ -33158,18 +33195,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return `<div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">${escapeHtml(requestDeliveryRecoveryError)}</div>`;
             }
             if (!requestDeliveryRecoveryRows.length) {
-                return '<div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center text-sm font-bold text-emerald-800">No failed or unknown deliveries need review.</div>';
+                return '<div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center text-sm font-bold text-emerald-800">No stale or failed deliveries need review.</div>';
             }
             return requestDeliveryRecoveryRows.map((entry) => {
                 const snapshot = entry && entry.history_snapshot && typeof entry.history_snapshot === 'object' ? entry.history_snapshot : {};
                 const rowLabel = firstNonEmptyValue(snapshot.commonname, snapshot.COMMONNAME, entry.request_id, 'Request');
                 const itemcode = firstNonEmptyValue(snapshot.itemcode, snapshot.ITEMCODE, '');
                 const status = String(entry.status || 'unknown').trim().toUpperCase();
-                const errorCode = String(entry.sanitized_error_code || 'DELIVERY_STATUS_UNKNOWN').trim();
+                const errorCode = String(entry.sanitized_error_code || (status === 'PENDING' ? 'DELIVERY_WORKER_STALLED' : 'DELIVERY_STATUS_UNKNOWN')).trim();
                 const createdLabel = entry.created_at ? new Date(entry.created_at).toLocaleString() : '';
+                const ageMinutes = Math.max(0, Math.round((Number(entry.pending_age_seconds) || 0) / 60));
+                const channelState = `${entry.email_delivered_at ? 'Email sent' : 'Email waiting'} / ${entry.push_delivered_at ? 'Push sent' : 'Push waiting'}${ageMinutes ? ` / Waiting ${ageMinutes} min` : ''}`;
                 return `<article class="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
                     <div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">${escapeHtml(status)} Delivery</div><div class="mt-1 text-base font-black text-slate-900">${escapeHtml(rowLabel)}</div><div class="mt-1 break-all text-[11px] font-bold text-slate-500">${escapeHtml(itemcode ? `${itemcode} · ${entry.request_folder || entry.request_id || ''}` : (entry.request_folder || entry.request_id || ''))}</div></div><span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-800">${escapeHtml(errorCode)}</span></div>
-                    <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><div class="text-[10px] font-bold text-slate-400">Attempts ${escapeHtml(String(entry.attempt_count || 0))}${createdLabel ? ` · ${escapeHtml(createdLabel)}` : ''}</div><button type="button" class="rounded-xl bg-[#007a4d] px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return requeueRequestDelivery('${escapeHtml(String(entry.event_id || ''))}', this)">Resend</button></div>
+                    <div class="mt-3 text-[10px] font-bold text-slate-500">${escapeHtml(channelState)}</div><div class="mt-3 flex flex-wrap items-center justify-between gap-3"><div class="text-[10px] font-bold text-slate-400">Attempts ${escapeHtml(String(entry.attempt_count || 0))}${createdLabel ? ` · ${escapeHtml(createdLabel)}` : ''}</div><button type="button" class="rounded-xl bg-[#007a4d] px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return requeueRequestDelivery('${escapeHtml(String(entry.event_id || ''))}', this)">Retry Now</button></div>
                 </article>`;
             }).join('');
         }
@@ -33181,7 +33220,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             panel.classList.toggle('hidden', !visible);
             panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
             if (visible) {
-                panel.innerHTML = `<div class="mb-3 rounded-2xl border-2 border-sky-200 bg-sky-50 p-4"><div class="mb-3 flex flex-wrap items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Kayla Request Recovery</div><div class="mt-1 text-sm font-bold text-slate-700">Recovered rows are never resent automatically. Review each delivery before resending.</div></div><button type="button" class="rounded-xl border border-sky-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700" onclick="return loadRequestDeliveryRecoveryQueue(true)">Refresh</button></div><div class="grid gap-3">${renderRequestDeliveryRecoveryRowsHtml()}</div></div>`;
+                const summary = requestDeliveryRecoverySummary || {};
+                panel.innerHTML = `<div class="mb-3 rounded-2xl border-2 border-sky-200 bg-sky-50 p-4"><div class="mb-3 flex flex-wrap items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Kayla Request Recovery</div><div class="mt-1 text-sm font-bold text-slate-700">Committed History snapshots stay intact while delivery retries independently.</div></div><button type="button" class="rounded-xl border border-sky-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700" onclick="return loadRequestDeliveryRecoveryQueue(true)">Refresh</button></div><div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4"><div class="rounded-xl border border-sky-100 bg-white p-3"><div class="text-[9px] font-black uppercase text-sky-700">Pending</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(String(Number(summary.pending || 0) + Number(summary.processing || 0)))}</div></div><div class="rounded-xl border border-red-100 bg-white p-3"><div class="text-[9px] font-black uppercase text-red-700">Failed</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(String(summary.failed || 0))}</div></div><div class="rounded-xl border border-emerald-100 bg-white p-3"><div class="text-[9px] font-black uppercase text-emerald-700">Delivered</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(String(summary.delivered || 0))}</div></div><div class="rounded-xl border border-amber-100 bg-white p-3"><div class="text-[9px] font-black uppercase text-amber-700">Needs Review</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(String(requestDeliveryRecoveryRows.length))}</div></div></div><div class="grid gap-3">${renderRequestDeliveryRecoveryRowsHtml()}</div></div>`;
             }
             return visible;
         }
@@ -33196,8 +33236,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDeliveryRecoveryError = '';
             syncRequestDeliveryRecoveryPanel();
             try {
-                const result = await supabaseRpc('get_request_delivery_recovery_queue', {}, { timeoutMs: 30000 });
+                const [result, statusRows] = await Promise.all([
+                    supabaseRpc('get_request_delivery_recovery_queue', {}, { timeoutMs: 30000 }),
+                    fetchAllSupabaseRows('ph_request_delivery_status', 'select=delivery_status')
+                ]);
                 requestDeliveryRecoveryRows = Array.isArray(result) ? result : [];
+                requestDeliveryRecoverySummary = (Array.isArray(statusRows) ? statusRows : []).reduce((counts, row) => {
+                    const status = String(row && row.delivery_status || '').trim().toLowerCase();
+                    if (Object.prototype.hasOwnProperty.call(counts, status)) counts[status] += 1;
+                    return counts;
+                }, { pending: 0, processing: 0, failed: 0, delivered: 0 });
             } catch (error) {
                 requestDeliveryRecoveryError = String(error && error.message ? error.message : 'Could not load request delivery recovery.').slice(0, 180);
                 reportSemanticHealthEvent('delivery_recovery_load_failed', 'request', error && error.status ? `HTTP_${error.status}` : 'DELIVERY_RECOVERY_LOAD_FAILED');
@@ -34412,25 +34460,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let activeRequestLiveRowsViewWarningShown = false;
         function buildActiveRequestLiveRowsQuery(selectFields = '*') {
             const fields = String(selectFields || '*').trim() || '*';
-            return `select=${fields}&date_completed=is.null&order=unique_id.desc`;
+            return `select=${fields}&order=unique_id.desc`;
         }
 
         async function fetchActiveRequestLiveRows(selectFields = '*') {
             const query = buildActiveRequestLiveRowsQuery(selectFields);
             if (activeRequestLiveRowsViewReady !== false) {
                 try {
-                    const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_LIVE_ROWS_TABLE, query);
+                    const rows = await fetchAllSupabaseRows(REQUEST_QUEUE_LIVE_ROWS_TABLE, query);
                     activeRequestLiveRowsViewReady = true;
                     return rows;
                 } catch (error) {
                     activeRequestLiveRowsViewReady = false;
                     if (!activeRequestLiveRowsViewWarningShown) {
                         activeRequestLiveRowsViewWarningShown = true;
-                        console.warn('Live request rows view is unavailable; falling back to ph_active_request.', error);
+                        console.warn('Request delivery-status view is unavailable; falling back to pending active requests.', error);
                     }
                 }
             }
-            return fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, query);
+            return fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc');
         }
 
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0) {
@@ -34763,6 +34811,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             console.warn('Full master retry failed; showing first master page while background sync retries.', fallbackError);
                             rows = await fetchSupabasePage(definition.table, 'select=*&order=unique_id.asc', resolvedInitialLimit, 0);
                         }
+                    } else if (key === 'requests' && isOptionalTableMissingError(error, definition.table)) {
+                        activeRequestLiveRowsViewReady = false;
+                        rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc');
                     } else if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
                     else if ((key === 'requestHistory' || key === 'flyerHistory') && isOptionalTableMissingError(error, definition.table)) rows = handleMissingOptionalHistoryTable(key, error);
                     else if (key === 'cropRollDrive' && isOptionalTableMissingError(error, definition.table)) {
@@ -100250,14 +100301,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function getRequestFolderStatusInfo(rows = []) {
             const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
             const pendingCount = safeRows.filter((item) => !isRequestComplete(item)).length;
-            const completeCount = safeRows.filter((item) => isRequestComplete(item)).length;
+            const sendingCount = safeRows.filter((item) => isRequestComplete(item) && isRequestDeliverySending(item)).length;
+            const attentionCount = safeRows.filter((item) => isRequestComplete(item) && isRequestDeliveryNeedsAttention(item)).length;
+            const completeCount = safeRows.filter((item) => isRequestComplete(item) && !isRequestDeliveryAwaiting(item)).length;
             const latestMs = safeRows.reduce((latest, item) => Math.max(latest, getRequestRowSortMs(item)), 0);
             return {
                 itemCount: safeRows.length,
                 pendingCount,
+                sendingCount,
+                attentionCount,
                 completeCount,
                 latestMs,
-                allComplete: !!safeRows.length && pendingCount === 0 && completeCount > 0
+                allComplete: !!safeRows.length && pendingCount === 0 && sendingCount === 0 && attentionCount === 0 && completeCount > 0
             };
         }
 
@@ -101858,7 +101913,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         const matchesSearch = !searchToken || doesProgressiveSearchTextMatch(normalizeRepMatchToken(entry.searchText), searchToken);
                         const matchesDate = !dateFilter || entry.dateKey === dateFilter;
                         const hiddenClass = matchesSearch && matchesDate ? '' : ' hidden';
-                        const statusBadges = `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span><span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>`;
+                        const statusBadges = `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span>${entry.info.sendingCount ? `<span class="rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700">${entry.info.sendingCount} Sending</span>` : ''}${entry.info.attentionCount ? `<span class="rounded-full border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-700">${entry.info.attentionCount} Needs Attention</span>` : ''}<span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>`;
                         return `<div data-request-folder-card="true" data-request-folder-search="${escapeShareHtml(entry.searchText)}" data-request-folder-date="${escapeShareHtml(entry.dateKey)}" class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform${hiddenClass}" ${buildRequestFolderOpenAttrs(f, 'Open folder ' + f)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-purple-800 break-all">${escapeShareHtml(f)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${latestLabel ? `Newest ${escapeShareHtml(latestLabel)}` : 'Request Folder'}</div></div></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${entry.info.itemCount} Items</span></div><div class="mt-3 flex flex-wrap gap-2">${statusBadges}</div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     html += `</div>`;
@@ -123718,9 +123773,15 @@ C.14.043 C.15.000
                     ? buildDockSuspendDcRequestCardDataHtml(item)
                     : '';
                 const requestDone = isRequestComplete(item);
-                const statusChip = requestDone
-                    ? `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">Complete</span>`
-                    : `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">Pending</span>`;
+                const requestDeliverySending = requestDone && isRequestDeliverySending(item);
+                const requestDeliveryNeedsAttention = requestDone && isRequestDeliveryNeedsAttention(item);
+                const statusChip = requestDeliveryNeedsAttention
+                    ? `<span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded border border-red-200">Delivery Needs Attention</span>`
+                    : (requestDeliverySending
+                        ? `<span class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded border border-sky-200">Completed &mdash; Sending</span>`
+                        : (requestDone
+                            ? `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">Complete</span>`
+                            : `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">Pending</span>`));
                 const reserveBadge = reserve === 'YES'
                     ? `<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">Reserve: YES</span>`
                     : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Reserve: NO</span>`;
@@ -123728,7 +123789,7 @@ C.14.043 C.15.000
                     ? `<span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">History</span>`
                     : '';
                 let actionBadge = '';
-                if (requestDone && !item.REQ_ARCHIVED && !item.REQUEST_HISTORY) {
+                if (requestDone && !requestDeliverySending && !requestDeliveryNeedsAttention && !item.REQ_ARCHIVED && !item.REQUEST_HISTORY) {
                     if (item.REQ_REP_ACTION === 'Approved') {
                         actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`;
                     } else if (item.REQ_REP_ACTION === 'Rejected') {
@@ -145758,9 +145819,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 throw new Error('REQUEST_SAVE_UNCONFIRMED');
                             }
                             const formattedServerRow = formatFetchedRows([serverRow], ACTIVE_REQUEST_TABLE)[0] || serverRow;
+                            const deliveryState = String(firstNonEmptyValue(rpcResult.delivery_state, serverRow.delivery_state, '') || '').trim().toLowerCase();
                             Object.assign(itemToSave, formattedServerRow, {
                                 ROW_VERSION: Number(firstNonEmptyValue(rpcResult.row_version, serverRow.row_version, expectedVersion + 1)),
-                                row_version: Number(firstNonEmptyValue(rpcResult.row_version, serverRow.row_version, expectedVersion + 1))
+                                row_version: Number(firstNonEmptyValue(rpcResult.row_version, serverRow.row_version, expectedVersion + 1)),
+                                DELIVERY_STATUS: isComplete && ['pending', 'processing'].includes(deliveryState) ? deliveryState : firstNonEmptyValue(itemToSave.DELIVERY_STATUS, ''),
+                                delivery_status: isComplete && ['pending', 'processing'].includes(deliveryState) ? deliveryState : firstNonEmptyValue(itemToSave.delivery_status, ''),
+                                DELIVERY_DISPLAY_STATE: isComplete && ['pending', 'processing'].includes(deliveryState) ? 'sending' : firstNonEmptyValue(itemToSave.DELIVERY_DISPLAY_STATE, ''),
+                                delivery_display_state: isComplete && ['pending', 'processing'].includes(deliveryState) ? 'sending' : firstNonEmptyValue(itemToSave.delivery_display_state, '')
                             });
                             normalizeRowPhotoFields(itemToSave);
                             buildSearchIndex(itemToSave);

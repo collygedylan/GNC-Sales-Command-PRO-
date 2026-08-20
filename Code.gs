@@ -93,6 +93,7 @@ function resolveSupabaseServiceRoleKey_(sourceFallbackKey) {
 
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = resolveSupabaseServiceRoleKey_('__SUPABASE_SERVICE_ROLE_KEY__');
+const REQUEST_DELIVERY_RECEIPT_PREFIX = 'REQ_DELIVERY_RECEIPT_V1_';
 
 function getSupabaseHeadersForKey_(key, extraHeaders) {
   const headers = Object.assign({}, extraHeaders || {});
@@ -11502,6 +11503,8 @@ function buildMimeEmail_(options) {
   ];
   const fromHeader = formatMimeMailbox_(options.fromName, options.fromAddress);
   if (fromHeader) lines.push('From: ' + fromHeader);
+  const messageIdHeader = String(options.messageIdHeader || '').trim();
+  if (messageIdHeader) lines.push('Message-ID: ' + messageIdHeader);
   lines.push('Subject: ' + String(options.subject || ''));
   lines.push('Content-Type: multipart/alternative; boundary="' + boundary + '"');
 
@@ -11853,7 +11856,8 @@ function sendRequestEmailWithFallback_(payload) {
       fromAddress: senderAddress,
       threadId: wantsThreadReply && canReplyInThread ? threadId : '',
       inReplyTo: wantsThreadReply && canReplyInThread ? inReplyTo : '',
-      references: wantsThreadReply && canReplyInThread ? inReplyTo : ''
+      references: wantsThreadReply && canReplyInThread ? inReplyTo : '',
+      messageIdHeader: String(payload.messageIdHeader || '').trim()
     });
     if (wantsThreadReply && !canReplyInThread) {
       result.mode = 'gmail_api_fresh_completion';
@@ -11975,6 +11979,235 @@ function buildRequestDeliveryEmailPayload_(eventRow, rows) {
   };
 }
 
+function requestDeliveryBase64Url_(bytes) {
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/g, '');
+}
+
+function requestDeliverySafeEqual_(left, right) {
+  const leftText = String(left || '');
+  const rightText = String(right || '');
+  let mismatch = leftText.length ^ rightText.length;
+  const length = Math.max(leftText.length, rightText.length);
+  for (let i = 0; i < length; i++) {
+    mismatch |= (leftText.charCodeAt(i % Math.max(leftText.length, 1)) || 0)
+      ^ (rightText.charCodeAt(i % Math.max(rightText.length, 1)) || 0);
+  }
+  return mismatch === 0;
+}
+
+function requestDeliveryReceiptKey_(messageIdHeader) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(messageIdHeader || ''),
+    Utilities.Charset.UTF_8
+  );
+  return REQUEST_DELIVERY_RECEIPT_PREFIX + requestDeliveryBase64Url_(digest).slice(0, 40);
+}
+
+function getRequestDeliveryReceipt_(messageIdHeader) {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty(requestDeliveryReceiptKey_(messageIdHeader));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && parsed.gmailMessageId ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveRequestDeliveryReceipt_(messageIdHeader, result) {
+  const props = PropertiesService.getScriptProperties();
+  const receipt = {
+    savedAt: Date.now(),
+    gmailMessageId: String(result && result.gmailMessageId || ''),
+    threadId: String(result && result.threadId || ''),
+    messageId: String(result && result.messageId || ''),
+    replyToMessageId: String(result && result.replyToMessageId || ''),
+    messageIdHeader: String(messageIdHeader || ''),
+    mode: String(result && result.mode || 'gmail_api')
+  };
+  if (!receipt.gmailMessageId) return;
+  props.setProperty(requestDeliveryReceiptKey_(messageIdHeader), JSON.stringify(receipt));
+
+  const all = props.getProperties();
+  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const receipts = Object.keys(all).filter(function(key) {
+    return key.indexOf(REQUEST_DELIVERY_RECEIPT_PREFIX) === 0;
+  }).map(function(key) {
+    let savedAt = 0;
+    try { savedAt = Number(JSON.parse(all[key] || '{}').savedAt) || 0; } catch (error) {}
+    return { key: key, savedAt: savedAt };
+  }).sort(function(a, b) { return b.savedAt - a.savedAt; });
+  receipts.forEach(function(entry, index) {
+    if (entry.savedAt < cutoff || index >= 400) props.deleteProperty(entry.key);
+  });
+}
+
+function verifySignedRequestDelivery_(payload) {
+  const timestamp = String(payload && payload.timestamp || '').trim();
+  const signature = String(payload && payload.signature || '').trim();
+  const deliveryJson = String(payload && payload.deliveryJson || '');
+  const timestampMs = Date.parse(timestamp);
+  if (!timestamp || !signature || !deliveryJson || !Number.isFinite(timestampMs)) {
+    throw new Error('REQUEST_DELIVERY_SIGNATURE_REQUIRED');
+  }
+  const ageMs = Date.now() - timestampMs;
+  if (ageMs < -60000 || ageMs > 300000) {
+    throw new Error('REQUEST_DELIVERY_SIGNATURE_EXPIRED');
+  }
+  const expected = requestDeliveryBase64Url_(Utilities.computeHmacSha256Signature(
+    timestamp + '.' + deliveryJson,
+    SUPABASE_KEY,
+    Utilities.Charset.UTF_8
+  ));
+  if (!requestDeliverySafeEqual_(expected, signature)) {
+    throw new Error('REQUEST_DELIVERY_SIGNATURE_INVALID');
+  }
+  const delivery = JSON.parse(deliveryJson);
+  if (!delivery || typeof delivery !== 'object') throw new Error('REQUEST_DELIVERY_PAYLOAD_INVALID');
+  return delivery;
+}
+
+function getGmailDeliveryMetadata_(gmailMessageId) {
+  const safeId = String(gmailMessageId || '').trim();
+  if (!safeId) return null;
+  const message = Gmail.Users.Messages.get('me', safeId, {
+    format: 'metadata',
+    metadataHeaders: ['Message-ID', 'To', 'Subject']
+  });
+  return {
+    gmailMessageId: String(message && message.id || safeId),
+    threadId: String(message && message.threadId || ''),
+    messageId: extractGmailMessageHeader_(message, 'Message-ID'),
+    to: extractGmailMessageHeader_(message, 'To'),
+    subject: extractGmailMessageHeader_(message, 'Subject'),
+    internalDate: Math.max(0, Number(message && message.internalDate) || 0)
+  };
+}
+
+function findSentRequestDeliveryByMessageId_(messageIdHeader) {
+  const safeMessageId = String(messageIdHeader || '').trim();
+  if (!safeMessageId || !isGmailAdvancedServiceAvailable_()) return null;
+  const list = Gmail.Users.Messages.list('me', {
+    q: 'in:sent rfc822msgid:' + safeMessageId,
+    maxResults: 10
+  });
+  const messages = list && Array.isArray(list.messages) ? list.messages : [];
+  if (!messages.length) return null;
+  return getGmailDeliveryMetadata_(messages[0].id);
+}
+
+function recoverRequestThreadFromSentMail_(requestFolder) {
+  const safeFolder = String(requestFolder || '').trim();
+  if (!safeFolder || !isGmailAdvancedServiceAvailable_()) return null;
+  const searchFolder = safeFolder.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  const list = Gmail.Users.Messages.list('me', {
+    q: 'in:sent "' + searchFolder + '"',
+    maxResults: 50
+  });
+  const messages = list && Array.isArray(list.messages) ? list.messages : [];
+  let earliest = null;
+  messages.forEach(function(message) {
+    try {
+      const metadata = getGmailDeliveryMetadata_(message.id);
+      if (!metadata || !metadata.threadId || !metadata.messageId) return;
+      if (!earliest || metadata.internalDate < earliest.internalDate) earliest = metadata;
+    } catch (error) {}
+  });
+  return earliest;
+}
+
+function handleSignedRequestDeliveryEvent_(payload) {
+  const delivery = verifySignedRequestDelivery_(payload);
+  const eventType = String(delivery.eventType || '').trim();
+  if (eventType !== 'request_created' && eventType !== 'request_completed') {
+    throw new Error('REQUEST_DELIVERY_EVENT_TYPE_INVALID');
+  }
+  const messageIdHeader = String(delivery.messageIdHeader || '').trim();
+  if (!messageIdHeader) throw new Error('REQUEST_DELIVERY_MESSAGE_ID_REQUIRED');
+
+  const deliveryLock = LockService.getScriptLock();
+  if (!deliveryLock.tryLock(10000)) throw new Error('REQUEST_DELIVERY_BUSY');
+  try {
+  const savedReceipt = getRequestDeliveryReceipt_(messageIdHeader);
+  if (savedReceipt) {
+    return {
+      ok: true,
+      status: 200,
+      recipients: [],
+      mode: 'apps_script_receipt_recovery',
+      threadId: savedReceipt.threadId,
+      messageId: savedReceipt.messageId,
+      gmailMessageId: savedReceipt.gmailMessageId,
+      replyToMessageId: savedReceipt.replyToMessageId,
+      messageIdHeader: messageIdHeader
+    };
+  }
+
+  const alreadySent = findSentRequestDeliveryByMessageId_(messageIdHeader);
+  if (alreadySent) {
+    const recoveredResult = {
+      ok: true,
+      status: 200,
+      recipients: [],
+      mode: 'gmail_api_idempotent_recovery',
+      threadId: alreadySent.threadId,
+      messageId: alreadySent.messageId,
+      gmailMessageId: alreadySent.gmailMessageId,
+      replyToMessageId: '',
+      messageIdHeader: messageIdHeader
+    };
+    saveRequestDeliveryReceipt_(messageIdHeader, recoveredResult);
+    return recoveredResult;
+  }
+
+  const rows = Array.isArray(delivery.rows) ? delivery.rows.filter(Boolean) : [];
+  if (!rows.length) throw new Error('REQUEST_DELIVERY_SNAPSHOT_MISSING');
+  const eventRow = {
+    event_type: eventType,
+    request_id: delivery.requestId || '',
+    request_folder: delivery.requestFolder || '',
+    payload: { request_ids: rows.map(function(row) { return row && row.unique_id; }).filter(Boolean) }
+  };
+  const emailPayload = buildRequestDeliveryEmailPayload_(eventRow, rows);
+  emailPayload.messageIdHeader = messageIdHeader;
+
+  let replyThreadId = '';
+  let replyMessageId = '';
+  let recoveredLegacyThread = false;
+  if (eventType === 'request_completed') {
+    const thread = delivery.thread && typeof delivery.thread === 'object' ? delivery.thread : {};
+    replyThreadId = String(thread.initial_thread_id || thread.threadId || '').trim();
+    replyMessageId = String(thread.initial_message_id || thread.messageId || '').trim();
+    if (!replyThreadId || !replyMessageId) {
+      const recovered = recoverRequestThreadFromSentMail_(emailPayload.requestFolder || emailPayload.folderId);
+      if (recovered) {
+        replyThreadId = recovered.threadId;
+        replyMessageId = recovered.messageId;
+        recoveredLegacyThread = true;
+      }
+    }
+    emailPayload.threadId = replyThreadId;
+    emailPayload.messageId = replyMessageId;
+  }
+
+  const result = sendRequestEmailWithFallback_(emailPayload);
+  if (!result || result.ok !== true) {
+    throw new Error('REQUEST_DELIVERY_EMAIL_FAILED:' + String(result && result.message || 'unknown'));
+  }
+  if (eventType === 'request_completed') {
+    result.mode = replyThreadId && replyMessageId
+      ? (recoveredLegacyThread ? 'thread_recovery_recovered' : result.mode)
+      : 'thread_recovery_fallback';
+  }
+  result.replyToMessageId = replyMessageId;
+  result.messageIdHeader = messageIdHeader;
+  saveRequestDeliveryReceipt_(messageIdHeader, result);
+  return result;
+  } finally {
+    deliveryLock.releaseLock();
+  }
+}
+
 function updateRequestDeliveryEvent_(eventId, patch) {
   return requestDeliveryRest_(
     'ph_request_delivery_outbox',
@@ -12072,8 +12305,10 @@ function processRequestDeliveryOutbox_(limit) {
 
 function runRequestIntegrityScheduledWorker_() {
   const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
-  const delivery = processRequestDeliveryOutbox_(50);
-  return { maintenance: maintenance || {}, delivery: delivery || {} };
+  return {
+    maintenance: maintenance || {},
+    delivery: { delegated: true, worker: 'supabase_edge_request_delivery' }
+  };
 }
 
 // RETIRED DISEASE / LAB REPORT DRIVE MIRROR
@@ -12278,6 +12513,10 @@ function handlePhotoArchiveRequest_(payload) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+
+    if (payload.type === 'request_delivery_event') {
+      return jsonOutput_(handleSignedRequestDeliveryEvent_(payload));
+    }
 
     if (payload.type === 'photo_archive') {
       return jsonOutput_(handlePhotoArchiveRequest_(payload));
