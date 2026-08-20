@@ -1,0 +1,31 @@
+name: Production login health
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'scripts/probe-production-auth-health.mjs'
+      - '.github/workflows/production-auth-health.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-login-health
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe production app, login bridge, and Data API
+        run: node scripts/probe-production-auth-health.mjs

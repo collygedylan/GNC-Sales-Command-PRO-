@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(23);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -92,6 +92,16 @@ select lives_ok(
 select is((select req_status from public.ph_active_request where unique_id = 'REQ-CSR-1'), 'Complete', 'completion persisted request state');
 select is((select match from public.ph_master_inventory where unique_id = 'MASTER-TEST-1'), '50', 'completion updated shared Drive AV data');
 select is((select last_event from public.ph_request_history where unique_id = 'REQ-CSR-1'), 'completed', 'completion froze final History');
+select is(
+  (public.save_request_work('REQ-CSR-1', 1, '{}'::jsonb, false)->>'delivery_state'),
+  'already_completed',
+  'stale completed request cache is acknowledged without another write'
+);
+select is(
+  (select row_version from public.ph_active_request where unique_id = 'REQ-CSR-1'),
+  2::bigint,
+  'stale completed request acknowledgement leaves the canonical version unchanged'
+);
 set local role postgres;
 select is((select count(*)::integer from public.ph_request_delivery_outbox where request_id = 'REQ-CSR-1' and event_type = 'request_completed'), 1, 'completion queued one delivery event');
 set local role authenticated;

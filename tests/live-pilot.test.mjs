@@ -30,19 +30,22 @@ const authAdmin = read('supabase/functions/auth-admin/index.ts');
 const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_passkeys_for_active_profiles.sql');
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 const appsScriptBackend = read('Code.gs');
+const requestRetryGuardMigration = read('supabase/migrations/20260820190857_acknowledge_stale_completed_request_work.sql');
+const productionAuthHealthWorkflow = read('.github/workflows/production-auth-health.yml');
+const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.20.05';
+  const release = 'V2026.08.20.06';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.20.05');
+  assert.equal(packageJson.version, '2026.08.20.06');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082005.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082006.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -627,7 +630,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026082005\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026082006\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -1159,4 +1162,28 @@ test('Eval assignment management uses the requested roster and ItemCode + GenusN
   assert.match(html, /ensureEvalAssignableUsers\(\)\.then\(\(\) => scheduleManagersRender\(true\)\)/);
   assert.doesNotMatch(html, /ensureEvalAssignableUsersReady/);
   assert.match(html, /Assignments use the ItemCode \+ GenusName key\./);
+});
+
+test('stale request work is quarantined client-side and completed rows are acknowledged server-side', () => {
+  assert.match(html, /autoRetryBlocked === true/);
+  assert.match(html, /entry\.autoRetryBlocked = true/);
+  assert.match(html, /entry\.conflictedAt = new Date\(\)\.toISOString\(\)/);
+  assert.match(requestRetryGuardMigration, /rename to save_request_work_v1/);
+  assert.match(requestRetryGuardMigration, /'delivery_state', 'already_completed'/);
+  assert.match(requestRetryGuardMigration, /existing\.row_version <> expected_version/);
+  assert.ok(
+    requestRetryGuardMigration.indexOf('existing.row_version <> expected_version')
+      < requestRetryGuardMigration.indexOf('return public.save_request_work_v1'),
+    'stale pending versions must fail before the locking writer runs'
+  );
+});
+
+test('hosted monitoring probes the real production login bridge every five minutes', () => {
+  assert.match(productionAuthHealthWorkflow, /cron: '\*\/5 \* \* \* \*'/);
+  assert.match(productionAuthHealthWorkflow, /node scripts\/probe-production-auth-health\.mjs/);
+  assert.match(performanceWorkflow, /Probe production login bridge and Data API/);
+  assert.match(productionAuthHealthProbe, /hosted_auth_health_probe_nonexistent/);
+  assert.match(productionAuthHealthProbe, /probePayload\?\.reason === 'mismatch'/);
+  assert.match(productionAuthHealthProbe, /production_login_bridge_unhealthy_/);
+  assert.doesNotMatch(productionAuthHealthProbe, /console\.log\(probeText|process\.stdout\.write\([^\n]*probeText/);
 });

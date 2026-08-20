@@ -46,6 +46,7 @@ jobs:
           cp supabase/migrations/20260820143000_suppress_initial_eval_event_fanout.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260820150000_legacy_completion_atomic_guard.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260820160000_eval_assignment_roster_and_sheet_cutover.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820190857_acknowledge_stale_completed_request_work.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
@@ -100,6 +101,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Probe production login bridge and Data API
+        run: node scripts/probe-production-auth-health.mjs
       - run: npm run check:inline
       - run: npm run test:pilot
       - run: npm run test:v2
