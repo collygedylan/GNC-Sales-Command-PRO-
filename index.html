@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082002.min.css?v=V2026.08.20.02">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082003.min.css?v=V2026.08.20.03">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.20.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.20.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.02">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.03">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.03"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.02').trim() || 'V2026.08.20.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.03').trim() || 'V2026.08.20.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8918,7 +8918,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9353,13 +9353,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const realtimeFallbackAttemptsByView = new Map();
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 60000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 180000;
-        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 1000;
-        const REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS = 650;
-        const REQUEST_VIEW_RENDER_CATCHUP_MIN_INTERVAL_MS = 750;
-        const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = 650;
-        const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = 850;
-        const REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS = 1200;
-        const REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS = 1000;
+        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 5000;
+        const REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS = 3500;
+        const REQUEST_VIEW_RENDER_CATCHUP_MIN_INTERVAL_MS = 5000;
+        const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = 3500;
+        const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = 5000;
+        const REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS = 9000;
+        const REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS = 15000;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -25260,6 +25260,16 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return safe;
         }
 
+        function getSanitizedClientRuntimeCode(error = null, fallback = 'UNHANDLED_ERROR') {
+            const name = String(error && error.name || fallback || 'UNHANDLED_ERROR').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80) || 'UNHANDLED_ERROR';
+            const message = String(error && error.message || '');
+            if (name.toLowerCase() === 'referenceerror') {
+                const match = message.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s+is\s+not\s+defined/i);
+                if (match && match[1]) return `${name}_${match[1]}`.slice(0, 160);
+            }
+            return name;
+        }
+
         function reportSemanticHealthEvent(eventName, area = 'app', code = '', metadata = {}) {
             if (!currentUser || navigator.onLine === false) return Promise.resolve(false);
             return supabaseRpc('report_app_health_event', {
@@ -25292,11 +25302,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         window.reportPerformanceHealthEvent = reportPerformanceHealthEvent;
 
         window.addEventListener('error', (event) => {
-            const code = String(event && event.error && event.error.name || 'UNHANDLED_ERROR');
+            const code = getSanitizedClientRuntimeCode(event && event.error, 'UNHANDLED_ERROR');
             reportSemanticHealthEvent('unhandled_client_error', 'client_runtime', code);
         });
         window.addEventListener('unhandledrejection', (event) => {
-            const code = String(event && event.reason && event.reason.name || 'UNHANDLED_REJECTION');
+            const code = getSanitizedClientRuntimeCode(event && event.reason, 'UNHANDLED_REJECTION');
             reportSemanticHealthEvent('unhandled_client_rejection', 'client_runtime', code);
         });
 
@@ -30181,7 +30191,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.02').trim() || 'V2026.08.20.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.03').trim() || 'V2026.08.20.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -34399,7 +34409,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let activeRequestLiveRowsViewWarningShown = false;
         function buildActiveRequestLiveRowsQuery(selectFields = '*') {
             const fields = String(selectFields || '*').trim() || '*';
-            return `select=${fields}&order=unique_id.desc`;
+            return `select=${fields}&date_completed=is.null&order=unique_id.desc`;
         }
 
         async function fetchActiveRequestLiveRows(selectFields = '*') {
@@ -38710,6 +38720,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function canUseGlobalRequestAccess() {
+            const access = getRoleAccessState();
+            if (access && access.isAdmin) return true;
             const tokens = getRequestRepScopedIdentityTokens();
             for (const token of tokens) {
                 if (REQUEST_GLOBAL_ACCESS_TOKENS.has(token)) return true;
@@ -78714,6 +78726,11 @@ function toggleDriveQuickRequestItem(domId) {
             const onComplete = typeof options.onComplete === 'function' ? options.onComplete : null;
             const onCompleteAfterInteractive = !!options.onCompleteAfterInteractive;
             const onCompleteDelayMs = Math.max(0, Number(options.onCompleteDelayMs) || 0);
+            const completionDeadlineMs = Math.max(0, Number(options.completionDeadlineMs) || 0);
+            const verifyRowSelector = String(options.verifyRowSelector || '').trim();
+            const renderFailureFallback = typeof options.renderFailureFallback === 'function' ? options.renderFailureFallback : null;
+            const renderFailureEventName = String(options.renderFailureEventName || 'chunk_row_render_failed').trim() || 'chunk_row_render_failed';
+            const renderFailureArea = String(options.renderFailureArea || 'rendering').trim() || 'rendering';
             const iosConstrained = isIOSDevice();
             const reserveSpace = options.reserveSpace === true && !iosConstrained;
             const reserveOffset = Number(options.reserveOffset) || 0;
@@ -78746,6 +78763,38 @@ function toggleDriveQuickRequestItem(domId) {
                 : Math.max(viewportHeight * 2.8, approxCardHeight * Math.max(12, initialTarget + chunkSize));
             const interactionHoldDeadline = Date.now() + Math.max(260, Number(options.interactionHoldMaxMs) || CHUNK_RENDER_INTERACTION_HOLD_MAX_MS);
             let index = 0;
+            let completed = false;
+            let reportedRowRenderFailure = false;
+
+            const renderRowSafely = (row, rowIndex) => {
+                try {
+                    return renderRow(row, rowIndex);
+                } catch (error) {
+                    if (!reportedRowRenderFailure) {
+                        reportedRowRenderFailure = true;
+                        reportSemanticHealthEvent(renderFailureEventName, renderFailureArea, getSanitizedClientRuntimeCode(error, 'ROW_RENDER_FAILED'), {
+                            expected_count: total,
+                            rendered_count: rowIndex
+                        });
+                    }
+                    if (!renderFailureFallback) return '';
+                    try {
+                        return renderFailureFallback(row, rowIndex, error);
+                    } catch (_) {
+                        return '';
+                    }
+                }
+            };
+
+            const reportRenderParity = () => {
+                if (!verifyRowSelector || !container || typeof container.querySelectorAll !== 'function') return;
+                const renderedCount = container.querySelectorAll(verifyRowSelector).length;
+                if (renderedCount === total) return;
+                reportSemanticHealthEvent('request_queue_parity_mismatch', renderFailureArea, 'RENDERED_ROW_COUNT_MISMATCH', {
+                    expected_count: total,
+                    rendered_count: renderedCount
+                });
+            };
 
             container.classList.add('performance-windowed-list');
 
@@ -78783,10 +78832,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (iosConstrained && total <= iosSyncRowLimit) {
                 let fullHtml = prefixHtml;
                 rows.forEach((row, rowIndex) => {
-                    fullHtml += renderRow(row, rowIndex);
+                    fullHtml += renderRowSafely(row, rowIndex);
                 });
                 setContainerHtmlWithSignature(container, fullHtml, renderSignature);
                 container.style.minHeight = '';
+                reportRenderParity();
                 const elapsed = getAdaptivePerfElapsedMs(renderStartedAt);
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, key);
                 recordGncPerfStat('chunks', { key, total, duration: elapsed, sync: true }, 80);
@@ -78812,7 +78862,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
-                    html += renderRow(rows[index], index);
+                    html += renderRowSafely(rows[index], index);
                     index += 1;
                     rendered += 1;
                     if (useBudget && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
@@ -78828,9 +78878,12 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             const fireComplete = () => {
+                if (completed) return;
+                completed = true;
                 finishChunkRender();
                 if (reserveSpace) container.style.minHeight = '';
                 setContainerRenderSignature(container, renderSignature);
+                reportRenderParity();
                 const elapsed = getAdaptivePerfElapsedMs(renderStartedAt);
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, key);
                 recordGncPerfStat('chunks', { key, total, duration: elapsed, initialTarget, chunkSize }, 80);
@@ -78888,6 +78941,7 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             const renderNextChunk = () => {
+                if (completed) return;
                 if (!isChunkRenderCurrentForContainer(container, key, token)) {
                     finishChunkRender();
                     return;
@@ -78898,8 +78952,17 @@ function toggleDriveQuickRequestItem(domId) {
                 else fireComplete();
             };
 
-            if (index < total) queueNextChunkFrame();
-            else fireComplete();
+            if (index < total) {
+                if (completionDeadlineMs > 0) {
+                    scheduleChunkRenderTimeout(key, () => {
+                        if (completed || !isChunkRenderCurrentForContainer(container, key, token)) return;
+                        const html = renderBatch(total - index, false);
+                        if (html) appendHtmlFragment(container, html);
+                        if (index >= total) fireComplete();
+                    }, completionDeadlineMs);
+                }
+                queueNextChunkFrame();
+            } else fireComplete();
 
             return true;
         }
@@ -97999,7 +98062,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     doesRequestRepMatchValue(getRequestAssignedRep(item), canonical)
                 ));
             }
-            const isRequestScopedUser = !!((roleAccess.isRep || roleAccess.isRequestRepScopedUser) && !hasGlobalRequestAccess);
+            const isRequestScopedUser = !!((roleAccess.isRep || roleAccess.isRequestRepScopedUser) && !roleAccess.isAdmin && !hasGlobalRequestAccess);
             return !isRequestScopedUser || doesCurrentUserMatchRepName(repName);
         }
 
@@ -99143,7 +99206,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const hasGlobalRequestAccess = canUseGlobalRequestAccess();
             const isRestrictedEvalRequestUser = isRestrictedEvalUser(roleAccess);
             const isCsrScopedRequestUser = !!(roleAccess.isSalesAssistant && !roleAccess.isAdmin && !hasGlobalRequestAccess);
-            const isRequestScopedUser = !!((roleAccess.isRep || roleAccess.isRequestRepScopedUser) && !hasGlobalRequestAccess);
+            const isRequestScopedUser = !!((roleAccess.isRep || roleAccess.isRequestRepScopedUser) && !roleAccess.isAdmin && !hasGlobalRequestAccess);
             const requestScopeMode = isRestrictedEvalRequestUser ? 'eval-assigned' : (isCsrScopedRequestUser ? 'csr-created' : (isRequestScopedUser ? 'rep' : 'all'));
             const canUseCache = items === requestsInventory;
             const includeDockSuspendMirrorRows = canUseCache && canCurrentUserViewDockSuspendDcRequests();
@@ -100698,17 +100761,32 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return didRender;
         }
 
+        function renderRequestQueueFallbackCard(item = null) {
+            const row = item && typeof item === 'object' ? item : {};
+            const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            const domId = String(firstNonEmptyValue(row.DOM_ID, row.dom_id, uniqueId ? `req_${uniqueId}` : '') || '').trim();
+            const commonName = String(firstNonEmptyValue(row.COMMONNAME, row.commonname, row.ITEMCODE, row.itemcode, 'Request row') || 'Request row').trim();
+            const location = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No location') || 'No location').trim();
+            const activation = uniqueId && domId ? buildCardActivationAttrs(domId, uniqueId, 'request', 'Open request row') : '';
+            return `<div class="item-row app-smart-card rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm" data-dom-id="${esc(domId)}" data-request-uid="${esc(uniqueId)}" ${activation}><div class="font-black text-amber-950">${esc(commonName)}</div><div class="mt-1 text-xs font-bold uppercase tracking-wider text-amber-700">${esc(location)} · Tap to open</div></div>`;
+        }
+
         function getRequestChunkRenderOptions(options = {}) {
             const iosPhoneRequestFlow = isIosPhoneRequestFlowView('request');
             const adaptiveHard = getAdaptivePerformanceLevel() >= 2;
             const base = {
                 approxCardHeight: 360,
-                iosSyncRowLimit: iosPhoneRequestFlow ? 0 : IOS_CHUNK_SYNC_ROW_LIMIT,
+                iosSyncRowLimit: iosPhoneRequestFlow ? 80 : IOS_CHUNK_SYNC_ROW_LIMIT,
                 chunkSize: iosPhoneRequestFlow ? (adaptiveHard ? 4 : 6) : undefined,
                 initialRows: iosPhoneRequestFlow ? (adaptiveHard ? 4 : 6) : undefined,
                 perFrameRows: iosPhoneRequestFlow ? (adaptiveHard ? 4 : 6) : undefined,
                 initialScreens: iosPhoneRequestFlow ? 0.75 : undefined,
                 interactionHoldMaxMs: iosPhoneRequestFlow ? 180 : undefined,
+                completionDeadlineMs: iosPhoneRequestFlow ? 1200 : 0,
+                verifyRowSelector: iosPhoneRequestFlow ? '[data-request-uid]' : '',
+                renderFailureEventName: 'request_queue_row_render_failed',
+                renderFailureArea: 'request_queue',
+                renderFailureFallback: renderRequestQueueFallbackCard,
                 onCompleteAfterInteractive: true,
                 onCompleteDelayMs: iosPhoneRequestFlow ? 90 : 140
             };
@@ -101860,6 +101938,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function queueRequestVisibleRenderCatchup(reason = 'request-render') {
             if (!currentUser || navigator.onLine === false || document.hidden || !isViewVisible('request')) return false;
+            const requestState = getDatasetState('requests');
+            if (requestState && requestState.initialLoaded && requestState.fullLoaded && requestViewLiveSyncSignature) return false;
             const now = Date.now();
             if (requestViewRenderCatchupTimer) return false;
             if (lastRequestViewRenderCatchupAt && (now - lastRequestViewRenderCatchupAt) < REQUEST_VIEW_RENDER_CATCHUP_MIN_INTERVAL_MS) return false;
@@ -101869,8 +101949,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 lastRequestViewRenderCatchupAt = Date.now();
                 forceRefreshRequestsForView(reason, {
                     allowWhileInteractive: true,
-                    force: true,
-                    minIntervalMs: 0
+                    force: false,
+                    minIntervalMs: REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS
                 }).then((didRefresh) => {
                     if (didRefresh !== false) return;
                     return runRequestViewLiveSync({

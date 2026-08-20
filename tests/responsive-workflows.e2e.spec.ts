@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.20.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.03', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -15,6 +15,50 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 
   const controls = await Promise.all([username, accessCode, submit].map((control) => control.boundingBox()));
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
+});
+
+test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.20.03', { waitUntil: 'domcontentloaded' });
+
+  const result = await page.evaluate(() => {
+    const appWindow = window as typeof window & {
+      isIOSDevice?: () => boolean;
+      getRequestChunkRenderOptions?: (options?: Record<string, unknown>) => Record<string, unknown>;
+      renderMarkupChunkedByKey?: (
+        key: string,
+        container: HTMLElement,
+        crumb: HTMLElement,
+        rows: Array<{ id: number }>,
+        crumbText: string,
+        renderRow: (row: { id: number }) => string,
+        options: Record<string, unknown>
+      ) => boolean;
+    };
+    appWindow.isIOSDevice = () => true;
+    document.body.classList.add('ios-device', 'viewport-phone', 'current-view-request');
+    const container = document.createElement('div');
+    const crumb = document.createElement('div');
+    document.body.append(container, crumb);
+    const rows = Array.from({ length: 19 }, (_, index) => ({ id: index + 1 }));
+    const options = appWindow.getRequestChunkRenderOptions?.({ onComplete: () => {} }) || {};
+    appWindow.renderMarkupChunkedByKey?.(
+      'request-main-test',
+      container,
+      crumb,
+      rows,
+      'All Request Que',
+      (row) => `<div data-request-uid="REQ-${row.id}">Row ${row.id}</div>`,
+      options
+    );
+    return {
+      configuredSyncLimit: Number(options.iosSyncRowLimit || 0),
+      renderedRows: container.querySelectorAll('[data-request-uid]').length,
+    };
+  });
+
+  expect(result.configuredSyncLimit).toBeGreaterThanOrEqual(19);
+  expect(result.renderedRows).toBe(19);
 });
 
 test('saved Dark theme owns the first two seconds without a white frame', async ({ page }) => {
@@ -34,7 +78,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
     };
     window.setInterval(sample, 25);
   });
-  await page.goto('/?e2e=V2026.08.20.02&theme=dark', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.03&theme=dark', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
 
   const result = await page.evaluate(() => ({
@@ -51,7 +95,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
 });
 
 test('Drive Common Name search preserves grouped drill results', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.20.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.03', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
       shouldRenderDriveUniversalDetailedSearch?: () => boolean;
