@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.20.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.08', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -18,7 +18,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 });
 
 test('Eval assignment dropdown exposes the full managed roster and composite key', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.20.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.08', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalAssigneeOptionsHtml === 'function');
   const result = await page.evaluate(() => {
     const select = document.createElement('select');
@@ -50,9 +50,42 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
   expect(result.sheetTypoAlias).toBe('bobby_adair');
 });
 
+test('an acknowledged assignment immediately leaves the Unassigned filter', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.20.08', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).applyAcknowledgedEvalAssignmentResults === 'function');
+  const result = await page.evaluate(() => window.eval(`(() => {
+    processAndLoadData({ warehouseAssignedItemsData: [{
+      UNIQUE_ID: 'eval-test-1', ITEMCODE: '011364.070.1', GENUSNAME: 'Decumaria',
+      ASSIGNEDTO: '', assignedto: '', COMMONNAME: 'Barbara Ann Climbing Hydrangea Espalier'
+    }] });
+    setManagerAssignedItemsAssigneeFilter('unassigned');
+    const activeBefore = getManagerAssignedItemsActiveAssigneeKey();
+    const before = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
+    const applied = applyAcknowledgedEvalAssignmentResults(
+      [{ itemcode: '011364.070.1', genusname: 'Decumaria' }],
+      [{ itemcode: '011364.070.1', genusname: 'Decumaria', assignedto: 'megan_kelly', source: 'supabase_assignment_manager' }],
+      'megan_kelly'
+    );
+    const activeAfter = getManagerAssignedItemsActiveAssigneeKey();
+    const unassignedAfter = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
+    setManagerAssignedItemsAssigneeFilter('megan_kelly');
+    const meganAfter = getFilteredManagerAssignedItemsExportRows().map((row) => ({ itemcode: row.ITEMCODE, assignedto: row.ASSIGNEDTO }));
+    return { activeBefore, before, applied, activeAfter, unassignedAfter, meganAfter };
+  })()`));
+
+  expect(result).toEqual({
+    activeBefore: 'unassigned',
+    before: ['011364.070.1'],
+    applied: 1,
+    activeAfter: 'unassigned',
+    unassignedAfter: [],
+    meganAfter: [{ itemcode: '011364.070.1', assignedto: 'megan_kelly' }],
+  });
+});
+
 test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.20.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.08', { waitUntil: 'domcontentloaded' });
 
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
@@ -95,7 +128,7 @@ test('iPhone Request Queue renders all 19 rows instead of only the first adaptiv
 });
 
 test('Kayla keeps request photo and save access without gaining other sales-rep row edits', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.20.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.08', { waitUntil: 'domcontentloaded' });
   const permissions = await page.evaluate(() => {
     window.eval("window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalRequestIdentityTokens=getRequestRepScopedIdentityTokens; getRequestRepScopedIdentityTokens=function(){ return new Set(['kayla_knepp']); }; getRoleAccessState=function(){ return window.__qaOriginalGetRoleAccessState('SALESREP','kayla_knepp'); };");
     const result = window.eval(`({
@@ -135,7 +168,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
     };
     window.setInterval(sample, 25);
   });
-  await page.goto('/?e2e=V2026.08.20.07&theme=dark', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.08&theme=dark', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
 
   const result = await page.evaluate(() => ({
@@ -152,7 +185,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
 });
 
 test('Drive Common Name search preserves grouped drill results', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.20.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.08', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
       shouldRenderDriveUniversalDetailedSearch?: () => boolean;

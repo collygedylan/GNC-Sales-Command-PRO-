@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.08.20.07';
+const APP_SHELL_BUILD = 'V2026.08.20.08';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -21,8 +21,8 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   './assets/ops-precision-pilot.css',
   './assets/ops-precision-pilot.js',
-  './assets/live-tailwind-v2026082007.min.css',
-  './assets/live-app-runtime-v2026082007.min.js',
+  './assets/live-tailwind-v2026082008.min.css',
+  './assets/live-app-runtime-v2026082008.min.js',
   './assets/image-optimize-worker-v2026081709.js',
   './assets/vendor/supabase-browser-2.112.3.min.js',
   './assets/vendor/phosphor/regular/style.css',
