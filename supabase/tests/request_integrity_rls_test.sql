@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(25);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -130,6 +130,22 @@ select is(
   (select assignedto || '|' || assignment_key from public.ph_warehouse_assigned_items where itemcode_normalized = 'ITEM-TEST-1'),
   'abigail_vazquez|ITEM-TEST-1|test genus',
   'Eval assignment persisted under the composite key'
+);
+select is(
+  (select count(distinct assignedto)::integer from public.ph_warehouse_assigned_items where assignedto is not null),
+  10,
+  'complete assignment backfill includes all ten managed usernames'
+);
+select is(
+  (select count(*)::integer from (
+    select assignment_key
+    from public.ph_warehouse_assigned_items
+    where assignment_key is not null
+    group by assignment_key
+    having count(*) > 1
+  ) duplicate_keys),
+  0,
+  'ItemCode + GenusName assignments remain unique after the complete backfill'
 );
 
 select * from finish();
