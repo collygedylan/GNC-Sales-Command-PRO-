@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082008.min.css?v=V2026.08.20.08">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082009.min.css?v=V2026.08.20.09">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.20.08';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.20.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.08">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.09">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.08"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.09"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.08').trim() || 'V2026.08.20.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.09').trim() || 'V2026.08.20.09';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8918,7 +8918,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30194,7 +30194,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.08').trim() || 'V2026.08.20.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.09').trim() || 'V2026.08.20.09';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31722,7 +31722,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             master: { table: 'ph_master_inventory', sourceTable: 'ph_master_inventory', initialQuery: buildMasterInitialDatasetQuery, fullQuery: buildMasterFullDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true, mergeInitialRows: true },
             cropRollDrive: { table: CROP_ROLL_DRIVE_OPEN_ROWS_TABLE, sourceTable: CROP_ROLL_DRIVE_SOURCE_TABLE, initialQuery: buildCropRollDriveDatasetQuery, fullQuery: buildCropRollDriveDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true },
             avOpen: { table: 'ph_master_inventory', sourceTable: 'ph_master_inventory', initialQuery: buildAvSeasonDatasetQuery, fullQuery: buildAvSeasonDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit },
-            requests: { table: ACTIVE_REQUEST_LIVE_ROWS_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
+            requests: { table: ACTIVE_REQUEST_LIVE_ROWS_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: () => buildActiveRequestLiveRowsQuery('*'), fullQuery: () => buildActiveRequestLiveRowsQuery('*') },
             requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: 'ph_active_request', initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             salesCredits: { table: SALES_CREDIT_REQUESTS_TABLE, sourceTable: SALES_CREDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=updated_at.desc', fullQuery: 'select=*&order=updated_at.desc' },
             inventoryEditRequests: { table: INVENTORY_EDIT_REQUESTS_TABLE, sourceTable: INVENTORY_EDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=stage_updated_at.desc', fullQuery: 'select=*&order=stage_updated_at.desc', initialFetchAll: true },
@@ -34519,9 +34519,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function shouldHydrateFirstPageForDatasetLoad(key = '', mode = 'initial') {
             const safeKey = String(key || '').trim();
-            if (safeKey !== 'cropRollDrive' || mode !== 'full') return false;
+            if (mode !== 'full' || !['cropRollDrive', 'master'].includes(safeKey)) return false;
             if (getDatasetRenderRowCount(safeKey) > 0) return false;
-            return getCurrentVisibleViewId() === 'crop-roll';
+            const visibleView = getCurrentVisibleViewId();
+            return (safeKey === 'cropRollDrive' && visibleView === 'crop-roll')
+                || (safeKey === 'master' && visibleView === 'drive');
         }
 
         async function hydrateFirstDatasetPageForRender(key = '', rows = [], meta = {}) {
@@ -34537,6 +34539,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 markViewDirty('crop-roll');
                 if (getCurrentVisibleViewId() === 'crop-roll') {
                     queueInteractiveViewRender('crop-roll', false, true, 0, 140);
+                }
+            } else if (safeKey === 'master') {
+                markViewDirty('drive');
+                if (getCurrentVisibleViewId() === 'drive') {
+                    queueInteractiveViewRender('drive', false, true, 0, 140);
                 }
             }
             await yieldToUiFrame();
@@ -34583,11 +34590,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function shouldSkipCurrentCachePersistForTransientPreview() {
             const cropRollDriveState = getDatasetState('cropRollDrive');
+            const masterState = getDatasetState('master');
             return !!(
                 cropRollDriveState.firstPagePreviewLoaded
                 && !cropRollDriveState.fullLoaded
                 && Array.isArray(cropRollDriveInventory)
                 && cropRollDriveInventory.length
+            ) || !!(
+                masterState.firstPagePreviewLoaded
+                && !masterState.fullLoaded
+                && Array.isArray(fullInventory)
+                && fullInventory.length
             );
         }
 
@@ -34660,8 +34673,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (isDatasetLoaded(item.key, item.mode)) return true;
             const state = getDatasetState(item.key);
             if (!state) return false;
-            if (item.key === 'master' && isMasterInitialLoadPartialForCurrentScope(state)) return false;
+            const canRenderMasterPreview = item.key === 'master'
+                && item.mode === 'full'
+                && state.firstPagePreviewLoaded
+                && getCurrentVisibleViewId() === 'drive'
+                && getDatasetRenderRowCount('master') > 0;
+            if (item.key === 'master' && isMasterInitialLoadPartialForCurrentScope(state) && !canRenderMasterPreview) return false;
             if (item.key === 'soc' && item.mode === 'full') return false;
+            if (canRenderMasterPreview) return true;
             if (state.initialLoaded || state.fullLoaded) return true;
             return !!((state.initialPromise || state.fullPromise) && getDatasetRenderRowCount(item.key) > 0);
         }
@@ -34711,6 +34730,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!wantsFull && state.initialPromise) return state.initialPromise;
 
             const runLoad = async () => {
+                const datasetLoadStartedAt = beginInternalPerfMeasure();
                 if (shouldPauseInterruptibleRefresh(options)) {
                     options.interruptedDuringLoad = true;
                     return false;
@@ -34774,7 +34794,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     ? !masterFullLooksPartial
                     : (masterInitialLooksPartial ? false : ((key === 'master' && shouldFetchAllForInitial) ? true : state.fullLoaded));
                 state.lastLoadedAt = new Date().toISOString();
-                if (key === 'cropRollDrive' && wantsFull) state.firstPagePreviewLoaded = false;
+                if ((key === 'cropRollDrive' || key === 'master') && wantsFull) state.firstPagePreviewLoaded = false;
                 if (key === 'cropRollDrive' && !missingOptionalCropRollDrive) cropRollDriveSchemaReady = true;
                 if (key === 'reserves' && wantsFull) {
                     const formattedRows = formatFetchedRows(rows, definition.sourceTable);
@@ -34834,6 +34854,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     state.lastLoadedAt = '';
                     setTimeout(() => queueDatasetLoad('master', 'full', isTouchConstrainedDevice() ? 2200 : 900), 80);
                 }
+                reportPerformanceHealthEvent('dataset_load', 'data_sync', getAdaptivePerfElapsedMs(datasetLoadStartedAt), {
+                    reason: `${key}:${modeLabel}`,
+                    affected_count: Array.isArray(rows) ? rows.length : 0
+                });
                 return true;
             };
 
@@ -35022,6 +35046,43 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return { ...config, required, background };
         }
 
+        function getRequestViewLoadingConfig(tab = activeReqTab) {
+            const safeTab = String(tab || 'pending').trim().toLowerCase();
+            const requests = { key: 'requests', mode: 'full' };
+            if (safeTab === 'reps') {
+                return {
+                    required: [requests, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }],
+                    background: [],
+                    label: 'Loading request folders...'
+                };
+            }
+            if (safeTab === 'suspend-tag') {
+                return {
+                    required: [requests, { key: 'soc', mode: 'full' }],
+                    background: [],
+                    label: 'Loading suspend tag rows...'
+                };
+            }
+            if (safeTab === 'recount') {
+                return {
+                    required: [{ key: 'salesOffice', mode: 'full' }],
+                    background: [requests],
+                    label: 'Loading recount rows...'
+                };
+            }
+            if (safeTab === 'shear-test') {
+                return {
+                    required: [{ key: 'inventoryEditRequests', mode: 'full' }],
+                    background: [requests],
+                    label: 'Loading Eval work...'
+                };
+            }
+            if (safeTab === 'av-check' || safeTab === 'shear-list') {
+                return { required: [], background: [requests], label: 'Loading queue rows...' };
+            }
+            return { required: [requests], background: [], label: 'Loading verified Que...' };
+        }
+
         function getViewLoadingConfig(viewId) {
             if (viewId === 'drive') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [{ key: 'warehouseAssignedItems', mode: 'full' }], label: 'Loading verified Drive rows...' });
             if (viewId === 'crop-roll') {
@@ -35050,7 +35111,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified AV season rows from Drive Mode rows...' });
             }
             if (viewId === 'docks') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'soc', mode: 'full' }], background: [], label: 'Loading all dock rows...' });
-            if (viewId === 'request') return { required: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified Que...' };
+            if (viewId === 'request') return getRequestViewLoadingConfig(activeReqTab);
             if (viewId === 'managers') {
                 if (isTaskDiagnosticsView(activeHomeTab)) {
                     return { required: [], background: [], label: 'Loading manager tools...' };
@@ -35219,7 +35280,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return false;
             }
             showViewLoadingState(viewId, config.label);
+            const viewDataStartedAt = beginInternalPerfMeasure();
             loadDatasetTargetsWithLimit(blockingPending).then(() => {
+                reportPerformanceHealthEvent('view_data_ready', 'rendering', getAdaptivePerfElapsedMs(viewDataStartedAt), {
+                    reason: viewId,
+                    affected_count: blockingPending.length
+                });
                 const backgroundDelay = getViewBackgroundLoadDelayMs();
                 (config.background || []).forEach((item) => {
                     if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
@@ -35321,8 +35387,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 updateSyncDiagnostics('refreshing');
                 forceRefreshRequestsForView('request-view-enter', {
                     allowWhileInteractive: true,
-                    force: true,
-                    minIntervalMs: 0
+                    force: options.force === true,
+                    minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
                 }).then((didRefresh) => {
                     if (didRefresh !== false) {
                         syncAlwaysOnRequestData(REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS, {
@@ -35340,8 +35406,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }).catch(() => {
                     forceRefreshRequestsForView('request-view-enter', {
                         allowWhileInteractive: true,
-                        force: true,
-                        minIntervalMs: 0
+                        force: options.force === true,
+                        minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
                     }).catch(() => {});
                 });
                 return;
@@ -70377,6 +70443,7 @@ function toggleDriveQuickRequestItem(domId) {
             state.dirty = false;
             scheduleIosPhoneTaskStyleModuleFlowCleanup(viewId, `render:${viewId}`, { resetScroll: false });
             recordInternalPerfDuration('viewRenderDurations', renderStartedAt, viewId || 'unknown');
+            reportPerformanceHealthEvent('view_render', 'rendering', getAdaptivePerfElapsedMs(renderStartedAt), { reason: viewId || 'unknown' });
         }
 
         function getCurrentVisibleViewId() {
@@ -72201,8 +72268,16 @@ function toggleDriveQuickRequestItem(domId) {
                 interactionDelayMs: 8,
                 scrollDelayMs: 40
             });
-            forceRefreshRequestsForView('request-tab', { force: true, minIntervalMs: 0 }).catch(() => {});
-            refreshActiveRequestQueueSideData('request-tab-side-data', { force: true, allowWhileInteractive: true, minIntervalMs: 0 }).catch(() => {});
+            forceRefreshRequestsForView('request-tab', {
+                force: false,
+                allowWhileInteractive: true,
+                minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
+            }).catch(() => {});
+            refreshActiveRequestQueueSideData('request-tab-side-data', {
+                force: false,
+                allowWhileInteractive: true,
+                minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
+            }).catch(() => {});
             return scheduled;
         }
 
@@ -144464,6 +144539,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+            let rowSaveKey = '';
             try {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem;
@@ -144481,7 +144557,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (!specificItem) activeItem = requestSourceRow;
                 }
             }
-            const rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
+            rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
             beginFieldSaveActivity(rowSaveKey);
             const saveOptions = options || {};
             const isBackgroundPhotoSync = !!saveOptions.backgroundPhotoSync;
@@ -145812,7 +145888,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 handleUnexpectedSaveError(error);
             }
             } finally {
-                endFieldSaveActivity(rowSaveKey);
+                if (rowSaveKey) endFieldSaveActivity(rowSaveKey);
             }
         }
 
