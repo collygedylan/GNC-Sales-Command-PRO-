@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026081709.min.css?v=V2026.08.17.09">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082001.min.css?v=V2026.08.20.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.17.09';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.20.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.17.09">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.01">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.17.09"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.17.09').trim() || 'V2026.08.17.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.01').trim() || 'V2026.08.20.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7713,6 +7713,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="tab-req-shear-list" class="task-tab hidden" onclick="setReqTab('shear-list')">Shear List</div>
                     </div>
                     <div id="request-dylan-filter-panel" class="hidden" aria-hidden="true"></div>
+                    <div id="request-delivery-recovery-panel" class="hidden" aria-hidden="true"></div>
                     <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     </div>
                     <div id="request-content"></div>
@@ -8917,7 +8918,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.17.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -16513,7 +16514,14 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const dashboardHero = document.getElementById('home-dashboard-hero');
             const dynamicContent = document.getElementById('home-dynamic-content');
             const modules = document.getElementById('home-dashboard-modules');
-            if (!homeView || homeView.classList.contains('hidden') || shouldUseRepSalesHomeHub()) return false;
+            if (!homeView || homeView.classList.contains('hidden')) return false;
+            if (shouldUseRepSalesHomeHub()) {
+                renderHome();
+                syncRoleAccessUi(getRoleAccessState());
+                updateFooterNavState();
+                assertRepHomeModuleParity(reason || 'rep-home-repair');
+                return !!document.getElementById('home-rep-dashboard-grid');
+            }
             activeHomeTab = 'dashboard';
             selectedProductivityUser = '';
             if (dashboardSticky) dashboardSticky.classList.remove('hidden');
@@ -19466,7 +19474,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             item.genusname = item.GENUSNAME;
             item.WAREHOUSE_ASSIGNED_USER = normalizeEvalAssignableUser(item.ASSIGNEDTO);
             item._search = `${item.ASSIGNEDTO} ${item.WAREHOUSEI} ${item.ITEMCODE} ${item.CONTSIZE} ${item.COMMONNAME} ${item.LOCATIONCODE} ${item.SOURCE} ${item.GENUSNAME}`.toLowerCase();
-            return item.WAREHOUSE_ASSIGNED_USER && item.ITEMCODE ? item : null;
+            return item.ITEMCODE ? item : null;
         }
 
         function rebuildWarehouseAssignedItemIndexes(force = false) {
@@ -25210,6 +25218,88 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
         }
 
+        async function supabaseRpc(functionName, body = {}, requestOptions = {}) {
+            const rpcName = String(functionName || '').trim();
+            if (!rpcName) throw new Error('RPC name is required.');
+            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (!nativeHeaders || !nativeHeaders.Authorization) {
+                throw new Error('Authenticated Supabase session required.');
+            }
+            const timeoutMs = Math.max(1000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
+            const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(rpcName)}`, {
+                method: 'POST',
+                headers: {
+                    ...nativeHeaders,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(body || {})
+            }, timeoutMs, `RPC ${rpcName}`);
+            if (!response.ok) {
+                const error = new Error(await getResponseError(response, `${rpcName} failed (${response.status})`));
+                error.status = response.status;
+                throw error;
+            }
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
+        }
+
+        const HEALTH_METADATA_KEYS = new Set([
+            'expected_count', 'rendered_count', 'pending_count', 'attempt_count',
+            'affected_count', 'status_code', 'duration_bucket', 'reason'
+        ]);
+
+        function sanitizeHealthMetadata(metadata = {}) {
+            const safe = {};
+            Object.entries(metadata && typeof metadata === 'object' ? metadata : {}).forEach(([key, value]) => {
+                if (!HEALTH_METADATA_KEYS.has(key)) return;
+                if (typeof value === 'number' && Number.isFinite(value)) safe[key] = value;
+                else if (typeof value === 'boolean') safe[key] = value;
+                else if (key === 'reason') safe[key] = String(value || '').replace(/[^a-z0-9:_-]+/gi, '_').slice(0, 80);
+            });
+            return safe;
+        }
+
+        function reportSemanticHealthEvent(eventName, area = 'app', code = '', metadata = {}) {
+            if (!currentUser || navigator.onLine === false) return Promise.resolve(false);
+            return supabaseRpc('report_app_health_event', {
+                event_name: String(eventName || 'semantic_failure').slice(0, 120),
+                area: String(area || 'app').slice(0, 80),
+                severity: 'error',
+                sanitized_code: String(code || 'SEMANTIC_FAILURE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 160),
+                duration_ms: null,
+                sample_rate: 1,
+                app_build: APP_SHELL_BUILD,
+                metadata: sanitizeHealthMetadata(metadata)
+            }).then(() => true).catch(() => false);
+        }
+
+        function reportPerformanceHealthEvent(eventName, area = 'app', durationMs = 0, metadata = {}) {
+            if (!currentUser || navigator.onLine === false || Math.random() >= 0.10) return Promise.resolve(false);
+            return supabaseRpc('report_app_health_event', {
+                event_name: String(eventName || 'performance_trace').slice(0, 120),
+                area: String(area || 'app').slice(0, 80),
+                severity: 'info',
+                sanitized_code: 'PERFORMANCE_SAMPLE',
+                duration_ms: Math.max(0, Math.round(Number(durationMs) || 0)),
+                sample_rate: 0.10,
+                app_build: APP_SHELL_BUILD,
+                metadata: sanitizeHealthMetadata(metadata)
+            }).then(() => true).catch(() => false);
+        }
+
+        window.reportSemanticHealthEvent = reportSemanticHealthEvent;
+        window.reportPerformanceHealthEvent = reportPerformanceHealthEvent;
+
+        window.addEventListener('error', (event) => {
+            const code = String(event && event.error && event.error.name || 'UNHANDLED_ERROR');
+            reportSemanticHealthEvent('unhandled_client_error', 'client_runtime', code);
+        });
+        window.addEventListener('unhandledrejection', (event) => {
+            const code = String(event && event.reason && event.reason.name || 'UNHANDLED_REJECTION');
+            reportSemanticHealthEvent('unhandled_client_rejection', 'client_runtime', code);
+        });
+
         async function runDetailWriteWithRetry(table, method, body, query, options = {}) {
             const opts = options || {};
             const writeTable = String(table || '').trim().toLowerCase();
@@ -28074,12 +28164,21 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
         }
 
+        const REQUEST_OUTBOX_STORE = 'request_outbox';
+        const REQUEST_BLOB_STORE = 'request_blobs';
+
         function openDB() {
             return new Promise((resolve,reject)=>{
-                const request=indexedDB.open(DB_NAME,1);
+                const request=indexedDB.open(DB_NAME,2);
                 request.onupgradeneeded=event=>{
                     const db=event.target.result;
                     if(!db.objectStoreNames.contains(STORE_NAME)){ db.createObjectStore(STORE_NAME); }
+                    if(!db.objectStoreNames.contains(REQUEST_OUTBOX_STORE)){
+                        db.createObjectStore(REQUEST_OUTBOX_STORE, { keyPath: 'clientBatchId' });
+                    }
+                    if(!db.objectStoreNames.contains(REQUEST_BLOB_STORE)){
+                        db.createObjectStore(REQUEST_BLOB_STORE, { keyPath: 'blobId' });
+                    }
                 };
                 request.onsuccess=event=>resolve(event.target.result);
                 request.onerror=event=>reject(event.target.error);
@@ -28106,6 +28205,158 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 });
             }catch(e){ return null; }
         }
+
+        async function putIndexedDbRecord(storeName, record) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                tx.objectStore(storeName).put(record);
+                tx.oncomplete = () => resolve(record);
+                tx.onerror = () => reject(tx.error || new Error(`Could not save ${storeName}.`));
+            });
+        }
+
+        async function getAllIndexedDbRecords(storeName) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readonly');
+                const request = tx.objectStore(storeName).getAll();
+                request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
+                request.onerror = () => reject(request.error || new Error(`Could not read ${storeName}.`));
+            });
+        }
+
+        async function deleteIndexedDbRecord(storeName, key) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                tx.objectStore(storeName).delete(key);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error || new Error(`Could not delete ${storeName} record.`));
+            });
+        }
+
+        async function saveRequestOutboxEntry(entry = {}) {
+            const clientBatchId = String(entry.clientBatchId || '').trim();
+            if (!clientBatchId) throw new Error('Request outbox batch ID is required.');
+            return putIndexedDbRecord(REQUEST_OUTBOX_STORE, {
+                ...entry,
+                clientBatchId,
+                status: String(entry.status || 'pending'),
+                attempts: Math.max(0, Number(entry.attempts) || 0),
+                updatedAt: new Date().toISOString()
+            });
+        }
+
+        async function deleteAcknowledgedRequestBlobs(requestId = '') {
+            const normalizedId = String(requestId || '').trim();
+            if (!normalizedId) return 0;
+            const records = await getAllIndexedDbRecords(REQUEST_BLOB_STORE).catch(() => []);
+            const matches = records.filter((record) => String(record.requestId || '').trim() === normalizedId);
+            await Promise.all(matches.map((record) => deleteIndexedDbRecord(REQUEST_BLOB_STORE, record.blobId).catch(() => false)));
+            return matches.length;
+        }
+
+        function createStableClientBatchId() {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+                const value = Math.random() * 16 | 0;
+                return (char === 'x' ? value : (value & 3 | 8)).toString(16);
+            });
+        }
+
+        let requestOutboxFlushPromise = null;
+        let lastLocalRequestDurabilityAuditAt = 0;
+        let lastLocalRequestDurabilitySignature = '';
+
+        async function auditLocalRequestDurability(reason = 'runtime', force = false) {
+            const now = Date.now();
+            if (!force && now - lastLocalRequestDurabilityAuditAt < 60000) return false;
+            lastLocalRequestDurabilityAuditAt = now;
+            const [outboxEntries, blobEntries] = await Promise.all([
+                getAllIndexedDbRecords(REQUEST_OUTBOX_STORE).catch(() => []),
+                getAllIndexedDbRecords(REQUEST_BLOB_STORE).catch(() => [])
+            ]);
+            const staleOutbox = outboxEntries.filter((entry) => {
+                const createdMs = Date.parse(String(entry.createdAt || entry.updatedAt || ''));
+                return Number(entry.attempts || 0) > 0 || (Number.isFinite(createdMs) && now - createdMs > 5 * 60 * 1000);
+            });
+            const staleBlobs = blobEntries.filter((entry) => {
+                const createdMs = Date.parse(String(entry.createdAt || ''));
+                return Number.isFinite(createdMs) && now - createdMs > 15 * 60 * 1000;
+            });
+            const signature = `${staleOutbox.length}:${staleBlobs.length}`;
+            if (signature === lastLocalRequestDurabilitySignature || signature === '0:0') {
+                lastLocalRequestDurabilitySignature = signature;
+                return false;
+            }
+            lastLocalRequestDurabilitySignature = signature;
+            if (staleOutbox.length) {
+                reportSemanticHealthEvent('unconfirmed_request_write', 'request', 'LOCAL_REQUEST_OUTBOX_PENDING', {
+                    count: staleOutbox.length,
+                    reason: String(reason || 'runtime').slice(0, 40)
+                });
+            }
+            if (staleBlobs.length) {
+                reportSemanticHealthEvent('unreferenced_request_upload', 'request', 'LOCAL_REQUEST_BLOB_PENDING', {
+                    count: staleBlobs.length,
+                    reason: String(reason || 'runtime').slice(0, 40)
+                });
+            }
+            return true;
+        }
+
+        async function flushRequestOutbox(reason = 'manual') {
+            if (requestOutboxFlushPromise) return requestOutboxFlushPromise;
+            requestOutboxFlushPromise = (async () => {
+                if (!currentUser || navigator.onLine === false) return { sent: 0, pending: 0 };
+                const entries = await getAllIndexedDbRecords(REQUEST_OUTBOX_STORE).catch(() => []);
+                let sent = 0;
+                for (const entry of entries.sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))) {
+                    const rpcName = entry.requestSource === 'av' ? 'create_av_request_batch' : 'create_request_batch';
+                    try {
+                        const result = await supabaseRpc(rpcName, {
+                            client_batch_id: entry.clientBatchId,
+                            requests: entry.requests || []
+                        }, { timeoutMs: Math.max(SUPABASE_WRITE_TIMEOUT_MS, 30000) });
+                        await deleteIndexedDbRecord(REQUEST_OUTBOX_STORE, entry.clientBatchId);
+                        sent += 1;
+                        const rows = result && Array.isArray(result.rows) ? result.rows : [];
+                        if (rows.length) {
+                            const formatted = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
+                            formatted.forEach((serverRow) => {
+                                const id = String(firstNonEmptyValue(serverRow.UNIQUE_ID, serverRow.unique_id, '') || '').trim();
+                                const local = findRequestInventoryRowByUniqueId(id);
+                                if (local) Object.assign(local, serverRow, { LOCAL_OUTBOX_PENDING: false });
+                                else requestsInventory.push(serverRow);
+                            });
+                            rebuildRequestInventoryIndexes();
+                        }
+                    } catch (error) {
+                        await saveRequestOutboxEntry({
+                            ...entry,
+                            status: 'pending',
+                            attempts: Math.max(0, Number(entry.attempts) || 0) + 1,
+                            lastErrorCode: String(error && error.status ? `HTTP_${error.status}` : 'REQUEST_COMMIT_FAILED'),
+                            lastAttemptAt: new Date().toISOString()
+                        }).catch(() => {});
+                    }
+                }
+                if (sent) {
+                    markDatasetDirty('requests', `request-outbox:${reason}`);
+                    refreshLocalRequestViewState(`request-outbox:${reason}`, { renderVisible: true, forceRender: true });
+                    triggerRequestRealtimeUiRefresh(0);
+                }
+                return { sent, pending: Math.max(0, entries.length - sent) };
+            })().finally(() => { requestOutboxFlushPromise = null; });
+            return requestOutboxFlushPromise;
+        }
+
+        window.addEventListener('online', () => {
+            flushRequestOutbox('online').catch(() => {});
+            if (typeof flushPendingRequestWorkEdits === 'function') flushPendingRequestWorkEdits('online').catch(() => {});
+            auditLocalRequestDurability('online', true).catch(() => {});
+        });
 
         async function saveToCache(data) { return saveCacheValue("latest_data", data); }
 
@@ -28439,7 +28690,7 @@ let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertiseme
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false; let requestCompletionUserColumnsReady=null; let requestCompletionUserColumnsProbePromise=null; let requestCompletionUserSchemaWarningShown=false; let evalTaskColumnsReady=null; let evalTaskColumnsProbePromise=null; let evalTaskSchemaWarningShown=false; let ncrApprovalRequesterColumnsReady=null; let ncrApprovalRequesterColumnsProbePromise=null; let ncrApprovalRequesterSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderDrillLevel='rep'; let salesOfficeOrderSelectedRepKey=''; let salesOfficeOrderSelectedCustomerKey=''; let salesOfficeOrderSelectedRepTab='orders'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
-let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprovalDetailId=''; let activeProductivityTeamTab='inventory'; let selectedProductivityUser=''; let productivityDateStart=''; let productivityDateEnd=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null; let productivityUserDirectoryState={ rows: [], loading: false, loaded: false, error: '', promise: null }; let inventoryTransactionHistoryState={ rows: [], loading: false, loaded: false, error: '', promise: null, action: 'all', search: '', dateStart: '', dateEnd: '' }; let managerAssignedItemsAssignedToFilter='all';
+let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprovalDetailId=''; let activeProductivityTeamTab='inventory'; let selectedProductivityUser=''; let productivityDateStart=''; let productivityDateEnd=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null; let productivityUserDirectoryState={ rows: [], loading: false, loaded: false, error: '', promise: null }; let inventoryTransactionHistoryState={ rows: [], loading: false, loaded: false, error: '', promise: null, action: 'all', search: '', dateStart: '', dateEnd: '' }; let managerAssignedItemsAssignedToFilter='all'; let managerEvalAssignmentSelection=new Set();
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'global-' || prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -29930,7 +30181,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.17.09').trim() || 'V2026.08.17.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.01').trim() || 'V2026.08.20.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32864,9 +33115,112 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const active = activeReqTab === category;
                 return `<button type="button" class="request-category-chip${active ? ' is-active' : ''}" data-request-category="${escapeHtml(category)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return setReqTab('${escapeHtml(category)}')"><span>${escapeHtml(REQUEST_TAB_LABELS[category])}</span><span class="request-category-chip__count${count > 0 ? ' has-count' : ''}">${escapeHtml(formatRequestTabCount(count))}</span></button>`;
             }).join('');
-            toolbar.innerHTML = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}</div>${extraControlsHtml}`;
+            const recoveryControlHtml = canManageRequestDeliveryRecovery()
+                ? `<button type="button" class="request-category-chip${requestDeliveryRecoveryOpen ? ' is-active' : ''}" aria-pressed="${requestDeliveryRecoveryOpen ? 'true' : 'false'}" onclick="return toggleRequestDeliveryRecoveryPanel()"><i class="ph-bold ph-lifebuoy"></i><span>Delivery Recovery</span>${requestDeliveryRecoveryRows.length ? `<span class="request-category-chip__count has-count">${escapeHtml(formatRequestTabCount(requestDeliveryRecoveryRows.length))}</span>` : ''}</button>`
+                : '';
+            toolbar.innerHTML = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}${recoveryControlHtml}</div>${extraControlsHtml}`;
             toolbar.dataset.toolbarSingleRow = 'true';
+            syncRequestDeliveryRecoveryPanel();
             return true;
+        }
+
+        let requestDeliveryRecoveryOpen = false;
+        let requestDeliveryRecoveryLoading = false;
+        let requestDeliveryRecoveryRows = [];
+        let requestDeliveryRecoveryError = '';
+
+        function canManageRequestDeliveryRecovery() {
+            const access = getRoleAccessState();
+            const userKey = normalizeEvalAccessUserKey(firstNonEmptyValue(currentUser, currentUserDisplay, ''));
+            return userKey === 'kayla_knepp'
+                || !!(access && access.isAdmin)
+                || PRIVILEGED_MANAGER_USER_KEYS.includes(userKey);
+        }
+
+        function renderRequestDeliveryRecoveryRowsHtml() {
+            if (requestDeliveryRecoveryLoading) {
+                return '<div class="rounded-2xl border border-sky-100 bg-white p-5 text-center text-sm font-bold text-sky-700">Loading request delivery recovery...</div>';
+            }
+            if (requestDeliveryRecoveryError) {
+                return `<div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">${escapeHtml(requestDeliveryRecoveryError)}</div>`;
+            }
+            if (!requestDeliveryRecoveryRows.length) {
+                return '<div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center text-sm font-bold text-emerald-800">No failed or unknown deliveries need review.</div>';
+            }
+            return requestDeliveryRecoveryRows.map((entry) => {
+                const snapshot = entry && entry.history_snapshot && typeof entry.history_snapshot === 'object' ? entry.history_snapshot : {};
+                const rowLabel = firstNonEmptyValue(snapshot.commonname, snapshot.COMMONNAME, entry.request_id, 'Request');
+                const itemcode = firstNonEmptyValue(snapshot.itemcode, snapshot.ITEMCODE, '');
+                const status = String(entry.status || 'unknown').trim().toUpperCase();
+                const errorCode = String(entry.sanitized_error_code || 'DELIVERY_STATUS_UNKNOWN').trim();
+                const createdLabel = entry.created_at ? new Date(entry.created_at).toLocaleString() : '';
+                return `<article class="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">${escapeHtml(status)} Delivery</div><div class="mt-1 text-base font-black text-slate-900">${escapeHtml(rowLabel)}</div><div class="mt-1 break-all text-[11px] font-bold text-slate-500">${escapeHtml(itemcode ? `${itemcode} · ${entry.request_folder || entry.request_id || ''}` : (entry.request_folder || entry.request_id || ''))}</div></div><span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-800">${escapeHtml(errorCode)}</span></div>
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><div class="text-[10px] font-bold text-slate-400">Attempts ${escapeHtml(String(entry.attempt_count || 0))}${createdLabel ? ` · ${escapeHtml(createdLabel)}` : ''}</div><button type="button" class="rounded-xl bg-[#007a4d] px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return requeueRequestDelivery('${escapeHtml(String(entry.event_id || ''))}', this)">Resend</button></div>
+                </article>`;
+            }).join('');
+        }
+
+        function syncRequestDeliveryRecoveryPanel() {
+            const panel = document.getElementById('request-delivery-recovery-panel');
+            if (!panel) return false;
+            const visible = requestDeliveryRecoveryOpen && canManageRequestDeliveryRecovery();
+            panel.classList.toggle('hidden', !visible);
+            panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            if (visible) {
+                panel.innerHTML = `<div class="mb-3 rounded-2xl border-2 border-sky-200 bg-sky-50 p-4"><div class="mb-3 flex flex-wrap items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Kayla Request Recovery</div><div class="mt-1 text-sm font-bold text-slate-700">Recovered rows are never resent automatically. Review each delivery before resending.</div></div><button type="button" class="rounded-xl border border-sky-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700" onclick="return loadRequestDeliveryRecoveryQueue(true)">Refresh</button></div><div class="grid gap-3">${renderRequestDeliveryRecoveryRowsHtml()}</div></div>`;
+            }
+            return visible;
+        }
+
+        async function loadRequestDeliveryRecoveryQueue(force = false) {
+            if (!canManageRequestDeliveryRecovery() || requestDeliveryRecoveryLoading) return false;
+            if (!force && requestDeliveryRecoveryRows.length) {
+                syncRequestDeliveryRecoveryPanel();
+                return true;
+            }
+            requestDeliveryRecoveryLoading = true;
+            requestDeliveryRecoveryError = '';
+            syncRequestDeliveryRecoveryPanel();
+            try {
+                const result = await supabaseRpc('get_request_delivery_recovery_queue', {}, { timeoutMs: 30000 });
+                requestDeliveryRecoveryRows = Array.isArray(result) ? result : [];
+            } catch (error) {
+                requestDeliveryRecoveryError = String(error && error.message ? error.message : 'Could not load request delivery recovery.').slice(0, 180);
+                reportSemanticHealthEvent('delivery_recovery_load_failed', 'request', error && error.status ? `HTTP_${error.status}` : 'DELIVERY_RECOVERY_LOAD_FAILED');
+            } finally {
+                requestDeliveryRecoveryLoading = false;
+                renderRequestCategoryToolbar();
+            }
+            return !requestDeliveryRecoveryError;
+        }
+
+        function toggleRequestDeliveryRecoveryPanel() {
+            if (!canManageRequestDeliveryRecovery()) return false;
+            requestDeliveryRecoveryOpen = !requestDeliveryRecoveryOpen;
+            renderRequestCategoryToolbar();
+            if (requestDeliveryRecoveryOpen) loadRequestDeliveryRecoveryQueue(false).catch(() => {});
+            return false;
+        }
+
+        async function requeueRequestDelivery(eventId = '', button = null) {
+            const safeEventId = String(eventId || '').trim();
+            if (!safeEventId || !canManageRequestDeliveryRecovery()) return false;
+            const confirmed = await showAppConfirm('Resend this committed request delivery from its saved History snapshot?', { title: 'Confirm Resend', confirmLabel: 'Resend' });
+            if (!confirmed) return false;
+            if (button) button.disabled = true;
+            try {
+                await supabaseRpc('requeue_request_delivery', { delivery_event_id: safeEventId }, { timeoutMs: 30000 });
+                requestDeliveryRecoveryRows = requestDeliveryRecoveryRows.filter((entry) => String(entry.event_id || '') !== safeEventId);
+                renderRequestCategoryToolbar();
+                showToast('Delivery Queued', 'The committed request snapshot was queued for resend.');
+            } catch (error) {
+                reportSemanticHealthEvent('delivery_requeue_failed', 'request', error && error.status ? `HTTP_${error.status}` : 'DELIVERY_REQUEUE_FAILED');
+                showToast('Resend Failed', String(error && error.message ? error.message : 'The delivery could not be queued.'), true);
+            } finally {
+                if (button) button.disabled = false;
+            }
+            return false;
         }
 
         function normalizeRequestTabValue(tab = activeReqTab) {
@@ -38461,6 +38815,8 @@ let avTopControlsRenderToken = 0;
         }
 
         function canUseDriveQuickRequest() {
+            const access = getRoleAccessState();
+            if (access && access.isRep && !access.isCsr) return false;
             const tokens = getProtectedUserTokens();
             const hasAdminViews = canAccessView('drive') && canAccessView('tasks');
             return hasAdminViews || canUseRequestRepScopedAccess() || hasPrivilegedManagerAccess(tokens) || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('morgan') || tokens.has('morgan_anderson');
@@ -38502,6 +38858,7 @@ let avTopControlsRenderToken = 0;
             const safeSourceView = String(sourceView || '').trim().toLowerCase();
             if (safeSourceView !== 'drive') return true;
             const access = getRoleAccessState(roleOverride, userOverride);
+            if (access && access.isRep && !access.isCsr) return false;
             if (access && access.isRepLike && canUseDriveQuickRequest()) return true;
             return canCurrentUserUseDriveCardOptions(item, sourceView, roleOverride, userOverride, displayOverride);
         }
@@ -56459,9 +56816,10 @@ function toggleDriveQuickRequestItem(domId) {
                 if (navigator.onLine === false) return false;
                 const readProbe = async (selectQuery) => {
                     const url = `${SUPABASE_URL}/rest/v1/${PUSH_SUBSCRIPTIONS_TABLE}?${selectQuery}&limit=1`;
+                    const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     return fetchWithTimeout(url, {
                         method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                        headers: nativeHeaders || { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
                     }, SUPABASE_READ_TIMEOUT_MS, 'Push Subscription Schema');
                 };
                 try {
@@ -56606,10 +56964,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (!payload.username || !payload.endpoint || !payload.p256dh || !payload.auth) return false;
             currentPushSubscriptionEndpoint = payload.endpoint;
             try {
-                await supabaseFetch(PUSH_SUBSCRIPTIONS_TABLE, 'POST', payload, 'on_conflict=endpoint');
+                await supabaseRpc('upsert_my_push_subscription', { subscription: payload });
                 return true;
             } catch (error) {
                 console.warn('Push subscription save failed', error);
+                reportSemanticHealthEvent('push_registration_failed', 'push',
+                    Number(error && error.status) === 403 ? 'PUSH_403' : 'PUSH_REGISTRATION_FAILED');
                 return false;
             }
         }
@@ -63512,10 +63872,17 @@ function toggleDriveQuickRequestItem(domId) {
         function getRepHomeDashboardHtml() {
             const cards = [
                 { id: 'home-sales-open-drive', view: 'drive', icon: 'ph-car', title: 'Drive Mode' },
+                { id: 'home-sales-open-sales', view: 'sales', icon: 'ph-chart-line-up', title: 'Sales' },
                 { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', title: 'AV' },
                 { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks' },
+                { id: 'home-sales-open-request', view: 'request', icon: 'ph-list-checks', title: 'Request Queue' },
+                { id: 'home-sales-open-tasks', view: 'tasks', icon: 'ph-clipboard-text', title: 'Tasks' },
+                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' },
                 { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication' },
-                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' }
+                { id: 'home-sales-open-calendar', view: 'department-calendar', icon: 'ph-calendar-dots', title: 'Department Calendar' },
+                { id: 'home-sales-open-chat', view: 'chat', icon: 'ph-chats-circle', title: 'Chat' },
+                { id: 'home-sales-open-bloom', view: 'sales-office', icon: 'ph-flower-lotus', title: 'Sales Office / Bloom' },
+                { id: 'home-sales-open-office', view: 'office', icon: 'ph-buildings', title: 'Office' }
             ];
             const cardsHtml = cards.map(renderRepHomeDashboardTileMarkup).filter(Boolean).join('');
             return cardsHtml
@@ -70435,6 +70802,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (nextViewId !== 'home') ensureNativeBackGuard();
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
                 incrementInternalPerfCounter('warmViewReuseHits');
+                if (nextViewId === 'home') repairHomeDashboardShell('home-warm-reuse');
                 if (nextViewId === 'request') {
                     scheduleRequestNavigationLiveWake('request-warm-reuse');
                 }
@@ -70457,6 +70825,7 @@ function toggleDriveQuickRequestItem(domId) {
                     to: nextViewId,
                     duration: getAdaptivePerfElapsedMs(viewSwitchStartedAt)
                 }, 80);
+                reportPerformanceHealthEvent('view_switch', 'navigation', getAdaptivePerfElapsedMs(viewSwitchStartedAt), { reason: 'warm_reuse' });
                 recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
                 return false;
             }
@@ -70525,6 +70894,7 @@ function toggleDriveQuickRequestItem(domId) {
                 to: nextViewId,
                 duration: getAdaptivePerfElapsedMs(viewSwitchStartedAt)
             }, 80);
+            reportPerformanceHealthEvent('view_switch', 'navigation', getAdaptivePerfElapsedMs(viewSwitchStartedAt), { reason: targetView ? 'switch' : 'queued' });
             recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
             return false;
         }
@@ -116413,7 +116783,13 @@ C.14.043 C.15.000
         }
 
         function canViewAssignedItemsExport(userOverride = '') {
-            return isPrivilegedManagerUser(userOverride);
+            return isPrivilegedManagerUser(userOverride) || canManageEvalItemcodeAssignments(userOverride);
+        }
+
+        function canManageEvalItemcodeAssignments(userOverride = '') {
+            return [userOverride, currentUser, currentUserDisplay]
+                .map((value) => normalizeEvalAccessUserKey(value))
+                .some((key) => key === 'dylan_collyge' || key === 'megan_kelly');
         }
 
         function getManagerAssignedItemsExportRows() {
@@ -116448,6 +116824,7 @@ C.14.043 C.15.000
         }
 
         function getManagerAssignedItemsActiveAssigneeKey() {
+            if (String(managerAssignedItemsAssignedToFilter || '').toLowerCase() === 'unassigned') return 'unassigned';
             const key = normalizeEvalAssignableUser(managerAssignedItemsAssignedToFilter);
             return key && key !== 'all' ? key : 'all';
         }
@@ -116455,6 +116832,7 @@ C.14.043 C.15.000
         function getManagerAssignedItemsActiveAssigneeLabel(rows = null) {
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             if (activeKey === 'all') return 'All AssignedTo';
+            if (activeKey === 'unassigned') return 'Unassigned';
             const match = getManagerAssignedItemsAssigneeOptions(rows).find((option) => option.key === activeKey);
             return match ? match.label : activeKey;
         }
@@ -116463,7 +116841,8 @@ C.14.043 C.15.000
             const sourceRows = Array.isArray(rows) ? rows : getManagerAssignedItemsExportRows();
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             return sourceRows.filter((row) => {
-                if (activeKey !== 'all' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO) !== activeKey) return false;
+                if (activeKey === 'unassigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO)) return false;
+                if (activeKey !== 'all' && activeKey !== 'unassigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO) !== activeKey) return false;
                 return managerTextMatchesSearch([
                     row.ASSIGNEDTO,
                     row.WAREHOUSEI,
@@ -116553,8 +116932,10 @@ C.14.043 C.15.000
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No AssignedTo rows match the current filters.</div>';
             }
             const previewRows = rows.slice(0, 100);
+            const canManageAssignments = canManageEvalItemcodeAssignments();
             const body = previewRows.map((row) => `<tr class="border-b border-slate-100">
-                <td class="px-3 py-2 font-black text-slate-900">${escapeHtml(row.ASSIGNEDTO || '-')}</td>
+                ${canManageAssignments ? `<td class="px-3 py-2"><input type="checkbox" class="h-5 w-5 rounded border-slate-300 text-[#007a4d]" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" ${managerEvalAssignmentSelection.has(String(row.ITEMCODE || '').toUpperCase()) ? 'checked' : ''} onchange="toggleManagerEvalAssignmentItem(this.dataset.itemcode, this.checked)"></td>` : ''}
+                <td class="px-3 py-2 font-black text-slate-900">${canManageAssignments ? `<select class="min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" onchange="setSingleEvalItemcodeAssignment(this.dataset.itemcode, this.value)">${getManagerEvalAssigneeOptionsHtml(row.ASSIGNEDTO || '')}</select>` : escapeHtml(row.ASSIGNEDTO || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.WAREHOUSEI || '-')}</td>
                 <td class="px-3 py-2 font-black text-[#1d4ed8]">${escapeHtml(row.ITEMCODE || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.CONTSIZE || '-')}</td>
@@ -116571,6 +116952,7 @@ C.14.043 C.15.000
                     <table class="min-w-full text-left text-xs font-bold text-slate-600">
                         <thead class="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">
                             <tr>
+                                ${canManageAssignments ? '<th class="px-3 py-3">Select</th>' : ''}
                                 <th class="px-3 py-3">AssignedTo</th>
                                 <th class="px-3 py-3">WAREHOUSEI</th>
                                 <th class="px-3 py-3">ITEMCODE</th>
@@ -116596,10 +116978,17 @@ C.14.043 C.15.000
                 return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading AssignedTo rows...</div>';
             }
             const allRows = getManagerAssignedItemsExportRows();
+            if (canManageEvalItemcodeAssignments() && !evalAssignableUsersDirectoryResolved && !evalAssignableUsersPromise) {
+                ensureEvalAssignableUsersReady().then(() => scheduleManagersRender(true)).catch(() => {});
+            }
             const filteredRows = getFilteredManagerAssignedItemsExportRows(allRows);
             const assignees = getManagerAssignedItemsAssigneeOptions(allRows);
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
-            const optionHtml = [`<option value="all" ${activeKey === 'all' ? 'selected' : ''}>All AssignedTo (${allRows.length})</option>`]
+            const unassignedRows = allRows.filter((row) => !normalizeEvalAssignableUser(row && row.ASSIGNEDTO));
+            const optionHtml = [
+                `<option value="all" ${activeKey === 'all' ? 'selected' : ''}>All AssignedTo (${allRows.length})</option>`,
+                `<option value="unassigned" ${activeKey === 'unassigned' ? 'selected' : ''}>Unassigned (${unassignedRows.length})</option>`
+            ]
                 .concat(assignees.map((option) => `<option value="${escapeHtml(option.key)}" ${option.key === activeKey ? 'selected' : ''}>${escapeHtml(option.label)} (${option.count})</option>`))
                 .join('');
             const activeLabel = getManagerAssignedItemsActiveAssigneeLabel(allRows);
@@ -116614,7 +117003,11 @@ C.14.043 C.15.000
                         <button type="button" class="rounded-xl border border-emerald-100 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm transition hover:bg-emerald-50" onclick="return refreshManagerAssignedItemsExport()"><i class="ph ph-arrow-clockwise mr-2"></i>Refresh</button>
                         <button type="button" class="ops-view-option-action rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#1d4ed8] shadow-sm transition hover:bg-blue-100" onclick="return exportManagerAssignedItemsToExcel()"><i class="ph ph-download-simple mr-2"></i>Export Excel</button>
                     </div>
-                    <div class="mt-4 grid gap-3 md:grid-cols-3">
+                    ${canManageEvalItemcodeAssignments() ? `<div class="mt-3 grid gap-2 md:grid-cols-[minmax(220px,360px)_auto]">
+                        <select id="manager-eval-bulk-assignee" class="w-full rounded-xl border border-blue-100 bg-white px-3 py-3 text-sm font-black text-slate-900">${getManagerEvalAssigneeOptionsHtml('')}</select>
+                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return assignSelectedEvalItemcodes()">Assign Selected</button>
+                    </div>` : ''}
+                    <div class="mt-4 grid gap-3 md:grid-cols-4">
                         <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
                             <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Visible Rows</div>
                             <div class="text-2xl font-black text-slate-900">${filteredRows.length}</div>
@@ -116627,6 +117020,10 @@ C.14.043 C.15.000
                             <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#1d4ed8]">Filter</div>
                             <div class="truncate text-lg font-black text-slate-900">${escapeHtml(activeLabel)}</div>
                         </div>
+                        <button type="button" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left" onclick="return setManagerAssignedItemsAssigneeFilter('unassigned')">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Unassigned</div>
+                            <div class="text-2xl font-black text-amber-900">${unassignedRows.length}</div>
+                        </button>
                     </div>
                 </div>
                 ${renderManagerAssignedItemsPreviewTable(filteredRows)}
@@ -120131,6 +120528,7 @@ C.14.043 C.15.000
             const dynamicContent = document.getElementById('home-dynamic-content');
             const dashboardContent = document.getElementById('home-dashboard-content');
             if (!dynamicContent || !dashboardContent) return;
+            auditLocalRequestDurability('home').catch(() => {});
             const dashboardSticky = document.getElementById('home-dashboard-sticky');
             const dashboardHero = document.getElementById('home-dashboard-hero');
             if (shouldUseRepSalesHomeHub()) {
@@ -120140,6 +120538,7 @@ C.14.043 C.15.000
                 if (dashboardHero) dashboardHero.classList.remove('hidden');
                 dashboardContent.classList.add('hidden');
                 dynamicContent.innerHTML = getRepHomeDashboardHtml();
+                requestAnimationFrame(() => assertRepHomeModuleParity('render-home'));
                 if (typeof syncHomeDashboardBodyMode === 'function') syncHomeDashboardBodyMode();
                 return;
             }
@@ -123707,6 +124106,17 @@ C.14.043 C.15.000
         }
 
         function openRequestModal(sourceMode = 'detail') {
+            const access = getRoleAccessState();
+            const requestEntryView = String(firstNonEmptyValue(
+                typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '',
+                activeDetailSourceView,
+                lastView,
+                ''
+            ) || '').trim().toLowerCase();
+            if (access && access.isRep && !access.isCsr && requestEntryView !== 'av') {
+                showToast('AV Only', 'Sales reps create requests from the AV module. Drive and Request Queue remain read-only.', true);
+                return false;
+            }
             toggleCartPanel(false);
             if (sourceMode === 'selection') detailRequestSourceDomIds = [];
             resetQuickDriveRequestState();
@@ -124812,12 +125222,113 @@ C.14.043 C.15.000
             return finalizeRequestAction(tempReqAppendToExistingFolder ? tempReqFolder : null,tempReqCust,itemsData);
         }
 
+        function toggleManagerEvalAssignmentItem(itemcode = '', checked = false) {
+            const normalizedCode = String(itemcode || '').trim().toUpperCase();
+            if (!normalizedCode) return false;
+            if (checked) managerEvalAssignmentSelection.add(normalizedCode);
+            else managerEvalAssignmentSelection.delete(normalizedCode);
+            return false;
+        }
+
+        function getManagerEvalAssigneeOptionsHtml(selected = '') {
+            const current = normalizeEvalAssignableUser(selected);
+            const users = (Array.isArray(evalAssignableUsers) ? evalAssignableUsers : [])
+                .map(normalizeEvalAssignableUser).filter(Boolean);
+            return ['<option value="">Unassigned</option>'].concat(users.map((username) => (
+                `<option value="${escapeHtml(username)}"${username === current ? ' selected' : ''}>${escapeHtml(getEvalAssignableUserLabel(username))}</option>`
+            ))).join('');
+        }
+
+        async function assignEvalItemcodes(itemcodes = [], assignedto = '') {
+            if (!canManageEvalItemcodeAssignments()) {
+                showToast('Restricted', 'Only Dylan and Megan can update Eval ItemCode assignments.', true);
+                return false;
+            }
+            const codes = Array.from(new Set((Array.isArray(itemcodes) ? itemcodes : [itemcodes])
+                .map((value) => String(value || '').trim().toUpperCase()).filter(Boolean)));
+            if (!codes.length) return false;
+            const assignee = normalizeEvalAssignableUser(assignedto);
+            try {
+                await Promise.all(codes.map((itemcode) => supabaseRpc('set_eval_itemcode_assignment', {
+                    itemcode,
+                    assignedto: assignee || null
+                })));
+                managerEvalAssignmentSelection.clear();
+                await ensureDatasetLoaded('warehouseAssignedItems', 'full', { force: true, preserveRequestedMode: true });
+                scheduleManagersRender(true);
+                showToast('Assignments Saved', `${codes.length} ItemCode assignment${codes.length === 1 ? '' : 's'} updated.`);
+            } catch (error) {
+                showToast('Assignment Failed', String(error && error.message || 'Could not update Eval assignments.'), true);
+                reportSemanticHealthEvent('eval_assignment_failed', 'eval_assignments', 'EVAL_ASSIGNMENT_FAILED', { affected_count: codes.length });
+            }
+            return false;
+        }
+
+        function setSingleEvalItemcodeAssignment(itemcode = '', assignedto = '') {
+            return assignEvalItemcodes([itemcode], assignedto);
+        }
+
+        function assignSelectedEvalItemcodes() {
+            const select = document.getElementById('manager-eval-bulk-assignee');
+            return assignEvalItemcodes(Array.from(managerEvalAssignmentSelection), select ? select.value : '');
+        }
+
+        function assertRepHomeModuleParity(reason = '') {
+            const access = getRoleAccessState();
+            if (!access || !access.isRepLike || access.isAdmin) return true;
+            const expectedViews = ['drive', 'sales', 'av', 'docks', 'request', 'tasks', 'weather-hold', 'communication', 'department-calendar', 'chat', 'sales-office', 'office']
+                .filter((viewId) => access.allowedViews.has(viewId));
+            const grid = document.getElementById('home-rep-dashboard-grid');
+            const renderedCount = grid ? grid.querySelectorAll(':scope > button').length : 0;
+            const matches = renderedCount === expectedViews.length;
+            if (!matches) {
+                reportSemanticHealthEvent('rep_home_module_mismatch', 'home', 'REP_HOME_MODULE_MISMATCH', {
+                    expected_count: expectedViews.length,
+                    rendered_count: renderedCount,
+                    reason: String(reason || '').slice(0, 80)
+                });
+            }
+            return matches;
+        }
+
+        const REQUEST_SCHEMA_CONTRACT_VERSION = 2;
+        const REQUEST_SCHEMA_CACHE_KEY = 'gnc_request_schema_contract_v2';
+        let requestSchemaCompatibilityPromise = null;
+
+        async function ensureRequestSchemaCompatible(force = false) {
+            let cached = null;
+            try { cached = JSON.parse(localStorage.getItem(REQUEST_SCHEMA_CACHE_KEY) || 'null'); } catch (error) {}
+            const cacheIsFresh = cached && cached.compatible === true
+                && Number(cached.contractVersion) === REQUEST_SCHEMA_CONTRACT_VERSION
+                && (Date.now() - Number(cached.checkedAt || 0)) < 15 * 60 * 1000;
+            if (!force && cacheIsFresh) return true;
+            if (navigator.onLine === false) return !!(cached && cached.compatible === true && Number(cached.contractVersion) === REQUEST_SCHEMA_CONTRACT_VERSION);
+            if (requestSchemaCompatibilityPromise && !force) return requestSchemaCompatibilityPromise;
+            requestSchemaCompatibilityPromise = (async () => {
+                try {
+                    const result = await supabaseRpc('get_request_schema_compatibility', {});
+                    const compatible = !!(result && result.compatible && Number(result.contract_version) === REQUEST_SCHEMA_CONTRACT_VERSION);
+                    localStorage.setItem(REQUEST_SCHEMA_CACHE_KEY, JSON.stringify({
+                        compatible,
+                        contractVersion: Number(result && result.contract_version) || 0,
+                        checkedAt: Date.now()
+                    }));
+                    return compatible;
+                } catch (error) {
+                    return false;
+                } finally {
+                    requestSchemaCompatibilityPromise = null;
+                }
+            })();
+            return requestSchemaCompatibilityPromise;
+        }
+
         async function confirmRequestInsertIds(requestIds = []) {
             const ids = Array.isArray(requestIds) ? requestIds.map(id => String(id || '').trim()).filter(Boolean) : [];
             if (!ids.length) return [];
             try {
                 const encodedIds = ids.map(id => encodeURIComponent(id)).join(',');
-                const rows = await supabaseFetch('ph_active_request', 'GET', null, `select=unique_id&unique_id=in.(${encodedIds})`);
+                const rows = await supabaseFetch(ACTIVE_REQUEST_LIVE_ROWS_TABLE, 'GET', null, `select=unique_id&unique_id=in.(${encodedIds})`);
                 return Array.isArray(rows) ? rows.map(row => String(row.unique_id || row.UNIQUE_ID || '').trim()).filter(Boolean) : [];
             } catch (error) {
                 return [];
@@ -124830,7 +125341,7 @@ C.14.043 C.15.000
             let mergedServerRows = false;
             try {
                 const encodedIds = ids.map((id) => encodeURIComponent(id)).join(',');
-                const rows = await fetchSupabasePage('ph_active_request', `select=*&unique_id=in.(${encodedIds})`, Math.max(50, ids.length), 0);
+                const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&unique_id=in.(${encodedIds})`, Math.max(50, ids.length), 0);
                 const formattedRows = formatFetchedRows(rows || [], 'ph_active_request');
                 if (formattedRows.length) {
                     const existingById = new Map((requestsInventory || []).map((item) => [String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim(), item]).filter(([id]) => id));
@@ -125108,7 +125619,7 @@ C.14.043 C.15.000
             return `${safeCustName}-${dateStr}-REQ-${timeStr}${millis}-${uniqueSuffix}`;
         }
 
-        function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj,resolvedRequestEntriesOverride = null) {
+        async function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj,resolvedRequestEntriesOverride = null) {
             let cust=existingCust;let folderId=String(existingFolderId || '').trim();
             const appendingToExistingFolder = !!folderId;
             const quickMode = isQuickDriveRequestMode();
@@ -125129,9 +125640,28 @@ C.14.043 C.15.000
                 const uid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
                 return item ? { domId, item, data: (itemsDataObj && itemsDataObj[uid]) || {} } : null;
             }).filter(Boolean);
+            const access = getRoleAccessState();
+            const visibleRequestSource = String(firstNonEmptyValue(
+                typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '',
+                activeDetailSourceView,
+                lastView,
+                ''
+            ) || '').trim().toLowerCase();
+            const requestSource = visibleRequestSource === 'av' ? 'av' : 'general';
             const singleRowRequest = requestSourceEntries.length === 1;
             if(!requestSourceEntries.length){showToast("Required","Please select a row first.",true);return}
             if(!requestedBy){showToast("Required","Please choose a sales rep for this request.",true);return}
+            if (access && access.isRep && requestSource !== 'av') {
+                showToast('AV Only', 'Sales reps create requests from the AV module.', true);
+                return false;
+            }
+            if (!(await ensureRequestSchemaCompatible())) {
+                showToast('Request Entry Paused', 'The hosted request schema is not compatible with this app build. Your selections are still here; try again after the database update.', true);
+                if (window.__gncOpsPilot && typeof window.__gncOpsPilot.captureFailure === 'function') {
+                    window.__gncOpsPilot.captureFailure('request_schema_mismatch', new Error('REQUEST_SCHEMA_MISMATCH'));
+                }
+                return false;
+            }
             if(!appendingToExistingFolder){
                 folderId = createRequestFolderId(cust);
             }
@@ -125139,6 +125669,7 @@ C.14.043 C.15.000
             closeRequestModal();
             const uuidGen=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);
             const requestCreatedAt = new Date().toISOString();
+            const clientBatchId = createStableClientBatchId();
             let insertPayloads=[];
             let optimisticIds=[];
             let optimisticSourceMap={};
@@ -125213,6 +125744,7 @@ C.14.043 C.15.000
                         app_tab_assignment:sourceAppTabAssignment||null,
                         master_app_tab_assignment:sourceAppTabAssignment||null
                     };
+                    newReq.request_source = requestSource;
                     applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
                     if (autoCompleteUser) {
                         newReq.completed_by_username = autoCompleteUser.username || currentUser || null;
@@ -125343,51 +125875,47 @@ C.14.043 C.15.000
                     .map((requestId) => requestsInventory.find((item) => String((item && item.UNIQUE_ID) || '').trim() === String(requestId || '').trim()))
                     .filter(Boolean);
                 let firstError = null;
-                for (const payload of insertPayloads) {
-                    const payloadId = String(payload.unique_id || '').trim();
-                    if (!payloadId) continue;
-                    let didSave = false;
-                    for (let attempt = 0; attempt < 3 && !didSave; attempt++) {
-                        try {
-                            await supabaseFetch('ph_active_request', 'POST', payload);
-                            didSave = true;
-                        } catch (err) {
-                            let strippedMissingOptionalColumn = false;
-                            if (payload && payload.request_note !== undefined && isRequestNoteColumnMissingError(err)) {
-                                const fallbackRequestNote = String(payload.request_note || '').trim();
-                                if (fallbackRequestNote && !String(payload.req_comments || '').trim()) {
-                                    payload.req_comments = fallbackRequestNote;
-                                    const optimisticRequest = requestsInventory.find((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === payloadId);
-                                    if (optimisticRequest) {
-                                        optimisticRequest.REQ_COMMENTS = fallbackRequestNote;
-                                        optimisticRequest.req_comments = fallbackRequestNote;
-                                        optimisticRequest.REQ_COMMENTS_USER_ENTERED = false;
-                                        optimisticRequest.req_comments_user_entered = false;
-                                    }
-                                }
-                                console.warn('request_note column is not installed on ph_active_request; saving request note in legacy req_comments fallback. Run request_note_migration.sql to persist request notes cleanly.', err);
-                                delete payload.request_note;
-                                strippedMissingOptionalColumn = true;
-                            }
-                            if (payload && isRequestAuditColumnMissingError(err)) {
-                                console.warn('CSR request audit columns are not installed on ph_active_request; retrying without audit fields.', err);
-                                stripRequestAuditFields(payload);
-                                strippedMissingOptionalColumn = true;
-                            }
-                            if (strippedMissingOptionalColumn && attempt < 2) {
-                                await new Promise((resolve) => setTimeout(resolve, 250));
-                                continue;
-                            }
-                            if (!firstError) firstError = err;
-                            const confirmedIds = await confirmRequestInsertIds([payloadId]);
-                            if (confirmedIds.includes(payloadId)) {
-                                didSave = true;
-                                break;
-                            }
-                            if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 450));
-                        }
-                    }
-                    if (didSave) savedIdSet.add(payloadId);
+                const outboxEntry = {
+                    clientBatchId,
+                    requestSource,
+                    requests: insertPayloads,
+                    requestIds: optimisticIds,
+                    requestFolder: folderId,
+                    customer: cust,
+                    requestedBy,
+                    createdAt: requestCreatedAt,
+                    status: 'pending',
+                    attempts: 0
+                };
+                try {
+                    await saveRequestOutboxEntry(outboxEntry);
+                    optimisticIds.forEach((id) => {
+                        const local = findRequestInventoryRowByUniqueId(id);
+                        if (local) local.LOCAL_OUTBOX_PENDING = true;
+                    });
+                    const result = await supabaseRpc(
+                        requestSource === 'av' ? 'create_av_request_batch' : 'create_request_batch',
+                        { client_batch_id: clientBatchId, requests: insertPayloads },
+                        { timeoutMs: Math.max(SUPABASE_WRITE_TIMEOUT_MS, 30000) }
+                    );
+                    const serverRows = result && Array.isArray(result.rows) ? result.rows : [];
+                    serverRows.forEach((serverRow) => {
+                        const payloadId = String(firstNonEmptyValue(serverRow && serverRow.unique_id, serverRow && serverRow.UNIQUE_ID, '') || '').trim();
+                        if (!payloadId) return;
+                        savedIdSet.add(payloadId);
+                        const formatted = formatFetchedRows([serverRow], ACTIVE_REQUEST_TABLE)[0];
+                        const local = findRequestInventoryRowByUniqueId(payloadId);
+                        if (local && formatted) Object.assign(local, formatted, { LOCAL_OUTBOX_PENDING: false });
+                    });
+                    await deleteIndexedDbRecord(REQUEST_OUTBOX_STORE, clientBatchId);
+                } catch (error) {
+                    firstError = error;
+                    await saveRequestOutboxEntry({
+                        ...outboxEntry,
+                        attempts: 1,
+                        lastAttemptAt: new Date().toISOString(),
+                        lastErrorCode: String(error && error.status ? `HTTP_${error.status}` : 'REQUEST_COMMIT_FAILED')
+                    }).catch(() => {});
                 }
                 const savedCount = savedIdSet.size;
                 const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
@@ -125419,8 +125947,7 @@ C.14.043 C.15.000
                 if (autoCompleteSavedIds.length) trackOptimisticCompletedRows(autoCompleteSavedIds);
                 refreshLocalRequestViewState('request-submit-confirmed', { renderVisible: true, immediate: isViewVisible('request'), forceRender: true });
                 triggerRequestRealtimeUiRefresh(0);
-                const savedHistoryItems = getSavedRequestItems(savedRequestIds);
-                if (savedHistoryItems.length) upsertRequestHistoryRows(savedHistoryItems, 'created').catch(() => {});
+                // Request History and notifications are committed by the server transaction.
                 const pendingNotificationIds = savedRequestIds.filter(id => !autoCompleteSavedIdSet.has(id));
                 const normalizedRequestCustomer = normalizeSearchValue(cust);
                 const filterSavedNotificationItem = (item) => {
@@ -125499,40 +126026,20 @@ C.14.043 C.15.000
                         ? "Request completed from existing data."
                         : (skipSummaryNotification ? "Ready rows added to the completed folder." : (autoCompleteSavedIds.length ? "Request tickets cloned. Ready rows completed." : "Request tickets cloned!"));
                     showToast("Success", successMessage, false);
-                    if (!skipSummaryNotification || shouldQueueDelayedCompletionReply) {
-                        await ensureSubmittedRequestRowsRenderedBeforeEmail(savedRequestIds, 'request-submit-before-email');
-                        await sendRequestSubmissionNotifications(folderId, requestedBy, cust, summaryItemsCount, requestNotificationDetails, completionNotificationDetails, {
-                            skipSummaryNotification,
-                            queueDelayedCompletionReply: shouldQueueDelayedCompletionReply,
-                            sendImmediateCompletionReply: shouldSendImmediateCompletionReply,
-                            completionItemsCount
-                        });
-                    }
+                    // The Apps Script worker sends from the committed delivery outbox.
                     return;
                 }
                 if (savedCount > 0) {
                     rollbackOptimisticRequestIds(missingIds);
                     restoreQuickModeRows(missingIds);
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
-                    if (!skipSummaryNotification || shouldQueueDelayedCompletionReply) {
-                        await ensureSubmittedRequestRowsRenderedBeforeEmail(savedRequestIds, 'request-submit-partial-before-email');
-                        await sendRequestSubmissionNotifications(folderId, requestedBy, cust, summaryItemsCount, requestNotificationDetails, completionNotificationDetails, {
-                            skipSummaryNotification,
-                            queueDelayedCompletionReply: shouldQueueDelayedCompletionReply,
-                            sendImmediateCompletionReply: shouldSendImmediateCompletionReply,
-                            completionItemsCount
-                        });
-                    }
                     return;
                 }
-                rollbackOptimisticRequestIds(optimisticIds);
-                restoreQuickModeRows(optimisticIds);
                 if (window.__gncOpsPilot && typeof window.__gncOpsPilot.captureFailure === 'function') {
                     window.__gncOpsPilot.captureFailure('commit', firstError || new Error('Request save failed'));
                 }
-                const errorText = String(firstError && firstError.message ? firstError.message : '').toLowerCase();
-                const errorMessage = errorText.includes('timed out') ? 'Request save timed out. Please retry.' : 'Request did not save. Please retry.';
-                showToast("Error", errorMessage, true);
+                showToast('Queued', 'Request is safely stored on this device and will retry automatically.', true);
+                flushRequestOutbox('submit-retry').catch(() => {});
             })();
         }
 
@@ -125667,7 +126174,7 @@ C.14.043 C.15.000
                 .filter(Boolean);
             if (!safeFolderName || navigator.onLine === false) return fallbackItems;
             try {
-                const rows = await fetchSupabasePage('ph_active_request', `select=*&request_folder=eq.${encodeURIComponent(safeFolderName)}&order=unique_id.asc`, 1000, 0);
+                const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&request_folder=eq.${encodeURIComponent(safeFolderName)}&order=unique_id.asc`, 1000, 0);
                 const formattedRows = formatFetchedRows(rows || [], 'ph_active_request')
                     .filter((item) => item && (includeArchivedRows || !isRequestRowArchivedForCompletion(item)));
                 const mergedRows = mergeRequestCompletionEmailRows(completedItem ? [completedItem] : [], formattedRows);
@@ -140786,7 +141293,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             for (const sourceId of sourceIds.slice(0, 4)) {
                 const encodedId = encodeURIComponent(sourceId);
                 try {
-                    const rawRows = await fetchSupabasePage('ph_active_request', `select=*&or=(unique_id.eq.${encodedId},master_id.eq.${encodedId},master_unique_id.eq.${encodedId})`, 1000, 0);
+                    const rawRows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&or=(unique_id.eq.${encodedId},master_id.eq.${encodedId})`, 1000, 0);
                     formatFetchedRows(rawRows || [], 'ph_active_request').forEach((row) => {
                         const rowSourceIds = new Set([sourceId].filter(Boolean));
                         const directLinked = isDirectLinkedRequestSourceMatch(rowSourceIds, row);
@@ -140799,7 +141306,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             for (const query of fallbackQueries) {
                 try {
-                    const rawRows = await fetchSupabasePage('ph_active_request', query, 1000, 0);
+                    const rawRows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, query, 1000, 0);
                     formatFetchedRows(rawRows || [], 'ph_active_request')
                         .filter((row) => isLinkedRequestCompletionFieldMatch(sourceItem, row))
                         .forEach((row) => addPendingLinkedRequestRow(rows, seenIds, row));
@@ -141581,7 +142088,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const folderName = String(getRequestFolderName(sourceItem) || '').trim();
             if (!folderName) return [];
             try {
-                const rawRows = await fetchSupabasePage('ph_active_request', `select=*&request_folder=eq.${encodeURIComponent(folderName)}`, 1000, 0);
+                const rawRows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&request_folder=eq.${encodeURIComponent(folderName)}`, 1000, 0);
                 return formatFetchedRows(rawRows || [], 'ph_active_request');
             } catch (error) {
                 console.warn('Could not fetch request folder rows for correction', error);
@@ -143789,7 +144296,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const previousReqStatus = itemToSave.REQ_STATUS;
                 const previousRequestViewState = prefix === 'req-' ? captureRequestViewState() : null;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
-                const canOptimisticallyCompleteQueueRow = isComplete && ['req-', 'ssn-', 'lsn-', 'na-'].includes(prefix);
+                const canOptimisticallyCompleteQueueRow = isComplete && ['ssn-', 'lsn-', 'na-'].includes(prefix);
                 let nextRequestId = null;
                 let nextTaskId = null;
                 let didOptimisticClose = false;
@@ -144583,7 +145090,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const requestId = String(firstNonEmptyValue(itemToSave.UNIQUE_ID, itemToSave.unique_id, '') || '').trim();
                     if (!requestId || navigator.onLine === false) return null;
                     try {
-                        const rows = await fetchSupabasePage('ph_active_request', `select=*&unique_id=eq.${encodeURIComponent(requestId)}`, 1, 0);
+                        const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&unique_id=eq.${encodeURIComponent(requestId)}`, 1, 0);
                         const formattedRows = formatFetchedRows(rows || [], 'ph_active_request');
                         return formattedRows[0] || null;
                     } catch (error) {
@@ -144688,10 +145195,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         deferNonCriticalWork('productivity-history', () => appendProductivityHistoryEntries([productivityHistoryEntry]).catch(() => {}), 28);
                     }
 
-                    if (prefix === 'req-' && !saveOptions.suppressRequestHistory) {
-                        const requestHistoryEvent = isComplete && !wasAlreadyComplete ? 'completed' : (trackedChangeFlags.photo ? 'photo-updated' : 'updated');
-                        deferNonCriticalWork('request-history', () => upsertRequestHistoryRows([itemToSave], requestHistoryEvent).catch(() => {}), 34);
-                    }
+                    // Request History is frozen by save_request_work in the same database transaction.
 
                     const ncrReleasePromptContext = { requestMasterItem, completionArtifacts: artifacts, trackedChangeFlags, saveOptions, allowDriveReleaseQtyPrompt: true };
                     const holdReleasePromptContext = { requestMasterItem, completionArtifacts: artifacts };
@@ -144858,14 +145362,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     }
 
-                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete && !saveOptions.suppressRequestCompletionEmail) {
-                        const completionFolderName = getRequestFolderName(itemToSave);
-                        deferNonCriticalWork('request-complete-email', () => {
-                            maybeSendRequestCompletionEmailForFolder(completionFolderName, itemToSave).catch((error) => {
-                                console.warn('Request completion email check failed', error);
-                            });
-                        }, 72);
-                    }
+                    // Completion delivery is drained from ph_request_delivery_outbox.
                     if (linkedRequestCompletionResult && Array.isArray(linkedRequestCompletionResult.folderNames) && linkedRequestCompletionResult.folderNames.length && !saveOptions.suppressRequestCompletionEmail) {
                         const linkedCompletedRows = Array.isArray(linkedRequestCompletionResult.completedRows) ? linkedRequestCompletionResult.completedRows : [];
                         linkedRequestCompletionResult.folderNames.forEach((folderName, folderIndex) => {
@@ -144918,6 +145415,55 @@ ${folderNote ? `Folder Note: ${folderNote}
                     applyPhotoFieldsToPayload();
                     try {
                         if (await stopIfRemoteRequestAlreadyComplete()) return;
+                        if (prefix === 'req-') {
+                            if (!(await ensureRequestSchemaCompatible())) {
+                                throw new Error('REQUEST_SCHEMA_MISMATCH');
+                            }
+                            const expectedVersion = Math.max(1, Number(firstNonEmptyValue(
+                                itemToSave.ROW_VERSION,
+                                itemToSave.row_version,
+                                1
+                            )) || 1);
+                            const requestPatch = {
+                                ...payload,
+                                loc_match_qty: calculateLocMatchQtyValue({
+                                    MATCH: firstNonEmptyValue(payload.req_match, itemToSave.REQ_MATCH, ''),
+                                    PTRAVAILABLE: firstNonEmptyValue(itemToSave.PTRAVAILABLE, requestMasterItem && requestMasterItem.PTRAVAILABLE, '')
+                                }),
+                                drive_photo_link: firstNonEmptyValue(payload.req_photo_link, itemToSave.REQ_PHOTO_LINK, ''),
+                                drive_photo_name: firstNonEmptyValue(payload.req_photo_name, itemToSave.REQ_PHOTO_NAME, '')
+                            };
+                            const rpcResult = await supabaseRpc('save_request_work', {
+                                request_id: String(itemToSave.UNIQUE_ID || '').trim(),
+                                expected_version: expectedVersion,
+                                patch: requestPatch,
+                                complete: !!isComplete
+                            }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) });
+                            const serverRow = rpcResult && rpcResult.row ? rpcResult.row : null;
+                            if (!serverRow || !String(firstNonEmptyValue(serverRow.unique_id, serverRow.UNIQUE_ID, '') || '').trim()) {
+                                throw new Error('REQUEST_SAVE_UNCONFIRMED');
+                            }
+                            const formattedServerRow = formatFetchedRows([serverRow], ACTIVE_REQUEST_TABLE)[0] || serverRow;
+                            Object.assign(itemToSave, formattedServerRow, {
+                                ROW_VERSION: Number(firstNonEmptyValue(rpcResult.row_version, serverRow.row_version, expectedVersion + 1)),
+                                row_version: Number(firstNonEmptyValue(rpcResult.row_version, serverRow.row_version, expectedVersion + 1))
+                            });
+                            normalizeRowPhotoFields(itemToSave);
+                            buildSearchIndex(itemToSave);
+                            requestMasterUpdateResult = { updated: true, atomic: true };
+                            const atomicRequestArtifacts = completionArtifacts || buildCompletionArtifacts();
+                            if (atomicRequestArtifacts) {
+                                atomicRequestArtifacts.masterSyncPayload = null;
+                                atomicRequestArtifacts.skipRemoteMasterSync = true;
+                            }
+                            discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
+                            deleteAcknowledgedRequestBlobs(itemToSave.UNIQUE_ID).catch(() => {});
+                            queueAppLiveEventForWrite('ph_active_request', 'PATCH', [{ unique_id: itemToSave.UNIQUE_ID }], '');
+                            const finalizeRpcSave = () => handleSaveSuccess(atomicRequestArtifacts);
+                            if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeRpcSave, 0);
+                            else finalizeRpcSave();
+                            return;
+                        }
                         await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
                         if (prefix === 'req-') {
                             requestMasterUpdateResult = await syncLinkedMasterFromRequestSave(itemToSave, payload, requestMasterItem, saveRequestOptions);
@@ -144961,7 +145507,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     pauseRequestViewLiveSync(REQUEST_LIVE_SYNC_PAUSE_AFTER_LOCAL_SAVE_MS);
                 }
 
-                if (isComplete) {
+                if (isComplete && prefix !== 'req-') {
                     completionArtifacts = buildCompletionArtifacts();
                     itemToSave.DATE_COMPLETED = payload.date_completed;
                     itemToSave.date_completed = payload.date_completed;
@@ -145122,8 +145668,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             let changed = false;
 
             for (let uid in pendingEdits) {
-                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
                 const pendingData = pendingEdits[uid] && pendingEdits[uid].data;
+                const maxPendingAge = isRequestLikeLocalEditRow(pendingData) ? 30 * 24 * 60 * 60 * 1000 : 900000;
+                if (now - pendingEdits[uid].timestamp > maxPendingAge) { delete pendingEdits[uid]; changed = true; continue; }
                 let item = findPendingEditTarget(uid, pendingData);
                 if (item) {
                     if (shouldDiscardPendingEditForCurrentRow(item, pendingData)) {
@@ -145138,6 +145685,63 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             if (changed) flushPendingEditsCache(true);
+        }
+
+        let pendingRequestWorkFlushPromise = null;
+        async function flushPendingRequestWorkEdits(reason = 'manual') {
+            if (pendingRequestWorkFlushPromise) return pendingRequestWorkFlushPromise;
+            pendingRequestWorkFlushPromise = (async () => {
+                if (!currentUser || navigator.onLine === false) return 0;
+                const pendingEdits = getPendingEditsCache();
+                let savedCount = 0;
+                for (const [requestId, entry] of Object.entries(pendingEdits)) {
+                    const row = entry && entry.data;
+                    if (!isRequestLikeLocalEditRow(row)) continue;
+                    const expectedVersion = Math.max(1, Number(firstNonEmptyValue(row.ROW_VERSION, row.row_version, 1)) || 1);
+                    const complete = hasRequestCompletionState(row);
+                    const patch = {
+                        req_match: firstNonEmptyValue(row.REQ_MATCH, row.req_match, null),
+                        req_spec: firstNonEmptyValue(row.REQ_SPEC, row.req_spec, null),
+                        req_caliper: firstNonEmptyValue(row.REQ_CALIPER, row.req_caliper, null),
+                        req_pic_note: firstNonEmptyValue(row.REQ_PIC_NOTE, row.req_pic_note, row.REQ_PICK, null),
+                        req_comments: firstNonEmptyValue(row.REQ_COMMENTS, row.req_comments, null),
+                        req_reserve: firstNonEmptyValue(row.REQ_RESERVE, row.req_reserve, null),
+                        av_note: firstNonEmptyValue(row.AV_NOTE, row.av_note, null),
+                        req_photo_link: firstNonEmptyValue(row.REQ_PHOTO_LINK, row.req_photo_link, ''),
+                        req_photo_name: firstNonEmptyValue(row.REQ_PHOTO_NAME, row.req_photo_name, ''),
+                        loc_match_qty: calculateLocMatchQtyValue({
+                            MATCH: firstNonEmptyValue(row.REQ_MATCH, row.req_match, ''),
+                            PTRAVAILABLE: firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '')
+                        }),
+                        drive_photo_link: firstNonEmptyValue(row.REQ_PHOTO_LINK, row.req_photo_link, ''),
+                        drive_photo_name: firstNonEmptyValue(row.REQ_PHOTO_NAME, row.req_photo_name, '')
+                    };
+                    try {
+                        const result = await supabaseRpc('save_request_work', {
+                            request_id: requestId,
+                            expected_version: expectedVersion,
+                            patch,
+                            complete
+                        }, { timeoutMs: 30000 });
+                        const formatted = result && result.row ? formatFetchedRows([result.row], ACTIVE_REQUEST_TABLE)[0] : null;
+                        const local = findRequestInventoryRowByUniqueId(requestId);
+                        if (local && formatted) Object.assign(local, formatted);
+                        delete pendingEdits[requestId];
+                        await deleteAcknowledgedRequestBlobs(requestId).catch(() => {});
+                        savedCount += 1;
+                    } catch (error) {
+                        if (String(error && error.message || '').includes('REQUEST_VERSION_CONFLICT')) {
+                            reportSemanticHealthEvent('request_version_conflict', 'request_save', 'REQUEST_VERSION_CONFLICT', { reason });
+                        }
+                    }
+                }
+                if (savedCount) {
+                    flushPendingEditsCache(true);
+                    refreshLocalRequestViewState(`pending-request-work:${reason}`, { renderVisible: true, forceRender: true });
+                }
+                return savedCount;
+            })().finally(() => { pendingRequestWorkFlushPromise = null; });
+            return pendingRequestWorkFlushPromise;
         }
 
         function filterAvNotes(prefix, options = {}) {
@@ -145306,6 +145910,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
             const jpegFileName = buildInventoryRowPhotoFileName(itemToUpload, file, { uploadToken, extension: 'jpg' });
             const targetFileName = originalFileName;
+            const requestBlobId = safePrefix === 'req-'
+                ? `request:${String(firstNonEmptyValue(itemToUpload.UNIQUE_ID, itemToUpload.unique_id, '') || '').trim()}:${uploadToken}`
+                : '';
+            const persistRequestBlobPromise = requestBlobId
+                ? putIndexedDbRecord(REQUEST_BLOB_STORE, {
+                    blobId: requestBlobId,
+                    requestId: String(firstNonEmptyValue(itemToUpload.UNIQUE_ID, itemToUpload.unique_id, '') || '').trim(),
+                    fileName: targetFileName,
+                    contentType: String(file.type || 'image/jpeg'),
+                    blob: file,
+                    createdAt: new Date().toISOString(),
+                    acknowledged: false
+                })
+                : Promise.resolve(null);
             const previewItems = [detailUploadItem, itemToUpload, suspendTagSourceUploadItem].filter((item, index, list) => (
                 item && list.findIndex((candidate) => candidate === item) === index
             ));
@@ -145363,6 +145981,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                         if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                         const uploadPreparedBlob = async (blob, fileName, contentType) => {
+                            await persistRequestBlobPromise;
                             let bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
                             let filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
                             let publicUrl = '';

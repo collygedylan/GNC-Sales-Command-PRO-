@@ -57,6 +57,11 @@ function removeDropFolderAutoSyncTrigger() {
 }
 
 function runAutoDropFolderSync_() {
+  try {
+    runRequestIntegrityScheduledWorker_();
+  } catch (workerError) {
+    console.error('[REQUEST INTEGRITY] Scheduled worker failed: ' + (workerError && workerError.message ? workerError.message : workerError));
+  }
   const requestedBy = Session.getEffectiveUser().getEmail() || 'Apps Script Auto Sync';
   return queueManualSyncRequest_({
     job: 'all',
@@ -129,7 +134,7 @@ const DRIVE_AROUND_MACHINE_NAME_PATTERN = /^drivearoundmc\b/i;
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
-// Authoritative Eval assignment sheet: GNC/PLANT GROUP ITEMCODE EVAL/assignments 08-17-26.
+// Eval assignment review sheet. Supabase is authoritative; this file is export-only.
 const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '16mK_5MWcIwVsbok0lGkBG65UeZt553nf5IEPiv0k34Q';
 const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1PLQJjNIM4dBTBlFOYiumLb-ICccPZbgn';
 const HL_PO_PARSED_TABLE = 'ph_27f1_hl_po';
@@ -2596,98 +2601,91 @@ function buildWarehouseAssignedItemsPayload(rawData, tableName, existingRows, sy
 }
 
 function syncWarehouseAssignedItemsSheet_(sheetId, folderId, tableName) {
-  const safeSheetId = String(sheetId || '').trim();
-  const safeFolderId = String(folderId || '').trim();
-  const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
-  let fileName = safeSheetId;
-  let upsertCount = 0;
-  let deleteCount = 0;
-  let totalRows = 0;
-  let syncDiagnostics = createDeltaSyncStats_();
+  return exportWarehouseAssignedItemsToSheet_(sheetId, tableName);
+}
 
-  try {
-    if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items sheet ID.');
-    if (safeFolderId) getDriveFolderByIdWithRetry_(safeFolderId, 'Warehouse Assigned Items source folder');
-    const file = withDriveRetry_('Warehouse Assigned Items source file lookup', function() {
-      return DriveApp.getFileById(safeSheetId);
-    });
-    fileName = file && typeof file.getName === 'function' ? String(file.getName() || safeSheetId).trim() : safeSheetId;
-    console.log(`[START] Processing fixed sheet: ${fileName} -> Table: ${safeTableName}`);
-
-    const syncStartTime = new Date().toISOString();
-    const rawData = extractDataFromFile(file, safeFolderId || WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID, {
-      headerMatcher: isWarehouseAssignedItemsHeaderRow_
-    });
-    if (!rawData || rawData.length < 1) {
-      throw new Error(`No readable rows were found in ${fileName}.`);
+function callSupabaseRpc_(rpcName, payload) {
+  const safeName = String(rpcName || '').trim();
+  if (!safeName) throw new Error('Missing Supabase RPC name.');
+  const response = UrlFetchApp.fetch(
+    SUPABASE_URL + '/rest/v1/rpc/' + encodeURIComponent(safeName),
+    {
+      method: 'post',
+      contentType: 'application/json',
+      headers: getSupabaseHeadersForKey_(SUPABASE_KEY, { Prefer: 'return=representation' }),
+      payload: JSON.stringify(payload || {}),
+      muteHttpExceptions: true
     }
-
-    const existingRows = fetchAllSupabaseData(safeTableName, getWarehouseAssignedItemsSelectColumns_(), getSupabaseFetchOptionsForTable_(safeTableName));
-    const results = buildWarehouseAssignedItemsPayload(rawData, safeTableName, existingRows, syncStartTime, fileName);
-    const upserts = Array.isArray(results && results.upserts) ? results.upserts : [];
-    const seenIds = results && results.seenIds instanceof Set ? results.seenIds : new Set();
-    totalRows = Number(results && results.totalRows) || 0;
-    syncDiagnostics = results && results.stats ? results.stats : createDeltaSyncStats_();
-    if (shouldAbortSnapshotDelete_(syncDiagnostics, totalRows)) {
-      throw new Error(`0 valid snapshot identities were found in ${fileName}; skipped destructive sync for ${safeTableName}.`);
-    }
-
-    const deletes = combineSnapshotDeleteIds_(existingRows, seenIds);
-    syncDiagnostics.deletedRows = deletes.length;
-    upsertCount = upserts.length;
-    deleteCount = deletes.length;
-
-    console.log(formatDeltaSyncStats_(safeTableName, syncDiagnostics, {
-      filesProcessed: 1,
-      archivedOlderFiles: 0,
-      upserts: upsertCount
-    }));
-
-    if (upserts.length > 0) pushToSupabase(safeTableName, upserts);
-    if (deletes.length > 0) deleteFromSupabase(safeTableName, deletes);
-
-    emitTableSyncLiveEvent_(safeTableName, {
-      filesProcessed: 1,
-      tempFilesRemoved: 0,
-      skippedFilesArchived: 0,
-      upsertCount: upsertCount,
-      deleteCount: deleteCount,
-      totalRows: totalRows,
-      sourceSheetId: safeSheetId,
-      sourceFolderId: safeFolderId
-    });
-
-    console.log(`[DONE] ${safeTableName}: fixed sheet processed | ${deleteCount} removed row${deleteCount === 1 ? '' : 's'} | ${upsertCount} row${upsertCount === 1 ? '' : 's'} upserted | ${totalRows} parsed row${totalRows === 1 ? '' : 's'}.`);
-    return {
-      tableName: safeTableName,
-      filesProcessed: 1,
-      tempFilesRemoved: 0,
-      skippedFilesArchived: 0,
-      failedFiles: 0,
-      failedFileNames: [],
-      upsertCount: upsertCount,
-      deleteCount: deleteCount,
-      totalRows: totalRows,
-      diagnostics: syncDiagnostics
-    };
-  } catch (err) {
-    const errorMessage = err && err.message ? err.message : String(err);
-    console.error(`[ERROR] Failed Warehouse Assigned Items sync for ${fileName}: ${err && err.stack ? err.stack : errorMessage}`);
-    return {
-      tableName: safeTableName,
-      filesProcessed: 0,
-      tempFilesRemoved: 0,
-      skippedFilesArchived: 0,
-      failedFiles: 1,
-      failedFileNames: [fileName],
-      failedFileErrors: [{ name: fileName, error: errorMessage }],
-      upsertCount: 0,
-      deleteCount: 0,
-      totalRows: totalRows,
-      diagnostics: syncDiagnostics,
-      error: errorMessage
-    };
+  );
+  const status = response.getResponseCode();
+  const text = response.getContentText();
+  if (status < 200 || status >= 300) {
+    throw new Error('Supabase RPC ' + safeName + ' failed (' + status + ').');
   }
+  return text ? JSON.parse(text) : null;
+}
+
+function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
+  const safeSheetId = String(sheetId || WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID).trim();
+  const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
+  if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
+
+  const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
+  const rows = fetchAllSupabaseData(
+    safeTableName,
+    'itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
+    getSupabaseFetchOptionsForTable_(safeTableName)
+  ).sort(function(a, b) {
+    return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true });
+  });
+
+  const spreadsheet = SpreadsheetApp.openById(safeSheetId);
+  const sheet = spreadsheet.getSheets()[0];
+  const headers = [
+    'ITEMCODE', 'ASSIGNEDTO', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
+    'PRESENT_IN_DRIVE', 'ASSIGNED_BY', 'ASSIGNED_AT', 'FIRST_SEEN_AT',
+    'LAST_SEEN_AT', 'UPDATED_AT'
+  ];
+  const values = [headers].concat(rows.map(function(row) {
+    return [
+      row.itemcode_normalized || row.itemcode || '',
+      row.assignedto || '',
+      row.commonname || '',
+      row.contsize || '',
+      row.locationcode || '',
+      row.present_in_drive === true,
+      row.assigned_by || '',
+      row.assigned_at || '',
+      row.first_seen_at || '',
+      row.last_seen_at || '',
+      row.updated_at || ''
+    ];
+  }));
+
+  const existingRows = Math.max(1, sheet.getLastRow());
+  const existingColumns = Math.max(headers.length, sheet.getLastColumn());
+  sheet.getRange(1, 1, existingRows, existingColumns).clearContent();
+  if (values.length) sheet.getRange(1, 1, values.length, headers.length).setValues(values);
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+
+  emitTableSyncLiveEvent_(safeTableName, {
+    direction: 'supabase_to_sheet',
+    exportRows: rows.length,
+    sourceSheetId: safeSheetId,
+    maintenance: maintenance || {}
+  });
+  return {
+    tableName: safeTableName,
+    direction: 'supabase_to_sheet',
+    filesProcessed: 1,
+    failedFiles: 0,
+    upsertCount: 0,
+    deleteCount: 0,
+    totalRows: rows.length,
+    exportedRows: rows.length,
+    maintenance: maintenance || {}
+  };
 }
 
 function getPayloadSelectColumns_(tableName, rawData) {
@@ -7227,7 +7225,7 @@ function fetchRequestRowsForEmailFolder_(folderId) {
   if (!safeFolderId) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-  const requestTableNames = getRequestEmailTableCandidates_('ph_active_request', 'PH');
+    const requestTableNames = ['ph_active_request_live_rows'];
   const loadRows = function(selectFields, requestTableName) {
     const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
     const result = UrlFetchApp.fetch(url, {
@@ -7312,7 +7310,7 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
   if (!safeIds.length) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-  const requestTableNames = getRequestEmailTableCandidates_('ph_active_request', 'PH');
+    const requestTableNames = ['ph_active_request_live_rows'];
   const buildInFilter = function(ids) {
     return ids.map(function(id) {
       return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
@@ -11872,6 +11870,210 @@ function sendRequestEmailWithFallback_(payload) {
       message: error && error.message ? error.message : 'Request email send failed.'
     };
   }
+}
+
+function requestDeliveryRest_(tableName, method, query, payload, prefer) {
+  const safeTable = String(tableName || '').trim();
+  const safeMethod = String(method || 'GET').trim().toUpperCase();
+  const suffix = String(query || '').trim();
+  const options = {
+    method: safeMethod.toLowerCase(),
+    headers: getSupabaseHeadersForKey_(SUPABASE_KEY, {
+      'Content-Type': 'application/json',
+      Prefer: prefer || (safeMethod === 'GET' ? 'count=none' : 'return=representation')
+    }),
+    muteHttpExceptions: true
+  };
+  if (payload !== undefined && payload !== null && safeMethod !== 'GET') {
+    options.payload = JSON.stringify(payload);
+  }
+  const response = UrlFetchApp.fetch(
+    SUPABASE_URL + '/rest/v1/' + safeTable + (suffix ? '?' + suffix : ''),
+    options
+  );
+  const status = response.getResponseCode();
+  const text = response.getContentText();
+  if (status < 200 || status >= 300) {
+    const error = new Error('Request delivery database operation failed (' + status + ').');
+    error.status = status;
+    throw error;
+  }
+  return text ? JSON.parse(text) : [];
+}
+
+function sendRequestDeliveryPush_(eventRow, requestRows) {
+  const eventType = String(eventRow && eventRow.event_type || '').trim();
+  const payload = eventRow && eventRow.payload && typeof eventRow.payload === 'object' ? eventRow.payload : {};
+  const firstRow = Array.isArray(requestRows) && requestRows.length ? requestRows[0] : {};
+  const pushType = eventType === 'request_created' ? 'new_request'
+    : eventType === 'request_completed' ? 'request_complete'
+    : eventType;
+  const body = {
+    eventType: pushType,
+    folderId: String(eventRow && eventRow.request_folder || firstRow.request_folder || ''),
+    repName: String(firstRow.requested_by || ''),
+    requestedBy: String(firstRow.requested_by || ''),
+    requestedByUsername: String(firstRow.request_selected_rep_username || firstRow.requested_by || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+    customer: String(firstRow.req_customer || ''),
+    itemsCount: Array.isArray(requestRows) ? requestRows.length : 0,
+    requestIds: Array.isArray(requestRows) ? requestRows.map(function(row) { return row.unique_id; }).filter(Boolean) : [],
+    itemcode: String(payload.itemcode || ''),
+    unassignedCount: Math.max(0, Number(payload.unassigned_count) || 0),
+    managerUsernames: Array.isArray(payload.manager_usernames) ? payload.manager_usernames : []
+  };
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/functions/v1/send-push-alert', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: getSupabaseHeadersForKey_(SUPABASE_KEY),
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true
+  });
+  const status = response.getResponseCode();
+  if (status < 200 || status >= 300) throw new Error('PUSH_SEND_FAILED');
+  return true;
+}
+
+function getRequestDeliveryRows_(eventRow) {
+  const payload = eventRow && eventRow.payload && typeof eventRow.payload === 'object' ? eventRow.payload : {};
+  const requestIds = normalizeRequestIdList_(
+    payload.request_ids || payload.requestIds || (eventRow && eventRow.request_id ? [eventRow.request_id] : [])
+  );
+  if (String(eventRow && eventRow.event_type || '') === 'request_created') {
+    const snapshots = Array.isArray(payload.requests) ? payload.requests.filter(Boolean) : [];
+    if (snapshots.length) return snapshots;
+    return fetchRequestRowsForEmailRequestIds_(requestIds);
+  }
+  if (String(eventRow && eventRow.event_type || '') === 'request_completed') {
+    return fetchRequestHistoryRowsForEmailRequestIds_(requestIds);
+  }
+  return [];
+}
+
+function buildRequestDeliveryEmailPayload_(eventRow, rows) {
+  const firstRow = Array.isArray(rows) && rows.length ? rows[0] : {};
+  const eventType = String(eventRow && eventRow.event_type || '').trim();
+  return {
+    type: 'email',
+    emailType: eventType === 'request_completed' ? 'request_complete' : 'new_request',
+    folderId: String(eventRow && eventRow.request_folder || firstRow.request_folder || ''),
+    requestFolder: String(eventRow && eventRow.request_folder || firstRow.request_folder || ''),
+    repName: String(firstRow.requested_by || ''),
+    requestedBy: String(firstRow.requested_by || ''),
+    customer: String(firstRow.req_customer || ''),
+    itemsCount: Array.isArray(rows) ? rows.length : 0,
+    requestItems: Array.isArray(rows) ? rows : [],
+    items: Array.isArray(rows) ? rows : [],
+    requestIds: Array.isArray(rows) ? rows.map(function(row) { return row.unique_id; }).filter(Boolean) : [],
+    requestCreator: {
+      creatorUsername: String(firstRow.request_created_by_username || ''),
+      creatorDisplay: String(firstRow.request_created_by_display || ''),
+      creatorEmail: String(firstRow.request_created_by_email || ''),
+      selectedRepUsername: String(firstRow.request_selected_rep_username || ''),
+      selectedRepDisplay: String(firstRow.request_selected_rep_display || ''),
+      selectedRepEmail: String(firstRow.request_selected_rep_email || '')
+    }
+  };
+}
+
+function updateRequestDeliveryEvent_(eventId, patch) {
+  return requestDeliveryRest_(
+    'ph_request_delivery_outbox',
+    'PATCH',
+    'event_id=eq.' + encodeURIComponent(String(eventId || '')),
+    patch || {},
+    'return=representation'
+  );
+}
+
+function processRequestDeliveryOutbox_(limit) {
+  const batchLimit = Math.max(1, Math.min(100, Number(limit) || 40));
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return { claimed: 0, delivered: 0, failed: 0, locked: true };
+  let delivered = 0;
+  let failed = 0;
+  let events = [];
+  try {
+    events = requestDeliveryRest_(
+      'ph_request_delivery_outbox',
+      'GET',
+      'select=*&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
+      null
+    );
+    events.forEach(function(eventRow) {
+      const eventId = String(eventRow.event_id || '');
+      const claimedRows = requestDeliveryRest_(
+        'ph_request_delivery_outbox',
+        'PATCH',
+        'event_id=eq.' + encodeURIComponent(eventId) + '&status=eq.pending',
+        { status: 'processing', last_attempt_at: new Date().toISOString() },
+        'return=representation'
+      );
+      if (!Array.isArray(claimedRows) || claimedRows.length !== 1) return;
+      const claimed = claimedRows[0];
+      const eventType = String(claimed.event_type || '');
+      const rows = getRequestDeliveryRows_(claimed);
+      try {
+        let emailDeliveredAt = claimed.email_delivered_at || null;
+        let pushDeliveredAt = claimed.push_delivered_at || null;
+        const isRequestEvent = eventType === 'request_created' || eventType === 'request_completed';
+        if (isRequestEvent && !rows.length) throw new Error('REQUEST_SNAPSHOT_MISSING');
+
+        if (isRequestEvent && !emailDeliveredAt) {
+          const emailResult = sendRequestEmailWithFallback_(buildRequestDeliveryEmailPayload_(claimed, rows));
+          if (!emailResult || emailResult.ok !== true) throw new Error('EMAIL_SEND_FAILED');
+          emailDeliveredAt = new Date().toISOString();
+          updateRequestDeliveryEvent_(eventId, { email_delivered_at: emailDeliveredAt });
+        } else if (!isRequestEvent) {
+          emailDeliveredAt = emailDeliveredAt || new Date().toISOString();
+        }
+
+        if (!pushDeliveredAt) {
+          sendRequestDeliveryPush_(claimed, rows);
+          pushDeliveredAt = new Date().toISOString();
+          updateRequestDeliveryEvent_(eventId, { push_delivered_at: pushDeliveredAt });
+        }
+
+        const deliveredAt = new Date().toISOString();
+        updateRequestDeliveryEvent_(eventId, {
+          status: 'delivered',
+          email_delivered_at: emailDeliveredAt,
+          push_delivered_at: pushDeliveredAt,
+          delivered_at: deliveredAt,
+          sanitized_error_code: null
+        });
+        if (claimed.request_id) {
+          requestDeliveryRest_('ph_request_history', 'PATCH',
+            'unique_id=eq.' + encodeURIComponent(String(claimed.request_id)),
+            { delivery_state: 'delivered' }, 'return=minimal');
+        }
+        delivered++;
+      } catch (error) {
+        const attempts = Math.max(0, Number(claimed.attempt_count) || 0) + 1;
+        const exhausted = attempts >= 8;
+        const code = /SNAPSHOT/i.test(String(error && error.message || '')) ? 'REQUEST_SNAPSHOT_MISSING'
+          : /EMAIL/i.test(String(error && error.message || '')) ? 'EMAIL_SEND_FAILED'
+          : /PUSH/i.test(String(error && error.message || '')) ? 'PUSH_SEND_FAILED'
+          : 'DELIVERY_WORKER_FAILED';
+        const retryMinutes = Math.min(360, Math.pow(2, Math.min(attempts, 6)));
+        updateRequestDeliveryEvent_(eventId, {
+          status: exhausted ? 'failed' : 'pending',
+          attempt_count: attempts,
+          next_attempt_at: new Date(Date.now() + retryMinutes * 60000).toISOString(),
+          sanitized_error_code: code
+        });
+        failed++;
+      }
+    });
+    return { claimed: events.length, delivered: delivered, failed: failed, locked: false };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function runRequestIntegrityScheduledWorker_() {
+  const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
+  const delivery = processRequestDeliveryOutbox_(50);
+  return { maintenance: maintenance || {}, delivery: delivery || {} };
 }
 
 // RETIRED DISEASE / LAB REPORT DRIVE MIRROR

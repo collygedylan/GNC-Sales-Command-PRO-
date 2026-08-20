@@ -32,17 +32,17 @@ const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enab
 const appsScriptBackend = read('Code.gs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.17.09';
+  const release = 'V2026.08.20.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.17.09');
+  assert.equal(packageJson.version, '2026.08.20.01');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026081709.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082001.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -627,7 +627,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026081709\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026082001\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -1040,12 +1040,13 @@ test('Task View lists active assignment-sheet users and scopes Drive rows withou
   assert.match(evalViewerUsers, /assignmentsAreAuthoritative \|\| !EVAL_TASK_INACTIVE_USERS\.has\(user\)/);
   assert.match(html, /pushKey\('wi', parts\.warehouse, parts\.itemcode\)/);
   assert.match(html, /pushKey\('ig', parts\.itemcode, parts\.genusname\)/);
-  assert.match(html, /return item\.WAREHOUSE_ASSIGNED_USER && item\.ITEMCODE \? item : null/);
+  assert.match(html, /return item\.ITEMCODE \? item : null/);
+  assert.doesNotMatch(html, /return item\.WAREHOUSE_ASSIGNED_USER && item\.ITEMCODE \? item : null/);
   assert.match(html, /function canRestrictedEvalUserUpdateItem/);
   assert.match(html, /function completeEvalTaskFromDetail/);
 });
 
-test('Warehouse assignment sync uses the 08-17 assignment sheet four-column contract', () => {
+test('Warehouse assignments are Supabase-authoritative and the Sheet is export-only', () => {
   assert.match(appsScriptBackend, /WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '16mK_5MWcIwVsbok0lGkBG65UeZt553nf5IEPiv0k34Q'/);
   assert.match(appsScriptBackend, /WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1PLQJjNIM4dBTBlFOYiumLb-ICccPZbgn'/);
   const headerMatcher = appsScriptBackend.slice(
@@ -1063,4 +1064,16 @@ test('Warehouse assignment sync uses the 08-17 assignment sheet four-column cont
   );
   assert.match(payloadBuilder, /if \(!assignedTo \|\| !itemCode\)/);
   assert.doesNotMatch(payloadBuilder, /if \(!itemCode \|\| !locationCode\)/);
+  const assignmentSync = appsScriptBackend.slice(
+    appsScriptBackend.indexOf('function syncWarehouseAssignedItemsSheet_'),
+    appsScriptBackend.indexOf('function callSupabaseRpc_')
+  );
+  assert.match(assignmentSync, /return exportWarehouseAssignedItemsToSheet_\(sheetId, tableName\)/);
+  assert.doesNotMatch(assignmentSync, /deleteFromSupabase|pushToSupabase|extractDataFromFile/);
+  const assignmentExport = appsScriptBackend.slice(
+    appsScriptBackend.indexOf('function exportWarehouseAssignedItemsToSheet_'),
+    appsScriptBackend.indexOf('function getPayloadSelectColumns_')
+  );
+  assert.match(assignmentExport, /run_request_integrity_maintenance/);
+  assert.match(assignmentExport, /direction: 'supabase_to_sheet'/);
 });

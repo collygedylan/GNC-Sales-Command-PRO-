@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /responsive-workflows\.e2e\.spec\.ts/,
+  testMatch: /(responsive-workflows\.e2e|request-integrity-local)\.spec\.(ts|js)/,
   fullyParallel: true,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

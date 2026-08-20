@@ -44,6 +44,7 @@ export function getRoleAccessState(role = "") {
   const normalizedRole = normalizeRole(role || roleDisplay);
   const isRep =
     normalizedRole === "REP" ||
+    normalizedRole === "SALES" ||
     normalizedRole === "SALESREP" ||
     normalizedRole.includes("SALESREP") ||
     roleDisplay.includes("SALES REP");

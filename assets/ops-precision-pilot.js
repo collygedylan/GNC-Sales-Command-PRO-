@@ -663,8 +663,15 @@
 
   function captureFailure(kind, error) {
     const sentry = window.GncSentry;
-    if (!monitoringReady || !sentry) return;
     const safeKind = /upload/i.test(kind) ? 'upload' : /commit/i.test(kind) ? 'commit' : 'operation';
+    if (typeof window.reportSemanticHealthEvent === 'function') {
+      window.reportSemanticHealthEvent(
+        `${safeKind}_failure`,
+        safeKind === 'upload' ? 'photo_upload' : 'app_operation',
+        `${safeKind.toUpperCase()}_FAILED`
+      );
+    }
+    if (!monitoringReady || !sentry) return;
     if (error instanceof Error && typeof sentry.captureException === 'function') {
       const sanitizedError = new Error(redactText(error.message || `${safeKind} failed`));
       sanitizedError.name = `${safeKind[0].toUpperCase()}${safeKind.slice(1)}Failure`;

@@ -32,10 +32,16 @@ jobs:
           cp supabase/config.toml "$ci_root/supabase/config.toml"
           cp -R supabase/functions "$ci_root/supabase/functions"
           : > "$ci_root/supabase/seed.sql"
+          cp supabase/ci/request_workflow_baseline.sql "$ci_root/supabase/migrations/20260803100000_request_workflow_baseline.sql"
+          cp supabase/migrations/20260803121000_add_request_note_to_ph_active_request.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260803225959_add_csr_request_audit_fields.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260816172822_native_auth_profiles.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260816172823_pwa_containment_flags.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260816172825_database_compaction_shadow.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260817154154_restore_native_request_workflow.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820114722_request_integrity_and_eval_assignments.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         run: supabase --workdir "$SUPABASE_CI_ROOT" start
@@ -43,6 +49,24 @@ jobs:
         run: supabase --workdir "$SUPABASE_CI_ROOT" db reset --local --no-seed
       - name: Run pgTAP and RLS tests
         run: supabase --workdir "$SUPABASE_CI_ROOT" test db
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run browser request transactions against local Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --workdir "$SUPABASE_CI_ROOT" status -o env > "$RUNNER_TEMP/supabase-status.env"
+          set -a
+          source "$RUNNER_TEMP/supabase-status.env"
+          set +a
+          SUPABASE_LOCAL_URL="$API_URL" \
+          SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
+          SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          npx playwright test tests/request-integrity-local.spec.js --project=chromium
       - name: Run Edge Function unit tests
         run: deno test --allow-env --allow-net supabase/functions
       - name: Save relation-size report query

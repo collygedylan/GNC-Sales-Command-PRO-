@@ -410,9 +410,14 @@ function hasTableReadAccess(role = "", table = "", username = "") {
 function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null, username = "") {
   if (!WRITABLE_TABLES.has(table)) return false;
   const userKey = normalizeUsername(username);
+  const access = getRoleAccessState(role);
+  // Request creation, Eval assignments, and push identity are now enforced by
+  // authenticated RPCs. Never let this legacy service-role proxy bypass those
+  // database authorization boundaries.
+  if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions") return false;
+  if (table === "ph_active_request" && access.isRep) return false;
   if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
-  const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
   if (COMMON_AUTH_WRITE_TABLES.has(table)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === "ph_push_subscriptions") return method === "POST";
@@ -539,7 +544,10 @@ async function handleGetUserPreferences(
   if (!username) return errorResponse("Authenticated user identity is required.", 403);
   try {
     const flags = await loadLivePilotFlags();
-    const monitoringEligible = !!(flags.monitoring && LIVE_PILOT_SENTRY_DSN);
+    // Monitoring is a production safety control for every authenticated user;
+    // appearance experiments remain independently flag-controlled.
+    flags.monitoring = !!LIVE_PILOT_SENTRY_DSN;
+    const monitoringEligible = !!LIVE_PILOT_SENTRY_DSN;
     const monitoring = monitoringEligible
       ? {
         dsn: LIVE_PILOT_SENTRY_DSN,
@@ -559,13 +567,16 @@ async function handleGetUserPreferences(
     });
   } catch (error) {
     recordHandledError("app-api", "get_user_preferences", error, 503);
+    const monitoringEligible = !!LIVE_PILOT_SENTRY_DSN;
+    const fallbackFlags = getDisabledLivePilotFlags();
+    fallbackFlags.monitoring = monitoringEligible;
     return jsonResponse({
       ok: true,
       eligible: false,
-      monitoringEligible: false,
-      flags: getDisabledLivePilotFlags(),
+      monitoringEligible,
+      flags: fallbackFlags,
       preferences: null,
-      monitoring: null,
+      monitoring: monitoringEligible ? { dsn: LIVE_PILOT_SENTRY_DSN, tracesSampleRate: 0.1 } : null,
     });
   }
 }

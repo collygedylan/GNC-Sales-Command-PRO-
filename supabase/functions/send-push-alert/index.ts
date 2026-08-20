@@ -18,7 +18,13 @@ const WEB_PUSH_VAPID_PUBLIC_KEY = Deno.env.get("WEB_PUSH_VAPID_PUBLIC_KEY") || "
 const WEB_PUSH_VAPID_PRIVATE_KEY = Deno.env.get("WEB_PUSH_VAPID_PRIVATE_KEY") || "";
 const WEB_PUSH_VAPID_SUBJECT = Deno.env.get("WEB_PUSH_VAPID_SUBJECT") || "mailto:dylan_collyge@greenleafnursery.com";
 const REQUEST_ALERT_USERNAMES = new Set(
-  String(Deno.env.get("REQUEST_ALERT_USERNAMES") || "dylan_collyge,jd_jones")
+  String(Deno.env.get("REQUEST_ALERT_USERNAMES") || "kayla_knepp,dylan_collyge,jd_jones")
+    .split(",")
+    .map((value) => normalizeUsername(value))
+    .filter(Boolean)
+);
+const EVAL_ASSIGNMENT_MANAGER_USERNAMES = new Set(
+  String(Deno.env.get("EVAL_ASSIGNMENT_MANAGER_USERNAMES") || "dylan_collyge,megan_kelly")
     .split(",")
     .map((value) => normalizeUsername(value))
     .filter(Boolean)
@@ -70,6 +76,10 @@ function jsonResponse(body: unknown, status = 200) {
 
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
+  if (eventType === "eval_assignment_unassigned" || eventType === "eval_assignment_summary") {
+    const direct = normalizePayloadUserList(payload.managerUsernames || payload.manager_usernames || payload.targetUsers);
+    return direct.length ? direct : [...EVAL_ASSIGNMENT_MANAGER_USERNAMES];
+  }
   if (eventType === "flyer_created") {
     const assignedUsers = normalizePayloadUserList(payload.assigneeUsernames || payload.targetUsers || payload.recipients || payload.assignedTo || payload.repName);
     return assignedUsers.length ? assignedUsers : [...FLYER_ALERT_USERNAMES];
@@ -99,6 +109,28 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
   const assignedTo = String(payload.assignedTo || repName || "Unassigned").trim();
   const createdBy = String(payload.createdBy || payload.sentBy || "Someone").trim();
   const itemsCount = Math.max(0, Number(payload.itemsCount) || 0);
+  if (eventType === "eval_assignment_unassigned") {
+    const itemcode = String(payload.itemcode || "New ItemCode").trim();
+    return {
+      title: "Eval Assignment Needed",
+      body: `${itemcode} is not assigned to an active EVAL user.`,
+      tag: `eval-assignment-${itemcode || Date.now()}`,
+      viewId: "home",
+      homeTab: "assigned-items-export",
+      url: "./"
+    };
+  }
+  if (eventType === "eval_assignment_summary") {
+    const unassignedCount = Math.max(0, Number(payload.unassignedCount || payload.unassigned_count) || 0);
+    return {
+      title: "Eval Assignments Need Review",
+      body: `${unassignedCount} ItemCode${unassignedCount === 1 ? " is" : "s are"} currently unassigned.`,
+      tag: "eval-assignment-initial-summary",
+      viewId: "home",
+      homeTab: "assigned-items-export",
+      url: "./"
+    };
+  }
   if (eventType === "chat_message") {
     const sender = String(payload.senderDisplayName || payload.sentBy || payload.senderUsername || "New message").trim();
     const chatTitle = String(payload.title || payload.customer || "Chat").trim();
@@ -244,7 +276,7 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event") {
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary") {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
 
