@@ -61,7 +61,10 @@ select lives_ok(
 
 select is((select count(*)::integer from public.ph_active_request where unique_id = 'REQ-CSR-1'), 1, 'batch retry key created exactly one request row');
 select is((select count(*)::integer from public.ph_request_history where unique_id = 'REQ-CSR-1'), 1, 'creation transaction persisted History snapshot');
+set local role postgres;
 select is((select count(*)::integer from public.ph_request_delivery_outbox where event_key = 'request-created:20000000-0000-0000-0000-000000000003'), 1, 'creation transaction persisted delivery outbox');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);
 
 select lives_ok(
   $q$select public.create_request_batch(
@@ -89,7 +92,10 @@ select lives_ok(
 select is((select req_status from public.ph_active_request where unique_id = 'REQ-CSR-1'), 'Complete', 'completion persisted request state');
 select is((select match from public.ph_master_inventory where unique_id = 'MASTER-TEST-1'), '50', 'completion updated shared Drive AV data');
 select is((select last_event from public.ph_request_history where unique_id = 'REQ-CSR-1'), 'completed', 'completion froze final History');
+set local role postgres;
 select is((select count(*)::integer from public.ph_request_delivery_outbox where request_id = 'REQ-CSR-1' and event_type = 'request_completed'), 1, 'completion queued one delivery event');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);
 
 select lives_ok(
   $q$select public.upsert_my_push_subscription(
