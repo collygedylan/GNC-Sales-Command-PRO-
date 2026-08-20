@@ -32,17 +32,17 @@ const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enab
 const appsScriptBackend = read('Code.gs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.20.01';
+  const release = 'V2026.08.20.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.20.01');
+  assert.equal(packageJson.version, '2026.08.20.02');
 });
 
 test('every verified session restores its user-scoped theme before the app shell paints', () => {
   assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082001.min.css'));
+  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082002.min.css'));
   assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
   assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
   assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
@@ -627,7 +627,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /cp -r assets _site\/assets/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
-  assert.match(serviceWorker, /live-app-runtime-v2026082001\.min\.js/);
+  assert.match(serviceWorker, /live-app-runtime-v2026082002\.min\.js/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
@@ -932,6 +932,25 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.match(authAdmin, /@greenleafnursery\.com/);
   assert.match(authAdmin, /admin\.auth\.admin\.updateUserById/);
   assert.doesNotMatch(authAdmin, /readSupabaseOrAppSessionFromRequest/);
+});
+
+test('V02 paged dataset reads preserve the authenticated RLS identity and Drive degrades safely', () => {
+  const authenticatedRead = html.slice(
+    html.indexOf('async function fetchAuthenticatedSupabaseReadPage'),
+    html.indexOf('async function fetchSupabaseRowsPageBatch')
+  );
+  const pagedRead = html.slice(
+    html.indexOf('async function fetchSupabasePage'),
+    html.indexOf('function isOptionalTableMissingError')
+  );
+  assert.match(authenticatedRead, /getNativeAuthRequestHeaders\(\)/);
+  assert.match(authenticatedRead, /Authorization: `Bearer \$\{nativeAuthAccessToken\}`|\.\.\.nativeHeaders/);
+  assert.match(authenticatedRead, /runAppApiSupabaseWrite\(safeTable, 'GET'/);
+  assert.doesNotMatch(authenticatedRead, /Authorization['"]?\s*:\s*['"]Bearer ['"]?\s*\+\s*SUPABASE_KEY/);
+  assert.match(pagedRead, /fetchAuthenticatedSupabaseReadPage\(table, queryString/);
+  assert.doesNotMatch(pagedRead, /Authorization['"]?\s*:\s*['"]Bearer ['"]?\s*\+\s*SUPABASE_KEY/);
+  assert.match(html, /reportSemanticHealthEvent\('dataset_load_failed', 'data_sync', classifyDatasetLoadFailureCode\(error\)/);
+  assert.match(html, /viewId === 'drive'[\s\S]*required: \[\{ key: 'master', mode: 'full' \}\][\s\S]*background: \[\{ key: 'warehouseAssignedItems', mode: 'full' \}\]/);
 });
 
 test('V12 synchronizes password changes and exposes user-initiated passkeys to every eligible account', () => {

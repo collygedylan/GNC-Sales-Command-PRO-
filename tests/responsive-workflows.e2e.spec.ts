@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.20.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.02', { waitUntil: 'domcontentloaded' });
 
   const username = page.locator('#username-input');
   const accessCode = page.locator('#pin-code');
@@ -34,7 +34,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
     };
     window.setInterval(sample, 25);
   });
-  await page.goto('/?e2e=V2026.08.20.01&theme=dark', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.02&theme=dark', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
 
   const result = await page.evaluate(() => ({
@@ -51,7 +51,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
 });
 
 test('Drive Common Name search preserves grouped drill results', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.20.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.20.02', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
       shouldRenderDriveUniversalDetailedSearch?: () => boolean;

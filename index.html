@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082001.min.css?v=V2026.08.20.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082002.min.css?v=V2026.08.20.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.20.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.20.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.02">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7438,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.01').trim() || 'V2026.08.20.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.02').trim() || 'V2026.08.20.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8918,7 +8918,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30181,7 +30181,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.01').trim() || 'V2026.08.20.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.02').trim() || 'V2026.08.20.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -34231,33 +34231,60 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
         }
 
+        function classifyDatasetLoadFailureCode(error = null) {
+            const message = String(error && error.message ? error.message : error || '').toLowerCase();
+            if (message.includes('42501') || message.includes('permission denied') || message.includes('forbidden') || message.includes('(403)')) return 'DATASET_PERMISSION_DENIED';
+            if (message.includes('unauthorized') || message.includes('(401)') || message.includes('session unavailable')) return 'DATASET_AUTH_REQUIRED';
+            if (message.includes('timed out') || message.includes('timeout')) return 'DATASET_READ_TIMEOUT';
+            if (message.includes('failed to fetch') || message.includes('network')) return 'DATASET_NETWORK_FAILURE';
+            return 'DATASET_LOAD_FAILED';
+        }
+
+        async function fetchAuthenticatedSupabaseReadPage(table, queryString = '', options = {}) {
+            const safeTable = normalizeAppTableName(table);
+            const opts = options && typeof options === 'object' ? options : {};
+            const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
+            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (nativeHeaders) {
+                const headers = {
+                    ...nativeHeaders,
+                    'Cache-Control': 'private, no-store'
+                };
+                if (opts.count === true) headers.Prefer = 'count=exact';
+                const url = `${SUPABASE_URL}/rest/v1/${safeTable}?${String(queryString || '').trim()}`;
+                const response = await fetchWithTimeout(url, { method: 'GET', headers }, timeoutMs, `${safeTable} authenticated read`);
+                if (!response.ok) throw new Error(await getResponseError(response, `Supabase authenticated read failed (${response.status})`));
+                const text = await response.text();
+                const rows = text ? JSON.parse(text) : [];
+                return {
+                    rows: Array.isArray(rows) ? rows : [],
+                    total: parseSupabaseContentRangeTotal(response),
+                    authSource: 'native'
+                };
+            }
+
+            const rows = await runAppApiSupabaseWrite(safeTable, 'GET', null, String(queryString || '').trim(), { timeoutMs });
+            return {
+                rows: Array.isArray(rows) ? rows : [],
+                total: null,
+                authSource: 'app-api'
+            };
+        }
+
         async function fetchSupabaseRowsPage(table, query = 'select=*', limit = 1000, offset = 0, options = {}) {
             table = normalizeAppTableName(table);
             const safeLimit = Math.max(1, Number(limit) || 1000);
             const safeOffset = Math.max(0, Number(offset) || 0);
             const queryString = query ? `${query}&limit=${safeLimit}&offset=${safeOffset}` : `limit=${safeLimit}&offset=${safeOffset}`;
-            try {
-                const rows = await runAppApiSupabaseWrite(table, 'GET', null, queryString, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
-                return {
-                    offset: safeOffset,
-                    rows: Array.isArray(rows) ? rows : [],
-                    total: null
-                };
-            } catch (secureReadError) {
-                if (!SUPABASE_KEY) throw secureReadError;
-                const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
-                if (options && options.count === true) headers.Prefer = 'count=exact';
-                const response = await fetchWithTimeout(url, { method: 'GET', headers }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                const text = await response.text();
-                const rows = text ? JSON.parse(text) : [];
-                return {
-                    offset: safeOffset,
-                    rows: Array.isArray(rows) ? rows : [],
-                    total: parseSupabaseContentRangeTotal(response)
-                };
-            }
+            const result = await fetchAuthenticatedSupabaseReadPage(table, queryString, {
+                timeoutMs: SUPABASE_READ_TIMEOUT_MS,
+                count: options && options.count === true
+            });
+            return {
+                offset: safeOffset,
+                rows: result.rows,
+                total: result.total
+            };
         }
 
         async function fetchSupabaseRowsPageBatch(table, query, limit, offsets, concurrency) {
@@ -34405,17 +34432,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 for (const attemptLimit of attemptLimits) {
                     try {
                         const queryString = query ? `${query}&limit=${attemptLimit}&offset=${offset}` : `limit=${attemptLimit}&offset=${offset}`;
-                        try {
-                            const rows = await runAppApiSupabaseWrite(table, 'GET', null, queryString, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
-                            return Array.isArray(rows) ? rows : [];
-                        } catch (secureReadError) {
-                            if (!SUPABASE_KEY) throw secureReadError;
-                            const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                            const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                            if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                            const text = await response.text();
-                            return text ? JSON.parse(text) : [];
-                        }
+                        const result = await fetchAuthenticatedSupabaseReadPage(table, queryString, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                        return result.rows;
                     } catch (error) {
                         lastError = error;
                         const message = String(error && error.message || '');
@@ -34721,7 +34739,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         queueDatasetLoad('master', 'full', isTouchConstrainedDevice() ? 700 : 220);
                     }
                     else if (key === 'customerRepMap' && isOptionalTableMissingError(error, definition.table)) rows = [];
-                    else throw error;
+                    else {
+                        reportSemanticHealthEvent('dataset_load_failed', 'data_sync', classifyDatasetLoadFailureCode(error), {
+                            reason: `${key}:${modeLabel}`
+                        });
+                        throw error;
+                    }
                 }
                 if (shouldPauseInterruptibleRefresh(options)) {
                     options.interruptedDuringLoad = true;
@@ -34987,7 +35010,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getViewLoadingConfig(viewId) {
-            if (viewId === 'drive') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }, { key: 'warehouseAssignedItems', mode: 'full' }], background: [], label: 'Loading verified Drive rows and assignments...' });
+            if (viewId === 'drive') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [{ key: 'warehouseAssignedItems', mode: 'full' }], label: 'Loading verified Drive rows...' });
             if (viewId === 'crop-roll') {
                 if (cropRollDriveSchemaReady === false) {
                     return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading SY 27 rows from Drive Mode...' });
