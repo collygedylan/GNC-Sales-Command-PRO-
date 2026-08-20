@@ -9,21 +9,21 @@ insert into auth.users (
   ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rep_test@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'csr_test@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dylan_collyge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
-  ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'eval_test@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
+  ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abigail_vazquez@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
 on conflict (id) do nothing;
 
 insert into public.profiles (id, username, display_name, role) values
   ('10000000-0000-0000-0000-000000000001', 'rep_test', 'Rep Test', 'REP'),
   ('10000000-0000-0000-0000-000000000002', 'csr_test', 'CSR Test', 'CSR'),
   ('10000000-0000-0000-0000-000000000003', 'dylan_collyge', 'Dylan Collyge', 'ADMIN'),
-  ('10000000-0000-0000-0000-000000000004', 'eval_test', 'Eval Test', 'EVAL')
+  ('10000000-0000-0000-0000-000000000004', 'abigail_vazquez', 'Abigail Vazquez', 'EVAL')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
 insert into public.ph_master_inventory (
-  unique_id, itemcode, commonname, contsize, locationcode, lotcode,
+  unique_id, itemcode, genusname, commonname, contsize, locationcode, lotcode,
   ptravailable, priority, holdstopcode, holdstopreason, app_tab_assignment
 ) values (
-  'MASTER-TEST-1', 'ITEM-TEST-1', 'Drive Canonical Name', '#3', 'A-1', 'LOT-1',
+  'MASTER-TEST-1', 'ITEM-TEST-1', 'Test Genus', 'Drive Canonical Name', '#3', 'A-1', 'LOT-1',
   '20', '1', '', '', 'location'
 ) on conflict (unique_id) do update set commonname = excluded.commonname;
 
@@ -106,17 +106,21 @@ select lives_ok(
 select is((select username from public.ph_push_subscriptions where endpoint = 'https://push.invalid/test'), 'csr_test', 'push identity comes from caller profile');
 
 select throws_ok(
-  $q$select public.set_eval_itemcode_assignment('ITEM-TEST-1', 'eval_test')$q$,
+  $q$select public.set_eval_itemcode_assignment('ITEM-TEST-1', 'Test Genus', 'abigail_vazquez')$q$,
   '42501', 'EVAL_ASSIGNMENT_FORBIDDEN',
   'unauthorized user cannot assign Eval ItemCodes'
 );
 
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
 select lives_ok(
-  $q$select public.set_eval_itemcode_assignment('ITEM-TEST-1', 'eval_test')$q$,
-  'Dylan can assign an ItemCode to an active EVAL user'
+  $q$select public.set_eval_itemcode_assignment('ITEM-TEST-1', 'Test Genus', 'abigail_vazquez')$q$,
+  'Dylan can assign an ItemCode + GenusName to a roster user'
 );
-select is((select assignedto from public.ph_warehouse_assigned_items where itemcode_normalized = 'ITEM-TEST-1'), 'eval_test', 'Eval assignment persisted canonically');
+select is(
+  (select assignedto || '|' || assignment_key from public.ph_warehouse_assigned_items where itemcode_normalized = 'ITEM-TEST-1'),
+  'abigail_vazquez|ITEM-TEST-1|test genus',
+  'Eval assignment persisted under the composite key'
+);
 
 select * from finish();
 rollback;
