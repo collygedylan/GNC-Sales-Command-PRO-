@@ -71,7 +71,7 @@ test.describe('Drive-canonical request transactions', () => {
     const password = 'Request-test-2026!';
     const rep = await createUser(`rep_${suffix}@example.com`, password, `rep_${suffix}`, 'REP');
     const csr = await createUser(`csr_${suffix}@example.com`, password, `csr_${suffix}`, 'CSR');
-    const evalUser = await createUser(`eval_${suffix}@example.com`, password, `eval_${suffix}`, 'EVAL');
+    const evalUser = await createUser(`eval_${suffix}@example.com`, password, 'abigail_vazquez', 'EVAL');
     const dylan = await createUser(`dylan_${suffix}@example.com`, password, 'dylan_collyge', 'ADMIN');
 
     const masterId = `MASTER-${suffix}`;
@@ -84,7 +84,7 @@ test.describe('Drive-canonical request transactions', () => {
         'Content-Type': 'application/json',
         Prefer: 'return=representation'
       },
-      body: JSON.stringify({ unique_id: masterId, itemcode, commonname: 'Canonical Drive Name', ptravailable: '20', app_tab_assignment: 'location' })
+      body: JSON.stringify({ unique_id: masterId, itemcode, genusname: 'Test Genus', commonname: 'Canonical Drive Name', ptravailable: '20', app_tab_assignment: 'location' })
     });
     expect(master.response.ok, JSON.stringify(master.body)).toBeTruthy();
 
@@ -167,12 +167,13 @@ test.describe('Drive-canonical request transactions', () => {
     });
     expect(push.response.ok, JSON.stringify(push.body)).toBeTruthy();
 
-    const deniedAssignment = await rpc('set_eval_itemcode_assignment', csrToken, { itemcode, assignedto: evalUser.username });
+    const deniedAssignment = await rpc('set_eval_itemcode_assignment', csrToken, { itemcode, genusname: 'Test Genus', assignedto: evalUser.username });
     expect(deniedAssignment.response.status).toBe(403);
     const dylanToken = await signIn(dylan);
-    const assignment = await rpc('set_eval_itemcode_assignment', dylanToken, { itemcode, assignedto: evalUser.username });
+    const assignment = await rpc('set_eval_itemcode_assignment', dylanToken, { itemcode, genusname: 'Test Genus', assignedto: evalUser.username });
     expect(assignment.response.ok, JSON.stringify(assignment.body)).toBeTruthy();
     expect(assignment.body.assignedto).toBe(evalUser.username);
+    expect(assignment.body.assignment_key).toBe(`${itemcode}|test genus`);
 
     await page.goto('/');
     const browserBatchId = crypto.randomUUID();
