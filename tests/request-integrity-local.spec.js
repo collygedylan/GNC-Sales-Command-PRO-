@@ -13,6 +13,17 @@ async function jsonFetch(url, options = {}) {
 }
 
 async function createUser(email, password, username, role) {
+  const existing = await jsonFetch(`${localUrl}/rest/v1/profiles?select=id&username=eq.${encodeURIComponent(username)}`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+  });
+  expect(existing.response.ok, JSON.stringify(existing.body)).toBeTruthy();
+  for (const profile of existing.body || []) {
+    const removed = await jsonFetch(`${localUrl}/auth/v1/admin/users/${encodeURIComponent(profile.id)}`, {
+      method: 'DELETE',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    });
+    expect(removed.response.ok, JSON.stringify(removed.body)).toBeTruthy();
+  }
   const created = await jsonFetch(`${localUrl}/auth/v1/admin/users`, {
     method: 'POST',
     headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
