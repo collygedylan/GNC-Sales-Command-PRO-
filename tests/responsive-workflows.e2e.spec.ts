@@ -149,7 +149,8 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
     };
   });
 
-  expect(configs.query).toContain('date_completed=is.null');
+  expect(configs.query).toBe('select=*&order=unique_id.desc');
+  expect(configs.query).not.toContain('date_completed=is.null');
   expect(configs.pending).toEqual({ required: ['requests:full'], background: [] });
   expect(configs.reps.required).toEqual(['requests:full', 'requestHistory:full', 'salesCredits:full']);
   expect(configs.suspendTag.required).toEqual(['requests:full', 'soc:full']);
