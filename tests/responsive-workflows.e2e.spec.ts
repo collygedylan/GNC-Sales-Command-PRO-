@@ -93,6 +93,79 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
   expect(result.inventoryFetches).toBe(0);
 });
 
+test('Manager Historical Report drills Common Name to ContSize and sends only chosen columns', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.21.02', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
+  const result = await page.evaluate(() => window.eval(`(async () => {
+    const originalSupabaseRpc = supabaseRpc;
+    const originalCanViewManagerHistoricalReport = canViewManagerHistoricalReport;
+    const calls = [];
+    try {
+      canViewManagerHistoricalReport = () => true;
+      activeHomeTab = 'historical-report';
+      managersSearchTerm = 'feather';
+      supabaseRpc = async (name, body) => {
+        calls.push({ name, body: JSON.parse(JSON.stringify(body || {})) });
+        if (name === 'search_historical_inventory_common_names') return [{
+          commonname: 'Karl Foerster Feather Reed Grass', contsize_count: 1, historical_row_count: 2
+        }];
+        if (name === 'get_historical_inventory_container_sizes') return [{
+          contsize: '#1', itemcode_count: 1, historical_row_count: 2
+        }];
+        if (name === 'get_historical_inventory_rows') return {
+          rows: [{
+            unique_id: 'history-1', report_date: '2026-08-20',
+            commonname: 'Karl Foerster Feather Reed Grass', contsize: '#1',
+            values: Object.fromEntries((body.selected_columns || []).map((key) => [key, key === 'holdstopcode' ? 'H' : 'test']))
+          }],
+          selected_columns: body.selected_columns,
+          has_more: false,
+          next_cursor: null
+        };
+        throw new Error('unexpected rpc');
+      };
+
+      const names = await loadManagerHistoricalCommonNames('feather', true);
+      await selectManagerHistoricalCommonName('Karl Foerster Feather Reed Grass');
+      await selectManagerHistoricalContSize('#1');
+      toggleManagerHistoricalColumn('locationcode', false);
+      toggleManagerHistoricalColumn('lotcode', false);
+      toggleManagerHistoricalColumn('ptravailable', false);
+      toggleManagerHistoricalColumn('holdstopreason', false);
+      setManagerHistoricalDateRange('start', '2026-08-01');
+      setManagerHistoricalDateRange('end', '2026-08-21');
+      await loadManagerHistoricalRows(true);
+      const rowCall = calls.filter((call) => call.name === 'get_historical_inventory_rows').at(-1);
+      const rows = getFilteredManagerHistoricalRows();
+      const rendered = renderManagerHistoricalReportPanel();
+      return {
+        names: names.map((row) => row.commonname),
+        values: rows[0] ? rows[0].values : null,
+        calls,
+        rowArgs: rowCall && rowCall.body,
+        rendered,
+        canDylan: originalCanViewManagerHistoricalReport('dylan_collyge'),
+        canOther: originalCanViewManagerHistoricalReport('jd_jones')
+      };
+    } finally {
+      supabaseRpc = originalSupabaseRpc;
+      canViewManagerHistoricalReport = originalCanViewManagerHistoricalReport;
+    }
+  })()`));
+
+  expect(result.names).toEqual(['Karl Foerster Feather Reed Grass']);
+  expect(result.values).toEqual({ report_date: 'test', itemcode: 'test', holdstopcode: 'H' });
+  expect(result.rowArgs.selected_columns).toEqual(['report_date', 'itemcode', 'holdstopcode']);
+  expect(result.rowArgs.start_date).toBe('2026-08-01');
+  expect(result.rowArgs.end_date).toBe('2026-08-21');
+  expect(result.rendered).toContain('Karl Foerster Feather Reed Grass');
+  expect(result.rendered).toContain('#1');
+  expect(result.rendered).toContain('Columns (3)');
+  expect(result.rendered).toContain('Hold/Stop Code');
+  expect(result.canDylan).toBe(true);
+  expect(result.canOther).toBe(false);
+});
+
 test('an acknowledged assignment immediately leaves the Unassigned filter', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyAcknowledgedEvalAssignmentResults === 'function');

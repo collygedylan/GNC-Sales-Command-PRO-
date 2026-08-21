@@ -37,14 +37,15 @@ const reliableDeliveryMigration = read('supabase/migrations/20260820230245_relia
 const deliveryWorker = read('supabase/functions/request-delivery-worker/index.ts');
 const productionAuthHealthWorkflow = read('.github/workflows/production-auth-health.yml');
 const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
+const historicalReportMigration = read('supabase/migrations/20260821202202_manager_historical_report.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.21.01';
+  const release = 'V2026.08.21.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.21.01');
+  assert.equal(packageJson.version, '2026.08.21.02');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1287,4 +1288,31 @@ test('Drive Around inventory writes avoid parallel lock contention and retry saf
   assert.match(upsertExecutor, /SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE/);
   assert.match(upsertExecutor, /executeSupabaseUpsertRequestWithRecovery_/);
   assert.match(appsScriptBackend, /Retrying as/);
+});
+
+test('Managers Historical Report uses secured server filtering and Drive-style drill-downs', () => {
+  assert.match(html, /const MANAGER_HISTORICAL_REPORT_VIEW = 'historical-report'/);
+  assert.match(html, /Historical Report/);
+  assert.match(html, /search_historical_inventory_common_names/);
+  assert.match(html, /get_historical_inventory_container_sizes/);
+  assert.match(html, /get_historical_inventory_rows/);
+  assert.match(html, /Search historical Common Names/);
+  assert.match(html, /selectManagerHistoricalCommonName/);
+  assert.match(html, /selectManagerHistoricalContSize/);
+  assert.match(html, /Columns \(\$\{selected\.size\}\)/);
+  assert.match(html, /setManagerHistoricalDisplayMode\('cards'\)/);
+  assert.match(html, /setManagerHistoricalDisplayMode\('grid'\)/);
+  assert.match(html, /Load 100 More Rows/);
+  assert.match(historicalReportMigration, /public\.ph_historical_inventory_dimensions/);
+  assert.match(historicalReportMigration, /private\.can_manage_eval_assignments\(\)/);
+  assert.match(historicalReportMigration, /HISTORICAL_REPORT_FORBIDDEN/);
+  assert.match(historicalReportMigration, /allowed_columns constant text\[\]/);
+  assert.match(historicalReportMigration, /cursor_report_date/);
+  assert.match(historicalReportMigration, /order by r\.report_date desc, r\.unique_id desc/);
+  const historyRowsRpc = historicalReportMigration.slice(
+    historicalReportMigration.indexOf('create or replace function public.get_historical_inventory_rows'),
+    historicalReportMigration.indexOf('revoke all on function public.search_historical_inventory_common_names')
+  );
+  assert.match(historyRowsRpc, /security invoker/);
+  assert.doesNotMatch(historyRowsRpc, /security definer/);
 });

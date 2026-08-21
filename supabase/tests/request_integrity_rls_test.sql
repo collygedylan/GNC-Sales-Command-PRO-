@@ -27,6 +27,22 @@ insert into public.ph_master_inventory (
   '20', '1', '', '', 'location'
 ) on conflict (unique_id) do update set commonname = excluded.commonname;
 
+insert into public.ph_drive_around_report_rows (
+  unique_id, file_id, file_name, report_date, row_number, item_key,
+  itemcode, commonname, genus, contsize, locationcode, lotcode,
+  season, salesyear, ptravailable, holdstopcode, holdstopreason
+) values
+  ('HISTORY-TEST-1', 'HISTORY-FILE-1', 'DriveAround-20260629.xlsx', '2026-06-29', 1, 'ITEM-HISTORY-1',
+   'ITEM-HISTORY-1', 'Test Historical Grass', 'Calamagrostis', '#1', 'A.01.001', '27.F1',
+   'F1', '27', 12, 'H', 'size'),
+  ('HISTORY-TEST-2', 'HISTORY-FILE-2', 'DriveAround-20260630.xlsx', '2026-06-30', 1, 'ITEM-HISTORY-1',
+   'ITEM-HISTORY-1', 'Test Historical Grass', 'Calamagrostis', '#1', 'A.01.001', '27.F1',
+   'F1', '27', 12, '', '')
+on conflict (unique_id) do update set
+  report_date = excluded.report_date,
+  holdstopcode = excluded.holdstopcode,
+  holdstopreason = excluded.holdstopreason;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
 
@@ -171,6 +187,16 @@ select throws_ok(
   '42501', 'EVAL_REPORT_SETTINGS_FORBIDDEN',
   'sales reps cannot update Eval Report settings'
 );
+select throws_ok(
+  $q$select public.search_historical_inventory_common_names('historical grass', 25)$q$,
+  '42501', 'HISTORICAL_REPORT_FORBIDDEN',
+  'sales reps cannot search Manager Historical Reports'
+);
+select is(
+  (select count(*)::integer from public.ph_historical_inventory_dimensions where itemcode_key = 'ITEM-HISTORY-1'),
+  0,
+  'sales reps cannot read the historical drill-down dimension directly'
+);
 select ok(
   not has_table_privilege('authenticated', 'public.ph_eval_report_settings', 'UPDATE'),
   'authenticated clients cannot write the Eval Report settings table directly'
@@ -184,6 +210,44 @@ select lives_ok(
 select lives_ok(
   $q$select public.set_eval_report_settings(140, 6, 11)$q$,
   'Dylan can update validated Eval Report settings'
+);
+select lives_ok(
+  $q$select public.search_historical_inventory_common_names('historical grass', 25)$q$,
+  'Dylan can search historical Common Names'
+);
+select is(
+  (public.search_historical_inventory_common_names('historical grass', 25)->0->>'commonname'),
+  'Test Historical Grass',
+  'historical Common Name search returns the matching drill-down bucket'
+);
+select is(
+  (public.get_historical_inventory_container_sizes('Test Historical Grass')->0->>'contsize'),
+  '#1',
+  'historical Common Name drills into ContSize'
+);
+select is(
+  jsonb_array_length(public.get_historical_inventory_rows(
+    'Test Historical Grass', '#1', array['report_date','holdstopcode','holdstopreason'],
+    '2026-06-29', '2026-06-29', null, null, 100
+  )->'rows'),
+  1,
+  'historical row RPC applies the selected date range'
+);
+select is(
+  (public.get_historical_inventory_rows(
+    'Test Historical Grass', '#1', array['report_date','holdstopcode','holdstopreason'],
+    '2026-06-29', '2026-06-29', null, null, 100
+  )->'rows'->0->'values'->>'holdstopcode'),
+  'H',
+  'historical row RPC preserves requested hold data'
+);
+select throws_ok(
+  $q$select public.get_historical_inventory_rows(
+    'Test Historical Grass', '#1', array['report_date','not_a_real_column'],
+    null, null, null, null, 100
+  )$q$,
+  '22023', 'HISTORICAL_REPORT_COLUMN_INVALID',
+  'historical row RPC rejects non-allowlisted columns'
 );
 select is(
   (select low_stock_max_slts::text || '|' || hold_age_days::text || '|' || location_note_age_days::text || '|' || updated_by
