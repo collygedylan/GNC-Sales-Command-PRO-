@@ -93,8 +93,8 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
   expect(result.inventoryFetches).toBe(0);
 });
 
-test('Manager Historical Report drills Common Name to ContSize and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.21.03', { waitUntil: 'domcontentloaded' });
+test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.21.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -125,6 +125,9 @@ test('Manager Historical Report drills Common Name to ContSize and sends only ch
         throw new Error('unexpected rpc');
       };
 
+      const defaultNames = await loadManagerHistoricalCommonNames('', true);
+      const browseCall = calls.filter((call) => call.name === 'search_historical_inventory_common_names').at(-1);
+      const browseMarkup = renderManagerHistoricalReportPanel();
       const names = await loadManagerHistoricalCommonNames('feather', true);
       managersSearchTerm = 'feather';
       const nameMarkup = renderManagerHistoricalReportPanel();
@@ -143,6 +146,9 @@ test('Manager Historical Report drills Common Name to ContSize and sends only ch
       const rendered = renderManagerHistoricalReportPanel();
       return {
         names: names.map((row) => row.commonname),
+        defaultNames: defaultNames.map((row) => row.commonname),
+        browseArgs: browseCall && browseCall.body,
+        browseMarkup,
         values: rows[0] ? rows[0].values : null,
         calls,
         rowArgs: rowCall && rowCall.body,
@@ -159,6 +165,10 @@ test('Manager Historical Report drills Common Name to ContSize and sends only ch
   })()`));
 
   expect(result.names).toEqual(['Karl Foerster Feather Reed Grass']);
+  expect(result.defaultNames).toEqual(['Karl Foerster Feather Reed Grass']);
+  expect(result.browseArgs).toEqual({ search_text: '', result_limit: 100 });
+  expect(result.browseMarkup).toContain('Browse Common Name');
+  expect(result.browseMarkup).toContain('manager-historical-drive-card');
   expect(result.values).toEqual({ report_date: 'test', itemcode: 'test', holdstopcode: 'H' });
   expect(result.rowArgs.selected_columns).toEqual(['report_date', 'itemcode', 'holdstopcode']);
   expect(result.rowArgs.start_date).toBe('2026-08-01');

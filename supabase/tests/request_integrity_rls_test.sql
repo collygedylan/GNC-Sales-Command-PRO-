@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(51);
+select plan(52);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -219,6 +219,11 @@ select is(
   (public.search_historical_inventory_common_names('historical grass', 25)->0->>'commonname'),
   'Test Historical Grass',
   'historical Common Name search returns the matching drill-down bucket'
+);
+select is(
+  (public.search_historical_inventory_common_names('', 25)->0->>'commonname'),
+  'Test Historical Grass',
+  'historical Common Names browse immediately without a search term'
 );
 select is(
   (public.get_historical_inventory_container_sizes('Test Historical Grass')->0->>'contsize'),

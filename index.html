@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.21.03">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.21.04">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.21.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.21.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.21.03">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.21.04">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,8 +6685,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.21.03"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.21.03"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.21.04"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.21.04"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7439,7 +7439,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.21.03').trim() || 'V2026.08.21.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.21.04').trim() || 'V2026.08.21.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8920,7 +8920,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.21.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.21.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30202,7 +30202,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.21.03').trim() || 'V2026.08.21.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.21.04').trim() || 'V2026.08.21.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -114911,7 +114911,7 @@ C.14.043 C.15.000
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
                 loadManagerEvalReportSettings(false).catch(() => {});
             }
-            if (nextTab === MANAGER_HISTORICAL_REPORT_VIEW && managerHistoricalReportState.level === 'names' && String(managersSearchTerm || '').trim().length >= 2) {
+            if (nextTab === MANAGER_HISTORICAL_REPORT_VIEW && managerHistoricalReportState.level === 'names') {
                 loadManagerHistoricalCommonNames(managersSearchTerm, true).catch(() => {});
             }
             if (nextTab === MANAGER_SHORTAGE_CANCEL_VIEW) {
@@ -117652,14 +117652,6 @@ C.14.043 C.15.000
             if (!canViewManagerHistoricalReport()) return [];
             const state = managerHistoricalReportState;
             const search = String(searchValue || '').trim();
-            if (search.length < 2) {
-                state.commonNames = [];
-                state.lastSearch = search;
-                state.error = '';
-                state.loading = false;
-                scheduleManagersRender(true);
-                return [];
-            }
             if (!force && state.lastSearch.toLowerCase() === search.toLowerCase() && state.commonNames.length) return state.commonNames;
             const token = ++state.requestToken;
             state.loading = true;
@@ -117669,7 +117661,7 @@ C.14.043 C.15.000
             try {
                 const result = await supabaseRpc('search_historical_inventory_common_names', {
                     search_text: search,
-                    result_limit: 75
+                    result_limit: 100
                 }, { timeoutMs: 30000 });
                 if (token !== state.requestToken) return [];
                 state.commonNames = Array.isArray(result) ? result : [];
@@ -117974,13 +117966,11 @@ C.14.043 C.15.000
             if (state.level === 'names') {
                 const term = String(firstNonEmptyValue(managersSearchTerm, state.lastSearch, '') || '').trim();
                 const content = state.loading
-                    ? '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">Searching historical Common Names...</div>'
-                    : (term.length < 2
-                        ? '<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-10 text-center"><i class="ph-bold ph-magnifying-glass text-4xl text-emerald-500"></i><div class="mt-3 text-lg font-black text-slate-900">Search a Common Name above</div><div class="mt-1 text-sm font-semibold text-slate-500">Enter at least two letters, then choose the Common Name and ContSize.</div></div>'
-                        : (state.commonNames.length
-                            ? renderManagerHistoricalDrillResults(state.commonNames, 'names')
-                            : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No historical Common Names matched that search.</div>'));
-                const crumbText = term.length >= 2 ? `Historical Report > Select Common Name (${state.commonNames.length} matches)` : 'Historical Report > Common Name';
+                    ? `<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">${term ? 'Searching' : 'Loading'} historical Common Names...</div>`
+                    : (state.commonNames.length
+                        ? renderManagerHistoricalDrillResults(state.commonNames, 'names')
+                        : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">${term ? 'No historical Common Names matched that search.' : 'No historical Common Names are available.'}</div>`);
+                const crumbText = term ? `Historical Report > Select Common Name (${state.commonNames.length} matches)` : `Historical Report > Browse Common Name (${state.commonNames.length} loaded)`;
                 return `<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, state.commonNames.length ? `${formatManagerHistoricalCount(state.commonNames.length)} names` : '')}${errorHtml}${content}</div>`;
             }
             if (state.level === 'sizes') {
@@ -119690,9 +119680,9 @@ C.14.043 C.15.000
             if (activeHomeTab === MANAGER_HISTORICAL_REPORT_VIEW && managerHistoricalReportState.level === 'names') {
                 managerHistoricalReportState.requestToken += 1;
                 managerHistoricalReportState.loading = false;
-                managerHistoricalReportState.commonNames = [];
                 managerHistoricalReportState.lastSearch = '';
                 managerHistoricalReportState.error = '';
+                loadManagerHistoricalCommonNames('', true).catch(() => {});
             }
             syncManagersHeaderChrome();
             scheduleSearchRender('managers-search', () => {

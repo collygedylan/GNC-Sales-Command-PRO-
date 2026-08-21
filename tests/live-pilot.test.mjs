@@ -38,14 +38,15 @@ const deliveryWorker = read('supabase/functions/request-delivery-worker/index.ts
 const productionAuthHealthWorkflow = read('.github/workflows/production-auth-health.yml');
 const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
 const historicalReportMigration = read('supabase/migrations/20260821202202_manager_historical_report.sql');
+const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.21.03';
+  const release = 'V2026.08.21.04';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.21.03');
+  assert.equal(packageJson.version, '2026.08.21.04');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1290,7 +1291,7 @@ test('Drive Around inventory writes avoid parallel lock contention and retry saf
   assert.match(appsScriptBackend, /Retrying as/);
 });
 
-test('Managers Historical Report uses secured server filtering and Drive-style drill-downs', () => {
+test('Managers Historical Report browses immediately with secured server filtering and Drive-style drill-downs', () => {
   assert.match(html, /const MANAGER_HISTORICAL_REPORT_VIEW = 'historical-report'/);
   assert.match(html, /Historical Report/);
   assert.match(html, /search_historical_inventory_common_names/);
@@ -1303,6 +1304,9 @@ test('Managers Historical Report uses secured server filtering and Drive-style d
   assert.match(html, /function renderManagerHistoricalDriveChrome/);
   assert.match(html, /setManagerHistoricalDisplayMode\('\$\{mode\}'\)/);
   assert.match(html, /Load 100 More Rows/);
+  assert.match(html, /loadManagerHistoricalCommonNames\(managersSearchTerm, true\)/);
+  assert.match(html, /result_limit: 100/);
+  assert.match(html, /Browse Common Name/);
   const historicalRenderer = html.slice(
     html.indexOf('function renderManagerHistoricalCommonNameCard'),
     html.indexOf('function getManagerAssignedItemsExportRows')
@@ -1318,6 +1322,10 @@ test('Managers Historical Report uses secured server filtering and Drive-style d
   assert.match(historicalReportMigration, /allowed_columns constant text\[\]/);
   assert.match(historicalReportMigration, /cursor_report_date/);
   assert.match(historicalReportMigration, /order by r\.report_date desc, r\.unique_id desc/);
+  assert.match(historicalReportBrowseMigration, /where safe_search = '' or strpos\(d\.commonname_key, safe_search\) > 0/);
+  assert.match(historicalReportBrowseMigration, /private\.can_manage_eval_assignments\(\)/);
+  assert.match(historicalReportBrowseMigration, /security invoker/);
+  assert.match(historicalReportBrowseMigration, /revoke all on function public\.search_historical_inventory_common_names\(text, integer\) from public, anon/);
   assert.match(performanceWorkflow, /historical_report_baseline\.sql/);
   assert.match(performanceWorkflow, /20260821202202_manager_historical_report\.sql/);
   const historyRowsRpc = historicalReportMigration.slice(
