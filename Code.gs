@@ -351,6 +351,12 @@ const SUPABASE_DELETE_URL_MAX_LENGTH = 1800;
 const SUPABASE_FETCH_PAGE_SIZE = 1000;
 const SUPABASE_PAGED_READ_FETCH_BATCH_SIZE = 8;
 const SUPABASE_UPSERT_FETCH_BATCH_SIZE = 6;
+// Master inventory writes execute several row-level projection/invalidation triggers.
+// Keep these requests serial and comfortably below PostgREST's statement timeout.
+const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 200;
+const SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE = 1;
+const SUPABASE_UPSERT_RETRY_COUNT = 3;
+const SUPABASE_UPSERT_RETRY_DELAY_MS = 900;
 const SUPABASE_DELETE_FETCH_BATCH_SIZE = 2;
 const SUPABASE_BY_ID_FETCH_BATCH_SIZE = 6;
 const SUPABASE_MASTER_FETCH_PAGE_SIZE = 1000;
@@ -3298,7 +3304,7 @@ function pushToSupabaseLegacy_(tableName, payloadArray) {
 
 // Override the legacy upsert helper so failed Supabase responses stop the sync immediately.
 function buildSupabaseUpsertRequests_(tableName, payloadArray) {
-  const chunkSize = 1000;
+  const chunkSize = isMasterInventoryTable_(tableName) ? SUPABASE_MASTER_UPSERT_CHUNK_SIZE : 1000;
   let requests = [];
   for (let i = 0; i < payloadArray.length; i += chunkSize) {
     const chunk = normalizeSupabaseUpsertChunk(payloadArray.slice(i, i + chunkSize));
@@ -3314,6 +3320,55 @@ function buildSupabaseUpsertRequests_(tableName, payloadArray) {
     });
   }
   return requests;
+}
+
+function isSuccessfulSupabaseWriteResponse_(response) {
+  const code = response.getResponseCode();
+  return code === 200 || code === 201 || code === 204;
+}
+
+function extractSupabaseErrorCode_(body) {
+  try {
+    const parsed = JSON.parse(String(body || ''));
+    return String(parsed && parsed.code || '').trim().toUpperCase();
+  } catch (error) {
+    return '';
+  }
+}
+
+function isRetryableSupabaseUpsertFailure_(httpCode, body) {
+  const code = Number(httpCode) || 0;
+  const dbCode = extractSupabaseErrorCode_(body);
+  const retryableDbCodes = {
+    '40001': true,
+    '40P01': true,
+    '55P03': true,
+    '57014': true
+  };
+  if (retryableDbCodes[dbCode]) return true;
+  if ([408, 425, 429, 502, 503, 504].indexOf(code) !== -1) return true;
+  if (code !== 500) return false;
+  const message = String(body || '').toLowerCase();
+  return message.includes('statement timeout') ||
+    message.includes('canceling statement') ||
+    message.includes('temporarily unavailable') ||
+    message.includes('internal server error') ||
+    message.includes('backend error');
+}
+
+function retrySupabaseUpsertRequest_(tableName, request, initialResponse, requestNumber) {
+  let response = initialResponse;
+  for (let attempt = 2; attempt <= SUPABASE_UPSERT_RETRY_COUNT; attempt++) {
+    const code = response.getResponseCode();
+    const body = response.getContentText();
+    if (!isRetryableSupabaseUpsertFailure_(code, body)) break;
+    console.warn(`[RETRY] Transient Supabase upsert failure for ${tableName} chunk ${requestNumber} ` +
+      `(Code ${code}, attempt ${attempt}/${SUPABASE_UPSERT_RETRY_COUNT}).`);
+    Utilities.sleep(SUPABASE_UPSERT_RETRY_DELAY_MS * (attempt - 1));
+    response = UrlFetchApp.fetch(request.url, request);
+    if (isSuccessfulSupabaseWriteResponse_(response)) break;
+  }
+  return response;
 }
 
 function extractMissingSupabaseColumnNames_(body) {
@@ -3353,11 +3408,17 @@ function removeSupabaseColumnsFromPayload_(payloadArray, columns) {
 function executeSupabaseUpsert_(tableName, payloadArray) {
   const requests = buildSupabaseUpsertRequests_(tableName, payloadArray);
   if (!requests.length) return [];
-  let responses = executeFetchAllBatches(requests, SUPABASE_UPSERT_FETCH_BATCH_SIZE);
+  const fetchBatchSize = isMasterInventoryTable_(tableName)
+    ? SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE
+    : SUPABASE_UPSERT_FETCH_BATCH_SIZE;
+  let responses = executeFetchAllBatches(requests, fetchBatchSize);
   let failures = [];
-  responses.forEach(function(res) {
+  responses.forEach(function(initialResponse, index) {
+    const res = isSuccessfulSupabaseWriteResponse_(initialResponse)
+      ? initialResponse
+      : retrySupabaseUpsertRequest_(tableName, requests[index], initialResponse, index + 1);
     let code = res.getResponseCode();
-    if (code !== 200 && code !== 201 && code !== 204) {
+    if (!isSuccessfulSupabaseWriteResponse_(res)) {
       let body = res.getContentText();
       console.error(`[ERROR] Supabase upsert failed for ${tableName} (Code ${code}): ${body}`);
       failures.push({ code: code, body: body });
