@@ -106,8 +106,8 @@ select is((select match from public.ph_master_inventory where unique_id = 'MASTE
 select is((select last_event from public.ph_request_history where unique_id = 'REQ-CSR-1'), 'completed', 'completion froze final History');
 select is(
   (public.save_request_work('REQ-CSR-1', 1, '{}'::jsonb, false)->>'delivery_state'),
-  'already_completed',
-  'stale completed request cache is acknowledged without another write'
+  'pending',
+  'completed request retry returns the committed delivery state without another write'
 );
 select is(
   (select row_version from public.ph_active_request where unique_id = 'REQ-CSR-1'),
