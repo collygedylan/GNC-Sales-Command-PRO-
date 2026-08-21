@@ -51,7 +51,7 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
 });
 
 test('Dylan and Megan alone receive cached Manager Eval Reports without an inventory refetch', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.20.11', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.21.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalReportIndex === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     processAndLoadData({ data: [

@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.20.11">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.21.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.20.11';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.21.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.11">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.21.01">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,8 +6685,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.11"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.20.11"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.21.01"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.21.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7439,7 +7439,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.11').trim() || 'V2026.08.20.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.21.01').trim() || 'V2026.08.21.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8920,7 +8920,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.21.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -28693,6 +28693,7 @@ const ncrFilterStateByView = {
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
 let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let selectedItemSources=new Map();
 let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[]; let bloomCropUpdateReserveRowsLoading=false; let bloomCropUpdateReserveRowsError=''; let bloomCropUpdateReserveFetchToken=0;
 let bloomShiftReportFormat='report'; let bloomShiftReportColumnMode='custom'; let bloomShiftReportSelectedColumns=new Set(); let bloomShiftReportColumnSearch='';
 let appAdminRecipientUsers=[]; let appAdminRecipientUsersPromise=null; let appAdminRecipientUsersLoaded=false; let appAdminRecipientUsersSignature=''; let appAdminRecipientEmailByToken=new Map(); let appEvalRecipientUsersSignature=''; let appEmailRecipientUsers=[]; let appEmailRecipientUsersPromise=null; let appEmailRecipientUsersLoaded=false; let appEmailRecipientUsersSignature=''; let appEmailRecipientEmailByToken=new Map();
@@ -30199,7 +30200,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.11').trim() || 'V2026.08.20.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.21.01').trim() || 'V2026.08.21.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45421,7 +45422,7 @@ function renderDriveQuickRequestBar(rows = null) {
     const bar = document.getElementById('drive-quick-request-bar');
     if (!bar) return;
     const driveView = document.getElementById('view-drive');
-    const shouldShow = !!(driveView && !driveView.classList.contains('hidden') && activeDriveMode === 'ok' && activeDriveTab === 'card');
+    const shouldShow = !!(driveView && !driveView.classList.contains('hidden') && activeDriveMode === 'ok' && activeDriveTab === 'card' && canUseDriveQuickRequest());
     const returnedRows = Array.isArray(rows) ? rows.filter(Boolean) : (shouldShow ? getDriveCurrentReturnedRows() : []);
     if (!shouldShow || !returnedRows.length) {
         bar.classList.add('hidden');
@@ -45464,7 +45465,10 @@ function selectDriveReturnedRows(silent = false) {
     }
     stats.selectableRows.forEach((item) => {
         const domId = String(item && item.DOM_ID || '').trim();
-        if (domId) selectedItems.add(domId);
+        if (domId) {
+            selectedItems.add(domId);
+            selectedItemSources.set(domId, 'drive');
+        }
     });
     updateGlobalActionBar();
     refreshCartButtons();
@@ -45477,7 +45481,10 @@ function clearDriveReturnedRowsSelection(silent = false) {
     const stats = getDriveReturnedSelectionStats();
     stats.selectableRows.forEach((item) => {
         const domId = String(item && item.DOM_ID || '').trim();
-        if (domId) selectedItems.delete(domId);
+        if (domId) {
+            selectedItems.delete(domId);
+            selectedItemSources.delete(domId);
+        }
     });
     if (!selectedItems.size) {
         cartPanelOpen = false;
@@ -48111,6 +48118,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!item || !isAvOpenLikeItem(item) || !item.DOM_ID) return;
                 if (!selectedItems.has(item.DOM_ID)) restoredCount += 1;
                 selectedItems.add(item.DOM_ID);
+                selectedItemSources.set(item.DOM_ID, 'bloom-draft');
             });
             if (restoredCount) {
                 updateGlobalActionBar();
@@ -48162,11 +48170,15 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const rows = (Array.isArray(draft.selectedRows) && draft.selectedRows.length ? draft.selectedRows : (draft.selectedDomIds || []).map((domId) => ({ domId, uniqueId: '' })));
             selectedItems.clear();
+            selectedItemSources.clear();
             rows.forEach((entry) => {
                 const domId = String(entry && entry.domId || '').trim();
                 const uniqueId = String(entry && entry.uniqueId || '').trim();
                 const item = (domId && findItemByDomId(domId)) || (uniqueId && findItemByUniqueId(uniqueId)) || null;
-                if (item && item.DOM_ID && isAvOpenLikeItem(item)) selectedItems.add(item.DOM_ID);
+                if (item && item.DOM_ID && isAvOpenLikeItem(item)) {
+                    selectedItems.add(item.DOM_ID);
+                    selectedItemSources.set(item.DOM_ID, 'bloom-draft');
+                }
             });
             if (!selectedItems.size) {
                 showToast('Rows Missing', 'The saved rows are no longer available in AV Open Stock.', true);
@@ -81237,7 +81249,13 @@ function toggleDriveQuickRequestItem(domId) {
         function canAddItemToBloomPicker(item = null, sourceView = '') {
             if (!item || !canUseCartInventoryActions([item])) return false;
             const access = getRoleAccessState();
-            if (isCurrentDriveCardOptionsContext(sourceView) && !canCurrentUserSelectDriveWorkflowRow(item, 'drive')) return false;
+            const safeSourceView = String(sourceView || '').trim().toLowerCase();
+            const isDriveBloomPickerSource = safeSourceView === 'drive-bloom';
+            const isDriveContext = isDriveBloomPickerSource || isCurrentDriveCardOptionsContext(safeSourceView);
+            if (isDriveContext && !canCurrentUserSelectDriveWorkflowRow(item, 'drive')) {
+                const canRepAddBloomPickerRow = !!(access && access.isRep && !access.isCsr && isBloomPickerEligibleItem(item));
+                if (!canRepAddBloomPickerRow) return false;
+            }
             if (access.isForeman) return canAccessView('drive') && hasPriorityColumnData(item);
             return true;
         }
@@ -84392,6 +84410,11 @@ function toggleDriveQuickRequestItem(domId) {
             const access = getRoleAccessState();
             const canUseInventoryActions = canUseCartInventoryActions(items);
             const canUseBloomOrders = canUseBloomPicker(items);
+            const hasRepBloomOnlySelection = !!(access.isRep && !access.isCsr && items.some((item) => {
+                const domId = String(item && item.DOM_ID || '').trim();
+                const source = domId ? String(selectedItemSources.get(domId) || '').trim().toLowerCase() : '';
+                return source === 'drive-bloom' || source === 'bloom-draft';
+            }));
             const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             const canUseEvalTaskAction = canUseEvalTaskAssignment() && getEvalTaskSelectionItems(items).length > 0;
             const canUseMoveQueue = canUseInventoryActions && !!currentUser;
@@ -84424,9 +84447,9 @@ function toggleDriveQuickRequestItem(domId) {
                     showAssign: false,
                     showEvalTask: false,
                     showNcr: false,
-                    showRequest: canUseInventoryActions,
-                    showMove: canUseMoveQueue,
-                    showFlyer: canUseFlyerFromBloom,
+                    showRequest: hasRepBloomOnlySelection ? false : canUseInventoryActions,
+                    showMove: hasRepBloomOnlySelection ? false : canUseMoveQueue,
+                    showFlyer: hasRepBloomOnlySelection ? false : canUseFlyerFromBloom,
                     showTakeBack: false,
                     showEndCap: false,
                     showShear: false,
@@ -84821,7 +84844,9 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('In Bloom Picker', 'Tap Bloom in the task bar to review selected rows.');
                 return false;
             }
-            toggleGlobalItem(safeDomId, true, safeSourceView);
+            const access = getRoleAccessState();
+            const selectionSource = safeSourceView === 'drive' && access.isRep && !access.isCsr ? 'drive-bloom' : safeSourceView;
+            toggleGlobalItem(safeDomId, true, selectionSource);
             return false;
         }
 
@@ -84861,7 +84886,9 @@ function toggleDriveQuickRequestItem(domId) {
             isMultiSelectMode=false;
             document.body.classList.remove('multi-select-mode');
             selectedItems.clear();
+            selectedItemSources.clear();
             selectedItems.add(domId);
+            selectedItemSources.set(domId, 'drive');
             cartPanelOpen=false;
             bloomPickerActionsOpen=false;
             updateGlobalActionBar();
@@ -90970,6 +90997,7 @@ function toggleDriveQuickRequestItem(domId) {
             isMultiSelectMode=false;
             document.body.classList.remove('multi-select-mode');
             selectedItems.clear();
+            selectedItemSources.clear();
             cartPanelOpen=false;
             bloomPickerActionsOpen=false;
             bloomShareMenuOpen=false;
@@ -90983,9 +91011,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (!safeDomId) return;
             const hadItem = selectedItems.has(safeDomId);
             const wantsAdd = isChecked === null ? !hadItem : !!isChecked;
-            if (wantsAdd && isCurrentDriveCardOptionsContext(safeSourceView)) {
+            const isDriveBloomPickerSelection = safeSourceView === 'drive-bloom';
+            if (wantsAdd && (isDriveBloomPickerSelection || isCurrentDriveCardOptionsContext(safeSourceView))) {
                 const item = findItemByDomId(safeDomId);
-                if (!canCurrentUserSelectDriveWorkflowRow(item, 'drive')) {
+                const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow(item, 'drive');
+                const canSelectDriveBloomPicker = isDriveBloomPickerSelection && canAddItemToBloomPicker(item, 'drive-bloom');
+                if (!canSelectDriveWorkflow && !canSelectDriveBloomPicker) {
                     showToast('View Only', 'This Drive Mode row is not available for your workflows.', true);
                     return;
                 }
@@ -90998,10 +91029,10 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             if(isChecked===null){
-                if(hadItem)selectedItems.delete(safeDomId);
-                else selectedItems.add(safeDomId);
-            } else if(isChecked)selectedItems.add(safeDomId);
-            else selectedItems.delete(safeDomId);
+                if(hadItem){selectedItems.delete(safeDomId);selectedItemSources.delete(safeDomId);}
+                else{selectedItems.add(safeDomId);selectedItemSources.set(safeDomId, safeSourceView);}
+            } else if(isChecked){selectedItems.add(safeDomId);selectedItemSources.set(safeDomId, safeSourceView);}
+            else{selectedItems.delete(safeDomId);selectedItemSources.delete(safeDomId);}
             const hasItemNow = selectedItems.has(safeDomId);
             if (hadItem === hasItemNow) return;
             if(!selectedItems.size){
@@ -124432,7 +124463,11 @@ C.14.043 C.15.000
                 const driveReverseRailBtn = canUseDriveOptions ? buildNcrApprovalReverseRailButtonHtml(item, 'drive') : '';
                 const driveArgosRailHtml = canUseDriveOptions ? buildArgosInventoryTransactionRailHtml(item, 'drive') : '';
                 const driveReclassActionHtml = driveArgosRailHtml ? `<div class="app-drive-card-reclass" onclick="event.stopPropagation();">${driveArgosRailHtml}</div>` : '';
-                const includeDriveBloomPickerBtn = canSelectDriveWorkflow && (canUseDriveBloomPickerForTakeBack() || isWarehouseAssignedDriveCardForCurrentUser(item));
+                const driveRoleAccess = getRoleAccessState();
+                const includeDriveBloomPickerBtn = canAddItemToBloomPicker(item, sourceView) && (
+                    (driveRoleAccess.isRep && !driveRoleAccess.isCsr)
+                    || (canSelectDriveWorkflow && (canUseDriveBloomPickerForTakeBack() || isWarehouseAssignedDriveCardForCurrentUser(item)))
+                );
                 const driveBottomExtraHtml = `${driveNewCropReleaseBtn}${driveHoldReleaseBtn}${driveReverseRailBtn}`.trim();
                 let quickRequestBtn = '';
                 if(includeDriveBloomPickerBtn || driveBottomExtraHtml){
