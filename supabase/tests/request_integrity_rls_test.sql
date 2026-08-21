@@ -74,7 +74,7 @@ select is(
 
 select throws_ok(
   $q$select * from public.claim_request_delivery_events(1, 'untrusted-client')$q$,
-  '42501', 'DELIVERY_WORKER_FORBIDDEN',
+  '42501', 'permission denied for function claim_request_delivery_events',
   'authenticated clients cannot claim service delivery work'
 );
 

@@ -573,9 +573,9 @@ begin
     return jsonb_build_object(
       'row', canonical, 'row_version', existing.row_version,
       'delivery_state', coalesce((
-        select status from public.ph_request_delivery_outbox
-        where request_id = existing.unique_id and event_type = 'request_completed'
-        order by created_at desc limit 1
+        select o.status from public.ph_request_delivery_outbox o
+        where o.request_id = existing.unique_id and o.event_type = 'request_completed'
+        order by o.created_at desc limit 1
       ), 'already_completed'),
       'acknowledged', true
     );
