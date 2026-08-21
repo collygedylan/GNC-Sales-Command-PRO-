@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: production-login-health
@@ -27,5 +28,55 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Probe production app, login bridge, and Data API
+      - name: Probe and self-heal production app services
+        id: production_probe
+        continue-on-error: true
+        env:
+          PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
         run: node scripts/probe-production-auth-health.mjs
+      - name: Open or update the production health incident
+        if: steps.production_probe.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '[Hosted Health] Production health check failing';
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            const body = [
+              'The five-minute hosted production check failed after its safe self-healing pass.',
+              '',
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              `Commit: ${context.sha}`,
+              '',
+              'The run contains sanitized error codes only. Customer data, notes, photos, names, and URLs are excluded.'
+            ].join('\n');
+            if (existing) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body });
+            }
+      - name: Close a recovered production health incident
+        if: steps.production_probe.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '[Hosted Health] Production health check failing';
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100
+            });
+            for (const issue of issues.filter((item) => !item.pull_request && item.title === title)) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: `Recovered automatically. Healthy run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+              });
+              await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed' });
+            }
+      - name: Fail when production remains unhealthy
+        if: steps.production_probe.outcome == 'failure'
+        run: exit 1

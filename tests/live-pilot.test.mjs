@@ -1253,5 +1253,13 @@ test('hosted monitoring probes the real production login bridge every five minut
   assert.match(productionAuthHealthProbe, /hosted_auth_health_probe_nonexistent/);
   assert.match(productionAuthHealthProbe, /probePayload\?\.reason === 'mismatch'/);
   assert.match(productionAuthHealthProbe, /production_login_bridge_unhealthy_/);
+  assert.match(productionAuthHealthWorkflow, /PRODUCTION_SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(productionAuthHealthWorkflow, /REQUEST_DELIVERY_CRON_SECRET/);
+  assert.match(productionAuthHealthWorkflow, /Open or update the production health incident/);
+  assert.match(productionAuthHealthWorkflow, /Close a recovered production health incident/);
+  assert.match(productionAuthHealthProbe, /request-delivery-worker/);
+  assert.match(productionAuthHealthProbe, /get_hosted_health_snapshot/);
+  assert.match(productionAuthHealthProbe, /ph_app_health_events/);
+  assert.match(productionAuthHealthProbe, /neq\.scheduled_request_health_audit/);
   assert.doesNotMatch(productionAuthHealthProbe, /console\.log\(probeText|process\.stdout\.write\([^\n]*probeText/);
 });

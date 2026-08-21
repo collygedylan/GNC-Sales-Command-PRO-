@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(34);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -160,8 +160,18 @@ select is(
   'ItemCode + GenusName assignments remain unique after the complete backfill'
 );
 
+select throws_ok(
+  $q$select public.get_hosted_health_snapshot()$q$,
+  '42501', 'permission denied for function get_hosted_health_snapshot',
+  'authenticated clients cannot execute the hosted service health snapshot'
+);
+
 set local role postgres;
 select set_config('request.jwt.claim.role', 'service_role', true);
+select lives_ok(
+  $q$select public.get_hosted_health_snapshot()$q$,
+  'service role can record and read the sanitized hosted health snapshot'
+);
 update public.ph_request_delivery_outbox
 set next_attempt_at = now() + interval '1 day'
 where status = 'pending';

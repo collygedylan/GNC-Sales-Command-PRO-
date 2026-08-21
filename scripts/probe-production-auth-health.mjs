@@ -7,6 +7,8 @@ const supabaseUrl = process.env.PRODUCTION_SUPABASE_URL
 const publishableKey = process.env.PRODUCTION_SUPABASE_PUBLISHABLE_KEY
   || source.match(/const SUPABASE_KEY = "([^"]+)"/)?.[1]
   || '';
+const serviceRoleKey = String(process.env.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const deliveryCronSecret = String(process.env.REQUEST_DELIVERY_CRON_SECRET || '').trim();
 const appOrigin = String(process.env.PRODUCTION_APP_ORIGIN || 'https://agmetricapp.com').replace(/\/+$/, '');
 const expectedRelease = source.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1] || '';
 
@@ -31,6 +33,9 @@ function sanitizeCode(value = '') {
 
 const startedAt = Date.now();
 const checks = [];
+let deliveryWorkerResult = null;
+let requestIntegrityHealth = null;
+let recentSemanticFailures = [];
 
 const shellResponse = await checkedFetch(`${appOrigin}/?health=${Date.now()}`, {
   headers: { 'cache-control': 'no-cache' }
@@ -68,13 +73,124 @@ if (!healthyMismatch) {
 }
 checks.push({ name: 'login_bridge_and_data_api', status: probeResponse.status, result: 'expected_mismatch' });
 
+if (serviceRoleKey) {
+  if (!deliveryCronSecret) throw new Error('production_probe_delivery_cron_secret_missing');
+  const serviceHeaders = {
+    apikey: serviceRoleKey,
+    authorization: `Bearer ${serviceRoleKey}`,
+    'content-type': 'application/json'
+  };
+
+  // Idempotently wake delivery so this monitor can recover a delayed cron wake
+  // or an expired worker lease before it declares an incident.
+  const workerResponse = await checkedFetch(`${supabaseUrl}/functions/v1/request-delivery-worker`, {
+    method: 'POST',
+    headers: { ...serviceHeaders, 'x-delivery-cron-secret': deliveryCronSecret },
+    body: JSON.stringify({ source: 'cron' })
+  }, 60000);
+  const workerText = await workerResponse.text();
+  try { deliveryWorkerResult = workerText ? JSON.parse(workerText) : null; } catch {}
+  const workerFailed = Number(deliveryWorkerResult?.failed || 0);
+  if (!workerResponse.ok || deliveryWorkerResult?.ok !== true || workerFailed > 0 || deliveryWorkerResult?.errorCode) {
+    const code = sanitizeCode(deliveryWorkerResult?.errorCode || `HTTP_${workerResponse.status}`);
+    throw new Error(`production_delivery_worker_unhealthy_${code}`);
+  }
+  checks.push({
+    name: 'request_delivery_worker',
+    status: workerResponse.status,
+    claimed: Number(deliveryWorkerResult?.claimed || 0),
+    delivered: Number(deliveryWorkerResult?.delivered || 0),
+    failed: workerFailed
+  });
+
+  // Record a fast sanitized request-integrity audit after delivery has had a
+  // chance to heal. Heavy ItemCode reconciliation stays on its own schedule.
+  const maintenanceResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_hosted_health_snapshot`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const maintenanceText = await maintenanceResponse.text();
+  let maintenancePayload = null;
+  try { maintenancePayload = maintenanceText ? JSON.parse(maintenanceText) : null; } catch {}
+  if (!maintenanceResponse.ok || !maintenancePayload || typeof maintenancePayload !== 'object') {
+    throw new Error(`production_request_maintenance_unhealthy_HTTP_${maintenanceResponse.status}`);
+  }
+  requestIntegrityHealth = maintenancePayload;
+  const criticalHealthFields = [
+    'missing_history_count',
+    'delivery_retry_exhausted_count',
+    'delivery_stalled_count',
+    'delivery_expired_lease_count',
+    'delivery_worker_stale_count',
+    'delivery_canary_stale_count'
+  ];
+  const criticalHealthCount = criticalHealthFields.reduce(
+    (total, field) => total + Math.max(0, Number(requestIntegrityHealth?.[field]) || 0),
+    0
+  );
+  if (criticalHealthCount > 0) {
+    throw new Error(`production_request_integrity_unhealthy_${sanitizeCode(requestIntegrityHealth?.health_code)}`);
+  }
+  checks.push({
+    name: 'request_integrity',
+    status: maintenanceResponse.status,
+    healthCode: sanitizeCode(requestIntegrityHealth?.health_code || 'UNKNOWN'),
+    missingDriveRows: Math.max(0, Number(requestIntegrityHealth?.missing_drive_row_count) || 0),
+    missingThreads: Math.max(0, Number(requestIntegrityHealth?.delivery_missing_thread_count) || 0),
+    unassignedItemcodes: Math.max(0, Number(requestIntegrityHealth?.unassigned_itemcode_count) || 0)
+  });
+
+  // Read only non-PII health fields. The current scheduled audit was evaluated
+  // above, so older audit rows are excluded from semantic client failures.
+  const recentSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const healthUrl = new URL(`${supabaseUrl}/rest/v1/ph_app_health_events`);
+  healthUrl.searchParams.set('select', 'event_name,area,severity,sanitized_code,occurred_at');
+  healthUrl.searchParams.set('severity', 'in.(error,critical)');
+  healthUrl.searchParams.set('event_name', 'neq.scheduled_request_health_audit');
+  healthUrl.searchParams.set('occurred_at', `gte.${recentSince}`);
+  healthUrl.searchParams.set('order', 'occurred_at.desc');
+  healthUrl.searchParams.set('limit', '50');
+  const healthResponse = await checkedFetch(healthUrl, { headers: serviceHeaders });
+  const healthText = await healthResponse.text();
+  try { recentSemanticFailures = healthText ? JSON.parse(healthText) : []; } catch { recentSemanticFailures = []; }
+  if (!healthResponse.ok || !Array.isArray(recentSemanticFailures)) {
+    throw new Error(`production_health_event_probe_unhealthy_HTTP_${healthResponse.status}`);
+  }
+  recentSemanticFailures = recentSemanticFailures.map((event) => ({
+    eventName: sanitizeCode(event?.event_name),
+    area: sanitizeCode(event?.area),
+    severity: String(event?.severity || 'error').toLowerCase() === 'critical' ? 'critical' : 'error',
+    code: sanitizeCode(event?.sanitized_code),
+    occurredAt: String(event?.occurred_at || '')
+  }));
+  if (recentSemanticFailures.length) {
+    throw new Error(`production_semantic_health_unhealthy_${recentSemanticFailures[0].code}`);
+  }
+  checks.push({ name: 'recent_semantic_health', status: healthResponse.status, failures: 0 });
+} else {
+  checks.push({ name: 'secure_production_recovery', result: 'skipped_no_service_role' });
+}
+
 const result = {
   ok: true,
   checkedAt: new Date().toISOString(),
   durationMs: Date.now() - startedAt,
   expectedRelease,
   liveRelease,
-  checks
+  checks,
+  delivery: deliveryWorkerResult ? {
+    claimed: Number(deliveryWorkerResult.claimed || 0),
+    delivered: Number(deliveryWorkerResult.delivered || 0),
+    failed: Number(deliveryWorkerResult.failed || 0)
+  } : null,
+  requestIntegrity: requestIntegrityHealth ? {
+    healthCode: sanitizeCode(requestIntegrityHealth.health_code || 'UNKNOWN'),
+    missingDriveRows: Math.max(0, Number(requestIntegrityHealth.missing_drive_row_count) || 0),
+    missingThreads: Math.max(0, Number(requestIntegrityHealth.delivery_missing_thread_count) || 0),
+    unassignedItemcodes: Math.max(0, Number(requestIntegrityHealth.unassigned_itemcode_count) || 0)
+  } : null,
+  recentSemanticFailureCount: recentSemanticFailures.length
 };
 
 process.stdout.write(`${JSON.stringify(result)}\n`);
@@ -82,6 +198,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production login health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }
