@@ -1309,6 +1309,8 @@ test('Managers Historical Report uses secured server filtering and Drive-style d
   assert.match(historicalReportMigration, /allowed_columns constant text\[\]/);
   assert.match(historicalReportMigration, /cursor_report_date/);
   assert.match(historicalReportMigration, /order by r\.report_date desc, r\.unique_id desc/);
+  assert.match(performanceWorkflow, /historical_report_baseline\.sql/);
+  assert.match(performanceWorkflow, /20260821202202_manager_historical_report\.sql/);
   const historyRowsRpc = historicalReportMigration.slice(
     historicalReportMigration.indexOf('create or replace function public.get_historical_inventory_rows'),
     historicalReportMigration.indexOf('revoke all on function public.search_historical_inventory_common_names')
