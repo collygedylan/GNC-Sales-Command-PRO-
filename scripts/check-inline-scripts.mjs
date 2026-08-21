@@ -25,6 +25,7 @@ while ((match = scriptPattern.exec(html))) {
 
 for (const relativePath of [
   'assets/ops-precision-pilot.js',
+  'assets/eval-reports-engine.js',
   'sw.js'
 ]) {
   const source = fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -36,4 +37,4 @@ for (const relativePath of [
 }
 
 if (parsed < 3) throw new Error(`Expected at least 3 inline scripts, parsed ${parsed}.`);
-console.log(`Parsed ${parsed} inline scripts and 2 shell assets.`);
+console.log(`Parsed ${parsed} inline scripts and 3 shell assets.`);

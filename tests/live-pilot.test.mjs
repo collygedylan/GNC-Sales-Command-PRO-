@@ -39,12 +39,12 @@ const productionAuthHealthWorkflow = read('.github/workflows/production-auth-hea
 const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.20.10';
+  const release = 'V2026.08.20.11';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.20.10');
+  assert.equal(packageJson.version, '2026.08.20.11');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {

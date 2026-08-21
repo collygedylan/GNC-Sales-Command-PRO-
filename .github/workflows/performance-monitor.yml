@@ -52,6 +52,8 @@ jobs:
           cp supabase/migrations/20260820230245_reliable_request_delivery_worker.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260821011223_hosted_health_auto_repair.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260821012500_restore_request_email_threads_schema.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821040617_manager_eval_report_settings.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821040854_harden_eval_report_settings_rpc.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"

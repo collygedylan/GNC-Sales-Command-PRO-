@@ -50,6 +50,49 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
   expect(result.sheetTypoAlias).toBe('bobby_adair');
 });
 
+test('Dylan and Megan alone receive cached Manager Eval Reports without an inventory refetch', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.20.11', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).getManagerEvalReportIndex === 'function');
+  const result = await page.evaluate(() => window.eval(`(() => {
+    processAndLoadData({ data: [
+      { ITEMCODE: 'A', COMMONNAME: 'Alpha', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.001' },
+      { ITEMCODE: 'A', COMMONNAME: 'Alpha', SEASON: 'U1', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.002' },
+      { ITEMCODE: 'B', COMMONNAME: 'Beta', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, ASSIGNEDTO: 'megan_kelly', LOCATIONCODE: 'B.01.001' }
+    ], _fromCache: true });
+    invalidateManagerEvalReportCache();
+    const first = getManagerEvalReportIndex();
+    const second = getManagerEvalReportIndex();
+    let inventoryFetches = 0;
+    const originalEnsureDatasetLoaded = ensureDatasetLoaded;
+    ensureDatasetLoaded = function(){ inventoryFetches += 1; return Promise.resolve(fullInventory); };
+    setManagerEvalReport('culls');
+    const afterSwitch = getManagerEvalReportIndex();
+    ensureDatasetLoaded = originalEnsureDatasetLoaded;
+    return {
+      access: {
+        dylan: canViewManagerEvalReports('dylan_collyge'),
+        megan: canViewManagerEvalReports('megan_kelly'),
+        other: canViewManagerEvalReports('jd_jones')
+      },
+      reportIds: GncEvalReports.REPORT_IDS.slice(),
+      counts: first.counts,
+      cached: first === second && first === afterSwitch,
+      inventoryFetches
+    };
+  })()`));
+
+  expect(result.access).toEqual({ dylan: true, megan: true, other: false });
+  expect(result.reportIds).toEqual([
+    's1-with-pri', 'od-loc-note-date', 'hs-plus-5-days', 'get-off-hold',
+    'low-stock', 'no-pri', 'culls', 'not-in-f1',
+  ]);
+  expect(result.counts['s1-with-pri']).toBe(1);
+  expect(result.counts['low-stock']).toBe(1);
+  expect(result.counts.culls).toBe(1);
+  expect(result.cached).toBe(true);
+  expect(result.inventoryFetches).toBe(0);
+});
+
 test('an acknowledged assignment immediately leaves the Unassigned filter', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyAcknowledgedEvalAssignmentResults === 'function');

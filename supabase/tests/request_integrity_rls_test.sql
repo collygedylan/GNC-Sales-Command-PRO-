@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(43);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -158,6 +158,43 @@ select is(
   ) duplicate_keys),
   0,
   'ItemCode + GenusName assignments remain unique after the complete backfill'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
+select throws_ok(
+  $q$select public.get_eval_report_settings()$q$,
+  '42501', 'EVAL_REPORT_SETTINGS_FORBIDDEN',
+  'sales reps cannot read Eval Report settings'
+);
+select throws_ok(
+  $q$select public.set_eval_report_settings(140, 6, 11)$q$,
+  '42501', 'EVAL_REPORT_SETTINGS_FORBIDDEN',
+  'sales reps cannot update Eval Report settings'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.ph_eval_report_settings', 'UPDATE'),
+  'authenticated clients cannot write the Eval Report settings table directly'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
+select lives_ok(
+  $q$select public.get_eval_report_settings()$q$,
+  'Dylan can read Eval Report settings'
+);
+select lives_ok(
+  $q$select public.set_eval_report_settings(140, 6, 11)$q$,
+  'Dylan can update validated Eval Report settings'
+);
+select is(
+  (select low_stock_max_slts::text || '|' || hold_age_days::text || '|' || location_note_age_days::text || '|' || updated_by
+   from public.ph_eval_report_settings where singleton),
+  '140|6|11|dylan_collyge',
+  'Eval Report settings persist with the authenticated manager audit identity'
+);
+select throws_ok(
+  $q$select public.set_eval_report_settings(-1, 5, 10)$q$,
+  '22023', 'EVAL_REPORT_LOW_STOCK_LIMIT_INVALID',
+  'invalid Eval Report thresholds are rejected'
 );
 
 select throws_ok(

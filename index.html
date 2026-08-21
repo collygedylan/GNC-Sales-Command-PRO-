@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.20.10">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.20.11">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.20.10';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.20.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.10">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.20.11">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,7 +6685,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.10"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.20.11"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.20.11"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7438,7 +7439,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.10').trim() || 'V2026.08.20.10';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.20.11').trim() || 'V2026.08.20.11';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8919,7 +8920,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.20.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -28705,6 +28706,8 @@ let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertiseme
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false; let requestCompletionUserColumnsReady=null; let requestCompletionUserColumnsProbePromise=null; let requestCompletionUserSchemaWarningShown=false; let evalTaskColumnsReady=null; let evalTaskColumnsProbePromise=null; let evalTaskSchemaWarningShown=false; let ncrApprovalRequesterColumnsReady=null; let ncrApprovalRequesterColumnsProbePromise=null; let ncrApprovalRequesterSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderDrillLevel='rep'; let salesOfficeOrderSelectedRepKey=''; let salesOfficeOrderSelectedCustomerKey=''; let salesOfficeOrderSelectedRepTab='orders'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
 let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprovalDetailId=''; let activeProductivityTeamTab='inventory'; let selectedProductivityUser=''; let productivityDateStart=''; let productivityDateEnd=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null; let productivityUserDirectoryState={ rows: [], loading: false, loaded: false, error: '', promise: null }; let inventoryTransactionHistoryState={ rows: [], loading: false, loaded: false, error: '', promise: null, action: 'all', search: '', dateStart: '', dateEnd: '' }; let managerAssignedItemsAssignedToFilter='all'; let managerEvalAssignmentSelection=new Set();
+let activeManagerEvalReport='s1-with-pri'; let activeManagerEvalReportView='name'; let managerEvalReportSelectedCommonName=''; let managerEvalReportSelectedBlock=''; let managerEvalReportSelectedLocation=''; let managerEvalReportSeasonFilter='all'; let managerEvalReportContSizeFilter='all'; let managerEvalReportAssignedToFilter='all'; let managerEvalReportPriorityFilter='all'; let managerEvalReportSettings={lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10,updatedBy:'',updatedAt:''}; let managerEvalReportSettingsState={loaded:false,loading:false,fallback:false,error:'',promise:null,saving:false}; let managerEvalReportCacheKey=''; let managerEvalReportCache=null;
+let managerEvalReportDisplayMode='cards';
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'global-' || prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -29145,6 +29148,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MANAGER_APPROVAL_TAB_VALUES = Object.freeze([SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW, NOT_ON_INVENTORY_APPROVAL_VIEW]);
         const INVENTORY_TRANSACTION_HISTORY_VIEW = 'inventory-transaction-history';
         const MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW = 'assigned-items-export';
+        const MANAGER_EVAL_REPORTS_VIEW = 'eval-reports';
         const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
         const MANAGER_BLOCK_CLEARING_VIEW = 'block-clearing';
         const MANAGER_BLOCK_CLEARING_LONG_PRESS_MS = 360;
@@ -30195,7 +30199,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.10').trim() || 'V2026.08.20.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.20.11').trim() || 'V2026.08.20.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35815,6 +35819,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 state.genusOptionsCache = null;
                 state.contSizeOptionsCache = null;
             });
+            invalidateManagerEvalReportCache();
         }
 
         const NCR_CHICAGO_DATE_FORMATTER = typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'
@@ -114820,6 +114825,7 @@ C.14.043 C.15.000
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
             else if (requestedTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW && canManageAvBlanksPhotoBypassSettings()) nextTab = AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             else if (requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && canViewAssignedItemsExport()) nextTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
+            else if (requestedTab === MANAGER_EVAL_REPORTS_VIEW && canViewManagerEvalReports()) nextTab = MANAGER_EVAL_REPORTS_VIEW;
             else if (requestedTab === MANAGER_SHORTAGE_CANCEL_VIEW && canViewManagerShortageCancel()) nextTab = MANAGER_SHORTAGE_CANCEL_VIEW;
             else if (requestedTab === MANAGER_BLOCK_CLEARING_VIEW && canViewManagerBlockClearing()) nextTab = MANAGER_BLOCK_CLEARING_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
@@ -114858,6 +114864,10 @@ C.14.043 C.15.000
             }
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
+            }
+            if (nextTab === MANAGER_EVAL_REPORTS_VIEW) {
+                ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
+                loadManagerEvalReportSettings(false).catch(() => {});
             }
             if (nextTab === MANAGER_SHORTAGE_CANCEL_VIEW) {
                 ensureDatasetLoaded('soc', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
@@ -117029,6 +117039,518 @@ C.14.043 C.15.000
                 .some((key) => key === 'dylan_collyge' || key === 'megan_kelly');
         }
 
+        function canViewManagerEvalReports(userOverride = '') {
+            return canManageEvalItemcodeAssignments(userOverride);
+        }
+
+        function getManagerEvalReportsApi() {
+            return window.GncEvalReports && typeof window.GncEvalReports.classifyRows === 'function'
+                ? window.GncEvalReports
+                : null;
+        }
+
+        function normalizeManagerEvalReportSettings(value = null) {
+            const api = getManagerEvalReportsApi();
+            const normalized = api
+                ? api.normalizeSettings(value)
+                : { lowStockMaxSLts: 150, holdAgeDays: 5, locationNoteAgeDays: 10 };
+            const source = value && typeof value === 'object' ? value : {};
+            return Object.assign({}, normalized, {
+                updatedBy: String(firstNonEmptyValue(source.updatedBy, source.updated_by, '') || '').trim(),
+                updatedAt: String(firstNonEmptyValue(source.updatedAt, source.updated_at, '') || '').trim()
+            });
+        }
+
+        function invalidateManagerEvalReportCache() {
+            managerEvalReportCacheKey = '';
+            managerEvalReportCache = null;
+        }
+
+        async function loadManagerEvalReportSettings(force = false) {
+            if (!canViewManagerEvalReports()) return null;
+            const state = managerEvalReportSettingsState;
+            if (state.loading && state.promise) return state.promise;
+            if (state.loaded && !force) return managerEvalReportSettings;
+            state.loading = true;
+            state.error = '';
+            state.promise = supabaseRpc('get_eval_report_settings', {}, { timeoutMs: 15000 })
+                .then((result) => {
+                    managerEvalReportSettings = normalizeManagerEvalReportSettings(result);
+                    state.loaded = true;
+                    state.fallback = false;
+                    state.error = '';
+                    invalidateManagerEvalReportCache();
+                    return managerEvalReportSettings;
+                })
+                .catch((error) => {
+                    managerEvalReportSettings = normalizeManagerEvalReportSettings(null);
+                    state.loaded = true;
+                    state.fallback = true;
+                    state.error = getFriendlyBackendErrorMessage(error, 'Could not load Eval Report settings.');
+                    invalidateManagerEvalReportCache();
+                    reportSemanticHealthEvent('eval_report_settings_load_failed', 'eval_reports', 'EVAL_REPORT_SETTINGS_LOAD_FAILED', {});
+                    return managerEvalReportSettings;
+                })
+                .finally(() => {
+                    state.loading = false;
+                    state.promise = null;
+                    if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) scheduleManagersRender(true);
+                });
+            if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) scheduleManagersRender(true);
+            return state.promise;
+        }
+
+        async function saveManagerEvalReportSettings(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (!canViewManagerEvalReports() || managerEvalReportSettingsState.saving) return false;
+            const lowStockInput = document.getElementById('manager-eval-low-stock-limit');
+            const holdAgeInput = document.getElementById('manager-eval-hold-age');
+            const locationAgeInput = document.getElementById('manager-eval-location-age');
+            const lowStockMaxSLts = Number(lowStockInput ? lowStockInput.value : managerEvalReportSettings.lowStockMaxSLts);
+            const holdAgeDays = Number(holdAgeInput ? holdAgeInput.value : managerEvalReportSettings.holdAgeDays);
+            const locationNoteAgeDays = Number(locationAgeInput ? locationAgeInput.value : managerEvalReportSettings.locationNoteAgeDays);
+            const valid = Number.isFinite(lowStockMaxSLts) && lowStockMaxSLts >= 0 && lowStockMaxSLts <= 100000000
+                && Number.isInteger(holdAgeDays) && holdAgeDays >= 0 && holdAgeDays <= 3650
+                && Number.isInteger(locationNoteAgeDays) && locationNoteAgeDays >= 0 && locationNoteAgeDays <= 3650;
+            if (!valid) {
+                showToast('Invalid Settings', 'Use a non-negative stock limit and whole-number day limits.', true);
+                return false;
+            }
+            managerEvalReportSettingsState.saving = true;
+            scheduleManagersRender(true);
+            try {
+                const result = await supabaseRpc('set_eval_report_settings', {
+                    low_stock_max_slts: lowStockMaxSLts,
+                    hold_age_days: holdAgeDays,
+                    location_note_age_days: locationNoteAgeDays
+                }, { timeoutMs: 15000 });
+                const acknowledged = normalizeManagerEvalReportSettings(result);
+                if (acknowledged.lowStockMaxSLts !== lowStockMaxSLts
+                    || acknowledged.holdAgeDays !== holdAgeDays
+                    || acknowledged.locationNoteAgeDays !== locationNoteAgeDays) {
+                    throw new Error('Eval Report settings verification failed.');
+                }
+                managerEvalReportSettings = acknowledged;
+                managerEvalReportSettingsState.loaded = true;
+                managerEvalReportSettingsState.fallback = false;
+                managerEvalReportSettingsState.error = '';
+                invalidateManagerEvalReportCache();
+                showToast('Eval Reports Updated', 'The shared report thresholds were saved.');
+            } catch (error) {
+                managerEvalReportSettingsState.error = getFriendlyBackendErrorMessage(error, 'Could not save Eval Report settings.');
+                reportSemanticHealthEvent('eval_report_settings_save_failed', 'eval_reports', 'EVAL_REPORT_SETTINGS_SAVE_FAILED', {});
+                showToast('Settings Not Saved', managerEvalReportSettingsState.error, true);
+            } finally {
+                managerEvalReportSettingsState.saving = false;
+                scheduleManagersRender(true);
+            }
+            return false;
+        }
+
+        function getManagerEvalReportCentralDateKey() {
+            const api = getManagerEvalReportsApi();
+            if (!api) return new Date().toISOString().slice(0, 10);
+            const parts = api.getCentralDateParts(new Date());
+            return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+        }
+
+        function getManagerEvalReportIndex() {
+            const api = getManagerEvalReportsApi();
+            if (!api) return null;
+            const currentSeason = getConfiguredCurrentSeasonCode();
+            const currentSalesYear = getConfiguredCurrentSalesYearCode();
+            const nextTarget = getConfiguredNextSaleSeasonTarget();
+            const cacheKey = [
+                getDatasetLoadSignature('master'),
+                fullInventory.length,
+                resolvedViewStateEpoch,
+                currentSeason,
+                currentSalesYear,
+                nextTarget.season,
+                nextTarget.salesYear,
+                managerEvalReportSettings.lowStockMaxSLts,
+                managerEvalReportSettings.holdAgeDays,
+                managerEvalReportSettings.locationNoteAgeDays,
+                getManagerEvalReportCentralDateKey()
+            ].join('::');
+            if (managerEvalReportCache && managerEvalReportCacheKey === cacheKey) return managerEvalReportCache;
+            const startedAt = performance.now();
+            managerEvalReportCache = api.classifyRows(fullInventory, {
+                currentSeason,
+                currentSalesYear,
+                nextSeason: nextTarget.season,
+                nextSalesYear: nextTarget.salesYear,
+                settings: managerEvalReportSettings,
+                now: new Date()
+            });
+            managerEvalReportCacheKey = cacheKey;
+            const elapsed = performance.now() - startedAt;
+            if (elapsed > 500) {
+                reportSemanticHealthEvent('eval_report_classification_slow', 'eval_reports', 'EVAL_REPORT_CLASSIFICATION_SLOW', {
+                    affected_count: fullInventory.length,
+                    duration_bucket: Math.ceil(elapsed / 250) * 250
+                });
+            }
+            return managerEvalReportCache;
+        }
+
+        function getManagerEvalReportMeta(reportId = activeManagerEvalReport) {
+            const api = getManagerEvalReportsApi();
+            const safeId = String(reportId || '').trim().toLowerCase();
+            return api && api.REPORT_META[safeId]
+                ? api.REPORT_META[safeId]
+                : { label: 'Eval Report', description: 'Filtered Drive inventory rows.' };
+        }
+
+        function getManagerEvalReportRows(reportId = activeManagerEvalReport) {
+            const index = getManagerEvalReportIndex();
+            const rows = index && index.reports ? index.reports[String(reportId || '').trim().toLowerCase()] : [];
+            return Array.isArray(rows) ? rows : [];
+        }
+
+        function getManagerEvalReportRowSeason(row = null) {
+            return String(firstNonEmptyValue(row && row.SEASON, row && row.season, '') || '').trim().toUpperCase();
+        }
+
+        function getManagerEvalReportRowAssignedTo(row = null) {
+            return String(firstNonEmptyValue(row && row.ASSIGNEDTO, row && row.assignedto, '') || '').trim();
+        }
+
+        function getManagerEvalReportRowPriority(row = null) {
+            return String(firstNonEmptyValue(row && row.PRIORITY, row && row.priority, '') || '').trim();
+        }
+
+        function getManagerEvalReportRowCommonName(row = null) {
+            return String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, row && row.ITEMCODE, row && row.itemcode, 'Unknown') || '').trim() || 'Unknown';
+        }
+
+        function getManagerEvalReportRowContSize(row = null) {
+            return String(firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, '-') || '').trim() || '-';
+        }
+
+        function getManagerEvalReportRowLocation(row = null) {
+            return String(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '') || '').trim().toUpperCase() || 'UNASSIGNED';
+        }
+
+        function getManagerEvalReportFilterOptions(rows = []) {
+            const makeOptions = (values) => Array.from(new Set(values.filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+            return {
+                seasons: makeOptions(rows.map(getManagerEvalReportRowSeason)),
+                contSizes: makeOptions(rows.map(getManagerEvalReportRowContSize)),
+                assignedTo: makeOptions(rows.map((row) => getManagerEvalReportRowAssignedTo(row) || '(Unassigned)'))
+            };
+        }
+
+        function managerEvalReportRowMatchesSearch(row = null) {
+            const term = normalizeSearchValue(managersSearchTerm || '');
+            if (!term) return true;
+            return doesProgressiveSearchFieldsMatch([
+                firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''),
+                getManagerEvalReportRowCommonName(row),
+                getManagerEvalReportRowContSize(row),
+                getManagerEvalReportRowLocation(row),
+                firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''),
+                getManagerEvalReportRowSeason(row),
+                getManagerEvalReportRowPriority(row),
+                getManagerEvalReportRowAssignedTo(row),
+                firstNonEmptyValue(row && row.GENUSNAME, row && row.genusname, ''),
+                firstNonEmptyValue(row && row.HOLDSTOPCODE, row && row.holdstopcode, ''),
+                firstNonEmptyValue(row && row.LOCATIONNOTEDATE, row && row.locationnotedate, '')
+            ], term);
+        }
+
+        function getFilteredManagerEvalReportRows(rows = null) {
+            const sourceRows = Array.isArray(rows) ? rows : getManagerEvalReportRows();
+            return sourceRows.filter((row) => {
+                if (managerEvalReportSeasonFilter !== 'all' && getManagerEvalReportRowSeason(row) !== managerEvalReportSeasonFilter) return false;
+                if (managerEvalReportContSizeFilter !== 'all' && getManagerEvalReportRowContSize(row) !== managerEvalReportContSizeFilter) return false;
+                if (managerEvalReportAssignedToFilter !== 'all') {
+                    const assigned = getManagerEvalReportRowAssignedTo(row) || '(Unassigned)';
+                    if (assigned !== managerEvalReportAssignedToFilter) return false;
+                }
+                if (managerEvalReportPriorityFilter === 'with' && !getManagerEvalReportRowPriority(row)) return false;
+                if (managerEvalReportPriorityFilter === 'without' && getManagerEvalReportRowPriority(row)) return false;
+                return managerEvalReportRowMatchesSearch(row);
+            });
+        }
+
+        function resetManagerEvalReportDrill() {
+            managerEvalReportSelectedCommonName = '';
+            managerEvalReportSelectedBlock = '';
+            managerEvalReportSelectedLocation = '';
+        }
+
+        function setManagerEvalReport(reportId = 's1-with-pri') {
+            const api = getManagerEvalReportsApi();
+            const safeId = String(reportId || '').trim().toLowerCase();
+            if (!api || !api.REPORT_IDS.includes(safeId)) return false;
+            const changed = activeManagerEvalReport !== safeId;
+            activeManagerEvalReport = safeId;
+            if (changed) {
+                managerEvalReportSeasonFilter = 'all';
+                managerEvalReportContSizeFilter = 'all';
+                managerEvalReportAssignedToFilter = 'all';
+                managerEvalReportPriorityFilter = 'all';
+            }
+            resetManagerEvalReportDrill();
+            scheduleManagersRender(true);
+            queueScrollMainAreaToTop(`manager-eval-report:${safeId}`);
+            return false;
+        }
+
+        function setManagerEvalReportView(view = 'name') {
+            const safeView = ['name', 'loc', 'card'].includes(String(view || '').trim().toLowerCase()) ? String(view).trim().toLowerCase() : 'name';
+            activeManagerEvalReportView = safeView;
+            resetManagerEvalReportDrill();
+            scheduleManagersRender(true);
+            queueScrollMainAreaToTop(`manager-eval-view:${safeView}`);
+            return false;
+        }
+
+        function setManagerEvalReportFilter(kind = '', value = 'all') {
+            const safeValue = String(value == null ? 'all' : value).trim() || 'all';
+            if (kind === 'season') managerEvalReportSeasonFilter = safeValue;
+            else if (kind === 'contsize') managerEvalReportContSizeFilter = safeValue;
+            else if (kind === 'assignedto') managerEvalReportAssignedToFilter = safeValue;
+            else if (kind === 'priority') managerEvalReportPriorityFilter = safeValue;
+            resetManagerEvalReportDrill();
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function clearManagerEvalReportFilters() {
+            managerEvalReportSeasonFilter = 'all';
+            managerEvalReportContSizeFilter = 'all';
+            managerEvalReportAssignedToFilter = 'all';
+            managerEvalReportPriorityFilter = 'all';
+            managersSearchTerm = '';
+            const input = document.getElementById('managers-search');
+            if (input) input.value = '';
+            resetManagerEvalReportDrill();
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function isManagerEvalReportGridSupported() {
+            const viewportWidth = Math.max(
+                Number(window.innerWidth) || 0,
+                Number(document.documentElement && document.documentElement.clientWidth) || 0
+            );
+            return viewportWidth >= 768;
+        }
+
+        function setManagerEvalReportDisplayMode(mode = 'cards') {
+            const safeMode = String(mode || '').trim().toLowerCase() === 'grid' ? 'grid' : 'cards';
+            if (safeMode === 'grid' && !isManagerEvalReportGridSupported()) {
+                showToast('Cards Used', 'Grid view is available on tablets and computers.', true);
+                managerEvalReportDisplayMode = 'cards';
+            } else {
+                managerEvalReportDisplayMode = safeMode;
+            }
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function openManagerEvalReportCommonName(commonName = '') {
+            managerEvalReportSelectedCommonName = String(commonName || '').trim();
+            scheduleManagersRender(true);
+            queueScrollMainAreaToTop(`manager-eval-common:${managerEvalReportSelectedCommonName}`);
+            return false;
+        }
+
+        function openManagerEvalReportBlock(block = '') {
+            managerEvalReportSelectedBlock = String(block || '').trim();
+            managerEvalReportSelectedLocation = '';
+            scheduleManagersRender(true);
+            queueScrollMainAreaToTop(`manager-eval-block:${managerEvalReportSelectedBlock}`);
+            return false;
+        }
+
+        function openManagerEvalReportLocation(location = '') {
+            managerEvalReportSelectedLocation = String(location || '').trim();
+            scheduleManagersRender(true);
+            queueScrollMainAreaToTop(`manager-eval-location:${managerEvalReportSelectedLocation}`);
+            return false;
+        }
+
+        function backManagerEvalReportDrill() {
+            if (activeManagerEvalReportView === 'name') managerEvalReportSelectedCommonName = '';
+            else if (activeManagerEvalReportView === 'loc' && managerEvalReportSelectedLocation) managerEvalReportSelectedLocation = '';
+            else if (activeManagerEvalReportView === 'loc') managerEvalReportSelectedBlock = '';
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function getManagerEvalReportDetailContext(rows = null) {
+            const sourceRows = Array.isArray(rows) ? rows : getFilteredManagerEvalReportRows();
+            const meta = getManagerEvalReportMeta();
+            if (activeManagerEvalReportView === 'card') {
+                return { active: true, rows: sourceRows, crumb: `${meta.label} > Card (${sourceRows.length} items)` };
+            }
+            if (activeManagerEvalReportView === 'name' && managerEvalReportSelectedCommonName) {
+                const scoped = sourceRows.filter((row) => getManagerEvalReportRowCommonName(row) === managerEvalReportSelectedCommonName);
+                return { active: true, rows: scoped, crumb: `${meta.label} > ${managerEvalReportSelectedCommonName} (${scoped.length} items)` };
+            }
+            if (activeManagerEvalReportView === 'loc' && managerEvalReportSelectedBlock && managerEvalReportSelectedLocation) {
+                const scoped = sourceRows.filter((row) => getTaskBlockAlpha(row) === managerEvalReportSelectedBlock && getTaskLocationBucket(row) === managerEvalReportSelectedLocation);
+                return { active: true, rows: scoped, crumb: `${meta.label} > ${managerEvalReportSelectedBlock} > ${managerEvalReportSelectedLocation} (${scoped.length} items)` };
+            }
+            return { active: false, rows: sourceRows, crumb: `${meta.label} (${sourceRows.length} items)` };
+        }
+
+        function renderManagerEvalReportGroupButton(label = '', count = 0, detail = '', handler = '') {
+            return `<button type="button" class="drill-item mb-2 w-full rounded-2xl border border-emerald-100 bg-white shadow-sm" onclick="return ${handler}"><span class="min-w-0 text-left"><span class="block text-[16px] font-black text-slate-900 break-words">${escapeHtml(label || 'Unknown')}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(detail || 'Drive rows')}</span></span><span class="ml-3 shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-black text-[#007a4d]">${escapeHtml(String(count))}</span></button>`;
+        }
+
+        function renderManagerEvalReportBrowseResults(rows = []) {
+            const detail = getManagerEvalReportDetailContext(rows);
+            if (detail.active) {
+                return `<div class="space-y-3"><div class="flex items-center justify-between gap-3">${activeManagerEvalReportView === 'card' ? '<span></span>' : '<button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerEvalReportDrill()"><i class="ph-bold ph-arrow-left text-base"></i>Back</button>'}<span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(detail.crumb)}</span></div><div id="manager-eval-report-records"></div></div>`;
+            }
+            if (activeManagerEvalReportView === 'name') {
+                const groups = new Map();
+                rows.forEach((row) => {
+                    const name = getManagerEvalReportRowCommonName(row);
+                    if (!groups.has(name)) groups.set(name, []);
+                    groups.get(name).push(row);
+                });
+                const cards = Array.from(groups.entries())
+                    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }))
+                    .map(([name, groupRows]) => renderManagerEvalReportGroupButton(name, groupRows.length, `${new Set(groupRows.map(getManagerEvalReportRowContSize)).size} sizes`, `openManagerEvalReportCommonName('${escJsAttrValue(name)}')`))
+                    .join('');
+                return cards || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Common Name groups match the active filters.</div>';
+            }
+            if (activeManagerEvalReportView === 'loc') {
+                if (!managerEvalReportSelectedBlock) {
+                    const groups = new Map();
+                    rows.forEach((row) => {
+                        const block = getTaskBlockAlpha(row);
+                        if (!groups.has(block)) groups.set(block, []);
+                        groups.get(block).push(row);
+                    });
+                    const cards = Array.from(groups.entries())
+                        .sort((a, b) => compareLocationCodeValues(a[0], b[0]))
+                        .map(([block, groupRows]) => renderManagerEvalReportGroupButton(`Block ${block}`, groupRows.length, `${new Set(groupRows.map(getTaskLocationBucket)).size} locations`, `openManagerEvalReportBlock('${escJsAttrValue(block)}')`))
+                        .join('');
+                    return cards || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No location blocks match the active filters.</div>';
+                }
+                const groups = new Map();
+                rows.filter((row) => getTaskBlockAlpha(row) === managerEvalReportSelectedBlock).forEach((row) => {
+                    const location = getTaskLocationBucket(row);
+                    if (!groups.has(location)) groups.set(location, []);
+                    groups.get(location).push(row);
+                });
+                const cards = Array.from(groups.entries())
+                    .sort((a, b) => compareLocationCodeValues(a[0], b[0]))
+                    .map(([location, groupRows]) => renderManagerEvalReportGroupButton(location, groupRows.length, `${new Set(groupRows.map(getManagerEvalReportRowCommonName)).size} common names`, `openManagerEvalReportLocation('${escJsAttrValue(location)}')`))
+                    .join('');
+                return `<button type="button" class="mb-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerEvalReportDrill()"><i class="ph-bold ph-arrow-left text-base"></i>Blocks</button>${cards || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No locations match the active filters.</div>'}`;
+            }
+            return '';
+        }
+
+        function renderManagerEvalReportSettingsPanel() {
+            const state = managerEvalReportSettingsState;
+            const fallbackHtml = state.fallback
+                ? `<div class="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">Using fallback defaults because live settings could not be loaded. Saving remains manual.</div>`
+                : '';
+            const errorHtml = state.error && !state.fallback
+                ? `<div class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700">${escapeHtml(state.error)}</div>`
+                : '';
+            const updatedMeta = managerEvalReportSettings.updatedAt
+                ? `Last changed ${formatInventoryEditMockTimestamp(managerEvalReportSettings.updatedAt)}${managerEvalReportSettings.updatedBy ? ` by ${managerEvalReportSettings.updatedBy}` : ''}`
+                : 'Shared defaults: 150 open stock, 5 hold days, 10 location-note days.';
+            return `<details class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" ${state.fallback || state.error ? 'open' : ''}><summary class="cursor-pointer text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Eval Report Settings</summary><form class="mt-4" onsubmit="return saveManagerEvalReportSettings(event)">${fallbackHtml}${errorHtml}<div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"><label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Low Stock below</span><input id="manager-eval-low-stock-limit" type="number" min="0" max="100000000" step="1" value="${escapeHtml(String(managerEvalReportSettings.lowStockMaxSLts))}" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-black text-slate-900"></label><label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Hold age days</span><input id="manager-eval-hold-age" type="number" min="0" max="3650" step="1" value="${escapeHtml(String(managerEvalReportSettings.holdAgeDays))}" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-black text-slate-900"></label><label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Location-note age days</span><input id="manager-eval-location-age" type="number" min="0" max="3650" step="1" value="${escapeHtml(String(managerEvalReportSettings.locationNoteAgeDays))}" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-black text-slate-900"></label><button type="submit" class="min-h-[48px] self-end rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.13em] text-white shadow-sm ${state.saving ? 'pointer-events-none opacity-60' : ''}">${state.saving ? 'Saving...' : 'Save Settings'}</button></div><div class="mt-3 text-[10px] font-bold text-slate-400">${escapeHtml(updatedMeta)}</div></form></details>`;
+        }
+
+        function buildManagerEvalReportSelect(label = '', kind = '', currentValue = 'all', options = []) {
+            const optionHtml = [`<option value="all" ${currentValue === 'all' ? 'selected' : ''}>All</option>`]
+                .concat(options.map((value) => `<option value="${escapeHtml(value)}" ${currentValue === value ? 'selected' : ''}>${escapeHtml(value)}</option>`))
+                .join('');
+            return `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">${escapeHtml(label)}</span><select class="w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReportFilter('${escJsAttrValue(kind)}', this.value)">${optionHtml}</select></label>`;
+        }
+
+        function renderManagerEvalReportsPanel() {
+            if (!canViewManagerEvalReports()) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Eval Reports are available only to Dylan and Megan.</div>';
+            const api = getManagerEvalReportsApi();
+            if (!api) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Eval Reports could not start. Refresh the app to load the report engine.</div>';
+            if (!managerEvalReportSettingsState.loaded && !managerEvalReportSettingsState.loading) setTimeout(() => loadManagerEvalReportSettings(false), 0);
+            const index = getManagerEvalReportIndex();
+            const meta = getManagerEvalReportMeta();
+            const baseRows = getManagerEvalReportRows();
+            const filteredRows = getFilteredManagerEvalReportRows(baseRows);
+            const filterOptions = getManagerEvalReportFilterOptions(baseRows);
+            const reportTabsHtml = api.REPORT_IDS.map((reportId) => {
+                const reportMeta = getManagerEvalReportMeta(reportId);
+                const active = reportId === activeManagerEvalReport;
+                return `<button type="button" class="shrink-0 rounded-full border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] ${active ? 'border-[#007a4d] bg-[#007a4d] text-white shadow-md' : 'border-emerald-200 bg-white text-emerald-700'}" onclick="return setManagerEvalReport('${escJsAttrValue(reportId)}')">${escapeHtml(reportMeta.label)} <span class="ml-1 opacity-80">${escapeHtml(String(index.counts[reportId] || 0))}</span></button>`;
+            }).join('');
+            const viewButton = (view, label, icon) => `<button type="button" class="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border px-4 text-[10px] font-black uppercase tracking-[0.12em] ${activeManagerEvalReportView === view ? 'border-[#007a4d] bg-emerald-50 text-[#007a4d]' : 'border-slate-200 bg-white text-slate-500'}" onclick="return setManagerEvalReportView('${view}')"><i class="ph-bold ${icon}"></i>${label}</button>`;
+            const displayButton = (mode, label, icon) => {
+                const unavailable = mode === 'grid' && !isManagerEvalReportGridSupported();
+                return `<button type="button" class="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${managerEvalReportDisplayMode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-500'} ${unavailable ? 'opacity-50' : ''}" onclick="return setManagerEvalReportDisplayMode('${mode}')" ${unavailable ? 'aria-disabled="true" title="Grid is available on tablets and computers"' : ''}><i class="ph-bold ${icon}"></i>${label}</button>`;
+            };
+            const priorityOptions = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Priority</span><select class="w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReportFilter('priority', this.value)"><option value="all" ${managerEvalReportPriorityFilter === 'all' ? 'selected' : ''}>All</option><option value="with" ${managerEvalReportPriorityFilter === 'with' ? 'selected' : ''}>With Priority</option><option value="without" ${managerEvalReportPriorityFilter === 'without' ? 'selected' : ''}>Without Priority</option></select></label>`;
+            const hasFilters = managerEvalReportSeasonFilter !== 'all' || managerEvalReportContSizeFilter !== 'all' || managerEvalReportAssignedToFilter !== 'all' || managerEvalReportPriorityFilter !== 'all' || !!String(managersSearchTerm || '').trim();
+            return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Direct from ph_master_inventory</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(meta.label)}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">${escapeHtml(meta.description)} Current source: ${escapeHtml(index.currentSeason)} / sales year ${escapeHtml(String(index.currentSalesYear % 100).padStart(2, '0'))}.</div></div><div class="flex flex-wrap gap-2"><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(String(filteredRows.length))} / ${escapeHtml(String(baseRows.length))} rows</span><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return loadManagerEvalReportSettings(true)"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button><button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 ${filteredRows.length ? '' : 'pointer-events-none opacity-50'}" onclick="return exportManagerEvalReportToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button></div></div><div class="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">${reportTabsHtml}</div></div>${renderManagerEvalReportSettingsPanel()}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between"><div class="flex flex-wrap gap-2">${viewButton('name', 'Common Name', 'ph-plant')}${viewButton('loc', 'Location', 'ph-map-pin')}${viewButton('card', 'Card', 'ph-cards')}</div><div class="flex gap-2">${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}</div></div><div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">${buildManagerEvalReportSelect('Season', 'season', managerEvalReportSeasonFilter, filterOptions.seasons)}${buildManagerEvalReportSelect('Container', 'contsize', managerEvalReportContSizeFilter, filterOptions.contSizes)}${buildManagerEvalReportSelect('AssignedTo', 'assignedto', managerEvalReportAssignedToFilter, filterOptions.assignedTo)}${priorityOptions}<button type="button" class="min-h-[42px] self-end rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReportFilters()">Clear</button></div></div><div>${renderManagerEvalReportBrowseResults(filteredRows)}</div></div>`;
+        }
+
+        function renderManagerEvalReportRecords() {
+            const container = document.getElementById('manager-eval-report-records');
+            if (!container || activeHomeTab !== MANAGER_EVAL_REPORTS_VIEW) return;
+            const context = getManagerEvalReportDetailContext(getFilteredManagerEvalReportRows());
+            if (!context.active) return;
+            if (!context.rows.length) {
+                setContainerHtml(container, '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No rows match the selected scope and filters.</div>');
+                return;
+            }
+            const renderKey = `manager-eval:${activeManagerEvalReport}:${activeManagerEvalReportView}:${managerEvalReportDisplayMode}:${context.crumb}:${context.rows.length}:${resolvedViewStateEpoch}`;
+            if (managerEvalReportDisplayMode === 'grid' && isManagerEvalReportGridSupported()) {
+                cancelChunkRenderWorkForContainer(container, 'manager-eval-report');
+                applyDriveRenderMarkup(container, null, context.crumb, buildDriveSpreadsheetTableHtml(context.rows), renderKey);
+                return;
+            }
+            const renderRow = (item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-green'));
+            if (shouldUseChunkedCardRender(context.rows.length, 90, 170)) {
+                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (container.dataset) container.dataset.driveRenderKey = renderKey;
+                renderMarkupChunkedByKey('manager-eval-report', container, null, context.rows, context.crumb, renderRow, { approxCardHeight: 310 });
+                return;
+            }
+            applyDriveRenderMarkup(container, null, context.crumb, context.rows.map(renderRow).join(''), renderKey);
+        }
+
+        function getManagerEvalReportExportRows() {
+            const filteredRows = getFilteredManagerEvalReportRows();
+            const context = getManagerEvalReportDetailContext(filteredRows);
+            return context.active ? context.rows : filteredRows;
+        }
+
+        function exportManagerEvalReportToExcel() {
+            if (!canViewManagerEvalReports()) return false;
+            const rows = getManagerEvalReportExportRows();
+            const meta = getManagerEvalReportMeta();
+            const index = getManagerEvalReportIndex();
+            if (!rows.length) {
+                showToast('No Rows', 'There are no Eval Report rows to export in this view.', true);
+                return false;
+            }
+            const fileLabel = `eval-report-${String(meta.label || activeManagerEvalReport).replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()}`;
+            const metaRows = [
+                ['Report', meta.label],
+                ['View', activeManagerEvalReportView],
+                ['Current Season', index.currentSeason],
+                ['Current Sales Year', String(index.currentSalesYear)],
+                ['Low Stock Limit', String(index.settings.lowStockMaxSLts)],
+                ['Hold Age Days', String(index.settings.holdAgeDays)],
+                ['Location Note Age Days', String(index.settings.locationNoteAgeDays)],
+                ['Rows Exported', String(rows.length)]
+            ];
+            downloadExcelWorkbook(getDriveReportExportColumns(), rows, `Eval Reports ${meta.label}`, managersSearchTerm || '', fileLabel, metaRows, DRIVE_MODE_EXCEL_OPTIONS);
+            showToast('Export Ready', `Downloading ${rows.length} ${meta.label} row${rows.length === 1 ? '' : 's'} as Excel.`);
+            return false;
+        }
+
         function getManagerAssignedItemsExportRows() {
             return (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [])
                 .map((row, idx) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx))
@@ -118537,6 +119059,7 @@ C.14.043 C.15.000
                 canManageAvBlanksPhotoBypass: canManageAvBlanksPhotoBypassSettings(),
                 canViewInventoryTransactions: canViewInventoryTransactionHistory(),
                 canViewAssignedItemsExport: canViewAssignedItemsExport(),
+                canViewEvalReports: canViewManagerEvalReports(),
                 canViewShortageCancel: canViewManagerShortageCancel(),
                 canViewBlockClearing: canViewManagerBlockClearing(),
                 canViewLaborHours: canAccessView('hours')
@@ -118552,6 +119075,7 @@ C.14.043 C.15.000
             if (access.canManageAvBlanksPhotoBypass) return AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             if (access.canViewInventoryTransactions) return INVENTORY_TRANSACTION_HISTORY_VIEW;
             if (access.canViewAssignedItemsExport) return MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
+            if (access.canViewEvalReports) return MANAGER_EVAL_REPORTS_VIEW;
             if (access.canViewShortageCancel) return MANAGER_SHORTAGE_CANCEL_VIEW;
             if (access.canViewBlockClearing) return MANAGER_BLOCK_CLEARING_VIEW;
             if (access.canViewProductivity) return 'productivity';
@@ -118567,6 +119091,7 @@ C.14.043 C.15.000
             if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Blanks' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
             if (access.canViewAssignedItemsExport) tabs.push({ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' });
+            if (access.canViewEvalReports) tabs.push({ id: MANAGER_EVAL_REPORTS_VIEW, label: 'Eval Reports' });
             if (access.canViewShortageCancel) tabs.push({ id: MANAGER_SHORTAGE_CANCEL_VIEW, label: 'Shortage/Cancel' });
             if (access.canViewBlockClearing) tabs.push({ id: MANAGER_BLOCK_CLEARING_VIEW, label: 'Block Clearing' });
             if (access.canViewLaborHours) tabs.push({ id: 'hours', label: 'Labor Hours' });
@@ -118600,6 +119125,7 @@ C.14.043 C.15.000
             if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Blanks', description: 'Allow selected users to finish AV Blanks with AV Note only.', icon: 'ph-note-pencil' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return { label: 'Assigned Items', description: 'Export warehouse assigned item rows by AssignedTo.', icon: 'ph-user-list' };
+            if (safeTab === MANAGER_EVAL_REPORTS_VIEW) return { label: 'Eval Reports', description: 'Open live Drive-based Eval inventory reports.', icon: 'ph-chart-bar' };
             if (safeTab === MANAGER_SHORTAGE_CANCEL_VIEW) return { label: 'Shortage/Cancel', description: 'Review SOC rows where ordered and shipped quantities do not match.', icon: 'ph-warning-circle' };
             if (safeTab === MANAGER_BLOCK_CLEARING_VIEW) return { label: 'Block Clearing', description: 'Email grouped clearing instructions from Drive Mode rows.', icon: 'ph-broom' };
             if (safeTab === 'hours') return { label: 'Labor Hours', description: 'Open the labor-hours entry form.', icon: 'ph-clock' };
@@ -120753,12 +121279,14 @@ C.14.043 C.15.000
             else if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) html += renderAvBlanksPhotoBypassSettingsPanel();
             else if (activeHomeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) html += renderInventoryTransactionHistoryPanel();
             else if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) html += renderManagerAssignedItemsExportPanel();
+            else if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) html += renderManagerEvalReportsPanel();
             else if (activeHomeTab === MANAGER_SHORTAGE_CANCEL_VIEW) html += renderManagerShortageCancelPanel();
             else if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW) html += renderManagerBlockClearingPanel();
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;
             syncManagersHeaderChrome();
+            if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) requestAnimationFrame(renderManagerEvalReportRecords);
         }
 
         function renderHome() {
