@@ -352,8 +352,8 @@ const SUPABASE_FETCH_PAGE_SIZE = 1000;
 const SUPABASE_PAGED_READ_FETCH_BATCH_SIZE = 8;
 const SUPABASE_UPSERT_FETCH_BATCH_SIZE = 6;
 // Master inventory writes execute several row-level projection/invalidation triggers.
-// Keep these requests serial and comfortably below PostgREST's statement timeout.
-const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 200;
+// Keep full-size requests serial so they avoid lock contention and finish inside Apps Script's runtime.
+const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 1000;
 const SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE = 1;
 const SUPABASE_UPSERT_RETRY_COUNT = 3;
 const SUPABASE_UPSERT_RETRY_DELAY_MS = 900;

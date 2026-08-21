@@ -1264,8 +1264,8 @@ test('hosted monitoring probes the real production login bridge every five minut
   assert.doesNotMatch(productionAuthHealthProbe, /console\.log\(probeText|process\.stdout\.write\([^\n]*probeText/);
 });
 
-test('Drive Around inventory writes stay below the hosted statement timeout and retry safely', () => {
-  assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 200;/);
+test('Drive Around inventory writes avoid parallel lock contention and retry safely', () => {
+  assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 1000;/);
   assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE = 1;/);
   const requestBuilder = appsScriptBackend.slice(
     appsScriptBackend.indexOf('function buildSupabaseUpsertRequests_'),
