@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(36);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -171,6 +171,15 @@ select set_config('request.jwt.claim.role', 'service_role', true);
 select lives_ok(
   $q$select public.get_hosted_health_snapshot()$q$,
   'service role can record and read the sanitized hosted health snapshot'
+);
+select has_table(
+  'public', 'ph_request_email_threads',
+  'the supported migration chain creates durable request email thread state'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.ph_request_email_threads'::regclass),
+  true,
+  'request email thread state has row-level security enabled'
 );
 update public.ph_request_delivery_outbox
 set next_attempt_at = now() + interval '1 day'
