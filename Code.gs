@@ -355,6 +355,7 @@ const SUPABASE_UPSERT_FETCH_BATCH_SIZE = 6;
 // Keep full-size requests serial so they avoid lock contention and finish inside Apps Script's runtime.
 const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 1000;
 const SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE = 1;
+const SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE = 100;
 const SUPABASE_UPSERT_RETRY_COUNT = 3;
 const SUPABASE_UPSERT_RETRY_DELAY_MS = 900;
 const SUPABASE_DELETE_FETCH_BATCH_SIZE = 2;
@@ -3308,18 +3309,22 @@ function buildSupabaseUpsertRequests_(tableName, payloadArray) {
   let requests = [];
   for (let i = 0; i < payloadArray.length; i += chunkSize) {
     const chunk = normalizeSupabaseUpsertChunk(payloadArray.slice(i, i + chunkSize));
-    requests.push({
-      url: `${SUPABASE_URL}/rest/v1/${tableName}`,
-      method: 'post',
-      headers: getSupabaseHeaders_({
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      }),
-      payload: JSON.stringify(chunk),
-      muteHttpExceptions: true
-    });
+    requests.push(buildSupabaseUpsertRequest_(tableName, chunk));
   }
   return requests;
+}
+
+function buildSupabaseUpsertRequest_(tableName, normalizedChunk) {
+  return {
+    url: `${SUPABASE_URL}/rest/v1/${tableName}`,
+    method: 'post',
+    headers: getSupabaseHeaders_({
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=minimal'
+    }),
+    payload: JSON.stringify(normalizedChunk || []),
+    muteHttpExceptions: true
+  };
 }
 
 function isSuccessfulSupabaseWriteResponse_(response) {
@@ -3371,6 +3376,53 @@ function retrySupabaseUpsertRequest_(tableName, request, initialResponse, reques
   return response;
 }
 
+function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialResponse, requestNumber, splitDepth) {
+  if (isSuccessfulSupabaseWriteResponse_(initialResponse)) return [];
+  const depth = Math.max(0, Number(splitDepth) || 0);
+  const initialBody = initialResponse.getContentText();
+  let payloadRows = [];
+  try {
+    const parsed = JSON.parse(String(request && request.payload || '[]'));
+    payloadRows = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    payloadRows = [];
+  }
+
+  if (isMasterInventoryTable_(tableName) &&
+      extractSupabaseErrorCode_(initialBody) === '57014' &&
+      payloadRows.length > SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE) {
+    const midpoint = Math.ceil(payloadRows.length / 2);
+    const splitChunks = [payloadRows.slice(0, midpoint), payloadRows.slice(midpoint)].filter(function(chunk) {
+      return chunk.length > 0;
+    });
+    console.warn(`[SPLIT] Supabase timed out for ${tableName} chunk ${requestNumber} ` +
+      `(${payloadRows.length} rows). Retrying as ${splitChunks.map(function(chunk) { return chunk.length; }).join(' + ')} rows.`);
+    let splitFailures = [];
+    splitChunks.forEach(function(chunk, index) {
+      const splitRequest = buildSupabaseUpsertRequest_(tableName, chunk);
+      const splitResponse = UrlFetchApp.fetch(splitRequest.url, splitRequest);
+      splitFailures = splitFailures.concat(executeSupabaseUpsertRequestWithRecovery_(
+        tableName,
+        splitRequest,
+        splitResponse,
+        `${requestNumber}.${index + 1}`,
+        depth + 1
+      ));
+    });
+    return splitFailures;
+  }
+
+  const response = retrySupabaseUpsertRequest_(tableName, request, initialResponse, requestNumber);
+  if (isSuccessfulSupabaseWriteResponse_(response)) return [];
+  const body = response.getContentText();
+  if (isMasterInventoryTable_(tableName) &&
+      extractSupabaseErrorCode_(body) === '57014' &&
+      payloadRows.length > SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE) {
+    return executeSupabaseUpsertRequestWithRecovery_(tableName, request, response, requestNumber, depth + 1);
+  }
+  return [{ code: response.getResponseCode(), body: body }];
+}
+
 function extractMissingSupabaseColumnNames_(body) {
   const text = String(body || '');
   const missing = {};
@@ -3414,15 +3466,17 @@ function executeSupabaseUpsert_(tableName, payloadArray) {
   let responses = executeFetchAllBatches(requests, fetchBatchSize);
   let failures = [];
   responses.forEach(function(initialResponse, index) {
-    const res = isSuccessfulSupabaseWriteResponse_(initialResponse)
-      ? initialResponse
-      : retrySupabaseUpsertRequest_(tableName, requests[index], initialResponse, index + 1);
-    let code = res.getResponseCode();
-    if (!isSuccessfulSupabaseWriteResponse_(res)) {
-      let body = res.getContentText();
-      console.error(`[ERROR] Supabase upsert failed for ${tableName} (Code ${code}): ${body}`);
-      failures.push({ code: code, body: body });
-    }
+    const requestFailures = executeSupabaseUpsertRequestWithRecovery_(
+      tableName,
+      requests[index],
+      initialResponse,
+      index + 1,
+      0
+    );
+    requestFailures.forEach(function(failure) {
+      console.error(`[ERROR] Supabase upsert failed for ${tableName} (Code ${failure.code}): ${failure.body}`);
+      failures.push(failure);
+    });
   });
   return failures;
 }
