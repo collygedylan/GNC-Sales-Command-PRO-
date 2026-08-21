@@ -718,6 +718,13 @@ execute function private.wake_request_delivery_worker_after_requeue();
 do $$
 declare existing_job bigint;
 begin
+  -- Local/isolated Supabase stacks may not install pg_cron. The worker still
+  -- wakes immediately through pg_net, while hosted production keeps the
+  -- one-minute cron fallback below.
+  if to_regclass('cron.job') is null then
+    return;
+  end if;
+
   for existing_job in
     select jobid from cron.job where jobname = 'gnc-request-delivery-worker'
   loop
