@@ -39,12 +39,12 @@ const productionAuthHealthWorkflow = read('.github/workflows/production-auth-hea
 const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.20.11';
+  const release = 'V2026.08.21.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.20.11');
+  assert.equal(packageJson.version, '2026.08.21.01');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -517,7 +517,7 @@ test('design pills and Drive metrics use the professional responsive card system
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
 });
 
-test('authorized reps can select any Drive row for Request without gaining inventory mutation controls', () => {
+test('REP users can add eligible Drive rows to Bloom Picker without reopening Drive request selection', () => {
   const selectionPolicy = html.slice(
     html.indexOf('function canCurrentUserSelectDriveWorkflowRow'),
     html.indexOf('function isCurrentDriveCardOptionsContext')
@@ -537,8 +537,13 @@ test('authorized reps can select any Drive row for Request without gaining inven
   assert.match(driveCardBuilder, /driveCheckboxHtml = canSelectDriveWorkflow \?/);
   assert.match(driveCardBuilder, /driveArgosRailHtml = canUseDriveOptions \?/);
   assert.doesNotMatch(driveCardBuilder, /driveArgosRailHtml = canSelectDriveWorkflow \?/);
-  assert.match(html, /canAddItemToBloomPicker[\s\S]*canCurrentUserSelectDriveWorkflowRow\(item, 'drive'\)/);
-  assert.match(html, /toggleGlobalItem[\s\S]*canCurrentUserSelectDriveWorkflowRow\(item, 'drive'\)/);
+  assert.match(selectionPolicy, /access && access\.isRep && !access\.isCsr\) return false/);
+  assert.match(html, /canAddItemToBloomPicker[\s\S]*canRepAddBloomPickerRow[\s\S]*access && access\.isRep && !access\.isCsr && isBloomPickerEligibleItem\(item\)/);
+  assert.match(html, /handleInventoryCardBottomCartAction[\s\S]*selectionSource = safeSourceView === 'drive' && access\.isRep && !access\.isCsr \? 'drive-bloom'/);
+  assert.match(html, /toggleGlobalItem[\s\S]*canSelectDriveBloomPicker = isDriveBloomPickerSelection && canAddItemToBloomPicker\(item, 'drive-bloom'\)/);
+  assert.match(html, /getBloomPickerActionVisibility[\s\S]*hasRepBloomOnlySelection[\s\S]*showRequest: hasRepBloomOnlySelection \? false : canUseInventoryActions/);
+  assert.match(driveCardBuilder, /includeDriveBloomPickerBtn = canAddItemToBloomPicker\(item, sourceView\)[\s\S]*driveRoleAccess\.isRep && !driveRoleAccess\.isCsr/);
+  assert.match(html, /renderDriveQuickRequestBar[\s\S]*activeDriveTab === 'card' && canUseDriveQuickRequest\(\)/);
 });
 
 test('phone Home tiles fill both columns and Drive cards retain the thumbnail with Reclass at top right', () => {
