@@ -40,12 +40,12 @@ const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs
 const historicalReportMigration = read('supabase/migrations/20260821202202_manager_historical_report.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.21.02';
+  const release = 'V2026.08.21.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.21.02');
+  assert.equal(packageJson.version, '2026.08.21.03');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1300,9 +1300,18 @@ test('Managers Historical Report uses secured server filtering and Drive-style d
   assert.match(html, /selectManagerHistoricalCommonName/);
   assert.match(html, /selectManagerHistoricalContSize/);
   assert.match(html, /Columns \(\$\{selected\.size\}\)/);
-  assert.match(html, /setManagerHistoricalDisplayMode\('cards'\)/);
-  assert.match(html, /setManagerHistoricalDisplayMode\('grid'\)/);
+  assert.match(html, /function renderManagerHistoricalDriveChrome/);
+  assert.match(html, /setManagerHistoricalDisplayMode\('\$\{mode\}'\)/);
   assert.match(html, /Load 100 More Rows/);
+  const historicalRenderer = html.slice(
+    html.indexOf('function renderManagerHistoricalCommonNameCard'),
+    html.indexOf('function getManagerAssignedItemsExportRows')
+  );
+  assert.match(historicalRenderer, /manager-historical-drive-card/);
+  assert.match(historicalRenderer, /manager-historical-drive-crumb/);
+  assert.match(historicalRenderer, /drive-grid-summary-sheet/);
+  assert.match(historicalRenderer, /app-smart-card--inventory/);
+  assert.doesNotMatch(historicalRenderer, /manager-module-grid/);
   assert.match(historicalReportMigration, /public\.ph_historical_inventory_dimensions/);
   assert.match(historicalReportMigration, /private\.can_manage_eval_assignments\(\)/);
   assert.match(historicalReportMigration, /HISTORICAL_REPORT_FORBIDDEN/);

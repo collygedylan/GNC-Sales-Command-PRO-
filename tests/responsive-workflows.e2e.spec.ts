@@ -94,7 +94,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 });
 
 test('Manager Historical Report drills Common Name to ContSize and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.21.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.21.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -126,7 +126,10 @@ test('Manager Historical Report drills Common Name to ContSize and sends only ch
       };
 
       const names = await loadManagerHistoricalCommonNames('feather', true);
+      managersSearchTerm = 'feather';
+      const nameMarkup = renderManagerHistoricalReportPanel();
       await selectManagerHistoricalCommonName('Karl Foerster Feather Reed Grass');
+      const sizeMarkup = renderManagerHistoricalReportPanel();
       await selectManagerHistoricalContSize('#1');
       toggleManagerHistoricalColumn('locationcode', false);
       toggleManagerHistoricalColumn('lotcode', false);
@@ -143,6 +146,8 @@ test('Manager Historical Report drills Common Name to ContSize and sends only ch
         values: rows[0] ? rows[0].values : null,
         calls,
         rowArgs: rowCall && rowCall.body,
+        nameMarkup,
+        sizeMarkup,
         rendered,
         canDylan: originalCanViewManagerHistoricalReport('dylan_collyge'),
         canOther: originalCanViewManagerHistoricalReport('jd_jones')
@@ -162,6 +167,12 @@ test('Manager Historical Report drills Common Name to ContSize and sends only ch
   expect(result.rendered).toContain('#1');
   expect(result.rendered).toContain('Columns (3)');
   expect(result.rendered).toContain('Hold/Stop Code');
+  expect(result.nameMarkup).toContain('manager-historical-drive-card');
+  expect(result.nameMarkup).toContain('manager-historical-drive-crumb');
+  expect(result.nameMarkup).not.toContain('manager-module-grid');
+  expect(result.sizeMarkup).toContain('manager-historical-drive-card');
+  expect(result.rendered).toContain('manager-historical-drive-record');
+  expect(result.rendered).toContain('app-smart-card--inventory');
   expect(result.canDylan).toBe(true);
   expect(result.canOther).toBe(false);
 });

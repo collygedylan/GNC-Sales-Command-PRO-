@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.21.02">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.21.03">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.21.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.21.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6574,7 +6574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.21.02">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.21.03">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,8 +6685,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.21.02"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.21.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.21.03"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.21.03"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7439,7 +7439,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.21.02').trim() || 'V2026.08.21.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.21.03').trim() || 'V2026.08.21.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8920,7 +8920,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.21.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.21.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30202,7 +30202,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.21.02').trim() || 'V2026.08.21.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.21.03').trim() || 'V2026.08.21.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -117864,12 +117864,42 @@ C.14.043 C.15.000
 
         function renderManagerHistoricalCommonNameCard(row = null) {
             const commonName = String(row && row.commonname || '').trim();
-            return `<button type="button" class="manager-module-card !min-h-[88px]" onclick="return selectManagerHistoricalCommonName('${escJsAttrValue(commonName)}')"><span class="manager-module-icon"><i class="ph-bold ph-plant"></i></span><span class="min-w-0 flex-1 text-left"><span class="block truncate text-sm font-black text-slate-900">${escapeHtml(commonName || 'Unknown')}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">${escapeHtml(formatManagerHistoricalCount(row && row.contsize_count))} sizes · ${escapeHtml(formatManagerHistoricalCount(row && row.historical_row_count))} rows</span><span class="mt-1 block text-[10px] font-bold text-emerald-700">${escapeHtml(formatManagerHistoricalDate(row && row.first_report_date))} – ${escapeHtml(formatManagerHistoricalDate(row && row.last_report_date))}</span></span><i class="ph-bold ph-caret-right text-lg text-emerald-600"></i></button>`;
+            return `<button type="button" class="manager-historical-drive-card mb-3 flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-green-200 bg-white p-4 text-left shadow-sm transition-transform active:scale-[0.98]" onclick="return selectManagerHistoricalCommonName('${escJsAttrValue(commonName)}')"><span class="min-w-0"><span class="block truncate text-lg font-black leading-tight text-[#007a4d]">${escapeHtml(commonName || 'Unknown')}</span><span class="mt-1 block text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${escapeHtml(formatManagerHistoricalCount(row && row.historical_row_count))} Rows &bull; ${escapeHtml(formatManagerHistoricalCount(row && row.contsize_count))} Sizes</span><span class="mt-1 block text-[10px] font-bold text-emerald-700">${escapeHtml(formatManagerHistoricalDate(row && row.first_report_date))} &ndash; ${escapeHtml(formatManagerHistoricalDate(row && row.last_report_date))}</span></span><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></button>`;
         }
 
         function renderManagerHistoricalContSizeCard(row = null) {
             const contSize = String(row && row.contsize || '').trim();
-            return `<button type="button" class="manager-module-card !min-h-[88px]" onclick="return selectManagerHistoricalContSize('${escJsAttrValue(contSize)}')"><span class="manager-module-icon"><i class="ph-bold ph-tree-structure"></i></span><span class="min-w-0 flex-1 text-left"><span class="block text-lg font-black text-slate-900">${escapeHtml(contSize || 'Unknown')}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">${escapeHtml(formatManagerHistoricalCount(row && row.itemcode_count))} itemcodes · ${escapeHtml(formatManagerHistoricalCount(row && row.historical_row_count))} rows</span><span class="mt-1 block text-[10px] font-bold text-emerald-700">${escapeHtml(formatManagerHistoricalDate(row && row.first_report_date))} – ${escapeHtml(formatManagerHistoricalDate(row && row.last_report_date))}</span></span><i class="ph-bold ph-caret-right text-lg text-emerald-600"></i></button>`;
+            return `<button type="button" class="manager-historical-drive-card mb-3 flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-green-200 bg-white p-4 text-left shadow-sm transition-transform active:scale-[0.98]" onclick="return selectManagerHistoricalContSize('${escJsAttrValue(contSize)}')"><span class="min-w-0"><span class="block truncate text-lg font-black leading-tight text-[#007a4d]">${escapeHtml(contSize || 'Unknown')}</span><span class="mt-1 block text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${escapeHtml(formatManagerHistoricalCount(row && row.historical_row_count))} Rows &bull; ${escapeHtml(formatManagerHistoricalCount(row && row.itemcode_count))} ItemCodes</span><span class="mt-1 block text-[10px] font-bold text-emerald-700">${escapeHtml(formatManagerHistoricalDate(row && row.first_report_date))} &ndash; ${escapeHtml(formatManagerHistoricalDate(row && row.last_report_date))}</span></span><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></button>`;
+        }
+
+        function renderManagerHistoricalDriveChrome(crumbText = '', countLabel = '') {
+            const state = managerHistoricalReportState;
+            const displayButton = (mode, label, icon) => `<button type="button" class="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${state.displayMode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-500'}" onclick="return setManagerHistoricalDisplayMode('${mode}')"><i class="ph-bold ${icon}"></i>${label}</button>`;
+            return `<div class="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="manager-historical-drive-crumb inline-flex min-h-[40px] max-w-full items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]"><span class="truncate">${escapeHtml(crumbText)}</span></div><div class="flex flex-wrap items-center gap-2">${countLabel ? `<span class="rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(countLabel)}</span>` : ''}${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}</div></div></div>`;
+        }
+
+        function renderManagerHistoricalSummaryGrid(rows = [], level = 'names') {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const isNames = level === 'names';
+            const headers = isNames
+                ? ['Common Name', 'Rows', 'Sizes', 'First Report', 'Last Report']
+                : ['ContSize', 'Rows', 'ItemCodes', 'First Report', 'Last Report'];
+            const head = headers.map((label) => `<th scope="col">${escapeHtml(label)}</th>`).join('');
+            const body = safeRows.map((row) => {
+                const label = String((isNames ? row && row.commonname : row && row.contsize) || '').trim() || 'Unknown';
+                const rowCount = formatManagerHistoricalCount(row && row.historical_row_count);
+                const secondaryCount = formatManagerHistoricalCount(isNames ? row && row.contsize_count : row && row.itemcode_count);
+                const action = isNames ? 'selectManagerHistoricalCommonName' : 'selectManagerHistoricalContSize';
+                return `<tr class="drive-grid-row drive-grid-summary-row cursor-pointer" onclick="return ${action}('${escJsAttrValue(label)}')"><th scope="row">${escapeHtml(label)}</th><td class="drive-grid-number">${escapeHtml(rowCount)}</td><td class="drive-grid-number">${escapeHtml(secondaryCount)}</td><td>${escapeHtml(formatManagerHistoricalDate(row && row.first_report_date))}</td><td>${escapeHtml(formatManagerHistoricalDate(row && row.last_report_date))}</td></tr>`;
+            }).join('');
+            return `<div class="drive-grid-sheet drive-grid-summary-sheet" role="region" aria-label="Historical ${isNames ? 'Common Name' : 'ContSize'} grid" tabindex="0"><div class="drive-grid-sheet-toolbar"><span class="drive-grid-visible-count" aria-live="polite">${safeRows.length} of ${safeRows.length} rows</span></div><table class="drive-grid-table drive-grid-summary-table"><thead><tr class="drive-grid-header-row">${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+        }
+
+        function renderManagerHistoricalDrillResults(rows = [], level = 'names') {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            if (managerHistoricalReportState.displayMode === 'grid') return renderManagerHistoricalSummaryGrid(safeRows, level);
+            const renderer = level === 'names' ? renderManagerHistoricalCommonNameCard : renderManagerHistoricalContSizeCard;
+            return `<div class="manager-historical-drive-list">${safeRows.map(renderer).join('')}</div>`;
         }
 
         function renderManagerHistoricalColumnChooser() {
@@ -117895,7 +117925,8 @@ C.14.043 C.15.000
                 const meta = getManagerHistoricalColumnMeta(columnKey);
                 return `<div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.13em] text-slate-400">${escapeHtml(meta.label)}</div><div class="mt-1 break-words text-sm font-black text-slate-800">${escapeHtml(renderManagerHistoricalValue(values[columnKey]))}</div></div>`;
             }).join('');
-            return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">Historical Drive Row</div><div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(itemCode === '—' ? managerHistoricalReportState.selectedCommonName : itemCode)}</div></div><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black text-emerald-800">${escapeHtml(reportDate)}</span></div><div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">${fields}</div></article>`;
+            const itemCodeLabel = itemCode === '—' ? 'No ItemCode' : itemCode;
+            return `<article class="manager-historical-drive-record item-row app-smart-card app-smart-card--inventory status-green relative w-full overflow-hidden rounded-xl border border-green-200 bg-white p-4 shadow-sm"><div class="flex w-full flex-col"><div class="app-card-topline"><span class="app-card-topline-common">${escapeHtml(managerHistoricalReportState.selectedCommonName || row && row.commonname || 'Unknown')}</span><span class="app-card-topline-size">${escapeHtml(managerHistoricalReportState.selectedContSize || row && row.contsize || '-')}</span></div><div class="mt-1 flex flex-wrap items-center justify-between gap-2"><div class="font-mono text-[12px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(itemCodeLabel)}</div><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-800">Report ${escapeHtml(reportDate)}</span></div><div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">${fields}</div></div></article>`;
         }
 
         function renderManagerHistoricalRowsGrid(rows = []) {
@@ -117941,22 +117972,24 @@ C.14.043 C.15.000
             const state = managerHistoricalReportState;
             const errorHtml = state.error ? `<div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"><div>${escapeHtml(state.error)}</div><button type="button" class="mt-3 rounded-xl border border-red-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-red-700" onclick="return ${state.level === 'names' ? 'loadManagerHistoricalCommonNames(managersSearchTerm, true)' : (state.level === 'sizes' ? `selectManagerHistoricalCommonName('${escJsAttrValue(state.selectedCommonName)}')` : 'loadManagerHistoricalRows(true)')}">Retry</button></div>` : '';
             if (state.level === 'names') {
-                const term = String(managersSearchTerm || '').trim();
+                const term = String(firstNonEmptyValue(managersSearchTerm, state.lastSearch, '') || '').trim();
                 const content = state.loading
                     ? '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">Searching historical Common Names...</div>'
                     : (term.length < 2
                         ? '<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-10 text-center"><i class="ph-bold ph-magnifying-glass text-4xl text-emerald-500"></i><div class="mt-3 text-lg font-black text-slate-900">Search a Common Name above</div><div class="mt-1 text-sm font-semibold text-slate-500">Enter at least two letters, then choose the Common Name and ContSize.</div></div>'
                         : (state.commonNames.length
-                            ? `<div class="manager-module-grid">${state.commonNames.map(renderManagerHistoricalCommonNameCard).join('')}</div>`
+                            ? renderManagerHistoricalDrillResults(state.commonNames, 'names')
                             : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No historical Common Names matched that search.</div>'));
-                return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Direct from historical Drive Around data</div><div class="mt-1 text-xl font-black text-slate-900">Historical Report</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Search Common Name, drill into ContSize, choose the exact columns, and pull only the historical rows you need.</div></div>${errorHtml}${content}</div>`;
+                const crumbText = term.length >= 2 ? `Historical Report > Select Common Name (${state.commonNames.length} matches)` : 'Historical Report > Common Name';
+                return `<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, state.commonNames.length ? `${formatManagerHistoricalCount(state.commonNames.length)} names` : '')}${errorHtml}${content}</div>`;
             }
             if (state.level === 'sizes') {
                 const filteredSizes = (Array.isArray(state.containerSizes) ? state.containerSizes : []).filter((row) => managerTextMatchesSearch([row && row.contsize]));
                 const content = state.loading
                     ? '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">Loading historical container sizes...</div>'
-                    : (filteredSizes.length ? `<div class="manager-module-grid">${filteredSizes.map(renderManagerHistoricalContSizeCard).join('')}</div>` : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No historical container sizes matched.</div>');
-                return `<div class="space-y-4"><button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm" onclick="return backManagerHistoricalReportDrill()"><i class="ph-bold ph-arrow-left"></i>Common Names</button><div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Common Name</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(state.selectedCommonName)}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Choose a ContSize to build the report.</div></div>${errorHtml}${content}</div>`;
+                    : (filteredSizes.length ? renderManagerHistoricalDrillResults(filteredSizes, 'sizes') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No historical container sizes matched.</div>');
+                const crumbText = `Historical Report > ${state.selectedCommonName} > Select ContSize (${filteredSizes.length} sizes)`;
+                return `<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, `${formatManagerHistoricalCount(filteredSizes.length)} sizes`)}${errorHtml}${content}</div>`;
             }
             const rows = getFilteredManagerHistoricalRows();
             const selectedCount = Array.isArray(state.selectedColumns) ? state.selectedColumns.length : 0;
@@ -117966,7 +117999,8 @@ C.14.043 C.15.000
                 : (rows.length
                     ? (state.displayMode === 'grid' ? renderManagerHistoricalRowsGrid(rows) : `<div class="space-y-3">${rows.map(renderManagerHistoricalRowCard).join('')}</div>`)
                     : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No historical rows matched this Common Name, ContSize, and date range.</div>');
-            return `<div class="space-y-4"><button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm" onclick="return backManagerHistoricalReportDrill()"><i class="ph-bold ph-arrow-left"></i>Container Sizes</button><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Historical Drive Rows</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(state.selectedCommonName)} · ${escapeHtml(state.selectedContSize)}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Newest report dates appear first. Load more uses fast cursor paging.</div></div><div class="flex flex-wrap gap-2">${dirtyNotice}<span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(formatManagerHistoricalCount(rows.length))} loaded</span><button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 ${rows.length ? '' : 'pointer-events-none opacity-50'}" onclick="return exportManagerHistoricalLoadedRowsToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Loaded</button></div></div><div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]"><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">From<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateStart)}" onchange="setManagerHistoricalDateRange('start', this.value)"></label><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">To<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateEnd)}" onchange="setManagerHistoricalDateRange('end', this.value)"></label><button type="button" class="min-h-[48px] self-end rounded-xl bg-[#007a4d] px-5 py-3 text-[11px] font-black uppercase tracking-[0.13em] text-white shadow-sm ${selectedCount ? '' : 'pointer-events-none opacity-50'}" onclick="return loadManagerHistoricalRows(true)"><i class="ph-bold ph-play mr-1"></i>Run Report</button></div></div>${renderManagerHistoricalColumnChooser()}${errorHtml}<div class="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-2"><div class="flex gap-2"><button type="button" class="rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] ${state.displayMode === 'cards' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}" onclick="return setManagerHistoricalDisplayMode('cards')"><i class="ph-bold ph-cards mr-1"></i>Cards</button><button type="button" class="rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] ${state.displayMode === 'grid' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}" onclick="return setManagerHistoricalDisplayMode('grid')"><i class="ph-bold ph-table mr-1"></i>Grid</button></div><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(formatManagerHistoricalCount(rows.length))} shown</div></div></div>${resultHtml}${state.hasMore ? `<button type="button" class="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-4 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm ${state.loadingMore ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerHistoricalRows(false)">${state.loadingMore ? 'Loading...' : 'Load 100 More Rows'}</button>` : ''}</div>`;
+            const crumbText = `Historical Report > ${state.selectedCommonName} > ${state.selectedContSize} (${rows.length} rows)`;
+            return `<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, `${formatManagerHistoricalCount(rows.length)} loaded`)}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Historical Drive Rows</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Newest report dates appear first. Load more uses fast cursor paging.</div></div><div class="flex flex-wrap gap-2">${dirtyNotice}<button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 ${rows.length ? '' : 'pointer-events-none opacity-50'}" onclick="return exportManagerHistoricalLoadedRowsToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Loaded</button></div></div><div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]"><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">From<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateStart)}" onchange="setManagerHistoricalDateRange('start', this.value)"></label><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">To<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateEnd)}" onchange="setManagerHistoricalDateRange('end', this.value)"></label><button type="button" class="min-h-[48px] self-end rounded-xl bg-[#007a4d] px-5 py-3 text-[11px] font-black uppercase tracking-[0.13em] text-white shadow-sm ${selectedCount ? '' : 'pointer-events-none opacity-50'}" onclick="return loadManagerHistoricalRows(true)"><i class="ph-bold ph-play mr-1"></i>Run Report</button></div></div>${renderManagerHistoricalColumnChooser()}${errorHtml}${resultHtml}${state.hasMore ? `<button type="button" class="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-4 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm ${state.loadingMore ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerHistoricalRows(false)">${state.loadingMore ? 'Loading...' : 'Load 100 More Rows'}</button>` : ''}</div>`;
         }
 
         function getManagerAssignedItemsExportRows() {
