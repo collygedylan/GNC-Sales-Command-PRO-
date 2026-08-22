@@ -94,7 +94,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.22.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.22.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -561,16 +561,16 @@ test('phone Chat composer fills the shell and never overlaps quick navigation', 
   expect(desktopComposer!.y + desktopComposer!.height).toBeLessThanOrEqual(desktopNav!.y);
 });
 
-test('Item Inquiry fits every viewport and groups lot rows with accurate location totals', async ({ page }) => {
+test('Item Inquiry fits every viewport with compact summaries and read-only location rows', async ({ page }) => {
   const viewports = [
     { width: 390, height: 844 },
     { width: 768, height: 1024 },
     { width: 1366, height: 768 },
     { width: 1920, height: 1080 },
   ];
-  const itemFields = ['PLANTGROUPCODE', 'COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY'];
+  const itemFields = ['PLANTGROUPCODE', 'COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE'];
   const seasonFields = ['SALEYEAR', 'SEASON', 'S_LTS', 'SUPPLY', 'ON HAND', 'DEMAND'];
-  const rowFields = ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'LOCATIONNOTEDATE', 'LOCATIONNOTE', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'LOCATIONPTN1', 'LOCATIONPTN2', 'HOLDSTOPCODE', 'HOLDSTOPREASON'];
+  const rowFields = ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'LOCATIONNOTEDATE', 'LOCATIONNOTE', 'PULLTAGNOTE1', 'LOCATIONPTN1'];
 
   for (const theme of ['light', 'dark']) {
     for (const viewport of viewports) {
@@ -581,14 +581,19 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
       await expect(page.locator('#detail-shared-panels')).toBeHidden();
       await expect(page.locator('[data-item-inquiry-summary] [data-item-inquiry-field]')).toHaveCount(itemFields.length);
       expect(await page.locator('[data-item-inquiry-summary] [data-item-inquiry-field]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-item-inquiry-field')))).toEqual(itemFields);
+      await expect(page.locator('[data-item-inquiry-field="PTRONHAND"] .item-inquiry-summary-value')).toHaveText('2,186');
+      await expect(page.locator('[data-item-inquiry-field="PTRREVIEWED"] .item-inquiry-summary-value')).toHaveText('105');
+      await expect(page.locator('[data-item-inquiry-field="PTRAVAILABLE"] .item-inquiry-summary-value')).toHaveText('2,081');
+      await expect(page.locator('[data-item-inquiry-field="HOLDSTOPCODE"] .item-inquiry-summary-value')).toHaveText('H');
+      await expect(page.locator('[data-item-inquiry-field="HOLDSTOPREASON"] .item-inquiry-summary-value')).toHaveText('Review');
       await expect(page.locator('[data-item-inquiry-season-summary] .item-inquiry-season-row')).toHaveCount(3);
       expect(await page.locator('[data-item-inquiry-season-summary] .item-inquiry-season-header [role="columnheader"]').allTextContents()).toEqual(seasonFields);
       await expect(page.locator('[data-item-inquiry-location]')).toHaveCount(2);
       const f19 = page.locator('[data-item-inquiry-location="F.19.000"]');
       await expect(f19.locator('[data-item-inquiry-row-line]')).toHaveCount(3);
-      await expect(f19.locator('[data-item-inquiry-location-total-onhand]')).toHaveText('1,766');
-      await expect(f19.locator('[data-item-inquiry-location-total-reviewed]')).toHaveText('80');
-      await expect(f19.locator('[data-item-inquiry-column="PTRREVIEWED"] .item-inquiry-cell-value')).toHaveText(['80', '—', '—']);
+      await expect(f19.locator('[data-item-inquiry-row-line]').first().locator('[data-item-inquiry-column="LOTCODE"] .item-inquiry-cell-value')).toHaveText('27.F1');
+      await expect(f19.locator('.item-inquiry-location-totals')).toHaveCount(0);
+      await expect(f19.locator('[data-item-inquiry-column="PULLTAGNOTE2"], [data-item-inquiry-column="LOCATIONPTN2"]')).toHaveCount(0);
       const firstRowLabels = await f19.locator('[data-item-inquiry-row-line]').first().locator('[data-item-inquiry-column]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-item-inquiry-column')));
       expect(firstRowLabels).toEqual(rowFields);
 
@@ -600,6 +605,18 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
         const ledgerScroll = panel.querySelector('.item-inquiry-ledger-scroll') as HTMLElement;
         const firstRow = panel.querySelector('.item-inquiry-ledger-row') as HTMLElement;
         const cellValues = Array.from(panel.querySelectorAll('.item-inquiry-cell-value')) as HTMLElement[];
+        const navRect = (document.querySelector('#bottom-nav') as HTMLElement).getBoundingClientRect();
+        const seasonPanel = panel.querySelector('.item-inquiry-season-summary') as HTMLElement;
+        const seasonGrid = panel.querySelector('.item-inquiry-season-grid') as HTMLElement;
+        const seasonHeaders = Array.from(panel.querySelectorAll('.item-inquiry-season-header > div')) as HTMLElement[];
+        const firstSeasonCells = Array.from((panel.querySelector('.item-inquiry-season-row') as HTMLElement).children) as HTMLElement[];
+        const identityCells = Array.from(panel.querySelectorAll('.item-inquiry-summary-cell')) as HTMLElement[];
+        const content = document.querySelector('#det-item-inquiry-content') as HTMLElement;
+        const contentRect = content.getBoundingClientRect();
+        const main = document.querySelector('#main-scroll-area') as HTMLElement;
+        const mainRect = main.getBoundingClientRect();
+        const detail = document.querySelector('#view-detail') as HTMLElement;
+        const detailRect = detail.getBoundingClientRect();
         return {
           viewportWidth: window.innerWidth,
           documentOverflowX: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
@@ -607,6 +624,20 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
           panelRight: panelRect.right,
           panelWidth: panelRect.width,
           panelTop: panelRect.top,
+          panelBottom: panelRect.bottom,
+          bottomGap: navRect.top - panelRect.bottom,
+          contentTop: contentRect.top,
+          contentBottom: contentRect.bottom,
+          contentHeight: contentRect.height,
+          contentComputedHeight: getComputedStyle(content).height,
+          availableHeight: getComputedStyle(document.documentElement).getPropertyValue('--ops-content-available-height'),
+          mainTop: mainRect.top,
+          mainBottom: mainRect.bottom,
+          mainPaddingBottom: getComputedStyle(main).paddingBottom,
+          detailTop: detailRect.top,
+          detailBottom: detailRect.bottom,
+          detailHeight: detailRect.height,
+          detailComputedHeight: getComputedStyle(detail).height,
           freezeBottom: freezeRect.bottom,
           freezePosition: getComputedStyle(detailFreezePanel).position,
           ledgerClientWidth: ledger.clientWidth,
@@ -615,6 +646,10 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
           ledgerScrollWidth: ledgerScroll.scrollWidth,
           rowColumns: getComputedStyle(firstRow).gridTemplateColumns.split(' ').filter(Boolean).length,
           headerDisplay: getComputedStyle(panel.querySelector('.item-inquiry-ledger-header')!).display,
+          seasonPanelWidth: seasonPanel.getBoundingClientRect().width,
+          seasonGridWidth: seasonGrid.getBoundingClientRect().width,
+          seasonColumnsAligned: seasonHeaders.every((header, index) => Math.abs(header.getBoundingClientRect().width - firstSeasonCells[index].getBoundingClientRect().width) < 1),
+          identityWidthSpread: Math.max(...identityCells.map((cell) => cell.getBoundingClientRect().width)) - Math.min(...identityCells.map((cell) => cell.getBoundingClientRect().width)),
           smallestFont: Math.min(...cellValues.map((cell) => Number.parseFloat(getComputedStyle(cell).fontSize))),
           verticalWord: cellValues.some((cell) => getComputedStyle(cell).wordBreak === 'break-all'),
         };
@@ -625,13 +660,18 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
       expect(layout.panelLeft).toBeGreaterThanOrEqual(-1);
       expect(layout.panelRight).toBeLessThanOrEqual(viewport.width + 1);
       expect(layout.panelWidth).toBeGreaterThan(250);
+      expect(layout.bottomGap, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBeLessThanOrEqual(16);
+      expect(layout.bottomGap, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBeGreaterThanOrEqual(-2);
       expect(layout.ledgerClientHeight).toBeGreaterThan(80);
+      expect(layout.seasonColumnsAligned).toBe(true);
+      expect(layout.seasonGridWidth).toBeLessThan(layout.seasonPanelWidth);
       expect(layout.smallestFont).toBeGreaterThanOrEqual(8);
       expect(layout.verticalWord).toBe(false);
       if (viewport.width >= 1100) {
         expect(layout.headerDisplay).toBe('grid');
-        expect(layout.rowColumns).toBe(18);
-        expect(layout.ledgerScrollWidth).toBeGreaterThan(layout.ledgerScrollClientWidth);
+        expect(layout.rowColumns).toBe(11);
+        expect(layout.identityWidthSpread).toBeGreaterThan(10);
+        expect(layout.ledgerScrollWidth).toBeLessThanOrEqual(layout.ledgerScrollClientWidth + 1);
       } else {
         expect(layout.headerDisplay).toBe('none');
         expect(layout.rowColumns).toBe(viewport.width <= 640 ? 2 : 4);

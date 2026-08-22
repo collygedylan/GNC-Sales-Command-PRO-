@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.22.02">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.22.03">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.22.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.22.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6596,7 +6596,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.22.02">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.22.03">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6707,8 +6707,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.22.02"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.22.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.22.03"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.22.03"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7461,7 +7461,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.22.02').trim() || 'V2026.08.22.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.22.03').trim() || 'V2026.08.22.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8942,7 +8942,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.22.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.22.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30224,7 +30224,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.22.02').trim() || 'V2026.08.22.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.22.03').trim() || 'V2026.08.22.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -95362,6 +95362,27 @@ function toggleDriveQuickRequestItem(domId) {
             { key: 'holdstopreason', label: 'HOLDSTOPREASON', aliases: ['HOLDSTOPREASON', 'holdstopreason', 'HOLSTOPREASON', 'holstopreason'], multiline: true }
         ];
 
+        // The read-only inquiry is intentionally more compact than Reclass.
+        // Keep the complete shared field list above so the temporary Reclass
+        // editor retains every editable report field.
+        const ITEM_INQUIRY_DISPLAY_IDENTITY_FIELDS = ITEM_INQUIRY_IDENTITY_FIELDS.concat([
+            { key: 'holdstopcode', label: 'HOLDSTOPCODE' },
+            { key: 'holdstopreason', label: 'HOLDSTOPREASON' },
+            { key: 'ptronhand', label: 'PTRONHAND' },
+            { key: 'ptrreviewed', label: 'PTRREVIEWED' },
+            { key: 'ptravailable', label: 'PTRAVAILABLE' }
+        ]);
+
+        const ITEM_INQUIRY_DISPLAY_ROW_FIELDS = ITEM_INQUIRY_ROW_FIELDS.filter((field) => ![
+            'ptronhand',
+            'ptrreviewed',
+            'ptravailable',
+            'pulltagnote2',
+            'locationptn2',
+            'holdstopcode',
+            'holdstopreason'
+        ].includes(field.key));
+
         function getItemInquiryExactValue(row = null, aliases = [], fallback = '') {
             const safeRow = row && typeof row === 'object' ? row : {};
             for (const alias of (Array.isArray(aliases) ? aliases : [aliases])) {
@@ -95773,8 +95794,18 @@ function toggleDriveQuickRequestItem(domId) {
             const baseRows = getItemInquiryRows(item);
             const model = buildItemInquiryViewModel(item, baseRows);
             const currentKey = getItemInquiryRowKey(item);
-            const identityHtml = ITEM_INQUIRY_IDENTITY_FIELDS.map((field) => {
-                const value = String(model.identity[field.key] || '').trim() || '—';
+            const distinctDisplayValue = (key) => Array.from(new Set(model.locationRows
+                .map((entry) => String(entry.values[key] || '').trim())
+                .filter(Boolean))).join(' / ');
+            const displayIdentity = Object.assign({}, model.identity, {
+                holdstopcode: distinctDisplayValue('holdstopcode'),
+                holdstopreason: distinctDisplayValue('holdstopreason'),
+                ptronhand: formatItemInquiryQuantity(model.locationRows.reduce((sum, entry) => sum + parseItemInquiryQuantity(entry.values.ptronhand), 0)),
+                ptrreviewed: formatItemInquiryQuantity(model.locationRows.reduce((sum, entry) => sum + parseItemInquiryQuantity(entry.values.ptrreviewed), 0), { blankZero: true }),
+                ptravailable: formatItemInquiryQuantity(model.locationRows.reduce((sum, entry) => sum + parseItemInquiryQuantity(entry.values.ptravailable), 0), { blankZero: true })
+            });
+            const identityHtml = ITEM_INQUIRY_DISPLAY_IDENTITY_FIELDS.map((field) => {
+                const value = String(displayIdentity[field.key] || '').trim() || '—';
                 return `<div class="item-inquiry-summary-cell" data-item-inquiry-field="${escapeHtml(field.label)}" title="${escapeHtml(value)}"><span class="item-inquiry-summary-label">${escapeHtml(field.label)}</span><span class="item-inquiry-summary-value">${escapeHtml(value)}</span></div>`;
             }).join('');
             const seasonHeaderHtml = ITEM_INQUIRY_SEASON_FIELDS.map((field) => `<div role="columnheader">${escapeHtml(field.label)}</div>`).join('');
@@ -95789,17 +95820,15 @@ function toggleDriveQuickRequestItem(domId) {
                 groups.get(locationCode).push(entry);
             });
             let rowIndex = 0;
-            const headersHtml = ITEM_INQUIRY_ROW_FIELDS.map((field) => `<div role="columnheader">${escapeHtml(field.label)}</div>`).join('');
+            const headersHtml = ITEM_INQUIRY_DISPLAY_ROW_FIELDS.map((field) => `<div role="columnheader">${escapeHtml(field.label)}</div>`).join('');
             const locationHtml = Array.from(groups.entries()).map(([locationCode, entries]) => {
-                const onHandTotal = entries.reduce((sum, entry) => sum + parseItemInquiryQuantity(entry.values.ptronhand), 0);
-                const reviewedTotal = entries.reduce((sum, entry) => sum + parseItemInquiryQuantity(entry.values.ptrreviewed), 0);
                 const rowsHtml = entries.map((entry) => {
                     const index = rowIndex++;
                     const row = entry.sourceRow;
                     const isCurrent = getItemInquiryRowKey(row) === currentKey;
                     const domId = ensureItemInquiryRowDomId(row, index);
                     const activationAttrs = buildFastInvokeAttrs('openItemInquiryDriveRow', [getItemInquiryRowKey(row), domId, entry.unique_id], 'Open Drive Mode card');
-                    const cells = ITEM_INQUIRY_ROW_FIELDS.map((field) => {
+                    const cells = ITEM_INQUIRY_DISPLAY_ROW_FIELDS.map((field) => {
                         let value = entry.values[field.key];
                         if (field.key === 'locationnotedate' && value) value = formatGroupedBloomNcrReportDateValue(value) || value;
                         const display = String(value == null || value === '' ? '—' : value).trim() || '—';
@@ -95808,9 +95837,9 @@ function toggleDriveQuickRequestItem(domId) {
                     }).join('');
                     return `<div class="item-inquiry-ledger-row-shell ${isCurrent ? 'item-inquiry-ledger-row--current' : ''}" data-item-inquiry-row-line="true" data-dom-id="${escapeHtml(domId)}"><div class="item-inquiry-ledger-row" role="row" tabindex="0" ${activationAttrs}>${cells}</div></div>`;
                 }).join('');
-                return `<section class="item-inquiry-location-group" data-item-inquiry-location="${escapeHtml(locationCode)}"><div class="item-inquiry-location-header"><div><span class="item-inquiry-location-label">LOCATIONCODE</span><strong>${escapeHtml(locationCode)}</strong><span class="item-inquiry-location-count">${entries.length} lot${entries.length === 1 ? '' : 's'}</span></div><div class="item-inquiry-location-totals"><span>PTRONHAND <strong>${escapeHtml(formatItemInquiryQuantity(onHandTotal))}</strong></span><span>PTRREVIEWED <strong>${escapeHtml(formatItemInquiryQuantity(reviewedTotal, { blankZero: true }))}</strong></span></div></div><div class="item-inquiry-ledger-scroll"><div class="item-inquiry-ledger-table"><div class="item-inquiry-ledger-header" role="row">${headersHtml}</div>${rowsHtml}</div></div></section>`;
+                return `<section class="item-inquiry-location-group" data-item-inquiry-location="${escapeHtml(locationCode)}"><div class="item-inquiry-location-header"><div><span class="item-inquiry-location-label">LOCATIONCODE</span><strong>${escapeHtml(locationCode)}</strong><span class="item-inquiry-location-count">${entries.length} lot${entries.length === 1 ? '' : 's'}</span></div></div><div class="item-inquiry-ledger-scroll"><div class="item-inquiry-ledger-table"><div class="item-inquiry-ledger-header" role="row">${headersHtml}</div>${rowsHtml}</div></div></section>`;
             }).join('') || '<div class="item-inquiry-empty">No inventory rows were found for this item code.</div>';
-            return `<div class="item-inquiry-workspace"><section class="item-inquiry-summary" data-item-inquiry-summary="true" aria-label="Item identity"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>${escapeHtml(model.identity.commonname || 'Unknown')}</strong></div><span>${model.locationRows.length} row${model.locationRows.length === 1 ? '' : 's'} · ${groups.size} location${groups.size === 1 ? '' : 's'}</span></div><div class="item-inquiry-summary-grid">${identityHtml}</div></section><section class="item-inquiry-season-summary" data-item-inquiry-season-summary="true" aria-label="Distinct season summary"><div class="item-inquiry-section-heading"><div><span>Season Summary</span><strong>${model.seasons.length} distinct row${model.seasons.length === 1 ? '' : 's'}</strong></div></div><div class="item-inquiry-season-header" role="row">${seasonHeaderHtml}</div>${seasonRowsHtml}</section><div class="item-inquiry-ledger" role="table" aria-label="Inventory lots grouped by location">${locationHtml}</div></div>`;
+            return `<div class="item-inquiry-workspace"><section class="item-inquiry-summary" data-item-inquiry-summary="true" aria-label="Item identity"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>${escapeHtml(model.identity.commonname || 'Unknown')}</strong></div><span>${model.locationRows.length} row${model.locationRows.length === 1 ? '' : 's'} · ${groups.size} location${groups.size === 1 ? '' : 's'}</span></div><div class="item-inquiry-summary-grid">${identityHtml}</div></section><section class="item-inquiry-season-summary" data-item-inquiry-season-summary="true" aria-label="Distinct season summary"><div class="item-inquiry-section-heading"><div><span>Season Summary</span><strong>${model.seasons.length} distinct row${model.seasons.length === 1 ? '' : 's'}</strong></div></div><div class="item-inquiry-season-grid"><div class="item-inquiry-season-header" role="row">${seasonHeaderHtml}</div>${seasonRowsHtml}</div></section><div class="item-inquiry-ledger" role="table" aria-label="Inventory lots grouped by location">${locationHtml}</div></div>`;
         }
 
         function renderItemInquiryDetailPanel(item = activeItem) {

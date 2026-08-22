@@ -41,12 +41,12 @@ const historicalReportMigration = read('supabase/migrations/20260821202202_manag
 const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.22.02';
+  const release = 'V2026.08.22.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.22.02');
+  assert.equal(packageJson.version, '2026.08.22.03');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -781,7 +781,7 @@ test('V15 Chat and navigation are measured against the visible viewport', () => 
   assert.match(css, /data-ops-theme="dark"\] #bottom-nav[\s\S]*rgba\(10, 28, 21, \.96\)/);
 });
 
-test('Item Inquiry shares the Reclass identity, season, and full location worksheet model', () => {
+test('Item Inquiry keeps the full Reclass model while compacting its read-only worksheet', () => {
   const renderer = html.slice(
     html.indexOf('const ITEM_INQUIRY_IDENTITY_FIELDS'),
     html.indexOf('function setDriveAltLocSeason')
@@ -799,11 +799,17 @@ test('Item Inquiry shares the Reclass identity, season, and full location worksh
   assert.match(renderer, /normalizeItemInquirySaleYear/);
   assert.match(renderer, /seasonSeen\.has/);
   assert.match(renderer, /renderItemInquiryReadOnlyWorkspace/);
+  assert.match(renderer, /ITEM_INQUIRY_DISPLAY_IDENTITY_FIELDS/);
+  assert.match(renderer, /ITEM_INQUIRY_DISPLAY_ROW_FIELDS/);
+  assert.match(renderer, /'pulltagnote2'/);
+  assert.match(renderer, /'locationptn2'/);
+  assert.match(renderer, /distinctDisplayValue\('holdstopcode'\)/);
   const inquiryCss = css.slice(css.lastIndexOf('V2026.08.17.04 — responsive Item Inquiry ledger'));
   assert.match(inquiryCss, /overflow-x: hidden !important/);
-  assert.match(inquiryCss, /grid-template-columns: 78px 92px[\s\S]*72px 150px/);
+  assert.match(inquiryCss, /grid-template-columns: 78px 92px[\s\S]*130px 130px/);
   assert.match(inquiryCss, /item-inquiry-ledger-scroll[\s\S]*overflow-x: auto/);
-  assert.match(inquiryCss, /item-inquiry-season-row[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(inquiryCss, /item-inquiry-season-grid[\s\S]*repeat\(6, max-content\)/);
+  assert.match(inquiryCss, /item-inquiry-summary-grid[\s\S]*grid-auto-columns: max-content/);
   assert.match(inquiryCss, /@media \(max-width: 1099px\)[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(inquiryCss, /@media \(max-width: 640px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(inquiryCss, /border-right: 1px solid var\(--ops-border\)/);

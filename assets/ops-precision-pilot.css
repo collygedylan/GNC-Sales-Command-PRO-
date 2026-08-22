@@ -6285,7 +6285,7 @@ body.ops-precision-pilot #view-detail #det-item-inquiry-content {
   grid-column: 1 / -1 !important;
   width: 100% !important;
   max-width: 100% !important;
-  height: max(280px, calc(var(--ops-content-available-height, 100vh) - 86px)) !important;
+  height: max(280px, calc(var(--ops-content-available-height, 100vh) - 8px)) !important;
   min-height: 0 !important;
   padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) !important;
   overflow: hidden !important;
@@ -6357,7 +6357,9 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary {
   border: 1px solid var(--ops-border-strong);
   border-radius: var(--ops-card-radius, 12px);
   background: var(--ops-surface);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-section-heading {
@@ -6400,8 +6402,10 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-section-heading > spa
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.65fr .72fr .92fr 1fr .9fr 1fr 1.35fr;
+  display: inline-grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  width: max-content;
   min-width: 0;
   background: var(--ops-border);
   gap: 1px;
@@ -6413,18 +6417,26 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-summary {
   border: 1px solid var(--ops-border-strong);
   border-radius: var(--ops-card-radius, 12px);
   background: var(--ops-surface);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-grid {
+  display: grid;
+  grid-template-columns: repeat(6, max-content);
+  width: max-content;
+  min-width: 0;
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header,
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  display: contents;
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header > div,
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row > div {
-  min-width: 0;
+  min-width: max-content;
   padding: 5px 7px;
   border-right: 1px solid var(--ops-border);
 }
@@ -6436,14 +6448,22 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row > div:last
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header {
   color: var(--ops-text-muted);
-  background: var(--ops-command, var(--ops-surface-strong));
   font-size: 8px;
   font-weight: 900;
   letter-spacing: .06em;
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row {
+  color: var(--ops-text);
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header > div {
+  background: var(--ops-command, var(--ops-surface-strong));
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row > div {
   border-top: 1px solid var(--ops-border);
+  background: var(--ops-surface);
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row span {
@@ -6471,7 +6491,7 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-cell {
   flex-direction: column;
   justify-content: center;
   gap: 3px;
-  min-width: 0;
+  min-width: max-content;
   min-height: 46px;
   padding: 6px 8px;
   color: var(--ops-text);
@@ -6592,7 +6612,7 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-location-total-row st
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-header,
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-row {
   display: grid;
-  grid-template-columns: 78px 92px 68px 68px 86px 86px 82px 74px 78px 78px 118px 150px 130px 130px 130px 130px 72px 150px;
+  grid-template-columns: 78px 92px 68px 68px 86px 86px 82px 118px 150px 130px 130px;
   min-width: 0;
 }
 
@@ -6603,13 +6623,13 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-scroll {
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-table {
-  min-width: 1800px;
+  min-width: 1090px;
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-header {
-  position: sticky;
+  position: relative;
   z-index: 2;
-  top: 42px;
+  top: auto;
   border-bottom: 1px solid var(--ops-border-strong);
   color: var(--ops-text-muted);
   background: var(--ops-command, var(--ops-surface-strong));
@@ -6770,6 +6790,17 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-empty {
   padding-top: 0.5rem !important;
 }
 
+body.ops-precision-pilot #view-detail.detail-request-mode.detail-item-inquiry-mode:not(.hidden) {
+  height: max(280px, calc(var(--ops-content-available-height, 100dvh) - 18px)) !important;
+  max-height: calc(var(--ops-content-available-height, 100dvh) - 18px) !important;
+}
+
+body.ops-precision-pilot:has(#view-detail.detail-item-inquiry-mode:not(.hidden)) #main-scroll-area {
+  overflow: hidden !important;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom)) !important;
+  scroll-padding-bottom: calc(4px + env(safe-area-inset-bottom)) !important;
+}
+
 html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
   .item-inquiry-summary,
   .item-inquiry-summary-cell,
@@ -6797,11 +6828,7 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
 
 @media (max-width: 1099px) {
   body.ops-precision-pilot #view-detail #det-item-inquiry-content {
-    height: max(260px, calc(var(--ops-content-available-height, 100vh) - 74px)) !important;
-  }
-
-  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: max(260px, calc(var(--ops-content-available-height, 100vh) - 8px)) !important;
   }
 
   body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-header {
@@ -6853,7 +6880,7 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
   body.ops-precision-pilot #view-detail #det-item-inquiry-content {
     width: 100% !important;
     max-width: 100% !important;
-    height: max(240px, calc(var(--ops-content-available-height, 100vh) - 62px)) !important;
+    height: max(240px, calc(var(--ops-content-available-height, 100vh) - 4px)) !important;
     padding: 4px 0 calc(4px + env(safe-area-inset-bottom)) !important;
   }
 
@@ -6872,30 +6899,9 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
     display: none;
   }
 
-  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-summary {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header,
-  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row {
-    grid-template-columns: repeat(6, 90px);
-    min-width: 540px;
-  }
-
   body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-cell {
     min-height: 42px;
     padding: 5px 7px;
-  }
-
-  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-value {
-    font-size: 10px;
-    white-space: normal;
-    overflow-wrap: anywhere;
   }
 
   body.ops-precision-pilot #item-inquiry-panel .item-inquiry-location-header {
