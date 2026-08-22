@@ -9511,7 +9511,347 @@ function sendInventoryTransactionEmail_(payload, context) {
   };
 }
 
+const RECLASS_INQUIRY_ROW_FIELDS_ = [
+  { key: 'lotcode', label: 'Lot', aliases: ['lotcode', 'LOTCODE'] },
+  { key: 'locationcode', label: 'Location', aliases: ['locationcode', 'LOCATIONCODE'] },
+  { key: 'source', label: 'Source', aliases: ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'] },
+  { key: 'priority', label: 'Priority', aliases: ['priority', 'PRIORITY'] },
+  { key: 'desigitem', label: 'Desig Item', aliases: ['desigitem', 'DESIGITEM', 'DesigItem'] },
+  { key: 'desigcust', label: 'Desig Cust', aliases: ['desigcust', 'DESIGCUST', 'DesigCust'] },
+  { key: 'desigloc', label: 'Desig Loc', aliases: ['desigloc', 'DESIGLOC', 'DesigLoc'] },
+  { key: 'ptronhand', label: 'OH', aliases: ['ptronhand', 'PTRONHAND'], numeric: true },
+  { key: 'ptrreviewed', label: 'Rev', aliases: ['ptrreviewed', 'PTRREVIEWED'], numeric: true },
+  { key: 'ptravailable', label: 'Avail', aliases: ['ptravailable', 'PTRAVAILABLE'], numeric: true },
+  { key: 'locationnotedate', label: 'Loc Note Dt', aliases: ['locationnotedate', 'LOCATIONNOTEDATE'], readOnly: true },
+  { key: 'locationnote', label: 'Loc Note', aliases: ['locationnote', 'LOCATIONNOTE'], multiline: true },
+  { key: 'pulltagnote1', label: 'Pull Tag 1', aliases: ['pulltagnote1', 'PULLTAGNOTE1'], multiline: true },
+  { key: 'pulltagnote2', label: 'Pull Tag 2', aliases: ['pulltagnote2', 'PULLTAGNOTE2'], multiline: true },
+  { key: 'locationptn1', label: 'Loc PTN 1', aliases: ['locationptn1', 'LOCATIONPTN1'], multiline: true },
+  { key: 'locationptn2', label: 'Loc PTN 2', aliases: ['locationptn2', 'LOCATIONPTN2'], multiline: true },
+  { key: 'holdstopcode', label: 'H/S', aliases: ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], hold: true },
+  { key: 'holdstopreason', label: 'H/S Reason', aliases: ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], multiline: true }
+];
+
+const RECLASS_INQUIRY_IDENTITY_FIELDS_ = [
+  { key: 'plantgroupcode', label: 'Plant Grp', aliases: ['plantgroupcode', 'PLANTGROUPCODE'] },
+  { key: 'commonname', label: 'Common Name', aliases: ['commonname', 'COMMONNAME', 'description', 'DESCRIPTION'] },
+  { key: 'contsize', label: 'Cont.', aliases: ['contsize', 'CONTSIZE'] },
+  { key: 'itemcode', label: 'Item Code', aliases: ['itemcode', 'ITEMCODE'] },
+  { key: 'genusname', label: 'Genus', aliases: ['genusname', 'GENUSNAME', 'genus', 'GENUS'] },
+  { key: 'fieldtagcolor', label: 'Tag Color', aliases: ['fieldtagcolor', 'FIELDTAGCOLOR'] },
+  { key: 'itemspec', label: 'Item Spec', aliases: ['itemspec', 'ITEMSPEC'] },
+  { key: 'pullerresponsibility', label: 'Puller Resp.', aliases: ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER'] }
+];
+
+const RECLASS_INQUIRY_SEASON_FIELDS_ = [
+  { key: 'saleyear', label: 'Sale Yr', aliases: ['saleyear', 'SALEYEAR', 'salesyear', 'SALESYEAR'] },
+  { key: 'season', label: 'Season', aliases: ['season', 'SEASON'] },
+  { key: 's_lts', label: 'S_LTS', aliases: ['s_lts', 'S_LTS', 's_LTS', 'slts', 'SLTS'] },
+  { key: 'season_supply', label: 'Supply', aliases: ['season_supply', 'SEASON_SUPPLY', 'supply', 'SUPPLY'] },
+  { key: 'season_oh', label: 'On Hand', aliases: ['season_oh', 'SEASON_OH'] },
+  { key: 'season_demand', label: 'Demand', aliases: ['season_demand', 'SEASON_DEMAND', 'demand', 'DEMAND'] }
+];
+
+function getReclassInquiryExactValue_(row, aliases, fallback) {
+  const safeRow = row && typeof row === 'object' ? row : {};
+  const safeAliases = Array.isArray(aliases) ? aliases : [aliases];
+  for (let i = 0; i < safeAliases.length; i++) {
+    const alias = safeAliases[i];
+    if (!Object.prototype.hasOwnProperty.call(safeRow, alias)) continue;
+    const value = safeRow[alias];
+    return value == null ? '' : String(value);
+  }
+  return fallback == null ? '' : String(fallback);
+}
+
+function normalizeReclassInquirySaleYear_(value) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return '';
+  const number = Number(raw);
+  if (!Number.isFinite(number)) return raw;
+  const integer = Math.trunc(number);
+  return integer >= 0 && integer <= 99 ? String(2000 + integer) : String(integer);
+}
+
+function getReclassInquirySeasonRank_(value) {
+  const order = ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
+  const index = order.indexOf(String(value || '').trim().toUpperCase());
+  return index < 0 ? order.length : index;
+}
+
+function fetchReclassInquiryItemRows_(sourceRow) {
+  const itemCode = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(sourceRow, ['itemcode', 'ITEMCODE'], ''));
+  const tableName = getInventoryTransactionRowTable_(sourceRow);
+  if (!itemCode || !tableName) throw new Error('The source item identity is incomplete.');
+  const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?select=*&itemcode=eq.' + encodeURIComponent(itemCode) + '&limit=500';
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: getSupabaseHeaders_({ Accept: 'application/json' }),
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) throw new Error('Could not refresh the current Item Inquiry rows (' + code + ').');
+  let rows = [];
+  try {
+    rows = JSON.parse(response.getContentText() || '[]');
+  } catch (error) {
+    throw new Error('The refreshed Item Inquiry rows were unreadable.');
+  }
+  if (!Array.isArray(rows) || !rows.length) throw new Error('No current rows were found for this ItemCode.');
+  rows.forEach(function(row) { row.__approval_table_name = tableName; });
+  return rows.sort(function(a, b) {
+    const aLoc = getReclassInquiryExactValue_(a, ['locationcode', 'LOCATIONCODE'], '');
+    const bLoc = getReclassInquiryExactValue_(b, ['locationcode', 'LOCATIONCODE'], '');
+    const locCompare = aLoc.localeCompare(bLoc, undefined, { numeric: true, sensitivity: 'base' });
+    if (locCompare) return locCompare;
+    const aLot = getReclassInquiryExactValue_(a, ['lotcode', 'LOTCODE'], '');
+    const bLot = getReclassInquiryExactValue_(b, ['lotcode', 'LOTCODE'], '');
+    return aLot.localeCompare(bLot, undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
+
+function normalizeReclassInquiryOverlayValue_(field, value) {
+  const raw = String(value == null ? '' : value);
+  const maxLength = field.multiline ? 2000 : 300;
+  if (raw.length > maxLength) throw new Error(field.label + ' exceeds the printable report limit.');
+  const normalized = raw.trim();
+  if (field.hold) {
+    const code = normalized.toUpperCase();
+    if (code && code !== 'H' && code !== 'S') throw new Error('Hold/Stop Code must be blank, H, or S.');
+    return code;
+  }
+  if (field.numeric) {
+    if (!normalized) return '';
+    const amount = Number(normalized.replace(/,/g, ''));
+    if (!Number.isFinite(amount) || amount < 0) throw new Error(field.label + ' must be blank or a non-negative number.');
+    return String(amount);
+  }
+  return normalized;
+}
+
+function applyReclassInquiryOverlays_(rows, overlays, now) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeOverlays = Array.isArray(overlays) ? overlays : [];
+  if (!safeOverlays.length || safeOverlays.length !== safeRows.length) {
+    return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
+  }
+  const overlayByUid = new Map();
+  safeOverlays.forEach(function(overlay) {
+    const uid = normalizeInventoryTransactionText_(overlay && overlay.unique_id);
+    if (!uid || overlayByUid.has(uid)) throw new Error('The Item Inquiry overlay row ids are invalid.');
+    overlayByUid.set(uid, overlay);
+  });
+  const stamp = Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a');
+  const reportRows = [];
+  for (let i = 0; i < safeRows.length; i++) {
+    const row = safeRows[i];
+    const uid = getInventoryTransactionRowUid_(row);
+    const overlay = overlayByUid.get(uid);
+    if (!overlay) return { ok: false, status: 'conflict', message: 'An Item Inquiry row changed or is no longer available. Sync and try again.' };
+    const expected = overlay.expected && typeof overlay.expected === 'object' ? overlay.expected : {};
+    const checks = [
+      ['ItemCode', getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''), expected.itemcode],
+      ['Lot', getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''), expected.lotcode],
+      ['Location', getInventoryTransactionRowValue_(row, ['locationcode', 'LOCATIONCODE'], ''), expected.locationcode]
+    ];
+    const mismatch = checks.find(function(check) {
+      return normalizeInventoryTransactionComparable_(check[1]) !== normalizeInventoryTransactionComparable_(check[2]);
+    });
+    if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
+    const values = {};
+    const overlayValues = overlay.values && typeof overlay.values === 'object' ? overlay.values : {};
+    RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) {
+      if (field.readOnly) {
+        values[field.key] = getReclassInquiryExactValue_(row, field.aliases, '');
+        return;
+      }
+      values[field.key] = normalizeReclassInquiryOverlayValue_(field, Object.prototype.hasOwnProperty.call(overlayValues, field.key) ? overlayValues[field.key] : getReclassInquiryExactValue_(row, field.aliases, ''));
+    });
+    const originalLocationNote = String(getReclassInquiryExactValue_(row, ['locationnote', 'LOCATIONNOTE'], '')).trim();
+    if (String(values.locationnote || '') !== originalLocationNote) values.locationnotedate = stamp;
+    reportRows.push({ unique_id: uid, values: values });
+  }
+  return { ok: true, rows: reportRows };
+}
+
+function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, payload, now) {
+  const identity = {};
+  RECLASS_INQUIRY_IDENTITY_FIELDS_.forEach(function(field) {
+    identity[field.key] = getReclassInquiryExactValue_(sourceRow, field.aliases, getReclassInquiryExactValue_(authoritativeRows[0], field.aliases, ''));
+  });
+  const seen = {};
+  const seasons = [];
+  authoritativeRows.forEach(function(row) {
+    const entry = {};
+    RECLASS_INQUIRY_SEASON_FIELDS_.forEach(function(field) { entry[field.key] = getReclassInquiryExactValue_(row, field.aliases, ''); });
+    entry.saleyear = normalizeReclassInquirySaleYear_(entry.saleyear);
+    entry.season = String(entry.season || '').trim().toUpperCase();
+    if (!RECLASS_INQUIRY_SEASON_FIELDS_.some(function(field) { return String(entry[field.key] || '').trim(); })) return;
+    const key = RECLASS_INQUIRY_SEASON_FIELDS_.map(function(field) { return String(entry[field.key] || '').trim().toUpperCase(); }).join('|');
+    if (seen[key]) return;
+    seen[key] = true;
+    seasons.push(entry);
+  });
+  seasons.sort(function(a, b) {
+    const yearDiff = (Number(b.saleyear) || -1) - (Number(a.saleyear) || -1);
+    if (yearDiff) return yearDiff;
+    return getReclassInquirySeasonRank_(a.season) - getReclassInquirySeasonRank_(b.season);
+  });
+  const actor = payload && payload.actor && typeof payload.actor === 'object' ? payload.actor : {};
+  return {
+    identity: identity,
+    seasons: seasons,
+    rows: reportRows,
+    transaction: payload && payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {},
+    actorDisplay: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, 'Unknown User')),
+    submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a')
+  };
+}
+
+function buildReclassInquiryReportHtml_(model, printMode) {
+  const safeModel = model || {};
+  const transaction = safeModel.transaction || {};
+  const esc = escapeEmailHtml_;
+  const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
+    return '<div class="identity-cell"><span>' + esc(field.label) + '</span><strong>' + esc(safeModel.identity && safeModel.identity[field.key] || '') + '</strong></div>';
+  }).join('');
+  const seasonHead = RECLASS_INQUIRY_SEASON_FIELDS_.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
+  const seasonBody = (safeModel.seasons || []).map(function(row) {
+    return '<tr>' + RECLASS_INQUIRY_SEASON_FIELDS_.map(function(field) { return '<td>' + esc(row[field.key] || '') + '</td>'; }).join('') + '</tr>';
+  }).join('');
+  const rowHead = RECLASS_INQUIRY_ROW_FIELDS_.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
+  const rowBody = (safeModel.rows || []).map(function(row) {
+    return '<tr>' + RECLASS_INQUIRY_ROW_FIELDS_.map(function(field) { return '<td>' + esc(row.values && row.values[field.key] || '') + '</td>'; }).join('') + '</tr>';
+  }).join('');
+  const requestFields = [
+    ['Qty', transaction.quantity], ['Proposed Item', transaction.newItemCode], ['Proposed Lot/Season', transaction.newLotCode],
+    ['Proposed Location', transaction.newLocationCode], ['Source', transaction.source], ['Reason', transaction.reason],
+    ['Request Action', transaction.requestAction], ['Hold/Stop Reason', transaction.holdStopReason], ['Desig Cust', transaction.desigCust],
+    ['Desig Item', transaction.desigItem], ['Desig Loc', transaction.desigLoc], ['Last Planting Date', transaction.lastPltgDate]
+  ];
+  const requestHtml = requestFields.map(function(pair) { return '<div class="request-cell"><span>' + esc(pair[0]) + '</span><strong>' + esc(pair[1] == null ? '' : pair[1]) + '</strong></div>'; }).join('');
+  const legend = 'Plant Grp = Plant Group; Cont. = Container; Sale Yr = Sale Year; Desig = Designated; OH = On Hand; Rev = Reviewed; Avail = Available; Loc Note Dt = Location Note Date; PTN = Pull Tag Note; H/S = Hold/Stop.';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>' +
+    '@page{size:Letter landscape;margin:.32in}*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.2}h1{margin:0 0 3px;font-size:15pt}h2{margin:8px 0 3px;font-size:9pt;text-transform:uppercase}.meta{margin-bottom:6px}.identity,.request-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.request-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n),.request-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4),.request-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span,.request-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong,.request-cell strong{display:block;font-size:8pt}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{font-size:7pt;text-align:left}td{font-size:8pt}.season-table{max-width:7.5in}.location-table th:nth-child(11),.location-table td:nth-child(11){width:.62in}.location-table th:nth-child(12),.location-table td:nth-child(12),.location-table th:nth-child(18),.location-table td:nth-child(18){width:.78in}.legend{margin-top:5px;font-size:7pt}.notes{margin-top:7px;break-inside:avoid}.notes-line{height:18px;border-bottom:1px solid #000}.no-color{color:#000;background:#fff}' +
+    '</style></head><body class="no-color"><h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + '</div>' +
+    '<div class="identity">' + identityCells + '</div><h2>Reclass Request</h2><div class="request-grid">' + requestHtml + '</div><h2>Season Summary</h2><table class="season-table"><thead><tr>' + seasonHead + '</tr></thead><tbody>' + seasonBody + '</tbody></table>' +
+    '<h2>Location / Lot Item Inquiry</h2><table class="location-table"><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table><div class="legend"><strong>Abbreviations:</strong> ' + esc(legend) + '</div><div class="notes"><strong>Field Notes</strong><div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div></div></body></html>';
+}
+
+function buildReclassInquiryReportText_(model) {
+  const safeModel = model || {};
+  const identity = safeModel.identity || {};
+  const transaction = safeModel.transaction || {};
+  return [
+    'GNC PH Reclass Item Inquiry',
+    'Submitted: ' + String(safeModel.submittedAt || ''),
+    'Submitted By: ' + String(safeModel.actorDisplay || ''),
+    'Item: ' + String(identity.commonname || ''),
+    'Item Code: ' + String(identity.itemcode || ''),
+    'Container: ' + String(identity.contsize || ''),
+    'Quantity: ' + String(transaction.quantity == null ? '' : transaction.quantity),
+    'Proposed Destination: ' + [transaction.newItemCode, transaction.newLotCode, transaction.newLocationCode].filter(Boolean).join(' / '),
+    'Reason: ' + String(transaction.reason || ''),
+    'Request Action: ' + String(transaction.requestAction || 'none'),
+    '',
+    'A black-and-white landscape Item Inquiry is attached as a PDF.'
+  ].join('\n');
+}
+
+function getReclassInquiryCacheKey_(token) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token || ''), Utilities.Charset.UTF_8);
+  return 'reclass_inquiry_' + bytes.map(function(byte) { return ('0' + ((byte + 256) % 256).toString(16)).slice(-2); }).join('').slice(0, 40);
+}
+
+function handleReclassInquiryEmail_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const token = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safePayload.idempotencyToken, safePayload.idempotency_token));
+  if (!token || token.length < 12 || token.length > 180) throw new Error('The Reclass inquiry idempotency token is invalid.');
+  const cache = CacheService.getScriptCache();
+  const cacheKey = getReclassInquiryCacheKey_(token);
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    const cachedResponse = JSON.parse(cached);
+    cachedResponse.duplicate = true;
+    return cachedResponse;
+  }
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) return { ok: false, status: 'lock_timeout', message: 'Another Reclass inquiry is being sent. Please retry in a few seconds.' };
+  try {
+    const cachedAfterLock = cache.get(cacheKey);
+    if (cachedAfterLock) {
+      const response = JSON.parse(cachedAfterLock);
+      response.duplicate = true;
+      return response;
+    }
+    const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
+    const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
+    if (!sourceUid) throw new Error('Missing source inventory row id.');
+    const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+    if (!sourceRow) return { ok: false, status: 'conflict', message: 'The source inventory row no longer exists. Sync and try again.' };
+    try {
+      validateInventoryTransactionSourceIdentity_(sourceRow, source);
+    } catch (identityError) {
+      return { ok: false, status: 'conflict', message: 'The source row changed. Sync and review the Reclass inquiry before sending.' };
+    }
+    const authoritativeRows = fetchReclassInquiryItemRows_(sourceRow);
+    const now = new Date();
+    const overlayResult = applyReclassInquiryOverlays_(authoritativeRows, safePayload.rowOverlays, now);
+    if (!overlayResult.ok) return overlayResult;
+    const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, safePayload, now);
+    const actor = safePayload.actor && typeof safePayload.actor === 'object' ? safePayload.actor : {};
+    const recipients = getInventoryTransactionEmailRecipients_(safePayload, normalizeInventoryTransactionText_(actor.email));
+    if (!recipients.length) throw new Error('Choose at least one approved email recipient.');
+    const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
+    const sourceLocation = getInventoryTransactionRowValue_(sourceRow, ['locationcode', 'LOCATIONCODE'], '');
+    const subject = '[External] GNC PH Reclass: ' + commonName + (sourceLocation ? ' ' + sourceLocation : '');
+    let pdfBlob;
+    try {
+      const printHtml = buildReclassInquiryReportHtml_(model, true);
+      pdfBlob = HtmlService.createHtmlOutput(printHtml).getBlob().getAs(MimeType.PDF);
+      const safeName = commonName.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Item';
+      pdfBlob.setName('GNC_PH_Reclass_Item_Inquiry_' + safeName + '.pdf');
+    } catch (pdfError) {
+      throw new Error('The printable Reclass PDF could not be created. Nothing was emailed; retry is safe.');
+    }
+    try {
+      GmailApp.sendEmail(recipients.join(','), subject, buildReclassInquiryReportText_(model), {
+        htmlBody: buildReclassInquiryReportHtml_(model, false),
+        attachments: [pdfBlob],
+        name: 'GNC PH Reclass'
+      });
+    } catch (emailError) {
+      throw new Error('The Reclass inquiry could not be delivered. Nothing in inventory was changed; retry with the same draft.');
+    }
+    const response = {
+      ok: true,
+      status: 'sent',
+      emailRecipients: recipients,
+      subject: subject,
+      submittedAt: now.toISOString(),
+      message: 'Reclass inquiry and printable PDF sent. No inventory data was changed.'
+    };
+    cache.put(cacheKey, JSON.stringify(response), 600);
+    return response;
+  } finally {
+    try { lock.releaseLock(); } catch (releaseError) {}
+  }
+}
+
 function handleInventoryTransaction_(payload) {
+  if (normalizeInventoryTransactionAction_(payload && payload.action) === 'reclass') {
+    const compatibilityPayload = Object.assign({}, payload || {}, {
+      type: 'reclass_inquiry_email',
+      idempotencyToken: firstNonEmptyRequestValue_(
+        payload && payload.idempotencyToken,
+        payload && payload.idempotency_token,
+        payload && payload.clientTransactionId,
+        payload && payload.client_transaction_id
+      ),
+      rowOverlays: payload && (payload.rowOverlays || payload.row_overlays)
+    });
+    return handleReclassInquiryEmail_(compatibilityPayload);
+  }
   const lock = LockService.getScriptLock();
   let lockReleased = false;
   if (!lock.tryLock(15000)) {
@@ -12748,6 +13088,10 @@ function doPost(e) {
 
     if (payload.type === 'inventory_transaction_history') {
       return jsonOutput_(fetchInventoryTransactionHistory_(payload));
+    }
+
+    if (payload.type === 'reclass_inquiry_email') {
+      return jsonOutput_(handleReclassInquiryEmail_(payload));
     }
 
     if (payload.type === 'inventory_transaction') {

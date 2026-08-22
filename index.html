@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.21.04">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.22.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.21.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.22.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -857,6 +857,26 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .argos-tx-advanced{grid-column:1/-1;margin-top:.05rem}
 .argos-tx-advanced summary{cursor:pointer;border-radius:.68rem;border:1px solid #dbe4dc;background:#f8fafc;padding:.5rem .65rem;color:#475569;font-size:.58rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
 .argos-tx-advanced-grid{margin-top:.46rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.46rem}
+.argos-reclass-inquiry{grid-column:1/-1;margin-top:.35rem;border:1px solid #bbf7d0;border-radius:.9rem;background:#f8fffb;overflow:hidden}
+.argos-reclass-inquiry-heading{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.55rem .7rem;border-bottom:1px solid #d1fae5;background:#ecfdf5;color:#065f46;font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.argos-reclass-identity,.argos-reclass-season-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#d1fae5}
+.argos-reclass-identity>div,.argos-reclass-season-row>div{min-width:0;background:#fff;padding:.42rem .5rem}
+.argos-reclass-identity span,.argos-reclass-season-row span,.argos-reclass-row-field>span{display:block;color:#64748b;font-size:.48rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.argos-reclass-identity strong,.argos-reclass-season-row strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a;font-size:.68rem;font-weight:900}
+.argos-reclass-season{padding:.48rem;display:grid;gap:.3rem;border-top:1px solid #d1fae5}
+.argos-reclass-row-list{display:grid;gap:.55rem;padding:.55rem;background:#f8fafc}
+.argos-reclass-row-card{border:1px solid #cbd5e1;border-radius:.78rem;background:#fff;overflow:hidden}
+.argos-reclass-row-card--origin{border:2px solid #007a4d;box-shadow:0 0 0 2px rgba(0,122,77,.1)}
+.argos-reclass-row-title{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.45rem .55rem;border-bottom:1px solid #e2e8f0;background:#f8fafc;color:#0f172a;font-size:.62rem;font-weight:900}
+.argos-reclass-row-title em{color:#047857;font-style:normal;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase}
+.argos-reclass-row-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.42rem;padding:.5rem}
+.argos-reclass-row-field{display:block;min-width:0}
+.argos-reclass-row-field--wide{grid-column:span 2}
+.argos-reclass-row-input{width:100%;min-height:2.25rem;border:1px solid #cbd5e1;border-radius:.58rem;background:#fff;padding:.35rem .45rem;color:#0f172a;font-size:16px;font-weight:800;outline:none}
+textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
+.argos-reclass-row-input:focus{border-color:#007a4d;box-shadow:0 0 0 2px rgba(0,122,77,.12)}
+.argos-reclass-row-input[readonly]{background:#f1f5f9;color:#64748b}
+.argos-reclass-stamp-note{display:block;margin-top:.18rem;color:#047857;font-size:.48rem;font-weight:900}
 .argos-tx-footer{display:grid;grid-template-columns:0.8fr 1.2fr;gap:.55rem;border-top:1px solid #e2e8f0;background:#fff;padding:.65rem .92rem calc(.65rem + env(safe-area-inset-bottom))}
 .argos-tx-footer button{min-height:2.55rem;border-radius:.8rem;font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
 @media(min-width:640px){
@@ -889,6 +909,8 @@ body.ios-device .manager-crop-roll-review-filter-shell{
     .argos-tx-send-as-label{grid-column:1/-1;font-size:.5rem}
     .argos-tx-send-as-btn{min-height:2.18rem;font-size:.52rem;padding:.34rem .38rem}
     .argos-tx-form{gap:.36rem}
+    .argos-reclass-identity,.argos-reclass-season-row,.argos-reclass-row-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .argos-reclass-row-field--wide{grid-column:1/-1}
     .argos-tx-field>span{font-size:.52rem}
     .argos-tx-input{min-height:2.25rem;padding:.34rem .48rem}
     .argos-tx-footer{padding:.5rem .7rem calc(.5rem + env(safe-area-inset-bottom))}
@@ -6574,7 +6596,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.21.04">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.22.01">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6685,8 +6707,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.21.04"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.21.04"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.22.01"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.22.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7439,7 +7461,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.21.04').trim() || 'V2026.08.21.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.22.01').trim() || 'V2026.08.22.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8920,7 +8942,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.21.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.22.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30202,7 +30224,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.21.04').trim() || 'V2026.08.21.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.22.01').trim() || 'V2026.08.22.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40812,7 +40834,7 @@ let avTopControlsRenderToken = 0;
                         <button type="button" class="argos-tx-close active:scale-95" onclick="return closeArgosInventoryTransactionModal()" aria-label="Close inventory transaction"><i class="ph-bold ph-x text-xl"></i></button>
                     </div>
                     <div class="argos-tx-body">
-                        <div id="argos-inventory-transaction-notice" class="argos-tx-notice"><span class="font-black">Auto-Commit</span> - Apply writes to live inventory and records an audit row.</div>
+                        <div id="argos-inventory-transaction-notice" class="argos-tx-notice"><span class="font-black">Email Only</span> - Sending creates a printable inquiry. No inventory, History, audit, cache, or live-event data is changed.</div>
                         <div class="argos-tx-tabs" aria-label="Inventory transaction type">
                             <span class="argos-transaction-tab active" data-argos-transaction-tab="reclass"><i class="ph ph-arrows-clockwise"></i>Reclass</span>
                         </div>
@@ -40858,11 +40880,12 @@ let avTopControlsRenderToken = 0;
                                     <label class="argos-tx-field"><span>LastPltgDate</span><input id="argos-inventory-transaction-last-pltg-date" type="date" class="argos-tx-input"></label>
                                 </div>
                             </details>
+                            <div id="argos-reclass-item-inquiry" class="argos-reclass-inquiry"></div>
                         </form>
                     </div>
                     <div class="argos-tx-footer">
                         <button type="button" class="border border-slate-200 bg-white px-4 text-slate-700 shadow-sm active:scale-95" onclick="return closeArgosInventoryTransactionModal()">Cancel</button>
-                        <button type="button" id="argos-inventory-transaction-apply" class="bg-lime-600 px-4 text-white shadow-sm active:scale-95" onclick="return submitArgosInventoryTransaction(event)"><i class="ph-bold ph-check mr-1"></i> Apply</button>
+                        <button type="button" id="argos-inventory-transaction-apply" class="bg-lime-600 px-4 text-white shadow-sm active:scale-95" onclick="return submitArgosInventoryTransaction(event)"><i class="ph-bold ph-envelope mr-1"></i> Send Reclass Inquiry</button>
                     </div>
                 </div>`;
             document.body.appendChild(modal);
@@ -40883,6 +40906,90 @@ let avTopControlsRenderToken = 0;
             return `<div class="argos-tx-source-grid">${fields.map(([label, value]) => `<div class="argos-tx-source-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || '-')}</strong></div>`).join('')}</div>`;
         }
 
+        function renderArgosReclassInquiryEditor(model = null, originatingUid = '') {
+            const safeModel = model && typeof model === 'object' ? model : { identity: {}, seasons: [], locationRows: [] };
+            const identityHtml = ITEM_INQUIRY_IDENTITY_FIELDS.map((field) => {
+                const value = String(safeModel.identity && safeModel.identity[field.key] || '').trim() || '—';
+                return `<div><span>${escapeHtml(field.label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+            }).join('');
+            const seasonHtml = (Array.isArray(safeModel.seasons) ? safeModel.seasons : []).map((season) => `<div class="argos-reclass-season-row">${ITEM_INQUIRY_SEASON_FIELDS.map((field) => {
+                const value = String(season && season[field.key] || '').trim() || '—';
+                return `<div><span>${escapeHtml(field.label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+            }).join('')}</div>`).join('') || '<div class="text-xs font-bold text-slate-500">No season summary is available.</div>';
+            const editableFields = ITEM_INQUIRY_ROW_FIELDS.filter((field) => !field.readOnly);
+            const rowsHtml = (Array.isArray(safeModel.locationRows) ? safeModel.locationRows : []).map((entry, index) => {
+                const uid = String(entry && entry.unique_id || '').trim();
+                const values = entry && entry.values || {};
+                const isOrigin = uid && uid === String(originatingUid || '').trim();
+                const fieldsHtml = editableFields.map((field) => {
+                    const rawValue = String(values[field.key] == null ? '' : values[field.key]);
+                    const commonAttrs = `class="argos-reclass-row-input" data-reclass-row-uid="${escapeHtml(uid)}" data-reclass-field="${escapeHtml(field.key)}"`;
+                    let control = '';
+                    if (field.type === 'hold') {
+                        const holdCode = String(rawValue || '').trim().toUpperCase();
+                        control = `<select ${commonAttrs}><option value="" ${holdCode ? '' : 'selected'}>Blank</option><option value="H" ${holdCode === 'H' ? 'selected' : ''}>H - Hold</option><option value="S" ${holdCode === 'S' ? 'selected' : ''}>S - Stop</option></select>`;
+                    } else if (field.multiline) {
+                        const noteHandler = field.key === 'locationnote' ? ' oninput="handleArgosReclassLocationNoteInput(this)"' : '';
+                        control = `<textarea ${commonAttrs}${noteHandler}>${escapeHtml(rawValue)}</textarea>`;
+                    } else {
+                        const inputType = field.numeric ? 'number' : 'text';
+                        const step = field.numeric ? ' step="any" min="0"' : '';
+                        control = `<input type="${inputType}" ${commonAttrs}${step} value="${escapeHtml(rawValue)}">`;
+                    }
+                    return `<label class="argos-reclass-row-field ${field.multiline ? 'argos-reclass-row-field--wide' : ''}"><span>${escapeHtml(field.label)}</span>${control}</label>`;
+                }).join('');
+                const noteDate = String(values.locationnotedate || '').trim();
+                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}"><div class="argos-reclass-row-title"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span>${isOrigin ? '<em>Originating Row</em>' : ''}</div><div class="argos-reclass-row-grid">${fieldsHtml}<label class="argos-reclass-row-field argos-reclass-row-field--wide"><span>LOCATIONNOTEDATE (report only)</span><input class="argos-reclass-row-input" data-reclass-note-date="${escapeHtml(uid)}" value="${escapeHtml(noteDate)}" readonly><small class="argos-reclass-stamp-note" data-reclass-note-stamp="${escapeHtml(uid)}">Changes to Location Note are timestamped by the server when sent.</small></label></div></section>`;
+            }).join('') || '<div class="p-4 text-sm font-bold text-slate-600">No current rows were found for this ItemCode.</div>';
+            return `<div class="argos-reclass-inquiry-heading"><span>Temporary Item Inquiry Worksheet</span><span>${safeModel.locationRows.length} row${safeModel.locationRows.length === 1 ? '' : 's'}</span></div><div class="argos-reclass-identity">${identityHtml}</div><div class="argos-reclass-season">${seasonHtml}</div><div class="argos-reclass-row-list">${rowsHtml}</div>`;
+        }
+
+        function handleArgosReclassLocationNoteInput(input = null) {
+            const uid = String(input && input.getAttribute('data-reclass-row-uid') || '').trim();
+            const card = input && input.closest ? input.closest('[data-reclass-row-card]') : null;
+            const note = card ? card.querySelector(`[data-reclass-note-stamp="${uid.replace(/"/g, '\\"')}"]`) : null;
+            const model = argosInventoryTransactionState && argosInventoryTransactionState.inquiryModel;
+            const entry = model && Array.isArray(model.locationRows) ? model.locationRows.find((row) => String(row.unique_id || '') === uid) : null;
+            const changed = String(input && input.value || '') !== String(entry && entry.values && entry.values.locationnote || '');
+            if (note) note.textContent = changed ? 'A new America/Chicago date and time will be stamped when sent.' : 'Location Note is unchanged; its existing date will be retained.';
+        }
+
+        function collectArgosReclassInquiryOverlays() {
+            const state = argosInventoryTransactionState || {};
+            const model = state.inquiryModel || { locationRows: [] };
+            const overlays = [];
+            (Array.isArray(model.locationRows) ? model.locationRows : []).forEach((entry) => {
+                const uid = String(entry && entry.unique_id || '').trim();
+                if (!uid) throw new Error('One Item Inquiry row is missing its unique id. Sync and try again.');
+                const card = document.querySelector(`[data-reclass-row-card="${uid.replace(/"/g, '\\"')}"]`);
+                if (!card) throw new Error('The Item Inquiry editor is incomplete. Close Reclass and try again.');
+                const values = {};
+                card.querySelectorAll('[data-reclass-field]').forEach((input) => {
+                    const field = String(input.getAttribute('data-reclass-field') || '').trim();
+                    if (field) values[field] = String(input.value == null ? '' : input.value);
+                });
+                const holdCode = String(values.holdstopcode || '').trim().toUpperCase();
+                if (holdCode && holdCode !== 'H' && holdCode !== 'S') throw new Error('Hold/Stop Code must be blank, H, or S.');
+                ['ptronhand', 'ptrreviewed', 'ptravailable'].forEach((field) => {
+                    const raw = String(values[field] == null ? '' : values[field]).trim();
+                    if (!raw) return;
+                    const amount = Number(raw.replace(/,/g, ''));
+                    if (!Number.isFinite(amount) || amount < 0) throw new Error(`${field.toUpperCase()} must be blank or a non-negative number.`);
+                });
+                values.holdstopcode = holdCode;
+                overlays.push({
+                    unique_id: uid,
+                    expected: {
+                        itemcode: getItemInquiryItemCode(entry.sourceRow),
+                        lotcode: String(entry.values.lotcode || ''),
+                        locationcode: String(entry.values.locationcode || '')
+                    },
+                    values
+                });
+            });
+            return overlays;
+        }
+
         function openArgosInventoryTransactionModal(uid = '', action = 'reclass', sourceView = '') {
             const safeUid = String(uid || '').trim();
             const item = findItemByUniqueId(safeUid);
@@ -40897,10 +41004,13 @@ let avTopControlsRenderToken = 0;
             }
             const modal = ensureArgosInventoryTransactionModal();
             const snapshot = getArgosInventorySourceSnapshot(item);
+            const inquiryModel = buildItemInquiryViewModel(item, getItemInquiryRows(item));
             argosInventoryTransactionState = {
                 uid: snapshot.uniqueId,
                 item,
                 snapshot,
+                inquiryModel,
+                idempotencyToken: generateArgosInventoryTransactionId('reclass_inquiry'),
                 sourceView: String(sourceView || activeDetailSourceView || lastView || '').trim(),
                 action: 'reclass',
                 submitting: false
@@ -40908,9 +41018,11 @@ let avTopControlsRenderToken = 0;
             const titleEl = document.getElementById('argos-inventory-transaction-title');
             const subtitleEl = document.getElementById('argos-inventory-transaction-subtitle');
             const sourceEl = document.getElementById('argos-inventory-transaction-source');
-            if (titleEl) titleEl.textContent = `Inventory Transaction - ${snapshot.commonName}`;
+            if (titleEl) titleEl.textContent = `Reclass Item Inquiry - ${snapshot.commonName}`;
             if (subtitleEl) subtitleEl.textContent = `${snapshot.itemCode || '-'} | Lot ${snapshot.lotCode || '-'} | Loc ${snapshot.locationCode || '-'}`;
             if (sourceEl) sourceEl.innerHTML = renderArgosInventoryTransactionSource(snapshot);
+            const inquiryEl = document.getElementById('argos-reclass-item-inquiry');
+            if (inquiryEl) inquiryEl.innerHTML = renderArgosReclassInquiryEditor(inquiryModel, snapshot.uniqueId);
             refreshArgosInventoryTransactionLotOptions(item);
             refreshArgosInventoryTransactionPriorityOptions(item);
             const sourceInput = document.getElementById('argos-inventory-transaction-source-code');
@@ -41077,6 +41189,24 @@ let avTopControlsRenderToken = 0;
         }
 
         function syncArgosInventoryTransactionRequestOnlyMode() {
+            if (argosInventoryTransactionState) {
+                const notice = document.getElementById('argos-inventory-transaction-notice');
+                const apply = document.getElementById('argos-inventory-transaction-apply');
+                const note = document.querySelector('[data-argos-hold-field="note"]');
+                const requestAction = getArgosInventoryTransactionRequestAction();
+                if (notice) {
+                    notice.innerHTML = '<span class="font-black">Email Only</span> - Sending creates a printable inquiry. No inventory, History, audit, cache, or live-event data is changed.';
+                    notice.classList.add('bg-emerald-50', 'text-emerald-800');
+                }
+                if (note) {
+                    note.hidden = false;
+                    note.textContent = requestAction && requestAction !== 'none'
+                        ? `${getArgosInventoryTransactionRequestLabel(requestAction)} will be included in the Reclass inquiry. No inventory data will be changed.`
+                        : 'The request details and temporary worksheet values are included in the email and printable PDF only.';
+                }
+                if (apply) apply.innerHTML = '<i class="ph-bold ph-envelope mr-1"></i> Send Reclass Inquiry';
+                return;
+            }
             const requestAction = getArgosInventoryTransactionRequestAction();
             const isPriorityChange = requestAction === 'priority_change';
             const requestOnly = !!requestAction;
@@ -41221,8 +41351,8 @@ let avTopControlsRenderToken = 0;
             let recipients = getDefaultArgosInventoryTransactionRecipients(safePayload);
             if (isArgosInventoryTransactionDylanActor()) {
                 const defaultText = recipients.length ? recipients.join(', ') : 'dylan_collyge@greenleafnursery.com';
-                const requested = window.prompt('Send the transaction email to:', defaultText);
-                if (requested === null) throw new Error('Email canceled before inventory changed.');
+                const requested = window.prompt('Send the Reclass inquiry to:', defaultText);
+                if (requested === null) throw new Error('Reclass inquiry email canceled. No inventory data was changed.');
                 recipients = parseArgosInventoryTransactionRecipientText(requested);
                 if (!recipients.length) throw new Error('Choose at least one email recipient.');
                 safePayload.dylanRecipientOverride = true;
@@ -41524,6 +41654,58 @@ let avTopControlsRenderToken = 0;
         }
 
         function buildArgosInventoryTransactionPayload() {
+            {
+                const state = argosInventoryTransactionState || {};
+                const snapshot = state.snapshot || {};
+                const quantityRaw = getArgosInventoryTransactionInputValue('argos-inventory-transaction-qty');
+                const quantity = parseAppNumber(quantityRaw);
+                if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Quantity to move must be greater than 0.');
+                const newItemCode = getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-item');
+                const newLotCode = getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot');
+                const newLocationCode = getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-location');
+                if (!newItemCode) throw new Error('Enter the proposed destination item.');
+                if (!newLotCode) throw new Error('Enter the proposed destination lot or season.');
+                if (!newLocationCode) throw new Error('Enter the proposed destination location.');
+                const requestAction = normalizeArgosInventoryTransactionRequestAction(getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-action')) || 'none';
+                return {
+                    type: 'reclass_inquiry_email',
+                    action: 'reclass',
+                    idempotencyToken: String(state.idempotencyToken || generateArgosInventoryTransactionId('reclass_inquiry')).trim(),
+                    actor: {
+                        username: String(currentUser || '').trim(),
+                        display: String(currentUserDisplay || currentUser || '').trim(),
+                        email: getArgosInventoryTransactionActorEmail(),
+                        role: typeof getCurrentRoleAccessValue === 'function' ? getCurrentRoleAccessValue() : ''
+                    },
+                    source: {
+                        unique_id: snapshot.uniqueId,
+                        source_table: snapshot.sourceTable,
+                        itemcode: snapshot.itemCode,
+                        lotcode: snapshot.lotCode,
+                        locationcode: snapshot.locationCode,
+                        season: snapshot.season,
+                        saleyear: snapshot.salesYear
+                    },
+                    transaction: {
+                        quantity,
+                        newItemCode,
+                        newLotCode,
+                        newLocationCode,
+                        source: getArgosInventoryTransactionInputValue('argos-inventory-transaction-source-code'),
+                        reason: getArgosInventoryTransactionInputValue('argos-inventory-transaction-reason'),
+                        desigCust: getArgosInventoryTransactionInputValue('argos-inventory-transaction-desigcust'),
+                        desigItem: getArgosInventoryTransactionInputValue('argos-inventory-transaction-desigitem'),
+                        desigLoc: getArgosInventoryTransactionInputValue('argos-inventory-transaction-desigloc'),
+                        lastPltgDate: getArgosInventoryTransactionInputValue('argos-inventory-transaction-last-pltg-date'),
+                        requestAction,
+                        holdStopReason: getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-reason'),
+                        sourceSeason: snapshot.season,
+                        sourceSalesYear: snapshot.salesYear
+                    },
+                    rowOverlays: collectArgosReclassInquiryOverlays(),
+                    clientVersion: String(APP_SHELL_VERSION || APP_SHELL_BUILD || '').trim()
+                };
+            }
             const state = argosInventoryTransactionState || {};
             const snapshot = state.snapshot || {};
             const transactionAction = 'reclass';
@@ -41605,7 +41787,7 @@ let avTopControlsRenderToken = 0;
             const timeoutMs = Math.max(Number(REQUEST_EMAIL_SCRIPT_TIMEOUT_MS) || 0, 45000);
             for (let attempt = 0; attempt < 3; attempt += 1) {
                 try {
-                    const responseData = await postGoogleScriptRawJsonPayload(payload || {}, timeoutMs, 'Inventory Transaction');
+                    const responseData = await postGoogleScriptRawJsonPayload(payload || {}, timeoutMs, 'Reclass Inquiry Email');
                     lastResponse = responseData;
                     const statusCode = Number(firstNonEmptyValue(responseData && responseData.httpStatus, responseData && responseData.status, 0)) || 0;
                     const responseMessage = String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, responseData && responseData.rawResponse, '') || '').toLowerCase();
@@ -41634,7 +41816,7 @@ let avTopControlsRenderToken = 0;
                 await new Promise((resolve) => setTimeout(resolve, 450 * (attempt + 1)));
             }
             if (lastError) throw lastError;
-            return lastResponse || { ok: false, httpOk: false, httpStatus: 0, message: 'Inventory update failed. Try again.' };
+            return lastResponse || { ok: false, httpOk: false, httpStatus: 0, message: 'Reclass inquiry did not send. Try again.' };
         }
 
         function applyArgosInventoryTransactionReturnedRow(rawRow = null, fallbackUid = '') {
@@ -41737,6 +41919,25 @@ let avTopControlsRenderToken = 0;
             if (!argosInventoryTransactionState || argosInventoryTransactionState.submitting) return false;
             const apply = document.getElementById('argos-inventory-transaction-apply');
             try {
+                {
+                    let inquiryPayload = buildArgosInventoryTransactionPayload();
+                    inquiryPayload = await applyArgosInventoryTransactionEmailRecipients(inquiryPayload);
+                    argosInventoryTransactionState.submitting = true;
+                    if (apply) {
+                        apply.disabled = true;
+                        apply.textContent = 'Sending...';
+                    }
+                    const inquiryResult = await postArgosInventoryTransactionPayload(inquiryPayload);
+                    if (!inquiryResult || inquiryResult.ok === false) {
+                        const fallback = inquiryResult && inquiryResult.status === 'conflict'
+                            ? 'The source rows changed. Sync, review the worksheet, and send again.'
+                            : 'Reclass inquiry did not send. Your draft is still open so you can retry.';
+                        throw new Error(getFriendlyBackendErrorMessage(firstNonEmptyValue(inquiryResult && inquiryResult.message, inquiryResult && inquiryResult.error, inquiryResult && inquiryResult.rawResponse, ''), fallback));
+                    }
+                    showToast('Email Sent', inquiryResult.message || 'Reclass inquiry and printable PDF sent. No inventory data was changed.');
+                    closeArgosInventoryTransactionModal();
+                    return false;
+                }
                 if (isArgosInventoryTransactionRequestOnlyMode()) {
                     return openArgosInventoryRequestFromTransactionModal();
                 }
@@ -41778,8 +41979,8 @@ let avTopControlsRenderToken = 0;
                     window.__gncOpsPilot.captureFailure('commit', error);
                 }
                 const priorityReportOnly = getArgosInventoryTransactionRequestAction() === 'priority_change';
-                const message = getFriendlyBackendErrorMessage(error, priorityReportOnly ? 'Priority Change report did not send.' : 'Inventory update failed. Try again.');
-                showToast(priorityReportOnly ? 'Email Error' : 'Inventory Error', message, true);
+                const message = getFriendlyBackendErrorMessage(error, priorityReportOnly ? 'Priority Change report did not send.' : 'Reclass inquiry did not send. Your draft is still open so you can retry.');
+                showToast('Email Error', message, true);
             } finally {
                 if (argosInventoryTransactionState) argosInventoryTransactionState.submitting = false;
                 if (apply) {
@@ -95120,6 +95321,122 @@ function toggleDriveQuickRequestItem(domId) {
             return rows;
         }
 
+        const ITEM_INQUIRY_IDENTITY_FIELDS = [
+            { key: 'plantgroupcode', label: 'PLANTGROUPCODE', aliases: ['PLANTGROUPCODE', 'plantgroupcode', 'PLANTGROUP', 'plantgroup'] },
+            { key: 'commonname', label: 'COMMONNAME', aliases: ['COMMONNAME', 'commonname', 'DESCRIPTION', 'description', 'PLANT_NAME', 'plant_name'] },
+            { key: 'contsize', label: 'CONTSIZE', aliases: ['CONTSIZE', 'contsize', 'SIZE', 'size'] },
+            { key: 'itemcode', label: 'ITEMCODE', aliases: ['ITEMCODE', 'itemcode', 'ITEM', 'item'] },
+            { key: 'genusname', label: 'GENUSNAME', aliases: ['GENUSNAME', 'genusname', 'GENUS', 'genus'] },
+            { key: 'fieldtagcolor', label: 'FIELDTAGCOLOR', aliases: ['FIELDTAGCOLOR', 'fieldtagcolor', 'FIELD_TAG_COLOR', 'field_tag_color', 'TAGCOLOR', 'tagcolor'] },
+            { key: 'itemspec', label: 'ITEMSPEC', aliases: ['ITEMSPEC', 'itemspec', 'ITEM_SPEC', 'item_spec'] },
+            { key: 'pullerresponsibility', label: 'PULLERRESPONSIBILITY', aliases: ['PULLERRESPONSIBILITY', 'pullerresponsibility', 'SPECIALPULLER', 'specialpuller', 'PULLRESP', 'pullresp'] }
+        ];
+
+        const ITEM_INQUIRY_SEASON_FIELDS = [
+            { key: 'saleyear', label: 'SALEYEAR', aliases: ['SALEYEAR', 'saleyear', 'SALESYEAR', 'salesyear'] },
+            { key: 'season', label: 'SEASON', aliases: ['SEASON', 'season'] },
+            { key: 's_lts', label: 'S_LTS', aliases: ['S_LTS', 's_lts', 's_LTS', 'SLTS', 'slts'] },
+            { key: 'season_supply', label: 'SUPPLY', aliases: ['SEASON_SUPPLY', 'season_supply', 'SUPPLY', 'supply'] },
+            { key: 'season_oh', label: 'ON HAND', aliases: ['SEASON_OH', 'season_oh', 'SEASON_ONHAND', 'season_onhand'] },
+            { key: 'season_demand', label: 'DEMAND', aliases: ['SEASON_DEMAND', 'season_demand', 'DEMAND', 'demand'] }
+        ];
+
+        const ITEM_INQUIRY_ROW_FIELDS = [
+            { key: 'lotcode', label: 'LOTCODE', aliases: ['LOTCODE', 'lotcode', 'LOT', 'lot'] },
+            { key: 'locationcode', label: 'LOCATIONCODE', aliases: ['LOCATIONCODE', 'locationcode', 'LOCATION', 'location'] },
+            { key: 'source', label: 'SOURCE', aliases: ['SOURCE', 'source', 'SOURCECODE', 'sourcecode'] },
+            { key: 'priority', label: 'PRIORITY', aliases: ['PRIORITY', 'priority', 'PRI', 'pri'] },
+            { key: 'desigitem', label: 'DesigItem', aliases: ['DESIGITEM', 'desigitem', 'DesigItem'] },
+            { key: 'desigcust', label: 'DesigCust', aliases: ['DESIGCUST', 'desigcust', 'DesigCust'] },
+            { key: 'desigloc', label: 'DesigLoc', aliases: ['DESIGLOC', 'desigloc', 'DesigLoc'] },
+            { key: 'ptronhand', label: 'PTRONHAND', aliases: ['PTRONHAND', 'ptronhand', 'ONHAND', 'onhand'], numeric: true },
+            { key: 'ptrreviewed', label: 'PTRREVIEWED', aliases: ['PTRREVIEWED', 'ptrreviewed', 'REVIEW', 'review'], numeric: true },
+            { key: 'ptravailable', label: 'PTRAVAILABLE', aliases: ['PTRAVAILABLE', 'ptravailable', 'AVAILABLE', 'available'], numeric: true },
+            { key: 'locationnotedate', label: 'LOCATIONNOTEDATE', aliases: ['LOCATIONNOTEDATE', 'locationnotedate', 'LOCATION_NOTE_DATE', 'location_note_date'], readOnly: true },
+            { key: 'locationnote', label: 'LOCATIONNOTE', aliases: ['LOCATIONNOTE', 'locationnote', 'LOCATION_NOTE', 'location_note', 'LOCNOTE', 'locnote'], multiline: true },
+            { key: 'pulltagnote1', label: 'PULLTAGNOTE1', aliases: ['PULLTAGNOTE1', 'pulltagnote1', 'PULL_TAG_NOTE_1', 'pull_tag_note_1'], multiline: true },
+            { key: 'pulltagnote2', label: 'PULLTAGNOTE2', aliases: ['PULLTAGNOTE2', 'pulltagnote2', 'PULL_TAG_NOTE_2', 'pull_tag_note_2'], multiline: true },
+            { key: 'locationptn1', label: 'LOCATIONPTN1', aliases: ['LOCATIONPTN1', 'locationptn1', 'LOC_PTN1', 'loc_ptn1'], multiline: true },
+            { key: 'locationptn2', label: 'LOCATIONPTN2', aliases: ['LOCATIONPTN2', 'locationptn2', 'LOC_PTN2', 'loc_ptn2'], multiline: true },
+            { key: 'holdstopcode', label: 'HOLDSTOPCODE', aliases: ['HOLDSTOPCODE', 'holdstopcode', 'HOLSTOPCODE', 'holstopcode'], type: 'hold' },
+            { key: 'holdstopreason', label: 'HOLDSTOPREASON', aliases: ['HOLDSTOPREASON', 'holdstopreason', 'HOLSTOPREASON', 'holstopreason'], multiline: true }
+        ];
+
+        function getItemInquiryExactValue(row = null, aliases = [], fallback = '') {
+            const safeRow = row && typeof row === 'object' ? row : {};
+            for (const alias of (Array.isArray(aliases) ? aliases : [aliases])) {
+                if (!Object.prototype.hasOwnProperty.call(safeRow, alias)) continue;
+                const value = safeRow[alias];
+                if (value === null || typeof value === 'undefined') return '';
+                return String(value);
+            }
+            return fallback;
+        }
+
+        function normalizeItemInquirySaleYear(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw) return '';
+            const numeric = Number(raw);
+            if (!Number.isFinite(numeric)) return raw;
+            const integer = Math.trunc(numeric);
+            if (integer >= 0 && integer <= 99) return String(2000 + integer);
+            return String(integer);
+        }
+
+        function getItemInquirySeasonRank(value = '') {
+            const order = ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
+            const index = order.indexOf(String(value || '').trim().toUpperCase());
+            return index < 0 ? order.length : index;
+        }
+
+        function buildItemInquiryViewModel(item = activeItem, sourceRows = null) {
+            const rows = (Array.isArray(sourceRows) ? sourceRows : getItemInquiryRows(item)).filter(Boolean).slice().sort(compareItemInquiryRows);
+            const anchor = item && typeof item === 'object' ? item : (rows[0] || {});
+            const fallback = rows[0] || anchor;
+            const identity = {};
+            ITEM_INQUIRY_IDENTITY_FIELDS.forEach((field) => {
+                const anchorValue = getItemInquiryExactValue(anchor, field.aliases, '');
+                identity[field.key] = anchorValue !== '' ? anchorValue : getItemInquiryExactValue(fallback, field.aliases, '');
+            });
+            identity.itemcode = String(identity.itemcode || getItemInquiryItemCode(anchor) || '').trim().toUpperCase();
+
+            const seasonSeen = new Set();
+            const seasons = [];
+            rows.forEach((row) => {
+                const entry = {};
+                ITEM_INQUIRY_SEASON_FIELDS.forEach((field) => {
+                    entry[field.key] = getItemInquiryExactValue(row, field.aliases, '');
+                });
+                entry.saleyear = normalizeItemInquirySaleYear(entry.saleyear);
+                entry.season = String(entry.season || '').trim().toUpperCase();
+                if (!ITEM_INQUIRY_SEASON_FIELDS.some((field) => String(entry[field.key] || '').trim())) return;
+                const key = ITEM_INQUIRY_SEASON_FIELDS.map((field) => String(entry[field.key] || '').trim().toUpperCase()).join('|');
+                if (seasonSeen.has(key)) return;
+                seasonSeen.add(key);
+                seasons.push(entry);
+            });
+            seasons.sort((a, b) => {
+                const yearDiff = (Number(b.saleyear) || -1) - (Number(a.saleyear) || -1);
+                if (yearDiff) return yearDiff;
+                const seasonDiff = getItemInquirySeasonRank(a.season) - getItemInquirySeasonRank(b.season);
+                if (seasonDiff) return seasonDiff;
+                return String(a.season || '').localeCompare(String(b.season || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            const locationRows = rows.map((row) => {
+                const values = {};
+                ITEM_INQUIRY_ROW_FIELDS.forEach((field) => {
+                    values[field.key] = getItemInquiryExactValue(row, field.aliases, '');
+                });
+                return {
+                    unique_id: String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.id, '') || '').trim(),
+                    sourceRow: row,
+                    values
+                };
+            });
+            return { identity, seasons, locationRows, rows };
+        }
+
         function isCropRollShiftRow(row = null, values = null) {
             const metadata = row && typeof getCropRollRowMetadata === 'function' ? getCropRollRowMetadata(row) : {};
             const originalValues = row && typeof getCropRollCompletionExportOriginalValues === 'function' ? getCropRollCompletionExportOriginalValues(row) : {};
@@ -95452,6 +95769,50 @@ function toggleDriveQuickRequestItem(domId) {
             return Array.from(groups.values());
         }
 
+        function renderItemInquiryReadOnlyWorkspace(item = activeItem) {
+            const baseRows = getItemInquiryRows(item);
+            const model = buildItemInquiryViewModel(item, baseRows);
+            const currentKey = getItemInquiryRowKey(item);
+            const identityHtml = ITEM_INQUIRY_IDENTITY_FIELDS.map((field) => {
+                const value = String(model.identity[field.key] || '').trim() || '—';
+                return `<div class="item-inquiry-summary-cell" data-item-inquiry-field="${escapeHtml(field.label)}" title="${escapeHtml(value)}"><span class="item-inquiry-summary-label">${escapeHtml(field.label)}</span><span class="item-inquiry-summary-value">${escapeHtml(value)}</span></div>`;
+            }).join('');
+            const seasonHeaderHtml = ITEM_INQUIRY_SEASON_FIELDS.map((field) => `<div role="columnheader">${escapeHtml(field.label)}</div>`).join('');
+            const seasonRowsHtml = model.seasons.map((season) => `<div class="item-inquiry-season-row" role="row">${ITEM_INQUIRY_SEASON_FIELDS.map((field) => {
+                const value = String(season[field.key] || '').trim() || '—';
+                return `<div><span>${escapeHtml(field.label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+            }).join('')}</div>`).join('') || '<div class="item-inquiry-season-empty">No season summary is available.</div>';
+            const groups = new Map();
+            model.locationRows.forEach((entry) => {
+                const locationCode = String(entry.values.locationcode || '').trim() || 'Unassigned';
+                if (!groups.has(locationCode)) groups.set(locationCode, []);
+                groups.get(locationCode).push(entry);
+            });
+            let rowIndex = 0;
+            const headersHtml = ITEM_INQUIRY_ROW_FIELDS.map((field) => `<div role="columnheader">${escapeHtml(field.label)}</div>`).join('');
+            const locationHtml = Array.from(groups.entries()).map(([locationCode, entries]) => {
+                const onHandTotal = entries.reduce((sum, entry) => sum + parseItemInquiryQuantity(entry.values.ptronhand), 0);
+                const reviewedTotal = entries.reduce((sum, entry) => sum + parseItemInquiryQuantity(entry.values.ptrreviewed), 0);
+                const rowsHtml = entries.map((entry) => {
+                    const index = rowIndex++;
+                    const row = entry.sourceRow;
+                    const isCurrent = getItemInquiryRowKey(row) === currentKey;
+                    const domId = ensureItemInquiryRowDomId(row, index);
+                    const activationAttrs = buildFastInvokeAttrs('openItemInquiryDriveRow', [getItemInquiryRowKey(row), domId, entry.unique_id], 'Open Drive Mode card');
+                    const cells = ITEM_INQUIRY_ROW_FIELDS.map((field) => {
+                        let value = entry.values[field.key];
+                        if (field.key === 'locationnotedate' && value) value = formatGroupedBloomNcrReportDateValue(value) || value;
+                        const display = String(value == null || value === '' ? '—' : value).trim() || '—';
+                        const classes = ['item-inquiry-ledger-cell', field.numeric ? 'item-inquiry-ledger-cell--numeric' : '', ['lotcode', 'locationcode'].includes(field.key) ? 'item-inquiry-ledger-cell--emphasis' : ''].filter(Boolean).join(' ');
+                        return `<div class="${classes}" data-item-inquiry-column="${escapeHtml(field.label)}" title="${escapeHtml(display)}"><span class="item-inquiry-cell-label">${escapeHtml(field.label)}</span><span class="item-inquiry-cell-value">${escapeHtml(display)}</span></div>`;
+                    }).join('');
+                    return `<div class="item-inquiry-ledger-row-shell ${isCurrent ? 'item-inquiry-ledger-row--current' : ''}" data-item-inquiry-row-line="true" data-dom-id="${escapeHtml(domId)}"><div class="item-inquiry-ledger-row" role="row" tabindex="0" ${activationAttrs}>${cells}</div></div>`;
+                }).join('');
+                return `<section class="item-inquiry-location-group" data-item-inquiry-location="${escapeHtml(locationCode)}"><div class="item-inquiry-location-header"><div><span class="item-inquiry-location-label">LOCATIONCODE</span><strong>${escapeHtml(locationCode)}</strong><span class="item-inquiry-location-count">${entries.length} lot${entries.length === 1 ? '' : 's'}</span></div><div class="item-inquiry-location-totals"><span>PTRONHAND <strong>${escapeHtml(formatItemInquiryQuantity(onHandTotal))}</strong></span><span>PTRREVIEWED <strong>${escapeHtml(formatItemInquiryQuantity(reviewedTotal, { blankZero: true }))}</strong></span></div></div><div class="item-inquiry-ledger-scroll"><div class="item-inquiry-ledger-table"><div class="item-inquiry-ledger-header" role="row">${headersHtml}</div>${rowsHtml}</div></div></section>`;
+            }).join('') || '<div class="item-inquiry-empty">No inventory rows were found for this item code.</div>';
+            return `<div class="item-inquiry-workspace"><section class="item-inquiry-summary" data-item-inquiry-summary="true" aria-label="Item identity"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>${escapeHtml(model.identity.commonname || 'Unknown')}</strong></div><span>${model.locationRows.length} row${model.locationRows.length === 1 ? '' : 's'} · ${groups.size} location${groups.size === 1 ? '' : 's'}</span></div><div class="item-inquiry-summary-grid">${identityHtml}</div></section><section class="item-inquiry-season-summary" data-item-inquiry-season-summary="true" aria-label="Distinct season summary"><div class="item-inquiry-section-heading"><div><span>Season Summary</span><strong>${model.seasons.length} distinct row${model.seasons.length === 1 ? '' : 's'}</strong></div></div><div class="item-inquiry-season-header" role="row">${seasonHeaderHtml}</div>${seasonRowsHtml}</section><div class="item-inquiry-ledger" role="table" aria-label="Inventory lots grouped by location">${locationHtml}</div></div>`;
+        }
+
         function renderItemInquiryDetailPanel(item = activeItem) {
             const panel = document.getElementById('item-inquiry-panel');
             if (!panel) return;
@@ -95460,6 +95821,8 @@ function toggleDriveQuickRequestItem(domId) {
                 setContainerHtml(panel, '<div class="item-inquiry-empty">No item code is available for this row.</div>');
                 return;
             }
+            setContainerHtml(panel, renderItemInquiryReadOnlyWorkspace(item));
+            return;
             scheduleCropRollInquiryCompletionRefresh(item);
             const baseRows = getItemInquiryRows(item);
             const inquiryDecisionLookupRows = getCropRollInquiryDecisionRowsForLookup();

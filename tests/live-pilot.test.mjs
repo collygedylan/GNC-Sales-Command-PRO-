@@ -41,12 +41,12 @@ const historicalReportMigration = read('supabase/migrations/20260821202202_manag
 const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.21.04';
+  const release = 'V2026.08.22.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.21.04');
+  assert.equal(packageJson.version, '2026.08.22.01');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -497,7 +497,7 @@ test('installed Android keyboard changes cannot replace or blur the active comma
   );
 });
 
-test('new inventory transactions are Reclass-only while audit history keeps legacy labels', () => {
+test('Reclass is an email-only Item Inquiry while legacy quantity and transfer labels remain available', () => {
   const actionBuilder = html.slice(html.indexOf('function buildArgosInventoryTransactionRailHtml'), html.indexOf('function normalizeArgosInventoryNumber'));
   const modalBuilder = html.slice(html.indexOf('function ensureArgosInventoryTransactionModal'), html.indexOf('function renderArgosInventoryTransactionSource'));
   const payloadBuilder = html.slice(html.indexOf('function buildArgosInventoryTransactionPayload'), html.indexOf('async function postArgosInventoryTransactionPayload'));
@@ -505,8 +505,16 @@ test('new inventory transactions are Reclass-only while audit history keeps lega
   assert.match(actionBuilder, /openArgosInventoryTransactionModal\('\$\{safeUid\}', 'reclass'/);
   assert.doesNotMatch(actionBuilder, /Open quantity transaction|Open transfer transaction|ALT\+Q|ALT\+T/);
   assert.doesNotMatch(modalBuilder, /data-argos-transaction-tab="(?:qty|transfer)"/);
-  assert.match(payloadBuilder, /const transactionAction = 'reclass'/);
-  assert.doesNotMatch(payloadBuilder, /transactionAction === '(?:qty|transfer)'/);
+  assert.match(payloadBuilder, /type: 'reclass_inquiry_email'/);
+  assert.match(payloadBuilder, /idempotencyToken:/);
+  assert.match(payloadBuilder, /rowOverlays: collectArgosReclassInquiryOverlays\(\)/);
+  const serverHandler = appsScriptBackend.slice(appsScriptBackend.indexOf('function handleInventoryTransaction_'), appsScriptBackend.indexOf('function normalizeInventoryTransactionHistoryLimit_'));
+  assert.ok(serverHandler.indexOf("=== 'reclass'") < serverHandler.indexOf('LockService.getScriptLock()'), 'cached Reclass clients must route away before the mutation lock');
+  assert.match(appsScriptBackend, /payload\.type === 'reclass_inquiry_email'[\s\S]*handleReclassInquiryEmail_/);
+  const inquiryHandler = appsScriptBackend.slice(appsScriptBackend.indexOf('function handleReclassInquiryEmail_'), appsScriptBackend.indexOf('function handleInventoryTransaction_'));
+  assert.doesNotMatch(inquiryHandler, /patchEmailApprovalMasterRow_|insertInventoryTransactionAudit_|emitAppLiveEvent_|updateInventoryRecord|History/);
+  assert.match(inquiryHandler, /HtmlService\.createHtmlOutput\(printHtml\)\.getBlob\(\)\.getAs\(MimeType\.PDF\)/);
+  assert.match(inquiryHandler, /CacheService\.getScriptCache\(\)/);
   assert.match(html, /if \(safeAction === 'qty'\) return 'QTY'/);
   assert.match(html, /if \(safeAction === 'transfer'\) return 'TRANSFER'/);
 });
@@ -773,25 +781,29 @@ test('V15 Chat and navigation are measured against the visible viewport', () => 
   assert.match(css, /data-ops-theme="dark"\] #bottom-nav[\s\S]*rgba\(10, 28, 21, \.96\)/);
 });
 
-test('Item Inquiry groups Drive rows by location with adaptive grid lines and computed totals', () => {
+test('Item Inquiry shares the Reclass identity, season, and full location worksheet model', () => {
   const renderer = html.slice(
-    html.indexOf('function parseItemInquiryQuantity'),
+    html.indexOf('const ITEM_INQUIRY_IDENTITY_FIELDS'),
     html.indexOf('function setDriveAltLocSeason')
   );
-  for (const field of ['COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'ITEMSPEC', 'FIELDTAGCOLOR', 'HOLDSTOPCODE', 'HOLDSTOPBEGINDATE', 'HOLDSTOPREASON', 'SUSPENDTO', 'SPECIALPULLER']) {
-    assert.match(renderer, new RegExp(`\\['${field}'`));
+  for (const field of ['PLANTGROUPCODE', 'COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY']) {
+    assert.match(renderer, new RegExp(`label: '${field}'`));
   }
-  for (const field of ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DesigItem', 'DesigCust', 'DesigLoc', 'PRIORITY', 'PTRONHAND', 'PTRREVIEWED', 'PRISETBY', 'PRIUPDATED', 'LOCATIONNOTE', 'LOCATIONPTN1']) {
-    assert.match(renderer, new RegExp(`'${field}'`));
+  for (const field of ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'LOCATIONNOTEDATE', 'LOCATIONNOTE', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'LOCATIONPTN1', 'LOCATIONPTN2', 'HOLDSTOPCODE', 'HOLDSTOPREASON']) {
+    assert.match(renderer, new RegExp(`label: '${field}'`));
   }
-  assert.match(renderer, /function groupItemInquiryRowsByLocation/);
-  assert.match(renderer, /group\.ptrOnHand \+= parseItemInquiryQuantity/);
-  assert.match(renderer, /group\.ptrReviewed \+= parseItemInquiryQuantity/);
-  assert.match(renderer, /data-item-inquiry-location-total-onhand/);
-  assert.match(renderer, /formatItemInquiryQuantity\(ptrReviewedAmount, \{ blankZero: true \}\)/);
+  for (const field of ['SALEYEAR', 'SEASON', 'S_LTS', 'SUPPLY', 'ON HAND', 'DEMAND']) {
+    assert.match(renderer, new RegExp(`label: '${field}'`));
+  }
+  assert.match(renderer, /function buildItemInquiryViewModel/);
+  assert.match(renderer, /normalizeItemInquirySaleYear/);
+  assert.match(renderer, /seasonSeen\.has/);
+  assert.match(renderer, /renderItemInquiryReadOnlyWorkspace/);
   const inquiryCss = css.slice(css.lastIndexOf('V2026.08.17.04 — responsive Item Inquiry ledger'));
   assert.match(inquiryCss, /overflow-x: hidden !important/);
-  assert.match(inquiryCss, /grid-template-columns: minmax\(62px,\.72fr\)[\s\S]*minmax\(68px,\.8fr\)/);
+  assert.match(inquiryCss, /grid-template-columns: 78px 92px[\s\S]*72px 150px/);
+  assert.match(inquiryCss, /item-inquiry-ledger-scroll[\s\S]*overflow-x: auto/);
+  assert.match(inquiryCss, /item-inquiry-season-row[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(inquiryCss, /@media \(max-width: 1099px\)[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(inquiryCss, /@media \(max-width: 640px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(inquiryCss, /border-right: 1px solid var\(--ops-border\)/);

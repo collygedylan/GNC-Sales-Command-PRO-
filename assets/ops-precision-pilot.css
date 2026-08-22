@@ -6401,10 +6401,69 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-section-heading > spa
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-grid {
   display: grid;
-  grid-template-columns: 1.65fr .72fr .92fr 1fr .9fr .9fr 1fr 1.35fr .85fr .9fr;
+  grid-template-columns: 1fr 1.65fr .72fr .92fr 1fr .9fr 1fr 1.35fr;
   min-width: 0;
   background: var(--ops-border);
   gap: 1px;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-summary {
+  flex: 0 0 auto;
+  min-width: 0;
+  border: 1px solid var(--ops-border-strong);
+  border-radius: var(--ops-card-radius, 12px);
+  background: var(--ops-surface);
+  overflow: hidden;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header,
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header > div,
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row > div {
+  min-width: 0;
+  padding: 5px 7px;
+  border-right: 1px solid var(--ops-border);
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header > div:last-child,
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row > div:last-child {
+  border-right: 0;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header {
+  color: var(--ops-text-muted);
+  background: var(--ops-command, var(--ops-surface-strong));
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row {
+  border-top: 1px solid var(--ops-border);
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row span {
+  display: none;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row strong {
+  display: block;
+  overflow: hidden;
+  color: var(--ops-text);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-empty {
+  padding: 10px;
+  color: var(--ops-text-muted);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-cell {
@@ -6533,8 +6592,18 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-location-total-row st
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-header,
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-row {
   display: grid;
-  grid-template-columns: minmax(62px,.72fr) minmax(76px,.9fr) minmax(54px,.62fr) minmax(66px,.78fr) minmax(66px,.78fr) minmax(66px,.78fr) minmax(54px,.62fr) minmax(68px,.72fr) minmax(68px,.72fr) minmax(70px,.78fr) minmax(80px,.9fr) minmax(100px,1.25fr) minmax(68px,.8fr);
+  grid-template-columns: 78px 92px 68px 68px 86px 86px 82px 74px 78px 78px 118px 150px 130px 130px 130px 130px 72px 150px;
   min-width: 0;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-table {
+  min-width: 1800px;
 }
 
 body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-header {
@@ -6719,6 +6788,14 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
     display: none;
   }
 
+  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-scroll {
+    overflow-x: hidden;
+  }
+
+  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-table {
+    min-width: 0;
+  }
+
   body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-row {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
@@ -6777,6 +6854,17 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
 
   body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-summary {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-header,
+  body.ops-precision-pilot #item-inquiry-panel .item-inquiry-season-row {
+    grid-template-columns: repeat(6, 90px);
+    min-width: 540px;
   }
 
   body.ops-precision-pilot #item-inquiry-panel .item-inquiry-summary-cell {
