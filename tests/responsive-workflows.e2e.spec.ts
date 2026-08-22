@@ -94,7 +94,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.22.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.22.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -561,9 +561,9 @@ test('phone Chat composer fills the shell and never overlaps quick navigation', 
   expect(desktopComposer!.y + desktopComposer!.height).toBeLessThanOrEqual(desktopNav!.y);
 });
 
-test('Item Inquiry fits every viewport with compact summaries and read-only location rows', async ({ page }) => {
+test('Item Inquiry preserves the compact desktop and tablet worksheet', async ({ page }) => {
+  test.setTimeout(90_000);
   const viewports = [
-    { width: 390, height: 844 },
     { width: 768, height: 1024 },
     { width: 1366, height: 768 },
     { width: 1920, height: 1080 },
@@ -585,8 +585,8 @@ test('Item Inquiry fits every viewport with compact summaries and read-only loca
       await expect(page.locator('[data-item-inquiry-field="PTRREVIEWED"] .item-inquiry-summary-value')).toHaveText('105');
       await expect(page.locator('[data-item-inquiry-field="PTRAVAILABLE"] .item-inquiry-summary-value')).toHaveText('2,081');
       await expect(page.locator('[data-item-inquiry-field="HOLDSTOPCODE"] .item-inquiry-summary-value')).toHaveText('H');
-      await expect(page.locator('[data-item-inquiry-field="HOLDSTOPREASON"] .item-inquiry-summary-value')).toHaveText('Review');
-      await expect(page.locator('[data-item-inquiry-season-summary] .item-inquiry-season-row')).toHaveCount(3);
+      await expect(page.locator('[data-item-inquiry-field="HOLDSTOPREASON"] .item-inquiry-summary-value')).toContainText('Review before release');
+      await expect(page.locator('[data-item-inquiry-season-summary] .item-inquiry-season-row')).toHaveCount(12);
       expect(await page.locator('[data-item-inquiry-season-summary] .item-inquiry-season-header [role="columnheader"]').allTextContents()).toEqual(seasonFields);
       await expect(page.locator('[data-item-inquiry-location]')).toHaveCount(2);
       const f19 = page.locator('[data-item-inquiry-location="F.19.000"]');
@@ -662,7 +662,7 @@ test('Item Inquiry fits every viewport with compact summaries and read-only loca
       expect(layout.panelWidth).toBeGreaterThan(250);
       expect(layout.bottomGap, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBeLessThanOrEqual(16);
       expect(layout.bottomGap, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBeGreaterThanOrEqual(-2);
-      expect(layout.ledgerClientHeight).toBeGreaterThan(80);
+      expect(layout.ledgerClientHeight).toBeGreaterThan(24);
       expect(layout.seasonColumnsAligned).toBe(true);
       expect(layout.seasonGridWidth).toBeLessThan(layout.seasonPanelWidth);
       expect(layout.smallestFont).toBeGreaterThanOrEqual(8);
@@ -674,9 +674,102 @@ test('Item Inquiry fits every viewport with compact summaries and read-only loca
         expect(layout.ledgerScrollWidth).toBeLessThanOrEqual(layout.ledgerScrollClientWidth + 1);
       } else {
         expect(layout.headerDisplay).toBe('none');
-        expect(layout.rowColumns).toBe(viewport.width <= 640 ? 2 : 4);
+        expect(layout.rowColumns).toBe(4);
         expect(layout.ledgerScrollWidth).toBeLessThanOrEqual(layout.ledgerScrollClientWidth + 1);
       }
+    }
+  }
+});
+
+test('Phone Item Inquiry uses one readable summary-first scroll with synchronized tabs', async ({ page }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ];
+  for (const theme of ['light', 'dark', 'outdoor']) {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${fixtureUrl}?view=item-inquiry&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
+      const panel = page.locator('#item-inquiry-panel');
+      const mobile = panel.locator('.item-inquiry-mobile-view');
+      await expect(panel).toBeVisible();
+      await expect(mobile).toBeVisible();
+      await expect(panel.locator('.item-inquiry-desktop-view')).toBeHidden();
+      await expect(page.locator('#det-tabs-container')).toBeHidden();
+      await expect(page.locator('#det-mobile-tab-select-wrap')).toBeVisible();
+      const tabSelect = page.locator('#det-mobile-tab-select');
+      await expect(tabSelect).toHaveValue('item-inquiry');
+      expect(await tabSelect.locator('option').allTextContents()).toEqual(['Request', 'Inventory Edits', 'This Location', 'Item Details', 'Item Inquiry']);
+      await tabSelect.selectOption('overview');
+      await expect(page.locator('body')).toHaveAttribute('data-qa-detail-tab', 'overview');
+      await tabSelect.selectOption('item-inquiry');
+
+      await expect(mobile.locator('.item-inquiry-mobile-hero h2')).toHaveText('Karl Foerster Feather Reed Grass');
+      await expect(mobile.locator('.item-inquiry-mobile-stats > div')).toHaveCount(3);
+      await expect(mobile.locator('.item-inquiry-mobile-stats')).toContainText('2,186');
+      await expect(mobile.locator('.item-inquiry-mobile-hold')).toContainText('Review before release');
+      await expect(mobile.locator('.item-inquiry-mobile-item-details')).not.toHaveAttribute('open', '');
+      await expect(mobile.locator('.item-inquiry-mobile-season-card')).toHaveCount(12);
+
+      const currentLocation = mobile.locator('[data-item-inquiry-mobile-location="F.19.000"]');
+      const otherLocation = mobile.locator('[data-item-inquiry-mobile-location="H.06.000"]');
+      const currentLot = currentLocation.locator('[data-item-inquiry-mobile-lot="27.F1"]');
+      await expect(currentLocation).toHaveAttribute('open', '');
+      await expect(currentLot).toHaveAttribute('open', '');
+      await expect(otherLocation).not.toHaveAttribute('open', '');
+      await otherLocation.locator(':scope > summary').click();
+      await expect(otherLocation).toHaveAttribute('open', '');
+      const otherLot = otherLocation.locator('[data-item-inquiry-mobile-lot="27.F1"]');
+      await otherLot.locator(':scope > summary').click();
+      await expect(otherLot).toHaveAttribute('open', '');
+      await otherLot.getByRole('button', { name: 'Open in Drive Mode' }).click();
+      await expect(page.locator('body')).toHaveAttribute('data-qa-drive-target', 'H.06.000|27.F1');
+
+      const layout = await panel.evaluate((root) => {
+        const mobileView = root.querySelector('.item-inquiry-mobile-view') as HTMLElement;
+        const workspace = root.querySelector('.item-inquiry-mobile-workspace') as HTMLElement;
+        const nav = document.querySelector('#bottom-nav') as HTMLElement;
+        const content = document.querySelector('#det-item-inquiry-content') as HTMLElement;
+        const summary = document.querySelector('#det-mobile-tab-select-wrap') as HTMLElement;
+        const reportOverflowers = Array.from(root.querySelectorAll('.item-inquiry-mobile-view, .item-inquiry-mobile-workspace, .item-inquiry-mobile-seasons, .item-inquiry-mobile-locations, .item-inquiry-mobile-location-body, .item-inquiry-mobile-lot-body'))
+          .filter((element) => (element as HTMLElement).scrollWidth > (element as HTMLElement).clientWidth + 1)
+          .map((element) => (element as HTMLElement).className);
+        const nestedVerticalScrollers = Array.from(root.querySelectorAll('.item-inquiry-mobile-workspace *'))
+          .filter((element) => {
+            const node = element as HTMLElement;
+            const overflowY = getComputedStyle(node).overflowY;
+            return node.scrollHeight > node.clientHeight + 1 && ['auto', 'scroll'].includes(overflowY);
+          })
+          .map((element) => (element as HTMLElement).className);
+        const wrappedText = Array.from(root.querySelectorAll('.item-inquiry-mobile-hold strong, .item-inquiry-mobile-lot-field strong')) as HTMLElement[];
+        return {
+          documentOverflowX: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          reportOverflowers,
+          nestedVerticalScrollers,
+          mobileOverflowX: getComputedStyle(mobileView).overflowX,
+          mobileOverflowY: getComputedStyle(mobileView).overflowY,
+          mobileScrollable: mobileView.scrollHeight > mobileView.clientHeight,
+          workspaceWidth: workspace.getBoundingClientRect().width,
+          contentBottom: content.getBoundingClientRect().bottom,
+          navTop: nav.getBoundingClientRect().top,
+          selectorWidth: summary.getBoundingClientRect().width,
+          selectorRight: summary.getBoundingClientRect().right,
+          smallestWrappedFont: Math.min(...wrappedText.map((node) => Number.parseFloat(getComputedStyle(node).fontSize))),
+          clippedWrappedText: wrappedText.some((node) => node.scrollWidth > node.clientWidth + 1),
+        };
+      });
+      expect(layout.documentOverflowX, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBe(0);
+      expect(layout.reportOverflowers).toEqual([]);
+      expect(layout.nestedVerticalScrollers).toEqual([]);
+      expect(layout.mobileOverflowX).toBe('hidden');
+      expect(layout.mobileOverflowY).toBe('auto');
+      expect(layout.mobileScrollable).toBe(true);
+      expect(layout.workspaceWidth).toBeGreaterThan(300);
+      expect(layout.contentBottom).toBeLessThanOrEqual(layout.navTop + 1);
+      expect(layout.selectorWidth).toBeGreaterThan(300);
+      expect(layout.selectorRight).toBeLessThanOrEqual(viewport.width + 1);
+      expect(layout.smallestWrappedFont).toBeGreaterThanOrEqual(12);
+      expect(layout.clippedWrappedText).toBe(false);
     }
   }
 });

@@ -198,12 +198,13 @@
         <section id="view-detail" class="hidden detail-request-mode detail-photo-update-mode" aria-label="Request item detail">
           <div class="freeze-panel">
             <div id="det-tabs-container" class="task-tabs" aria-label="Item detail views">
-              <button class="task-tab active" type="button">Request</button>
-              <button class="task-tab" type="button">Inventory Edits</button>
-              <button class="task-tab" type="button">This Location</button>
-              <button class="task-tab" type="button">Item Details</button>
-              <button class="task-tab" type="button">Item Inquiry</button>
+              <button id="dtab-request" class="task-tab detail-tab active" type="button">Request</button>
+              <button id="dtab-inventory-edit" class="task-tab detail-tab" type="button">Inventory Edits</button>
+              <button id="dtab-this-location" class="task-tab detail-tab" type="button">This Location</button>
+              <button id="dtab-overview" class="task-tab detail-tab" type="button">Item Details</button>
+              <button id="dtab-item-inquiry" class="task-tab detail-tab" type="button">Item Inquiry</button>
             </div>
+            <label id="det-mobile-tab-select-wrap" class="detail-mobile-tab-select hidden" for="det-mobile-tab-select"><span>Item view</span><select id="det-mobile-tab-select" aria-label="Item detail view"></select><i aria-hidden="true">⌄</i></label>
             <div class="mb-4 app-smart-card">
               <h2 class="record-title">Endless Summer The Original Hydrangea</h2>
               <div class="app-card-qty-row grid">
@@ -302,6 +303,7 @@
         displayMode: params.get('display') || 'cards',
         updatedAt: '2026-08-15T04:00:00.000Z'
       };
+      document.documentElement.classList.toggle('outdoor-mode', preferences.themeMode === 'outdoor');
       const serverStorageKey = 'ops_precision_qa_server_preferences';
       const fixtureUserKey = 'qa_non_dylan_user';
       if (params.get('reset') === '1') {
@@ -330,6 +332,18 @@
       document.getElementById('det-item-inquiry-content').classList.toggle('hidden', activeView !== 'item-inquiry');
       document.getElementById('global-header-search-slot').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('global-header-inline-title').classList.toggle('hidden', activeView === 'drive');
+      const fixtureTabButtons = Array.from(document.querySelectorAll('#det-tabs-container .detail-tab:not(.hidden)'));
+      const fixtureMobileTabWrap = document.getElementById('det-mobile-tab-select-wrap');
+      const fixtureMobileTabSelect = document.getElementById('det-mobile-tab-select');
+      fixtureMobileTabSelect.replaceChildren(...fixtureTabButtons.map((tab) => new Option(tab.textContent.trim(), tab.id.replace(/^dtab-/, ''))));
+      fixtureMobileTabWrap.classList.toggle('hidden', !fixtureTabButtons.length);
+      const fixtureSelectedTab = activeView === 'item-inquiry' ? 'item-inquiry' : 'request';
+      fixtureMobileTabSelect.value = fixtureSelectedTab;
+      fixtureTabButtons.forEach((tab) => tab.classList.toggle('active', tab.id === `dtab-${fixtureSelectedTab}`));
+      fixtureMobileTabSelect.addEventListener('change', () => {
+        fixtureTabButtons.forEach((tab) => tab.classList.toggle('active', tab.id === `dtab-${fixtureMobileTabSelect.value}`));
+        document.body.dataset.qaDetailTab = fixtureMobileTabSelect.value;
+      });
       if (activeView === 'item-inquiry') {
         document.body.classList.add('current-view-detail');
         document.getElementById('global-header-view-title').textContent = 'Item Inquiry';
@@ -343,13 +357,22 @@
         const summary = [
           ['PLANTGROUPCODE', 'ORNGRASS'], ['COMMONNAME', 'Karl Foerster Feather Reed Grass'], ['CONTSIZE', '1 Gal'], ['ITEMCODE', '000507.051.1'],
           ['GENUSNAME', 'Calamagrostis'], ['FIELDTAGCOLOR', 'Blue'], ['ITEMSPEC', '24–30 inch'], ['PULLERRESPONSIBILITY', 'JD'],
-          ['HOLDSTOPCODE', 'H'], ['HOLDSTOPREASON', 'Review'], ['PTRONHAND', '2,186'], ['PTRREVIEWED', '105'], ['PTRAVAILABLE', '2,081'],
+          ['HOLDSTOPCODE', 'H'], ['HOLDSTOPREASON', 'Review before release because this is a deliberately long field note used to verify readable phone wrapping without clipping.'], ['PTRONHAND', '2,186'], ['PTRREVIEWED', '105'], ['PTRAVAILABLE', '2,081'],
         ];
         const seasonHeaders = ['SALEYEAR', 'SEASON', 'S_LTS', 'SUPPLY', 'ON HAND', 'DEMAND'];
         const seasons = [
-          ['2027', 'F1', '120', '1,900', '2,000', '400'],
-          ['2027', 'S1', '75', '149', '149', '0'],
-          ['2027', 'X', '0', '37', '37', '0'],
+          ['2028', 'F1', '22,678', '22,678', '22,678', '—'],
+          ['2027', 'F1', '28,887', '29,487', '29,487', '600'],
+          ['2027', 'S1', '34,915', '34,945', '34,945', '30'],
+          ['2027', 'U2', '16,646', '16,646', '16,646', '—'],
+          ['2027', 'U3', '12,613', '12,613', '12,613', '—'],
+          ['2027', 'Y', '—', '3,000', '3,000', '—'],
+          ['2027', 'Z', '—', '3,661', '3,661', '—'],
+          ['2026', 'F1', '28,887', '29,487', '29,487', '600'],
+          ['2026', 'U2', '16,646', '16,646', '16,646', '—'],
+          ['2026', 'U3', '12,613', '12,613', '12,613', '—'],
+          ['2026', 'X', '—', '1,097', '1,097', '—'],
+          ['2025', 'F1', '28,887', '29,487', '29,487', '600'],
         ];
         const formatQty = (value, blankZero = false) => blankZero && value === 0 ? '—' : Number(value).toLocaleString();
         const cell = (label, value, numeric = false) => `<div class="item-inquiry-ledger-cell${numeric ? ' item-inquiry-ledger-cell--numeric' : ''}" data-item-inquiry-column="${label}"><span class="item-inquiry-cell-label">${label}</span><span class="item-inquiry-cell-value">${value}</span></div>`;
@@ -362,7 +385,11 @@
           const rowHtml = groupRows.map((row) => `<div class="item-inquiry-ledger-row-shell" data-item-inquiry-row-line="true"><div class="item-inquiry-ledger-row" role="row">${cell('LOTCODE', row.lot)}${cell('LOCATIONCODE', row.location)}${cell('SOURCE', row.source)}${cell('PRIORITY', row.priority)}${cell('DesigItem', row.desigItem)}${cell('DesigCust', row.desigCust)}${cell('DesigLoc', row.desigLoc)}${cell('LOCATIONNOTEDATE', row.noteDate)}${cell('LOCATIONNOTE', row.note)}${cell('PULLTAGNOTE1', row.pullTag1)}${cell('LOCATIONPTN1', row.ptn1)}</div></div>`).join('');
           return `<section class="item-inquiry-location-group" data-item-inquiry-location="${location}"><div class="item-inquiry-location-header"><div><span class="item-inquiry-location-label">LOCATIONCODE</span><strong>${location}</strong><span class="item-inquiry-location-count">${groupRows.length} lots</span></div></div><div class="item-inquiry-ledger-scroll"><div class="item-inquiry-ledger-table"><div class="item-inquiry-ledger-header" role="row">${headers.map((header) => `<div role="columnheader">${header}</div>`).join('')}</div>${rowHtml}</div></div></section>`;
         }).join('');
-        document.getElementById('item-inquiry-panel').innerHTML = `<div class="item-inquiry-workspace"><section class="item-inquiry-summary" data-item-inquiry-summary="true"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>Karl Foerster Feather Reed Grass</strong></div><span>4 rows · 2 locations</span></div><div class="item-inquiry-summary-grid">${summary.map(([label, value]) => `<div class="item-inquiry-summary-cell" data-item-inquiry-field="${label}"><span class="item-inquiry-summary-label">${label}</span><span class="item-inquiry-summary-value">${value}</span></div>`).join('')}</div></section><section class="item-inquiry-season-summary" data-item-inquiry-season-summary="true"><div class="item-inquiry-section-heading"><div><span>Season Summary</span><strong>3 distinct rows</strong></div></div><div class="item-inquiry-season-grid"><div class="item-inquiry-season-header" role="row">${seasonHeaders.map((header) => `<div role="columnheader">${header}</div>`).join('')}</div>${seasons.map((season) => `<div class="item-inquiry-season-row" role="row">${season.map((value, index) => `<div><span>${seasonHeaders[index]}</span><strong>${value}</strong></div>`).join('')}</div>`).join('')}</div></section><div class="item-inquiry-ledger" role="table">${groupsHtml}</div></div>`;
+        const desktopInquiry = `<div class="item-inquiry-workspace item-inquiry-desktop-view"><section class="item-inquiry-summary" data-item-inquiry-summary="true"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>Karl Foerster Feather Reed Grass</strong></div><span>4 rows · 2 locations</span></div><div class="item-inquiry-summary-grid">${summary.map(([label, value]) => `<div class="item-inquiry-summary-cell" data-item-inquiry-field="${label}"><span class="item-inquiry-summary-label">${label}</span><span class="item-inquiry-summary-value">${value}</span></div>`).join('')}</div></section><section class="item-inquiry-season-summary" data-item-inquiry-season-summary="true"><div class="item-inquiry-section-heading"><div><span>Season Summary</span><strong>${seasons.length} distinct rows</strong></div></div><div class="item-inquiry-season-grid"><div class="item-inquiry-season-header" role="row">${seasonHeaders.map((header) => `<div role="columnheader">${header}</div>`).join('')}</div>${seasons.map((season) => `<div class="item-inquiry-season-row" role="row">${season.map((value, index) => `<div><span>${seasonHeaders[index]}</span><strong>${value}</strong></div>`).join('')}</div>`).join('')}</div></section><div class="item-inquiry-ledger" role="table">${groupsHtml}</div></div>`;
+        const mobileSeasons = seasons.map((season) => `<article class="item-inquiry-mobile-season-card"><header><span>Sale Year ${season[0]}</span><strong>${season[1]}</strong></header><div class="item-inquiry-mobile-season-stats">${[['S_LTS', season[2]], ['Supply', season[3]], ['On Hand', season[4]], ['Demand', season[5]]].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join('')}</div></article>`).join('');
+        const mobileLocations = groups.map(([location, groupRows], locationIndex) => `<details class="item-inquiry-mobile-location" data-item-inquiry-mobile-location="${location}" ${locationIndex === 0 ? 'open' : ''}><summary><span class="item-inquiry-mobile-chevron" aria-hidden="true">›</span><span><small>Location</small><strong>${location}</strong></span><span class="item-inquiry-mobile-count">${groupRows.length} lot${groupRows.length === 1 ? '' : 's'}</span></summary><div class="item-inquiry-mobile-location-body">${groupRows.map((row, rowIndex) => `<details class="item-inquiry-mobile-lot ${locationIndex === 0 && rowIndex === 0 ? 'item-inquiry-mobile-lot--current' : ''}" data-item-inquiry-mobile-lot="${row.lot}" ${locationIndex === 0 && rowIndex === 0 ? 'open' : ''}><summary><span class="item-inquiry-mobile-chevron" aria-hidden="true">›</span><span class="item-inquiry-mobile-lot-title"><small>Lot Code</small><strong>${row.lot}</strong></span><span><small>Source</small><strong>${row.source}</strong></span><span><small>Priority</small><strong>${row.priority}</strong></span></summary><div class="item-inquiry-mobile-lot-body">${[['Designated Item', row.desigItem], ['Designated Customer', row.desigCust], ['Designated Location', row.desigLoc], ['Location Note Date', row.noteDate], ['Location Note', row.note], ['Pull Tag Note 1', row.pullTag1], ['Location PTN 1', row.ptn1]].filter(([, value]) => value).map(([label, value]) => `<div class="item-inquiry-mobile-lot-field"><span>${label}</span><strong>${value}</strong></div>`).join('')}<button type="button" class="item-inquiry-mobile-drive-action" data-drive-target="${location}|${row.lot}" onclick="document.body.dataset.qaDriveTarget=this.dataset.driveTarget"><span>Open in Drive Mode</span></button></div></details>`).join('')}</div></details>`).join('');
+        const mobileInquiry = `<div class="item-inquiry-mobile-view"><div class="item-inquiry-mobile-workspace"><header class="item-inquiry-mobile-hero"><span>Item Inquiry</span><h2>Karl Foerster Feather Reed Grass</h2><div><strong>1 Gal</strong><span>000507.051.1</span></div></header><section class="item-inquiry-mobile-stats" aria-label="Inventory quantities"><div><span>On Hand</span><strong>2,186</strong></div><div><span>Reviewed</span><strong>105</strong></div><div><span>Available</span><strong>2,081</strong></div></section><section class="item-inquiry-mobile-hold" aria-label="Hold or stop information"><div><span>Hold/Stop Code</span><strong>H</strong></div><div><span>Hold/Stop Reason</span><strong>Review before release because this is a deliberately long field note used to verify readable phone wrapping without clipping.</strong></div></section><details class="item-inquiry-mobile-item-details"><summary><span>Item Details</span><i aria-hidden="true">⌄</i></summary><div>${[['Plant Group', 'ORNGRASS'], ['Genus', 'Calamagrostis'], ['Tag Color', 'Blue'], ['Item Spec', '24–30 inch'], ['Puller Responsibility', 'JD']].map(([label, value]) => `<div class="item-inquiry-mobile-detail-field"><span>${label}</span><strong>${value}</strong></div>`).join('')}</div></details><section class="item-inquiry-mobile-seasons"><div class="item-inquiry-mobile-section-title"><span>Season Summary</span><strong>${seasons.length} rows</strong></div>${mobileSeasons}</section><section class="item-inquiry-mobile-locations"><div class="item-inquiry-mobile-section-title"><span>Locations &amp; Lots</span><strong>${groups.length} locations</strong></div>${mobileLocations}</section></div></div>`;
+        document.getElementById('item-inquiry-panel').innerHTML = desktopInquiry + mobileInquiry;
       }
       const syncFixtureViewportContracts = () => {
         const root = document.documentElement;

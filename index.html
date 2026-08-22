@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.22.03">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.22.04">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.22.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.22.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6596,7 +6596,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.22.03">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.22.04">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6707,8 +6707,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.22.03"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.22.03"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.22.04"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.22.04"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7461,7 +7461,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.22.03').trim() || 'V2026.08.22.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.22.04').trim() || 'V2026.08.22.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8597,6 +8597,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
                     </div>
+                    <label id="det-mobile-tab-select-wrap" class="detail-mobile-tab-select hidden" for="det-mobile-tab-select">
+                        <span>Item view</span>
+                        <select id="det-mobile-tab-select" aria-label="Item detail view" onchange="return handleMobileDetailTabChange(this)"></select>
+                        <i class="ph-bold ph-caret-down" aria-hidden="true"></i>
+                    </label>
                     <div class="mb-4">
                         <div id="det-title-row" class="mb-2 text-[#007a4d]">
                             <h1 id="det-common" class="text-2xl font-black leading-none">--</h1>
@@ -8942,7 +8947,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.22.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.22.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30224,7 +30229,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.22.03').trim() || 'V2026.08.22.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.22.04').trim() || 'V2026.08.22.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -93214,6 +93219,40 @@ function toggleDriveQuickRequestItem(domId) {
             return document.getElementById('det-overview-content') ? 'overview' : requestedTab;
         }
 
+        function getVisibleMobileDetailTabs() {
+            const detTabsContainer = document.getElementById('det-tabs-container');
+            if (!detTabsContainer || detTabsContainer.classList.contains('hidden')) return [];
+            return Array.from(detTabsContainer.querySelectorAll('.detail-tab'))
+                .filter((el) => el && !el.classList.contains('hidden') && String(el.id || '').startsWith('dtab-'))
+                .map((el) => ({
+                    tab: String(el.id || '').replace(/^dtab-/, ''),
+                    label: String(el.textContent || '').trim()
+                }))
+                .filter((entry) => entry.tab && entry.label);
+        }
+
+        function syncMobileDetailTabSelector(selectedTab = activeDetailTab) {
+            const wrapper = document.getElementById('det-mobile-tab-select-wrap');
+            const select = document.getElementById('det-mobile-tab-select');
+            if (!wrapper || !select) return;
+            const options = getVisibleMobileDetailTabs();
+            wrapper.classList.toggle('hidden', options.length === 0);
+            const signature = options.map((entry) => `${entry.tab}:${entry.label}`).join('|');
+            if (select.dataset.optionSignature !== signature) {
+                select.replaceChildren(...options.map((entry) => new Option(entry.label, entry.tab)));
+                select.dataset.optionSignature = signature;
+            }
+            const requestedTab = String(selectedTab || '').trim();
+            select.value = options.some((entry) => entry.tab === requestedTab) ? requestedTab : (options[0] && options[0].tab) || '';
+            select.disabled = options.length <= 1;
+        }
+
+        function handleMobileDetailTabChange(select = null) {
+            const nextTab = String(select && select.value || '').trim();
+            if (nextTab) switchDetailTab(nextTab);
+            return false;
+        }
+
         function configureDetailTabsForItem(item = activeItem, detailSourceView = '') {
             const safeSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
             const detTabsContainer = document.getElementById('det-tabs-container');
@@ -93319,6 +93358,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const visibleTabCount = Array.from(detTabsContainer.querySelectorAll('.detail-tab')).filter((el) => !el.classList.contains('hidden')).length;
                 detTabsContainer.classList.toggle('hidden', visibleTabCount === 0);
             }
+            syncMobileDetailTabSelector(primaryDetailTab);
             return primaryDetailTab;
         }
 
@@ -95383,6 +95423,24 @@ function toggleDriveQuickRequestItem(domId) {
             'holdstopreason'
         ].includes(field.key));
 
+        const ITEM_INQUIRY_MOBILE_DETAIL_FIELDS = [
+            { key: 'plantgroupcode', label: 'Plant Group' },
+            { key: 'genusname', label: 'Genus' },
+            { key: 'fieldtagcolor', label: 'Tag Color' },
+            { key: 'itemspec', label: 'Item Spec' },
+            { key: 'pullerresponsibility', label: 'Puller Responsibility' }
+        ];
+
+        const ITEM_INQUIRY_MOBILE_LOT_FIELDS = [
+            { key: 'desigitem', label: 'Designated Item' },
+            { key: 'desigcust', label: 'Designated Customer' },
+            { key: 'desigloc', label: 'Designated Location' },
+            { key: 'locationnotedate', label: 'Location Note Date', formatDate: true },
+            { key: 'locationnote', label: 'Location Note' },
+            { key: 'pulltagnote1', label: 'Pull Tag Note 1' },
+            { key: 'locationptn1', label: 'Location PTN 1' }
+        ];
+
         function getItemInquiryExactValue(row = null, aliases = [], fallback = '') {
             const safeRow = row && typeof row === 'object' ? row : {};
             for (const alias of (Array.isArray(aliases) ? aliases : [aliases])) {
@@ -95790,6 +95848,53 @@ function toggleDriveQuickRequestItem(domId) {
             return Array.from(groups.values());
         }
 
+        function renderItemInquiryMobileWorkspace(model = {}, groups = new Map(), currentKey = '', displayIdentity = {}) {
+            const safeModel = model && typeof model === 'object' ? model : { identity: {}, seasons: [], locationRows: [] };
+            const identity = safeModel.identity && typeof safeModel.identity === 'object' ? safeModel.identity : {};
+            const seasonRows = Array.isArray(safeModel.seasons) ? safeModel.seasons : [];
+            const locationRows = Array.isArray(safeModel.locationRows) ? safeModel.locationRows : [];
+            const groupEntries = Array.from(groups instanceof Map ? groups.entries() : []);
+            const currentLocationIndex = groupEntries.findIndex(([, entries]) => entries.some((entry) => getItemInquiryRowKey(entry.sourceRow) === currentKey));
+            const defaultLocationIndex = currentLocationIndex >= 0 ? currentLocationIndex : 0;
+            const hasCurrentRow = locationRows.some((entry) => getItemInquiryRowKey(entry.sourceRow) === currentKey);
+            const valueOrDash = (value) => String(value == null ? '' : value).trim() || '—';
+            const identityDetailsHtml = ITEM_INQUIRY_MOBILE_DETAIL_FIELDS.map((field) => `
+                <div class="item-inquiry-mobile-detail-field">
+                    <span>${escapeHtml(field.label)}</span>
+                    <strong>${escapeHtml(valueOrDash(identity[field.key]))}</strong>
+                </div>`).join('');
+            const seasonCardsHtml = seasonRows.map((season) => {
+                const seasonStats = [
+                    ['S_LTS', season.s_lts],
+                    ['Supply', season.season_supply],
+                    ['On Hand', season.season_oh],
+                    ['Demand', season.season_demand]
+                ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(valueOrDash(value))}</strong></div>`).join('');
+                return `<article class="item-inquiry-mobile-season-card"><header><span>Sale Year ${escapeHtml(valueOrDash(season.saleyear))}</span><strong>${escapeHtml(valueOrDash(season.season))}</strong></header><div class="item-inquiry-mobile-season-stats">${seasonStats}</div></article>`;
+            }).join('') || '<div class="item-inquiry-mobile-empty">No season summary is available.</div>';
+            let mobileRowIndex = 0;
+            const locationsHtml = groupEntries.map(([locationCode, entries], locationIndex) => {
+                const locationIsOpen = locationIndex === defaultLocationIndex;
+                const hasCurrentInLocation = entries.some((entry) => getItemInquiryRowKey(entry.sourceRow) === currentKey);
+                const lotsHtml = entries.map((entry, entryIndex) => {
+                    const row = entry.sourceRow;
+                    const isCurrent = getItemInquiryRowKey(row) === currentKey;
+                    const lotIsOpen = isCurrent || (!hasCurrentRow && locationIsOpen && entryIndex === 0) || (!hasCurrentInLocation && locationIsOpen && entryIndex === 0);
+                    const domId = ensureItemInquiryRowDomId(row, mobileRowIndex++);
+                    const activationAttrs = buildFastInvokeAttrs('openItemInquiryDriveRow', [getItemInquiryRowKey(row), domId, entry.unique_id], 'Open in Drive Mode');
+                    const lotFieldsHtml = ITEM_INQUIRY_MOBILE_LOT_FIELDS.map((field) => {
+                        const rawValue = String(entry.values[field.key] == null ? '' : entry.values[field.key]).trim();
+                        if (!rawValue) return '';
+                        const displayValue = field.formatDate ? (formatGroupedBloomNcrReportDateValue(rawValue) || rawValue) : rawValue;
+                        return `<div class="item-inquiry-mobile-lot-field"><span>${escapeHtml(field.label)}</span><strong>${escapeHtml(displayValue)}</strong></div>`;
+                    }).join('') || '<div class="item-inquiry-mobile-empty item-inquiry-mobile-empty--compact">No additional lot details.</div>';
+                    return `<details class="item-inquiry-mobile-lot ${isCurrent ? 'item-inquiry-mobile-lot--current' : ''}" data-item-inquiry-mobile-lot="${escapeHtml(valueOrDash(entry.values.lotcode))}" ${lotIsOpen ? 'open' : ''}><summary><span class="item-inquiry-mobile-chevron" aria-hidden="true"><i class="ph-bold ph-caret-right"></i></span><span class="item-inquiry-mobile-lot-title"><small>Lot Code</small><strong>${escapeHtml(valueOrDash(entry.values.lotcode))}</strong></span><span><small>Source</small><strong>${escapeHtml(valueOrDash(entry.values.source))}</strong></span><span><small>Priority</small><strong>${escapeHtml(valueOrDash(entry.values.priority))}</strong></span></summary><div class="item-inquiry-mobile-lot-body">${lotFieldsHtml}<button type="button" class="item-inquiry-mobile-drive-action" ${activationAttrs}><i class="ph-bold ph-car-profile" aria-hidden="true"></i><span>Open in Drive Mode</span></button></div></details>`;
+                }).join('');
+                return `<details class="item-inquiry-mobile-location" data-item-inquiry-mobile-location="${escapeHtml(locationCode)}" ${locationIsOpen ? 'open' : ''}><summary><span class="item-inquiry-mobile-chevron" aria-hidden="true"><i class="ph-bold ph-caret-right"></i></span><span><small>Location</small><strong>${escapeHtml(locationCode)}</strong></span><span class="item-inquiry-mobile-count">${entries.length} lot${entries.length === 1 ? '' : 's'}</span></summary><div class="item-inquiry-mobile-location-body">${lotsHtml}</div></details>`;
+            }).join('') || '<div class="item-inquiry-mobile-empty">No inventory rows were found for this item code.</div>';
+            return `<div class="item-inquiry-mobile-view"><div class="item-inquiry-mobile-workspace"><header class="item-inquiry-mobile-hero"><span>Item Inquiry</span><h2>${escapeHtml(valueOrDash(identity.commonname))}</h2><div><strong>${escapeHtml(valueOrDash(identity.contsize))}</strong><span>${escapeHtml(valueOrDash(identity.itemcode))}</span></div></header><section class="item-inquiry-mobile-stats" aria-label="Inventory quantities"><div><span>On Hand</span><strong>${escapeHtml(valueOrDash(displayIdentity.ptronhand))}</strong></div><div><span>Reviewed</span><strong>${escapeHtml(valueOrDash(displayIdentity.ptrreviewed))}</strong></div><div><span>Available</span><strong>${escapeHtml(valueOrDash(displayIdentity.ptravailable))}</strong></div></section><section class="item-inquiry-mobile-hold" aria-label="Hold or stop information"><div><span>Hold/Stop Code</span><strong>${escapeHtml(valueOrDash(displayIdentity.holdstopcode))}</strong></div><div><span>Hold/Stop Reason</span><strong>${escapeHtml(valueOrDash(displayIdentity.holdstopreason))}</strong></div></section><details class="item-inquiry-mobile-item-details"><summary><span>Item Details</span><i class="ph-bold ph-caret-down" aria-hidden="true"></i></summary><div>${identityDetailsHtml}</div></details><section class="item-inquiry-mobile-seasons" aria-label="All season rows"><div class="item-inquiry-mobile-section-title"><span>Season Summary</span><strong>${seasonRows.length} row${seasonRows.length === 1 ? '' : 's'}</strong></div>${seasonCardsHtml}</section><section class="item-inquiry-mobile-locations" aria-label="Locations and lots"><div class="item-inquiry-mobile-section-title"><span>Locations &amp; Lots</span><strong>${groupEntries.length} location${groupEntries.length === 1 ? '' : 's'}</strong></div>${locationsHtml}</section></div></div>`;
+        }
+
         function renderItemInquiryReadOnlyWorkspace(item = activeItem) {
             const baseRows = getItemInquiryRows(item);
             const model = buildItemInquiryViewModel(item, baseRows);
@@ -95839,7 +95944,8 @@ function toggleDriveQuickRequestItem(domId) {
                 }).join('');
                 return `<section class="item-inquiry-location-group" data-item-inquiry-location="${escapeHtml(locationCode)}"><div class="item-inquiry-location-header"><div><span class="item-inquiry-location-label">LOCATIONCODE</span><strong>${escapeHtml(locationCode)}</strong><span class="item-inquiry-location-count">${entries.length} lot${entries.length === 1 ? '' : 's'}</span></div></div><div class="item-inquiry-ledger-scroll"><div class="item-inquiry-ledger-table"><div class="item-inquiry-ledger-header" role="row">${headersHtml}</div>${rowsHtml}</div></div></section>`;
             }).join('') || '<div class="item-inquiry-empty">No inventory rows were found for this item code.</div>';
-            return `<div class="item-inquiry-workspace"><section class="item-inquiry-summary" data-item-inquiry-summary="true" aria-label="Item identity"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>${escapeHtml(model.identity.commonname || 'Unknown')}</strong></div><span>${model.locationRows.length} row${model.locationRows.length === 1 ? '' : 's'} · ${groups.size} location${groups.size === 1 ? '' : 's'}</span></div><div class="item-inquiry-summary-grid">${identityHtml}</div></section><section class="item-inquiry-season-summary" data-item-inquiry-season-summary="true" aria-label="Distinct season summary"><div class="item-inquiry-section-heading"><div><span>Season Summary</span><strong>${model.seasons.length} distinct row${model.seasons.length === 1 ? '' : 's'}</strong></div></div><div class="item-inquiry-season-grid"><div class="item-inquiry-season-header" role="row">${seasonHeaderHtml}</div>${seasonRowsHtml}</div></section><div class="item-inquiry-ledger" role="table" aria-label="Inventory lots grouped by location">${locationHtml}</div></div>`;
+            const desktopHtml = `<div class="item-inquiry-workspace item-inquiry-desktop-view"><section class="item-inquiry-summary" data-item-inquiry-summary="true" aria-label="Item identity"><div class="item-inquiry-section-heading"><div><span>Item Inquiry</span><strong>${escapeHtml(model.identity.commonname || 'Unknown')}</strong></div><span>${model.locationRows.length} row${model.locationRows.length === 1 ? '' : 's'} · ${groups.size} location${groups.size === 1 ? '' : 's'}</span></div><div class="item-inquiry-summary-grid">${identityHtml}</div></section><section class="item-inquiry-season-summary" data-item-inquiry-season-summary="true" aria-label="Distinct season summary"><div class="item-inquiry-section-heading"><div><span>Season Summary</span><strong>${model.seasons.length} distinct row${model.seasons.length === 1 ? '' : 's'}</strong></div></div><div class="item-inquiry-season-grid"><div class="item-inquiry-season-header" role="row">${seasonHeaderHtml}</div>${seasonRowsHtml}</div></section><div class="item-inquiry-ledger" role="table" aria-label="Inventory lots grouped by location">${locationHtml}</div></div>`;
+            return desktopHtml + renderItemInquiryMobileWorkspace(model, groups, currentKey, displayIdentity);
         }
 
         function renderItemInquiryDetailPanel(item = activeItem) {
@@ -97227,6 +97333,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 activeEl.style.borderBottomColor = '';
                 activeEl.style.color = '';
             }
+            syncMobileDetailTabSelector(safeTab);
 
             const detailContentIds = ['det-overview-content','det-season-content','det-item-inquiry-content','det-crop-roll-form-content','det-location-content','det-alt-loc-content','det-request-content','det-inventory-edit-content','det-this-location-content','det-not-on-inventory-content','det-customer-content','det-ncr-content','det-notes-content','det-docks-content','det-flyer-content','det-gallery-content'];
             const targetContentId = 'det-' + safeTab + '-content';
