@@ -323,7 +323,9 @@
       document.getElementById('view-drive').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('view-chat').classList.toggle('hidden', activeView !== 'chat');
       const fixtureDetailActive = activeView === 'detail' || activeView === 'item-inquiry';
-      document.getElementById('view-detail').classList.toggle('hidden', !fixtureDetailActive);
+      const fixtureDetailRoot = document.getElementById('view-detail');
+      fixtureDetailRoot.classList.toggle('hidden', !fixtureDetailActive);
+      fixtureDetailRoot.classList.toggle('detail-item-inquiry-mode', activeView === 'item-inquiry');
       document.getElementById('det-request-content').classList.toggle('hidden', activeView !== 'detail');
       document.getElementById('det-item-inquiry-content').classList.toggle('hidden', activeView !== 'item-inquiry');
       document.getElementById('global-header-search-slot').classList.toggle('hidden', activeView !== 'drive');

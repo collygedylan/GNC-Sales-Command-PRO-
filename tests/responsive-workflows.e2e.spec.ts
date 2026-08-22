@@ -94,7 +94,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.22.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.22.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -577,6 +577,8 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
       await page.setViewportSize(viewport);
       await page.goto(`${fixtureUrl}?view=item-inquiry&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
       await expect(page.locator('#item-inquiry-panel')).toBeVisible();
+      await expect(page.locator('#view-detail > .freeze-panel > .mb-4')).toBeHidden();
+      await expect(page.locator('#detail-shared-panels')).toBeHidden();
       await expect(page.locator('[data-item-inquiry-summary] [data-item-inquiry-field]')).toHaveCount(itemFields.length);
       expect(await page.locator('[data-item-inquiry-summary] [data-item-inquiry-field]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-item-inquiry-field')))).toEqual(itemFields);
       await expect(page.locator('[data-item-inquiry-season-summary] .item-inquiry-season-row')).toHaveCount(3);
@@ -592,6 +594,8 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
 
       const layout = await page.locator('#item-inquiry-panel').evaluate((panel) => {
         const panelRect = panel.getBoundingClientRect();
+        const detailFreezePanel = document.querySelector('#view-detail > .freeze-panel') as HTMLElement;
+        const freezeRect = detailFreezePanel.getBoundingClientRect();
         const ledger = panel.querySelector('.item-inquiry-ledger') as HTMLElement;
         const ledgerScroll = panel.querySelector('.item-inquiry-ledger-scroll') as HTMLElement;
         const firstRow = panel.querySelector('.item-inquiry-ledger-row') as HTMLElement;
@@ -602,6 +606,9 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
           panelLeft: panelRect.left,
           panelRight: panelRect.right,
           panelWidth: panelRect.width,
+          panelTop: panelRect.top,
+          freezeBottom: freezeRect.bottom,
+          freezePosition: getComputedStyle(detailFreezePanel).position,
           ledgerClientWidth: ledger.clientWidth,
           ledgerClientHeight: ledger.clientHeight,
           ledgerScrollClientWidth: ledgerScroll.clientWidth,
@@ -613,6 +620,8 @@ test('Item Inquiry fits every viewport and groups lot rows with accurate locatio
         };
       });
       expect(layout.documentOverflowX, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBe(0);
+      expect(layout.freezePosition, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBe('relative');
+      expect(layout.panelTop, `${theme} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBeGreaterThanOrEqual(layout.freezeBottom - 1);
       expect(layout.panelLeft).toBeGreaterThanOrEqual(-1);
       expect(layout.panelRight).toBeLessThanOrEqual(viewport.width + 1);
       expect(layout.panelWidth).toBeGreaterThan(250);

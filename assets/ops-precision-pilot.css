@@ -6750,6 +6750,26 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-empty {
   text-align: center;
 }
 
+/* Item Inquiry carries its own complete item identity. Remove the duplicate
+   detail hero and AV panels, and let the tab rail scroll away with the report. */
+#view-detail.detail-item-inquiry-mode > .freeze-panel {
+  position: relative !important;
+  top: auto !important;
+  z-index: auto !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0.25rem !important;
+}
+
+#view-detail.detail-item-inquiry-mode > .freeze-panel > .mb-4,
+#view-detail.detail-item-inquiry-mode #global-inputs-container,
+#view-detail.detail-item-inquiry-mode #detail-shared-panels {
+  display: none !important;
+}
+
+#view-detail.detail-item-inquiry-mode #det-item-inquiry-content {
+  padding-top: 0.5rem !important;
+}
+
 html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
   .item-inquiry-summary,
   .item-inquiry-summary-cell,

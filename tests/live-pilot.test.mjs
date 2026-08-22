@@ -41,12 +41,12 @@ const historicalReportMigration = read('supabase/migrations/20260821202202_manag
 const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.22.01';
+  const release = 'V2026.08.22.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.22.01');
+  assert.equal(packageJson.version, '2026.08.22.02');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
