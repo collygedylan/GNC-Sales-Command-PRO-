@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(52);
+select plan(53);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -30,18 +30,24 @@ insert into public.ph_master_inventory (
 insert into public.ph_drive_around_report_rows (
   unique_id, file_id, file_name, report_date, row_number, item_key,
   itemcode, commonname, genus, contsize, locationcode, lotcode,
-  season, salesyear, ptravailable, holdstopcode, holdstopreason
+  season, salesyear, ptravailable, holdstopcode, holdstopreason,
+  warehousei, plantgroupcode, holdstopbegindate, salesnote_1, source_schema_version
 ) values
   ('HISTORY-TEST-1', 'HISTORY-FILE-1', 'DriveAround-20260629.xlsx', '2026-06-29', 1, 'ITEM-HISTORY-1',
    'ITEM-HISTORY-1', 'Test Historical Grass', 'Calamagrostis', '#1', 'A.01.001', '27.F1',
-   'F1', '27', 12, 'H', 'size'),
+   'F1', '27', 12, 'H', 'size', '10', '300_GRASS', '6/20/2026', 'second sales note', 1),
   ('HISTORY-TEST-2', 'HISTORY-FILE-2', 'DriveAround-20260630.xlsx', '2026-06-30', 1, 'ITEM-HISTORY-1',
    'ITEM-HISTORY-1', 'Test Historical Grass', 'Calamagrostis', '#1', 'A.01.001', '27.F1',
-   'F1', '27', 12, '', '')
+   'F1', '27', 12, '', '', '10', '300_GRASS', '', '', 1)
 on conflict (unique_id) do update set
   report_date = excluded.report_date,
   holdstopcode = excluded.holdstopcode,
-  holdstopreason = excluded.holdstopreason;
+  holdstopreason = excluded.holdstopreason,
+  warehousei = excluded.warehousei,
+  plantgroupcode = excluded.plantgroupcode,
+  holdstopbegindate = excluded.holdstopbegindate,
+  salesnote_1 = excluded.salesnote_1,
+  source_schema_version = excluded.source_schema_version;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
@@ -244,6 +250,26 @@ select is(
   )->'rows'->0->'values'->>'holdstopcode'),
   'H',
   'historical row RPC preserves requested hold data'
+);
+select is(
+  (public.get_historical_inventory_rows(
+    'Test Historical Grass', '#1', array['warehousei','plantgroupcode','holdstopbegindate','salesnote_1'],
+    '2026-06-29', '2026-06-29', null, null, 100
+  )->'rows'->0->'values'->>'warehousei') || '|' ||
+  (public.get_historical_inventory_rows(
+    'Test Historical Grass', '#1', array['warehousei','plantgroupcode','holdstopbegindate','salesnote_1'],
+    '2026-06-29', '2026-06-29', null, null, 100
+  )->'rows'->0->'values'->>'plantgroupcode') || '|' ||
+  (public.get_historical_inventory_rows(
+    'Test Historical Grass', '#1', array['warehousei','plantgroupcode','holdstopbegindate','salesnote_1'],
+    '2026-06-29', '2026-06-29', null, null, 100
+  )->'rows'->0->'values'->>'holdstopbegindate') || '|' ||
+  (public.get_historical_inventory_rows(
+    'Test Historical Grass', '#1', array['warehousei','plantgroupcode','holdstopbegindate','salesnote_1'],
+    '2026-06-29', '2026-06-29', null, null, 100
+  )->'rows'->0->'values'->>'salesnote_1'),
+  '10|300_GRASS|6/20/2026|second sales note',
+  'historical row RPC returns the expanded source column projection'
 );
 select throws_ok(
   $q$select public.get_historical_inventory_rows(

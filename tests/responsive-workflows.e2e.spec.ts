@@ -94,7 +94,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.22.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.23.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -176,7 +176,7 @@ test('Manager Historical Report loads Common Names immediately, drills to ContSi
   expect(result.rendered).toContain('Karl Foerster Feather Reed Grass');
   expect(result.rendered).toContain('#1');
   expect(result.rendered).toContain('Columns (3)');
-  expect(result.rendered).toContain('Hold/Stop Code');
+  expect(result.rendered).toContain('HOLDSTOPCODE');
   expect(result.nameMarkup).toContain('manager-historical-drive-card');
   expect(result.nameMarkup).toContain('manager-historical-drive-crumb');
   expect(result.nameMarkup).not.toContain('manager-module-grid');

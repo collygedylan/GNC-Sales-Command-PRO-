@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.22.05">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.23.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.22.05';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.23.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6596,7 +6596,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.22.05">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.23.01">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6707,8 +6707,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.22.05"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.22.05"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.23.01"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.23.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7461,7 +7461,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.22.05').trim() || 'V2026.08.22.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.23.01').trim() || 'V2026.08.23.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8947,7 +8947,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.22.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.23.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30229,7 +30229,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.22.05').trim() || 'V2026.08.22.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.23.01').trim() || 'V2026.08.23.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -118168,29 +118168,91 @@ C.14.043 C.15.000
         }
 
         const MANAGER_HISTORICAL_REPORT_COLUMNS = Object.freeze([
-            { key: 'unique_id', label: 'Unique ID' },
-            { key: 'file_id', label: 'File ID' },
-            { key: 'report_date', label: 'Report Date' },
-            { key: 'file_name', label: 'Source File' },
-            { key: 'row_number', label: 'Row Number' },
-            { key: 'item_key', label: 'Item Key' },
-            { key: 'itemcode', label: 'ItemCode' },
-            { key: 'commonname', label: 'Common Name' },
-            { key: 'genus', label: 'Genus' },
-            { key: 'contsize', label: 'ContSize' },
-            { key: 'locationcode', label: 'LocationCode' },
-            { key: 'lotcode', label: 'LotCode' },
-            { key: 'season', label: 'Season' },
-            { key: 'blockalpha', label: 'BlockAlpha' },
-            { key: 'salesyear', label: 'SalesYear' },
-            { key: 'ptravailable', label: 'PTR Available' },
-            { key: 'holdstopcode', label: 'Hold/Stop Code' },
-            { key: 'holdstopreason', label: 'Hold/Stop Reason' },
-            { key: 'holdstopbegindate_raw', label: 'Hold Begin Date' },
-            { key: 'hold_reason_category', label: 'Hold Reason Category' },
-            { key: 'row_hash', label: 'Row Hash' },
-            { key: 'created_at', label: 'Created At' },
-            { key: 'updated_at', label: 'Updated At' }
+            { key: 'report_date', label: 'REPORT DATE' },
+            { key: 'file_name', label: 'SOURCE FILE' },
+            { key: 'row_number', label: 'ROW NUMBER' },
+            { key: 'warehousei', label: 'WAREHOUSEI' },
+            { key: 'plantgroupcode', label: 'PLANTGROUPCODE' },
+            { key: 'itemcode', label: 'ITEMCODE' },
+            { key: 'qualitycode', label: 'QUALITYCODE' },
+            { key: 'contsize', label: 'CONTSIZE' },
+            { key: 'commonname', label: 'COMMONNAME' },
+            { key: 'lotcode', label: 'LOTCODE' },
+            { key: 'locationcode', label: 'LOCATIONCODE' },
+            { key: 'source', label: 'SOURCE' },
+            { key: 'desigitem', label: 'DesigItem' },
+            { key: 'desigcust', label: 'DesigCust' },
+            { key: 'desigloc', label: 'DesigLoc' },
+            { key: 'priority', label: 'PRIORITY' },
+            { key: 'ptronhand', label: 'PTRONHAND' },
+            { key: 'ptrreviewed', label: 'PTRREVIEWED' },
+            { key: 'ptravailable', label: 'PTRAVAILABLE' },
+            { key: 'holdstopcode', label: 'HOLDSTOPCODE' },
+            { key: 'holdstopbegindate', label: 'HOLDSTOPBEGINDATE' },
+            { key: 'holdstopreason', label: 'HOLDSTOPREASON' },
+            { key: 'hsreasonbegin', label: 'HSREASONBEGIN' },
+            { key: 'season_supply', label: 'SEASON_SUPPLY' },
+            { key: 'season_oh', label: 'SEASON_OH' },
+            { key: 'season_demand', label: 'SEASON_DEMAND' },
+            { key: 's_lts', label: 's_LTS' },
+            { key: 'oversellpercentage', label: 'OVERSELLPERCENTAGE' },
+            { key: 'itemspec', label: 'ITEMSPEC' },
+            { key: 'locationnote', label: 'LOCATIONNOTE' },
+            { key: 'locationnotedate', label: 'LOCATIONNOTEDATE' },
+            { key: 'suspend', label: 'SUSPEND' },
+            { key: 'suspendto', label: 'SUSPENDTO' },
+            { key: 'specialpuller', label: 'SPECIALPULLER' },
+            { key: 'pulltagnote1', label: 'PULLTAGNOTE1' },
+            { key: 'pulltagnote2', label: 'PULLTAGNOTE2' },
+            { key: 'fieldtagcolor', label: 'FIELDTAGCOLOR' },
+            { key: 'salesnote', label: 'SALESNOTE' },
+            { key: 'inventorynote', label: 'INVENTORYNOTE' },
+            { key: 'locationptn1', label: 'LOCATIONPTN1' },
+            { key: 'locationptn2', label: 'LOCATIONPTN2' },
+            { key: 'prisetby', label: 'PRISETBY' },
+            { key: 'priupdated', label: 'PRIUPDATED' },
+            { key: 'bypassloc', label: 'BYPASSLOC' },
+            { key: 'largeptrqty', label: 'LARGEPTRQTY' },
+            { key: 'maxorderquantity', label: 'MAXORDERQUANTITY' },
+            { key: 'lochold', label: 'LOCHOLD' },
+            { key: 'listprice', label: 'LISTPRICE' },
+            { key: 'ext_ptronhand', label: 'EXT_PTRONHAND' },
+            { key: 'varietycode', label: 'VARIETYCODE' },
+            { key: 'genusname', label: 'GENUSNAME' },
+            { key: 'botanicalname', label: 'BOTANICALNAME' },
+            { key: 'reversecommon', label: 'REVERSECOMMON' },
+            { key: 'sortnamevariety', label: 'SORTNAMEVARIETY' },
+            { key: 'containersort', label: 'CONTAINERSORT' },
+            { key: 'saleyear', label: 'SALEYEAR' },
+            { key: 'season', label: 'SEASON' },
+            { key: 'blockalpha', label: 'BLOCKALPHA' },
+            { key: 'blocknumber', label: 'BLOCKNUMBER' },
+            { key: 'bay', label: 'BAY' },
+            { key: 'pullerresponsibility', label: 'PULLERRESPONSIBILITY' },
+            { key: 'grower', label: 'GROWER' },
+            { key: 'si_lts', label: 'si_LTS' },
+            { key: 'a_lts', label: 'a_LTS' },
+            { key: 'ai_lts', label: 'ai_LTS' },
+            { key: 'season_available', label: 'SEASON_AVAILABLE' },
+            { key: 'holdstopenddate', label: 'HOLDSTOPENDDATE' },
+            { key: 'salesnote_1', label: 'SALESNOTE (2)' },
+            { key: 'fnsalesnote', label: 'FNSALESNOTE' },
+            { key: 'warehousename', label: 'WAREHOUSENAME' },
+            { key: 'mcstatus', label: 'MCSTATUS' },
+            { key: 'hz', label: 'HZ' },
+            { key: 'intercopo', label: 'INTERCOPO' },
+            { key: 'insurancegroup', label: 'INSURANCEGROUP' },
+            { key: 'brand', label: 'BRAND' },
+            { key: 'printedcontainercode', label: 'PRINTEDCONTAINERCODE' },
+            { key: 'salesnotebegindate', label: 'SALESNOTEBEGINDATE' },
+            { key: 'equiv_unit', label: 'EQUIV_UNIT' },
+            { key: 'ext_equiv_unit', label: 'EXT_EQUIV_UNIT' },
+            { key: 'unique_id', label: 'UNIQUE ID' },
+            { key: 'file_id', label: 'FILE ID' },
+            { key: 'item_key', label: 'ITEM KEY' },
+            { key: 'row_hash', label: 'ROW HASH' },
+            { key: 'created_at', label: 'CREATED AT' },
+            { key: 'updated_at', label: 'UPDATED AT' }
         ]);
 
         function getManagerHistoricalColumnMeta(columnKey = '') {
@@ -130604,7 +130666,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             'AI_LTS',
             'SEASON_AVAILABLE',
             'HOLDSTOPENDDATE',
-            'SALESNOTE',
+            'SALESNOTE_1',
             'FNSALESNOTE',
             'WAREHOUSENAME',
             'MCSTATUS',
@@ -130683,6 +130745,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             AI_LTS: 10,
             SEASON_AVAILABLE: 18,
             HOLDSTOPENDDATE: 18,
+            SALESNOTE_1: 32,
             FNSALESNOTE: 32,
             WAREHOUSENAME: 20,
             MCSTATUS: 12,

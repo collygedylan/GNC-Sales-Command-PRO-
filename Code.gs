@@ -127,6 +127,27 @@ const DRIVE_AROUND_HISTORY_WORKSPACE_RUN_BUDGET_MS = 27 * 60 * 1000;
 const DRIVE_AROUND_HISTORY_BACKFILL_RUN_BUDGET_MS = 4 * 60 * 1000;
 const DRIVE_AROUND_HISTORY_FLUSH_ROW_THRESHOLD = 10000;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
+const DRIVE_AROUND_HISTORY_SOURCE_SCHEMA_VERSION = 1;
+const DRIVE_AROUND_HISTORY_REPORT_COLUMN_SPECS = Object.freeze([
+  ['warehousei', ['warehousei', 'warehouseid']],
+  ['plantgroupcode'], ['itemcode'], ['qualitycode'], ['contsize'], ['commonname'],
+  ['lotcode'], ['locationcode'], ['source'], ['desigitem'], ['desigcust'], ['desigloc'],
+  ['priority'], ['ptronhand'], ['ptrreviewed'], ['ptravailable'], ['holdstopcode'],
+  ['holdstopbegindate'], ['holdstopreason'], ['hsreasonbegin', ['hsreasonbegin', 'hrsseasonbegin']],
+  ['season_supply', ['season_supply', 'seasonsupply']], ['season_oh'], ['season_demand'],
+  ['s_lts'], ['oversellpercentage'], ['itemspec'], ['locationnote'], ['locationnotedate'],
+  ['suspend'], ['suspendto', ['suspendto', 'suspend_to']], ['specialpuller'],
+  ['pulltagnote1'], ['pulltagnote2'], ['fieldtagcolor', ['fieldtagcolor', 'field_tag_color']],
+  ['salesnote'], ['inventorynote'], ['locationptn1'], ['locationptn2'], ['prisetby'],
+  ['priupdated'], ['bypassloc'], ['largeptrqty'], ['maxorderquantity'], ['lochold'],
+  ['listprice'], ['ext_ptronhand'], ['varietycode'], ['genusname', ['genusname', 'genus']],
+  ['botanicalname'], ['reversecommon'], ['sortnamevariety'], ['containersort'],
+  ['saleyear', ['saleyear', 'salesyear']], ['season'], ['blockalpha'], ['blocknumber'],
+  ['bay'], ['pullerresponsibility'], ['grower'], ['si_lts'], ['a_lts'], ['ai_lts'],
+  ['season_available'], ['holdstopenddate'], ['salesnote_1'], ['fnsalesnote'],
+  ['warehousename'], ['mcstatus'], ['hz'], ['intercopo'], ['insurancegroup'], ['brand'],
+  ['printedcontainercode'], ['salesnotebegindate'], ['equiv_unit'], ['ext_equiv_unit']
+]);
 const DRIVE_AROUND_CANONICAL_TIMEZONE = 'America/Chicago';
 const DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT = 1000;
 const DRIVE_AROUND_CANONICAL_APPLY_LIMIT = 75;
@@ -1613,6 +1634,34 @@ function getDriveAroundHistoryCell_(row, headers, candidates) {
   return String(row[index] == null ? '' : row[index]).trim();
 }
 
+function getDriveAroundHistoryReportCell_(row, headers, key, aliases) {
+  const safeKey = String(key || '').trim().toLowerCase();
+  const candidates = Array.isArray(aliases) && aliases.length ? aliases : [safeKey];
+  if (safeKey !== 'salesnote_1') return getDriveAroundHistoryCell_(row, headers, candidates);
+
+  const explicitIndex = findDriveAroundHistoryColumnIndex_(headers, ['salesnote_1', 'salesnote 2']);
+  if (explicitIndex > -1) return String(row[explicitIndex] == null ? '' : row[explicitIndex]).trim();
+  const normalizedHeaders = (headers || []).map(normalizeDriveAroundHistoryHeaderKey_);
+  let occurrence = 0;
+  for (let index = 0; index < normalizedHeaders.length; index++) {
+    if (normalizedHeaders[index] !== 'salesnote') continue;
+    occurrence += 1;
+    if (occurrence === 2) return String(row[index] == null ? '' : row[index]).trim();
+  }
+  return '';
+}
+
+function buildDriveAroundHistoryReportValues_(headers, row) {
+  const values = {};
+  DRIVE_AROUND_HISTORY_REPORT_COLUMN_SPECS.forEach(function(spec) {
+    const key = spec[0];
+    const aliases = spec[1] || [key];
+    const value = getDriveAroundHistoryReportCell_(row, headers, key, aliases);
+    values[key] = value === '' ? null : value;
+  });
+  return values;
+}
+
 function parseDriveAroundHistoryNumber_(value) {
   const text = String(value == null ? '' : value).replace(/,/g, '').trim();
   if (!text) return null;
@@ -1666,7 +1715,7 @@ function buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, nowIso
       JSON.stringify(raw),
       Utilities.Charset.UTF_8
     )).replace(/=+$/g, '');
-    rows.push({
+    const snapshotRow = {
       unique_id: `drive_around_row_${fileId}_${rowNumber}`.replace(/[^a-zA-Z0-9_-]+/g, '_'),
       file_id: fileId,
       file_name: fileName,
@@ -1694,13 +1743,19 @@ function buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, nowIso
       holdstopbegindate_raw: getDriveAroundHistoryCell_(row, headers, ['holdstopbegindate', 'hold stop begin date']) || null,
       hold_reason_category: classifyDriveAroundHoldReason_(holdstopreason),
       row_hash: rowHash,
-      // The normalized columns above plus row_hash are the durable database
-      // record. The source report remains in Google Drive, so duplicating the
-      // complete source row in Postgres adds no recovery value and caused the
-      // Drive Around relation to grow by many gigabytes.
+      source_schema_version: DRIVE_AROUND_HISTORY_SOURCE_SCHEMA_VERSION,
       created_at: nowIso,
       updated_at: nowIso
+    };
+    const reportValues = buildDriveAroundHistoryReportValues_(headers, row);
+    Object.keys(reportValues).forEach(function(key) {
+      snapshotRow[key] = reportValues[key];
     });
+    snapshotRow.ptravailable = parseDriveAroundHistoryNumber_(reportValues.ptravailable);
+    snapshotRow.genus = reportValues.genusname || null;
+    snapshotRow.salesyear = reportValues.saleyear || null;
+    snapshotRow.holdstopbegindate_raw = reportValues.holdstopbegindate || null;
+    rows.push(snapshotRow);
   }
   return rows;
 }

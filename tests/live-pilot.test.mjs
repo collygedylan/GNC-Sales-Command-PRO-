@@ -41,14 +41,31 @@ const historicalReportMigration = read('supabase/migrations/20260821202202_manag
 const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
 const historicalCoverageMigration = read('supabase/migrations/20260822234500_restore_drivearound_history_and_all_report_columns.sql');
 const holdLearningRefreshMigration = read('supabase/migrations/20260823002500_optimize_hold_learning_refreshes.sql');
+const historicalSourceColumnsMigration = read('supabase/migrations/20260823013134_expand_historical_report_source_columns.sql');
+const requiredHistoricalSourceColumns = Object.freeze([
+  'warehousei', 'plantgroupcode', 'itemcode', 'qualitycode', 'contsize', 'commonname',
+  'lotcode', 'locationcode', 'source', 'desigitem', 'desigcust', 'desigloc', 'priority',
+  'ptronhand', 'ptrreviewed', 'ptravailable', 'holdstopcode', 'holdstopbegindate',
+  'holdstopreason', 'hsreasonbegin', 'season_supply', 'season_oh', 'season_demand',
+  's_lts', 'oversellpercentage', 'itemspec', 'locationnote', 'locationnotedate',
+  'suspend', 'suspendto', 'specialpuller', 'pulltagnote1', 'pulltagnote2', 'fieldtagcolor',
+  'salesnote', 'inventorynote', 'locationptn1', 'locationptn2', 'prisetby', 'priupdated',
+  'bypassloc', 'largeptrqty', 'maxorderquantity', 'lochold', 'listprice', 'ext_ptronhand',
+  'varietycode', 'genusname', 'botanicalname', 'reversecommon', 'sortnamevariety',
+  'containersort', 'saleyear', 'season', 'blockalpha', 'blocknumber', 'bay',
+  'pullerresponsibility', 'grower', 'si_lts', 'a_lts', 'ai_lts', 'season_available',
+  'holdstopenddate', 'salesnote_1', 'fnsalesnote', 'warehousename', 'mcstatus', 'hz',
+  'intercopo', 'insurancegroup', 'brand', 'printedcontainercode', 'salesnotebegindate',
+  'equiv_unit', 'ext_equiv_unit'
+]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.22.05';
+  const release = 'V2026.08.23.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.22.05');
+  assert.equal(packageJson.version, '2026.08.23.01');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -834,6 +851,26 @@ test('Item Inquiry keeps the full Reclass model while adding a phone-specific re
   assert.match(inquiryCss, /border-right: 1px solid var\(--ops-border\)/);
 });
 
+test('Historical Report preserves every requested worksheet column in source order', () => {
+  const sourceSpecsExpression = appsScriptBackend.match(
+    /DRIVE_AROUND_HISTORY_REPORT_COLUMN_SPECS = Object\.freeze\((\[[\s\S]*?\])\);/
+  )?.[1];
+  const uiColumnsExpression = html.match(
+    /MANAGER_HISTORICAL_REPORT_COLUMNS = Object\.freeze\((\[[\s\S]*?\])\);/
+  )?.[1];
+  assert.ok(sourceSpecsExpression);
+  assert.ok(uiColumnsExpression);
+  const sourceColumns = Function(`return ${sourceSpecsExpression}`)().map((spec) => spec[0]);
+  const uiColumns = Function(`return ${uiColumnsExpression}`)().map((column) => column.key);
+  assert.deepEqual(sourceColumns, requiredHistoricalSourceColumns);
+  assert.deepEqual(uiColumns.filter((column) => requiredHistoricalSourceColumns.includes(column)), requiredHistoricalSourceColumns);
+  assert.equal(new Set(sourceColumns).size, 76);
+  assert.match(html, /key: 'salesnote_1', label: 'SALESNOTE \(2\)'/);
+  for (const column of requiredHistoricalSourceColumns) {
+    assert.match(historicalSourceColumnsMigration, new RegExp(`'${column}'`));
+  }
+});
+
 test('Item Inquiry uses the master ItemCode index and renders only the active responsive layout', () => {
   const indexBuilder = html.slice(
     html.indexOf('function rebuildMasterInventoryIndexes'),
@@ -1394,6 +1431,16 @@ test('Managers Historical Report browses immediately with secured server filteri
   assert.match(historicalCoverageMigration, /status = 'indexed'/);
   assert.match(historicalCoverageMigration, /security invoker/);
   assert.doesNotMatch(historicalCoverageMigration, /delete from public\.ph_drive_around_report_rows/i);
+  for (const column of ['warehousei', 'plantgroupcode', 'ptronhand', 'holdstopbegindate', 'season_supply', 'locationnote', 'salesnote_1', 'ext_equiv_unit']) {
+    assert.match(html, new RegExp(`key: '${column}'`));
+    assert.match(historicalSourceColumnsMigration, new RegExp(`'${column}'`));
+  }
+  assert.match(appsScriptBackend, /DRIVE_AROUND_HISTORY_SOURCE_SCHEMA_VERSION = 1/);
+  assert.match(appsScriptBackend, /buildDriveAroundHistoryReportValues_/);
+  assert.match(appsScriptBackend, /source_schema_version: DRIVE_AROUND_HISTORY_SOURCE_SCHEMA_VERSION/);
+  assert.match(historicalSourceColumnsMigration, /requeued_source_schema_version/);
+  assert.doesNotMatch(historicalSourceColumnsMigration, /delete from public\.ph_drive_around_report_rows/i);
+  assert.match(performanceWorkflow, /20260823013134_expand_historical_report_source_columns\.sql/);
   assert.match(performanceWorkflow, /historical_report_baseline\.sql/);
   assert.match(performanceWorkflow, /20260821202202_manager_historical_report\.sql/);
   const historyRowsRpc = historicalReportMigration.slice(
