@@ -42,14 +42,26 @@ DAILY_FIELDS = [
 ]
 
 
+def normalize_config_text(value: Any) -> str:
+    """Return configuration text safe for URLs and HTTP headers.
+
+    GitHub Actions secrets can accidentally acquire a UTF-8 byte-order mark
+    when copied from a file.  Python's HTTP stack encodes header values as
+    latin-1, so an otherwise invisible leading BOM aborts the request before
+    any weather or learning work begins.  Strip only boundary whitespace and
+    BOM markers; do not alter the credential contents themselves.
+    """
+    if value is None:
+        return ""
+    return str(value).strip().lstrip("\ufeff").strip()
+
+
 def first_non_empty(*values: Any, default: str = "") -> str:
     for value in values:
-        if value is None:
-            continue
-        text = str(value).strip()
+        text = normalize_config_text(value)
         if text:
             return text
-    return default
+    return normalize_config_text(default)
 
 
 def env_float(name: str, default: float) -> float:

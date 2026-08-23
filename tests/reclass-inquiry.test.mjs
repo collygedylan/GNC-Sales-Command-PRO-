@@ -61,6 +61,41 @@ function loadServerModel() {
   return context;
 }
 
+function loadClientPayloadBuilder(values = {}) {
+  const start = html.indexOf('function buildArgosInventoryTransactionPayload');
+  const end = html.indexOf('async function postArgosInventoryTransactionPayload', start);
+  assert.ok(start > 0 && end > start);
+  const context = {
+    argosInventoryTransactionState: {
+      idempotencyToken: 'reclass-token-123456',
+      snapshot: {
+        uniqueId: 'u1',
+        sourceTable: 'ph_master_inventory',
+        itemCode: 'A1',
+        lotCode: '27.F1',
+        locationCode: 'A.1',
+        season: 'F1',
+        salesYear: '2027',
+      },
+    },
+    currentUser: 'tester',
+    currentUserDisplay: 'Test User',
+    APP_SHELL_VERSION: 'test',
+    APP_SHELL_BUILD: 'test',
+    getArgosInventoryTransactionInputValue: (id) => values[id] ?? '',
+    parseAppNumber: (value) => Number(String(value).replaceAll(',', '')),
+    normalizeArgosInventoryTransactionRequestAction: (value) => String(value || '').trim().toLowerCase(),
+    isArgosInventoryTransactionMoveSeasonRequestAction: (value) => ['move_up', 'move_down'].includes(value),
+    collectArgosReclassInquiryOverlays: () => [{ unique_id: 'u1', expected: {}, values: { holdstopcode: 'H' } }],
+    generateArgosInventoryTransactionId: () => 'reclass-token-123456',
+    getArgosInventoryTransactionActorEmail: () => 'tester@example.invalid',
+    getCurrentRoleAccessValue: () => 'Manager',
+  };
+  vm.createContext(context);
+  vm.runInContext(`${html.slice(start, end)}; this.buildArgosInventoryTransactionPayload = buildArgosInventoryTransactionPayload;`, context);
+  return context.buildArgosInventoryTransactionPayload;
+}
+
 test('shared Item Inquiry model deduplicates seasons, normalizes years, preserves zero, and sorts rows', () => {
   const buildModel = loadClientModel();
   const rows = [
@@ -160,4 +195,30 @@ test('Reclass send path contains no inventory, audit, History, cache-row, or liv
   }
   assert.match(handler, /GmailApp\.sendEmail/);
   assert.match(handler, /attachments: \[pdfBlob\]/);
+});
+
+test('hold-only Reclass inquiry does not require a quantity or move destination', () => {
+  const buildPayload = loadClientPayloadBuilder({
+    'argos-inventory-transaction-qty': '0',
+    'argos-inventory-transaction-new-item': 'A1',
+    'argos-inventory-transaction-new-lot': '27.F1',
+    'argos-inventory-transaction-new-location': 'A.1',
+    'argos-inventory-transaction-hold-action': 'hold',
+    'argos-inventory-transaction-hold-reason': 'Field review',
+  });
+  const payload = buildPayload();
+  assert.equal(payload.type, 'reclass_inquiry_email');
+  assert.equal(payload.transaction.requestAction, 'hold');
+  assert.equal(payload.transaction.quantity, null);
+});
+
+test('a proposed move still requires a positive quantity', () => {
+  const buildPayload = loadClientPayloadBuilder({
+    'argos-inventory-transaction-qty': '0',
+    'argos-inventory-transaction-new-item': 'A1',
+    'argos-inventory-transaction-new-lot': '27.F1',
+    'argos-inventory-transaction-new-location': 'B.2',
+    'argos-inventory-transaction-hold-action': 'none',
+  });
+  assert.throws(() => buildPayload(), /greater than 0 when proposing a move/);
 });

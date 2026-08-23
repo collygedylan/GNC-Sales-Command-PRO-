@@ -39,14 +39,15 @@ const productionAuthHealthWorkflow = read('.github/workflows/production-auth-hea
 const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs');
 const historicalReportMigration = read('supabase/migrations/20260821202202_manager_historical_report.sql');
 const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
+const historicalCoverageMigration = read('supabase/migrations/20260822234500_restore_drivearound_history_and_all_report_columns.sql');
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.22.04';
+  const release = 'V2026.08.22.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.22.04');
+  assert.equal(packageJson.version, '2026.08.22.05');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -507,7 +508,10 @@ test('Reclass is an email-only Item Inquiry while legacy quantity and transfer l
   assert.doesNotMatch(modalBuilder, /data-argos-transaction-tab="(?:qty|transfer)"/);
   assert.match(payloadBuilder, /type: 'reclass_inquiry_email'/);
   assert.match(payloadBuilder, /idempotencyToken:/);
-  assert.match(payloadBuilder, /rowOverlays: collectArgosReclassInquiryOverlays\(\)/);
+  assert.match(payloadBuilder, /const rowOverlays = collectArgosReclassInquiryOverlays\(\)/);
+  assert.match(payloadBuilder, /movementRequested \? quantity : null/);
+  assert.match(payloadBuilder, /Quantity to move must be greater than 0 when proposing a move/);
+  assert.match(payloadBuilder, /requestAction === 'hold' \|\| requestAction === 'stop_ship'/);
   const serverHandler = appsScriptBackend.slice(appsScriptBackend.indexOf('function handleInventoryTransaction_'), appsScriptBackend.indexOf('function normalizeInventoryTransactionHistoryLimit_'));
   assert.ok(serverHandler.indexOf("=== 'reclass'") < serverHandler.indexOf('LockService.getScriptLock()'), 'cached Reclass clients must route away before the mutation lock');
   assert.match(appsScriptBackend, /payload\.type === 'reclass_inquiry_email'[\s\S]*handleReclassInquiryEmail_/);
@@ -827,6 +831,29 @@ test('Item Inquiry keeps the full Reclass model while adding a phone-specific re
   assert.match(inquiryCss, /item-inquiry-mobile-view[\s\S]*overflow-y: auto/);
   assert.match(inquiryCss, /item-inquiry-desktop-view[\s\S]*display: none !important/);
   assert.match(inquiryCss, /border-right: 1px solid var\(--ops-border\)/);
+});
+
+test('Item Inquiry uses the master ItemCode index and renders only the active responsive layout', () => {
+  const indexBuilder = html.slice(
+    html.indexOf('function rebuildMasterInventoryIndexes'),
+    html.indexOf('function invalidateMasterDerivedInventories')
+  );
+  const inquiryRows = html.slice(
+    html.indexOf('function getItemInquiryRows'),
+    html.indexOf('const ITEM_INQUIRY_IDENTITY_FIELDS')
+  );
+  const inquiryRenderer = html.slice(
+    html.indexOf('function isItemInquiryPhoneLayout'),
+    html.indexOf('function renderItemInquiryDetailPanel')
+  );
+  assert.match(html, /let masterInventoryByItemCode=new Map\(\)/);
+  assert.match(indexBuilder, /masterInventoryByItemCode\.get\(itemCode\)\.push\(item\)/);
+  assert.match(inquiryRows, /masterInventoryByItemCode\.get\(itemCode\) \|\| \[\]/);
+  assert.doesNotMatch(inquiryRows, /const rows = \(Array\.isArray\(fullInventory\)/);
+  assert.match(inquiryRenderer, /if \(isItemInquiryPhoneLayout\(\)\) return renderItemInquiryMobileWorkspace/);
+  assert.match(inquiryRenderer, /return desktopHtml;/);
+  assert.doesNotMatch(inquiryRenderer, /desktopHtml \+ renderItemInquiryMobileWorkspace/);
+  assert.match(inquiryRenderer, /itemInquiryPhoneMediaQuery\.addEventListener\('change'/);
 });
 
 test('V15 monitoring is authenticated for all users and remains anonymous', () => {
@@ -1358,6 +1385,14 @@ test('Managers Historical Report browses immediately with secured server filteri
   assert.match(historicalReportBrowseMigration, /private\.can_manage_eval_assignments\(\)/);
   assert.match(historicalReportBrowseMigration, /security invoker/);
   assert.match(historicalReportBrowseMigration, /revoke all on function public\.search_historical_inventory_common_names\(text, integer\) from public, anon/);
+  for (const column of ['unique_id', 'file_id', 'item_key', 'row_hash', 'created_at', 'updated_at']) {
+    assert.match(html, new RegExp(`key: '${column}'`));
+    assert.match(historicalCoverageMigration, new RegExp(`'${column}'`));
+  }
+  assert.match(historicalCoverageMigration, /where lower\(coalesce\(f\.status, ''\)\) = 'row_indexed'[\s\S]*not exists/);
+  assert.match(historicalCoverageMigration, /status = 'indexed'/);
+  assert.match(historicalCoverageMigration, /security invoker/);
+  assert.doesNotMatch(historicalCoverageMigration, /delete from public\.ph_drive_around_report_rows/i);
   assert.match(performanceWorkflow, /historical_report_baseline\.sql/);
   assert.match(performanceWorkflow, /20260821202202_manager_historical_report\.sql/);
   const historyRowsRpc = historicalReportMigration.slice(
