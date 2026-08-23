@@ -94,7 +94,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.23.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.23.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -771,6 +771,142 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
       expect(layout.smallestWrappedFont).toBeGreaterThanOrEqual(12);
       expect(layout.clippedWrappedText).toBe(false);
     }
+  }
+});
+
+test('Phone Reclass editor keeps large inquiries responsive and every row editable', async ({ page }) => {
+  test.setTimeout(90_000);
+  for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/?e2e=V2026.08.23.02', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => (
+      typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
+      && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
+    ));
+    await page.evaluate(() => {
+      const longNote = 'Field review note with enough detail to verify that mobile text wraps without clipping or horizontal scrolling.';
+      const model = {
+        identity: {
+          plantgroupcode: '130_SHRUB',
+          commonname: 'Baby Gem Boxwood With A Long Descriptive Common Name',
+          contsize: '3DP',
+          itemcode: '001884.031.1',
+          genusname: 'Buxus',
+          fieldtagcolor: 'No I.D.',
+          itemspec: '12-15 inches',
+          pullerresponsibility: 'Shipping',
+        },
+        seasons: Array.from({ length: 12 }, (_, index) => ({
+          saleyear: String(2028 - Math.floor(index / 4)),
+          season: ['F1', 'S1', 'U2', 'Y'][index % 4],
+          s_lts: String(1200 + index),
+          season_supply: String(2200 + index),
+          season_oh: String(2100 + index),
+          season_demand: String(100 + index),
+        })),
+        locationRows: Array.from({ length: 41 }, (_, index) => ({
+          unique_id: `row-${index}`,
+          sourceRow: { ITEMCODE: '001884.031.1' },
+          values: {
+            lotcode: index % 2 ? '27.F1' : '26.Y',
+            locationcode: `A.${String(index + 1).padStart(2, '0')}.000`,
+            source: index % 2 ? 'SH' : 'LD',
+            priority: String((index % 9) + 1),
+            desigitem: '',
+            desigcust: '',
+            desigloc: '',
+            ptronhand: String(100 + index),
+            ptrreviewed: String(index),
+            ptravailable: String(100),
+            locationnotedate: '8/22/2026, 2:15:00 PM',
+            locationnote: index === 0 ? longNote : '',
+            pulltagnote1: index === 0 ? longNote : '',
+            pulltagnote2: '',
+            locationptn1: index === 0 ? longNote : '',
+            locationptn2: '',
+            holdstopcode: index === 0 ? 'H' : '',
+            holdstopreason: index === 0 ? longNote : '',
+          },
+        })),
+      };
+      (window as any).__reclassResponsiveModel = model;
+      (window as any).eval('argosInventoryTransactionState = { inquiryModel: window.__reclassResponsiveModel };');
+      const modal = (window as any).ensureArgosInventoryTransactionModal();
+      modal.querySelector('#argos-reclass-item-inquiry').innerHTML = (window as any).renderArgosReclassInquiryEditor(model, 'row-0');
+      modal.classList.remove('hidden');
+    });
+
+    const modal = page.locator('#argos-inventory-transaction-modal');
+    const cards = modal.locator('[data-reclass-row-card]');
+    const origin = modal.locator('[data-reclass-row-card="row-0"]');
+    const second = modal.locator('[data-reclass-row-card="row-1"]');
+    await expect(modal).toBeVisible();
+    await expect(cards).toHaveCount(41);
+    await expect(origin).toHaveAttribute('data-reclass-row-expanded', 'true');
+    await expect(origin.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
+    await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
+    await expect(second.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
+    await expect(second.locator('[data-reclass-field]')).toHaveCount(0);
+
+    await second.locator('.argos-reclass-row-toggle').click();
+    await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
+    await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
+    const secondNote = second.locator('[data-reclass-field="locationnote"]');
+    await secondNote.fill('Mobile draft is preserved');
+    await second.locator('.argos-reclass-row-toggle').click();
+    await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
+    await second.locator('.argos-reclass-row-toggle').click();
+    await expect(secondNote).toHaveValue('Mobile draft is preserved');
+
+    const overlays = await page.evaluate(() => (window as any).eval('collectArgosReclassInquiryOverlays()'));
+    expect(overlays).toHaveLength(41);
+    expect(overlays[1].values.locationnote).toBe('Mobile draft is preserved');
+    expect(overlays[40].values.ptronhand).toBe('140');
+
+    const layout = await modal.evaluate((root) => {
+      const panel = root.querySelector('.argos-tx-panel') as HTMLElement;
+      const body = root.querySelector('.argos-tx-body') as HTMLElement;
+      const footer = root.querySelector('.argos-tx-footer') as HTMLElement;
+      const visibleInputs = Array.from(root.querySelectorAll('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-input')) as HTMLElement[];
+      const overflowers = Array.from(root.querySelectorAll('.argos-tx-panel, .argos-tx-body, .argos-tx-form, .argos-reclass-inquiry, .argos-reclass-row-list, .argos-reclass-row-card, .argos-reclass-row-grid'))
+        .filter((element) => (element as HTMLElement).scrollWidth > (element as HTMLElement).clientWidth + 1)
+        .map((element) => (element as HTMLElement).className);
+      const panelRect = panel.getBoundingClientRect();
+      const bodyRect = body.getBoundingClientRect();
+      const footerRect = footer.getBoundingClientRect();
+      return {
+        documentOverflowX: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        overflowers,
+        panelLeft: panelRect.left,
+        panelRight: panelRect.right,
+        panelTop: panelRect.top,
+        panelBottom: panelRect.bottom,
+        bodyScrollable: body.scrollHeight > body.clientHeight,
+        bodyOverflowY: getComputedStyle(body).overflowY,
+        bodyBottom: bodyRect.bottom,
+        footerTop: footerRect.top,
+        footerBottom: footerRect.bottom,
+        minInputHeight: Math.min(...visibleInputs.map((input) => input.getBoundingClientRect().height)),
+        minInputFont: Math.min(...visibleInputs.map((input) => Number.parseFloat(getComputedStyle(input).fontSize))),
+        clippedInput: visibleInputs.some((input) => {
+          const rect = input.getBoundingClientRect();
+          return rect.left < panelRect.left - 1 || rect.right > panelRect.right + 1;
+        }),
+      };
+    });
+    expect(layout.documentOverflowX, `${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBe(0);
+    expect(layout.overflowers).toEqual([]);
+    expect(layout.panelLeft).toBeGreaterThanOrEqual(-1);
+    expect(layout.panelRight).toBeLessThanOrEqual(viewport.width + 1);
+    expect(layout.panelTop).toBeGreaterThanOrEqual(-1);
+    expect(layout.panelBottom).toBeLessThanOrEqual(viewport.height + 1);
+    expect(layout.bodyScrollable).toBe(true);
+    expect(layout.bodyOverflowY).toBe('auto');
+    expect(layout.bodyBottom).toBeLessThanOrEqual(layout.footerTop + 1);
+    expect(layout.footerBottom).toBeLessThanOrEqual(viewport.height + 1);
+    expect(layout.minInputHeight).toBeGreaterThanOrEqual(44);
+    expect(layout.minInputFont).toBeGreaterThanOrEqual(16);
+    expect(layout.clippedInput).toBe(false);
   }
 });
 
