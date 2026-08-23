@@ -13,7 +13,6 @@ set
   status = 'indexed',
   row_count = 0,
   hold_row_count = 0,
-  processed_at = null,
   error_message = 'Requeued after verified history compaction removed this file payload.',
   raw = coalesce(f.raw, '{}'::jsonb) || jsonb_build_object(
     'requeued_missing_rows_at', now(),
