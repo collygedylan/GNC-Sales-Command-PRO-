@@ -40,6 +40,7 @@ const productionAuthHealthProbe = read('scripts/probe-production-auth-health.mjs
 const historicalReportMigration = read('supabase/migrations/20260821202202_manager_historical_report.sql');
 const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
 const historicalCoverageMigration = read('supabase/migrations/20260822234500_restore_drivearound_history_and_all_report_columns.sql');
+const holdLearningRefreshMigration = read('supabase/migrations/20260823002500_optimize_hold_learning_refreshes.sql');
 
 test('release identifiers are synchronized', () => {
   const release = 'V2026.08.22.05';
@@ -1401,4 +1402,14 @@ test('Managers Historical Report browses immediately with secured server filteri
   );
   assert.match(historyRowsRpc, /security invoker/);
   assert.doesNotMatch(historyRowsRpc, /security definer/);
+});
+
+test('weather and hold learning refreshes use bounded set-based database work', () => {
+  assert.match(holdLearningRefreshMigration, /distinct_windows as materialized/);
+  assert.match(holdLearningRefreshMigration, /weather_rollups as materialized/);
+  assert.match(holdLearningRefreshMigration, /hold_learning_profile_refresh_stage/);
+  assert.match(holdLearningRefreshMigration, /is distinct from/);
+  assert.doesNotMatch(holdLearningRefreshMigration, /for\s+\w+\s+in/i);
+  assert.match(holdLearningRefreshMigration, /grant execute on function public\.v2_refresh_hold_learning_weather_features\(integer\) to service_role/);
+  assert.match(holdLearningRefreshMigration, /grant execute on function public\.v2_refresh_hold_learning_profiles\(\) to service_role/);
 });
