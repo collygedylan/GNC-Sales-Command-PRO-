@@ -1408,6 +1408,8 @@ test('weather and hold learning refreshes use bounded set-based database work', 
   assert.match(holdLearningRefreshMigration, /distinct_windows as materialized/);
   assert.match(holdLearningRefreshMigration, /weather_rollups as materialized/);
   assert.match(holdLearningRefreshMigration, /hold_learning_profile_refresh_stage/);
+  assert.match(holdLearningRefreshMigration, /add primary key \(unique_id\)/);
+  assert.equal((holdLearningRefreshMigration.match(/set statement_timeout to '60s'/g) || []).length, 2);
   assert.match(holdLearningRefreshMigration, /is distinct from/);
   assert.doesNotMatch(holdLearningRefreshMigration, /for\s+\w+\s+in/i);
   assert.match(holdLearningRefreshMigration, /grant execute on function public\.v2_refresh_hold_learning_weather_features\(integer\) to service_role/);

@@ -7,6 +7,7 @@ returns integer
 language plpgsql
 security definer
 set search_path to 'public', 'extensions'
+set statement_timeout to '60s'
 as $function$
 declare
   refreshed integer := 0;
@@ -91,6 +92,7 @@ returns integer
 language plpgsql
 security definer
 set search_path to 'public', 'extensions'
+set statement_timeout to '60s'
 as $function$
 declare
   refreshed integer := 0;
@@ -271,6 +273,9 @@ begin
     on r.common_key = e.common_key
    and r.contsize_key = e.contsize_key
    and r.reason_key = e.reason_key;
+
+  alter table pg_temp.hold_learning_profile_refresh_stage
+    add primary key (unique_id);
 
   insert into public.ph_hold_learning_profiles (
     unique_id, itemcode, commonname, genus, contsize, hold_reason_category,
