@@ -74,8 +74,16 @@ alter table public.ph_drive_around_report_rows
   add column if not exists ext_equiv_unit text,
   add column if not exists source_schema_version smallint,
   add column if not exists row_hash text,
-  add column if not exists created_at timestamptz default now(),
-  add column if not exists updated_at timestamptz default now();
+  add column if not exists created_at timestamptz,
+  add column if not exists updated_at timestamptz;
+
+-- Set defaults separately so PostgreSQL does not materialize a volatile
+-- timestamp across every existing historical row. The importer supplies both
+-- timestamps explicitly during backfill; these defaults protect future direct
+-- inserts without rewriting the multi-million-row relation.
+alter table public.ph_drive_around_report_rows
+  alter column created_at set default now(),
+  alter column updated_at set default now();
 
 create or replace function public.get_historical_inventory_rows(
   common_name text,
