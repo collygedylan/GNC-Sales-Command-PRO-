@@ -154,6 +154,7 @@ const DRIVE_AROUND_CANONICAL_APPLY_LIMIT = 75;
 const DRIVE_AROUND_CANONICAL_NAME_PATTERN = /^(20\d{2}-\d{2}-\d{2})\s+(\d{2,})(?:\.[^.]+)?$/i;
 const DRIVE_AROUND_MACHINE_NAME_PATTERN = /^drivearoundmc\b/i;
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
+const DRIVE_AROUND_HISTORY_BACKFILL_HOUR = 2;
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
 // Eval assignment review sheet. Supabase is authoritative; this file is export-only.
@@ -2069,7 +2070,8 @@ function scheduleDriveAroundHistoryBackfillTrigger_() {
   if (hasTrigger) return;
   ScriptApp.newTrigger(DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER)
     .timeBased()
-    .everyMinutes(1)
+    .everyDays(1)
+    .atHour(DRIVE_AROUND_HISTORY_BACKFILL_HOUR)
     .create();
 }
 

@@ -1491,3 +1491,14 @@ test('weather and hold learning refreshes use bounded set-based database work', 
   assert.match(holdLearningRefreshMigration, /grant execute on function public\.v2_refresh_hold_learning_weather_features\(integer\) to service_role/);
   assert.match(holdLearningRefreshMigration, /grant execute on function public\.v2_refresh_hold_learning_profiles\(\) to service_role/);
 });
+
+test('Drive Around history backfill is isolated to an overnight daily trigger', () => {
+  assert.match(appsScriptBackend, /const DRIVE_AROUND_HISTORY_BACKFILL_HOUR = 2/);
+  const scheduler = appsScriptBackend.slice(
+    appsScriptBackend.indexOf('function scheduleDriveAroundHistoryBackfillTrigger_'),
+    appsScriptBackend.indexOf('function startDriveAroundHistoryBackfill')
+  );
+  assert.match(scheduler, /\.everyDays\(1\)/);
+  assert.match(scheduler, /\.atHour\(DRIVE_AROUND_HISTORY_BACKFILL_HOUR\)/);
+  assert.doesNotMatch(scheduler, /\.everyMinutes\(/);
+});
