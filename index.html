@@ -2580,10 +2580,14 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         #view-login .login-card,#view-change-password .login-card{position:relative;z-index:1;pointer-events:auto}
         #login-inputs,#loading-spinner{position:relative;z-index:2;pointer-events:auto}
         #username-input,#pin-code,#login-button,#new-password,#confirm-password,#save-password-button{position:relative;z-index:3;pointer-events:auto;touch-action:manipulation}
+        [data-manager-assigned-mobile-list]{display:block}
+        [data-manager-assigned-desktop-table]{display:none}
         @media (min-width: 768px){
             .login-card{max-width:390px;border-radius:24px;box-shadow:0 24px 48px rgba(15,23,42,.2)}
             #main-scroll-area{padding-top:.35rem}
             #view-wrapper > div{padding-left:0;padding-right:0}
+            [data-manager-assigned-mobile-list]{display:none!important}
+            [data-manager-assigned-desktop-table]{display:block!important}
         }
         @media (max-width: 767px){
             :root{--shell-gutter:12px;--shell-max-width:100vw;--content-max-width:100vw;--footer-nav-reserve:8.25rem}
