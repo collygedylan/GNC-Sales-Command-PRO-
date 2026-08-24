@@ -394,5 +394,12 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /Refresh failed; the last complete results remain visible/);
   assert.match(html, /return managerEvalReport2Cache/);
   assert.match(html, /downloadExcelWorkbook\(getDriveReportExportColumns\(\), rows, `Eval Reports #2/);
+  assert.match(html, /function renderManagerEvalReport2SelectableCard\(item = null, index = 0\)/);
+  assert.match(html, /function toggleAllVisibleManagerEvalReport2Rows\(\)/);
+  assert.match(html, /function buildManagerEvalReport2ExcelAttachment\(rows = \[\]\)/);
+  assert.match(html, /function emailSelectedManagerEvalReport2Rows\(\)/);
+  assert.match(html, /emailSubType: 'eval_reports_2_excel'/);
+  assert.match(html, /recipientsSelectedInApp: true/);
+  assert.match(html, /shiftReportFormat: 'excel'/);
   assert.match(html, /Eval Reports #2 is available only to Dylan and Megan/);
 });

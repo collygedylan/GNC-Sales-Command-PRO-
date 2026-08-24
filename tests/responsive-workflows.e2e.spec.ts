@@ -95,7 +95,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -221,8 +221,101 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
 });
 
+test('Eval Reports #2 selects cards and sends only selected rows as Excel to chosen recipients', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
+  const result = await page.evaluate(() => window.eval(`(async () => {
+    const originalCanViewManagerEvalReports = canViewManagerEvalReports;
+    const originalRecipientModal = openGroupedBloomNcrRecipientModal;
+    const originalPostEmail = postGoogleScriptEmailPayload;
+    let sentPayload = null;
+    try {
+      canViewManagerEvalReports = () => true;
+      currentUser = 'dylan_collyge';
+      currentUserDisplay = 'Dylan Collyge';
+      processAndLoadData({ data: [
+        { UNIQUE_ID: 'mail-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'A.01.001' },
+        { UNIQUE_ID: 'mail-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 30, LOCATIONCODE: 'B.01.001' },
+        { UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', COMMONNAME: 'Gamma', CONTSIZE: '#7', SEASON: 'X', SALEYEAR: 27, PRIORITY: '3', S_LTS: 40, LOCATIONCODE: 'C.01.001' }
+      ], warehouseAssignedItemsData: [
+        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
+      ], _fromCache: true });
+      const masterState = getDatasetState('master');
+      const assignmentState = getDatasetState('warehouseAssignedItems');
+      masterState.initialLoaded = true;
+      masterState.fullLoaded = true;
+      assignmentState.initialLoaded = true;
+      assignmentState.fullLoaded = true;
+      invalidateManagerEvalReport2Cache();
+      clearManagerEvalReport2Filters();
+      setManagerEvalReport2Mode('reports');
+      setManagerEvalReport2DisplayMode('cards');
+      setManagerEvalReport2('culls');
+      const rows = getManagerEvalReport2Rows();
+      toggleManagerEvalReport2RowSelection(encodeURIComponent(getManagerEvalReport2RowKey(rows[0], 0)));
+      toggleManagerEvalReport2RowSelection(encodeURIComponent(getManagerEvalReport2RowKey(rows[1], 1)));
+      const selectedBefore = getManagerEvalReport2SelectedRows().map((row) => row.UNIQUE_ID);
+      setHomeTab('eval-reports-2');
+      const host = document.createElement('div');
+      host.id = 'eval2-email-test-host';
+      host.style.width = '390px';
+      host.innerHTML = renderManagerEvalReports2Panel();
+      document.body.appendChild(host);
+      renderManagerEvalReport2Records();
+      const selectButtons = host.querySelectorAll('[data-role="manager-eval2-select"]').length;
+      const emailButtonVisible = !!host.querySelector('#manager-eval-report-2-email-button');
+      openGroupedBloomNcrRecipientModal = async () => ['megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com', 'MEGAN_KELLY@greenleafnursery.com'];
+      postGoogleScriptEmailPayload = async (payload) => {
+        sentPayload = payload;
+        return { ok: true, status: 200, recipients: payload.recipientEmails.slice() };
+      };
+      await emailSelectedManagerEvalReport2Rows();
+      return {
+        rowsBefore: rows.map((row) => row.UNIQUE_ID),
+        selectedBefore,
+        selectedAfter: getManagerEvalReport2SelectedRows().length,
+        selectButtons,
+        emailButtonVisible,
+        recipients: sentPayload && sentPayload.recipientEmails,
+        itemsCount: sentPayload && sentPayload.itemsCount,
+        format: sentPayload && sentPayload.shiftReportFormat,
+        subtype: sentPayload && sentPayload.emailSubType,
+        exactRecipientOverride: !!(sentPayload && sentPayload.recipientsSelectedInApp && sentPayload.dylanRecipientOverride),
+        attachment: sentPayload && sentPayload.shiftReportAttachment ? {
+          filename: sentPayload.shiftReportAttachment.filename,
+          mimeType: sentPayload.shiftReportAttachment.mimeType,
+          hasWorkbookData: String(sentPayload.shiftReportAttachment.contentBase64 || '').startsWith('UEsDB')
+        } : null,
+        controlsFit: host.scrollWidth <= 391
+      };
+    } finally {
+      canViewManagerEvalReports = originalCanViewManagerEvalReports;
+      openGroupedBloomNcrRecipientModal = originalRecipientModal;
+      postGoogleScriptEmailPayload = originalPostEmail;
+    }
+  })()`));
+
+  expect(result.rowsBefore).toEqual(['mail-a', 'mail-b', 'mail-c']);
+  expect(result.selectedBefore).toEqual(['mail-a', 'mail-b']);
+  expect(result.selectedAfter).toBe(0);
+  expect(result.selectButtons).toBe(3);
+  expect(result.emailButtonVisible).toBe(true);
+  expect(result.recipients).toEqual(['megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
+  expect(result.itemsCount).toBe(2);
+  expect(result.format).toBe('excel');
+  expect(result.subtype).toBe('eval_reports_2_excel');
+  expect(result.exactRecipientOverride).toBe(true);
+  expect(result.attachment.filename).toMatch(/\.xlsx$/);
+  expect(result.attachment.mimeType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  expect(result.attachment.hasWorkbookData).toBe(true);
+  expect(result.controlsFit).toBe(true);
+});
+
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -906,7 +999,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.07', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
