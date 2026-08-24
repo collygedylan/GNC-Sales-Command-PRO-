@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.24.01';
+  const release = 'V2026.08.24.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.24.01');
+  assert.equal(packageJson.version, '2026.08.24.02');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1127,6 +1127,20 @@ test('V03 request-manager Queue loads the canonical set but hides completed rows
   assert.match(folderCompletionReply, /activeFolderItems\.every\(\(item\) => isRequestComplete\(item\)\)/);
   assert.match(folderCompletionReply, /if \(!allRequestFolderRowsComplete\) return \{ sent: false, reason: 'folder_not_complete'/);
   assert.match(folderCompletionReply, /sendEmailNotification\('request_complete'/);
+
+  const completionConcurrency = html.slice(
+    html.indexOf('const stopIfRemoteRequestAlreadyComplete'),
+    html.indexOf('const restoreFromFailedSave')
+  );
+  assert.match(completionConcurrency, /remoteRow\.ROW_VERSION/);
+  assert.match(completionConcurrency, /itemToSave\.ROW_VERSION = remoteVersion/);
+
+  const localEditOverlay = html.slice(
+    html.indexOf('function applyLocalEdits'),
+    html.indexOf('let pendingRequestWorkFlushPromise')
+  );
+  assert.match(localEditOverlay, /const canonicalRequestVersion = isRequestLikeLocalEditRow\(item\)/);
+  assert.match(localEditOverlay, /item\.ROW_VERSION = canonicalRequestVersion/);
 
   const globalAccess = html.slice(
     html.indexOf('function canUseGlobalRequestAccess'),
