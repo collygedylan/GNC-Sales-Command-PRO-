@@ -148,6 +148,7 @@ if (serviceRoleKey) {
   healthUrl.searchParams.set('select', 'event_name,area,severity,sanitized_code,occurred_at');
   healthUrl.searchParams.set('severity', 'in.(error,critical)');
   healthUrl.searchParams.set('event_name', 'neq.scheduled_request_health_audit');
+  healthUrl.searchParams.set('sanitized_code', 'neq.LOCAL_REQUEST_BLOB_PENDING');
   healthUrl.searchParams.set('occurred_at', `gte.${recentSince}`);
   healthUrl.searchParams.set('order', 'occurred_at.desc');
   healthUrl.searchParams.set('limit', '50');

@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.24.02';
+  const release = 'V2026.08.24.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.24.02');
+  assert.equal(packageJson.version, '2026.08.24.03');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1501,4 +1501,11 @@ test('Drive Around history backfill is isolated to an overnight daily trigger', 
   assert.match(scheduler, /\.everyDays\(1\)/);
   assert.match(scheduler, /\.atHour\(DRIVE_AROUND_HISTORY_BACKFILL_HOUR\)/);
   assert.doesNotMatch(scheduler, /\.everyMinutes\(/);
+});
+
+test('recoverable local request photo blobs remain visible as warnings without failing hosted health', () => {
+  assert.match(html, /function reportSemanticHealthEvent\(eventName, area = 'app', code = '', metadata = \{\}, severity = 'error'\)/);
+  assert.match(html, /LOCAL_REQUEST_BLOB_PENDING'[\s\S]*?\}, 'warning'\)/);
+  assert.match(productionAuthHealthWorkflow, /production-auth-health/);
+  assert.match(productionAuthHealthProbe, /sanitized_code'[\s\S]*neq\.LOCAL_REQUEST_BLOB_PENDING/);
 });
