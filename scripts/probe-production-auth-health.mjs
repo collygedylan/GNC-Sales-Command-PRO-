@@ -9,11 +9,18 @@ const publishableKey = process.env.PRODUCTION_SUPABASE_PUBLISHABLE_KEY
   || '';
 const serviceRoleKey = String(process.env.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const deliveryCronSecret = String(process.env.REQUEST_DELIVERY_CRON_SECRET || '').trim();
+const appsScriptDeploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
+const requireAppsScriptHealth = String(process.env.REQUIRE_APPS_SCRIPT_HEALTH || '').trim() === '1';
 const appOrigin = String(process.env.PRODUCTION_APP_ORIGIN || 'https://agmetricapp.com').replace(/\/+$/, '');
 const expectedRelease = source.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1] || '';
+const expectedLifecyclePolicyVersion = 'plant-request-lifecycle-v2';
+const expectedLifecycleRequiredRecipientCount = 3;
 
 if (!supabaseUrl || !publishableKey) {
   throw new Error('production_probe_configuration_missing');
+}
+if (requireAppsScriptHealth && !appsScriptDeploymentId) {
+  throw new Error('production_probe_apps_script_deployment_missing');
 }
 
 async function checkedFetch(url, options = {}, timeoutMs = 15000) {
@@ -31,11 +38,51 @@ function sanitizeCode(value = '') {
     .trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, '_').slice(0, 64) || 'UNKNOWN';
 }
 
+async function probeAppsScriptDeploymentHealth() {
+  if (!appsScriptDeploymentId) return null;
+  const url = `https://script.google.com/macros/s/${encodeURIComponent(appsScriptDeploymentId)}/exec`;
+  let lastCode = 'UNAVAILABLE';
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      const response = await checkedFetch(url, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ type: 'deployment_health' })
+      }, 20000);
+      const text = await response.text();
+      let payload = null;
+      try { payload = text ? JSON.parse(text) : null; } catch {}
+      if (!response.ok || payload?.ok !== true) {
+        lastCode = `HTTP_${response.status}`;
+      } else if (!/^[a-f0-9]{7,40}$/i.test(String(payload.deployedCommit || '').trim())) {
+        lastCode = 'COMMIT_FINGERPRINT';
+      } else if (String(payload.lifecycleRecipientPolicyVersion || '').trim() !== expectedLifecyclePolicyVersion) {
+        lastCode = 'POLICY_VERSION';
+      } else if (Number(payload.requiredRecipientCount) !== expectedLifecycleRequiredRecipientCount) {
+        lastCode = 'RECIPIENT_COUNT';
+      } else {
+        return {
+          status: response.status,
+          commit: String(payload.deployedCommit).slice(0, 7),
+          policyVersion: String(payload.lifecycleRecipientPolicyVersion),
+          requiredRecipientCount: Number(payload.requiredRecipientCount)
+        };
+      }
+    } catch {
+      lastCode = 'UNAVAILABLE';
+    }
+    if (attempt < 12) await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+  throw new Error(`production_apps_script_deployment_unhealthy_${sanitizeCode(lastCode)}`);
+}
+
 const startedAt = Date.now();
 const checks = [];
 let deliveryWorkerResult = null;
 let requestIntegrityHealth = null;
 let recentSemanticFailures = [];
+let appsScriptHealth = null;
 
 const shellResponse = await checkedFetch(`${appOrigin}/?health=${Date.now()}`, {
   headers: { 'cache-control': 'no-cache' }
@@ -46,6 +93,19 @@ if (!shellResponse.ok || !/window\.__APP_SHELL_VERSION__\s*=/.test(shellText)) {
 }
 const liveRelease = shellText.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1] || 'unknown';
 checks.push({ name: 'app_shell', status: shellResponse.status, release: liveRelease });
+
+appsScriptHealth = await probeAppsScriptDeploymentHealth();
+if (appsScriptHealth) {
+  checks.push({
+    name: 'apps_script_deployment',
+    status: appsScriptHealth.status,
+    commit: appsScriptHealth.commit,
+    policyVersion: appsScriptHealth.policyVersion,
+    requiredRecipientCount: appsScriptHealth.requiredRecipientCount
+  });
+} else {
+  checks.push({ name: 'apps_script_deployment', result: 'skipped_not_required' });
+}
 
 const probeResponse = await checkedFetch(`${supabaseUrl}/functions/v1/app-api`, {
   method: 'POST',
@@ -191,6 +251,7 @@ const result = {
     missingThreads: Math.max(0, Number(requestIntegrityHealth.delivery_missing_thread_count) || 0),
     unassignedItemcodes: Math.max(0, Number(requestIntegrityHealth.unassigned_itemcode_count) || 0)
   } : null,
+  appsScript: appsScriptHealth,
   recentSemanticFailureCount: recentSemanticFailures.length
 };
 
@@ -199,6 +260,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }

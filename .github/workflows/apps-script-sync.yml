@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - Code.gs
+      - scripts/apps-script-sync-lib.mjs
       - scripts/sync-codegs-to-apps-script.js
       - .github/workflows/apps-script-sync.yml
   workflow_dispatch:

@@ -8,7 +8,11 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'Code.gs'
+      - 'scripts/apps-script-sync-lib.mjs'
+      - 'scripts/sync-codegs-to-apps-script.js'
       - 'scripts/probe-production-auth-health.mjs'
+      - '.github/workflows/apps-script-sync.yml'
       - '.github/workflows/production-auth-health.yml'
 
 permissions:
@@ -35,6 +39,8 @@ jobs:
           PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          REQUIRE_APPS_SCRIPT_HEALTH: '1'
         run: node scripts/probe-production-auth-health.mjs
       - name: Open or update the production health incident
         if: steps.production_probe.outcome == 'failure'

@@ -1,0 +1,26 @@
+name: Plant request lifecycle canary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apps-script-lifecycle-canary
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    name: Send internal-only submitted/completed test thread
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Send synthetic internal lifecycle thread and verify receipt
+        env:
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+        run: node scripts/probe-apps-script-lifecycle-canary.mjs

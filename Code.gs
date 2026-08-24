@@ -422,6 +422,8 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.kayla_knepp,
   EMAIL_APPROVAL_USER_EMAILS_.jd_jones
 ]);
+const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
+const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -5241,6 +5243,16 @@ function jsonOutput_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getAppsScriptDeploymentHealth_() {
+  return {
+    ok: true,
+    service: 'gnc-apps-script',
+    deployedCommit: APPS_SCRIPT_DEPLOYMENT_COMMIT_,
+    lifecycleRecipientPolicyVersion: REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_,
+    requiredRecipientCount: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.length
+  };
 }
 
 function doGet(e) {
@@ -12246,22 +12258,47 @@ function buildDriveShiftReportAttachments_(payload) {
   return [Utilities.newBlob(csv, 'text/csv', filename)];
 }
 
+function decorateRequestLifecycleEmailResult_(payload, result, recipients) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const safeType = String(safePayload.emailType || '').trim().toLowerCase();
+  if (safeType !== 'new_request' && safeType !== 'request_complete') return result;
+
+  const recipientList = dedupeEmailAddresses_(
+    recipients && Array.isArray(recipients.toArray) ? recipients.toArray : result && result.recipients
+  );
+  const requiredRecipientsSatisfied = REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.every(function(email) {
+    return recipientList.indexOf(normalizeEmailAddress_(email)) !== -1;
+  });
+  const submitterEmails = collectRequestSubmitterEmails_(safePayload);
+  const submitterIncluded = submitterEmails.length === 0 || submitterEmails.every(function(email) {
+    return recipientList.indexOf(normalizeEmailAddress_(email)) !== -1;
+  });
+
+  return Object.assign({}, result || {}, {
+    lifecycleRecipientPolicyVersion: REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_,
+    requiredRecipientCount: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.length,
+    requiredRecipientsSatisfied: requiredRecipientsSatisfied,
+    submitterRecorded: submitterEmails.length > 0,
+    submitterIncluded: submitterIncluded
+  });
+}
+
 function sendRequestEmailWithFallback_(payload) {
   if (String(payload && payload.emailType || '').trim().toLowerCase() === 'request_complete') {
     payload = hydrateRequestCompletePayload_(payload);
   }
+  const safeType = String(payload && payload.emailType || '').trim().toLowerCase();
   const recipients = collectRequestRecipients_(payload);
   if (!recipients.toArray.length) {
-    return {
+    return decorateRequestLifecycleEmailResult_(payload, {
       ok: false,
       status: 400,
       message: 'No valid request email recipients were resolved.',
       recipients: []
-    };
+    }, recipients);
   }
 
   const message = buildRequestEmailMessage_(payload);
-  const safeType = String(payload.emailType || '').trim().toLowerCase();
   if (safeType === 'ncr_complete') {
     const ncrCompleteName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH NCR').trim() || 'GNC PH NCR';
     try {
@@ -12417,13 +12454,13 @@ function sendRequestEmailWithFallback_(payload) {
   const canReplyInThread = !!(threadId && inReplyTo);
 
   if (!isGmailAdvancedServiceAvailable_()) {
-    return {
+    return decorateRequestLifecycleEmailResult_(payload, {
       ok: false,
       status: 500,
       recipients: recipients.toArray,
       mode: 'gmail_api_unavailable',
       message: 'Gmail Advanced Service is required for request emails but is not available in this Apps Script deployment.'
-    };
+    }, recipients);
   }
 
   try {
@@ -12444,16 +12481,16 @@ function sendRequestEmailWithFallback_(payload) {
       result.mode = 'gmail_api_fresh_completion';
       result.message = 'Request completion email sent as a fresh email because the original thread metadata was unavailable.';
     }
-    return result;
+    return decorateRequestLifecycleEmailResult_(payload, result, recipients);
   } catch (error) {
     console.error('Gmail API send failed for request email', error);
-    return {
+    return decorateRequestLifecycleEmailResult_(payload, {
       ok: false,
       status: 500,
       recipients: recipients.toArray,
       mode: 'gmail_api_error',
       message: error && error.message ? error.message : 'Request email send failed.'
-    };
+    }, recipients);
   }
 }
 
@@ -13104,6 +13141,10 @@ function handlePhotoArchiveRequest_(payload) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+
+    if (payload.type === 'deployment_health') {
+      return jsonOutput_(getAppsScriptDeploymentHealth_());
+    }
 
     if (payload.type === 'request_delivery_event') {
       return jsonOutput_(handleSignedRequestDeliveryEvent_(payload));

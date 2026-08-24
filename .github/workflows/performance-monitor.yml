@@ -117,6 +117,8 @@ jobs:
           PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          REQUIRE_APPS_SCRIPT_HEALTH: '1'
         run: node scripts/probe-production-auth-health.mjs
       - run: npm run check:inline
       - run: npm run test:pilot
