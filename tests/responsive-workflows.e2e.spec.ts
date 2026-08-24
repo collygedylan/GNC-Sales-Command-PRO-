@@ -95,7 +95,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.09', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -223,7 +223,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 selects cards and sends only selected rows as Excel to chosen recipients', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.09', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports = canViewManagerEvalReports;
@@ -314,8 +314,81 @@ test('Eval Reports #2 selects cards and sends only selected rows as Excel to cho
   expect(result.controlsFit).toBe(true);
 });
 
+test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.24.09', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
+  const phone = await page.evaluate(() => window.eval(`(() => {
+    const originalCanManage = canManageEvalItemcodeAssignments;
+    const originalSave = setSingleEvalItemcodeAssignment;
+    let saved = null;
+    try {
+      canManageEvalItemcodeAssignments = () => true;
+      setSingleEvalItemcodeAssignment = (itemcode, genusname, assignedto) => {
+        saved = { itemcode, genusname, assignedto };
+        return false;
+      };
+      const rows = [
+        { ITEMCODE: '007140.030.1', GENUSNAME: 'Yucca', COMMONNAME: 'Adams Needle Yucca', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', WAREHOUSEI: 'PH', SOURCE: 'ASSIGNMENTS', ASSIGNEDTO: 'dylan_collyge' },
+        { ITEMCODE: '006404.031.1', GENUSNAME: 'Angyo', COMMONNAME: 'Angyo Star Tree Ivy', CONTSIZE: '3DP', LOCATIONCODE: 'B.02.001', WAREHOUSEI: 'PH', SOURCE: 'ASSIGNMENTS', ASSIGNEDTO: 'megan_kelly' },
+        { ITEMCODE: '000724.070.1', GENUSNAME: 'Acer', COMMONNAME: 'Armstrong Maple', CONTSIZE: '#7', LOCATIONCODE: 'C.03.001', WAREHOUSEI: 'PH', SOURCE: 'ASSIGNMENTS', ASSIGNEDTO: '' }
+      ];
+      const host = document.createElement('div');
+      host.id = 'assigned-items-phone-test-host';
+      host.style.width = '390px';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable(rows);
+      document.body.appendChild(host);
+      const mobileList = host.querySelector('[data-manager-assigned-mobile-list]');
+      const desktopTable = host.querySelector('[data-manager-assigned-desktop-table]');
+      const controls = Array.from(mobileList.querySelectorAll('select,input')).map((element) => {
+        const box = element.getBoundingClientRect();
+        return { left: box.left, right: box.right, width: box.width, height: box.height };
+      });
+      const firstSelect = mobileList.querySelector('select');
+      firstSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      return {
+        cardCount: mobileList.querySelectorAll('[data-manager-assigned-item-card]').length,
+        mobileDisplay: getComputedStyle(mobileList).display,
+        desktopDisplay: getComputedStyle(desktopTable).display,
+        hasVisibleTable: Array.from(host.querySelectorAll('table')).some((table) => getComputedStyle(table.closest('[data-manager-assigned-desktop-table]')).display !== 'none'),
+        controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
+        touchSelect: controls.filter((box) => box.height > 30).every((box) => box.height >= 44),
+        hostFits: host.scrollWidth <= 391,
+        saved
+      };
+    } finally {
+      canManageEvalItemcodeAssignments = originalCanManage;
+      setSingleEvalItemcodeAssignment = originalSave;
+    }
+  })()`));
+
+  expect(phone.cardCount).toBe(3);
+  expect(phone.mobileDisplay).not.toBe('none');
+  expect(phone.desktopDisplay).toBe('none');
+  expect(phone.hasVisibleTable).toBe(false);
+  expect(phone.controlsFit).toBe(true);
+  expect(phone.touchSelect).toBe(true);
+  expect(phone.hostFits).toBe(true);
+  expect(phone.saved).toEqual({ itemcode: '007140.030.1', genusname: 'Yucca', assignedto: 'dylan_collyge' });
+
+  await page.setViewportSize({ width: 1024, height: 844 });
+  const desktop = await page.evaluate(() => {
+    const host = document.getElementById('assigned-items-phone-test-host');
+    const mobileList = host?.querySelector('[data-manager-assigned-mobile-list]');
+    const desktopTable = host?.querySelector('[data-manager-assigned-desktop-table]');
+    return {
+      mobileDisplay: mobileList ? getComputedStyle(mobileList).display : '',
+      desktopDisplay: desktopTable ? getComputedStyle(desktopTable).display : '',
+      tableCount: desktopTable ? desktopTable.querySelectorAll('table').length : 0
+    };
+  });
+  expect(desktop.mobileDisplay).toBe('none');
+  expect(desktop.desktopDisplay).not.toBe('none');
+  expect(desktop.tableCount).toBe(1);
+});
+
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.09', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -999,7 +1072,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.08', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.09', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
