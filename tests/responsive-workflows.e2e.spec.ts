@@ -95,7 +95,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -119,9 +119,18 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     const partialHtml = renderManagerEvalReports2Panel();
     state.fullLoaded = true;
     const index = getManagerEvalReport2Index();
+    setManagerEvalReport2Mode('reports');
+    setManagerEvalReport2('culls');
+    setManagerEvalReport2Filter('assignedTo', 'dylan_collyge');
+    setManagerEvalReport2('low-stock');
+    const preservedAssignedTo = managerEvalReport2AssignedToFilter;
+    const locationOptions = getManagerEvalReport2LocationOptions();
+    setManagerEvalReport2Filter('locationCode', 'A.01.002');
+    const reportRows = getFilteredManagerEvalReport2Rows();
     setManagerEvalReport2Mode('inquiry');
     setManagerEvalReport2('low-stock');
     setManagerEvalReport2InquiryFilter('assignedTo', 'dylan_collyge');
+    setManagerEvalReport2InquiryFilter('locationCode', 'A.01.002');
     setManagerEvalReport2InquiryFilter('commonName', 'Alpha');
     setManagerEvalReport2InquiryFilter('contSize', '#3');
     const model = getManagerEvalReport2InquiryModel();
@@ -138,6 +147,11 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       access,
       partialGate: !partialHtml.includes('source rows') && (partialHtml.includes('Retry') || partialHtml.includes('Loading the complete Park Hill inventory')),
       counts: index.counts,
+      drilldown: {
+        preservedAssignedTo,
+        locationOptions,
+        reportRows: reportRows.length
+      },
       inquiryRows: model.matchedRows.length,
       sections: {
         item: model.sections.item.length,
@@ -158,6 +172,11 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.partialGate).toBe(true);
   expect(result.counts['low-stock']).toBe(1);
   expect(result.counts.culls).toBe(1);
+  expect(result.drilldown).toEqual({
+    preservedAssignedTo: 'dylan_collyge',
+    locationOptions: ['A.01.002'],
+    reportRows: 1,
+  });
   expect(result.inquiryRows).toBe(1);
   expect(result.sections).toEqual({ item: 1, season: 1, location: 1 });
   expect(result.hasReportsMode).toBe(true);
@@ -168,7 +187,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -852,7 +871,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.05', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.06', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'

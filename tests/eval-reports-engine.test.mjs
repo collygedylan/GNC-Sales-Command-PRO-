@@ -265,11 +265,18 @@ test('item inquiry builds dependent filters and the three Apps Script sections',
   assert.equal(initial.sections.location.length, 4);
 
   const assigned = engine.buildItemInquiryModel(rows, { assignedTo: 'dylan_collyge' });
+  assert.deepEqual(Array.from(assigned.options.locationCodes), ['A.01.001', 'A.01.002']);
   assert.deepEqual(Array.from(assigned.options.commonNames), ['Alpha']);
   assert.deepEqual(Array.from(assigned.options.contSizes), ['#3', '#5']);
 
-  const filtered = engine.buildItemInquiryModel(rows, { assignedTo: 'dylan_collyge', commonName: 'Alpha', contSize: '#3' });
+  const atLocation = engine.buildItemInquiryModel(rows, { assignedTo: 'dylan_collyge', locationCode: 'A.01.002' });
+  assert.equal(atLocation.matchedRows.length, 1);
+  assert.deepEqual(Array.from(atLocation.options.commonNames), ['Alpha']);
+  assert.deepEqual(Array.from(atLocation.options.contSizes), ['#5']);
+
+  const filtered = engine.buildItemInquiryModel(rows, { assignedTo: 'dylan_collyge', locationCode: 'A.01.001', commonName: 'Alpha', contSize: '#3' });
   assert.equal(filtered.matchedRows.length, 1);
+  assert.equal(filtered.filters.locationCode, 'A.01.001');
   assert.equal(filtered.sections.item[0].PLANTGROUPCODE, 'PG-A');
   assert.equal(filtered.sections.season[0].SEASON, 'U1');
   assert.equal(filtered.sections.location[0].LOCATIONCODE, 'A.01.001');
@@ -310,6 +317,9 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /ensureDatasetLoaded\('master', 'full'/);
   assert.match(html, /api\.classifyScriptCompatibleRows\(fullInventory/);
   assert.match(html, /api\.buildItemInquiryModel\(getManagerEvalReport2Rows\(\)/);
+  assert.match(html, /function getManagerEvalReport2LocationOptions\(rows = null\)/);
+  assert.match(html, /managerEvalReport2LocationFilter !== 'all'/);
+  assert.match(html, /1\. AssignedTo &rarr; 2\. Report &rarr; 3\. Locationcode/);
   assert.match(html, /Refresh failed; the last complete results remain visible/);
   assert.match(html, /return managerEvalReport2Cache/);
   assert.match(html, /downloadExcelWorkbook\(getDriveReportExportColumns\(\), rows, `Eval Reports #2/);

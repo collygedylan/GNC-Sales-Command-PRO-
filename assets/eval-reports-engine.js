@@ -543,20 +543,24 @@
         const rows = Array.isArray(reportRows) ? reportRows.filter(Boolean) : [];
         const sourceFilters = filters && typeof filters === 'object' ? filters : {};
         const selectedAssignedTo = normalizeInquiryFilter(firstValue(sourceFilters, ['assignedTo', 'assignedto'], ''));
+        const selectedLocationCode = normalizeInquiryFilter(firstValue(sourceFilters, ['locationCode', 'locationcode'], ''));
         const selectedCommonName = normalizeInquiryFilter(firstValue(sourceFilters, ['commonName', 'commonname'], ''));
         const selectedContSize = normalizeInquiryFilter(firstValue(sourceFilters, ['contSize', 'contsize'], ''));
         const assignedScopedRows = rows.filter((row) => inquiryAssignedToMatches(row, selectedAssignedTo));
-        const commonScopedRows = assignedScopedRows.filter((row) => inquiryValueMatches(row, 'COMMONNAME', selectedCommonName));
+        const locationScopedRows = assignedScopedRows.filter((row) => inquiryValueMatches(row, 'LOCATIONCODE', selectedLocationCode));
+        const commonScopedRows = locationScopedRows.filter((row) => inquiryValueMatches(row, 'COMMONNAME', selectedCommonName));
         const matchedRows = commonScopedRows.filter((row) => inquiryValueMatches(row, 'CONTSIZE', selectedContSize));
         return {
             filters: {
                 assignedTo: selectedAssignedTo,
+                locationCode: selectedLocationCode,
                 commonName: selectedCommonName,
                 contSize: selectedContSize
             },
             options: {
                 assignedTo: uniqueInquiryOptions(rows.map(getAssignedTo), true),
-                commonNames: uniqueInquiryOptions(assignedScopedRows.map((row) => getInquiryFieldValue(row, 'COMMONNAME')), false),
+                locationCodes: uniqueInquiryOptions(assignedScopedRows.map((row) => getInquiryFieldValue(row, 'LOCATIONCODE')), false),
+                commonNames: uniqueInquiryOptions(locationScopedRows.map((row) => getInquiryFieldValue(row, 'COMMONNAME')), false),
                 contSizes: uniqueInquiryOptions(commonScopedRows.map((row) => getInquiryFieldValue(row, 'CONTSIZE')), false)
             },
             matchedRows,
