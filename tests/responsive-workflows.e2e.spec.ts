@@ -94,7 +94,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.23.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -778,7 +778,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.23.02', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.01', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'

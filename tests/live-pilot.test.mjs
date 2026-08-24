@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.23.02';
+  const release = 'V2026.08.24.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.23.02');
+  assert.equal(packageJson.version, '2026.08.24.01');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1103,7 +1103,7 @@ test('V02 paged dataset reads preserve the authenticated RLS identity and Drive 
   assert.match(html, /viewId === 'drive'[\s\S]*required: \[\{ key: 'master', mode: 'full' \}\][\s\S]*background: \[\{ key: 'warehouseAssignedItems', mode: 'full' \}\]/);
 });
 
-test('V03 request-manager Queue renders the complete canonical pending set', () => {
+test('V03 request-manager Queue loads the canonical set but hides completed rows from Request', () => {
   const liveQuery = html.slice(
     html.indexOf('function buildActiveRequestLiveRowsQuery'),
     html.indexOf('async function fetchActiveRequestLiveRows')
@@ -1112,6 +1112,21 @@ test('V03 request-manager Queue renders the complete canonical pending set', () 
   assert.doesNotMatch(liveQuery, /date_completed=is\.null/);
   assert.match(reliableDeliveryMigration, /create or replace view public\.ph_request_queue_live_rows/);
   assert.match(reliableDeliveryMigration, /delivery_status in \('pending', 'processing', 'failed'\)/);
+
+  const pendingVisibility = html.slice(
+    html.indexOf('function isRequestPendingVisible'),
+    html.indexOf('function applyRequestStatusHintsToLocalRows')
+  );
+  assert.match(pendingVisibility, /&& !isRequestComplete\(item\)/);
+  assert.doesNotMatch(pendingVisibility, /isRequestDeliveryAwaiting\(item\)/);
+
+  const folderCompletionReply = html.slice(
+    html.indexOf('async function maybeSendRequestCompletionEmailForFolder'),
+    html.indexOf('function getDockSuspendDcRequestEmailFieldRows')
+  );
+  assert.match(folderCompletionReply, /activeFolderItems\.every\(\(item\) => isRequestComplete\(item\)\)/);
+  assert.match(folderCompletionReply, /if \(!allRequestFolderRowsComplete\) return \{ sent: false, reason: 'folder_not_complete'/);
+  assert.match(folderCompletionReply, /sendEmailNotification\('request_complete'/);
 
   const globalAccess = html.slice(
     html.indexOf('function canUseGlobalRequestAccess'),
