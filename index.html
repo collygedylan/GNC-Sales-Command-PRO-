@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.09">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.10">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.24.09';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.24.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6657,7 +6657,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.09">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.10">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6768,8 +6768,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.09"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.09"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.10"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.10"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7522,7 +7522,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.09').trim() || 'V2026.08.24.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.10').trim() || 'V2026.08.24.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9008,7 +9008,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30305,7 +30305,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.09').trim() || 'V2026.08.24.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.10').trim() || 'V2026.08.24.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -119448,6 +119448,27 @@ C.14.043 C.15.000
                 });
         }
 
+        function getManagerAssignedItemsDisplayRows(rows = null) {
+            const sourceRows = Array.isArray(rows)
+                ? rows.map((row, idx) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx)).filter(Boolean)
+                : getManagerAssignedItemsExportRows();
+            return sourceRows.slice().sort((a, b) => {
+                const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''), undefined, { numeric: true });
+                if (nameCompare !== 0) return nameCompare;
+                const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
+                if (sizeCompare !== 0) return sizeCompare;
+                const itemCompare = String(a.ITEMCODE || '').localeCompare(String(b.ITEMCODE || ''), undefined, { numeric: true });
+                if (itemCompare !== 0) return itemCompare;
+                const genusCompare = String(a.GENUSNAME || '').localeCompare(String(b.GENUSNAME || ''), undefined, { numeric: true });
+                if (genusCompare !== 0) return genusCompare;
+                const locationCompare = String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                if (locationCompare !== 0) return locationCompare;
+                const warehouseCompare = String(a.WAREHOUSEI || '').localeCompare(String(b.WAREHOUSEI || ''), undefined, { numeric: true });
+                if (warehouseCompare !== 0) return warehouseCompare;
+                return String(a.ASSIGNEDTO || '').localeCompare(String(b.ASSIGNEDTO || ''), undefined, { numeric: true });
+            });
+        }
+
         function getManagerAssignedItemsAssigneeOptions(rows = null) {
             const sourceRows = Array.isArray(rows) ? rows : getManagerAssignedItemsExportRows();
             const byUser = new Map();
@@ -119598,7 +119619,7 @@ C.14.043 C.15.000
                     <div class="mt-3 min-w-0">
                         <label class="block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">AssignedTo
                             ${canManageAssignments
-                                ? `<select class="mt-1 min-h-[48px] w-full max-w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-black text-slate-900" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" onchange="setSingleEvalItemcodeAssignment(this.dataset.itemcode, this.dataset.genusname, this.value)">${getManagerEvalAssigneeOptionsHtml(row.ASSIGNEDTO || '')}</select>`
+                                ? `<select class="mt-1 min-h-[48px] w-full max-w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-black text-slate-900 disabled:cursor-wait disabled:opacity-60" aria-label="Assign ${escapeHtml(itemCode)}" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" onchange="setSingleEvalItemcodeAssignment(this.dataset.itemcode, this.dataset.genusname, this.value, this)">${getManagerEvalAssigneeOptionsHtml(row.ASSIGNEDTO || '')}</select>`
                                 : `<div class="mt-1 break-all rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm font-black text-slate-900">${escapeHtml(assignedTo)}</div>`}
                         </label>
                     </div>
@@ -119607,8 +119628,8 @@ C.14.043 C.15.000
                 </article>`;
             }).join('');
             const body = previewRows.map((row) => `<tr class="border-b border-slate-100">
-                ${canManageAssignments ? `<td class="px-3 py-2"><input type="checkbox" class="h-5 w-5 rounded border-slate-300 text-[#007a4d]" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" ${managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE, row.GENUSNAME)) ? 'checked' : ''} onchange="toggleManagerEvalAssignmentItem(this.dataset.itemcode, this.dataset.genusname, this.checked)"></td>` : ''}
-                <td class="px-3 py-2 font-black text-slate-900">${canManageAssignments ? `<select class="min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" onchange="setSingleEvalItemcodeAssignment(this.dataset.itemcode, this.dataset.genusname, this.value)">${getManagerEvalAssigneeOptionsHtml(row.ASSIGNEDTO || '')}</select>` : escapeHtml(row.ASSIGNEDTO || '-')}</td>
+                ${canManageAssignments ? `<td class="px-3 py-2"><input type="checkbox" class="h-5 w-5 rounded border-slate-300 text-[#007a4d]" aria-label="Select ${escapeHtml(row.ITEMCODE || 'item')} for bulk assignment" title="Select for bulk assignment" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" ${managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE, row.GENUSNAME)) ? 'checked' : ''} onchange="toggleManagerEvalAssignmentItem(this.dataset.itemcode, this.dataset.genusname, this.checked)"></td>` : ''}
+                <td class="px-3 py-2 font-black text-slate-900">${canManageAssignments ? `<select class="min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black disabled:cursor-wait disabled:opacity-60" aria-label="Assign ${escapeHtml(row.ITEMCODE || 'item')}" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" onchange="setSingleEvalItemcodeAssignment(this.dataset.itemcode, this.dataset.genusname, this.value, this)">${getManagerEvalAssigneeOptionsHtml(row.ASSIGNEDTO || '')}</select>` : escapeHtml(row.ASSIGNEDTO || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.WAREHOUSEI || '-')}</td>
                 <td class="px-3 py-2 font-black text-[#1d4ed8]">${escapeHtml(row.ITEMCODE || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.CONTSIZE || '-')}</td>
@@ -119626,7 +119647,7 @@ C.14.043 C.15.000
                     <table class="min-w-full text-left text-xs font-bold text-slate-600">
                         <thead class="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">
                             <tr>
-                                ${canManageAssignments ? '<th class="px-3 py-3">Select</th>' : ''}
+                                ${canManageAssignments ? '<th class="px-3 py-3">Bulk</th>' : ''}
                                 <th class="px-3 py-3">AssignedTo</th>
                                 <th class="px-3 py-3">WAREHOUSEI</th>
                                 <th class="px-3 py-3">ITEMCODE</th>
@@ -119651,7 +119672,7 @@ C.14.043 C.15.000
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
                 return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading AssignedTo rows...</div>';
             }
-            const allRows = getManagerAssignedItemsExportRows();
+            const allRows = getManagerAssignedItemsDisplayRows();
             if (canManageEvalItemcodeAssignments() && !evalAssignableUsersDirectoryResolved && !evalAssignableUsersPromise) {
                 ensureEvalAssignableUsers().then(() => scheduleManagersRender(true)).catch(() => {});
             }
@@ -119677,7 +119698,7 @@ C.14.043 C.15.000
                         <button type="button" class="min-h-[48px] rounded-xl border border-emerald-100 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#007a4d] shadow-sm transition hover:bg-emerald-50 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return refreshManagerAssignedItemsExport()"><i class="ph ph-arrow-clockwise mr-1 sm:mr-2"></i>Refresh</button>
                         <button type="button" class="ops-view-option-action min-h-[48px] rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#1d4ed8] shadow-sm transition hover:bg-blue-100 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedItemsToExcel()"><i class="ph ph-download-simple mr-1 sm:mr-2"></i>Export Excel</button>
                     </div>
-                    ${canManageEvalItemcodeAssignments() ? `<div class="mt-3 grid gap-2 md:grid-cols-[minmax(220px,360px)_auto]">
+                    ${canManageEvalItemcodeAssignments() ? `<div class="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-[11px] font-bold leading-4 text-blue-800"><span class="font-black">Single item:</span> changing its AssignedTo menu saves immediately. Checkboxes and Assign Selected are only for changing multiple items.</div><div class="mt-3 grid gap-2 md:grid-cols-[minmax(220px,360px)_auto]">
                         <select id="manager-eval-bulk-assignee" class="w-full rounded-xl border border-blue-100 bg-white px-3 py-3 text-sm font-black text-slate-900">${getManagerEvalAssigneeOptionsHtml('')}</select>
                         <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return assignSelectedEvalItemcodes()">Assign Selected</button>
                     </div><div class="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Assignments use the ItemCode + GenusName key.</div>` : ''}
@@ -128130,8 +128151,22 @@ C.14.043 C.15.000
             return false;
         }
 
-        function setSingleEvalItemcodeAssignment(itemcode = '', genusname = '', assignedto = '') {
-            return assignEvalItemcodes([{ itemcode, genusname }], assignedto);
+        async function setSingleEvalItemcodeAssignment(itemcode = '', genusname = '', assignedto = '', control = null) {
+            const select = control && String(control.tagName || '').toUpperCase() === 'SELECT' ? control : null;
+            if (select && select.disabled) return false;
+            if (select) {
+                select.disabled = true;
+                select.setAttribute('aria-busy', 'true');
+            }
+            try {
+                await assignEvalItemcodes([{ itemcode, genusname }], assignedto);
+            } finally {
+                if (select && select.isConnected) {
+                    select.disabled = false;
+                    select.removeAttribute('aria-busy');
+                }
+            }
+            return false;
         }
 
         function assignSelectedEvalItemcodes() {
