@@ -27,6 +27,54 @@
         locationNoteAgeDays: 10
     });
     const SEASON_ORDER = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
+    const ITEM_INQUIRY_FIELD_GROUPS = Object.freeze({
+        item: Object.freeze([
+            'PLANTGROUPCODE', 'COMMONNAME', 'CONTSIZE', 'ITEMCODE',
+            'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY'
+        ]),
+        season: Object.freeze([
+            'SALEYEAR', 'SEASON', 'S_LTS', 'SEASON_SUPPLY', 'SEASON_OH', 'SEASON_DEMAND'
+        ]),
+        location: Object.freeze([
+            'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'PTRONHAND', 'PTRAVAILABLE',
+            'HOLDSTOPCODE', 'HOLDSTOPBEGINDATE', 'HOLDSTOPREASON', 'HSREASONBEGIN',
+            'LOCATIONNOTE', 'LOCATIONNOTEDATE', 'SUSPEND', 'SUSPENDTO',
+            'SPECIALPULLER', 'PULLTAGNOTE1'
+        ])
+    });
+    const ITEM_INQUIRY_FIELD_ALIASES = Object.freeze({
+        PLANTGROUPCODE: Object.freeze(['PLANTGROUPCODE', 'plantgroupcode']),
+        COMMONNAME: Object.freeze(['COMMONNAME', 'commonname']),
+        CONTSIZE: Object.freeze(['CONTSIZE', 'contsize']),
+        ITEMCODE: Object.freeze(['ITEMCODE', 'itemcode']),
+        GENUSNAME: Object.freeze(['GENUSNAME', 'genusname']),
+        FIELDTAGCOLOR: Object.freeze(['FIELDTAGCOLOR', 'fieldtagcolor', 'FIELD_TAG_COLOR', 'field_tag_color']),
+        ITEMSPEC: Object.freeze(['ITEMSPEC', 'itemspec']),
+        PULLERRESPONSIBILITY: Object.freeze(['PULLERRESPONSIBILITY', 'pullerresponsibility']),
+        SALEYEAR: Object.freeze(['SALEYEAR', 'saleyear', 'SALESYEAR', 'salesyear']),
+        SEASON: Object.freeze(['SEASON', 'season']),
+        S_LTS: Object.freeze(['S_LTS', 's_lts']),
+        SEASON_SUPPLY: Object.freeze(['SEASON_SUPPLY', 'season_supply']),
+        SEASON_OH: Object.freeze(['SEASON_OH', 'season_oh']),
+        SEASON_DEMAND: Object.freeze(['SEASON_DEMAND', 'season_demand']),
+        LOTCODE: Object.freeze(['LOTCODE', 'lotcode']),
+        LOCATIONCODE: Object.freeze(['LOCATIONCODE', 'locationcode']),
+        SOURCE: Object.freeze(['SOURCE', 'source']),
+        PRIORITY: Object.freeze(['PRIORITY', 'priority']),
+        PTRONHAND: Object.freeze(['PTRONHAND', 'ptronhand']),
+        PTRAVAILABLE: Object.freeze(['PTRAVAILABLE', 'ptravailable']),
+        HOLDSTOPCODE: Object.freeze(['HOLDSTOPCODE', 'holdstopcode', 'HOLSTOPCODE', 'holstopcode']),
+        HOLDSTOPBEGINDATE: Object.freeze(['HOLDSTOPBEGINDATE', 'holdstopbegindate']),
+        HOLDSTOPREASON: Object.freeze(['HOLDSTOPREASON', 'holdstopreason']),
+        HSREASONBEGIN: Object.freeze(['HSREASONBEGIN', 'hsreasonbegin']),
+        LOCATIONNOTE: Object.freeze(['LOCATIONNOTE', 'locationnote']),
+        LOCATIONNOTEDATE: Object.freeze(['LOCATIONNOTEDATE', 'locationnotedate']),
+        SUSPEND: Object.freeze(['SUSPEND', 'suspend']),
+        SUSPENDTO: Object.freeze(['SUSPENDTO', 'suspendto', 'SUSPEND_TO', 'suspend_to']),
+        SPECIALPULLER: Object.freeze(['SPECIALPULLER', 'specialpuller']),
+        PULLTAGNOTE1: Object.freeze(['PULLTAGNOTE1', 'pulltagnote1'])
+    });
+    const UNASSIGNED_INQUIRY_LABEL = '(Unassigned)';
 
     function firstValue(row, keys, fallback) {
         const source = row && typeof row === 'object' ? row : {};
@@ -313,16 +361,227 @@
         };
     }
 
+    function classifyScriptCompatibleRows(rows, options) {
+        const sourceRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+        const config = options && typeof options === 'object' ? options : {};
+        const settings = normalizeSettings(config.settings);
+        const currentSeason = String(config.currentSeason || 'F1').trim().toUpperCase() || 'F1';
+        const currentSalesYear = normalizeConfiguredSalesYear(config.currentSalesYear);
+        const nextSeason = String(config.nextSeason || (currentSeason === 'F1' ? 'S1' : 'F1')).trim().toUpperCase();
+        const nextSalesYear = normalizeConfiguredSalesYear(
+            config.nextSalesYear == null ? (currentSeason === 'F1' ? currentSalesYear : currentSalesYear + 1) : config.nextSalesYear
+        );
+        const todayParts = getCentralDateParts(config.now);
+        const todayEpochDay = toEpochDay(todayParts.year, todayParts.month, todayParts.day);
+        const aggregates = new Map();
+        const rowMetadata = new Map();
+
+        sourceRows.forEach((row, sourceIndex) => {
+            const itemCode = normalizeItemCode(row);
+            if (!itemCode) return;
+            const season = normalizeSeason(row);
+            const salesYear = getRowSalesYear(row);
+            const validSalesYear = salesYear != null && salesYear > 0 && salesYear <= currentSalesYear;
+            const metadata = {
+                itemCode,
+                season,
+                salesYear,
+                validSalesYear,
+                priority: getPriority(row),
+                assignedTo: getAssignedTo(row),
+                holdStopCode: getHoldStopCode(row),
+                oldHold: isOlderThanDays(getHoldStart(row), settings.holdAgeDays, todayEpochDay),
+                oldLocationNote: isOlderThanDays(getLocationNoteDate(row), settings.locationNoteAgeDays, todayEpochDay),
+                slts: getRowSLts(row),
+                sourceIndex
+            };
+            rowMetadata.set(row, metadata);
+            if (!aggregates.has(itemCode)) {
+                aggregates.set(itemCode, {
+                    hasPriority: false,
+                    hasValidF1: false,
+                    hasOldHold: false,
+                    qualifiesLowStock: false
+                });
+            }
+            const aggregate = aggregates.get(itemCode);
+            if (metadata.priority) aggregate.hasPriority = true;
+            if (season === 'F1' && validSalesYear) {
+                aggregate.hasValidF1 = true;
+                if (metadata.slts < settings.lowStockMaxSLts) aggregate.qualifiesLowStock = true;
+            }
+            if (metadata.oldHold) aggregate.hasOldHold = true;
+        });
+
+        const reports = REPORT_IDS.reduce((acc, reportId) => {
+            acc[reportId] = [];
+            return acc;
+        }, {});
+        const supportSeasons = new Set(['U1', 'U2', 'U3', 'X']);
+
+        sourceRows.forEach((row) => {
+            const metadata = rowMetadata.get(row);
+            if (!metadata) return;
+            const aggregate = aggregates.get(metadata.itemCode);
+            if (!aggregate) return;
+            const isNextTarget = metadata.season === nextSeason && metadata.salesYear === nextSalesYear;
+
+            if (metadata.priority && metadata.season !== 'F1') reports['s1-with-pri'].push(row);
+            if (metadata.oldLocationNote) reports['od-loc-note-date'].push(row);
+            if (metadata.oldHold) reports['hs-plus-5-days'].push(row);
+            if (aggregate.hasOldHold && !metadata.holdStopCode) reports['get-off-hold'].push(row);
+            if (aggregate.qualifiesLowStock
+                && ((supportSeasons.has(metadata.season) && metadata.validSalesYear) || isNextTarget)) {
+                reports['low-stock'].push(row);
+            }
+            if (!aggregate.hasPriority) reports['no-pri'].push(row);
+            if (metadata.season === 'X') reports.culls.push(row);
+            if (!aggregate.hasValidF1) reports['not-in-f1'].push(row);
+        });
+
+        const compareScriptRows = (left, right) => {
+            const leftMeta = rowMetadata.get(left);
+            const rightMeta = rowMetadata.get(right);
+            let result = compareText(leftMeta.assignedTo, rightMeta.assignedTo);
+            if (result) return result;
+            result = compareText(leftMeta.itemCode, rightMeta.itemCode);
+            if (result) return result;
+            const leftRank = SEASON_ORDER.indexOf(leftMeta.season);
+            const rightRank = SEASON_ORDER.indexOf(rightMeta.season);
+            result = (leftRank < 0 ? SEASON_ORDER.length : leftRank) - (rightRank < 0 ? SEASON_ORDER.length : rightRank);
+            if (result) return result;
+            result = (leftMeta.validSalesYear ? 1 : 2) - (rightMeta.validSalesYear ? 1 : 2);
+            if (result) return result;
+            result = Number(leftMeta.salesYear || 0) - Number(rightMeta.salesYear || 0);
+            return result || leftMeta.sourceIndex - rightMeta.sourceIndex;
+        };
+        REPORT_IDS.forEach((reportId) => reports[reportId].sort(compareScriptRows));
+        const counts = REPORT_IDS.reduce((acc, reportId) => {
+            acc[reportId] = reports[reportId].length;
+            return acc;
+        }, {});
+        return {
+            reports,
+            counts,
+            aggregates,
+            settings,
+            currentSeason,
+            currentSalesYear,
+            nextSeason,
+            nextSalesYear,
+            centralDateKey: `${todayParts.year}-${String(todayParts.month).padStart(2, '0')}-${String(todayParts.day).padStart(2, '0')}`
+        };
+    }
+
+    function getInquiryFieldValue(row, key) {
+        const safeKey = String(key || '').trim().toUpperCase();
+        return firstValue(row, ITEM_INQUIRY_FIELD_ALIASES[safeKey] || [safeKey, safeKey.toLowerCase()], '');
+    }
+
+    function normalizeInquiryFilter(value) {
+        return String(value == null ? '' : value).trim();
+    }
+
+    function compareInquiryOptions(left, right) {
+        return String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    function uniqueInquiryOptions(values, includeUnassigned) {
+        const output = [];
+        const seen = new Set();
+        let hasUnassigned = false;
+        values.forEach((value) => {
+            const normalized = normalizeInquiryFilter(value);
+            if (!normalized) {
+                hasUnassigned = true;
+                return;
+            }
+            const key = normalized.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            output.push(normalized);
+        });
+        output.sort(compareInquiryOptions);
+        if (includeUnassigned && hasUnassigned) output.unshift(UNASSIGNED_INQUIRY_LABEL);
+        return output;
+    }
+
+    function inquiryAssignedToMatches(row, selectedAssignedTo) {
+        const selected = normalizeInquiryFilter(selectedAssignedTo);
+        if (!selected) return true;
+        const assignedTo = getAssignedTo(row);
+        if (selected === UNASSIGNED_INQUIRY_LABEL) return !assignedTo;
+        return assignedTo === selected;
+    }
+
+    function inquiryValueMatches(row, key, selectedValue) {
+        const selected = normalizeInquiryFilter(selectedValue);
+        return !selected || normalizeInquiryFilter(getInquiryFieldValue(row, key)) === selected;
+    }
+
+    function projectInquiryFields(row, fields) {
+        return fields.reduce((record, field) => {
+            record[field] = getInquiryFieldValue(row, field);
+            return record;
+        }, {});
+    }
+
+    function uniqueProjectedInquiryRows(rows, fields) {
+        const output = [];
+        const seen = new Set();
+        rows.forEach((row) => {
+            const projected = projectInquiryFields(row, fields);
+            const key = fields.map((field) => String(projected[field] == null ? '' : projected[field])).join('\u001f');
+            if (seen.has(key)) return;
+            seen.add(key);
+            output.push(projected);
+        });
+        return output;
+    }
+
+    function buildItemInquiryModel(reportRows, filters) {
+        const rows = Array.isArray(reportRows) ? reportRows.filter(Boolean) : [];
+        const sourceFilters = filters && typeof filters === 'object' ? filters : {};
+        const selectedAssignedTo = normalizeInquiryFilter(firstValue(sourceFilters, ['assignedTo', 'assignedto'], ''));
+        const selectedCommonName = normalizeInquiryFilter(firstValue(sourceFilters, ['commonName', 'commonname'], ''));
+        const selectedContSize = normalizeInquiryFilter(firstValue(sourceFilters, ['contSize', 'contsize'], ''));
+        const assignedScopedRows = rows.filter((row) => inquiryAssignedToMatches(row, selectedAssignedTo));
+        const commonScopedRows = assignedScopedRows.filter((row) => inquiryValueMatches(row, 'COMMONNAME', selectedCommonName));
+        const matchedRows = commonScopedRows.filter((row) => inquiryValueMatches(row, 'CONTSIZE', selectedContSize));
+        return {
+            filters: {
+                assignedTo: selectedAssignedTo,
+                commonName: selectedCommonName,
+                contSize: selectedContSize
+            },
+            options: {
+                assignedTo: uniqueInquiryOptions(rows.map(getAssignedTo), true),
+                commonNames: uniqueInquiryOptions(assignedScopedRows.map((row) => getInquiryFieldValue(row, 'COMMONNAME')), false),
+                contSizes: uniqueInquiryOptions(commonScopedRows.map((row) => getInquiryFieldValue(row, 'CONTSIZE')), false)
+            },
+            matchedRows,
+            sections: {
+                item: uniqueProjectedInquiryRows(matchedRows, ITEM_INQUIRY_FIELD_GROUPS.item),
+                season: uniqueProjectedInquiryRows(matchedRows, ITEM_INQUIRY_FIELD_GROUPS.season),
+                location: matchedRows.map((row) => projectInquiryFields(row, ITEM_INQUIRY_FIELD_GROUPS.location))
+            }
+        };
+    }
+
     root.GncEvalReports = Object.freeze({
         REPORT_IDS,
         REPORT_META,
         DEFAULT_SETTINGS,
         SEASON_ORDER,
+        ITEM_INQUIRY_FIELD_GROUPS,
+        UNASSIGNED_INQUIRY_LABEL,
         normalizeSalesYear,
         normalizeSettings,
         parseInventoryDateEpochDay,
         getCentralDateParts,
         compareRows,
-        classifyRows
+        classifyRows,
+        classifyScriptCompatibleRows,
+        buildItemInquiryModel
     });
 })(typeof window !== 'undefined' ? window : globalThis);

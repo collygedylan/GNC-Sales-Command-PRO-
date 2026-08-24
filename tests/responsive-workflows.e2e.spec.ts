@@ -93,8 +93,82 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
   expect(result.inventoryFetches).toBe(0);
 });
 
+test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.24.05', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
+  const result = await page.evaluate(() => window.eval(`(async () => {
+    const access = {
+      dylan: canViewManagerEvalReports('dylan_collyge'),
+      megan: canViewManagerEvalReports('megan_kelly'),
+      other: canViewManagerEvalReports('jd_jones')
+    };
+    const originalCanViewManagerEvalReports = canViewManagerEvalReports;
+    canViewManagerEvalReports = () => true;
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    processAndLoadData({ data: [
+      { UNIQUE_ID: 'eval2-a-f1', ITEMCODE: 'A', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' },
+      { UNIQUE_ID: 'eval2-a-u1', ITEMCODE: 'A', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'U1', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.002', LAST_UPDATED: '2026-08-24T12:00:00Z' },
+      { UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 300, ASSIGNEDTO: 'megan_kelly', LOCATIONCODE: 'B.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' }
+    ], _fromCache: true });
+    const state = getDatasetState('master');
+    state.initialLoaded = true;
+    state.fullLoaded = false;
+    invalidateManagerEvalReport2Cache();
+    const partialHtml = renderManagerEvalReports2Panel();
+    state.fullLoaded = true;
+    const index = getManagerEvalReport2Index();
+    setManagerEvalReport2Mode('inquiry');
+    setManagerEvalReport2('low-stock');
+    setManagerEvalReport2InquiryFilter('assignedTo', 'dylan_collyge');
+    setManagerEvalReport2InquiryFilter('commonName', 'Alpha');
+    setManagerEvalReport2InquiryFilter('contSize', '#3');
+    const model = getManagerEvalReport2InquiryModel();
+    const host = document.createElement('div');
+    host.id = 'eval-reports-2-test-host';
+    host.style.width = '390px';
+    host.innerHTML = renderManagerEvalReports2Panel();
+    document.body.appendChild(host);
+    const controls = Array.from(host.querySelectorAll('select,button')).map((element) => {
+      const box = element.getBoundingClientRect();
+      return { left: box.left, right: box.right, width: box.width };
+    });
+    const output = {
+      access,
+      partialGate: !partialHtml.includes('source rows') && (partialHtml.includes('Retry') || partialHtml.includes('Loading the complete Park Hill inventory')),
+      counts: index.counts,
+      inquiryRows: model.matchedRows.length,
+      sections: {
+        item: model.sections.item.length,
+        season: model.sections.season.length,
+        location: model.sections.location.length
+      },
+      hasReportsMode: host.textContent.includes('Reports'),
+      hasInquiryMode: host.textContent.includes('Item Inquiry'),
+      hasReset: host.textContent.includes('Reset'),
+      controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
+      hostOverflow: host.scrollWidth <= 391
+    };
+    canViewManagerEvalReports = originalCanViewManagerEvalReports;
+    return output;
+  })()`));
+
+  expect(result.access).toEqual({ dylan: true, megan: true, other: false });
+  expect(result.partialGate).toBe(true);
+  expect(result.counts['low-stock']).toBe(1);
+  expect(result.counts.culls).toBe(1);
+  expect(result.inquiryRows).toBe(1);
+  expect(result.sections).toEqual({ item: 1, season: 1, location: 1 });
+  expect(result.hasReportsMode).toBe(true);
+  expect(result.hasInquiryMode).toBe(true);
+  expect(result.hasReset).toBe(true);
+  expect(result.controlsFit).toBe(true);
+  expect(result.hostOverflow).toBe(true);
+});
+
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -778,7 +852,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.04', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.05', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
