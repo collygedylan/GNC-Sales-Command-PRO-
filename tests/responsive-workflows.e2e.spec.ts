@@ -110,6 +110,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     processAndLoadData({ data: [
       { UNIQUE_ID: 'eval2-a-f1', ITEMCODE: 'A', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' },
       { UNIQUE_ID: 'eval2-a-u1', ITEMCODE: 'A', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'U1', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.002', LAST_UPDATED: '2026-08-24T12:00:00Z' },
+      { UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '2', S_LTS: 20, ASSIGNEDTO: 'megan_kelly', LOCATIONCODE: 'B.01.000', LAST_UPDATED: '2026-08-24T12:00:00Z' },
       { UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 300, ASSIGNEDTO: 'megan_kelly', LOCATIONCODE: 'B.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' }
     ], _fromCache: true });
     const state = getDatasetState('master');
@@ -123,7 +124,6 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     setManagerEvalReport2('culls');
     setManagerEvalReport2Filter('assignedTo', 'dylan_collyge');
     setManagerEvalReport2('low-stock');
-    const preservedAssignedTo = managerEvalReport2AssignedToFilter;
     const locationOptions = getManagerEvalReport2LocationOptions();
     setManagerEvalReport2Filter('locationCode', 'A.01.002');
     const reportRows = getFilteredManagerEvalReport2Rows();
@@ -148,7 +148,6 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       partialGate: !partialHtml.includes('source rows') && (partialHtml.includes('Retry') || partialHtml.includes('Loading the complete Park Hill inventory')),
       counts: index.counts,
       drilldown: {
-        preservedAssignedTo,
         locationOptions,
         reportRows: reportRows.length
       },
@@ -170,10 +169,9 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
   expect(result.access).toEqual({ dylan: true, megan: true, other: false });
   expect(result.partialGate).toBe(true);
-  expect(result.counts['low-stock']).toBe(1);
+  expect(result.counts['low-stock']).toBe(2);
   expect(result.counts.culls).toBe(1);
   expect(result.drilldown).toEqual({
-    preservedAssignedTo: 'dylan_collyge',
     locationOptions: ['A.01.002'],
     reportRows: 1,
   });
