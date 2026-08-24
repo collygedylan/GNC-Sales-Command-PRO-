@@ -100,6 +100,10 @@ function independentScriptCompatibleReference(rows, options = {}) {
 }
 
 const now = new Date('2026-08-20T17:00:00Z');
+const expectedAssignees = [
+  'abigail_vazquez', 'bobby_adair', 'charley_robertson', 'dylan_collyge', 'ellen_ward',
+  'jorge_colunga', 'josh_vann', 'megan_kelly', 'mitch_kaiser', 'zoe_green'
+];
 
 test('normalizes two-digit sales years and parses inventory dates without locale guessing', () => {
   assert.equal(engine.normalizeSalesYear('27'), 2027);
@@ -194,6 +198,47 @@ test('classifies 10,000 rows in one sub-500 ms pass on the test runtime', () => 
   const elapsed = performance.now() - started;
   assert.equal(result.counts.culls, 2000);
   assert.ok(elapsed < 500, `classification took ${elapsed.toFixed(1)} ms`);
+});
+
+test('overlays authoritative ITEMCODE + GENUSNAME assignments without mutating inventory', () => {
+  const inventory = [
+    row(' 0001 ', 'F1', 27, { GENUSNAME: ' Rosa   Rugosa ', ASSIGNEDTO: 'stale_master_user' }),
+    row('0002', 'U1', 27, { GENUSNAME: 'Acer', ASSIGNEDTO: 'another_stale_user' }),
+    row('0003', 'U2', 27, { GENUSNAME: 'Thuja', ASSIGNEDTO: 'must_be_ignored' })
+  ];
+  const assignments = expectedAssignees.map((assignedto, index) => ({
+    itemcode: String(index + 1).padStart(4, '0'),
+    genusname: index === 0 ? '  ROSA rugosa  ' : `Genus ${index}`,
+    assignedto
+  }));
+  assignments[1] = { ITEMCODE: '0002', GENUSNAME: ' acer ', ASSIGNEDTO: '' };
+
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments);
+
+  assert.equal(model.rows[0].ASSIGNEDTO, 'abigail_vazquez');
+  assert.equal(model.rows[1].ASSIGNEDTO, '');
+  assert.equal(model.rows[2].ASSIGNEDTO, '');
+  assert.equal(model.rows[0].assignedto, 'abigail_vazquez');
+  assert.equal(inventory[0].ASSIGNEDTO, 'stale_master_user');
+  assert.equal(inventory[1].ASSIGNEDTO, 'another_stale_user');
+  assert.equal(model.matchedCount, 2);
+  assert.equal(model.unassignedCount, 2);
+  assert.equal(engine.buildAuthoritativeAssignmentKey(inventory[0]), '0001|rosa rugosa');
+});
+
+test('builds the assignee selector from the complete assignment table', () => {
+  const assignments = expectedAssignees.map((assignedto, index) => ({
+    ITEMCODE: `ROSTER-${index}`,
+    GENUSNAME: `Genus ${index}`,
+    ASSIGNEDTO: assignedto
+  }));
+  assignments.push({ ITEMCODE: 'BLANK', GENUSNAME: 'Blank Genus', ASSIGNEDTO: '' });
+  const model = engine.buildAuthoritativeAssignmentModel([
+    row('ONLY-MASTER-ROW', 'F1', 27, { GENUSNAME: 'No assignment', ASSIGNEDTO: 'stale_master_user' })
+  ], assignments);
+
+  assert.deepEqual(Array.from(model.assignedToOptions), ['(Unassigned)', ...expectedAssignees]);
+  assert.equal(model.rows[0].ASSIGNEDTO, '');
 });
 
 test('script-compatible classifier preserves the pasted Apps Script predicates and boundaries', () => {
@@ -296,6 +341,27 @@ test('script-compatible classifier handles 10,000 rows within the existing perfo
   assert.ok(elapsed < 500, `script-compatible classification took ${elapsed.toFixed(1)} ms`);
 });
 
+test('authoritative assignment overlay and classification stay within the 10,000-row budget', () => {
+  const rows = Array.from({ length: 10000 }, (_, index) => row(
+    `OVERLAY-${String(index % 2500).padStart(4, '0')}`,
+    index % 5 === 0 ? 'F1' : ['U1', 'U2', 'U3', 'X'][index % 4],
+    27,
+    { GENUSNAME: `Genus ${index % 2500}`, ASSIGNEDTO: 'stale_master_user', S_LTS: index % 200 }
+  ));
+  const assignments = Array.from({ length: 2500 }, (_, index) => ({
+    ITEMCODE: `overlay-${String(index).padStart(4, '0')}`,
+    GENUSNAME: `  genus   ${index} `,
+    ASSIGNEDTO: expectedAssignees[index % expectedAssignees.length]
+  }));
+  const started = performance.now();
+  const model = engine.buildAuthoritativeAssignmentModel(rows, assignments);
+  const result = engine.classifyScriptCompatibleRows(model.rows, { currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27, now });
+  const elapsed = performance.now() - started;
+  assert.equal(model.matchedCount, 10000);
+  assert.equal(result.counts.culls, 2000);
+  assert.ok(elapsed < 500, `assignment overlay and classification took ${elapsed.toFixed(1)} ms`);
+});
+
 test('the live shell exposes the secured Dylan/Megan-only Eval Reports module', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
@@ -315,8 +381,13 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /else if \(activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW\) html \+= renderManagerEvalReports2Panel\(\)/);
   assert.match(html, /function loadManagerEvalReports2\(force = false\)/);
   assert.match(html, /ensureDatasetLoaded\('master', 'full'/);
-  assert.match(html, /api\.classifyScriptCompatibleRows\(fullInventory/);
+  assert.match(html, /ensureDatasetLoaded\('warehouseAssignedItems', 'full'/);
+  assert.match(html, /api\.buildAuthoritativeAssignmentModel\(fullInventory, warehouseAssignedItemsInventory\)/);
+  assert.match(html, /api\.classifyScriptCompatibleRows\(assignmentModel\.rows/);
   assert.match(html, /api\.buildItemInquiryModel\(getManagerEvalReport2Rows\(\)/);
+  assert.match(html, /model\.options\.assignedTo = getManagerEvalReport2AssignedToOptions\(\)/);
+  assert.match(html, /getDatasetLoadSignature\('warehouseAssignedItems'\)/);
+  assert.match(html, /invalidateManagerEvalReport2Cache\(\)/);
   assert.match(html, /function getManagerEvalReport2LocationOptions\(rows = null\)/);
   assert.match(html, /managerEvalReport2LocationFilter !== 'all'/);
   assert.match(html, /1\. AssignedTo &rarr; 2\. Report &rarr; 3\. Locationcode/);

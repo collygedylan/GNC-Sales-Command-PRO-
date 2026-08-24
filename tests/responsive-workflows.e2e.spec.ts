@@ -95,7 +95,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -107,18 +107,27 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     canViewManagerEvalReports = () => true;
     currentUser = 'dylan_collyge';
     currentUserDisplay = 'Dylan Collyge';
+    const roster = ['abigail_vazquez', 'bobby_adair', 'charley_robertson', 'dylan_collyge', 'ellen_ward', 'jorge_colunga', 'josh_vann', 'megan_kelly', 'mitch_kaiser', 'zoe_green'];
     processAndLoadData({ data: [
-      { UNIQUE_ID: 'eval2-a-f1', ITEMCODE: 'A', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' },
-      { UNIQUE_ID: 'eval2-a-u1', ITEMCODE: 'A', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'U1', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, ASSIGNEDTO: 'dylan_collyge', LOCATIONCODE: 'A.01.002', LAST_UPDATED: '2026-08-24T12:00:00Z' },
-      { UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '2', S_LTS: 20, ASSIGNEDTO: 'megan_kelly', LOCATIONCODE: 'B.01.000', LAST_UPDATED: '2026-08-24T12:00:00Z' },
-      { UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 300, ASSIGNEDTO: 'megan_kelly', LOCATIONCODE: 'B.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' }
+      { UNIQUE_ID: 'eval2-a-f1', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'A.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' },
+      { UNIQUE_ID: 'eval2-a-u1', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'U1', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'A.01.002', LAST_UPDATED: '2026-08-24T12:00:00Z' },
+      { UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '2', S_LTS: 20, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.000', LAST_UPDATED: '2026-08-24T12:00:00Z' },
+      { UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 300, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' }
+    ], warehouseAssignedItemsData: [
+      { UNIQUE_ID: 'assign-a', ITEMCODE: ' a ', GENUSNAME: ' ROSA ', ASSIGNEDTO: 'dylan_collyge', UPDATED_AT: '2026-08-24T12:05:00Z' },
+      { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', UPDATED_AT: '2026-08-24T12:05:00Z' },
+      ...roster.filter((name) => name !== 'dylan_collyge' && name !== 'megan_kelly').map((name, index) => ({ UNIQUE_ID: 'roster-' + index, ITEMCODE: 'ROSTER-' + index, GENUSNAME: 'Genus ' + index, ASSIGNEDTO: name })),
+      { UNIQUE_ID: 'assign-blank', ITEMCODE: 'BLANK', GENUSNAME: 'Blank', ASSIGNEDTO: '' }
     ], _fromCache: true });
     const state = getDatasetState('master');
+    const assignmentState = getDatasetState('warehouseAssignedItems');
     state.initialLoaded = true;
-    state.fullLoaded = false;
+    state.fullLoaded = true;
+    assignmentState.initialLoaded = true;
+    assignmentState.fullLoaded = false;
     invalidateManagerEvalReport2Cache();
     const partialHtml = renderManagerEvalReports2Panel();
-    state.fullLoaded = true;
+    assignmentState.fullLoaded = true;
     const index = getManagerEvalReport2Index();
     setManagerEvalReport2Mode('reports');
     setManagerEvalReport2('culls');
@@ -143,9 +152,31 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       const box = element.getBoundingClientRect();
       return { left: box.left, right: box.right, width: box.width };
     });
+    const initialAssignedToOptions = getManagerEvalReport2AssignedToOptions();
+    const beforeAssignmentEdit = getManagerEvalReport2Index();
+    applyAcknowledgedEvalAssignmentResults(
+      [{ itemcode: 'A', genusname: 'Rosa' }],
+      [{ itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly' }],
+      'megan_kelly'
+    );
+    const afterAssignmentEdit = getManagerEvalReport2Index();
+    const editedRows = getManagerEvalReport2Rows('low-stock').filter((row) => row.ITEMCODE === 'A');
+    const originalEnsureDatasetLoaded = ensureDatasetLoaded;
+    const originalLoadManagerEvalReportSettings = loadManagerEvalReportSettings;
+    ensureDatasetLoaded = (key) => key === 'warehouseAssignedItems'
+      ? Promise.reject(new Error('assignment load unavailable'))
+      : Promise.resolve([]);
+    loadManagerEvalReportSettings = () => Promise.resolve({});
+    await loadManagerEvalReports2(true);
+    ensureDatasetLoaded = originalEnsureDatasetLoaded;
+    loadManagerEvalReportSettings = originalLoadManagerEvalReportSettings;
+    const retainedAfterFailure = getManagerEvalReport2Index();
+    const staleHtml = renderManagerEvalReports2Panel();
     const output = {
       access,
-      partialGate: !partialHtml.includes('source rows') && (partialHtml.includes('Retry') || partialHtml.includes('Loading the complete Park Hill inventory')),
+      partialGate: !partialHtml.includes('inventory rows') && (partialHtml.includes('Retry') || partialHtml.includes('Loading complete inventory and assignments')),
+      assignedToOptions: initialAssignedToOptions,
+      assignmentStats: index.assignmentStats,
       counts: index.counts,
       drilldown: {
         locationOptions,
@@ -161,7 +192,9 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       hasInquiryMode: host.textContent.includes('Item Inquiry'),
       hasReset: host.textContent.includes('Reset'),
       controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
-      hostOverflow: host.scrollWidth <= 391
+      hostOverflow: host.scrollWidth <= 391,
+      immediateAssignmentRefresh: beforeAssignmentEdit !== afterAssignmentEdit && editedRows.length > 0 && editedRows.every((row) => row.ASSIGNEDTO === 'megan_kelly'),
+      retainsLastCompleteOnAssignmentFailure: retainedAfterFailure === afterAssignmentEdit && staleHtml.includes('last complete results remain visible')
     };
     canViewManagerEvalReports = originalCanViewManagerEvalReports;
     return output;
@@ -169,6 +202,8 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
   expect(result.access).toEqual({ dylan: true, megan: true, other: false });
   expect(result.partialGate).toBe(true);
+  expect(result.assignedToOptions).toEqual(['(Unassigned)', 'abigail_vazquez', 'bobby_adair', 'charley_robertson', 'dylan_collyge', 'ellen_ward', 'jorge_colunga', 'josh_vann', 'megan_kelly', 'mitch_kaiser', 'zoe_green']);
+  expect(result.assignmentStats.matchedCount).toBe(4);
   expect(result.counts['low-stock']).toBe(2);
   expect(result.counts.culls).toBe(1);
   expect(result.drilldown).toEqual({
@@ -182,10 +217,12 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.hasReset).toBe(true);
   expect(result.controlsFit).toBe(true);
   expect(result.hostOverflow).toBe(true);
+  expect(result.immediateAssignmentRefresh).toBe(true);
+  expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -869,7 +906,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.06', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.07', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'

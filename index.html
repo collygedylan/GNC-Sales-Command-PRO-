@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.06">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.07">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.24.06';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.24.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6653,7 +6653,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.06">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.07">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6764,8 +6764,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.06"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.06"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.07"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.07"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7518,7 +7518,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.06').trim() || 'V2026.08.24.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.07').trim() || 'V2026.08.24.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9004,7 +9004,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9396,7 +9396,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         });
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 'visible-default' },
-            managers: { realtimeTables: ['ph_master_inventory'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            managers: { realtimeTables: ['ph_master_inventory', WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             chat: { realtimeTables: ['ph_chat_conversations', 'ph_chat_participants', 'ph_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -19990,7 +19990,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             if (tableSet.has(WAREHOUSE_ASSIGNED_ITEMS_TABLE)) {
                 clearWarehouseAssignedItemCaches();
+                invalidateManagerEvalReport2Cache();
                 changedDatasetKeys.add('warehouseAssignedItems');
+                markViewDirty('managers');
+                if (!shouldDeferInteractiveBackgroundWork() && isViewVisible('managers') && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) scheduleManagersRender(true);
             }
             if (tableSet.has('ph_cav_import')) {
                 syncRealtimeCavRows();
@@ -20620,7 +20623,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 } else if (nextRow) {
                     changed = upsertRealtimeRow(warehouseAssignedItemsInventory, normalizeWarehouseAssignedItemRow(nextRow), tableName);
                 }
-                if (changed) clearWarehouseAssignedItemCaches();
+                if (changed) {
+                    clearWarehouseAssignedItemCaches();
+                    invalidateManagerEvalReport2Cache();
+                }
             } else if (tableName === 'ph_cav_import') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
@@ -20740,8 +20746,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (isViewVisible('pest-management')) queueInteractiveViewRender('pest-management', false, true, 0, 120);
             } else if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) {
                 invalidateResolvedViewStateCaches();
+                invalidateManagerEvalReport2Cache();
                 markViewDirty('tasks');
+                markViewDirty('managers');
                 if (!shouldDeferInteractiveBackgroundWork() && isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
+                if (!shouldDeferInteractiveBackgroundWork() && isViewVisible('managers') && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) scheduleManagersRender(true);
             }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
@@ -30292,7 +30301,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.06').trim() || 'V2026.08.24.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.07').trim() || 'V2026.08.24.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -51442,6 +51451,7 @@ function toggleDriveQuickRequestItem(domId) {
                 warehouseAssignedItemsInventory = (res.warehouseAssignedItemsData || []).map((item, idx) => normalizeWarehouseAssignedItemRow(item, idx)).filter(Boolean);
                 clearWarehouseAssignedItemCaches();
                 rebuildWarehouseAssignedItemIndexes(true);
+                invalidateManagerEvalReport2Cache();
             }
 
             if (hasRequests || hasRequestHistory || (hasMaster && requestsInventory.length)) {
@@ -118315,6 +118325,7 @@ C.14.043 C.15.000
             const api = getManagerEvalReportsApi();
             return api
                 && typeof api.classifyScriptCompatibleRows === 'function'
+                && typeof api.buildAuthoritativeAssignmentModel === 'function'
                 && typeof api.buildItemInquiryModel === 'function'
                 ? api
                 : null;
@@ -118328,8 +118339,11 @@ C.14.043 C.15.000
         function getManagerEvalReport2LatestSourceUpdate() {
             let latestStamp = 0;
             let latestValue = '';
-            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
-                const raw = String(firstNonEmptyValue(row && row.LAST_UPDATED, row && row.last_updated, '') || '').trim();
+            const sourceRows = []
+                .concat(Array.isArray(fullInventory) ? fullInventory : [])
+                .concat(Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : []);
+            sourceRows.forEach((row) => {
+                const raw = String(firstNonEmptyValue(row && row.LAST_UPDATED, row && row.last_updated, row && row.UPDATED_AT, row && row.updated_at, '') || '').trim();
                 if (!raw) return;
                 const stamp = Date.parse(raw);
                 if (!Number.isFinite(stamp) || stamp <= latestStamp) return;
@@ -118343,22 +118357,30 @@ C.14.043 C.15.000
             if (!canViewManagerEvalReports()) return null;
             const state = managerEvalReport2LoadState;
             if (state.loading && state.promise) return state.promise;
+            const lastCompleteCache = managerEvalReport2Cache;
+            const lastCompleteCacheKey = managerEvalReport2CacheKey;
             state.loading = true;
             state.error = '';
             scheduleManagersRender(true);
             state.promise = Promise.all([
                 ensureDatasetLoaded('master', 'full', force ? { force: true, preserveRequestedMode: true } : {}),
+                ensureDatasetLoaded('warehouseAssignedItems', 'full', force ? { force: true, preserveRequestedMode: true } : {}),
                 loadManagerEvalReportSettings(false)
             ]).then(() => {
                 if (!isDatasetLoaded('master', 'full')) throw new Error('The complete master inventory snapshot is not available yet.');
+                if (!isDatasetLoaded('warehouseAssignedItems', 'full')) throw new Error('The complete Assigned Items snapshot is not available yet.');
                 invalidateManagerEvalReport2Cache();
                 state.lastLoadedAt = new Date().toISOString();
                 state.lastSourceUpdatedAt = getManagerEvalReport2LatestSourceUpdate();
                 state.error = '';
-                if (force) showToast('Eval Reports #2 Refreshed', `Loaded ${fullInventory.length} complete Park Hill inventory rows.`);
+                if (force) showToast('Eval Reports #2 Refreshed', `Loaded ${fullInventory.length} inventory rows and ${warehouseAssignedItemsInventory.length} assignment records.`);
                 return getManagerEvalReport2Index();
             }).catch((error) => {
-                state.error = getFriendlyBackendErrorMessage(error, 'Could not load the complete inventory for Eval Reports #2.');
+                if (!managerEvalReport2Cache && lastCompleteCache) {
+                    managerEvalReport2Cache = lastCompleteCache;
+                    managerEvalReport2CacheKey = lastCompleteCacheKey;
+                }
+                state.error = getFriendlyBackendErrorMessage(error, 'Could not load the complete inventory and Assigned Items data for Eval Reports #2.');
                 reportSemanticHealthEvent('eval_report_2_load_failed', 'eval_reports_2', 'EVAL_REPORT_2_LOAD_FAILED', {});
                 if (force) showToast('Refresh Failed', state.error, true);
                 return managerEvalReport2Cache;
@@ -118373,13 +118395,16 @@ C.14.043 C.15.000
         function getManagerEvalReport2Index() {
             const api = getManagerEvalReports2Api();
             if (!api) return null;
-            if (!isDatasetLoaded('master', 'full')) return managerEvalReport2Cache;
+            if ((managerEvalReport2LoadState.loading || managerEvalReport2LoadState.error) && managerEvalReport2Cache) return managerEvalReport2Cache;
+            if (!isDatasetLoaded('master', 'full') || !isDatasetLoaded('warehouseAssignedItems', 'full')) return managerEvalReport2Cache;
             const currentSeason = getConfiguredCurrentSeasonCode();
             const currentSalesYear = getConfiguredCurrentSalesYearCode();
             const nextTarget = getConfiguredNextSaleSeasonTarget();
             const cacheKey = [
                 getDatasetLoadSignature('master'),
                 fullInventory.length,
+                getDatasetLoadSignature('warehouseAssignedItems'),
+                warehouseAssignedItemsInventory.length,
                 resolvedViewStateEpoch,
                 currentSeason,
                 currentSalesYear,
@@ -118392,7 +118417,8 @@ C.14.043 C.15.000
             ].join('::');
             if (managerEvalReport2Cache && managerEvalReport2CacheKey === cacheKey) return managerEvalReport2Cache;
             const startedAt = performance.now();
-            managerEvalReport2Cache = api.classifyScriptCompatibleRows(fullInventory, {
+            const assignmentModel = api.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
+            managerEvalReport2Cache = api.classifyScriptCompatibleRows(assignmentModel.rows, {
                 currentSeason,
                 currentSalesYear,
                 nextSeason: nextTarget.season,
@@ -118400,6 +118426,12 @@ C.14.043 C.15.000
                 settings: managerEvalReportSettings,
                 now: new Date()
             });
+            managerEvalReport2Cache.assignedToOptions = assignmentModel.assignedToOptions;
+            managerEvalReport2Cache.assignmentStats = {
+                assignmentCount: assignmentModel.assignmentCount,
+                matchedCount: assignmentModel.matchedCount,
+                unassignedCount: assignmentModel.unassignedCount
+            };
             managerEvalReport2CacheKey = cacheKey;
             const elapsed = performance.now() - startedAt;
             if (elapsed > 500) {
@@ -118426,7 +118458,8 @@ C.14.043 C.15.000
         }
 
         function getManagerEvalReport2AssignedToOptions() {
-            return getManagerEvalReportFilterOptions(Array.isArray(fullInventory) ? fullInventory : []).assignedTo;
+            const index = getManagerEvalReport2Index();
+            return index && Array.isArray(index.assignedToOptions) ? index.assignedToOptions.slice() : [];
         }
 
         function getManagerEvalReport2LocationOptions(rows = null) {
@@ -118560,12 +118593,14 @@ C.14.043 C.15.000
         function getManagerEvalReport2InquiryModel() {
             const api = getManagerEvalReports2Api();
             if (!api) return null;
-            return api.buildItemInquiryModel(getManagerEvalReport2Rows(), {
+            const model = api.buildItemInquiryModel(getManagerEvalReport2Rows(), {
                 assignedTo: managerEvalReport2InquiryAssignedTo,
                 locationCode: managerEvalReport2InquiryLocationCode,
                 commonName: managerEvalReport2InquiryCommonName,
                 contSize: managerEvalReport2InquiryContSize
             });
+            model.options.assignedTo = getManagerEvalReport2AssignedToOptions();
+            return model;
         }
 
         function renderManagerEvalReport2InquirySection(title = '', fields = [], rows = []) {
@@ -118606,19 +118641,19 @@ C.14.043 C.15.000
             if (!canViewManagerEvalReports()) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Eval Reports #2 is available only to Dylan and Megan.</div>';
             const api = getManagerEvalReports2Api();
             if (!api) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Eval Reports #2 could not start. Refresh the app to load the report engine.</div>';
-            if (!isDatasetLoaded('master', 'full') && !managerEvalReport2LoadState.loading && !managerEvalReport2Cache) setTimeout(() => loadManagerEvalReports2(false), 0);
+            if ((!isDatasetLoaded('master', 'full') || !isDatasetLoaded('warehouseAssignedItems', 'full')) && !managerEvalReport2LoadState.loading && !managerEvalReport2Cache) setTimeout(() => loadManagerEvalReports2(false), 0);
             const index = getManagerEvalReport2Index();
-            if (!index && managerEvalReport2LoadState.loading) return '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center"><div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-emerald-100 border-t-[#007a4d]"></div><div class="mt-3 text-sm font-black text-slate-700">Loading the complete Park Hill inventory...</div><div class="mt-1 text-[11px] font-bold text-slate-400">Counts will appear only after every ph_master_inventory row is loaded.</div></div>';
-            if (!index) return `<div class="rounded-2xl border border-red-200 bg-red-50 p-6 text-center"><div class="text-sm font-black text-red-700">${escapeHtml(managerEvalReport2LoadState.error || 'The complete inventory snapshot is not available.')}</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white" onclick="return loadManagerEvalReports2(true)">Retry</button></div>`;
+            if (!index && managerEvalReport2LoadState.loading) return '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center"><div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-emerald-100 border-t-[#007a4d]"></div><div class="mt-3 text-sm font-black text-slate-700">Loading complete inventory and assignments...</div><div class="mt-1 text-[11px] font-bold text-slate-400">Counts will appear only after ph_master_inventory and ph_warehouse_assigned_items are fully loaded.</div></div>';
+            if (!index) return `<div class="rounded-2xl border border-red-200 bg-red-50 p-6 text-center"><div class="text-sm font-black text-red-700">${escapeHtml(managerEvalReport2LoadState.error || 'The complete inventory and Assigned Items snapshots are not available.')}</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white" onclick="return loadManagerEvalReports2(true)">Retry</button></div>`;
             const meta = getManagerEvalReport2Meta();
             const sourceUpdated = managerEvalReport2LoadState.lastSourceUpdatedAt || getManagerEvalReport2LatestSourceUpdate();
             const statusHtml = managerEvalReport2LoadState.error
                 ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">Refresh failed; the last complete results remain visible. ${escapeHtml(managerEvalReport2LoadState.error)}</div>`
                 : managerEvalReport2LoadState.loading
-                    ? '<div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-800">Refreshing the complete inventory; current complete results remain visible.</div>'
+                    ? '<div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-800">Refreshing complete inventory and assignments; current complete results remain visible.</div>'
                     : '';
             const modeButton = (mode, label, icon) => `<button type="button" class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border px-4 text-[10px] font-black uppercase tracking-[0.12em] ${managerEvalReport2Mode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-emerald-200 bg-white text-emerald-700'}" onclick="return setManagerEvalReport2Mode('${mode}')"><i class="ph-bold ${icon}"></i>${label}</button>`;
-            return `<div class="space-y-4">${statusHtml}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Complete read-only ph_master_inventory snapshot</div><div class="mt-1 text-xl font-black text-slate-900">Eval Reports #2 — ${escapeHtml(meta.label)}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Apps Script-compatible rules through sales year ${escapeHtml(String(index.currentSalesYear % 100).padStart(2, '0'))}; next target ${escapeHtml(index.nextSeason)} ${escapeHtml(String(index.nextSalesYear % 100).padStart(2, '0'))}. ${sourceUpdated ? `Source updated ${escapeHtml(formatInventoryEditMockTimestamp(sourceUpdated))}.` : ''}</div></div><div class="flex flex-wrap gap-2"><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(String(fullInventory.length))} source rows</span><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${managerEvalReport2LoadState.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerEvalReports2(true)"><i class="ph-bold ph-arrows-clockwise mr-1"></i>${managerEvalReport2LoadState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="return exportManagerEvalReport2ToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button></div></div><div class="mt-4 flex flex-wrap gap-2">${modeButton('reports', 'Reports', 'ph-chart-bar')}${modeButton('inquiry', 'Item Inquiry', 'ph-magnifying-glass')}</div></div>${renderManagerEvalReportSettingsPanel()}${managerEvalReport2Mode === 'inquiry' ? renderManagerEvalReport2InquiryPanel() : renderManagerEvalReport2ReportsPanel()}</div>`;
+            return `<div class="space-y-4">${statusHtml}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Complete read-only inventory + Assigned Items snapshot</div><div class="mt-1 text-xl font-black text-slate-900">Eval Reports #2 — ${escapeHtml(meta.label)}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Assigned Items is authoritative. Apps Script-compatible rules run through sales year ${escapeHtml(String(index.currentSalesYear % 100).padStart(2, '0'))}; next target ${escapeHtml(index.nextSeason)} ${escapeHtml(String(index.nextSalesYear % 100).padStart(2, '0'))}. ${sourceUpdated ? `Source updated ${escapeHtml(formatInventoryEditMockTimestamp(sourceUpdated))}.` : ''}</div></div><div class="flex flex-wrap gap-2"><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(String(fullInventory.length))} inventory rows</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">${escapeHtml(String(index.assignmentStats ? index.assignmentStats.assignmentCount : warehouseAssignedItemsInventory.length))} assignments</span><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${managerEvalReport2LoadState.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerEvalReports2(true)"><i class="ph-bold ph-arrows-clockwise mr-1"></i>${managerEvalReport2LoadState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="return exportManagerEvalReport2ToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button></div></div><div class="mt-4 flex flex-wrap gap-2">${modeButton('reports', 'Reports', 'ph-chart-bar')}${modeButton('inquiry', 'Item Inquiry', 'ph-magnifying-glass')}</div></div>${renderManagerEvalReportSettingsPanel()}${managerEvalReport2Mode === 'inquiry' ? renderManagerEvalReport2InquiryPanel() : renderManagerEvalReport2ReportsPanel()}</div>`;
         }
 
         function renderManagerEvalReport2Records() {
@@ -127732,6 +127767,8 @@ C.14.043 C.15.000
             });
 
             clearWarehouseAssignedItemCaches();
+            invalidateManagerEvalReport2Cache();
+            if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) scheduleManagersRender(true);
             return appliedCount;
         }
 

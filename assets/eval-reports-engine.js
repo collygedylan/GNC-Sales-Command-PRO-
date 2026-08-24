@@ -91,7 +91,63 @@
     }
 
     function normalizeItemCode(row) {
-        return textValue(row, ['ITEMCODE', 'itemcode']).toUpperCase();
+        return textValue(row, ['ITEMCODE', 'itemcode', 'itemcode_normalized']).toUpperCase();
+    }
+
+    function normalizeAssignmentGenus(row) {
+        return textValue(row, ['GENUSNAME', 'genusname', 'genusname_normalized', 'GENUS_NAME', 'genus_name'])
+            .toLowerCase()
+            .replace(/\s+/g, ' ');
+    }
+
+    function buildAuthoritativeAssignmentKey(row) {
+        const itemCode = normalizeItemCode(row);
+        if (!itemCode) return '';
+        return `${itemCode}|${normalizeAssignmentGenus(row)}`;
+    }
+
+    function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows) {
+        const sourceInventory = Array.isArray(inventoryRows) ? inventoryRows.filter(Boolean) : [];
+        const sourceAssignments = Array.isArray(assignmentRows) ? assignmentRows.filter(Boolean) : [];
+        const assignmentByKey = new Map();
+        const assignedNames = new Map();
+        let hasUnassigned = false;
+
+        sourceAssignments.forEach((row) => {
+            const key = buildAuthoritativeAssignmentKey(row);
+            if (!key) return;
+            const assignedTo = getAssignedTo(row);
+            assignmentByKey.set(key, assignedTo);
+            if (!assignedTo) {
+                hasUnassigned = true;
+                return;
+            }
+            const normalizedName = assignedTo.toLowerCase();
+            if (!assignedNames.has(normalizedName)) assignedNames.set(normalizedName, assignedTo);
+        });
+
+        let matchedCount = 0;
+        const rows = sourceInventory.map((row) => {
+            const key = buildAuthoritativeAssignmentKey(row);
+            const matched = !!key && assignmentByKey.has(key);
+            const assignedTo = matched ? String(assignmentByKey.get(key) || '').trim() : '';
+            if (matched) matchedCount += 1;
+            if (!assignedTo) hasUnassigned = true;
+            return Object.assign({}, row, {
+                ASSIGNEDTO: assignedTo,
+                assignedto: assignedTo
+            });
+        });
+
+        const assignedToOptions = Array.from(assignedNames.values()).sort(compareInquiryOptions);
+        if (hasUnassigned) assignedToOptions.unshift(UNASSIGNED_INQUIRY_LABEL);
+        return {
+            rows,
+            assignedToOptions,
+            assignmentCount: assignmentByKey.size,
+            matchedCount,
+            unassignedCount: rows.length - rows.filter((row) => getAssignedTo(row)).length
+        };
     }
 
     function normalizeSeason(row) {
@@ -586,6 +642,8 @@
         compareRows,
         classifyRows,
         classifyScriptCompatibleRows,
+        buildAuthoritativeAssignmentKey,
+        buildAuthoritativeAssignmentModel,
         buildItemInquiryModel
     });
 })(typeof window !== 'undefined' ? window : globalThis);
