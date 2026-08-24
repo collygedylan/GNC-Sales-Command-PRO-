@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.24.03';
+  const release = 'V2026.08.24.04';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.24.03');
+  assert.equal(packageJson.version, '2026.08.24.04');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1197,6 +1197,16 @@ test('request completion delivery is leased, idempotent, threaded, and independe
   assert.match(appsScriptBackend, /worker: 'supabase_edge_request_delivery'/);
   assert.match(html, /Completed &mdash; Sending/);
   assert.match(html, /Delivery Needs Attention/);
+});
+
+test('plant request submitted and completed emails always include the required trio and recorded submitter', () => {
+  assert.match(appsScriptBackend, /const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object\.freeze\(\[[\s\S]*EMAIL_APPROVAL_USER_EMAILS_\.dylan_collyge[\s\S]*EMAIL_APPROVAL_USER_EMAILS_\.kayla_knepp[\s\S]*EMAIL_APPROVAL_USER_EMAILS_\.jd_jones[\s\S]*\]\)/);
+  assert.match(appsScriptBackend, /function collectRequestSubmitterEmails_\(payload\)[\s\S]*request_created_by_email[\s\S]*REQUEST_CREATED_BY_EMAIL/);
+  assert.match(appsScriptBackend, /const isRequestLifecycleEmail = emailType === 'new_request' \|\| emailType === 'request_complete'/);
+  assert.match(appsScriptBackend, /const recipients = dedupeEmailAddresses_\(\[[\s\S]*requestLifecycleRequiredRecipients,[\s\S]*requestSubmitterEmails,/);
+  assert.match(appsScriptBackend, /function buildRequestDeliveryEmailPayload_[\s\S]*submittedByEmail: requestCreatedByEmail[\s\S]*internalRecipients: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_\.slice\(\)/);
+  assert.match(html, /const REQUEST_EMAIL_REQUIRED_RECIPIENTS = Object\.freeze\(\['dylan_collyge@greenleafnursery\.com', 'kayla_knepp@greenleafnursery\.com', 'jd_jones@greenleafnursery\.com'\]\)/);
+  assert.match(html, /existingThreadRecord\.recipients, \.\.\.REQUEST_EMAIL_REQUIRED_RECIPIENTS, \.\.\.linkedRepEmails, \.\.\.submitterRecipientEmails/);
 });
 
 test('V12 synchronizes password changes and exposes user-initiated passkeys to every eligible account', () => {

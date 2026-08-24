@@ -410,12 +410,18 @@ const REQUEST_GALLERY_PROPERTY_CACHE_ENABLED = false;
 const EMAIL_APPROVAL_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const EMAIL_APPROVAL_USER_EMAILS_ = Object.freeze({
   dylan_collyge: 'dylan_collyge@greenleafnursery.com',
+  kayla_knepp: 'kayla_knepp@greenleafnursery.com',
   jd_jones: 'jd_jones@greenleafnursery.com',
   megan_kelly: 'megan_kelly@greenleafnursery.com',
   mitch_kaiser: 'mitch_kaiser@greenleafnursery.com',
   sharon_combs: 'sharon_combs@greenleafnursery.com',
   sunday_ellis: 'sunday_ellis@greenleafnursery.com'
 });
+const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
+  EMAIL_APPROVAL_USER_EMAILS_.dylan_collyge,
+  EMAIL_APPROVAL_USER_EMAILS_.kayla_knepp,
+  EMAIL_APPROVAL_USER_EMAILS_.jd_jones
+]);
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -7079,6 +7085,64 @@ function getEvalTaskCompletionSummary_(payload) {
   };
 }
 
+function collectRequestSubmitterEmails_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const requestCreator = safePayload.requestCreator && typeof safePayload.requestCreator === 'object'
+    ? safePayload.requestCreator
+    : {};
+  const candidates = [];
+  const addCandidate = function(email, username, display) {
+    const resolved = normalizeEmailAddress_(resolveRequestRecipientEmail_(
+      firstNonEmptyRequestValue_(username, display, ''),
+      email
+    ));
+    if (isLikelyEmailAddress_(resolved)) candidates.push(resolved);
+  };
+  addCandidate(
+    firstNonEmptyRequestValue_(
+      safePayload.requestCreatedByEmail,
+      safePayload.request_created_by_email,
+      safePayload.requestCreatorEmail,
+      safePayload.creatorEmail,
+      safePayload.submittedByEmail,
+      safePayload.submitted_by_email,
+      requestCreator.creatorEmail,
+      requestCreator.email,
+      ''
+    ),
+    firstNonEmptyRequestValue_(
+      safePayload.requestCreatedByUsername,
+      safePayload.request_created_by_username,
+      safePayload.requestCreatorUsername,
+      safePayload.creatorUsername,
+      safePayload.submittedByUsername,
+      safePayload.submitted_by_username,
+      requestCreator.creatorUsername,
+      requestCreator.username,
+      ''
+    ),
+    firstNonEmptyRequestValue_(
+      safePayload.requestCreatedByDisplay,
+      safePayload.request_created_by_display,
+      safePayload.requestCreatorDisplay,
+      safePayload.creatorDisplay,
+      safePayload.submittedByDisplay,
+      safePayload.submitted_by_display,
+      requestCreator.creatorDisplay,
+      requestCreator.display,
+      ''
+    )
+  );
+  getRequestEmailPayloadItems_(safePayload).forEach(function(item) {
+    addCandidate(
+      firstNonEmptyRequestValue_(item && item.request_created_by_email, item && item.REQUEST_CREATED_BY_EMAIL, ''),
+      firstNonEmptyRequestValue_(item && item.request_created_by_username, item && item.REQUEST_CREATED_BY_USERNAME, ''),
+      firstNonEmptyRequestValue_(item && item.request_created_by_display, item && item.REQUEST_CREATED_BY_DISPLAY, '')
+    );
+  });
+  return dedupeEmailAddresses_(candidates);
+}
+
 function collectRequestRecipients_(payload) {
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
   const emailSubType = String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase();
@@ -7116,6 +7180,9 @@ function collectRequestRecipients_(payload) {
     payload && payload.recipients
   ]);
   const isRequestEmailFlow = emailType === 'new_request' || emailType.indexOf('request_') === 0;
+  const isRequestLifecycleEmail = emailType === 'new_request' || emailType === 'request_complete';
+  const requestLifecycleRequiredRecipients = isRequestLifecycleEmail ? REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ : [];
+  const requestSubmitterEmails = isRequestLifecycleEmail ? collectRequestSubmitterEmails_(payload) : [];
   const hasDylanRecipientOverride = payload && !isRequestEmailFlow && (
     payload.dylanRecipientOverride === true ||
     String(payload.recipientOverrideAppliedBy || payload.recipient_override_applied_by || '').trim().toLowerCase() === 'dylan_collyge'
@@ -7162,6 +7229,8 @@ function collectRequestRecipients_(payload) {
     blockClearingFallbackRecipients.push(requestedByEmail);
   }
   const recipients = dedupeEmailAddresses_([
+    requestLifecycleRequiredRecipients,
+    requestSubmitterEmails,
     payload.recipientEmails,
     payload.emailRecipients,
     payload.internalRecipients,
@@ -12468,6 +12537,9 @@ function getRequestDeliveryRows_(eventRow) {
 function buildRequestDeliveryEmailPayload_(eventRow, rows) {
   const firstRow = Array.isArray(rows) && rows.length ? rows[0] : {};
   const eventType = String(eventRow && eventRow.event_type || '').trim();
+  const requestCreatedByUsername = String(firstRow.request_created_by_username || '');
+  const requestCreatedByDisplay = String(firstRow.request_created_by_display || '');
+  const requestCreatedByEmail = String(firstRow.request_created_by_email || '');
   return {
     type: 'email',
     emailType: eventType === 'request_completed' ? 'request_complete' : 'new_request',
@@ -12480,10 +12552,17 @@ function buildRequestDeliveryEmailPayload_(eventRow, rows) {
     requestItems: Array.isArray(rows) ? rows : [],
     items: Array.isArray(rows) ? rows : [],
     requestIds: Array.isArray(rows) ? rows.map(function(row) { return row.unique_id; }).filter(Boolean) : [],
+    requestCreatedByUsername: requestCreatedByUsername,
+    requestCreatedByDisplay: requestCreatedByDisplay,
+    requestCreatedByEmail: requestCreatedByEmail,
+    submittedByUsername: requestCreatedByUsername,
+    submittedByDisplay: requestCreatedByDisplay,
+    submittedByEmail: requestCreatedByEmail,
+    internalRecipients: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.slice(),
     requestCreator: {
-      creatorUsername: String(firstRow.request_created_by_username || ''),
-      creatorDisplay: String(firstRow.request_created_by_display || ''),
-      creatorEmail: String(firstRow.request_created_by_email || ''),
+      creatorUsername: requestCreatedByUsername,
+      creatorDisplay: requestCreatedByDisplay,
+      creatorEmail: requestCreatedByEmail,
       selectedRepUsername: String(firstRow.request_selected_rep_username || ''),
       selectedRepDisplay: String(firstRow.request_selected_rep_display || ''),
       selectedRepEmail: String(firstRow.request_selected_rep_email || '')
