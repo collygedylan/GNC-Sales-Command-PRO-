@@ -66,6 +66,7 @@ test('release identifiers are synchronized', () => {
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
   assert.equal(packageJson.version, '2026.08.25.02');
+  assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
