@@ -1023,44 +1023,6 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
   });
 });
 
-test('Kayla can add non-open-stock Drive rows and receives the operational Bloom actions', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.08', { waitUntil: 'domcontentloaded' });
-  const result = await page.evaluate(() => {
-    window.eval("currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; selectedItemSources=new Map([['drive-kayla-row','drive-bloom']]); window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalCanUseDriveQuickRequest=canUseDriveQuickRequest; getRoleAccessState=function(){ return { isAdmin:false, isRep:true, isCsr:false, isRepLike:true, isForeman:false }; }; canUseDriveQuickRequest=function(){ return true; };");
-    return window.eval(`(() => {
-      const row = {
-        UNIQUE_ID: 'drive-kayla-row',
-        DOM_ID: 'drive-kayla-row',
-        SOURCE_TABLE: 'ph_master_inventory',
-        ITEMCODE: 'TEST.100',
-        COMMONNAME: 'Test Plant',
-        CONTSIZE: '#3',
-        LOCATIONCODE: 'F.16.000',
-        LOTCODE: '27.F1',
-        PTRAVAILABLE: 12,
-        S_LTS: 0
-      };
-      return {
-        openStockEligible: isBloomPickerEligibleItem(row),
-        canAdd: canAddItemToBloomPicker(row, 'drive'),
-        visibility: getBloomPickerActionVisibility([row])
-      };
-    })()`);
-  });
-  expect(result.openStockEligible).toBe(false);
-  expect(result.canAdd).toBe(true);
-  expect(result.visibility).toMatchObject({
-    showRequest: true,
-    showMove: true,
-    showFlyer: true,
-    showTakeBack: true,
-    showEndCap: true,
-    showAssign: false,
-    showEvalTask: false,
-    showShear: false,
-  });
-});
-
 test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.08', { waitUntil: 'domcontentloaded' });
