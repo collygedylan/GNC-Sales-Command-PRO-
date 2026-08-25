@@ -9793,7 +9793,7 @@ function applyReclassInquiryOverlays_(rows, overlays, now) {
       ['Location', getInventoryTransactionRowValue_(row, ['locationcode', 'LOCATIONCODE'], ''), expected.locationcode]
     ];
     const mismatch = checks.find(function(check) {
-      return normalizeInventoryTransactionComparable_(check[1]) !== normalizeInventoryTransactionComparable_(check[2]);
+      return normalizeInventoryTransactionCompareText_(check[1]) !== normalizeInventoryTransactionCompareText_(check[2]);
     });
     if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
     const values = {};

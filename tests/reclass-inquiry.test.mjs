@@ -41,7 +41,7 @@ function loadServerModel() {
     console,
     firstNonEmptyRequestValue_: firstNonEmptyValue,
     normalizeInventoryTransactionText_: (value) => String(value ?? '').trim(),
-    normalizeInventoryTransactionComparable_: (value) => String(value ?? '').trim().toUpperCase(),
+    normalizeInventoryTransactionCompareText_: (value) => String(value ?? '').trim().toUpperCase(),
     getInventoryTransactionRowUid_: (row) => String(firstNonEmptyValue(row?.unique_id, row?.UNIQUE_ID, '')).trim(),
     getInventoryTransactionRowValue_: (row, aliases, fallback = '') => {
       for (const alias of aliases) if (Object.hasOwn(row || {}, alias)) return row[alias] ?? '';
@@ -139,6 +139,25 @@ test('temporary row overlays stamp changed and cleared Location Notes without mu
   assert.equal(result.rows[1].values.locationnote, '');
   assert.equal(result.rows[1].values.ptronhand, '0');
   assert.deepEqual(rows, before);
+});
+
+test('Reclass identity validation uses the defined production comparison helper', () => {
+  const overlayStart = code.indexOf('function applyReclassInquiryOverlays_');
+  const overlayEnd = code.indexOf('function buildReclassInquiryReportModel_', overlayStart);
+  const overlayHandler = code.slice(overlayStart, overlayEnd);
+  assert.match(code, /function normalizeInventoryTransactionCompareText_\s*\(/);
+  assert.match(overlayHandler, /normalizeInventoryTransactionCompareText_/);
+  assert.doesNotMatch(overlayHandler, /normalizeInventoryTransactionComparable_/);
+});
+
+test('Reclass send uses the searchable in-app recipient picker instead of a browser prompt', () => {
+  const start = html.indexOf('async function applyArgosInventoryTransactionEmailRecipients');
+  const end = html.indexOf('function generateArgosInventoryTransactionId', start);
+  const recipientHandler = html.slice(start, end);
+  assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal/);
+  assert.match(recipientHandler, /requiredEmails:\s*requiredRecipients/);
+  assert.doesNotMatch(recipientHandler, /window\.prompt/);
+  assert.match(html, /placeholder="Type a name or email address\.\.\."/);
 });
 
 test('temporary overlays reject invalid hold codes, negative quantities, and stale identities', () => {
