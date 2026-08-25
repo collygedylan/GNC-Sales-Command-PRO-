@@ -403,8 +403,15 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function renderManagerEvalReport2ItemDetail\(\)/);
   assert.match(html, /Tap for details \/ press and hold to select/);
   assert.match(html, /\['LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'S_LTS', 'SALESNOTE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRAVAILABLE'\]/);
-  assert.match(html, /buildManagerEvalReport2DetailField\(row, 'HOLDSTOPBEGINDATE', \{ date: true \}\)/);
-  assert.match(html, /buildManagerEvalReport2DetailField\(row, 'LOCATIONPTN1'\)/);
+  assert.match(html, /const MANAGER_EVAL_REPORT2_EDITABLE_FIELDS = Object\.freeze/);
+  for (const field of ['HOLDSTOPCODE', 'HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 'PRIORITY', 'LOCATIONNOTE', 'LOCATIONPTN1', 'SUSPENDTO', 'SPECIALPULLER']) {
+    assert.match(html, new RegExp(`buildManagerEvalReport2EditableField\\(row, index, '${field}'\\)`));
+  }
+  assert.match(html, /buildManagerEvalReport2DetailField\(row, 'LOCATIONNOTEDATE', \{ date: true, rowIndex: index \}\)/);
+  assert.match(html, /function setManagerEvalReport2RowEditValue\(rowKey = '', fieldKey = '', value = ''\)/);
+  assert.match(html, /values\.LOCATIONNOTEDATE = getManagerEvalReportCentralDateKey\(\)/);
+  assert.match(html, /function ensureManagerEvalReport2ItemSelectedForEdit\(row = null\)/);
+  assert.match(html, /temporary email-only proposals/);
   assert.match(html, /function toggleManagerEvalReport2ItemSelection\(encodedKey = '', forceSelected = null\)/);
   assert.match(html, /function beginManagerEvalReport2SelectionMode\(\)/);
   assert.match(html, /MANAGER_EVAL_REPORT2_LONG_PRESS_MS = 450/);
@@ -415,6 +422,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function canViewManagerEvalReports2\(userOverride = ''\)/);
   assert.match(html, /key === 'dylan_collyge' \|\| key === 'megan_kelly' \|\| key === 'jd_jones'/);
   assert.match(html, /managerEvalReport2SelectedItemsByKey=new Map\(\)/);
+  assert.match(html, /managerEvalReport2EditsByRowKey=new Map\(\)/);
   assert.match(html, /managerEvalReport2LockedAssignedTo/);
   assert.match(html, /managerEvalReport2Cache\.rowsByItemCode = new Map\(\)/);
   assert.match(html, /function getManagerEvalReport2SelectedRows\(\)/);
@@ -442,5 +450,10 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /emailSubType: 'eval_reports_2_item_inquiry_excel'/);
   assert.match(html, /recipientsSelectedInApp: true/);
   assert.match(html, /shiftReportFormat: 'excel'/);
+  assert.match(html, /isManagerEvalReport2ExportCellEdited\(entry, column\)/);
+  assert.match(html, /rgb="FFFFF2CC"/);
+  assert.match(html, /proposedEditRowCount: context\.editSummary\.rowCount/);
+  assert.match(html, /proposedEditFieldCount: context\.editSummary\.fieldCount/);
+  assert.doesNotMatch(html.slice(html.indexOf('function setManagerEvalReport2RowEditValue'), html.indexOf('function isNamedManagerEvalReport2AssignedTo')), /supabase(Update|Insert|Delete|Rpc)|fetch\(/i);
   assert.match(html, /Eval Reports #2 is available only to Dylan, Megan, and JD/);
 });

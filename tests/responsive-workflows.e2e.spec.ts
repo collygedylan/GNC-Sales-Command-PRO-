@@ -18,7 +18,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 });
 
 test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     const access = getRoleAccessState('Admin', 'brandt_emerson');
@@ -125,7 +125,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -256,7 +256,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 preserves one-user selections and sends a reference-matched Item Inquiry workbook', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports2 = canViewManagerEvalReports2;
@@ -314,10 +314,30 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
         hasQueueHeader: detailHost.textContent.includes('Queue-style item details') && detailHost.textContent.includes('Alpha') && detailHost.textContent.includes('dylan_collyge'),
         counts: detailHost.textContent.includes('Report rows') && detailHost.textContent.includes('Expanded rows') && detailHost.textContent.includes('Locations'),
         requiredFields: ['LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'S_LTS', 'SALESNOTE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRAVAILABLE', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 'PRIORITY', 'LOCATIONNOTE', 'LOCATIONNOTEDATE', 'LOCATIONPTN1', 'SUSPENDTO', 'SPECIALPULLER'].every((field) => detailFieldNames.includes(field)),
-        dateFormat: detailHost.textContent.includes('2026-08-18') && detailHost.textContent.includes('2026-08-20'),
+        dateFormat: detailHost.querySelector('[data-manager-eval2-field="HOLDSTOPBEGINDATE"] [data-manager-eval2-edit-control]').value === '2026-08-18'
+          && detailHost.textContent.includes('2026-08-20'),
         missingDash: detailHost.textContent.includes('—'),
         controlsFit: detailHost.scrollWidth <= 391
       };
+      const locationNoteWrapper = detailHost.querySelector('[data-manager-eval2-edit-row="uid:mail-a"][data-manager-eval2-field="LOCATIONNOTE"]');
+      const locationNoteControl = locationNoteWrapper && locationNoteWrapper.querySelector('[data-manager-eval2-edit-control]');
+      locationNoteControl.value = 'Proposed updated field note';
+      handleManagerEvalReport2EditInput(locationNoteControl);
+      const editedLocationDateWrapper = detailHost.querySelector('[data-manager-eval2-edit-row="uid:mail-a"][data-manager-eval2-field="LOCATIONNOTEDATE"]');
+      const detailEditResult = {
+        autoSelected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode),
+        lockedAssignedTo: getManagerEvalReport2ExportContext(getManagerEvalReport2SelectedRows()).assignedTo,
+        editStats: getManagerEvalReport2EditStats(),
+        noteHighlighted: locationNoteWrapper.getAttribute('data-edited') === 'true',
+        noteDateHighlighted: editedLocationDateWrapper.getAttribute('data-edited') === 'true',
+        rowBadge: detailHost.querySelector('[data-manager-eval2-row-edit-count]').textContent,
+        sourceUnchanged: getManagerEvalReport2Index().rowByKey.get('uid:mail-a').LOCATIONNOTE
+      };
+      locationNoteControl.value = 'Review first row';
+      handleManagerEvalReport2EditInput(locationNoteControl);
+      detailEditResult.revertedEditStats = getManagerEvalReport2EditStats();
+      detailEditResult.revertedHighlight = locationNoteWrapper.getAttribute('data-edited');
+      clearManagerEvalReport2Selection(true);
       closeManagerEvalReport2ItemDetail();
       const stateAfterDetailHtml = renderManagerEvalReport2ReportsPanel();
       const stateAfterDetail = {
@@ -343,6 +363,10 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
       toggleManagerEvalReport2ItemSelection(encodeURIComponent(deltaGroup.key), true);
       const selectedBefore = getManagerEvalReport2SelectedRows().map((row) => row.UNIQUE_ID);
       const selectedItemsBefore = getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode);
+      setManagerEvalReport2RowEditValue('uid:mail-a', 'LOCATIONNOTE', 'Proposed updated field note');
+      setManagerEvalReport2RowEditValue('uid:mail-a', 'HOLDSTOPBEGINDATE', '2026-08-25');
+      const editsBeforeSend = getManagerEvalReport2EditStats();
+      const sourceUnchangedBeforeSend = getManagerEvalReport2Index().rowByKey.get('uid:mail-a').LOCATIONNOTE;
       setManagerEvalReport2Filter('assignedto', 'megan_kelly');
       const assignedToStayedLocked = getManagerEvalReportRowAssignedTo(getManagerEvalReport2VisibleItemGroups()[0].representativeRow);
       const host = document.createElement('div');
@@ -364,6 +388,7 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
       openGroupedBloomNcrRecipientModal = async () => [];
       await emailSelectedManagerEvalReport2Rows();
       const retainedAfterCancel = getManagerEvalReport2SelectedItems().length;
+      const editsAfterCancel = getManagerEvalReport2EditStats();
       openGroupedBloomNcrRecipientModal = async () => ['megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com', 'MEGAN_KELLY@greenleafnursery.com'];
       postGoogleScriptEmailPayload = async (payload) => {
         postCalls += 1;
@@ -373,7 +398,9 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
       };
       await emailSelectedManagerEvalReport2Rows();
       const retainedAfterFailure = getManagerEvalReport2SelectedItems().length;
+      const editsAfterFailure = getManagerEvalReport2EditStats();
       await emailSelectedManagerEvalReport2Rows();
+      const editsAfterSuccess = getManagerEvalReport2EditStats();
       const decodeStoredZipEntry = (base64, targetName) => {
         const binary = atob(base64);
         const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
@@ -399,6 +426,7 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
       const headers = headerRow ? Array.from(headerRow.getElementsByTagName('t'), (cell) => cell.textContent || '') : [];
       return {
         detailResult,
+        detailEditResult,
         stateAfterDetail,
         longPressSelected,
         scrollMovementCancelled,
@@ -408,7 +436,12 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
         selectedBefore,
         assignedToStayedLocked,
         retainedAfterCancel,
+        editsAfterCancel,
         retainedAfterFailure,
+        editsAfterFailure,
+        editsBeforeSend,
+        editsAfterSuccess,
+        sourceUnchangedBeforeSend,
         selectedAfter: getManagerEvalReport2SelectedItems().length,
         itemCards,
         longPressWired,
@@ -418,6 +451,8 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
         recipients: sentPayload && sentPayload.recipientEmails,
         itemsCount: sentPayload && sentPayload.itemsCount,
         selectedItemcodeCount: sentPayload && sentPayload.selectedItemcodeCount,
+        proposedEditRowCount: sentPayload && sentPayload.proposedEditRowCount,
+        proposedEditFieldCount: sentPayload && sentPayload.proposedEditFieldCount,
         format: sentPayload && sentPayload.shiftReportFormat,
         subtype: sentPayload && sentPayload.emailSubType,
         assignedTo: sentPayload && sentPayload.assignedTo,
@@ -439,7 +474,9 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
           noAssignmentOrReportsColumns: !headers.includes('ASSIGNEDTO') && !headers.includes('REPORTS'),
           numericCells: worksheetXml.includes('t="n"'),
           dateFormat: stylesXml.includes('formatCode="yyyy-mm-dd"'),
-          referenceStyle: stylesXml.includes('rgb="FF00B050"') && stylesXml.includes('Times New Roman') && stylesXml.includes('<b/>')
+          referenceStyle: stylesXml.includes('rgb="FF00B050"') && stylesXml.includes('Times New Roman') && stylesXml.includes('<b/>'),
+          proposedValues: worksheetXml.includes('Proposed updated field note') && worksheetXml.includes('<c r="J2" s="8" t="n">'),
+          changedCellsHighlighted: worksheetXml.includes('<c r="R2" s="9" t="inlineStr">') && worksheetXml.includes('<c r="S2" s="8" t="n">') && stylesXml.includes('rgb="FFFFF2CC"')
         },
         controlsFit: host.scrollWidth <= 391
       };
@@ -464,6 +501,17 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
     missingDash: true,
     controlsFit: true,
   });
+  expect(result.detailEditResult).toEqual({
+    autoSelected: ['0001.001.1'],
+    lockedAssignedTo: 'dylan_collyge',
+    editStats: { rowCount: 1, fieldCount: 2 },
+    noteHighlighted: true,
+    noteDateHighlighted: true,
+    rowBadge: '2 Edited',
+    sourceUnchanged: 'Review first row',
+    revertedEditStats: { rowCount: 0, fieldCount: 0 },
+    revertedHighlight: 'false',
+  });
   expect(result.stateAfterDetail).toEqual({ closed: true, preservedFlow: true });
   expect(result.longPressSelected).toBe(true);
   expect(result.scrollMovementCancelled).toBe(true);
@@ -473,7 +521,12 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
   expect(result.selectedBefore).toEqual(['mail-a', 'mail-b', 'mail-d1', 'mail-d2']);
   expect(result.assignedToStayedLocked).toBe('dylan_collyge');
   expect(result.retainedAfterCancel).toBe(2);
+  expect(result.editsAfterCancel).toEqual({ rowCount: 1, fieldCount: 3 });
   expect(result.retainedAfterFailure).toBe(2);
+  expect(result.editsAfterFailure).toEqual({ rowCount: 1, fieldCount: 3 });
+  expect(result.editsBeforeSend).toEqual({ rowCount: 1, fieldCount: 3 });
+  expect(result.editsAfterSuccess).toEqual({ rowCount: 0, fieldCount: 0 });
+  expect(result.sourceUnchangedBeforeSend).toBe('Review first row');
   expect(result.selectedAfter).toBe(0);
   expect(result.itemCards).toBe(1);
   expect(result.longPressWired).toBe(true);
@@ -483,6 +536,8 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
   expect(result.recipients).toEqual(['megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
   expect(result.itemsCount).toBe(4);
   expect(result.selectedItemcodeCount).toBe(2);
+  expect(result.proposedEditRowCount).toBe(1);
+  expect(result.proposedEditFieldCount).toBe(3);
   expect(result.format).toBe('excel');
   expect(result.subtype).toBe('eval_reports_2_item_inquiry_excel');
   expect(result.assignedTo).toBe('dylan_collyge');
@@ -505,13 +560,15 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
     numericCells: true,
     dateFormat: true,
     referenceStyle: true,
+    proposedValues: true,
+    changedCellsHighlighted: true,
   });
   expect(result.controlsFit).toBe(true);
 });
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -590,7 +647,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
 test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
   const desktop = await page.evaluate(() => window.eval(`(() => {
@@ -668,7 +725,7 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -737,7 +794,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -968,7 +1025,7 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
 
 test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const requestView = document.getElementById('view-request');
     const container = document.getElementById('request-content');
@@ -1475,7 +1532,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.25.04', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
