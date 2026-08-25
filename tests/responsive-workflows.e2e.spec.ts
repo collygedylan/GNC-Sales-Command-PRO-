@@ -890,7 +890,7 @@ test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ p
     if (!requestView || !container) throw new Error('Request view unavailable');
     document.body.classList.add('ios-device', 'viewport-phone', 'current-view-request');
     requestView.classList.remove('hidden');
-    window.eval("window.__qaOriginalProtectedTokens=getProtectedUserTokens; getProtectedUserTokens=function(){ return new Set(['kayla_knepp']); }; requestsInventory=[{ UNIQUE_ID:'REQ-IOS-KAYLA-1', DOM_ID:'req-ios-kayla-1', REQUEST_HISTORY:false, REQ_ARCHIVED:false }]; activeReqTab='pending'; isMultiSelectMode=false;");
+    window.eval("currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; requestsInventory=[{ UNIQUE_ID:'REQ-IOS-KAYLA-1', DOM_ID:'req-ios-kayla-1', REQUEST_HISTORY:false, REQ_ARCHIVED:false }]; activeReqTab='pending'; isMultiSelectMode=false;");
     container.innerHTML = '<div class="item-row app-smart-card" data-dom-id="req-ios-kayla-1" data-request-uid="REQ-IOS-KAYLA-1" data-request-history="false"><div class="request-card-test-content">Kayla request</div></div>';
     window.eval('decorateRequestRows()');
     const row = container.querySelector<HTMLElement>('.request-swipe-row');
@@ -918,7 +918,6 @@ test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ p
       inlineFallbackCount: container.querySelectorAll('.request-inline-remove-action').length,
     };
     (window as any).closeRequestSwipe(row);
-    window.eval("getProtectedUserTokens=window.__qaOriginalProtectedTokens; delete window.__qaOriginalProtectedTokens;");
     return snapshot;
   });
 
