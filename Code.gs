@@ -9817,17 +9817,24 @@ function applyReclassInquiryOverlays_(rows, overlays, now) {
     });
     if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
     const values = {};
+    const changedFields = [];
     const overlayValues = overlay.values && typeof overlay.values === 'object' ? overlay.values : {};
     RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) {
       if (field.readOnly) {
         values[field.key] = getReclassInquiryExactValue_(row, field.aliases, '');
         return;
       }
-      values[field.key] = normalizeReclassInquiryOverlayValue_(field, Object.prototype.hasOwnProperty.call(overlayValues, field.key) ? overlayValues[field.key] : getReclassInquiryExactValue_(row, field.aliases, ''));
+      const originalValue = normalizeReclassInquiryOverlayValue_(field, getReclassInquiryExactValue_(row, field.aliases, ''));
+      const requestedValue = normalizeReclassInquiryOverlayValue_(field, Object.prototype.hasOwnProperty.call(overlayValues, field.key) ? overlayValues[field.key] : originalValue);
+      values[field.key] = requestedValue;
+      if (requestedValue !== originalValue) changedFields.push(field.key);
     });
     const originalLocationNote = String(getReclassInquiryExactValue_(row, ['locationnote', 'LOCATIONNOTE'], '')).trim();
-    if (String(values.locationnote || '') !== originalLocationNote) values.locationnotedate = stamp;
-    reportRows.push({ unique_id: uid, values: values });
+    if (String(values.locationnote || '') !== originalLocationNote) {
+      values.locationnotedate = stamp;
+      if (changedFields.indexOf('locationnotedate') === -1) changedFields.push('locationnotedate');
+    }
+    reportRows.push({ unique_id: uid, values: values, changedFields: changedFields });
   }
   return { ok: true, rows: reportRows };
 }
@@ -9856,50 +9863,47 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     return getReclassInquirySeasonRank_(a.season) - getReclassInquirySeasonRank_(b.season);
   });
   const actor = payload && payload.actor && typeof payload.actor === 'object' ? payload.actor : {};
+  const editedRows = reportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
   return {
     identity: identity,
     seasons: seasons,
     rows: reportRows,
     transaction: payload && payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {},
     actorDisplay: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, 'Unknown User')),
-    submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a')
+    submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a'),
+    editSummary: {
+      rowCount: editedRows.length,
+      fieldCount: editedRows.reduce(function(total, row) { return total + row.changedFields.length; }, 0)
+    }
   };
 }
 
 function buildReclassInquiryReportHtml_(model, printMode) {
   const safeModel = model || {};
-  const transaction = safeModel.transaction || {};
   const esc = escapeEmailHtml_;
+  const editSummary = safeModel.editSummary || {};
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
     return '<div class="identity-cell"><span>' + esc(field.label) + '</span><strong>' + esc(safeModel.identity && safeModel.identity[field.key] || '') + '</strong></div>';
   }).join('');
-  const seasonHead = RECLASS_INQUIRY_SEASON_FIELDS_.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
-  const seasonBody = (safeModel.seasons || []).map(function(row) {
-    return '<tr>' + RECLASS_INQUIRY_SEASON_FIELDS_.map(function(field) { return '<td>' + esc(row[field.key] || '') + '</td>'; }).join('') + '</tr>';
-  }).join('');
   const rowHead = RECLASS_INQUIRY_ROW_FIELDS_.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
   const rowBody = (safeModel.rows || []).map(function(row) {
-    return '<tr>' + RECLASS_INQUIRY_ROW_FIELDS_.map(function(field) { return '<td>' + esc(row.values && row.values[field.key] || '') + '</td>'; }).join('') + '</tr>';
+    const changedFields = Array.isArray(row && row.changedFields) ? row.changedFields : [];
+    return '<tr>' + RECLASS_INQUIRY_ROW_FIELDS_.map(function(field) {
+      const edited = changedFields.indexOf(field.key) !== -1;
+      const rawValue = row && row.values && Object.prototype.hasOwnProperty.call(row.values, field.key) ? row.values[field.key] : '';
+      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</td>';
+    }).join('') + '</tr>';
   }).join('');
-  const requestFields = [
-    ['Qty', transaction.quantity], ['Proposed Item', transaction.newItemCode], ['Proposed Lot/Season', transaction.newLotCode],
-    ['Proposed Location', transaction.newLocationCode], ['Source', transaction.source], ['Reason', transaction.reason],
-    ['Request Action', transaction.requestAction], ['Hold/Stop Reason', transaction.holdStopReason], ['Desig Cust', transaction.desigCust],
-    ['Desig Item', transaction.desigItem], ['Desig Loc', transaction.desigLoc], ['Last Planting Date', transaction.lastPltgDate]
-  ];
-  const requestHtml = requestFields.map(function(pair) { return '<div class="request-cell"><span>' + esc(pair[0]) + '</span><strong>' + esc(pair[1] == null ? '' : pair[1]) + '</strong></div>'; }).join('');
-  const legend = 'Plant Grp = Plant Group; Cont. = Container; Sale Yr = Sale Year; Desig = Designated; OH = On Hand; Rev = Reviewed; Avail = Available; Loc Note Dt = Location Note Date; PTN = Pull Tag Note; H/S = Hold/Stop.';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.32in}*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.2}h1{margin:0 0 3px;font-size:15pt}h2{margin:8px 0 3px;font-size:9pt;text-transform:uppercase}.meta{margin-bottom:6px}.identity,.request-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.request-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n),.request-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4),.request-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span,.request-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong,.request-cell strong{display:block;font-size:8pt}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{font-size:7pt;text-align:left}td{font-size:8pt}.season-table{max-width:7.5in}.location-table th:nth-child(11),.location-table td:nth-child(11){width:.62in}.location-table th:nth-child(12),.location-table td:nth-child(12),.location-table th:nth-child(18),.location-table td:nth-child(18){width:.78in}.legend{margin-top:5px;font-size:7pt}.notes{margin-top:7px;break-inside:avoid}.notes-line{height:18px;border-bottom:1px solid #000}.no-color{color:#000;background:#fff}' +
-    '</style></head><body class="no-color"><h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + '</div>' +
-    '<div class="identity">' + identityCells + '</div><h2>Reclass Request</h2><div class="request-grid">' + requestHtml + '</div><h2>Season Summary</h2><table class="season-table"><thead><tr>' + seasonHead + '</tr></thead><tbody>' + seasonBody + '</tbody></table>' +
-    '<h2>Location / Lot Item Inquiry</h2><table class="location-table"><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table><div class="legend"><strong>Abbreviations:</strong> ' + esc(legend) + '</div><div class="notes"><strong>Field Notes</strong><div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div></div></body></html>';
+    '@page{size:Letter landscape;margin:.32in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.2}h1{margin:0 0 3px;font-size:15pt}h2{margin:8px 0 3px;font-size:9pt;text-transform:uppercase}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong{display:block;font-size:8pt}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{font-size:7pt;text-align:left}td{font-size:8pt}.location-table th:nth-child(11),.location-table td:nth-child(11){width:.62in}.location-table th:nth-child(12),.location-table td:nth-child(12),.location-table th:nth-child(18),.location-table td:nth-child(18){width:.78in}.edited-cell{background:#fff176!important}' +
+    '</style></head><body><h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div>' +
+    '<div class="identity">' + identityCells + '</div><h2>Location / Lot Item Inquiry</h2><table class="location-table"><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
 }
 
 function buildReclassInquiryReportText_(model) {
   const safeModel = model || {};
   const identity = safeModel.identity || {};
-  const transaction = safeModel.transaction || {};
+  const editSummary = safeModel.editSummary || {};
   return [
     'GNC PH Reclass Item Inquiry',
     'Submitted: ' + String(safeModel.submittedAt || ''),
@@ -9907,13 +9911,26 @@ function buildReclassInquiryReportText_(model) {
     'Item: ' + String(identity.commonname || ''),
     'Item Code: ' + String(identity.itemcode || ''),
     'Container: ' + String(identity.contsize || ''),
-    'Quantity: ' + String(transaction.quantity == null ? '' : transaction.quantity),
-    'Proposed Destination: ' + [transaction.newItemCode, transaction.newLotCode, transaction.newLocationCode].filter(Boolean).join(' / '),
-    'Reason: ' + String(transaction.reason || ''),
-    'Request Action: ' + String(transaction.requestAction || 'none'),
+    'Edited Rows: ' + String(editSummary.rowCount || 0),
+    'Edited Fields: ' + String(editSummary.fieldCount || 0),
     '',
-    'A black-and-white landscape Item Inquiry is attached as a PDF.'
+    'Open the attached PDF to review the complete Item Inquiry. Edited cells are highlighted yellow.'
   ].join('\n');
+}
+
+function buildReclassInquiryEmailHtml_(model) {
+  const safeModel = model || {};
+  const identity = safeModel.identity || {};
+  const editSummary = safeModel.editSummary || {};
+  return buildPhoneSizedEmailHtml_([
+    '<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;">',
+    '<h2 style="margin:0 0 14px;color:#007a4d;">GNC PH Reclass Item Inquiry</h2>',
+    '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(safeModel.actorDisplay || '') + '<br><strong>Submitted:</strong> ' + escapeEmailHtml_(safeModel.submittedAt || '') + '</p>',
+    '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
+    '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Edited cells are highlighted yellow.</p>',
+    '</div>'
+  ].join(''));
 }
 
 function getReclassInquiryCacheKey_(token) {
@@ -9973,7 +9990,7 @@ function handleReclassInquiryEmail_(payload) {
     }
     try {
       GmailApp.sendEmail(recipients.join(','), subject, buildReclassInquiryReportText_(model), {
-        htmlBody: buildReclassInquiryReportHtml_(model, false),
+        htmlBody: buildReclassInquiryEmailHtml_(model),
         attachments: [pdfBlob],
         name: 'GNC PH Reclass'
       });
@@ -9986,7 +10003,7 @@ function handleReclassInquiryEmail_(payload) {
       emailRecipients: recipients,
       subject: subject,
       submittedAt: now.toISOString(),
-      message: 'Reclass inquiry and printable PDF sent. No inventory data was changed.'
+      message: 'Reclass Item Inquiry PDF sent. Edited cells are highlighted yellow; no inventory data was changed.'
     };
     cache.put(cacheKey, JSON.stringify(response), 600);
     return response;

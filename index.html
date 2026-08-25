@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.08">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.09">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.25.08';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.25.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -872,6 +872,12 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .argos-reclass-row-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.42rem;padding:.5rem}
 .argos-reclass-row-field{display:block;min-width:0}
 .argos-reclass-row-field--wide{grid-column:span 2}
+.argos-reclass-row-field--edited{border:1px solid #f59e0b;border-radius:.68rem;background:#fff7cc;padding:.36rem;box-shadow:0 0 0 2px rgba(245,158,11,.12)}
+.argos-reclass-row-field--edited .argos-reclass-row-input{border-color:#f59e0b;background:#fffbea}
+.argos-reclass-edited-badge{display:inline-flex;align-items:center;margin-left:.35rem;border-radius:999px;background:#fde68a;padding:.12rem .34rem;color:#78350f;font-size:.44rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.argos-reclass-edited-badge[hidden]{display:none!important}
+.argos-reclass-row-edit-count{border-radius:999px;background:#fde68a;padding:.22rem .4rem;color:#78350f;font-size:.48rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.argos-reclass-row-edit-count[hidden]{display:none!important}
 .argos-reclass-row-input{width:100%;min-height:2.25rem;border:1px solid #cbd5e1;border-radius:.58rem;background:#fff;padding:.35rem .45rem;color:#0f172a;font-size:16px;font-weight:800;outline:none}
 textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
 .argos-reclass-row-input:focus{border-color:#007a4d;box-shadow:0 0 0 2px rgba(0,122,77,.12)}
@@ -6709,7 +6715,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.08">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.09">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6820,8 +6826,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.08"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.08"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.09"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.09"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7574,7 +7580,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.08').trim() || 'V2026.08.25.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.09').trim() || 'V2026.08.25.09';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9060,7 +9066,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30371,7 +30377,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.08').trim() || 'V2026.08.25.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.09').trim() || 'V2026.08.25.09';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -41078,6 +41084,73 @@ let avTopControlsRenderToken = 0;
             return raw.replace(/,/g, '');
         }
 
+        function getArgosReclassRowEditorEntry(uid = '') {
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return null;
+            const cached = argosReclassRowEditorEntries instanceof Map ? argosReclassRowEditorEntries.get(safeUid) : null;
+            if (cached) return cached;
+            const model = argosInventoryTransactionState && argosInventoryTransactionState.inquiryModel;
+            return model && Array.isArray(model.locationRows)
+                ? (model.locationRows.find((row) => String(row && row.unique_id || '').trim() === safeUid) || null)
+                : null;
+        }
+
+        function normalizeArgosReclassFieldComparable(fieldKey = '', value = '') {
+            const safeKey = String(fieldKey || '').trim().toLowerCase();
+            const field = ITEM_INQUIRY_ROW_FIELDS.find((candidate) => candidate.key === safeKey) || null;
+            if (field && field.numeric) return normalizeArgosReclassInquiryNumericDraftValue(value);
+            const normalized = String(value == null ? '' : value).replace(/\r\n?/g, '\n').trim();
+            return field && field.type === 'hold' ? normalized.toUpperCase() : normalized;
+        }
+
+        function isArgosReclassRowFieldChanged(uid = '', fieldKey = '', value = '') {
+            const entry = getArgosReclassRowEditorEntry(uid);
+            const baseline = entry && entry.values ? entry.values[String(fieldKey || '').trim().toLowerCase()] : '';
+            return normalizeArgosReclassFieldComparable(fieldKey, value) !== normalizeArgosReclassFieldComparable(fieldKey, baseline);
+        }
+
+        function syncArgosReclassRowEditUi(card = null) {
+            if (!card || !card.querySelectorAll) return 0;
+            const uid = String(card.getAttribute('data-reclass-row-card') || '').trim();
+            const changedFields = new Set();
+            card.querySelectorAll('[data-reclass-field]').forEach((control) => {
+                const fieldKey = String(control.getAttribute('data-reclass-field') || '').trim().toLowerCase();
+                if (fieldKey && isArgosReclassRowFieldChanged(uid, fieldKey, control.value)) changedFields.add(fieldKey);
+            });
+            const locationNoteChanged = changedFields.has('locationnote');
+            card.querySelectorAll('[data-reclass-field-wrapper]').forEach((wrapper) => {
+                const fieldKey = String(wrapper.getAttribute('data-reclass-field-wrapper') || '').trim().toLowerCase();
+                const changed = changedFields.has(fieldKey);
+                wrapper.classList.toggle('argos-reclass-row-field--edited', changed);
+                wrapper.setAttribute('data-edited', changed ? 'true' : 'false');
+                const badge = wrapper.querySelector('[data-reclass-edited-badge]');
+                if (badge) badge.hidden = !changed;
+            });
+            const noteDateWrapper = card.querySelector('[data-reclass-system-field-wrapper="locationnotedate"]');
+            if (noteDateWrapper) {
+                noteDateWrapper.classList.toggle('argos-reclass-row-field--edited', locationNoteChanged);
+                noteDateWrapper.setAttribute('data-edited', locationNoteChanged ? 'true' : 'false');
+                const badge = noteDateWrapper.querySelector('[data-reclass-edited-badge]');
+                if (badge) badge.hidden = !locationNoteChanged;
+            }
+            const totalChanged = changedFields.size + (locationNoteChanged ? 1 : 0);
+            const counter = card.querySelector('[data-reclass-row-edit-count]');
+            if (counter) {
+                counter.hidden = totalChanged === 0;
+                counter.textContent = `${totalChanged} Edited`;
+            }
+            card.setAttribute('data-reclass-row-edit-count', String(totalChanged));
+            return totalChanged;
+        }
+
+        function handleArgosReclassFieldInput(input = null) {
+            if (!input || !input.closest) return false;
+            const fieldKey = String(input.getAttribute('data-reclass-field') || '').trim().toLowerCase();
+            if (fieldKey === 'locationnote') handleArgosReclassLocationNoteInput(input);
+            syncArgosReclassRowEditUi(input.closest('[data-reclass-row-card]'));
+            return true;
+        }
+
         function buildArgosReclassRowFieldsHtml(entry = null) {
             const safeEntry = entry && typeof entry === 'object' ? entry : { unique_id: '', values: {} };
             const uid = String(safeEntry.unique_id || '').trim();
@@ -41087,23 +41160,22 @@ let avTopControlsRenderToken = 0;
                 const rawValue = field.numeric
                     ? normalizeArgosReclassInquiryNumericDraftValue(values[field.key])
                     : String(values[field.key] == null ? '' : values[field.key]);
-                const commonAttrs = `class="argos-reclass-row-input" data-reclass-row-uid="${escapeHtml(uid)}" data-reclass-field="${escapeHtml(field.key)}"`;
+                const commonAttrs = `class="argos-reclass-row-input" data-reclass-row-uid="${escapeHtml(uid)}" data-reclass-field="${escapeHtml(field.key)}" oninput="return handleArgosReclassFieldInput(this)" onchange="return handleArgosReclassFieldInput(this)"`;
                 let control = '';
                 if (field.type === 'hold') {
                     const holdCode = String(rawValue || '').trim().toUpperCase();
                     control = `<select ${commonAttrs}><option value="" ${holdCode ? '' : 'selected'}>Blank</option><option value="H" ${holdCode === 'H' ? 'selected' : ''}>H - Hold</option><option value="S" ${holdCode === 'S' ? 'selected' : ''}>S - Stop</option></select>`;
                 } else if (field.multiline) {
-                    const noteHandler = field.key === 'locationnote' ? ' oninput="handleArgosReclassLocationNoteInput(this)"' : '';
-                    control = `<textarea ${commonAttrs}${noteHandler}>${escapeHtml(rawValue)}</textarea>`;
+                    control = `<textarea ${commonAttrs}>${escapeHtml(rawValue)}</textarea>`;
                 } else {
                     const inputType = field.numeric ? 'number' : 'text';
                     const step = field.numeric ? ' step="any" min="0"' : '';
                     control = `<input type="${inputType}" ${commonAttrs}${step} value="${escapeHtml(rawValue)}">`;
                 }
-                return `<label class="argos-reclass-row-field ${field.multiline ? 'argos-reclass-row-field--wide' : ''}"><span>${escapeHtml(field.label)}</span>${control}</label>`;
+                return `<label class="argos-reclass-row-field ${field.multiline ? 'argos-reclass-row-field--wide' : ''}" data-reclass-field-wrapper="${escapeHtml(field.key)}" data-edited="false"><span>${escapeHtml(field.label)}<em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Edited</em></span>${control}</label>`;
             }).join('');
             const noteDate = String(values.locationnotedate || '').trim();
-            return `${fieldsHtml}<label class="argos-reclass-row-field argos-reclass-row-field--wide"><span>LOCATIONNOTEDATE (report only)</span><input class="argos-reclass-row-input" data-reclass-note-date="${escapeHtml(uid)}" value="${escapeHtml(noteDate)}" readonly><small class="argos-reclass-stamp-note" data-reclass-note-stamp="${escapeHtml(uid)}">Changes to Location Note are timestamped by the server when sent.</small></label>`;
+            return `${fieldsHtml}<label class="argos-reclass-row-field argos-reclass-row-field--wide" data-reclass-system-field-wrapper="locationnotedate" data-edited="false"><span>LOCATIONNOTEDATE (report only)<em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Edited</em></span><input class="argos-reclass-row-input" data-reclass-note-date="${escapeHtml(uid)}" value="${escapeHtml(noteDate)}" readonly><small class="argos-reclass-stamp-note" data-reclass-note-stamp="${escapeHtml(uid)}">Changes to Location Note are timestamped by the server when sent.</small></label>`;
         }
 
         function hydrateArgosReclassRowCard(card = null) {
@@ -41118,6 +41190,7 @@ let avTopControlsRenderToken = 0;
             if (!entry) return false;
             body.innerHTML = buildArgosReclassRowFieldsHtml(entry);
             body.setAttribute('data-reclass-row-hydrated', 'true');
+            syncArgosReclassRowEditUi(card);
             return true;
         }
 
@@ -41160,7 +41233,7 @@ let avTopControlsRenderToken = 0;
                     ['REV', values.ptrreviewed],
                     ['AVL', values.ptravailable]
                 ].map(([label, value]) => `<span>${escapeHtml(label)} ${escapeHtml(String(value == null || value === '' ? '—' : value))}</span>`).join('');
-                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${rowBodyId}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}<i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${rowBodyId}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
+                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-row-edit-count="0"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${rowBodyId}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}<span class="argos-reclass-row-edit-count" data-reclass-row-edit-count hidden>0 Edited</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${rowBodyId}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
             }).join('') || '<div class="p-4 text-sm font-bold text-slate-600">No current rows were found for this ItemCode.</div>';
             return `<div class="argos-reclass-inquiry-heading"><span>Temporary Item Inquiry Worksheet</span><span>${safeModel.locationRows.length} row${safeModel.locationRows.length === 1 ? '' : 's'} · Tap a row to edit</span></div><div class="argos-reclass-identity">${identityHtml}</div><div class="argos-reclass-season">${seasonHtml}</div><div class="argos-reclass-row-list">${rowsHtml}</div>`;
         }
@@ -42199,7 +42272,7 @@ let avTopControlsRenderToken = 0;
                             : 'Reclass inquiry did not send. Your draft is still open so you can retry.';
                         throw new Error(getFriendlyBackendErrorMessage(firstNonEmptyValue(inquiryResult && inquiryResult.message, inquiryResult && inquiryResult.error, inquiryResult && inquiryResult.rawResponse, ''), fallback));
                     }
-                    showToast('Email Sent', inquiryResult.message || 'Reclass inquiry and printable PDF sent. No inventory data was changed.');
+                    showToast('Email Sent', inquiryResult.message || 'Reclass Item Inquiry PDF sent. Edited cells are highlighted yellow; no inventory data was changed.');
                     closeArgosInventoryTransactionModal();
                     return false;
                 }

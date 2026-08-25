@@ -50,6 +50,7 @@ function loadServerModel() {
     Utilities: {
       formatDate: () => '8/22/2026, 9:15:00 AM',
     },
+    buildPhoneSizedEmailHtml_: (value) => String(value || ''),
     escapeEmailHtml_: (value) => String(value ?? '')
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
@@ -57,7 +58,7 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_;`, context);
   return context;
 }
 
@@ -138,7 +139,29 @@ test('temporary row overlays stamp changed and cleared Location Notes without mu
   assert.equal(result.rows[1].values.locationnotedate, '8/22/2026, 9:15:00 AM');
   assert.equal(result.rows[1].values.locationnote, '');
   assert.equal(result.rows[1].values.ptronhand, '0');
+  assert.equal(Array.from(result.rows[1].changedFields).sort().join('|'), 'holdstopcode|holdstopreason|locationnote|locationnotedate');
   assert.deepEqual(rows, before);
+});
+
+test('cleared and added Priority values are retained as changed fields and highlighted in the PDF', () => {
+  const server = loadServerModel();
+  const rows = [
+    { unique_id: 'f14', itemcode: 'A1', lotcode: '27.F1', locationcode: 'F.14.000', priority: '3', commonname: 'Example', contsize: '#5' },
+    { unique_id: 'd17', itemcode: 'A1', lotcode: '27.F1', locationcode: 'D.17.000', priority: '', commonname: 'Example', contsize: '#5' },
+  ];
+  const overlays = [
+    { unique_id: 'f14', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'F.14.000' }, values: { priority: '' } },
+    { unique_id: 'd17', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'D.17.000' }, values: { priority: '7' } },
+  ];
+  const result = server.applyReclassInquiryOverlays_(rows, overlays, new Date('2026-08-22T14:15:00Z'));
+  assert.equal(result.ok, true);
+  assert.equal(Array.from(result.rows[0].changedFields).join('|'), 'priority');
+  assert.equal(Array.from(result.rows[1].changedFields).join('|'), 'priority');
+  const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, { actor: { display: 'Tester' } }, new Date('2026-08-22T14:15:00Z'));
+  const output = server.buildReclassInquiryReportHtml_(model, true);
+  assert.match(output, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
+  assert.match(output, /class="edited-cell" data-edited="true">7<\/td>/);
+  assert.match(output, /Edited:<\/strong> 2 field\(s\) across 2 row\(s\)/);
 });
 
 test('Reclass identity validation uses the defined production comparison helper', () => {
@@ -213,7 +236,7 @@ test('Reclass server fetch paginates every current row for the selected ITEMCODE
   assert.match(fetcher, /if \(pageRows\.length < pageSize\) break/);
 });
 
-test('1-row, 8-row, and 41-row print outputs are escaped, monochrome, landscape, and repeat-header capable', () => {
+test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landscape, and repeat-header capable', () => {
   const server = loadServerModel();
   const baseModel = {
     identity: { commonname: '<Unsafe & Name>', itemcode: 'A1' },
@@ -232,20 +255,53 @@ test('1-row, 8-row, and 41-row print outputs are escaped, monochrome, landscape,
         ['holdstopcode', index === 0 ? 'H' : ''],
         ['holdstopreason', index === 0 ? 'Check' : ''],
       ]),
+      changedFields: index === 0 ? ['holdstopcode', 'holdstopreason'] : [],
     }));
     const output = server.buildReclassInquiryReportHtml_({ ...baseModel, rows }, true);
     assert.match(output, /@page\{size:Letter landscape/);
     assert.match(output, /thead\{display:table-header-group\}/);
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
-    assert.doesNotMatch(output, /#[0-9a-f]{6}/i);
+    assert.match(output, /\.edited-cell\{background:#fff176!important\}/);
+    assert.match(output, /class="edited-cell" data-edited="true">H<\/td>/);
     assert.doesNotMatch(output, /<img/i);
-    assert.match(output, /Field Notes/);
+    assert.doesNotMatch(output, /Reclass Request/);
+    assert.doesNotMatch(output, /Season Summary/);
+    assert.doesNotMatch(output, /Field Notes/);
+    assert.doesNotMatch(output, /Abbreviations:/);
     assert.match(output, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
     assert.match(output, /Pull Tag 1/);
     assert.match(output, /Loc PTN 2/);
-    assert.equal((output.match(/<tr>/g) || []).length, rowCount + 3, `${rowCount}-row report should include every detail row plus the two table headers and one season row`);
+    assert.equal((output.match(/<tr>/g) || []).length, rowCount + 1, `${rowCount}-row report should include every detail row plus one table header`);
   }
+});
+
+test('Reclass email body is a short attachment summary without duplicated row report sections', () => {
+  const server = loadServerModel();
+  const model = {
+    identity: { commonname: 'Example', itemcode: 'A1', contsize: '#5' },
+    actorDisplay: 'Tester',
+    submittedAt: '8/22/2026, 9:15:00 AM',
+    editSummary: { rowCount: 2, fieldCount: 2 },
+  };
+  const text = server.buildReclassInquiryReportText_(model);
+  const htmlBody = server.buildReclassInquiryEmailHtml_(model);
+  assert.match(text, /Edited Rows: 2/);
+  assert.match(text, /Edited Fields: 2/);
+  assert.match(htmlBody, /PDF attached:/);
+  assert.match(htmlBody, /Edited cells are highlighted yellow/);
+  for (const removed of ['Reclass Request', 'Season Summary', 'Location \/ Lot Item Inquiry', '<table']) {
+    assert.doesNotMatch(htmlBody, new RegExp(removed));
+  }
+});
+
+test('Reclass editor marks changed and cleared controls plus Location Note date in the app', () => {
+  assert.match(html, /function syncArgosReclassRowEditUi\s*\(/);
+  assert.match(html, /isArgosReclassRowFieldChanged/);
+  assert.match(html, /data-reclass-field-wrapper/);
+  assert.match(html, /data-reclass-system-field-wrapper="locationnotedate"/);
+  assert.match(html, /argos-reclass-row-field--edited/);
+  assert.match(html, /data-reclass-row-edit-count/);
 });
 
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {
