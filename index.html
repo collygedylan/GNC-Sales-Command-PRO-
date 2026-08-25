@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.07">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.08">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.25.07';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.25.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6709,7 +6709,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.07">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.08">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6820,8 +6820,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.07"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.07"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.08"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.08"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7574,7 +7574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.07').trim() || 'V2026.08.25.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.08').trim() || 'V2026.08.25.08';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9060,7 +9060,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30371,7 +30371,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.07').trim() || 'V2026.08.25.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.08').trim() || 'V2026.08.25.08';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -39205,7 +39205,9 @@ let avTopControlsRenderToken = 0;
             const safeSourceView = String(sourceView || '').trim().toLowerCase();
             if (safeSourceView !== 'drive') return true;
             const access = getRoleAccessState(roleOverride, userOverride);
-            if (access && access.isRep && !access.isCsr && !canUseFullDriveBloomPickerWorkflow(userOverride, displayOverride)) return false;
+            const canUseFullDriveWorkflow = canUseFullDriveBloomPickerWorkflow(userOverride, displayOverride);
+            if (canUseFullDriveWorkflow) return true;
+            if (access && access.isRep && !access.isCsr && !canUseFullDriveWorkflow) return false;
             if (access && access.isRepLike && canUseDriveQuickRequest()) return true;
             return canCurrentUserUseDriveCardOptions(item, sourceView, roleOverride, userOverride, displayOverride);
         }
@@ -84927,7 +84929,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const source = domId ? String(selectedItemSources.get(domId) || '').trim().toLowerCase() : '';
                 return source === 'drive-bloom' || source === 'bloom-draft';
             }));
-            const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+            const canUseFlyerFromBloom = (canUseDriveQuickRequest() || canUseFullDriveActions) && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             const canUseEvalTaskAction = canUseEvalTaskAssignment() && getEvalTaskSelectionItems(items).length > 0;
             const canUseMoveQueue = canUseInventoryActions && !!currentUser;
             const canUseGroupedNcrAction = canUseInventoryActions && (access.isAdmin || canUseGroupedBloomNcr());
@@ -127478,7 +127480,7 @@ C.14.043 C.15.000
                 showToast('Restricted', 'Sales reps do not have Take Back access.', true);
                 return;
             }
-            const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+            const canUseFlyerFromBloom = (canUseDriveQuickRequest() || canUseFullDriveActions) && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             if (access.isRepLike && (action === 'assign' || action === 'eval_task' || (action === 'ncr' && !canUseNcrFromBloom) || (action === 'endcap' && !canUseFullDriveActions) || action === 'shear' || (action === 'flyer' && !canUseFlyerFromBloom))) {
                 showToast('Restricted', 'REP and CSR users can only Copy, Email, Text, Request, Location Move, and Submit Order from Bloom Picker.', true);
                 return;

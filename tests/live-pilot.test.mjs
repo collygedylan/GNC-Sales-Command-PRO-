@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.25.07';
+  const release = 'V2026.08.25.08';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.25.07');
+  assert.equal(packageJson.version, '2026.08.25.08');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -570,7 +570,8 @@ test('Kayla can add every inventory Drive row to Bloom Picker and use the full o
   assert.match(driveCardBuilder, /driveCheckboxHtml = canSelectDriveWorkflow \?/);
   assert.match(driveCardBuilder, /driveArgosRailHtml = canUseDriveOptions \?/);
   assert.doesNotMatch(driveCardBuilder, /driveArgosRailHtml = canSelectDriveWorkflow \?/);
-  assert.match(selectionPolicy, /access && access\.isRep && !access\.isCsr && !canUseFullDriveBloomPickerWorkflow\(userOverride, displayOverride\)\) return false/);
+  assert.match(selectionPolicy, /const canUseFullDriveWorkflow = canUseFullDriveBloomPickerWorkflow\(userOverride, displayOverride\)/);
+  assert.match(selectionPolicy, /if \(canUseFullDriveWorkflow\) return true/);
   assert.match(html, /const FULL_DRIVE_BLOOM_PICKER_USERS = Object\.freeze\(new Set\(\['kayla_knepp'\]\)\)/);
   assert.match(html, /function canUseFullDriveBloomPickerWorkflow[\s\S]*FULL_DRIVE_BLOOM_PICKER_USERS\.has\(key\)/);
   assert.match(html, /canAddItemToBloomPicker[\s\S]*canRepAddBloomPickerRow[\s\S]*access && access\.isRep && !access\.isCsr && isBloomPickerEligibleItem\(item\)/);
