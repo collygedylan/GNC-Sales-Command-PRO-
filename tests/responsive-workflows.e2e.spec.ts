@@ -18,7 +18,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 });
 
 test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     const access = getRoleAccessState('Admin', 'brandt_emerson');
@@ -125,7 +125,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -254,9 +254,9 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
 });
 
-test('Eval Reports #2 preserves one-user selections across reports and sends a grouped Item Inquiry workbook', async ({ page }) => {
+test('Eval Reports #2 preserves one-user selections and sends a reference-matched Item Inquiry workbook', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports2 = canViewManagerEvalReports2;
@@ -270,13 +270,15 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
       currentUser = 'dylan_collyge';
       currentUserDisplay = 'Dylan Collyge';
       processAndLoadData({ data: [
-        { UNIQUE_ID: 'mail-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', PTRONHAND: 20, PTRREVIEWED: 2, PTRAVAILABLE: 18, LOCATIONNOTEDATE: '2026-08-20', LOCATIONNOTE: 'Review first row', LOCATIONPTN1: 'North side' },
-        { UNIQUE_ID: 'mail-b', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 30, LOCATIONCODE: 'B.01.001', LOTCODE: '27.F2', PTRONHAND: 30, PTRREVIEWED: 3, PTRAVAILABLE: 27, HOLDSTOPBEGINDATE: '2026-08-19', PULLTAGNOTE1: 'Work in order' },
+        { UNIQUE_ID: 'mail-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'A.01.001', SOURCE: 'PH MASTER', LOTCODE: '27.F1', ITEMSPEC: 'Spec A', SALESNOTE: 'Review sales note', DESIGITEM: 'DI-1', DESIGCUST: 'DC-1', DESIGLOC: 'DL-1', PTRONHAND: 20, PTRREVIEWED: 2, PTRAVAILABLE: 18, HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Quality review', HOLDSTOPBEGINDATE: '2026-08-18', LOCATIONNOTEDATE: '2026-08-20', LOCATIONNOTE: 'Review first row', LOCATIONPTN1: 'North side', SUSPENDTO: '2026-08-29', SPECIALPULLER: 'Puller A' },
+        { UNIQUE_ID: 'mail-b', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 30, LOCATIONCODE: 'B.01.001', SOURCE: 'PH MASTER', LOTCODE: '27.F2', PTRONHAND: 30, PTRREVIEWED: 3, PTRAVAILABLE: 27, HOLDSTOPBEGINDATE: '2026-08-19', PULLTAGNOTE1: 'Work in order' },
+        { UNIQUE_ID: 'mail-other-user', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '9', S_LTS: 99, LOCATIONCODE: 'Z.99.999', LOTCODE: '27.Z9', PTRAVAILABLE: 99 },
         { UNIQUE_ID: 'mail-d1', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', COMMONNAME: 'Delta', CONTSIZE: '#5', SEASON: 'U1', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, LOCATIONCODE: 'A.02.001', LOTCODE: '27.U1', PTRONHAND: 300, PTRREVIEWED: 1, PTRAVAILABLE: 299 },
         { UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', COMMONNAME: 'Delta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '4', S_LTS: 10, LOCATIONCODE: 'D.01.001', LOTCODE: '27.F1', PTRONHAND: 10, PTRREVIEWED: 0, PTRAVAILABLE: 10 },
         { UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', COMMONNAME: 'Gamma', CONTSIZE: '#7', SEASON: 'X', SALEYEAR: 27, PRIORITY: '3', S_LTS: 40, LOCATIONCODE: 'C.01.001' }
       ], warehouseAssignedItemsData: [
         { UNIQUE_ID: 'assign-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-a-other', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', ASSIGNEDTO: 'megan_kelly' },
         { UNIQUE_ID: 'assign-d', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
         { UNIQUE_ID: 'assign-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
       ], _fromCache: true });
@@ -294,6 +296,34 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
       setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
       openManagerEvalReport2CommonName('Alpha');
       const alphaKey = encodeURIComponent(getManagerEvalReport2VisibleItemGroups()[0].key);
+      handleManagerEvalReport2ItemCardClick(alphaKey);
+      const detailHtml = renderManagerEvalReport2ItemDetail();
+      const detailHost = document.createElement('div');
+      detailHost.id = 'eval2-detail-test-host';
+      detailHost.style.width = '390px';
+      detailHost.innerHTML = detailHtml;
+      document.body.appendChild(detailHost);
+      const detailRows = Array.from(detailHost.querySelectorAll('[data-manager-eval2-detail-row]'));
+      const detailFieldNames = Array.from(detailHost.querySelectorAll('[data-manager-eval2-field]')).map((field) => field.getAttribute('data-manager-eval2-field'));
+      const detailResult = {
+        opened: !!getManagerEvalReport2DetailModel(),
+        rowCount: detailRows.length,
+        firstExpanded: detailRows[0] && detailRows[0].hasAttribute('open'),
+        secondCollapsed: detailRows[1] && !detailRows[1].hasAttribute('open'),
+        excludesOtherUser: !detailHost.textContent.includes('Z.99.999'),
+        hasQueueHeader: detailHost.textContent.includes('Queue-style item details') && detailHost.textContent.includes('Alpha') && detailHost.textContent.includes('dylan_collyge'),
+        counts: detailHost.textContent.includes('Report rows') && detailHost.textContent.includes('Expanded rows') && detailHost.textContent.includes('Locations'),
+        requiredFields: ['LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'S_LTS', 'SALESNOTE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRAVAILABLE', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 'PRIORITY', 'LOCATIONNOTE', 'LOCATIONNOTEDATE', 'LOCATIONPTN1', 'SUSPENDTO', 'SPECIALPULLER'].every((field) => detailFieldNames.includes(field)),
+        dateFormat: detailHost.textContent.includes('2026-08-18') && detailHost.textContent.includes('2026-08-20'),
+        missingDash: detailHost.textContent.includes('—'),
+        controlsFit: detailHost.scrollWidth <= 391
+      };
+      closeManagerEvalReport2ItemDetail();
+      const stateAfterDetailHtml = renderManagerEvalReport2ReportsPanel();
+      const stateAfterDetail = {
+        closed: !getManagerEvalReport2DetailModel(),
+        preservedFlow: stateAfterDetailHtml.includes('Culls') && stateAfterDetailHtml.includes('dylan_collyge') && stateAfterDetailHtml.includes('Alpha')
+      };
       startManagerEvalReport2LongPress({ type: 'pointerdown', button: 0, clientX: 20, clientY: 20 }, alphaKey);
       trackManagerEvalReport2LongPress({ clientX: 45, clientY: 20 });
       await new Promise((resolve) => setTimeout(resolve, 490));
@@ -364,7 +394,12 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
       const workbookXml = decodeStoredZipEntry(sentPayload.shiftReportAttachment.contentBase64, 'xl/workbook.xml');
       const worksheetXml = decodeStoredZipEntry(sentPayload.shiftReportAttachment.contentBase64, 'xl/worksheets/sheet1.xml');
       const stylesXml = decodeStoredZipEntry(sentPayload.shiftReportAttachment.contentBase64, 'xl/styles.xml');
+      const worksheetDocument = new DOMParser().parseFromString(worksheetXml, 'application/xml');
+      const headerRow = Array.from(worksheetDocument.getElementsByTagName('row')).find((row) => row.getAttribute('r') === '1');
+      const headers = headerRow ? Array.from(headerRow.getElementsByTagName('t'), (cell) => cell.textContent || '') : [];
       return {
+        detailResult,
+        stateAfterDetail,
         longPressSelected,
         scrollMovementCancelled,
         contextMenuSuppressed,
@@ -396,13 +431,15 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
         } : null,
         workbook: {
           oneItemInquirySheet: workbookXml.includes('sheet name="Item Inquiry"') && (workbookXml.match(/<sheet /g) || []).length === 1,
-          hasAllHeaders: ['LOCATIONCODE', 'LOTCODE', 'ASSIGNEDTO', 'REPORTS', 'LOCATIONPTN1'].every((header) => worksheetXml.includes('>' + header + '<')),
+          headers,
           locationPtnHeaderCount: (worksheetXml.match(/>LOCATIONPTN1</g) || []).length,
           hasFilterAndFreeze: worksheetXml.includes('<autoFilter ') && worksheetXml.includes('state="frozen"'),
           locationOrder: ['A.01.001', 'A.02.001', 'B.01.001', 'D.01.001'].every((location, index, locations) => index === 0 || worksheetXml.indexOf(locations[index - 1]) < worksheetXml.indexOf(location)),
-          reportMemberships: worksheetXml.includes('Culls') && worksheetXml.includes('NotInF1') && worksheetXml.includes('LowStock'),
+          oneHeaderRow: worksheetXml.includes('<row r="1"') && worksheetXml.includes('<row r="2"') && !worksheetXml.includes('GNC PH Item Inquiry') && !worksheetXml.includes('<mergeCells'),
+          noAssignmentOrReportsColumns: !headers.includes('ASSIGNEDTO') && !headers.includes('REPORTS'),
           numericCells: worksheetXml.includes('t="n"'),
-          dateFormat: stylesXml.includes('formatCode="yyyy-mm-dd"')
+          dateFormat: stylesXml.includes('formatCode="yyyy-mm-dd"'),
+          referenceStyle: stylesXml.includes('rgb="FF00B050"') && stylesXml.includes('Times New Roman') && stylesXml.includes('<b/>')
         },
         controlsFit: host.scrollWidth <= 391
       };
@@ -414,6 +451,20 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
     }
   })()`));
 
+  expect(result.detailResult).toEqual({
+    opened: true,
+    rowCount: 2,
+    firstExpanded: true,
+    secondCollapsed: true,
+    excludesOtherUser: true,
+    hasQueueHeader: true,
+    counts: true,
+    requiredFields: true,
+    dateFormat: true,
+    missingDash: true,
+    controlsFit: true,
+  });
+  expect(result.stateAfterDetail).toEqual({ closed: true, preservedFlow: true });
   expect(result.longPressSelected).toBe(true);
   expect(result.scrollMovementCancelled).toBe(true);
   expect(result.contextMenuSuppressed).toBe(true);
@@ -445,20 +496,22 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
   expect(result.attachment.hasWorkbookData).toBe(true);
   expect(result.workbook).toEqual({
     oneItemInquirySheet: true,
-    hasAllHeaders: true,
+    headers: ['ITEMCODE', 'CONTSIZE', 'COMMONNAME', 'LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 's_LTS', 'SALESNOTE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'PTRAVAILABLE', 'LOCATIONNOTE', 'LOCATIONNOTEDATE', 'LOCATIONPTN1', 'SUSPENDTO', 'SPECIALPULLER'],
     locationPtnHeaderCount: 1,
     hasFilterAndFreeze: true,
     locationOrder: true,
-    reportMemberships: true,
+    oneHeaderRow: true,
+    noAssignmentOrReportsColumns: true,
     numericCells: true,
     dateFormat: true,
+    referenceStyle: true,
   });
   expect(result.controlsFit).toBe(true);
 });
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -537,7 +590,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
 test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
   const desktop = await page.evaluate(() => window.eval(`(() => {
@@ -615,7 +668,7 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -684,7 +737,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -915,7 +968,7 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
 
 test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const requestView = document.getElementById('view-request');
     const container = document.getElementById('request-content');
@@ -1422,7 +1475,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.25.03', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'

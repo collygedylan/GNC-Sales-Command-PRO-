@@ -398,6 +398,13 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /return managerEvalReport2Cache/);
   assert.match(html, /downloadExcelWorkbook\(getDriveReportExportColumns\(\), rows, `Eval Reports #2/);
   assert.match(html, /function renderManagerEvalReport2SelectableCard\(itemGroup = null, index = 0\)/);
+  assert.match(html, /function openManagerEvalReport2ItemDetail\(encodedKey = ''\)/);
+  assert.match(html, /function closeManagerEvalReport2ItemDetail\(\)/);
+  assert.match(html, /function renderManagerEvalReport2ItemDetail\(\)/);
+  assert.match(html, /Tap for details \/ press and hold to select/);
+  assert.match(html, /\['LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'S_LTS', 'SALESNOTE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRAVAILABLE'\]/);
+  assert.match(html, /buildManagerEvalReport2DetailField\(row, 'HOLDSTOPBEGINDATE', \{ date: true \}\)/);
+  assert.match(html, /buildManagerEvalReport2DetailField\(row, 'LOCATIONPTN1'\)/);
   assert.match(html, /function toggleManagerEvalReport2ItemSelection\(encodedKey = '', forceSelected = null\)/);
   assert.match(html, /function beginManagerEvalReport2SelectionMode\(\)/);
   assert.match(html, /MANAGER_EVAL_REPORT2_LONG_PRESS_MS = 450/);
@@ -414,7 +421,18 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function buildManagerEvalReport2SelectableGridHtml\(itemGroups = \[\]\)/);
   assert.match(html, /function buildManagerEvalReport2ItemInquiryWorkbookBlob\(rows = \[\]\)/);
   assert.match(html, /MANAGER_EVAL_REPORT2_ITEM_INQUIRY_MAX_BYTES = 18 \* 1024 \* 1024/);
-  assert.match(html, /\{ key: 'LOCATIONPTN1', width: 34, wrap: true \}/);
+  const exportColumnBlock = html.match(/const MANAGER_EVAL_REPORT2_ITEM_INQUIRY_COLUMNS = Object\.freeze\(\[([\s\S]*?)\n        \]\);/);
+  assert.ok(exportColumnBlock, 'Eval Reports #2 export columns should be declared');
+  const exportLabels = Array.from(exportColumnBlock[1].matchAll(/label: '([^']+)'/g), (match) => match[1]);
+  assert.deepEqual(exportLabels, [
+    'ITEMCODE', 'CONTSIZE', 'COMMONNAME', 'LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC',
+    'HOLDSTOPCODE', 'HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 's_LTS', 'SALESNOTE', 'PRIORITY',
+    'DesigItem', 'DesigCust', 'DesigLoc', 'PTRAVAILABLE', 'LOCATIONNOTE', 'LOCATIONNOTEDATE',
+    'LOCATIONPTN1', 'SUSPENDTO', 'SPECIALPULLER',
+  ]);
+  assert.doesNotMatch(exportColumnBlock[1], /label: 'ASSIGNEDTO'|label: 'REPORTS'/);
+  assert.match(html, /buildExcelSheetViewsXml\(1, 0\)/);
+  assert.match(html, /<autoFilter ref="A1:\$\{lastColumn\}\$\{rowNumber\}"\/>/);
   assert.match(html, /sheet name="Item Inquiry"/);
   assert.match(html, /function emailSelectedManagerEvalReport2Rows\(\)/);
   assert.match(html, /Selected ITEMCODEs:/);
