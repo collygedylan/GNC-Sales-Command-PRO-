@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.24.13';
+  const release = 'V2026.08.24.14';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.24.13');
+  assert.equal(packageJson.version, '2026.08.24.14');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -717,9 +717,18 @@ test('V16 Home uses one authorization-backed primary module registry and leaves 
   }
   assert.match(html, /function ensureHomeModuleRegistry\(\)/);
   assert.match(html, /data-home-module-view=/);
-  assert.match(html, /const isAllowed = canAccessView\(module\.view\)/);
+  assert.match(html, /const isAllowed = canAccessView\(module\.view, userOverride\)/);
   assert.match(html, /authorizedModuleCount/);
   assert.match(html, /renderedModuleCount/);
+});
+
+test('Brandt is an admin everywhere except the completely hidden Managers view', () => {
+  assert.match(html, /function isManagerViewDeniedUser\(userOverride = ''\)[\s\S]*userKey === 'brandt_emerson'/);
+  assert.match(html, /const isManagerViewDenied = isManagerViewDeniedUser\(userOverride\);[\s\S]*allowedViews\.delete\('managers'\)/);
+  assert.match(html, /function canAccessView\(viewId, userOverride = ''\)/);
+  assert.match(html, /targetView === 'managers' && isManagerViewDeniedUser\(userOverride\)/);
+  assert.match(html, /const isAllowed = canAccessView\(module\.view, userOverride\)/);
+  assert.match(html, /const nextViewId = canAccessView\(requestedViewId\) \? requestedViewId : 'home'/);
 });
 
 test('V15 Queue, Tasks, and Docks use compact single-row workflow controls', () => {

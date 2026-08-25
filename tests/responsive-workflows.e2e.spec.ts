@@ -17,6 +17,36 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
 });
 
+test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
+  const result = await page.evaluate(() => window.eval(`(() => {
+    const access = getRoleAccessState('Admin', 'brandt_emerson');
+    syncRoleAccessUi(access, 'brandt_emerson');
+    const managerTile = document.getElementById('home-tile-managers');
+    const managerDrawer = document.getElementById('drawer-managers-btn');
+    return {
+      isAdmin: access.isAdmin,
+      denied: access.isManagerViewDenied,
+      allowedViewsHasManagers: access.allowedViews.has('managers'),
+      canAccessManagers: canAccessView('managers', 'brandt_emerson'),
+      canAccessReports: access.allowedViews.has('reports'),
+      managerTileHidden: !!managerTile && managerTile.hidden && managerTile.classList.contains('hidden'),
+      managerDrawerHidden: !!managerDrawer && managerDrawer.classList.contains('hidden')
+    };
+  })()`));
+
+  expect(result).toEqual({
+    isAdmin: true,
+    denied: true,
+    allowedViewsHasManagers: false,
+    canAccessManagers: false,
+    canAccessReports: true,
+    managerTileHidden: true,
+    managerDrawerHidden: true,
+  });
+});
+
 test('Eval assignment dropdown exposes the full managed roster and composite key', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalAssigneeOptionsHtml === 'function');
@@ -95,7 +125,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.13', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -225,7 +255,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 preserves one-user selections across reports and sends a grouped Item Inquiry workbook', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.13', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports2 = canViewManagerEvalReports2;
@@ -396,7 +426,7 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.13', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -475,7 +505,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
 test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.13', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
   const desktop = await page.evaluate(() => window.eval(`(() => {
@@ -553,7 +583,7 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.13', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -622,7 +652,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.13', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -1306,7 +1336,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.13', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'

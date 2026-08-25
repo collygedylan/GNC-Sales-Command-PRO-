@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.13">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.14">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.24.13';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.24.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6662,7 +6662,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         @media (min-width:641px){.manager-eval2-selection-tray{position:relative;bottom:auto;z-index:1;backdrop-filter:none;-webkit-backdrop-filter:none}}
         @media (max-width:640px){.manager-eval2-selection-tray{margin-left:0;margin-right:0}.manager-eval2-selection-tray button{min-width:0;white-space:normal;line-height:1.05}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.13">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.14">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6773,8 +6773,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.13"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.13"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.14"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.14"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7527,7 +7527,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.13').trim() || 'V2026.08.24.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.14').trim() || 'V2026.08.24.14';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9013,7 +9013,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30310,7 +30310,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.13').trim() || 'V2026.08.24.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.14').trim() || 'V2026.08.24.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -55058,6 +55058,11 @@ function toggleDriveQuickRequestItem(domId) {
             return userKey === 'dylan_collyge' || userKey === 'jd_jones' || userKey === 'megan_kelly';
         }
 
+        function isManagerViewDeniedUser(userOverride = '') {
+            const userKey = normalizeMovesUserKey(firstNonEmptyValue(userOverride, currentUser, ''));
+            return userKey === 'brandt_emerson';
+        }
+
         function getRoleAccessState(roleOverride = '', userOverride = '') {
             const roleSource = getCurrentRoleAccessValue(roleOverride);
             const roleDisplay = String(roleSource || '').toUpperCase();
@@ -55131,16 +55136,19 @@ function toggleDriveQuickRequestItem(domId) {
                 allowedViews.add('shear-list');
             }
             if (isStrictDylanCollygeUser()) allowedViews.add('disease-pest');
-            return { isAdmin, isRep, isSalesRole, isSalesAssistant, isRepLike, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isEval, isDivision, isPrivilegedManager, isEvalAdminOverride, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
+            const isManagerViewDenied = isManagerViewDeniedUser(userOverride);
+            if (isManagerViewDenied) allowedViews.delete('managers');
+            return { isAdmin, isRep, isSalesRole, isSalesAssistant, isRepLike, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isEval, isDivision, isPrivilegedManager, isEvalAdminOverride, isTakeBackOnly, isRequestRepScopedUser, isManagerViewDenied, allowedViews };
         }
 
-        function canAccessView(viewId) {
+        function canAccessView(viewId, userOverride = '') {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
+            if (targetView === 'managers' && isManagerViewDeniedUser(userOverride)) return false;
             if (targetView === 'pest-management') return isStrictDylanCollygeUser();
             if (targetView === 'disease-pest') return isStrictDylanCollygeUser();
             if (targetView === 'crop-roll') return canViewCropRollHome();
-            const access = getRoleAccessState();
+            const access = getRoleAccessState('', userOverride);
             if (targetView === 'moves') return canUseMovesModule() || access.allowedViews.has('moves');
             if (targetView === 'request' && !access.isForeman && !access.isTakeBackOnly && access.isRequestRepScopedUser) return true;
             return access.allowedViews.has(targetView);
@@ -55338,7 +55346,7 @@ function toggleDriveQuickRequestItem(domId) {
             setRoleAccessReadyState(true);
         }
 
-        function syncRoleAccessUi(access = getRoleAccessState()) {
+        function syncRoleAccessUi(access = getRoleAccessState(), userOverride = '') {
             const homeGrid = ensureHomeModuleRegistry();
             const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
@@ -55360,7 +55368,7 @@ function toggleDriveQuickRequestItem(domId) {
             HOME_MODULE_REGISTRY.forEach((module) => {
                 const tile = document.getElementById(`home-tile-${module.view}`);
                 if (!tile) return;
-                const isAllowed = canAccessView(module.view) && !isSalesShellAccess(access);
+                const isAllowed = canAccessView(module.view, userOverride) && !isSalesShellAccess(access);
                 tile.classList.toggle('hidden', !isAllowed);
                 tile.hidden = !isAllowed;
                 tile.setAttribute('aria-hidden', String(!isAllowed));
