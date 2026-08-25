@@ -2704,11 +2704,11 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
 
   const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
-  const rows = fetchAllSupabaseData(
+  const rows = Object.values(fetchAllSupabaseData(
     safeTableName,
-    'itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
+    'unique_id,itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
     getSupabaseFetchOptionsForTable_(safeTableName)
-  ).sort(function(a, b) {
+  )).sort(function(a, b) {
     return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true });
   });
 

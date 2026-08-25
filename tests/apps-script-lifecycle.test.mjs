@@ -139,3 +139,54 @@ test('completion uses the documented fresh-email fallback without thread metadat
   assert.equal(context.__captured.threadId, '');
   assert.match(result.message, /fresh email/i);
 });
+
+test('Warehouse Assigned Items export converts the keyed Supabase result into complete sorted rows', () => {
+  const context = createContext();
+  vm.runInContext(`
+    __selectedColumns = '';
+    __writtenValues = null;
+    callSupabaseRpc_ = function() { return { ok: true }; };
+    getSupabaseFetchOptionsForTable_ = function() { return {}; };
+    fetchAllSupabaseData = function(tableName, selectColumns) {
+      __selectedColumns = selectColumns;
+      return {
+        row_10: { unique_id: 'row_10', itemcode_normalized: '10', assignedto: 'megan_kelly' },
+        row_2: { unique_id: 'row_2', itemcode_normalized: '2', assignedto: '' },
+        row_100: { unique_id: 'row_100', itemcode_normalized: '100', assignedto: 'dylan_collyge' }
+      };
+    };
+    SpreadsheetApp = {
+      openById: function() {
+        return {
+          getSheets: function() {
+            return [{
+              getLastRow: function() { return 1; },
+              getLastColumn: function() { return 11; },
+              getRange: function() {
+                return {
+                  clearContent: function() {},
+                  setValues: function(values) { __writtenValues = values; },
+                  setFontWeight: function() {}
+                };
+              },
+              setFrozenRows: function() {}
+            }];
+          }
+        };
+      }
+    };
+    emitTableSyncLiveEvent_ = function() {};
+  `, context);
+
+  const result = vm.runInContext(
+    "exportWarehouseAssignedItemsToSheet_('test-sheet', 'ph_warehouse_assigned_items')",
+    context
+  );
+  const writtenValues = JSON.parse(JSON.stringify(context.__writtenValues));
+
+  assert.match(context.__selectedColumns, /(^|,)unique_id(,|$)/);
+  assert.equal(result.exportedRows, 3);
+  assert.equal(writtenValues.length, 4);
+  assert.deepEqual(writtenValues.slice(1).map((row) => row[0]), ['2', '10', '100']);
+  assert.deepEqual(writtenValues.slice(1).map((row) => row[1]), ['', 'megan_kelly', 'dylan_collyge']);
+});
