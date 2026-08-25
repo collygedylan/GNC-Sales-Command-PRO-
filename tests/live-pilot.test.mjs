@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.24.14';
+  const release = 'V2026.08.25.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.24.14');
+  assert.equal(packageJson.version, '2026.08.25.01');
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
@@ -1091,6 +1091,26 @@ test('Kayla remains a sales rep while her global request-manager permission enab
   assert.match(html, /async function handlePhotoUpload\(input, prefix\)[\s\S]*isRepReadOnlyUser\(\) && !canRepEditDetailPrefix\(prefix\)/);
   assert.match(html, /const REQUEST_GLOBAL_ACCESS_TOKENS = new Set\(\['kayla_knepp'/);
   assert.match(html, /function getTaskDetailQuickPhotoLabel\(prefix = ''\)[\s\S]*if \(safePrefix === 'req-'\) return 'Take Request Photo'/);
+});
+
+test('Kayla can archive Request rows and iOS keeps the swipe gesture active', () => {
+  assert.match(html, /const REQUEST_ROW_ARCHIVE_USERS = new Set\(\['kayla_knepp'/);
+  const archiveAccess = html.slice(
+    html.indexOf('function canCurrentUserArchiveRequestRows'),
+    html.indexOf('function canCurrentUserArchiveRequestRow(item')
+  );
+  assert.match(archiveAccess, /REQUEST_ROW_ARCHIVE_USERS\.has\(token\)/);
+
+  const swipeDecoration = html.slice(
+    html.indexOf('function decorateRequestRows'),
+    html.indexOf('function refreshRequestViewAfterArchive')
+  );
+  assert.match(swipeDecoration, /request-swipe-enabled/);
+  assert.doesNotMatch(swipeDecoration, /decorateIosPhoneRequestRemoveButtons\(container\)/);
+  assert.doesNotMatch(swipeDecoration, /request-swipe-disabled/);
+  assert.match(swipeDecoration, /touchend', handleRequestSwipeTouchEnd, \{ passive: false \}/);
+  assert.match(swipeDecoration, /pointerup', handleRequestSwipeEnd, \{ passive: false \}/);
+  assert.match(html, /body\.ios-device\.viewport-phone\.current-view-request #view-request \.request-swipe-row\.swipe-open \.request-swipe-surface\{[\s\S]*translateX\(-88px\)/);
 });
 
 test('V02 paged dataset reads preserve the authenticated RLS identity and Drive degrades safely', () => {

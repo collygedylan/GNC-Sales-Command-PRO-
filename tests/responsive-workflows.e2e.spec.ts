@@ -18,7 +18,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 });
 
 test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     const access = getRoleAccessState('Admin', 'brandt_emerson');
@@ -125,7 +125,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -255,7 +255,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 preserves one-user selections across reports and sends a grouped Item Inquiry workbook', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports2 = canViewManagerEvalReports2;
@@ -426,7 +426,7 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -505,7 +505,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
 test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
   const desktop = await page.evaluate(() => window.eval(`(() => {
@@ -583,7 +583,7 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -652,7 +652,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -860,6 +860,8 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
     const result = window.eval(`({
       repReadOnly: isRepReadOnlyUser(),
       globalRequestManager: canUseGlobalRequestAccess(),
+      canArchiveRequestRows: canCurrentUserArchiveRequestRows(),
+      canArchiveRequestRow: canCurrentUserArchiveRequestRow({ UNIQUE_ID: 'REQ-KAYLA-ARCHIVE', REQUEST_HISTORY: false }),
       requestEditable: canEditRowDetails('req-', { SOURCE_TABLE: 'ph_active_request' }),
       driveEditable: canEditRowDetails('ssn-', { SOURCE_TABLE: 'ph_master_inventory' }),
       requestPhotoLabel: getTaskDetailQuickPhotoLabel('req-')
@@ -871,9 +873,63 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
   expect(permissions).toEqual({
     repReadOnly: true,
     globalRequestManager: true,
+    canArchiveRequestRows: true,
+    canArchiveRequestRow: true,
     requestEditable: true,
     driveEditable: false,
     requestPhotoLabel: 'Take Request Photo',
+  });
+});
+
+test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  const result = await page.evaluate(() => {
+    const requestView = document.getElementById('view-request');
+    const container = document.getElementById('request-content');
+    if (!requestView || !container) throw new Error('Request view unavailable');
+    document.body.classList.add('ios-device', 'viewport-phone', 'current-view-request');
+    requestView.classList.remove('hidden');
+    window.eval("window.__qaOriginalProtectedTokens=getProtectedUserTokens; getProtectedUserTokens=function(){ return new Set(['kayla_knepp']); }; requestsInventory=[{ UNIQUE_ID:'REQ-IOS-KAYLA-1', DOM_ID:'req-ios-kayla-1', REQUEST_HISTORY:false, REQ_ARCHIVED:false }]; activeReqTab='pending'; isMultiSelectMode=false;");
+    container.innerHTML = '<div class="item-row app-smart-card" data-dom-id="req-ios-kayla-1" data-request-uid="REQ-IOS-KAYLA-1" data-request-history="false"><div class="request-card-test-content">Kayla request</div></div>';
+    window.eval('decorateRequestRows()');
+    const row = container.querySelector<HTMLElement>('.request-swipe-row');
+    const surface = container.querySelector<HTMLElement>('.request-swipe-surface');
+    const action = container.querySelector<HTMLElement>('.request-swipe-action');
+    if (!row || !surface || !action) throw new Error('Swipe decoration failed');
+    let prevented = false;
+    (window as any).handleRequestSwipeStart({
+      target: surface,
+      currentTarget: row,
+      touches: [{ clientX: 320, clientY: 320 }],
+    }, row);
+    (window as any).handleRequestSwipeMove({
+      touches: [{ clientX: 252, clientY: 322 }],
+      preventDefault: () => { prevented = true; },
+    });
+    const computedAction = getComputedStyle(action);
+    const snapshot = {
+      canArchive: (window as any).canCurrentUserArchiveRequestRows(),
+      enhanced: row.dataset.swipeEnhanced,
+      transform: surface.style.transform,
+      prevented,
+      actionDisplay: computedAction.display,
+      actionWidth: Math.round(parseFloat(computedAction.width)),
+      inlineFallbackCount: container.querySelectorAll('.request-inline-remove-action').length,
+    };
+    (window as any).closeRequestSwipe(row);
+    window.eval("getProtectedUserTokens=window.__qaOriginalProtectedTokens; delete window.__qaOriginalProtectedTokens;");
+    return snapshot;
+  });
+
+  expect(result).toEqual({
+    canArchive: true,
+    enhanced: 'true',
+    transform: 'translateX(-68px)',
+    prevented: true,
+    actionDisplay: 'flex',
+    actionWidth: 88,
+    inlineFallbackCount: 0,
   });
 });
 
@@ -1336,7 +1392,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.14', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'

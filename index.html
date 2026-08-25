@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.14">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.24.14';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.25.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6487,6 +6487,50 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             -webkit-tap-highlight-color:transparent !important;
             pointer-events:auto !important;
         }
+        /* iOS Queue swipe authority. Keep the proven phone flow layout, but allow
+           the Request card surface to slide over a touch-sized Remove action. */
+        body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-row{
+            position:relative !important;
+            overflow:hidden !important;
+            background:#ffffff !important;
+            touch-action:pan-y !important;
+            overscroll-behavior-x:contain !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-surface{
+            position:relative !important;
+            z-index:2 !important;
+            overflow:visible !important;
+            border-radius:inherit !important;
+            transition:transform .18s ease !important;
+            touch-action:pan-y !important;
+            will-change:transform !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-row.swipe-open .request-swipe-surface{
+            transform:translateX(-88px) !important;
+            -webkit-transform:translateX(-88px) !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-action{
+            position:absolute !important;
+            inset:0 0 0 auto !important;
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            width:88px !important;
+            min-width:88px !important;
+            max-width:88px !important;
+            height:auto !important;
+            min-height:44px !important;
+            max-height:none !important;
+            opacity:1 !important;
+            visibility:visible !important;
+            pointer-events:auto !important;
+            touch-action:manipulation !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+        }
+        body.ios-device.viewport-phone.current-view-request #view-request .request-inline-remove-action{
+            display:none !important;
+        }
         body.ios-device.viewport-phone #view-detail.detail-request-mode:not(.hidden),
         body.ios-device.viewport-phone #view-detail.detail-request-mode.detail-photo-update-mode:not(.hidden){
             position:relative !important;
@@ -6662,7 +6706,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         @media (min-width:641px){.manager-eval2-selection-tray{position:relative;bottom:auto;z-index:1;backdrop-filter:none;-webkit-backdrop-filter:none}}
         @media (max-width:640px){.manager-eval2-selection-tray{margin-left:0;margin-right:0}.manager-eval2-selection-tray button{min-width:0;white-space:normal;line-height:1.05}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.14">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.01">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6773,8 +6817,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.14"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.14"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.01"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7527,7 +7571,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.14').trim() || 'V2026.08.24.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.01').trim() || 'V2026.08.25.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9013,7 +9057,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13047,6 +13091,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function auditIosPhoneRequestFlow(reason = '', options = {}) {
             if (!isIosPhoneRequestFlowView()) return false;
             if (hasActiveTextEntryFocus() || isUserActivelyTyping()) return false;
+            if (typeof requestSwipeState !== 'undefined' && requestSwipeState && requestSwipeState.dragging) return false;
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const mainScrollArea = document.getElementById('main-scroll-area');
             const root = document.documentElement;
@@ -30310,7 +30355,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.14').trim() || 'V2026.08.24.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.01').trim() || 'V2026.08.25.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -124282,6 +124327,7 @@ C.14.043 C.15.000
         function decorateRequestRows() {
             const container = document.getElementById('request-content');
             if (!container) return;
+            container.querySelectorAll('.request-inline-remove-action').forEach((button) => button.remove());
             if (isIosPhoneRequestFlowView('request')) {
                 closeAllRequestSwipes();
                 releaseRequestSwipeMoveListener();
@@ -124290,10 +124336,8 @@ C.14.043 C.15.000
                     el.classList.remove('swipe-open');
                     ['transform','-webkit-transform','top','bottom','left','right','height','max-height','min-height','opacity','visibility','overflow','contain','content-visibility','contain-intrinsic-size','will-change'].forEach((propertyName) => el.style.removeProperty(propertyName));
                 });
-                decorateIosPhoneRequestRemoveButtons(container);
-                clearIosPhoneRequestFlowState('request-swipe-disabled', { resetScroll: false });
-                scheduleIosPhoneRequestFlowAudit('request-swipe-disabled', { resetScroll: false });
-                return;
+                clearIosPhoneRequestFlowState('request-swipe-enabled', { resetScroll: false });
+                scheduleIosPhoneRequestFlowAudit('request-swipe-enabled', { resetScroll: false });
             }
             if (!canCurrentUserArchiveRequestRows()) return;
             if (activeReqTab !== 'pending') return;
@@ -124308,8 +124352,8 @@ C.14.043 C.15.000
                         handleRequestSwipeStart(event, row);
                     }
                 }, { passive: true });
-                container.addEventListener('touchend', handleRequestSwipeTouchEnd, { passive: true });
-                container.addEventListener('touchcancel', handleRequestSwipeTouchEnd, { passive: true });
+                container.addEventListener('touchend', handleRequestSwipeTouchEnd, { passive: false });
+                container.addEventListener('touchcancel', handleRequestSwipeTouchEnd, { passive: false });
                 container.addEventListener('pointerdown', (event) => {
                     if (!event) return;
                     if (event.__requestSwipeHandled) return;
@@ -124324,8 +124368,8 @@ C.14.043 C.15.000
                     if (!isRequestSwipePointerActive()) return;
                     handleRequestSwipeMove(event);
                 }, { passive: false });
-                container.addEventListener('pointerup', handleRequestSwipeEnd, { passive: true });
-                container.addEventListener('pointercancel', handleRequestSwipeEnd, { passive: true });
+                container.addEventListener('pointerup', handleRequestSwipeEnd, { passive: false });
+                container.addEventListener('pointercancel', handleRequestSwipeEnd, { passive: false });
                 container.addEventListener('click', (event) => {
                     const row = event.target.closest('.request-swipe-row');
                     if (!row || event.target.closest('.request-swipe-action')) return;
