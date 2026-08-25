@@ -95,7 +95,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.12', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -223,7 +223,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 selects cards and sends only selected rows as Excel to chosen recipients', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.12', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports = canViewManagerEvalReports;
@@ -316,7 +316,7 @@ test('Eval Reports #2 selects cards and sends only selected rows as Excel to cho
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.12', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -333,13 +333,13 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
         { ITEMCODE: '006404.031.1', GENUSNAME: 'Angyo', COMMONNAME: 'Angyo Star Tree Ivy', CONTSIZE: '3DP', LOCATIONCODE: 'B.02.001', WAREHOUSEI: 'PH', SOURCE: 'ASSIGNMENTS', ASSIGNEDTO: 'megan_kelly' },
         { ITEMCODE: '000724.070.1', GENUSNAME: 'Acer', COMMONNAME: 'Armstrong Maple', CONTSIZE: '#7', LOCATIONCODE: 'C.03.001', WAREHOUSEI: 'PH', SOURCE: 'ASSIGNMENTS', ASSIGNEDTO: '' }
       ];
+      window.__assignedItemsResponsiveRows = rows;
       const host = document.createElement('div');
       host.id = 'assigned-items-phone-test-host';
       host.style.width = '390px';
       host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(rows));
       document.body.appendChild(host);
       const mobileList = host.querySelector('[data-manager-assigned-mobile-list]');
-      const desktopTable = host.querySelector('[data-manager-assigned-desktop-table]');
       const controls = Array.from(mobileList.querySelectorAll('select,input')).map((element) => {
         const box = element.getBoundingClientRect();
         return { left: box.left, right: box.right, width: box.width, height: box.height };
@@ -349,8 +349,8 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       return {
         cardCount: mobileList.querySelectorAll('[data-manager-assigned-item-card]').length,
         mobileDisplay: getComputedStyle(mobileList).display,
-        desktopDisplay: getComputedStyle(desktopTable).display,
-        hasVisibleTable: Array.from(host.querySelectorAll('table')).some((table) => getComputedStyle(table.closest('[data-manager-assigned-desktop-table]')).display !== 'none'),
+        desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
+        hasVisibleTable: host.querySelectorAll('table').length > 0,
         controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
         touchSelect: controls.filter((box) => box.height > 30).every((box) => box.height >= 44),
         hostFits: host.scrollWidth <= 391,
@@ -366,7 +366,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
   expect(phone.cardCount).toBe(3);
   expect(phone.mobileDisplay).not.toBe('none');
-  expect(phone.desktopDisplay).toBe('none');
+  expect(phone.desktopPresent).toBe(false);
   expect(phone.hasVisibleTable).toBe(false);
   expect(phone.controlsFit).toBe(true);
   expect(phone.touchSelect).toBe(true);
@@ -376,23 +376,104 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(phone.saved).toEqual({ itemcode: '000724.070.1', genusname: 'Acer', assignedto: '' });
 
   await page.setViewportSize({ width: 1024, height: 844 });
-  const desktop = await page.evaluate(() => {
+  const desktop = await page.evaluate(() => window.eval(`(() => {
     const host = document.getElementById('assigned-items-phone-test-host');
-    const mobileList = host?.querySelector('[data-manager-assigned-mobile-list]');
+    host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(window.__assignedItemsResponsiveRows || []));
     const desktopTable = host?.querySelector('[data-manager-assigned-desktop-table]');
     return {
-      mobileDisplay: mobileList ? getComputedStyle(mobileList).display : '',
+      mobilePresent: !!host?.querySelector('[data-manager-assigned-mobile-list]'),
       desktopDisplay: desktopTable ? getComputedStyle(desktopTable).display : '',
-      tableCount: desktopTable ? desktopTable.querySelectorAll('table').length : 0
+      tableCount: desktopTable ? desktopTable.querySelectorAll('table').length : 0,
+      rowCount: desktopTable ? desktopTable.querySelectorAll('[data-manager-assigned-item-row]').length : 0
     };
-  });
-  expect(desktop.mobileDisplay).toBe('none');
+  })()`));
+  expect(desktop.mobilePresent).toBe(false);
   expect(desktop.desktopDisplay).not.toBe('none');
   expect(desktop.tableCount).toBe(1);
+  expect(desktop.rowCount).toBe(3);
+});
+
+test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 844 });
+  await page.goto('/?e2e=V2026.08.24.12', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
+
+  const desktop = await page.evaluate(() => window.eval(`(() => {
+    const originalCanManage = canManageEvalItemcodeAssignments;
+    try {
+      canManageEvalItemcodeAssignments = () => false;
+      const rows = Array.from({ length: 125 }, (_, index) => ({
+        UNIQUE_ID: 'full-' + index,
+        ITEMCODE: 'SKU-' + String(index).padStart(3, '0'),
+        GENUSNAME: index % 2 ? 'Rosa' : 'Acer',
+        COMMONNAME: 'Needle Plant ' + index,
+        CONTSIZE: '#' + ((index % 7) + 1),
+        LOCATIONCODE: 'A.' + String(index).padStart(3, '0'),
+        WAREHOUSEI: 'PH',
+        SOURCE: 'assignment-test',
+        ASSIGNEDTO: index % 5 === 0 ? '' : 'dylan_collyge'
+      }));
+      window.__assignedItemsFullRows = getManagerAssignedItemsDisplayRows(rows);
+      const host = document.createElement('div');
+      host.id = 'assigned-items-full-list-test-host';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, rows.length);
+      document.body.appendChild(host);
+      return {
+        rowCount: host.querySelectorAll('[data-manager-assigned-item-row]').length,
+        mobilePresent: !!host.querySelector('[data-manager-assigned-mobile-list]'),
+        status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || '',
+        oldCapMessagePresent: /first 100/i.test(host.textContent || '')
+      };
+    } finally {
+      canManageEvalItemcodeAssignments = originalCanManage;
+    }
+  })()`));
+
+  expect(desktop.rowCount).toBe(125);
+  expect(desktop.mobilePresent).toBe(false);
+  expect(desktop.status).toContain('Showing all 125 matching rows');
+  expect(desktop.oldCapMessagePresent).toBe(false);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const phoneSearch = await page.evaluate(() => window.eval(`(() => {
+    const originalCanManage = canManageEvalItemcodeAssignments;
+    const searchInput = document.getElementById('managers-search');
+    const originalSearch = searchInput ? searchInput.value : '';
+    try {
+      canManageEvalItemcodeAssignments = () => false;
+      const host = document.getElementById('assigned-items-full-list-test-host');
+      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, window.__assignedItemsFullRows.length);
+      const fullCardCount = host.querySelectorAll('[data-manager-assigned-item-card]').length;
+      if (!searchInput) throw new Error('Managers search input is unavailable');
+      searchInput.value = 'SKU-124';
+      handleManagersSearch();
+      const filteredRows = getFilteredManagerAssignedItemsExportRows(window.__assignedItemsFullRows);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable(filteredRows, window.__assignedItemsFullRows.length);
+      return {
+        fullCardCount,
+        filteredCount: filteredRows.length,
+        filteredCardCount: host.querySelectorAll('[data-manager-assigned-item-card]').length,
+        desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
+        status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || ''
+      };
+    } finally {
+      canManageEvalItemcodeAssignments = originalCanManage;
+      if (searchInput) {
+        searchInput.value = originalSearch;
+        handleManagersSearch();
+      }
+    }
+  })()`));
+
+  expect(phoneSearch.fullCardCount).toBe(125);
+  expect(phoneSearch.filteredCount).toBe(1);
+  expect(phoneSearch.filteredCardCount).toBe(1);
+  expect(phoneSearch.desktopPresent).toBe(false);
+  expect(phoneSearch.status).toContain('Search checks the complete 125-row list');
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.12', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -461,7 +542,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.12', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -1145,7 +1226,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.12', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
