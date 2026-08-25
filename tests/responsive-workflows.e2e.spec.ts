@@ -891,12 +891,11 @@ test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ p
     document.body.classList.add('ios-device', 'viewport-phone', 'current-view-request');
     requestView.classList.remove('hidden');
     window.eval("currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; requestsInventory=[{ UNIQUE_ID:'REQ-IOS-KAYLA-1', DOM_ID:'req-ios-kayla-1', REQUEST_HISTORY:false, REQ_ARCHIVED:false }]; activeReqTab='pending'; isMultiSelectMode=false;");
-    container.innerHTML = '<div class="item-row app-smart-card" data-dom-id="req-ios-kayla-1" data-request-uid="REQ-IOS-KAYLA-1" data-request-history="false"><div class="request-card-test-content">Kayla request</div></div>';
-    window.eval('decorateRequestRows()');
+    container.innerHTML = '<div class="item-row app-smart-card request-swipe-row" data-dom-id="req-ios-kayla-1" data-request-uid="REQ-IOS-KAYLA-1" data-request-history="false" data-swipe-enhanced="true"><button type="button" class="request-swipe-action">Remove</button><div class="request-swipe-surface"><div class="request-card-test-content">Kayla request</div></div></div>';
     const row = container.querySelector<HTMLElement>('.request-swipe-row');
     const surface = container.querySelector<HTMLElement>('.request-swipe-surface');
     const action = container.querySelector<HTMLElement>('.request-swipe-action');
-    if (!row || !surface || !action) throw new Error('Swipe decoration failed');
+    if (!row || !surface || !action) throw new Error('Swipe fixture failed');
     let prevented = false;
     (window as any).handleRequestSwipeStart({
       target: surface,
