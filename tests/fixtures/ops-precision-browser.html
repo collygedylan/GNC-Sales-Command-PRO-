@@ -229,10 +229,11 @@
             <div id="req-input-container">
               <div class="request-detail-field"><label for="req-spec">Spec (size/dims)</label><input id="req-spec" class="input-field" placeholder="e.g. 24-30 inch"></div>
               <div class="request-detail-field"><label for="req-loc-match">Loc match %</label><input id="req-loc-match" class="input-field" placeholder="e.g. 95"></div>
-              <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide"><label for="req-av-note">AV note</label><div><input id="req-av-note" class="input-field" placeholder="Type AV note or select..."><button type="button" aria-label="Add AV note">+</button></div></div>
+              <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide"><label for="req-av-note">AV note</label><div><input id="req-av-note" class="input-field" placeholder="Type AV note or select..."><button id="fixture-open-av-notes" type="button" aria-label="Choose AV note">+</button></div><div id="req-av-dropdown-list" class="av-note-dropdown-panel hidden" aria-label="AV Note options"><div class="av-note-dropdown-header"><input id="fixture-av-search" class="input-field" type="search" placeholder="Search AV Notes..."></div><div id="fixture-av-options"></div></div></div>
               <div id="req-pick-wrap" class="request-detail-field"><label for="req-pick-note">Pick note</label><input id="req-pick-note" class="input-field" placeholder="e.g. Needs spacing"></div>
               <div id="req-comments-wrap" class="request-detail-field"><label for="req-comments">Comments</label><textarea id="req-comments" class="input-field" placeholder="Any additional comments..."></textarea></div>
             </div>
+            <div id="request-photo-section" class="request-photo-rail" aria-label="Request photos"><div id="det-request-camera-panel" class="request-photo-rail__camera"><label id="camera-btn-req" class="detail-camera-upload-card request-camera-enabled"><span>Add Photo</span><input type="file" accept="image/*" capture="environment"></label></div><div id="req-photo-preview" class="request-photo-rail__saved"><div id="req-photo-list-container"><div><img alt="Request photo 1" src="../../ag-data-solutions-icon-v2026080925-192.png"><img alt="Request photo 2" src="../../ag-data-solutions-icon-v2026080925-192.png"><img alt="Request photo 3" src="../../ag-data-solutions-icon-v2026080925-192.png"><img alt="Request photo 4" src="../../ag-data-solutions-icon-v2026080925-192.png"><img alt="Request photo 5" src="../../ag-data-solutions-icon-v2026080925-192.png"><img alt="Request photo 6" src="../../ag-data-solutions-icon-v2026080925-192.png"></div></div></div></div>
             <div id="req-save-action-wrap"><button id="req-btn-save-complete" type="button">Mark done</button></div>
             <button id="req-shear-action" type="button">Add to shear list</button>
           </div>
@@ -330,6 +331,28 @@
       fixtureDetailRoot.classList.toggle('detail-item-inquiry-mode', activeView === 'item-inquiry');
       document.getElementById('det-request-content').classList.toggle('hidden', activeView !== 'detail');
       document.getElementById('det-item-inquiry-content').classList.toggle('hidden', activeView !== 'item-inquiry');
+      if (activeView === 'detail') {
+        const optionHost = document.getElementById('fixture-av-options');
+        const optionRows = Array.from({ length: 80 }, (_, index) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'av-note-dropdown-option';
+          button.textContent = `AV Note ${String(index + 1).padStart(2, '0')}`;
+          button.dataset.avNoteValue = button.textContent;
+          return button;
+        });
+        optionHost.replaceChildren(...optionRows);
+        const panel = document.getElementById('req-av-dropdown-list');
+        document.getElementById('fixture-open-av-notes').addEventListener('click', () => {
+          panel.classList.remove('hidden');
+          document.body.classList.add('request-av-note-sheet-open');
+          document.getElementById('fixture-av-search').focus({ preventScroll: true });
+        });
+        document.getElementById('fixture-av-search').addEventListener('input', (event) => {
+          const query = String(event.target.value || '').trim().toLowerCase();
+          optionRows.forEach((button) => { button.hidden = !!query && !button.textContent.toLowerCase().includes(query); });
+        });
+      }
       document.getElementById('global-header-search-slot').classList.toggle('hidden', activeView !== 'drive');
       document.getElementById('global-header-inline-title').classList.toggle('hidden', activeView === 'drive');
       const fixtureTabButtons = Array.from(document.querySelectorAll('#det-tabs-container .detail-tab:not(.hidden)'));

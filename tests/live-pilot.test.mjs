@@ -31,6 +31,7 @@ const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 const appsScriptBackend = read('Code.gs');
 const requestRetryGuardMigration = read('supabase/migrations/20260820190857_acknowledge_stale_completed_request_work.sql');
+const requestCapabilitiesMigration = read('supabase/migrations/20260825222325_stabilize_request_capabilities.sql');
 const completeAssignmentSheetMigration = read('supabase/migrations/20260820195456_complete_eval_assignment_sheet_import.sql');
 const exactAssignmentSheetMigration = read('supabase/migrations/20260820202902_reconcile_exact_assignment_sheet.sql');
 const reliableDeliveryMigration = read('supabase/migrations/20260820230245_reliable_request_delivery_worker.sql');
@@ -60,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.25.09';
+  const release = 'V2026.08.25.10';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.25.09');
+  assert.equal(packageJson.version, '2026.08.25.10');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1106,20 +1107,24 @@ test('acknowledged Eval assignments replace stale local rows before the unassign
 });
 
 test('Kayla remains a sales rep while her global request-manager permission enables request photos and saves', () => {
-  assert.match(html, /function canRepEditDetailPrefix\(prefix = ''\)[\s\S]*normalizedPrefix === 'req-' && canUseGlobalRequestAccess\(\)/);
-  assert.match(html, /function canEditRowDetails\(prefix = '', itemOverride = null\)[\s\S]*isRepReadOnlyUser\(\) && !canRepEditDetailPrefix\(normalizedPrefix\)/);
-  assert.match(html, /async function handlePhotoUpload\(input, prefix\)[\s\S]*isRepReadOnlyUser\(\) && !canRepEditDetailPrefix\(prefix\)/);
-  assert.match(html, /const REQUEST_GLOBAL_ACCESS_TOKENS = new Set\(\['kayla_knepp'/);
+  assert.match(requestCapabilitiesMigration, /global_access := private\.can_manage_requests\(\)/);
+  assert.match(requestCapabilitiesMigration, /'can_take_photo', save_access/);
+  assert.match(requestCapabilitiesMigration, /'can_edit', save_access/);
+  assert.match(requestCapabilitiesMigration, /'can_complete', save_access/);
+  assert.match(requestCapabilitiesMigration, /'can_archive', global_access/);
+  assert.match(html, /function canRepEditDetailPrefix\(prefix = ''\)[\s\S]*normalizedPrefix === 'req-' && canCurrentUserWorkRequestItem\(activeItem\)/);
+  assert.match(html, /function canEditRowDetails\(prefix = '', itemOverride = null\)[\s\S]*normalizedPrefix === 'req-'\) return canCurrentUserWorkRequestItem/);
+  assert.match(html, /async function handlePhotoUpload\(input, prefix\)[\s\S]*canCurrentUserWorkRequestItem\(activeItem, 'photo'\)/);
   assert.match(html, /function getTaskDetailQuickPhotoLabel\(prefix = ''\)[\s\S]*if \(safePrefix === 'req-'\) return 'Take Request Photo'/);
 });
 
 test('Kayla can archive Request rows and iOS keeps the swipe gesture active', () => {
-  assert.match(html, /const REQUEST_ROW_ARCHIVE_USERS = new Set\(\['kayla_knepp'/);
   const archiveAccess = html.slice(
     html.indexOf('function canCurrentUserArchiveRequestRows'),
     html.indexOf('function canCurrentUserArchiveRequestRow(item')
   );
-  assert.match(archiveAccess, /REQUEST_ROW_ARCHIVE_USERS\.has\(token\)/);
+  assert.match(archiveAccess, /capabilities\.canArchive/);
+  assert.doesNotMatch(html, /REQUEST_ROW_ARCHIVE_USERS/);
 
   const swipeDecoration = html.slice(
     html.indexOf('function decorateRequestRows'),
@@ -1195,14 +1200,15 @@ test('V03 request-manager Queue loads the canonical set but hides completed rows
     html.indexOf('function canUseGlobalRequestAccess'),
     html.indexOf('function doesCurrentUserMatchRepName')
   );
-  assert.match(globalAccess, /access && access\.isAdmin/);
-  assert.match(globalAccess, /REQUEST_GLOBAL_ACCESS_TOKENS\.has\(token\)/);
+  assert.match(globalAccess, /capabilities && capabilities\.scope === 'global'/);
+  assert.doesNotMatch(globalAccess, /REQUEST_GLOBAL_ACCESS_TOKENS/);
 
   const requestScope = html.slice(
     html.indexOf('function getScopedRequestItems'),
     html.indexOf('function canUseRequestDylanViewerFilter')
   );
-  assert.match(requestScope, /!roleAccess\.isAdmin && !hasGlobalRequestAccess/);
+  assert.match(requestScope, /requestScopeMode === 'own'/);
+  assert.match(requestScope, /doesCurrentUserOwnOrHaveAssignmentForRequestItem/);
 
   const requestChunks = html.slice(
     html.indexOf('function renderRequestQueueFallbackCard'),

@@ -18,7 +18,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 });
 
 test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     const access = getRoleAccessState('Admin', 'brandt_emerson');
@@ -125,7 +125,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -256,7 +256,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 preserves one-user selections and sends a reference-matched Item Inquiry workbook', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports2 = canViewManagerEvalReports2;
@@ -568,7 +568,7 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -647,7 +647,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
 test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
   const desktop = await page.evaluate(() => window.eval(`(() => {
@@ -725,7 +725,7 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -794,7 +794,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -998,7 +998,7 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
 test('Kayla keeps request photo and save access without gaining other sales-rep row edits', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   const permissions = await page.evaluate(() => {
-    window.eval("window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalRequestIdentityTokens=getRequestRepScopedIdentityTokens; getRequestRepScopedIdentityTokens=function(){ return new Set(['kayla_knepp']); }; getRoleAccessState=function(){ return window.__qaOriginalGetRoleAccessState('SALESREP','kayla_knepp'); };");
+    window.eval("window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalRequestIdentityTokens=getRequestRepScopedIdentityTokens; window.__qaOriginalGetRequestCapabilities=getRequestCapabilities; currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; getRequestCapabilities=function(){ return {contractVersion:1,username:'kayla_knepp',scope:'global',canCreateGeneral:true,canCreateAv:true,canViewQueue:true,canTakePhoto:true,canEdit:true,canComplete:true,canArchive:true}; }; getRequestRepScopedIdentityTokens=function(){ return new Set(['kayla_knepp']); }; getRoleAccessState=function(){ return window.__qaOriginalGetRoleAccessState('SALESREP','kayla_knepp'); };");
     const result = window.eval(`({
       repReadOnly: isRepReadOnlyUser(),
       globalRequestManager: canUseGlobalRequestAccess(),
@@ -1008,7 +1008,7 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
       driveEditable: canEditRowDetails('ssn-', { SOURCE_TABLE: 'ph_master_inventory' }),
       requestPhotoLabel: getTaskDetailQuickPhotoLabel('req-')
     })`);
-    window.eval("getRoleAccessState=window.__qaOriginalGetRoleAccessState; getRequestRepScopedIdentityTokens=window.__qaOriginalRequestIdentityTokens; delete window.__qaOriginalGetRoleAccessState; delete window.__qaOriginalRequestIdentityTokens;");
+    window.eval("getRoleAccessState=window.__qaOriginalGetRoleAccessState; getRequestRepScopedIdentityTokens=window.__qaOriginalRequestIdentityTokens; getRequestCapabilities=window.__qaOriginalGetRequestCapabilities; delete window.__qaOriginalGetRoleAccessState; delete window.__qaOriginalRequestIdentityTokens; delete window.__qaOriginalGetRequestCapabilities;");
     return result;
   });
 
@@ -1025,14 +1025,14 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
 
 test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const requestView = document.getElementById('view-request');
     const container = document.getElementById('request-content');
     if (!requestView || !container) throw new Error('Request view unavailable');
     document.body.classList.add('ios-device', 'viewport-phone', 'current-view-request');
     requestView.classList.remove('hidden');
-    window.eval("currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; requestsInventory=[{ UNIQUE_ID:'REQ-IOS-KAYLA-1', DOM_ID:'req-ios-kayla-1', REQUEST_HISTORY:false, REQ_ARCHIVED:false }]; activeReqTab='pending'; isMultiSelectMode=false;");
+    window.eval("currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; getRequestCapabilities=function(){ return {contractVersion:1,username:'kayla_knepp',scope:'global',canCreateGeneral:true,canCreateAv:true,canViewQueue:true,canTakePhoto:true,canEdit:true,canComplete:true,canArchive:true}; }; requestsInventory=[{ UNIQUE_ID:'REQ-IOS-KAYLA-1', DOM_ID:'req-ios-kayla-1', REQUEST_HISTORY:false, REQ_ARCHIVED:false }]; activeReqTab='pending'; isMultiSelectMode=false;");
     container.innerHTML = '<div class="item-row app-smart-card request-swipe-row" data-dom-id="req-ios-kayla-1" data-request-uid="REQ-IOS-KAYLA-1" data-request-history="false" data-swipe-enhanced="true"><button type="button" class="request-swipe-action">Remove</button><div class="request-swipe-surface"><div class="request-card-test-content">Kayla request</div></div></div>';
     const row = container.querySelector<HTMLElement>('.request-swipe-row');
     const surface = container.querySelector<HTMLElement>('.request-swipe-surface');
@@ -1532,7 +1532,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1675,7 +1675,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.09', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1763,53 +1763,75 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
   await expect(page.getByText('Season Sales Notes', { exact: true })).toHaveCount(0);
 });
 
-test('Request detail fits the visible shell without outer scrolling or hidden actions', async ({ page }) => {
-  const viewports = [
-    { width: 390, height: 844 },
-    { width: 768, height: 1024 },
-    { width: 1024, height: 768 },
-    { width: 1366, height: 768 },
-    { width: 1920, height: 1080 },
-  ];
-  for (const viewport of viewports) {
-    await page.setViewportSize(viewport);
-    await page.goto(`${fixtureUrl}?view=detail&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('#view-detail')).toBeVisible();
-    await expect(page.locator('#req-spec')).toBeVisible();
-    await expect(page.locator('#req-comments')).toBeVisible();
-    await expect(page.locator('#req-btn-save-complete')).toBeVisible();
-    await expect(page.locator('#req-shear-action')).toBeVisible();
-    await expect(page.locator('#req-matching-inventory-container')).toHaveAttribute('aria-expanded', 'false');
+test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', async ({ page }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
+    for (const theme of ['light', 'dark']) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${fixtureUrl}?view=detail&theme=${theme}&ua=ios&monitoring=0`, { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('#view-detail')).toBeVisible();
+      await expect(page.locator('#req-spec')).toBeVisible();
+      await expect(page.locator('#req-comments')).toBeVisible();
+      await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+      await expect(page.locator('#request-photo-section')).toBeVisible();
 
-    const state = await page.locator('#view-detail').evaluate((detail) => {
-      const main = document.getElementById('main-scroll-area')!;
-      const nav = document.getElementById('bottom-nav')!;
-      const form = document.getElementById('det-request-content')!;
-      const summary = detail.querySelector(':scope > .freeze-panel') as HTMLElement;
-      const save = document.getElementById('req-btn-save-complete')!;
-      const shear = document.getElementById('req-shear-action')!;
-      const rect = (element: Element) => element.getBoundingClientRect();
-      return {
-        outerScroll: main.scrollHeight - main.clientHeight,
-        horizontalOverflow: main.scrollWidth - main.clientWidth,
-        detailTop: rect(detail).top,
-        detailBottom: rect(detail).bottom,
-        navTop: rect(nav).top,
-        formVisible: rect(form).height > 0 && rect(form).bottom <= rect(nav).top + 1,
-        summaryVisible: rect(summary).height > 0,
-        saveVisible: rect(save).top >= rect(form).top && rect(save).bottom <= rect(nav).top + 1,
-        shearVisible: rect(shear).top >= rect(form).top && rect(shear).bottom <= rect(nav).top + 1,
-        columns: getComputedStyle(detail).gridTemplateColumns.split(' ').length,
-      };
-    });
-    expect(state.outerScroll, `${viewport.width}x${viewport.height}: ${JSON.stringify(state)}`).toBeLessThanOrEqual(2);
-    expect(state.horizontalOverflow).toBeLessThanOrEqual(2);
-    expect(state.detailBottom, `${viewport.width}x${viewport.height}: ${JSON.stringify(state)}`).toBeLessThanOrEqual(state.navTop + 1);
-    expect(state.formVisible).toBe(true);
-    expect(state.summaryVisible).toBe(true);
-    expect(state.saveVisible).toBe(true);
-    expect(state.shearVisible).toBe(true);
-    expect(state.columns).toBe(viewport.width >= 900 ? 2 : 1);
+      const state = await page.locator('#view-detail').evaluate(() => {
+        const main = document.getElementById('main-scroll-area')!;
+        const nav = document.getElementById('bottom-nav')!;
+        const saveTray = document.getElementById('req-save-action-wrap')!;
+        const form = document.getElementById('det-request-content')!;
+        const photoRail = document.getElementById('request-photo-section')!;
+        const inputs = Array.from(form.querySelectorAll<HTMLElement>('.input-field')).filter((input) => input.offsetParent !== null);
+        const rect = (element: Element) => element.getBoundingClientRect();
+        return {
+          mainScrollable: main.scrollHeight > main.clientHeight,
+          mainOverflowY: getComputedStyle(main).overflowY,
+          horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          formHeight: rect(form).height,
+          formOverflow: getComputedStyle(form).overflow,
+          savePosition: getComputedStyle(saveTray).position,
+          saveTop: rect(saveTray).top,
+          saveBottom: rect(saveTray).bottom,
+          navTop: rect(nav).top,
+          minInputHeight: Math.min(...inputs.map((input) => rect(input).height)),
+          minInputFont: Math.min(...inputs.map((input) => Number.parseFloat(getComputedStyle(input).fontSize))),
+          photoOverflowX: getComputedStyle(photoRail).overflowX,
+          photoScrollable: photoRail.scrollWidth > photoRail.clientWidth,
+          cameraFirst: photoRail.firstElementChild?.id === 'det-request-camera-panel',
+        };
+      });
+      expect(state.mainScrollable, `${viewport.width}x${viewport.height}: ${JSON.stringify(state)}`).toBe(true);
+      expect(state.mainOverflowY).toBe('auto');
+      expect(state.horizontalOverflow).toBe(0);
+      expect(state.formHeight).toBeGreaterThan(300);
+      expect(state.formOverflow).toBe('visible');
+      expect(state.savePosition).toBe('fixed');
+      expect(state.saveTop).toBeGreaterThanOrEqual(0);
+      expect(state.saveBottom).toBeLessThanOrEqual(state.navTop + 1);
+      expect(state.minInputHeight).toBeGreaterThanOrEqual(44);
+      expect(state.minInputFont).toBeGreaterThanOrEqual(16);
+      expect(state.photoOverflowX).toBe('auto');
+      expect(state.photoScrollable).toBe(true);
+      expect(state.cameraFirst).toBe(true);
+
+      await page.locator('#fixture-open-av-notes').click();
+      const sheet = page.locator('#req-av-dropdown-list');
+      await expect(sheet).toBeVisible();
+      await expect(sheet.locator('.av-note-dropdown-option')).toHaveCount(80);
+      const sheetState = await sheet.evaluate((panel) => ({
+        overflowY: getComputedStyle(panel).overflowY,
+        touchAction: getComputedStyle(panel).touchAction,
+        scrollable: panel.scrollHeight > panel.clientHeight,
+        width: panel.getBoundingClientRect().width,
+      }));
+      expect(sheetState.overflowY).toBe('auto');
+      expect(sheetState.touchAction).toBe('pan-y');
+      expect(sheetState.scrollable).toBe(true);
+      expect(sheetState.width).toBeLessThanOrEqual(viewport.width);
+      const mainScrollBeforeSheetScroll = await page.locator('#main-scroll-area').evaluate((main) => main.scrollTop);
+      await sheet.locator('.av-note-dropdown-option').last().scrollIntoViewIfNeeded();
+      await expect(sheet.locator('.av-note-dropdown-option').last()).toBeInViewport();
+      expect(await page.locator('#main-scroll-area').evaluate((main) => main.scrollTop)).toBe(mainScrollBeforeSheetScroll);
+    }
   }
 });
 

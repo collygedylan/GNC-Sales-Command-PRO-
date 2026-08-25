@@ -2255,6 +2255,382 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
+/* V2026.08.25.10 — final Request mobile layout and capability-state authority. */
+body.ops-precision-pilot .request-capability-card {
+  display: flex;
+  min-height: 58px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: 14px;
+  color: var(--ops-text);
+  background: var(--ops-surface);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .07);
+}
+
+body.ops-precision-pilot .request-capability-card > div {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+}
+
+body.ops-precision-pilot .request-capability-card strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+body.ops-precision-pilot .request-capability-card span {
+  color: var(--ops-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+body.ops-precision-pilot .request-capability-card button {
+  min-width: 74px;
+  min-height: 44px;
+  border: 1px solid var(--ops-border-strong);
+  border-radius: 12px;
+  color: var(--ops-text);
+  background: var(--ops-surface-strong);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+body.ops-precision-pilot .request-capability-card--error {
+  border-color: #ef4444;
+  background: color-mix(in srgb, #ef4444 10%, var(--ops-surface));
+}
+
+body.ops-precision-pilot .request-capability-card--stale {
+  border-color: #d97706;
+  background: color-mix(in srgb, #f59e0b 12%, var(--ops-surface));
+}
+
+body.ops-precision-pilot .request-capability-spinner,
+body.ops-precision-pilot .request-detail-skeleton {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 3px solid var(--ops-border);
+  border-top-color: #0b7a51;
+  border-radius: 999px;
+  animation: request-capability-spin .8s linear infinite;
+}
+
+@keyframes request-capability-spin {
+  to { transform: rotate(360deg); }
+}
+
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state {
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  min-height: 64px !important;
+  margin: 0 0 10px !important;
+  padding: 12px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 14px !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface-muted) !important;
+}
+
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state.hidden {
+  display: none !important;
+}
+
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state > div,
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state:not(.request-detail-load-state--error) > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state span {
+  color: var(--ops-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state--error {
+  border-color: #ef4444 !important;
+  background: color-mix(in srgb, #ef4444 10%, var(--ops-surface)) !important;
+}
+
+body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-state button {
+  min-width: 72px;
+  min-height: 44px;
+  margin-left: auto;
+  border: 1px solid #ef4444;
+  border-radius: 12px;
+  color: var(--ops-text);
+  background: var(--ops-surface);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+@media (max-width: 899px) {
+  body.ops-precision-pilot:has(#view-detail.detail-request-mode:not(.hidden)) #main-scroll-area,
+  body.ops-precision-pilot.app-main-scroll-locked.request-detail-scroll-locked:has(#view-detail.detail-request-mode:not(.hidden)) #main-scroll-area {
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    padding-bottom: calc(var(--footer-nav-reserve, 8.75rem) + 6.5rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden),
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode:not(.hidden) {
+    display: block !important;
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode > .freeze-panel,
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode > .freeze-panel {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #detail-shared-panels,
+  body.ops-precision-pilot #view-detail.detail-request-mode #detail-shared-panels:not(.hidden) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content:not(.hidden),
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode #det-request-content:not(.hidden) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 10px 0 calc(var(--footer-nav-reserve, 8.75rem) + 7.25rem + env(safe-area-inset-bottom)) !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-input-container {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content > div,
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-input-container > div {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content label {
+    margin: 0 0 6px !important;
+    color: var(--ops-text-muted) !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+    letter-spacing: .06em !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :is(.input-field, select, textarea),
+  body.ops-precision-pilot.viewport-compact #view-detail.detail-request-mode #det-request-content :is(.input-field, select, textarea) {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 12px 14px !important;
+    border: 1px solid var(--ops-border-strong) !important;
+    border-radius: 12px !important;
+    color: var(--ops-text) !important;
+    background: var(--ops-surface) !important;
+    font-size: 16px !important;
+    font-weight: 750 !important;
+    line-height: 1.3 !important;
+    opacity: 1 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content textarea.input-field,
+  body.ops-precision-pilot.viewport-compact #view-detail.detail-request-mode #det-request-content textarea.input-field {
+    min-height: 88px !important;
+    resize: vertical !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :is(button, .detail-measurement-na-button),
+  body.ops-precision-pilot.viewport-compact #view-detail.detail-request-mode #det-request-content :is(button, .detail-measurement-na-button) {
+    min-height: 44px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #request-photo-section,
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode #request-photo-section {
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    width: 100% !important;
+    min-height: 92px !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    border: 1px solid var(--ops-border) !important;
+    border-radius: 14px !important;
+    background: var(--ops-surface-muted) !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-camera-panel {
+    display: block !important;
+    width: 78px !important;
+    min-width: 78px !important;
+    margin: 0 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-camera-panel.hidden {
+    display: none !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #camera-btn-req.detail-camera-upload-card.request-camera-enabled {
+    display: flex !important;
+    width: 78px !important;
+    min-width: 78px !important;
+    min-height: 76px !important;
+    height: 76px !important;
+    padding: 8px !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    border-radius: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #camera-btn-req .detail-camera-upload-copy {
+    align-items: center !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #camera-btn-req .detail-camera-upload-title {
+    font-size: 10px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #camera-btn-req .detail-camera-upload-subtitle {
+    display: none !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-photo-preview:not(.hidden) {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-photo-list-container > div {
+    gap: 10px !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-photo-list-container img {
+    width: 76px !important;
+    height: 76px !important;
+    border-radius: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.app-main-scroll-locked.request-detail-scroll-locked #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.ios-device.viewport-phone.app-main-scroll-locked.request-detail-scroll-locked #view-detail.detail-request-mode #req-save-action-wrap {
+    position: fixed !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    bottom: calc(var(--footer-nav-reserve, 8.75rem) + 8px + env(safe-area-inset-bottom)) !important;
+    z-index: 10040 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 56px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 6px !important;
+    transform: none !important;
+    border: 1px solid var(--ops-border) !important;
+    border-radius: 16px !important;
+    background: color-mix(in srgb, var(--ops-surface) 94%, transparent) !important;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, .2) !important;
+    backdrop-filter: blur(14px) !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-btn-save-complete {
+    width: 100% !important;
+    min-height: 52px !important;
+    height: 52px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+  }
+
+  body.ops-precision-pilot.keyboard-open #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.detail-field-active #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.measurement-keyboard-open #view-detail.detail-request-mode #req-save-action-wrap {
+    bottom: calc(var(--keyboard-offset, 0px) + 8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.ops-precision-pilot.request-av-note-sheet-open #view-detail.detail-request-mode #req-av-dropdown-list.av-note-dropdown-panel {
+    position: fixed !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    top: auto !important;
+    bottom: calc(var(--keyboard-offset, 0px) + 12px + env(safe-area-inset-bottom)) !important;
+    z-index: 10080 !important;
+    width: auto !important;
+    max-height: min(54dvh, calc(var(--mobile-visible-height, var(--visual-height, 100vh)) - var(--keyboard-offset, 0px) - 7rem)) !important;
+    padding: 8px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    border-radius: 18px !important;
+    background: var(--ops-surface) !important;
+  }
+
+  body.ops-precision-pilot.request-av-note-sheet-open #view-detail.detail-request-mode #req-av-dropdown-list .av-note-dropdown-header {
+    background: var(--ops-surface-strong) !important;
+    color: var(--ops-text) !important;
+  }
+
+  body.ops-precision-pilot.request-av-note-sheet-open #view-detail.detail-request-mode #req-av-dropdown-list .av-note-dropdown-option {
+    min-height: 48px !important;
+    color: var(--ops-text) !important;
+    background: var(--ops-surface) !important;
+  }
+
+  body.ops-precision-pilot #home-dynamic-content:not(:empty) {
+    display: block !important;
+    min-height: 120px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
 /* V2026.08.15.08 — Dylan-only two-mode theme selector and complete dual-theme shell. */
 body.ops-precision-pilot {
   --ops-command: #f7fbf9;
@@ -5580,12 +5956,6 @@ body.ops-precision-pilot.measurement-keyboard-open {
 }
 
 /* V2026.08.16.07 — request detail viewport fit and collapsed-panel performance shell. */
-body.ops-precision-pilot:has(#view-detail.detail-request-mode:not(.hidden)):not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area {
-  overflow: hidden !important;
-  overscroll-behavior: none !important;
-  padding-bottom: calc(.4rem + env(safe-area-inset-bottom)) !important;
-}
-
 body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden) {
   box-sizing: border-box !important;
   min-width: 0 !important;
@@ -5728,48 +6098,6 @@ body.ops-precision-pilot.request-detail-av-options-open #view-detail.detail-requ
   body.ops-precision-pilot #view-detail.detail-request-mode #detail-shared-panels:not(.hidden) {
     flex: 1 1 auto !important;
     align-content: start !important;
-  }
-}
-
-@media (max-width: 899px) {
-  body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden) {
-    height: calc(var(--visual-height, 100dvh) - var(--app-top-chrome-height, 0px) - var(--footer-nav-reserve, 0px) - 20px) !important;
-    max-height: calc(var(--visual-height, 100dvh) - var(--app-top-chrome-height, 0px) - var(--footer-nav-reserve, 0px) - 20px) !important;
-  }
-
-  body.ops-precision-pilot #view-detail.detail-request-mode > .freeze-panel {
-    max-height: calc(100% - 220px) !important;
-    overflow: hidden !important;
-  }
-
-  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content:not(.hidden) {
-    height: 214px !important;
-    padding-top: 4px !important;
-  }
-}
-
-@media (max-height: 680px) {
-  body.ops-precision-pilot #view-detail.detail-request-mode > .freeze-panel {
-    max-height: calc(100% - 194px) !important;
-  }
-
-  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content:not(.hidden) {
-    height: 188px !important;
-  }
-
-  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content:not(.hidden) {
-    gap: 3px 6px !important;
-  }
-
-  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :is(.input-field, select, textarea),
-  body.ops-precision-pilot #view-detail.detail-request-mode #req-av-note-wrap button {
-    min-height: 36px !important;
-    height: 36px !important;
-  }
-
-  body.ops-precision-pilot #view-detail.detail-request-mode :is(#req-save-action-wrap, #req-shear-action, #req-btn-save-complete) {
-    min-height: 38px !important;
-    height: 38px !important;
   }
 }
 
@@ -7388,5 +7716,230 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
 @media (prefers-reduced-motion: reduce) {
   body.ops-precision-pilot #item-inquiry-panel .item-inquiry-ledger-row {
     transition: none;
+  }
+}
+
+/* V2026.08.25.10 Request mobile authority.
+   This intentionally follows every legacy module rule so older compact-detail
+   selectors cannot restore the clipped Request form. */
+@media (max-width: 899px) {
+  body.ops-precision-pilot:has(#view-detail.detail-request-mode:not(.hidden)) #main-scroll-area,
+  body.ops-precision-pilot.app-main-scroll-locked.request-detail-scroll-locked:has(#view-detail.detail-request-mode:not(.hidden)) #main-scroll-area {
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    padding-bottom: calc(var(--footer-nav-reserve, 8.75rem) + 6.5rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden),
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode:not(.hidden),
+  body.ops-precision-pilot #view-detail.detail-request-mode > .freeze-panel,
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode > .freeze-panel,
+  body.ops-precision-pilot #view-detail.detail-request-mode #detail-shared-panels,
+  body.ops-precision-pilot #view-detail.detail-request-mode #detail-shared-panels:not(.hidden) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden),
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode:not(.hidden) {
+    display: block !important;
+    min-height: 100% !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content:not(.hidden),
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode #det-request-content:not(.hidden) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-content: start !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 10px 0 calc(var(--footer-nav-reserve, 8.75rem) + 7.25rem + env(safe-area-inset-bottom)) !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-input-container {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content > div,
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-input-container > div {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content label {
+    margin: 0 0 6px !important;
+    color: var(--ops-text-muted) !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+    letter-spacing: .06em !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :is(.input-field, select, textarea) {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 12px 14px !important;
+    border: 1px solid var(--ops-border-strong) !important;
+    border-radius: 12px !important;
+    color: var(--ops-text) !important;
+    background: var(--ops-surface) !important;
+    font-size: 16px !important;
+    line-height: 1.3 !important;
+    opacity: 1 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content textarea.input-field {
+    min-height: 88px !important;
+    resize: vertical !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-av-note-wrap button,
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :is(button, .detail-measurement-na-button) {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    height: auto !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #request-photo-section,
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode #request-photo-section {
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    width: 100% !important;
+    min-height: 92px !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    border: 1px solid var(--ops-border) !important;
+    border-radius: 14px !important;
+    background: var(--ops-surface-muted) !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-camera-panel {
+    display: block !important;
+    width: 78px !important;
+    min-width: 78px !important;
+    margin: 0 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #det-request-camera-panel.hidden {
+    display: none !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #camera-btn-req.detail-camera-upload-card.request-camera-enabled {
+    display: flex !important;
+    width: 78px !important;
+    min-width: 78px !important;
+    min-height: 76px !important;
+    height: 76px !important;
+    padding: 8px !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    border-radius: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-photo-preview:not(.hidden) {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-photo-list-container > div {
+    display: flex !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-photo-list-container img {
+    width: 76px !important;
+    height: 76px !important;
+    border-radius: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.app-main-scroll-locked.request-detail-scroll-locked #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.ios-device.viewport-phone.app-main-scroll-locked.request-detail-scroll-locked #view-detail.detail-request-mode #req-save-action-wrap {
+    position: fixed !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    bottom: calc(var(--footer-nav-reserve, 8.75rem) + 8px + env(safe-area-inset-bottom)) !important;
+    z-index: 10040 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 56px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 6px !important;
+    transform: none !important;
+    border: 1px solid var(--ops-border) !important;
+    border-radius: 16px !important;
+    background: color-mix(in srgb, var(--ops-surface) 94%, transparent) !important;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, .2) !important;
+    backdrop-filter: blur(14px) !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode #req-btn-save-complete {
+    width: 100% !important;
+    min-height: 52px !important;
+    height: 52px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+  }
+
+  body.ops-precision-pilot.keyboard-open #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.detail-field-active #view-detail.detail-request-mode #req-save-action-wrap,
+  body.ops-precision-pilot.measurement-keyboard-open #view-detail.detail-request-mode #req-save-action-wrap {
+    bottom: calc(var(--keyboard-offset, 0px) + 8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.ops-precision-pilot.request-av-note-sheet-open #view-detail.detail-request-mode #req-av-dropdown-list.av-note-dropdown-panel {
+    position: fixed !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    top: auto !important;
+    bottom: calc(var(--keyboard-offset, 0px) + 12px + env(safe-area-inset-bottom)) !important;
+    z-index: 10080 !important;
+    width: auto !important;
+    max-height: min(54dvh, calc(var(--mobile-visible-height, var(--visual-height, 100vh)) - var(--keyboard-offset, 0px) - 7rem)) !important;
+    padding: 8px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    border-radius: 18px !important;
+    background: var(--ops-surface) !important;
+  }
+
+  body.ops-precision-pilot.request-av-note-sheet-open #view-detail.detail-request-mode #req-av-dropdown-list .av-note-dropdown-option {
+    min-height: 48px !important;
+    color: var(--ops-text) !important;
+    background: var(--ops-surface) !important;
   }
 }
