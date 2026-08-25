@@ -95,7 +95,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.10', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -223,7 +223,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 selects cards and sends only selected rows as Excel to chosen recipients', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.10', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports = canViewManagerEvalReports;
@@ -316,7 +316,7 @@ test('Eval Reports #2 selects cards and sends only selected rows as Excel to cho
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.24.10', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -336,7 +336,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       const host = document.createElement('div');
       host.id = 'assigned-items-phone-test-host';
       host.style.width = '390px';
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(rows);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(rows));
       document.body.appendChild(host);
       const mobileList = host.querySelector('[data-manager-assigned-mobile-list]');
       const desktopTable = host.querySelector('[data-manager-assigned-desktop-table]');
@@ -355,6 +355,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
         touchSelect: controls.filter((box) => box.height > 30).every((box) => box.height >= 44),
         hostFits: host.scrollWidth <= 391,
         checkedBulkCount: mobileList.querySelectorAll('input[type="checkbox"]:checked').length,
+        groupSequence: Array.from(mobileList.querySelectorAll('[data-manager-assigned-group]')).map((element) => element.getAttribute('data-manager-assigned-group')),
         saved
       };
     } finally {
@@ -371,7 +372,8 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(phone.touchSelect).toBe(true);
   expect(phone.hostFits).toBe(true);
   expect(phone.checkedBulkCount).toBe(0);
-  expect(phone.saved).toEqual({ itemcode: '007140.030.1', genusname: 'Yucca', assignedto: 'dylan_collyge' });
+  expect(phone.groupSequence).toEqual(['unassigned', 'assigned']);
+  expect(phone.saved).toEqual({ itemcode: '000724.070.1', genusname: 'Acer', assignedto: '' });
 
   await page.setViewportSize({ width: 1024, height: 844 });
   const desktop = await page.evaluate(() => {
@@ -389,8 +391,8 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(desktop.tableCount).toBe(1);
 });
 
-test('Assigned Items single-row changes save immediately and keep a stable display position', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.10', { waitUntil: 'domcontentloaded' });
+test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -409,17 +411,27 @@ test('Assigned Items single-row changes save immediately and keep a stable displ
         calls.push({ assignments: JSON.parse(JSON.stringify(assignments)), assignedto });
         return new Promise((resolve) => { releaseSave = resolve; });
       };
-      const savePromise = setSingleEvalItemcodeAssignment('200', 'Beta', 'dylan_collyge', control);
+      const savePromise = setSingleEvalItemcodeAssignment('100', 'Alpha', 'dylan_collyge', control);
       await Promise.resolve();
       const disabledDuring = control.disabled;
       const busyDuring = control.getAttribute('aria-busy');
       releaseSave(false);
       await savePromise;
-      const changedRows = rows.map((row) => row.ITEMCODE === '200' ? Object.assign({}, row, { ASSIGNEDTO: 'dylan_collyge' }) : row);
+      const changedRows = rows.map((row) => row.ITEMCODE === '100' ? Object.assign({}, row, { ASSIGNEDTO: 'dylan_collyge' }) : row);
       const after = getManagerAssignedItemsDisplayRows(changedRows).map((row) => row.ITEMCODE);
+      const completedRows = rows.map((row) => row.ITEMCODE === '200' ? Object.assign({}, row, { ASSIGNEDTO: 'dylan_collyge' }) : row);
+      const afterCompletingUnassigned = getManagerAssignedItemsDisplayRows(completedRows).map((row) => row.ITEMCODE);
+      setManagerAssignedItemsAssigneeFilter('assigned');
+      const assignedOnly = getFilteredManagerAssignedItemsExportRows(getManagerAssignedItemsDisplayRows(rows)).map((row) => row.ITEMCODE);
+      setManagerAssignedItemsAssigneeFilter('unassigned');
+      const unassignedOnly = getFilteredManagerAssignedItemsExportRows(getManagerAssignedItemsDisplayRows(rows)).map((row) => row.ITEMCODE);
+      setManagerAssignedItemsAssigneeFilter('all');
       return {
         before,
         after,
+        afterCompletingUnassigned,
+        assignedOnly,
+        unassignedOnly,
         calls,
         disabledDuring,
         busyDuring,
@@ -429,13 +441,17 @@ test('Assigned Items single-row changes save immediately and keep a stable displ
     } finally {
       control.remove();
       assignEvalItemcodes = originalAssign;
+      setManagerAssignedItemsAssigneeFilter('all');
     }
   })()`));
 
-  expect(result.before).toEqual(['100', '200', '300']);
+  expect(result.before).toEqual(['200', '100', '300']);
   expect(result.after).toEqual(result.before);
+  expect(result.afterCompletingUnassigned).toEqual(['100', '200', '300']);
+  expect(result.assignedOnly).toEqual(['100', '300']);
+  expect(result.unassignedOnly).toEqual(['200']);
   expect(result.calls).toEqual([{
-    assignments: [{ itemcode: '200', genusname: 'Beta' }],
+    assignments: [{ itemcode: '100', genusname: 'Alpha' }],
     assignedto: 'dylan_collyge'
   }]);
   expect(result.disabledDuring).toBe(true);
@@ -445,7 +461,7 @@ test('Assigned Items single-row changes save immediately and keep a stable displ
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.24.10', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -1129,7 +1145,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.24.10', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.24.11', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'

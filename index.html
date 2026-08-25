@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.10">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.11">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.24.10';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.24.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6657,7 +6657,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.10">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.11">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6768,8 +6768,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.10"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.10"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.11"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.11"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7522,7 +7522,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.10').trim() || 'V2026.08.24.10';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.11').trim() || 'V2026.08.24.11';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9008,7 +9008,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30305,7 +30305,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.10').trim() || 'V2026.08.24.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.11').trim() || 'V2026.08.24.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -119453,6 +119453,9 @@ C.14.043 C.15.000
                 ? rows.map((row, idx) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx)).filter(Boolean)
                 : getManagerAssignedItemsExportRows();
             return sourceRows.slice().sort((a, b) => {
+                const assignmentGroupCompare = (normalizeEvalAssignableUser(a && a.ASSIGNEDTO) ? 1 : 0)
+                    - (normalizeEvalAssignableUser(b && b.ASSIGNEDTO) ? 1 : 0);
+                if (assignmentGroupCompare !== 0) return assignmentGroupCompare;
                 const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''), undefined, { numeric: true });
                 if (nameCompare !== 0) return nameCompare;
                 const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
@@ -119484,7 +119487,9 @@ C.14.043 C.15.000
         }
 
         function getManagerAssignedItemsActiveAssigneeKey() {
-            if (String(managerAssignedItemsAssignedToFilter || '').toLowerCase() === 'unassigned') return 'unassigned';
+            const requestedFilter = String(managerAssignedItemsAssignedToFilter || '').trim().toLowerCase();
+            if (requestedFilter === 'unassigned') return 'unassigned';
+            if (requestedFilter === 'assigned') return 'assigned';
             const key = normalizeEvalAssignableUser(managerAssignedItemsAssignedToFilter);
             return key && key !== 'all' ? key : 'all';
         }
@@ -119493,6 +119498,7 @@ C.14.043 C.15.000
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             if (activeKey === 'all') return 'All AssignedTo';
             if (activeKey === 'unassigned') return 'Unassigned';
+            if (activeKey === 'assigned') return 'Assigned';
             const match = getManagerAssignedItemsAssigneeOptions(rows).find((option) => option.key === activeKey);
             return match ? match.label : activeKey;
         }
@@ -119502,7 +119508,8 @@ C.14.043 C.15.000
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             return sourceRows.filter((row) => {
                 if (activeKey === 'unassigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO)) return false;
-                if (activeKey !== 'all' && activeKey !== 'unassigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO) !== activeKey) return false;
+                if (activeKey === 'assigned' && !normalizeEvalAssignableUser(row && row.ASSIGNEDTO)) return false;
+                if (activeKey !== 'all' && activeKey !== 'unassigned' && activeKey !== 'assigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO) !== activeKey) return false;
                 return managerTextMatchesSearch([
                     row.ASSIGNEDTO,
                     row.WAREHOUSEI,
@@ -119593,9 +119600,14 @@ C.14.043 C.15.000
             }
             const previewRows = rows.slice(0, 100);
             const canManageAssignments = canManageEvalItemcodeAssignments();
-            const mobileCards = previewRows.map((row) => {
+            const showAssignmentGroups = getManagerAssignedItemsActiveAssigneeKey() === 'all';
+            const mobileCards = previewRows.map((row, index) => {
                 const assignmentKey = buildManagerEvalAssignmentKey(row.ITEMCODE, row.GENUSNAME);
                 const isSelected = managerEvalAssignmentSelection.has(assignmentKey);
+                const isAssigned = !!normalizeEvalAssignableUser(row.ASSIGNEDTO);
+                const priorRow = index > 0 ? previewRows[index - 1] : null;
+                const beginsGroup = showAssignmentGroups && (!priorRow || !!normalizeEvalAssignableUser(priorRow.ASSIGNEDTO) !== isAssigned);
+                const groupLabel = beginsGroup ? `<div data-manager-assigned-group="${isAssigned ? 'assigned' : 'unassigned'}" class="rounded-xl border ${isAssigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'} px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]">${isAssigned ? 'Assigned' : 'Unassigned'}</div>` : '';
                 const itemCode = String(row.ITEMCODE || '-');
                 const commonName = String(row.COMMONNAME || '-');
                 const contSize = String(row.CONTSIZE || '-');
@@ -119604,7 +119616,7 @@ C.14.043 C.15.000
                 const source = String(row.SOURCE || '-');
                 const genusName = String(row.GENUSNAME || '-');
                 const assignedTo = String(row.ASSIGNEDTO || 'Unassigned');
-                return `<article data-manager-assigned-item-card class="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                return `${groupLabel}<article data-manager-assigned-item-card class="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                     <div class="flex min-w-0 items-start gap-3">
                         <div class="min-w-0 flex-1">
                             <div class="break-all text-[12px] font-black text-[#1d4ed8]">${escapeHtml(itemCode)}</div>
@@ -119627,7 +119639,12 @@ C.14.043 C.15.000
                     <details class="mt-3 min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5"><summary class="cursor-pointer text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">More item details</summary><dl class="mt-2 grid min-w-0 grid-cols-1 gap-2 text-[11px]"><div class="min-w-0"><dt class="font-black uppercase tracking-[0.08em] text-slate-400">Genus</dt><dd class="break-words font-bold text-slate-800">${escapeHtml(genusName)}</dd></div><div class="min-w-0"><dt class="font-black uppercase tracking-[0.08em] text-slate-400">Source</dt><dd class="break-all font-bold text-slate-800">${escapeHtml(source)}</dd></div></dl></details>
                 </article>`;
             }).join('');
-            const body = previewRows.map((row) => `<tr class="border-b border-slate-100">
+            const body = previewRows.map((row, index) => {
+                const isAssigned = !!normalizeEvalAssignableUser(row.ASSIGNEDTO);
+                const priorRow = index > 0 ? previewRows[index - 1] : null;
+                const beginsGroup = showAssignmentGroups && (!priorRow || !!normalizeEvalAssignableUser(priorRow.ASSIGNEDTO) !== isAssigned);
+                const groupRow = beginsGroup ? `<tr data-manager-assigned-group="${isAssigned ? 'assigned' : 'unassigned'}"><td colspan="9" class="border-y ${isAssigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'} px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]">${isAssigned ? 'Assigned' : 'Unassigned'}</td></tr>` : '';
+                return `${groupRow}<tr class="border-b border-slate-100">
                 ${canManageAssignments ? `<td class="px-3 py-2"><input type="checkbox" class="h-5 w-5 rounded border-slate-300 text-[#007a4d]" aria-label="Select ${escapeHtml(row.ITEMCODE || 'item')} for bulk assignment" title="Select for bulk assignment" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" ${managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE, row.GENUSNAME)) ? 'checked' : ''} onchange="toggleManagerEvalAssignmentItem(this.dataset.itemcode, this.dataset.genusname, this.checked)"></td>` : ''}
                 <td class="px-3 py-2 font-black text-slate-900">${canManageAssignments ? `<select class="min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black disabled:cursor-wait disabled:opacity-60" aria-label="Assign ${escapeHtml(row.ITEMCODE || 'item')}" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" onchange="setSingleEvalItemcodeAssignment(this.dataset.itemcode, this.dataset.genusname, this.value, this)">${getManagerEvalAssigneeOptionsHtml(row.ASSIGNEDTO || '')}</select>` : escapeHtml(row.ASSIGNEDTO || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.WAREHOUSEI || '-')}</td>
@@ -119637,7 +119654,8 @@ C.14.043 C.15.000
                 <td class="px-3 py-2">${escapeHtml(row.LOCATIONCODE || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.SOURCE || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.GENUSNAME || '-')}</td>
-            </tr>`).join('');
+            </tr>`;
+            }).join('');
             const capped = rows.length > previewRows.length
                 ? `<div class="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">Showing first 100 of ${rows.length}. Export includes all filtered rows.</div>`
                 : '';
@@ -119680,9 +119698,11 @@ C.14.043 C.15.000
             const assignees = getManagerAssignedItemsAssigneeOptions(allRows);
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             const unassignedRows = allRows.filter((row) => !normalizeEvalAssignableUser(row && row.ASSIGNEDTO));
+            const assignedRows = allRows.filter((row) => !!normalizeEvalAssignableUser(row && row.ASSIGNEDTO));
             const optionHtml = [
                 `<option value="all" ${activeKey === 'all' ? 'selected' : ''}>All AssignedTo (${allRows.length})</option>`,
-                `<option value="unassigned" ${activeKey === 'unassigned' ? 'selected' : ''}>Unassigned (${unassignedRows.length})</option>`
+                `<option value="unassigned" ${activeKey === 'unassigned' ? 'selected' : ''}>Unassigned (${unassignedRows.length})</option>`,
+                `<option value="assigned" ${activeKey === 'assigned' ? 'selected' : ''}>Assigned - Any Name (${assignedRows.length})</option>`
             ]
                 .concat(assignees.map((option) => `<option value="${escapeHtml(option.key)}" ${option.key === activeKey ? 'selected' : ''}>${escapeHtml(option.label)} (${option.count})</option>`))
                 .join('');
@@ -119702,7 +119722,8 @@ C.14.043 C.15.000
                         <select id="manager-eval-bulk-assignee" class="w-full rounded-xl border border-blue-100 bg-white px-3 py-3 text-sm font-black text-slate-900">${getManagerEvalAssigneeOptionsHtml('')}</select>
                         <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return assignSelectedEvalItemcodes()">Assign Selected</button>
                     </div><div class="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Assignments use the ItemCode + GenusName key.</div>` : ''}
-                    <div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+                    <div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-[11px] font-bold leading-4 text-emerald-800">All AssignedTo keeps <span class="font-black">Unassigned first</span>, followed by every row with an AssignedTo username.</div>
+                    <div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
                         <div class="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 md:px-4">
                             <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Visible Rows</div>
                             <div class="text-xl font-black text-slate-900 md:text-2xl">${filteredRows.length}</div>
@@ -119718,6 +119739,10 @@ C.14.043 C.15.000
                         <button type="button" class="min-w-0 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-left md:px-4" onclick="return setManagerAssignedItemsAssigneeFilter('unassigned')">
                             <div class="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Unassigned</div>
                             <div class="text-xl font-black text-amber-900 md:text-2xl">${unassignedRows.length}</div>
+                        </button>
+                        <button type="button" class="min-w-0 rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-left md:px-4" onclick="return setManagerAssignedItemsAssigneeFilter('assigned')">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Assigned</div>
+                            <div class="text-xl font-black text-blue-900 md:text-2xl">${assignedRows.length}</div>
                         </button>
                     </div>
                 </div>
