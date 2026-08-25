@@ -9731,19 +9731,29 @@ function fetchReclassInquiryItemRows_(sourceRow) {
   const itemCode = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(sourceRow, ['itemcode', 'ITEMCODE'], ''));
   const tableName = getInventoryTransactionRowTable_(sourceRow);
   if (!itemCode || !tableName) throw new Error('The source item identity is incomplete.');
-  const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?select=*&itemcode=eq.' + encodeURIComponent(itemCode) + '&limit=500';
-  const response = UrlFetchApp.fetch(url, {
-    method: 'get',
-    headers: getSupabaseHeaders_({ Accept: 'application/json' }),
-    muteHttpExceptions: true
-  });
-  const code = response.getResponseCode();
-  if (code < 200 || code >= 300) throw new Error('Could not refresh the current Item Inquiry rows (' + code + ').');
+  const pageSize = 1000;
+  const maxPages = 20;
   let rows = [];
-  try {
-    rows = JSON.parse(response.getContentText() || '[]');
-  } catch (error) {
-    throw new Error('The refreshed Item Inquiry rows were unreadable.');
+  for (let page = 0; page < maxPages; page++) {
+    const offset = page * pageSize;
+    const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?select=*&itemcode=eq.' + encodeURIComponent(itemCode) + '&limit=' + pageSize + '&offset=' + offset;
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: getSupabaseHeaders_({ Accept: 'application/json' }),
+      muteHttpExceptions: true
+    });
+    const code = response.getResponseCode();
+    if (code < 200 || code >= 300) throw new Error('Could not refresh the current Item Inquiry rows (' + code + ').');
+    let pageRows = [];
+    try {
+      pageRows = JSON.parse(response.getContentText() || '[]');
+    } catch (error) {
+      throw new Error('The refreshed Item Inquiry rows were unreadable.');
+    }
+    if (!Array.isArray(pageRows)) throw new Error('The refreshed Item Inquiry rows were unreadable.');
+    rows = rows.concat(pageRows);
+    if (pageRows.length < pageSize) break;
+    if (page === maxPages - 1) throw new Error('The Item Inquiry row set is too large to send safely.');
   }
   if (!Array.isArray(rows) || !rows.length) throw new Error('No current rows were found for this ItemCode.');
   rows.forEach(function(row) { row.__approval_table_name = tableName; });
@@ -9769,7 +9779,7 @@ function normalizeReclassInquiryOverlayValue_(field, value) {
     return code;
   }
   if (field.numeric) {
-    if (!normalized) return '';
+    if (!normalized || /^(?:-|\u2013|\u2014|n\/?a)$/i.test(normalized)) return '';
     const amount = Number(normalized.replace(/,/g, ''));
     if (!Number.isFinite(amount) || amount < 0) throw new Error(field.label + ' must be blank or a non-negative number.');
     return String(amount);

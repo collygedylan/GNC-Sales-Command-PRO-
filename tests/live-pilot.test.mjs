@@ -60,12 +60,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.25.06';
+  const release = 'V2026.08.25.07';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.25.06');
+  assert.equal(packageJson.version, '2026.08.25.07');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -550,7 +550,7 @@ test('design pills and Drive metrics use the professional responsive card system
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
 });
 
-test('REP users can add eligible Drive rows to Bloom Picker without reopening Drive request selection', () => {
+test('Kayla can add every inventory Drive row to Bloom Picker and use the full operational action set', () => {
   const selectionPolicy = html.slice(
     html.indexOf('function canCurrentUserSelectDriveWorkflowRow'),
     html.indexOf('function isCurrentDriveCardOptionsContext')
@@ -570,13 +570,31 @@ test('REP users can add eligible Drive rows to Bloom Picker without reopening Dr
   assert.match(driveCardBuilder, /driveCheckboxHtml = canSelectDriveWorkflow \?/);
   assert.match(driveCardBuilder, /driveArgosRailHtml = canUseDriveOptions \?/);
   assert.doesNotMatch(driveCardBuilder, /driveArgosRailHtml = canSelectDriveWorkflow \?/);
-  assert.match(selectionPolicy, /access && access\.isRep && !access\.isCsr\) return false/);
+  assert.match(selectionPolicy, /access && access\.isRep && !access\.isCsr && !canUseFullDriveBloomPickerWorkflow\(userOverride, displayOverride\)\) return false/);
+  assert.match(html, /const FULL_DRIVE_BLOOM_PICKER_USERS = Object\.freeze\(new Set\(\['kayla_knepp'\]\)\)/);
+  assert.match(html, /function canUseFullDriveBloomPickerWorkflow[\s\S]*FULL_DRIVE_BLOOM_PICKER_USERS\.has\(key\)/);
   assert.match(html, /canAddItemToBloomPicker[\s\S]*canRepAddBloomPickerRow[\s\S]*access && access\.isRep && !access\.isCsr && isBloomPickerEligibleItem\(item\)/);
   assert.match(html, /handleInventoryCardBottomCartAction[\s\S]*selectionSource = safeSourceView === 'drive' && access\.isRep && !access\.isCsr \? 'drive-bloom'/);
   assert.match(html, /toggleGlobalItem[\s\S]*canSelectDriveBloomPicker = isDriveBloomPickerSelection && canAddItemToBloomPicker\(item, 'drive-bloom'\)/);
-  assert.match(html, /getBloomPickerActionVisibility[\s\S]*hasRepBloomOnlySelection[\s\S]*showRequest: hasRepBloomOnlySelection \? false : canUseInventoryActions/);
+  assert.match(html, /function canUseFullDriveBloomPickerActions[\s\S]*source === 'drive'[\s\S]*source === 'drive-bloom'/);
+  assert.match(html, /getBloomPickerActionVisibility[\s\S]*canUseFullDriveActions[\s\S]*showTakeBack: canUseFullDriveActions && canUseInventoryActions[\s\S]*showEndCap: canUseFullDriveActions && canUseInventoryActions/);
+  assert.match(html, /initiateBatchAction[\s\S]*action === 'take_back' && !canUseFullDriveActions/);
   assert.match(driveCardBuilder, /includeDriveBloomPickerBtn = canAddItemToBloomPicker\(item, sourceView\)[\s\S]*driveRoleAccess\.isRep && !driveRoleAccess\.isCsr/);
   assert.match(html, /renderDriveQuickRequestBar[\s\S]*activeDriveTab === 'card' && canUseDriveQuickRequest\(\)/);
+});
+
+test('Drive Location tab drills through Common Name and Container before showing location-sorted rows', () => {
+  const locationDrill = html.slice(
+    html.indexOf('function renderDriveLocationDrill'),
+    html.indexOf('function renderDriveHoldStopCodeView')
+  );
+  assert.match(locationDrill, /Location > Select Common Name/);
+  assert.match(locationDrill, /getDrivePlantCommonName\(item\)/);
+  assert.match(locationDrill, /Select Cont Size/);
+  assert.match(locationDrill, /getDrivePlantContSize\(item\)/);
+  assert.match(locationDrill, /locationCount = new Set\(finalItems\.map\(\(item\) => getTaskLocationBucket\(item\)\)\)\.size/);
+  assert.match(locationDrill, /compareLocationCodeValues/);
+  assert.doesNotMatch(locationDrill, /Select Block/);
 });
 
 test('phone Home tiles fill both columns and Drive cards retain the thumbnail with Reclass at top right', () => {

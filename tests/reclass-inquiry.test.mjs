@@ -185,6 +185,34 @@ test('temporary overlays reject invalid hold codes, negative quantities, and sta
   assert.equal(conflict.status, 'conflict');
 });
 
+test('blank quantity display dashes remain blank while true negative quantities are rejected', () => {
+  const server = loadServerModel();
+  const rows = [
+    { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    { unique_id: 'u2', itemcode: 'A1', lotcode: '27.S1', locationcode: 'B.1' },
+  ];
+  const overlays = rows.map((row, index) => ({
+    unique_id: row.unique_id,
+    expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode },
+    values: { ptravailable: index ? '—' : '-' },
+  }));
+  const result = server.applyReclassInquiryOverlays_(rows, overlays, new Date());
+  assert.equal(result.ok, true);
+  assert.equal(Array.from(result.rows, (row) => row.values.ptravailable).join('|'), '|');
+  assert.throws(() => server.applyReclassInquiryOverlays_([rows[0]], [{ ...overlays[0], values: { ptravailable: '-1' } }], new Date()), /non-negative/);
+});
+
+test('Reclass server fetch paginates every current row for the selected ITEMCODE', () => {
+  const start = code.indexOf('function fetchReclassInquiryItemRows_');
+  const end = code.indexOf('function normalizeReclassInquiryOverlayValue_', start);
+  const fetcher = code.slice(start, end);
+  assert.match(fetcher, /itemcode=eq\./);
+  assert.match(fetcher, /const pageSize = 1000/);
+  assert.match(fetcher, /offset=' \+ offset/);
+  assert.match(fetcher, /rows = rows\.concat\(pageRows\)/);
+  assert.match(fetcher, /if \(pageRows\.length < pageSize\) break/);
+});
+
 test('1-row, 8-row, and 41-row print outputs are escaped, monochrome, landscape, and repeat-header capable', () => {
   const server = loadServerModel();
   const baseModel = {

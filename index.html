@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.06">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.07">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.25.06';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.25.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6709,7 +6709,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.06">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.07">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6820,8 +6820,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.06"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.06"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.07"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.07"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7574,7 +7574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.06').trim() || 'V2026.08.25.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.07').trim() || 'V2026.08.25.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9060,7 +9060,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30371,7 +30371,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.06').trim() || 'V2026.08.25.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.07').trim() || 'V2026.08.25.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -39157,8 +39157,8 @@ let avTopControlsRenderToken = 0;
 
         function canUseDriveQuickRequest() {
             const access = getRoleAccessState();
-            if (access && access.isRep && !access.isCsr) return false;
             const tokens = getProtectedUserTokens();
+            if (access && access.isRep && !access.isCsr && !canUseFullDriveBloomPickerWorkflow()) return false;
             const hasAdminViews = canAccessView('drive') && canAccessView('tasks');
             return hasAdminViews || canUseRequestRepScopedAccess() || hasPrivilegedManagerAccess(tokens) || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('morgan') || tokens.has('morgan_anderson');
         }
@@ -39169,6 +39169,7 @@ let avTopControlsRenderToken = 0;
         }
 
         const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge', 'megan_kelly']));
+        const FULL_DRIVE_BLOOM_PICKER_USERS = Object.freeze(new Set(['kayla_knepp']));
 
         function getCurrentDriveCardOptionUserKeys(userOverride = '', displayOverride = '') {
             return [userOverride, displayOverride, currentUser, currentUserDisplay]
@@ -39179,6 +39180,11 @@ let avTopControlsRenderToken = 0;
         function isAlwaysDriveCardOptionsUser(userOverride = '', displayOverride = '') {
             return getCurrentDriveCardOptionUserKeys(userOverride, displayOverride)
                 .some((key) => DRIVE_CARD_OPTIONS_ALWAYS_USERS.has(key));
+        }
+
+        function canUseFullDriveBloomPickerWorkflow(userOverride = '', displayOverride = '') {
+            return getCurrentDriveCardOptionUserKeys(userOverride, displayOverride)
+                .some((key) => FULL_DRIVE_BLOOM_PICKER_USERS.has(key));
         }
 
         function isWarehouseAssignedDriveCardForCurrentUser(item = null, userOverride = '', displayOverride = '') {
@@ -39199,7 +39205,7 @@ let avTopControlsRenderToken = 0;
             const safeSourceView = String(sourceView || '').trim().toLowerCase();
             if (safeSourceView !== 'drive') return true;
             const access = getRoleAccessState(roleOverride, userOverride);
-            if (access && access.isRep && !access.isCsr) return false;
+            if (access && access.isRep && !access.isCsr && !canUseFullDriveBloomPickerWorkflow(userOverride, displayOverride)) return false;
             if (access && access.isRepLike && canUseDriveQuickRequest()) return true;
             return canCurrentUserUseDriveCardOptions(item, sourceView, roleOverride, userOverride, displayOverride);
         }
@@ -41064,13 +41070,21 @@ let avTopControlsRenderToken = 0;
             return !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
         }
 
+        function normalizeArgosReclassInquiryNumericDraftValue(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw || /^(?:-|\u2013|\u2014|n\/?a)$/i.test(raw)) return '';
+            return raw.replace(/,/g, '');
+        }
+
         function buildArgosReclassRowFieldsHtml(entry = null) {
             const safeEntry = entry && typeof entry === 'object' ? entry : { unique_id: '', values: {} };
             const uid = String(safeEntry.unique_id || '').trim();
             const values = safeEntry.values && typeof safeEntry.values === 'object' ? safeEntry.values : {};
             const editableFields = ITEM_INQUIRY_ROW_FIELDS.filter((field) => !field.readOnly);
             const fieldsHtml = editableFields.map((field) => {
-                const rawValue = String(values[field.key] == null ? '' : values[field.key]);
+                const rawValue = field.numeric
+                    ? normalizeArgosReclassInquiryNumericDraftValue(values[field.key])
+                    : String(values[field.key] == null ? '' : values[field.key]);
                 const commonAttrs = `class="argos-reclass-row-input" data-reclass-row-uid="${escapeHtml(uid)}" data-reclass-field="${escapeHtml(field.key)}"`;
                 let control = '';
                 if (field.type === 'hold') {
@@ -41173,7 +41187,9 @@ let avTopControlsRenderToken = 0;
                 const values = {};
                 ITEM_INQUIRY_ROW_FIELDS.filter((field) => !field.readOnly).forEach((field) => {
                     const baselineValue = entry && entry.values ? entry.values[field.key] : '';
-                    values[field.key] = String(baselineValue == null ? '' : baselineValue);
+                    values[field.key] = field.numeric
+                        ? normalizeArgosReclassInquiryNumericDraftValue(baselineValue)
+                        : String(baselineValue == null ? '' : baselineValue);
                 });
                 card.querySelectorAll('[data-reclass-field]').forEach((input) => {
                     const field = String(input.getAttribute('data-reclass-field') || '').trim();
@@ -41182,7 +41198,8 @@ let avTopControlsRenderToken = 0;
                 const holdCode = String(values.holdstopcode || '').trim().toUpperCase();
                 if (holdCode && holdCode !== 'H' && holdCode !== 'S') throw new Error('Hold/Stop Code must be blank, H, or S.');
                 ['ptronhand', 'ptrreviewed', 'ptravailable'].forEach((field) => {
-                    const raw = String(values[field] == null ? '' : values[field]).trim();
+                    const raw = normalizeArgosReclassInquiryNumericDraftValue(values[field]);
+                    values[field] = raw;
                     if (!raw) return;
                     const amount = Number(raw.replace(/,/g, ''));
                     if (!Number.isFinite(amount) || amount < 0) throw new Error(`${field.toUpperCase()} must be blank or a non-negative number.`);
@@ -72539,8 +72556,8 @@ function toggleDriveQuickRequestItem(domId) {
 
         function selectDriveBlock(block) {
             cancelDriveSearchRenderWork();
-            rememberNavigationScrollPosition('drive:loc:blocks');
-            return runDirectTrackedNavigation('drive', `drive-block:${String(block || '').trim()}`, () => {
+            rememberNavigationScrollPosition('drive:loc:names');
+            return runDirectTrackedNavigation('drive', `drive-location-name:${String(block || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveBlock = block;
                 selectedDriveLoc = null;
@@ -72549,8 +72566,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function selectDriveLoc(loc) {
             cancelDriveSearchRenderWork();
-            rememberNavigationScrollPosition(`drive:loc:${selectedDriveBlock || ''}:locations`);
-            return runDirectTrackedNavigation('drive', `drive-loc:${String(loc || '').trim()}`, () => {
+            rememberNavigationScrollPosition(`drive:loc:${selectedDriveBlock || ''}:sizes`);
+            return runDirectTrackedNavigation('drive', `drive-location-size:${String(loc || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveLoc = loc;
                 driveViewLevel = 2;
@@ -81730,6 +81747,16 @@ function toggleDriveQuickRequestItem(domId) {
             return items.length > 0 && items.every((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
         }
 
+        function canUseFullDriveBloomPickerActions(items = getCartSelectedItems()) {
+            const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+            if (!safeItems.length || !canUseFullDriveBloomPickerWorkflow()) return false;
+            return safeItems.every((item) => {
+                const domId = String(item && item.DOM_ID || '').trim();
+                const source = domId ? String(selectedItemSources.get(domId) || '').trim().toLowerCase() : '';
+                return source === 'drive' || source === 'drive-bloom' || source === 'bloom-draft';
+            });
+        }
+
         function canAddItemToBloomPicker(item = null, sourceView = '') {
             if (!item || !canUseCartInventoryActions([item])) return false;
             const access = getRoleAccessState();
@@ -84892,6 +84919,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getBloomPickerActionVisibility(items = getCartSelectedItems()) {
             const access = getRoleAccessState();
+            const canUseFullDriveActions = canUseFullDriveBloomPickerActions(items);
             const canUseInventoryActions = canUseCartInventoryActions(items);
             const canUseBloomOrders = canUseBloomPicker(items);
             const hasRepBloomOnlySelection = !!(access.isRep && !access.isCsr && items.some((item) => {
@@ -84931,11 +84959,11 @@ function toggleDriveQuickRequestItem(domId) {
                     showAssign: false,
                     showEvalTask: false,
                     showNcr: false,
-                    showRequest: hasRepBloomOnlySelection ? false : canUseInventoryActions,
-                    showMove: hasRepBloomOnlySelection ? false : canUseMoveQueue,
-                    showFlyer: hasRepBloomOnlySelection ? false : canUseFlyerFromBloom,
-                    showTakeBack: false,
-                    showEndCap: false,
+                    showRequest: canUseFullDriveActions ? canUseInventoryActions : (hasRepBloomOnlySelection ? false : canUseInventoryActions),
+                    showMove: canUseFullDriveActions ? canUseMoveQueue : (hasRepBloomOnlySelection ? false : canUseMoveQueue),
+                    showFlyer: canUseFullDriveActions ? canUseFlyerFromBloom : (hasRepBloomOnlySelection ? false : canUseFlyerFromBloom),
+                    showTakeBack: canUseFullDriveActions && canUseInventoryActions,
+                    showEndCap: canUseFullDriveActions && canUseInventoryActions,
                     showShear: false,
                     showBloomOrder: canUseBloomOrders,
                     canUseInventoryActions,
@@ -127440,17 +127468,18 @@ C.14.043 C.15.000
                 preferBloomTextPhotoAttachments: action === 'text' && canUseBloomPicker(items)
             };
             const access = getRoleAccessState();
+            const canUseFullDriveActions = canUseFullDriveBloomPickerActions(items);
             const canUseNcrFromBloom = access.isAdmin || canUseGroupedBloomNcr();
             if (access.isForeman && action !== 'take_back' && action !== 'move' && !(action === 'ncr' && canUseNcrFromBloom)) {
                 showToast('Restricted', 'Foreman users can only send Bloom Picker rows to Take Back or Location Move.', true);
                 return;
             }
-            if (access.isRepLike && action === 'take_back') {
+            if (access.isRepLike && action === 'take_back' && !canUseFullDriveActions) {
                 showToast('Restricted', 'Sales reps do not have Take Back access.', true);
                 return;
             }
             const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
-            if (access.isRepLike && (action === 'assign' || action === 'eval_task' || (action === 'ncr' && !canUseNcrFromBloom) || action === 'endcap' || action === 'shear' || (action === 'flyer' && !canUseFlyerFromBloom))) {
+            if (access.isRepLike && (action === 'assign' || action === 'eval_task' || (action === 'ncr' && !canUseNcrFromBloom) || (action === 'endcap' && !canUseFullDriveActions) || action === 'shear' || (action === 'flyer' && !canUseFlyerFromBloom))) {
                 showToast('Restricted', 'REP and CSR users can only Copy, Email, Text, Request, Location Move, and Submit Order from Bloom Picker.', true);
                 return;
             }
@@ -131350,8 +131379,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             'drive:name:seasons',
             'drive:name:programs',
             'drive-name-card',
-            'drive:loc:blocks',
-            'drive:loc:locations',
+            'drive:loc:names',
+            'drive:loc:sizes',
             'drive-loc-card',
             'drive-hold-card',
             'drive-season-sales-notes-card'
@@ -134991,8 +135020,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return changed;
             }
             if (activeDriveTab === 'loc') {
-                const hasSelectedBlock = !!(selectedDriveBlock && visibleItems.some((item) => getTaskBlockAlpha(item) === selectedDriveBlock));
-                if (!hasSelectedBlock) {
+                const hasSelectedName = !!(selectedDriveBlock && visibleItems.some((item) => getDrivePlantCommonName(item) === selectedDriveBlock));
+                if (!hasSelectedName) {
                     if (selectedDriveBlock || selectedDriveLoc || driveViewLevel !== 0) changed = true;
                     driveViewLevel = 0;
                     selectedDriveBlock = null;
@@ -135003,9 +135032,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     driveViewLevel = 1;
                     changed = true;
                 }
-                const blockItems = visibleItems.filter((item) => getTaskBlockAlpha(item) === selectedDriveBlock);
-                const hasSelectedLoc = !!(selectedDriveLoc && blockItems.some((item) => getTaskLocationBucket(item) === selectedDriveLoc));
-                if (!hasSelectedLoc) {
+                const nameItems = visibleItems.filter((item) => getDrivePlantCommonName(item) === selectedDriveBlock);
+                const hasSelectedSize = !!(selectedDriveLoc && nameItems.some((item) => getDrivePlantContSize(item) === selectedDriveLoc));
+                if (!hasSelectedSize) {
                     if (selectedDriveLoc || driveViewLevel !== 1) changed = true;
                     driveViewLevel = 1;
                     selectedDriveLoc = null;
@@ -135422,20 +135451,20 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function backToDriveBlocks() {
             cancelDriveSearchRenderWork();
-            const restoreScrollTop = getNavigationScrollPosition('drive:loc:blocks');
-            return runDirectTrackedNavigation('drive', 'drive-blocks', () => {
+            const restoreScrollTop = getNavigationScrollPosition('drive:loc:names');
+            return runDirectTrackedNavigation('drive', 'drive-location-names', () => {
                 driveViewLevel = 0;
                 selectedDriveBlock = null;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:loc:blocks' });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:loc:names' });
         }
         function backToDriveLocations() {
             cancelDriveSearchRenderWork();
-            const restoreScrollTop = getNavigationScrollPosition(`drive:loc:${selectedDriveBlock || ''}:locations`);
-            return runDirectTrackedNavigation('drive', `drive-block:${String(selectedDriveBlock || '').trim()}`, () => {
+            const restoreScrollTop = getNavigationScrollPosition(`drive:loc:${selectedDriveBlock || ''}:sizes`);
+            return runDirectTrackedNavigation('drive', `drive-location-name:${String(selectedDriveBlock || '').trim()}`, () => {
                 driveViewLevel = 1;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive:loc:${selectedDriveBlock || ''}:locations` });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive:loc:${selectedDriveBlock || ''}:sizes` });
         }
 
         function driveRowHasEarlyALotCode(item = null) {
@@ -135933,12 +135962,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             } else if (mode.includes('drive:name:programs')) {
                 columns = ['Program', 'Rows', 'Item Codes'];
                 rowBuilder = (entry) => ({ label: entry.label || 'Item Code', values: [entry.rowCount, entry.itemCodeCount], attrs: buildFastInvokeAttrs('selectDriveProgram', [entry.program], `Open ${entry.label || 'program'}`) });
-            } else if (mode.includes('drive:loc:blocks')) {
-                columns = ['Block', 'Rows'];
-                rowBuilder = (entry) => ({ label: entry.block, values: [entry.rowCount], attrs: buildFastInvokeAttrs('selectDriveBlock', [entry.block], `Open block ${entry.block}`) });
-            } else if (mode.includes('drive:loc:locations')) {
-                columns = ['Location', 'Rows'];
-                rowBuilder = (entry) => ({ label: entry.location, values: [entry.rowCount], attrs: buildFastInvokeAttrs('selectDriveLoc', [entry.location], `Open location ${entry.location}`) });
+            } else if (mode.includes('drive:loc:names')) {
+                columns = ['Common Name', 'Rows', 'Sizes', 'Locations'];
+                rowBuilder = (entry) => ({ label: entry.name, values: [entry.rowCount, entry.sizeCount, entry.locationCount], attrs: buildFastInvokeAttrs('selectDriveBlock', [entry.name], `Open ${entry.name}`) });
+            } else if (mode.includes('drive:loc:sizes')) {
+                columns = ['Container', 'Rows', 'Locations'];
+                rowBuilder = (entry) => ({ label: getDriveDrillDisplayValue(entry.size, '-'), values: [entry.rowCount, entry.locationCount], attrs: buildFastInvokeAttrs('selectDriveLoc', [entry.size], `Show locations for ${entry.size}`) });
             }
             const headerHtml = columns.map((column) => `<th scope="col">${esc(column)}</th>`).join('');
             const filterHtml = columns.map((column, index) => `<th>${buildDriveSpreadsheetFilterControlHtml(`col-${index}`, column, index === 0 ? 'text' : 'number')}</th>`).join('');
@@ -136010,6 +136039,15 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderDriveLocationGroupCard(group) {
             const safeLocationJs = esc(group.location);
             return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveLoc', [group.location], `Open location ${group.location}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.location)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+        }
+
+        function renderDriveLocationCommonNameGroupCard(group) {
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveBlock', [group.name], `Open ${group.name}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.name)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.sizeCount} Sizes &bull; ${group.locationCount} Locations</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+        }
+
+        function renderDriveLocationContSizeGroupCard(group) {
+            const label = getDriveDrillDisplayValue(group.size, '-');
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveLoc', [group.size], `Show locations for ${label}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.locationCount} Locations</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveQuickCardResultsOnly() {
@@ -136203,24 +136241,29 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             if (driveViewLevel <= 0 || !selectedDriveBlock || forceTopLevelSearchResults) {
-                const groupCacheKey = `drive:loc:blocks:${resolvedStateKey || ''}`;
+                const groupCacheKey = `drive:loc:names:${resolvedStateKey || ''}`;
                 let groups = driveDrillGroupStateCache instanceof Map ? driveDrillGroupStateCache.get(groupCacheKey) : null;
                 if (Array.isArray(groups)) {
                     incrementInternalPerfCounter('viewStateCacheHits');
                 } else {
-                    const blockCounts = {};
+                    const nameGroups = new Map();
                     visibleItems.forEach((item) => {
-                        const blockAlpha = getTaskBlockAlpha(item);
-                        if (!blockCounts[blockAlpha]) blockCounts[blockAlpha] = 0;
-                        blockCounts[blockAlpha] += 1;
+                        const name = getDrivePlantCommonName(item);
+                        if (!nameGroups.has(name)) nameGroups.set(name, { name, rowCount: 0, sizes: new Set(), locations: new Set() });
+                        const group = nameGroups.get(name);
+                        group.rowCount += 1;
+                        group.sizes.add(getDrivePlantContSize(item));
+                        group.locations.add(getTaskLocationBucket(item));
                     });
-                    groups = Object.keys(blockCounts)
-                        .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }))
-                        .map((block) => ({
-                            block,
-                            rowCount: blockCounts[block],
-                            __driveRenderKeyValue: `${block}|${blockCounts[block]}`
-                        }));
+                    groups = Array.from(nameGroups.values())
+                        .map((group) => ({
+                            name: group.name,
+                            rowCount: group.rowCount,
+                            sizeCount: group.sizes.size,
+                            locationCount: group.locations.size,
+                            __driveRenderKeyValue: `${group.name}|${group.rowCount}|${group.sizes.size}|${group.locations.size}`
+                        }))
+                        .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: 'base' }));
                     if (!(driveDrillGroupStateCache instanceof Map)) driveDrillGroupStateCache = new Map();
                     driveDrillGroupStateCache.set(groupCacheKey, groups);
                     while (driveDrillGroupStateCache.size > 16) {
@@ -136229,45 +136272,50 @@ ${folderNote ? `Folder Note: ${folderNote}
                         else break;
                     }
                 }
-                renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > Select Block (${groups.length} blocks)`, groups, 'drive:loc:blocks', renderDriveBlockGroupCard, {
-                    emptyMessage: 'No Drive blocks match the current search.',
+                renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > Location > Select Common Name (${groups.length} names)`, groups, 'drive:loc:names', renderDriveLocationCommonNameGroupCard, {
+                    emptyMessage: 'No common names match the current Drive filters.',
                     approxCardHeight: 84
                 });
                 return;
             }
-            const selectedBlockItems = visibleItems.filter((item) => getTaskBlockAlpha(item) === selectedDriveBlock);
-            if (!selectedBlockItems.length) {
-                applyDriveRenderMarkup(container, crumb, `${resolvedDriveModeLabel} > Block ${selectedDriveBlock}`, `<div class="p-8 text-center text-gray-400">No rows match the current Drive filters for block ${esc(selectedDriveBlock)}.</div>`, 'drive:loc:block-empty');
+            const selectedNameItems = visibleItems.filter((item) => getDrivePlantCommonName(item) === selectedDriveBlock);
+            if (!selectedNameItems.length) {
+                applyDriveRenderMarkup(container, crumb, `${resolvedDriveModeLabel} > ${selectedDriveBlock}`, `<div class="p-8 text-center text-gray-400">No rows match the current Drive filters for ${esc(selectedDriveBlock)}.</div>`, 'drive:loc:name-empty');
                 return;
             }
             if (driveViewLevel <= 1 || !selectedDriveLoc) {
-                const locationCounts = {};
-                selectedBlockItems.forEach((item) => {
-                    const location = getTaskLocationBucket(item);
-                    if (!locationCounts[location]) locationCounts[location] = 0;
-                    locationCounts[location] += 1;
+                const sizeGroups = new Map();
+                selectedNameItems.forEach((item) => {
+                    const size = getDrivePlantContSize(item);
+                    if (!sizeGroups.has(size)) sizeGroups.set(size, { size, rowCount: 0, locations: new Set() });
+                    const group = sizeGroups.get(size);
+                    group.rowCount += 1;
+                    group.locations.add(getTaskLocationBucket(item));
                 });
-                const groups = Object.keys(locationCounts)
-                    .sort(compareLocationCodeValues)
-                    .map((location) => ({
-                        location,
-                        rowCount: locationCounts[location],
-                        __driveRenderKeyValue: `${selectedDriveBlock}|${location}|${locationCounts[location]}`
-                    }));
-                renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > Block ${selectedDriveBlock} > Select Location (${groups.length} locations)`, groups, 'drive:loc:locations', renderDriveLocationGroupCard, {
-                    emptyMessage: 'No Drive locations match the current search.',
+                const groups = Array.from(sizeGroups.values())
+                    .map((group) => ({
+                        size: group.size,
+                        rowCount: group.rowCount,
+                        locationCount: group.locations.size,
+                        __driveRenderKeyValue: `${selectedDriveBlock}|${group.size}|${group.rowCount}|${group.locations.size}`
+                    }))
+                    .sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true, sensitivity: 'base' }));
+                renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > ${selectedDriveBlock} > Select Cont Size (${groups.length} sizes)`, groups, 'drive:loc:sizes', renderDriveLocationContSizeGroupCard, {
+                    emptyMessage: 'No container sizes match the selected common name.',
                     approxCardHeight: 84
                 });
                 return;
             }
-            const selectedLocationItems = selectedBlockItems.filter((item) => getTaskLocationBucket(item) === selectedDriveLoc);
-            const locationSearchTerm = shouldScopeDriveSearchToSelectedLocation() ? getDriveSearchTerm() : '';
-            const finalItems = sortDriveCardItems(locationSearchTerm ? filterBySearch(selectedLocationItems, locationSearchTerm, 'drive_card') : selectedLocationItems);
-            const crumbText = `${resolvedDriveModeLabel} > ${selectedDriveBlock} > ${selectedDriveLoc} (${finalItems.length} items)`;
+            const selectedSizeItems = selectedNameItems.filter((item) => getDrivePlantContSize(item) === selectedDriveLoc);
+            const finalItems = sortDriveCardItems(selectedSizeItems).sort((a, b) => {
+                const locationCompare = compareLocationCodeValues(getTaskLocationBucket(a), getTaskLocationBucket(b));
+                return locationCompare || compareItemInquiryRows(a, b);
+            });
+            const locationCount = new Set(finalItems.map((item) => getTaskLocationBucket(item))).size;
+            const crumbText = `${resolvedDriveModeLabel} > ${selectedDriveBlock} > ${getDriveDrillDisplayValue(selectedDriveLoc, '-')} > ${locationCount} Locations (${finalItems.length} items)`;
             const renderKey = buildDriveRenderKey('drive:loc:cards', crumbText, finalItems);
             if (!finalItems.length) {
-                const emptyMessage = locationSearchTerm ? 'No rows in this location match the current search.' : 'No rows match the selected location.';
-                applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, `drive:loc:cards-empty:${locationSearchTerm ? 'search' : 'all'}`);
+                applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No locations match the selected common name and container size.</div>`, 'drive:loc:cards-empty');
                 return;
             }
             renderDriveRecordResults('drive-loc-card', container, crumb, finalItems, crumbText, renderKey, {
