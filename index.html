@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.25.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.25.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.25.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6705,8 +6705,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-selection-tray{position:sticky;bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .35rem);z-index:54;max-width:100%;overflow:hidden;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
         @media (min-width:641px){.manager-eval2-selection-tray{position:relative;bottom:auto;z-index:1;backdrop-filter:none;-webkit-backdrop-filter:none}}
         @media (max-width:640px){.manager-eval2-selection-tray{margin-left:0;margin-right:0}.manager-eval2-selection-tray button{min-width:0;white-space:normal;line-height:1.05}}
+        .manager-eval2-item-card{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:box-shadow .16s ease,transform .16s ease,border-color .16s ease,background-color .16s ease}
+        .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
+        .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.25.02">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6817,8 +6820,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.25.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.25.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7571,7 +7574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.01').trim() || 'V2026.08.25.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.25.02').trim() || 'V2026.08.25.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9057,7 +9060,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.25.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -28860,7 +28863,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
 let activeManagerEvalReport='s1-with-pri'; let activeManagerEvalReportView='name'; let managerEvalReportSelectedCommonName=''; let managerEvalReportSelectedBlock=''; let managerEvalReportSelectedLocation=''; let managerEvalReportSeasonFilter='all'; let managerEvalReportContSizeFilter='all'; let managerEvalReportAssignedToFilter='all'; let managerEvalReportPriorityFilter='all'; let managerEvalReportSettings={lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10,updatedBy:'',updatedAt:''}; let managerEvalReportSettingsState={loaded:false,loading:false,fallback:false,error:'',promise:null,saving:false}; let managerEvalReportCacheKey=''; let managerEvalReportCache=null;
 let managerHistoricalReportState={level:'names',commonNames:[],containerSizes:[],rows:[],selectedCommonName:'',selectedContSize:'',selectedColumns:['report_date','itemcode','locationcode','lotcode','ptravailable','holdstopcode','holdstopreason'],loadedColumns:[],dateStart:'',dateEnd:'',displayMode:'cards',loading:false,loadingMore:false,error:'',hasMore:false,nextCursor:null,dirty:false,requestToken:0,lastSearch:''};
 let managerEvalReportDisplayMode='cards';
-let activeManagerEvalReport2='low-stock'; let managerEvalReport2Mode='reports'; let managerEvalReport2DisplayMode='cards'; let managerEvalReport2SeasonFilter='all'; let managerEvalReport2ContSizeFilter='all'; let managerEvalReport2AssignedToFilter='all'; let managerEvalReport2LocationFilter='all'; let managerEvalReport2PriorityFilter='all'; let managerEvalReport2InquiryAssignedTo=''; let managerEvalReport2InquiryLocationCode=''; let managerEvalReport2InquiryCommonName=''; let managerEvalReport2InquiryContSize=''; let managerEvalReport2CacheKey=''; let managerEvalReport2Cache=null; let managerEvalReport2LoadState={loading:false,error:'',promise:null,lastLoadedAt:'',lastSourceUpdatedAt:''}; let managerEvalReport2SelectedRowsByKey=new Map(); let managerEvalReport2LockedAssignedTo=''; let managerEvalReport2SelectionRevision=0; let managerEvalReport2EmailSending=false;
+let activeManagerEvalReport2=''; let managerEvalReport2Mode='reports'; let managerEvalReport2DisplayMode='cards'; let managerEvalReport2SeasonFilter='all'; let managerEvalReport2ContSizeFilter='all'; let managerEvalReport2AssignedToFilter='all'; let managerEvalReport2LocationFilter='all'; let managerEvalReport2PriorityFilter='all'; let managerEvalReport2SelectedCommonName=''; let managerEvalReport2InquiryAssignedTo=''; let managerEvalReport2InquiryLocationCode=''; let managerEvalReport2InquiryCommonName=''; let managerEvalReport2InquiryContSize=''; let managerEvalReport2CacheKey=''; let managerEvalReport2Cache=null; let managerEvalReport2LoadState={loading:false,error:'',promise:null,lastLoadedAt:'',lastSourceUpdatedAt:''}; let managerEvalReport2SelectedItemsByKey=new Map(); let managerEvalReport2LockedAssignedTo=''; let managerEvalReport2SelectionMode=false; let managerEvalReport2SelectionRevision=0; let managerEvalReport2EmailSending=false; let managerEvalReport2LongPressTimer=null; let managerEvalReport2LongPressKey=''; let managerEvalReport2LongPressStartX=0; let managerEvalReport2LongPressStartY=0; let managerEvalReport2SuppressClickKey='';
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'global-' || prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -29308,6 +29311,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
         const MANAGER_BLOCK_CLEARING_VIEW = 'block-clearing';
         const MANAGER_BLOCK_CLEARING_LONG_PRESS_MS = 360;
+        const MANAGER_EVAL_REPORT2_LONG_PRESS_MS = 450;
+        const MANAGER_EVAL_REPORT2_LONG_PRESS_MOVE_PX = 10;
         const INVENTORY_TRANSACTION_AUDIT_TABLE = 'ph_inventory_transactions';
         const NCR_APPROVAL_ASSIGNMENTS = Object.freeze({
             'new-crop:dylan': 'ncr_approval_new_crop_dylan',
@@ -30355,7 +30360,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.01').trim() || 'V2026.08.25.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.25.02').trim() || 'V2026.08.25.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -118405,8 +118410,11 @@ C.14.043 C.15.000
         function invalidateManagerEvalReport2Cache() {
             managerEvalReport2CacheKey = '';
             managerEvalReport2Cache = null;
-            managerEvalReport2SelectedRowsByKey.clear();
+            clearManagerEvalReport2LongPress();
+            managerEvalReport2SelectedItemsByKey.clear();
             managerEvalReport2LockedAssignedTo = '';
+            managerEvalReport2SelectionMode = false;
+            managerEvalReport2SelectedCommonName = '';
             managerEvalReport2SelectionRevision += 1;
         }
 
@@ -118519,8 +118527,15 @@ C.14.043 C.15.000
                 matchedCount: assignmentModel.matchedCount,
                 unassignedCount: assignmentModel.unassignedCount
             };
+            managerEvalReport2Cache.allRows = assignmentModel.rows;
+            managerEvalReport2Cache.rowsByItemCode = new Map();
             managerEvalReport2Cache.rowByKey = new Map();
             assignmentModel.rows.forEach((row, sourceIndex) => {
+                const itemCode = getManagerEvalReport2ItemCode(row);
+                if (itemCode) {
+                    if (!managerEvalReport2Cache.rowsByItemCode.has(itemCode)) managerEvalReport2Cache.rowsByItemCode.set(itemCode, []);
+                    managerEvalReport2Cache.rowsByItemCode.get(itemCode).push(row);
+                }
                 managerEvalReport2Cache.rowByKey.set(getManagerEvalReport2RowKey(row, sourceIndex), row);
             });
             managerEvalReport2Cache.reportMembershipByKey = new Map();
@@ -118557,6 +118572,17 @@ C.14.043 C.15.000
             return Array.isArray(rows) ? rows : [];
         }
 
+        function getManagerEvalReport2ItemCode(row = null) {
+            return String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toUpperCase();
+        }
+
+        function getManagerEvalReport2ItemKey(rowOrItemCode = null) {
+            const itemCode = typeof rowOrItemCode === 'string'
+                ? String(rowOrItemCode || '').trim().toUpperCase()
+                : getManagerEvalReport2ItemCode(rowOrItemCode);
+            return itemCode ? `item:${itemCode}` : '';
+        }
+
         function getManagerEvalReport2AssignedToOptions() {
             const index = getManagerEvalReport2Index();
             return index && Array.isArray(index.assignedToOptions) ? index.assignedToOptions.slice() : [];
@@ -118571,7 +118597,7 @@ C.14.043 C.15.000
                 .sort((left, right) => String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' }));
         }
 
-        function getFilteredManagerEvalReport2Rows(rows = null) {
+        function getManagerEvalReport2RowsBeforeCommonName(rows = null) {
             const sourceRows = Array.isArray(rows) ? rows : getManagerEvalReport2Rows();
             return sourceRows.filter((row) => {
                 if (managerEvalReport2SeasonFilter !== 'all' && getManagerEvalReportRowSeason(row) !== managerEvalReport2SeasonFilter) return false;
@@ -118586,6 +118612,64 @@ C.14.043 C.15.000
                 if (managerEvalReport2PriorityFilter === 'without' && priority) return false;
                 return managerEvalReportRowMatchesSearch(row);
             });
+        }
+
+        function getFilteredManagerEvalReport2Rows(rows = null) {
+            return getManagerEvalReport2RowsBeforeCommonName(rows).filter((row) => !managerEvalReport2SelectedCommonName
+                || getManagerEvalReportRowCommonName(row) === managerEvalReport2SelectedCommonName);
+        }
+
+        function getManagerEvalReport2CommonNameGroups(rows = null) {
+            if (!activeManagerEvalReport2 || !isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)) return [];
+            const groups = new Map();
+            getManagerEvalReport2RowsBeforeCommonName(rows).forEach((row) => {
+                const commonName = getManagerEvalReportRowCommonName(row);
+                if (!groups.has(commonName)) groups.set(commonName, []);
+                groups.get(commonName).push(row);
+            });
+            return Array.from(groups.entries())
+                .map(([commonName, groupRows]) => ({
+                    commonName,
+                    rows: groupRows,
+                    itemCount: new Set(groupRows.map(getManagerEvalReport2ItemCode).filter(Boolean)).size,
+                    rowCount: groupRows.length,
+                    locationCount: new Set(groupRows.map(getManagerEvalReportRowLocation)).size
+                }))
+                .sort((left, right) => String(left.commonName).localeCompare(String(right.commonName), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function openManagerEvalReport2CommonName(commonName = '') {
+            managerEvalReport2SelectedCommonName = String(commonName || '').trim();
+            scheduleManagersRender(true);
+            queueScrollMainAreaToTop(`manager-eval2-common:${managerEvalReport2SelectedCommonName}`);
+            return false;
+        }
+
+        function backManagerEvalReport2CommonNames() {
+            managerEvalReport2SelectedCommonName = '';
+            scheduleManagersRender(true);
+            queueScrollMainAreaToTop('manager-eval2-common-list');
+            return false;
+        }
+
+        function getManagerEvalReport2VisibleItemGroups() {
+            const groups = new Map();
+            getFilteredManagerEvalReport2Rows().forEach((row) => {
+                const itemCode = getManagerEvalReport2ItemCode(row);
+                if (!itemCode) return;
+                if (!groups.has(itemCode)) groups.set(itemCode, []);
+                groups.get(itemCode).push(row);
+            });
+            return Array.from(groups.entries()).map(([itemCode, rows]) => ({
+                key: getManagerEvalReport2ItemKey(itemCode),
+                itemCode,
+                commonName: getManagerEvalReportRowCommonName(rows[0]),
+                rows,
+                representativeRow: rows[0],
+                containerSizes: Array.from(new Set(rows.map(getManagerEvalReportRowContSize))).sort(compareManagerEvalReport2Natural),
+                rowCount: rows.length,
+                locationCount: new Set(rows.map(getManagerEvalReportRowLocation)).size
+            })).sort((left, right) => compareManagerEvalReport2Natural(left.itemCode, right.itemCode));
         }
 
         function getManagerEvalReport2RowKey(row = null, fallbackIndex = 0) {
@@ -118622,22 +118706,38 @@ C.14.043 C.15.000
         }
 
         function getManagerEvalReport2SelectedEntries() {
-            return managerEvalReport2SelectedRowsByKey instanceof Map
-                ? Array.from(managerEvalReport2SelectedRowsByKey.values()).filter((entry) => entry && entry.row)
+            return managerEvalReport2SelectedItemsByKey instanceof Map
+                ? Array.from(managerEvalReport2SelectedItemsByKey.values()).filter((entry) => entry && entry.itemCode)
                 : [];
         }
 
+        function getManagerEvalReport2SelectedItems() {
+            return getManagerEvalReport2SelectedEntries();
+        }
+
         function getManagerEvalReport2SelectedRows() {
-            return getManagerEvalReport2SelectedEntries().map((entry) => entry.row);
+            const index = getManagerEvalReport2Index();
+            if (!index || !(index.rowsByItemCode instanceof Map) || !isNamedManagerEvalReport2AssignedTo(managerEvalReport2LockedAssignedTo)) return [];
+            const output = [];
+            const seen = new Set();
+            getManagerEvalReport2SelectedEntries().forEach((entry) => {
+                const itemRows = index.rowsByItemCode.get(entry.itemCode) || [];
+                itemRows.forEach((row, rowIndex) => {
+                    if (getManagerEvalReportRowAssignedTo(row) !== managerEvalReport2LockedAssignedTo) return;
+                    const rowKey = getManagerEvalReport2RowKey(row, rowIndex);
+                    if (seen.has(rowKey)) return;
+                    seen.add(rowKey);
+                    output.push(row);
+                });
+            });
+            return output;
         }
 
         function getManagerEvalReport2VisibleSelectionState() {
-            const visibleRows = getFilteredManagerEvalReport2Rows();
-            const visibleEntries = visibleRows.map((row, index) => ({ row, key: getManagerEvalReport2RowKey(row, index) }));
+            const visibleEntries = getManagerEvalReport2VisibleItemGroups();
             const visibleKeys = visibleEntries.map((entry) => entry.key);
-            const selectedVisibleCount = visibleKeys.filter((key) => managerEvalReport2SelectedRowsByKey.has(key)).length;
+            const selectedVisibleCount = visibleKeys.filter((key) => managerEvalReport2SelectedItemsByKey.has(key)).length;
             return {
-                visibleRows,
                 visibleEntries,
                 visibleKeys,
                 selectedVisibleCount,
@@ -118646,86 +118746,71 @@ C.14.043 C.15.000
         }
 
         function canSendManagerEvalReport2Selection() {
-            return getManagerEvalReport2SelectedEntries().length > 0
+            return managerEvalReport2SelectionMode
+                && getManagerEvalReport2SelectedEntries().length > 0
                 && isNamedManagerEvalReport2AssignedTo(managerEvalReport2LockedAssignedTo)
+                && isDatasetLoaded('master', 'full')
+                && isDatasetLoaded('warehouseAssignedItems', 'full')
                 && !managerEvalReport2LoadState.loading
                 && !managerEvalReport2LoadState.error
                 && !managerEvalReport2EmailSending;
         }
 
         function syncManagerEvalReport2SelectionUi() {
+            const selectedItems = getManagerEvalReport2SelectedItems();
             const selectedRows = getManagerEvalReport2SelectedRows();
-            const visibleState = getManagerEvalReport2VisibleSelectionState();
-            const count = selectedRows.length;
+            const itemCount = selectedItems.length;
+            const rowCount = selectedRows.length;
             const locationCount = new Set(selectedRows.map(getManagerEvalReportRowLocation)).size;
             const countElement = document.getElementById('manager-eval-report-2-selection-count');
-            if (countElement) countElement.textContent = `${count} row${count === 1 ? '' : 's'} / ${locationCount} location${locationCount === 1 ? '' : 's'}`;
+            if (countElement) countElement.textContent = `${itemCount} ITEMCODE${itemCount === 1 ? '' : 's'} / ${rowCount} row${rowCount === 1 ? '' : 's'} / ${locationCount} location${locationCount === 1 ? '' : 's'}`;
             const assignedElement = document.getElementById('manager-eval-report-2-selection-assignedto');
             if (assignedElement) assignedElement.textContent = managerEvalReport2LockedAssignedTo || 'Choose AssignedTo';
-            const sendButton = document.getElementById('manager-eval-report-2-email-button');
-            if (sendButton) {
+            const doneButton = document.getElementById('manager-eval-report-2-done-button');
+            if (doneButton) {
                 const sendReady = canSendManagerEvalReport2Selection();
-                sendButton.disabled = !sendReady;
-                sendButton.classList.toggle('pointer-events-none', !sendReady);
-                sendButton.classList.toggle('opacity-50', !sendReady);
-                const label = sendButton.querySelector('[data-role="label"]');
-                if (label) label.textContent = managerEvalReport2EmailSending ? 'Sending...' : `Send Item Inquiry${count ? ` (${count})` : ''}`;
+                doneButton.disabled = !sendReady;
+                doneButton.classList.toggle('pointer-events-none', !sendReady);
+                doneButton.classList.toggle('opacity-50', !sendReady);
+                const label = doneButton.querySelector('[data-role="label"]');
+                if (label) label.textContent = managerEvalReport2EmailSending ? 'Sending...' : 'Done';
             }
             const clearButton = document.getElementById('manager-eval-report-2-clear-selection');
             if (clearButton) {
-                clearButton.disabled = !count;
-                clearButton.classList.toggle('pointer-events-none', !count);
-                clearButton.classList.toggle('opacity-50', !count);
-            }
-            const allButton = document.getElementById('manager-eval-report-2-select-visible');
-            if (allButton) {
-                allButton.disabled = !visibleState.visibleKeys.length;
-                allButton.classList.toggle('pointer-events-none', !visibleState.visibleKeys.length);
-                allButton.classList.toggle('opacity-50', !visibleState.visibleKeys.length);
-                const label = allButton.querySelector('[data-role="label"]');
-                if (label) label.textContent = visibleState.allVisibleSelected ? 'Unselect Visible' : 'Select Visible';
+                clearButton.disabled = !itemCount;
+                clearButton.classList.toggle('pointer-events-none', !itemCount);
+                clearButton.classList.toggle('opacity-50', !itemCount);
             }
             document.querySelectorAll('[data-manager-eval2-selection-key]').forEach((wrapper) => {
                 const encodedKey = String(wrapper.getAttribute('data-manager-eval2-selection-key') || '');
                 let key = '';
                 try { key = decodeURIComponent(encodedKey); } catch (error) { key = encodedKey; }
-                const isSelected = managerEvalReport2SelectedRowsByKey.has(key);
+                const isSelected = managerEvalReport2SelectedItemsByKey.has(key);
                 wrapper.setAttribute('data-selected', isSelected ? 'true' : 'false');
-                wrapper.style.boxShadow = isSelected ? '0 0 0 4px rgba(16,185,129,.48)' : '';
-                const button = wrapper.querySelector('[data-role="manager-eval2-select"]');
-                if (!button) return;
-                button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-                button.classList.toggle('bg-[#007a4d]', isSelected);
-                button.classList.toggle('text-white', isSelected);
-                button.classList.toggle('bg-white', !isSelected);
-                button.classList.toggle('text-[#007a4d]', !isSelected);
-                const label = button.querySelector('[data-role="label"]');
-                if (label) label.textContent = isSelected ? 'Selected' : 'Select';
-                const icon = button.querySelector('i');
-                if (icon) {
-                    icon.classList.toggle('ph-check-square', isSelected);
-                    icon.classList.toggle('ph-square', !isSelected);
-                }
+                wrapper.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+                const icon = wrapper.querySelector('[data-role="manager-eval2-check"]');
+                if (icon) icon.classList.toggle('hidden', !isSelected && !managerEvalReport2SelectionMode);
             });
         }
 
-        function toggleManagerEvalReport2RowSelection(encodedKey = '') {
+        function toggleManagerEvalReport2ItemSelection(encodedKey = '', forceSelected = null) {
             let key = '';
             try { key = decodeURIComponent(String(encodedKey || '')); } catch (error) { key = String(encodedKey || ''); }
             if (!key) return false;
-            if (managerEvalReport2SelectedRowsByKey.has(key)) {
-                managerEvalReport2SelectedRowsByKey.delete(key);
-                if (!managerEvalReport2SelectedRowsByKey.size) managerEvalReport2LockedAssignedTo = '';
+            const currentlySelected = managerEvalReport2SelectedItemsByKey.has(key);
+            const shouldSelect = forceSelected === null ? !currentlySelected : !!forceSelected;
+            if (!shouldSelect) {
+                managerEvalReport2SelectedItemsByKey.delete(key);
+                if (!managerEvalReport2SelectedItemsByKey.size) managerEvalReport2LockedAssignedTo = '';
             } else {
                 if (!isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)) {
-                    showToast('Choose AssignedTo', 'Select one named AssignedTo user before selecting Item Inquiry rows.', true);
+                    showToast('Choose AssignedTo', 'Select one named AssignedTo user before selecting Item Inquiry ITEMCODEs.', true);
                     return false;
                 }
-                const index = getManagerEvalReport2Index();
-                const row = index && index.rowByKey instanceof Map ? index.rowByKey.get(key) : null;
-                const assignedTo = getManagerEvalReportRowAssignedTo(row);
-                if (!row || assignedTo !== managerEvalReport2AssignedToFilter) {
-                    showToast('Selection Changed', 'Refresh the report and select the row again.', true);
+                const itemGroup = getManagerEvalReport2VisibleItemGroups().find((entry) => entry.key === key);
+                const assignedTo = itemGroup && getManagerEvalReportRowAssignedTo(itemGroup.representativeRow);
+                if (!itemGroup || assignedTo !== managerEvalReport2AssignedToFilter) {
+                    showToast('Selection Changed', 'Refresh the report and select the ITEMCODE again.', true);
                     return false;
                 }
                 if (managerEvalReport2LockedAssignedTo && managerEvalReport2LockedAssignedTo !== assignedTo) {
@@ -118733,61 +118818,124 @@ C.14.043 C.15.000
                     return false;
                 }
                 managerEvalReport2LockedAssignedTo = assignedTo;
-                managerEvalReport2SelectedRowsByKey.set(key, { key, row, assignedTo });
+                managerEvalReport2SelectedItemsByKey.set(key, { key, itemCode: itemGroup.itemCode, representativeRow: itemGroup.representativeRow, assignedTo });
             }
+            managerEvalReport2SelectionMode = true;
             managerEvalReport2SelectionRevision += 1;
             syncManagerEvalReport2SelectionUi();
             scheduleManagersRender(true);
             return false;
         }
 
-        function toggleAllVisibleManagerEvalReport2Rows() {
-            const state = getManagerEvalReport2VisibleSelectionState();
-            if (!state.visibleKeys.length) return false;
-            if (state.allVisibleSelected) {
-                state.visibleKeys.forEach((key) => managerEvalReport2SelectedRowsByKey.delete(key));
-                if (!managerEvalReport2SelectedRowsByKey.size) managerEvalReport2LockedAssignedTo = '';
-            } else {
-                if (!isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)) {
-                    showToast('Choose AssignedTo', 'Select one named AssignedTo user before using Select Visible.', true);
-                    return false;
-                }
-                if (managerEvalReport2LockedAssignedTo && managerEvalReport2LockedAssignedTo !== managerEvalReport2AssignedToFilter) {
-                    showToast('One AssignedTo Per Email', `Clear the ${managerEvalReport2LockedAssignedTo} selection before choosing another person.`, true);
-                    return false;
-                }
-                managerEvalReport2LockedAssignedTo = managerEvalReport2AssignedToFilter;
-                state.visibleEntries.forEach(({ key, row }) => {
-                    if (getManagerEvalReportRowAssignedTo(row) === managerEvalReport2LockedAssignedTo) {
-                        managerEvalReport2SelectedRowsByKey.set(key, { key, row, assignedTo: managerEvalReport2LockedAssignedTo });
-                    }
-                });
+        function toggleManagerEvalReport2RowSelection(encodedKey = '') {
+            return toggleManagerEvalReport2ItemSelection(encodedKey, null);
+        }
+
+        function beginManagerEvalReport2SelectionMode() {
+            if (!activeManagerEvalReport2 || !isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter) || !managerEvalReport2SelectedCommonName) {
+                showToast('Finish The Filters', 'Choose Report, AssignedTo, and Common Name before selecting ITEMCODEs.', true);
+                return false;
             }
-            managerEvalReport2SelectionRevision += 1;
-            syncManagerEvalReport2SelectionUi();
+            managerEvalReport2SelectionMode = true;
             scheduleManagersRender(true);
+            return false;
+        }
+
+        function clearManagerEvalReport2LongPress() {
+            if (managerEvalReport2LongPressTimer) clearTimeout(managerEvalReport2LongPressTimer);
+            managerEvalReport2LongPressTimer = null;
+            managerEvalReport2LongPressKey = '';
+            return false;
+        }
+
+        function getManagerEvalReport2PressPoint(event = null) {
+            const touch = event && event.touches && event.touches.length ? event.touches[0]
+                : (event && event.changedTouches && event.changedTouches.length ? event.changedTouches[0] : null);
+            return {
+                x: Number(touch ? touch.clientX : event && event.clientX) || 0,
+                y: Number(touch ? touch.clientY : event && event.clientY) || 0
+            };
+        }
+
+        function startManagerEvalReport2LongPress(event = null, encodedKey = '') {
+            if (event && event.type === 'touchstart' && typeof window !== 'undefined' && window.PointerEvent) return true;
+            if (event && event.type === 'pointerdown' && Number(event.button || 0) !== 0) return true;
+            if (managerEvalReport2SelectionMode) return true;
+            const key = String(encodedKey || '').trim();
+            if (!key) return true;
+            clearManagerEvalReport2LongPress();
+            const point = getManagerEvalReport2PressPoint(event);
+            managerEvalReport2LongPressKey = key;
+            managerEvalReport2LongPressStartX = point.x;
+            managerEvalReport2LongPressStartY = point.y;
+            managerEvalReport2LongPressTimer = setTimeout(() => {
+                managerEvalReport2LongPressTimer = null;
+                managerEvalReport2SuppressClickKey = key;
+                managerEvalReport2SelectionMode = true;
+                toggleManagerEvalReport2ItemSelection(key, true);
+                if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(20);
+                setTimeout(() => {
+                    if (managerEvalReport2SuppressClickKey === key) managerEvalReport2SuppressClickKey = '';
+                }, 2500);
+            }, MANAGER_EVAL_REPORT2_LONG_PRESS_MS);
+            return true;
+        }
+
+        function trackManagerEvalReport2LongPress(event = null) {
+            if (!managerEvalReport2LongPressTimer) return true;
+            const point = getManagerEvalReport2PressPoint(event);
+            if (Math.abs(point.x - managerEvalReport2LongPressStartX) > MANAGER_EVAL_REPORT2_LONG_PRESS_MOVE_PX
+                || Math.abs(point.y - managerEvalReport2LongPressStartY) > MANAGER_EVAL_REPORT2_LONG_PRESS_MOVE_PX) clearManagerEvalReport2LongPress();
+            return true;
+        }
+
+        function preventManagerEvalReport2ContextMenu(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            return false;
+        }
+
+        function handleManagerEvalReport2ItemCardClick(encodedKey = '') {
+            const key = String(encodedKey || '').trim();
+            clearManagerEvalReport2LongPress();
+            if (managerEvalReport2SuppressClickKey === key) {
+                managerEvalReport2SuppressClickKey = '';
+                return false;
+            }
+            if (managerEvalReport2SelectionMode) return toggleManagerEvalReport2ItemSelection(key, null);
+            showToast('Select ITEMCODEs', 'Press and hold a card to start selecting, or use Select Items.', false);
             return false;
         }
 
         function clearManagerEvalReport2Selection(silent = false) {
-            if (!managerEvalReport2SelectedRowsByKey.size && !managerEvalReport2LockedAssignedTo) return false;
-            managerEvalReport2SelectedRowsByKey.clear();
+            clearManagerEvalReport2LongPress();
+            if (!managerEvalReport2SelectedItemsByKey.size && !managerEvalReport2LockedAssignedTo && !managerEvalReport2SelectionMode) return false;
+            managerEvalReport2SelectedItemsByKey.clear();
             managerEvalReport2LockedAssignedTo = '';
+            managerEvalReport2SelectionMode = false;
             managerEvalReport2SelectionRevision += 1;
             syncManagerEvalReport2SelectionUi();
             scheduleManagersRender(true);
-            if (!silent) showToast('Selection Cleared', 'No Eval Reports #2 cards are selected.');
+            if (!silent) showToast('Selection Cleared', 'No Eval Reports #2 ITEMCODEs are selected.');
             return false;
         }
 
-        function renderManagerEvalReport2SelectableCard(item = null, index = 0) {
-            const key = getManagerEvalReport2RowKey(item, index);
+        function renderManagerEvalReport2SelectableCard(itemGroup = null, index = 0) {
+            const safeGroup = itemGroup && itemGroup.representativeRow ? itemGroup : {
+                key: getManagerEvalReport2ItemKey(itemGroup),
+                itemCode: getManagerEvalReport2ItemCode(itemGroup),
+                commonName: getManagerEvalReportRowCommonName(itemGroup),
+                rows: itemGroup ? [itemGroup] : [],
+                representativeRow: itemGroup,
+                containerSizes: itemGroup ? [getManagerEvalReportRowContSize(itemGroup)] : [],
+                rowCount: itemGroup ? 1 : 0,
+                locationCount: itemGroup ? 1 : 0
+            };
+            const key = safeGroup.key || getManagerEvalReport2ItemKey(safeGroup.itemCode);
             const encodedKey = encodeURIComponent(key);
-            const selected = managerEvalReport2SelectedRowsByKey.has(key);
-            const selectionAllowed = isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)
-                && (!managerEvalReport2LockedAssignedTo || managerEvalReport2LockedAssignedTo === managerEvalReport2AssignedToFilter);
-            const rowLabel = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.ITEMCODE, 'report row') || 'report row');
-            return `<div class="rounded-[1.6rem]" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" style="${selected ? 'box-shadow:0 0 0 4px rgba(16,185,129,.48);' : ''}"><div class="mb-2 flex justify-end"><button type="button" data-role="manager-eval2-select" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Unselect' : 'Select'} ${escapeHtml(rowLabel)}" class="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border-2 border-[#007a4d] px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] shadow-sm ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'} ${selectionAllowed || selected ? '' : 'pointer-events-none opacity-45'}" onclick="event.stopPropagation(); return toggleManagerEvalReport2RowSelection('${escJsAttrValue(encodedKey)}')" ${selectionAllowed || selected ? '' : 'disabled'}><i class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'}"></i><span data-role="label">${selected ? 'Selected' : 'Select'}</span></button></div>${generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-green'))}</div>`;
+            const selected = managerEvalReport2SelectedItemsByKey.has(key);
+            const checkHtml = `<span data-role="manager-eval2-check" class="${selected || managerEvalReport2SelectionMode ? '' : 'hidden'} inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-[#007a4d] ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'}"><i class="ph-bold ${selected ? 'ph-check' : 'ph-square'}"></i></span>`;
+            const containers = safeGroup.containerSizes.join(', ') || '-';
+            return `<article role="button" tabindex="0" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Unselect' : 'Select'} ${escapeHtml(safeGroup.itemCode)} ${escapeHtml(safeGroup.commonName)}" class="manager-eval2-item-card rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" onpointerdown="return startManagerEvalReport2LongPress(event, '${escJsAttrValue(encodedKey)}')" onpointermove="return trackManagerEvalReport2LongPress(event)" onpointerup="return clearManagerEvalReport2LongPress()" onpointercancel="return clearManagerEvalReport2LongPress()" onpointerleave="return clearManagerEvalReport2LongPress()" ontouchstart="return startManagerEvalReport2LongPress(event, '${escJsAttrValue(encodedKey)}')" ontouchmove="return trackManagerEvalReport2LongPress(event)" ontouchend="return clearManagerEvalReport2LongPress()" ontouchcancel="return clearManagerEvalReport2LongPress()" oncontextmenu="return preventManagerEvalReport2ContextMenu(event)" onclick="return handleManagerEvalReport2ItemCardClick('${escJsAttrValue(encodedKey)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return handleManagerEvalReport2ItemCardClick('${escJsAttrValue(encodedKey)}');}"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeHtml(getManagerEvalReport2Meta().label)}</div><div class="mt-1 break-all font-mono text-[15px] font-black text-blue-700">${escapeHtml(safeGroup.itemCode || '-')}</div><div class="mt-1 text-[18px] font-black leading-tight text-slate-900">${escapeHtml(safeGroup.commonName || 'Unknown')}</div><div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(containers)}</div></div>${checkHtml}</div><div class="mt-3 grid grid-cols-2 gap-2"><div class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-emerald-700">Report rows</div><div class="mt-1 text-lg font-black text-emerald-900">${escapeHtml(String(safeGroup.rowCount))}</div></div><div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-blue-700">Locations</div><div class="mt-1 text-lg font-black text-blue-900">${escapeHtml(String(safeGroup.locationCount))}</div></div></div><div class="mt-3 text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${managerEvalReport2SelectionMode ? 'Tap to select or unselect' : 'Press and hold to select'}</div></article>`;
         }
 
         function setManagerEvalReport2Mode(mode = 'reports') {
@@ -118797,13 +118945,15 @@ C.14.043 C.15.000
             return false;
         }
 
-        function setManagerEvalReport2(reportId = 'low-stock') {
+        function setManagerEvalReport2(reportId = '') {
             const api = getManagerEvalReports2Api();
             const safeId = String(reportId || '').trim().toLowerCase();
-            if (!api || !api.REPORT_IDS.includes(safeId)) return false;
+            if (!api || (safeId && !api.REPORT_IDS.includes(safeId))) return false;
             const changed = activeManagerEvalReport2 !== safeId;
             activeManagerEvalReport2 = safeId;
             if (changed) {
+                managerEvalReport2AssignedToFilter = managerEvalReport2LockedAssignedTo || 'all';
+                managerEvalReport2SelectedCommonName = '';
                 managerEvalReport2SeasonFilter = 'all';
                 managerEvalReport2ContSizeFilter = 'all';
                 managerEvalReport2LocationFilter = 'all';
@@ -118825,6 +118975,7 @@ C.14.043 C.15.000
                     return false;
                 }
                 managerEvalReport2AssignedToFilter = safeValue;
+                managerEvalReport2SelectedCommonName = '';
                 managerEvalReport2LocationFilter = 'all';
             } else if (safeKind === 'locationcode') managerEvalReport2LocationFilter = safeValue;
             else if (safeKind === 'priority') managerEvalReport2PriorityFilter = safeValue;
@@ -118836,6 +118987,7 @@ C.14.043 C.15.000
             managerEvalReport2SeasonFilter = 'all';
             managerEvalReport2ContSizeFilter = 'all';
             managerEvalReport2AssignedToFilter = managerEvalReport2LockedAssignedTo || 'all';
+            managerEvalReport2SelectedCommonName = '';
             managerEvalReport2LocationFilter = 'all';
             managerEvalReport2PriorityFilter = 'all';
             managersSearchTerm = '';
@@ -118891,7 +119043,9 @@ C.14.043 C.15.000
         }
 
         function buildManagerEvalReport2Select(label = '', kind = '', currentValue = 'all', options = [], includeAll = true, disabled = false) {
-            const leading = includeAll ? [`<option value="all" ${currentValue === 'all' ? 'selected' : ''}>All</option>`] : ['<option value="">All</option>'];
+            const assignedToSelect = String(kind || '').trim().toLowerCase() === 'assignedto';
+            const leadingLabel = assignedToSelect ? 'Choose AssignedTo' : 'All';
+            const leading = includeAll ? [`<option value="all" ${currentValue === 'all' ? 'selected' : ''}>${leadingLabel}</option>`] : ['<option value="">All</option>'];
             const optionHtml = leading.concat(options.map((value) => `<option value="${escapeHtml(value)}" ${currentValue === value ? 'selected' : ''}>${escapeHtml(value)}</option>`)).join('');
             return `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">${escapeHtml(label)}</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800 ${disabled ? 'cursor-not-allowed opacity-60' : ''}" onchange="return ${includeAll ? 'setManagerEvalReport2Filter' : 'setManagerEvalReport2InquiryFilter'}('${escJsAttrValue(kind)}', this.value)" ${disabled ? 'disabled aria-disabled="true"' : ''}>${optionHtml}</select></label>`;
         }
@@ -118946,16 +119100,17 @@ C.14.043 C.15.000
         }
 
         function renderManagerEvalReport2SelectionTray() {
+            if (!managerEvalReport2SelectionMode) return '';
+            const selectedItems = getManagerEvalReport2SelectedItems();
             const selectedRows = getManagerEvalReport2SelectedRows();
-            const selectedCount = selectedRows.length;
+            const selectedItemCount = selectedItems.length;
+            const selectedRowCount = selectedRows.length;
             const locationCount = new Set(selectedRows.map(getManagerEvalReportRowLocation)).size;
-            const selectionState = getManagerEvalReport2VisibleSelectionState();
-            const selectVisibleReady = selectionState.visibleKeys.length > 0 && isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter);
             const sendReady = canSendManagerEvalReport2Selection();
             const staleWarning = managerEvalReport2LoadState.error
                 ? '<div class="mt-2 text-[9px] font-black uppercase tracking-[0.1em] text-amber-800">Retry the data refresh before sending.</div>'
                 : '';
-            return `<div class="manager-eval2-selection-tray rounded-2xl border border-emerald-300 bg-emerald-50/95 p-3 shadow-lg"><div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[9px] font-black uppercase tracking-[0.13em] text-emerald-700">Item Inquiry for</div><div id="manager-eval-report-2-selection-assignedto" class="truncate text-sm font-black text-slate-900">${escapeHtml(managerEvalReport2LockedAssignedTo || 'Choose AssignedTo')}</div><div id="manager-eval-report-2-selection-count" class="text-[10px] font-bold text-slate-600">${selectedCount} row${selectedCount === 1 ? '' : 's'} / ${locationCount} location${locationCount === 1 ? '' : 's'}</div>${staleWarning}</div><div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"><button id="manager-eval-report-2-select-visible" type="button" class="min-h-[44px] rounded-xl border border-emerald-300 bg-white px-2 text-[9px] font-black uppercase tracking-[0.08em] text-[#007a4d] ${selectVisibleReady ? '' : 'pointer-events-none opacity-50'}" onclick="return toggleAllVisibleManagerEvalReport2Rows()" ${selectVisibleReady ? '' : 'disabled'}><i class="ph-bold ph-checks mr-1"></i><span data-role="label">${selectionState.allVisibleSelected ? 'Unselect Visible' : 'Select Visible'}</span></button><button id="manager-eval-report-2-clear-selection" type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-2 text-[9px] font-black uppercase tracking-[0.08em] text-slate-600 ${selectedCount ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Selection()" ${selectedCount ? '' : 'disabled'}>Clear</button><button id="manager-eval-report-2-email-button" type="button" class="min-h-[44px] rounded-xl bg-[#007a4d] px-2 text-[9px] font-black uppercase tracking-[0.08em] text-white shadow-sm ${sendReady ? '' : 'pointer-events-none opacity-50'}" onclick="return emailSelectedManagerEvalReport2Rows()" ${sendReady ? '' : 'disabled'}><i class="ph-bold ph-envelope-simple mr-1"></i><span data-role="label">${managerEvalReport2EmailSending ? 'Sending...' : `Send${selectedCount ? ` (${selectedCount})` : ''}`}</span></button></div></div></div>`;
+            return `<div class="manager-eval2-selection-tray rounded-2xl border border-emerald-300 bg-emerald-50/95 p-3 shadow-lg"><div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[9px] font-black uppercase tracking-[0.13em] text-emerald-700">Selecting Item Inquiry for</div><div id="manager-eval-report-2-selection-assignedto" class="truncate text-sm font-black text-slate-900">${escapeHtml(managerEvalReport2LockedAssignedTo || managerEvalReport2AssignedToFilter || 'Choose AssignedTo')}</div><div id="manager-eval-report-2-selection-count" class="text-[10px] font-bold text-slate-600">${selectedItemCount} ITEMCODE${selectedItemCount === 1 ? '' : 's'} / ${selectedRowCount} row${selectedRowCount === 1 ? '' : 's'} / ${locationCount} location${locationCount === 1 ? '' : 's'}</div>${staleWarning}</div><div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><button id="manager-eval-report-2-clear-selection" type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 text-[9px] font-black uppercase tracking-[0.08em] text-slate-600 ${selectedItemCount ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Selection()" ${selectedItemCount ? '' : 'disabled'}>Clear</button><button id="manager-eval-report-2-done-button" type="button" class="min-h-[44px] rounded-xl bg-[#007a4d] px-4 text-[10px] font-black uppercase tracking-[0.1em] text-white shadow-sm ${sendReady ? '' : 'pointer-events-none opacity-50'}" onclick="return emailSelectedManagerEvalReport2Rows()" ${sendReady ? '' : 'disabled'}><i class="ph-bold ph-check-circle mr-1"></i><span data-role="label">${managerEvalReport2EmailSending ? 'Sending...' : 'Done'}</span></button></div></div></div>`;
         }
 
         function renderManagerEvalReport2ReportsPanel() {
@@ -118963,22 +119118,34 @@ C.14.043 C.15.000
             const index = getManagerEvalReport2Index();
             if (!api || !index) return '';
             const baseRows = getManagerEvalReport2Rows();
-            const filteredRows = getFilteredManagerEvalReport2Rows(baseRows);
             const filterOptions = getManagerEvalReportFilterOptions(baseRows);
             const assignedToOptions = getManagerEvalReport2AssignedToOptions();
             const locationOptions = getManagerEvalReport2LocationOptions(baseRows);
             const assignedLocked = !!managerEvalReport2LockedAssignedTo;
-            const reportSelect = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Report</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReport2(this.value)">${api.REPORT_IDS.map((reportId) => `<option value="${escapeHtml(reportId)}" ${activeManagerEvalReport2 === reportId ? 'selected' : ''}>${escapeHtml(getManagerEvalReport2Meta(reportId).label)} (${escapeHtml(String(index.counts[reportId] || 0))})</option>`).join('')}</select></label>`;
+            const reportSelect = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">1. Report</span><select class="min-h-[48px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReport2(this.value)"><option value="" ${activeManagerEvalReport2 ? '' : 'selected'}>Choose Report</option>${api.REPORT_IDS.map((reportId) => `<option value="${escapeHtml(reportId)}" ${activeManagerEvalReport2 === reportId ? 'selected' : ''}>${escapeHtml(getManagerEvalReport2Meta(reportId).label)} (${escapeHtml(String(index.counts[reportId] || 0))})</option>`).join('')}</select></label>`;
+            const assignedSelect = buildManagerEvalReport2Select('2. AssignedTo', 'assignedto', managerEvalReport2AssignedToFilter, assignedToOptions, true, !activeManagerEvalReport2 || assignedLocked);
             const priorityOptions = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Priority</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReport2Filter('priority', this.value)"><option value="all" ${managerEvalReport2PriorityFilter === 'all' ? 'selected' : ''}>All</option><option value="with" ${managerEvalReport2PriorityFilter === 'with' ? 'selected' : ''}>With Priority</option><option value="without" ${managerEvalReport2PriorityFilter === 'without' ? 'selected' : ''}>Without Priority</option></select></label>`;
-            const hasFilters = managerEvalReport2SeasonFilter !== 'all' || managerEvalReport2ContSizeFilter !== 'all' || managerEvalReport2AssignedToFilter !== 'all' || managerEvalReport2LocationFilter !== 'all' || managerEvalReport2PriorityFilter !== 'all' || !!String(managersSearchTerm || '').trim();
+            const hasSecondaryFilters = managerEvalReport2SeasonFilter !== 'all' || managerEvalReport2ContSizeFilter !== 'all' || managerEvalReport2LocationFilter !== 'all' || managerEvalReport2PriorityFilter !== 'all' || !!String(managersSearchTerm || '').trim();
             const displayButton = (mode, label, icon) => {
                 const unavailable = mode === 'grid' && !isManagerEvalReportGridSupported();
                 return `<button type="button" class="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${managerEvalReport2DisplayMode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-500'} ${unavailable ? 'opacity-50' : ''}" onclick="return setManagerEvalReport2DisplayMode('${mode}')" ${unavailable ? 'aria-disabled="true" title="Grid is available on tablets and computers"' : ''}><i class="ph-bold ${icon}"></i>${label}</button>`;
             };
-            const selectionHelp = isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)
-                ? (assignedLocked ? `Selection is locked to ${escapeHtml(managerEvalReport2LockedAssignedTo)} until Clear.` : 'Select rows here, then switch reports without losing the selection.')
-                : 'Choose one named AssignedTo user to enable row selection.';
-            return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.13em] text-[#007a4d]">1. AssignedTo &rarr; 2. Report &rarr; 3. Locationcode</div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">${buildManagerEvalReport2Select('AssignedTo', 'assignedto', managerEvalReport2AssignedToFilter, assignedToOptions, true, assignedLocked)}${reportSelect}${buildManagerEvalReport2Select('Locationcode', 'locationcode', managerEvalReport2LocationFilter, locationOptions)}</div><details class="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3"><summary class="cursor-pointer text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">More filters</summary><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">${buildManagerEvalReport2Select('Season', 'season', managerEvalReport2SeasonFilter, filterOptions.seasons)}${buildManagerEvalReport2Select('Container', 'contsize', managerEvalReport2ContSizeFilter, filterOptions.contSizes)}${priorityOptions}</div></details><div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(filteredRows.length))} / ${escapeHtml(String(baseRows.length))} rows</div><div class="mt-1 text-[10px] font-bold text-slate-500">${selectionHelp}</div></div><div class="flex flex-wrap gap-2">${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}<button type="button" class="min-h-[40px] rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Filters()">Clear Filters</button></div></div></div>${renderManagerEvalReport2SelectionTray()}<div id="manager-eval-report-2-records"></div></div>`;
+            const reportReady = !!activeManagerEvalReport2;
+            const assignedReady = reportReady && isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter);
+            const commonGroups = assignedReady ? getManagerEvalReport2CommonNameGroups(baseRows) : [];
+            let commonNameHtml = '';
+            if (!reportReady) {
+                commonNameHtml = '<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center text-sm font-black text-slate-500">Choose a report to begin.</div>';
+            } else if (!assignedReady) {
+                commonNameHtml = '<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center text-sm font-black text-slate-500">Choose one named AssignedTo user for this report.</div>';
+            } else if (managerEvalReport2SelectedCommonName) {
+                commonNameHtml = `<div class="flex flex-wrap items-center justify-between gap-2"><button type="button" class="inline-flex min-h-[42px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backManagerEvalReport2CommonNames()"><i class="ph-bold ph-arrow-left"></i>Common Names</button><div class="text-right"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">3. Common Name</div><div class="text-sm font-black text-slate-900">${escapeHtml(managerEvalReport2SelectedCommonName)}</div></div></div><div class="mt-3 flex flex-wrap items-center justify-between gap-2"><div class="text-[10px] font-bold text-slate-500">Press and hold an ITEMCODE card to start selecting.</div><button type="button" class="min-h-[42px] rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return beginManagerEvalReport2SelectionMode()"><i class="ph-bold ph-check-square-offset mr-1"></i>Select Items</button></div><div id="manager-eval-report-2-records" class="mt-3"></div>`;
+            } else {
+                const groupButtons = commonGroups.map((group) => `<button type="button" class="drill-item w-full rounded-2xl border border-emerald-100 bg-white shadow-sm" onclick="return openManagerEvalReport2CommonName('${escJsAttrValue(group.commonName)}')"><span class="min-w-0 text-left"><span class="block break-words text-[16px] font-black text-slate-900">${escapeHtml(group.commonName)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">${escapeHtml(String(group.itemCount))} ITEMCODE${group.itemCount === 1 ? '' : 's'} / ${escapeHtml(String(group.rowCount))} rows / ${escapeHtml(String(group.locationCount))} locations</span></span><i class="ph-bold ph-caret-right ml-3 text-xl text-[#007a4d]"></i></button>`).join('');
+                commonNameHtml = `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.13em] text-[#007a4d]">3. Common Name</div><div class="mt-1 text-[11px] font-bold text-slate-500">Search above or choose a Common Name group.</div><div class="mt-3 space-y-2">${groupButtons || '<div class="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm font-bold text-slate-400">No Common Names match this report, user, and search.</div>'}</div></div>`;
+            }
+            const secondaryFiltersHtml = assignedReady ? `<details class="rounded-xl border border-slate-200 bg-slate-50/60 p-3"><summary class="cursor-pointer text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Optional row filters</summary><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">${buildManagerEvalReport2Select('Location', 'locationcode', managerEvalReport2LocationFilter, locationOptions)}${buildManagerEvalReport2Select('Season', 'season', managerEvalReport2SeasonFilter, filterOptions.seasons)}${buildManagerEvalReport2Select('Container', 'contsize', managerEvalReport2ContSizeFilter, filterOptions.contSizes)}${priorityOptions}</div><div class="mt-3 flex flex-wrap gap-2">${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}<button type="button" class="min-h-[40px] rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasSecondaryFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Filters()">Clear Optional Filters</button></div></details>` : '';
+            return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.13em] text-[#007a4d]">Report &rarr; AssignedTo &rarr; Common Name &rarr; ITEMCODE</div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2">${reportSelect}${assignedSelect}</div>${assignedLocked ? `<div class="mt-2 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700">AssignedTo is locked to ${escapeHtml(managerEvalReport2LockedAssignedTo)} until Clear.</div>` : ''}</div>${secondaryFiltersHtml}${renderManagerEvalReport2SelectionTray()}${commonNameHtml}</div>`;
         }
 
         function renderManagerEvalReports2Panel() {
@@ -119009,43 +119176,41 @@ C.14.043 C.15.000
                 : [];
         }
 
-        function buildManagerEvalReport2SelectableGridHtml(rows = []) {
-            const safeRows = Array.isArray(rows) ? rows : [];
-            const selectionAllowed = isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)
-                && (!managerEvalReport2LockedAssignedTo || managerEvalReport2LockedAssignedTo === managerEvalReport2AssignedToFilter);
-            const bodyHtml = safeRows.map((row, rowIndex) => {
-                const key = getManagerEvalReport2RowKey(row, rowIndex);
+        function buildManagerEvalReport2SelectableGridHtml(itemGroups = []) {
+            const safeGroups = Array.isArray(itemGroups) && itemGroups.length && itemGroups[0] && itemGroups[0].representativeRow
+                ? itemGroups
+                : getManagerEvalReport2VisibleItemGroups();
+            const bodyHtml = safeGroups.map((group) => {
+                const key = group.key;
                 const encodedKey = encodeURIComponent(key);
-                const selected = managerEvalReport2SelectedRowsByKey.has(key);
-                const reports = getManagerEvalReport2MembershipLabels(key).join(', ');
-                const rowLabel = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.ITEMCODE, 'report row') || 'report row');
-                return `<tr data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" class="${selected ? 'bg-emerald-50' : ''}"><td class="drive-grid-select"><button type="button" data-role="manager-eval2-select" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Unselect' : 'Select'} ${escapeHtml(rowLabel)}" class="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-[#007a4d] ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'} ${selectionAllowed || selected ? '' : 'pointer-events-none opacity-45'}" onclick="event.stopPropagation(); return toggleManagerEvalReport2RowSelection('${escJsAttrValue(encodedKey)}')" ${selectionAllowed || selected ? '' : 'disabled'}><i class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'}"></i><span class="sr-only" data-role="label">${selected ? 'Selected' : 'Select'}</span></button></td><th scope="row" class="drive-grid-common">${escapeHtml(getManagerEvalReportRowCommonName(row))}</th><td>${escapeHtml(getManagerEvalReportRowContSize(row))}</td><td class="drive-grid-code">${escapeHtml(String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || ''))}</td><td>${escapeHtml(getManagerEvalReportRowLocation(row))}</td><td>${escapeHtml(String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '') || ''))}</td><td>${escapeHtml(getManagerEvalReportRowAssignedTo(row) || '(Unassigned)')}</td><td>${escapeHtml(reports)}</td></tr>`;
+                const selected = managerEvalReport2SelectedItemsByKey.has(key);
+                return `<tr data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" class="${selected ? 'bg-emerald-50' : ''}"><td class="drive-grid-select"><button type="button" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Unselect' : 'Select'} ${escapeHtml(group.itemCode)}" class="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-[#007a4d] ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'}" onclick="event.stopPropagation(); return toggleManagerEvalReport2ItemSelection('${escJsAttrValue(encodedKey)}')"><i class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'}"></i></button></td><th scope="row" class="drive-grid-common">${escapeHtml(group.commonName)}</th><td>${escapeHtml(group.containerSizes.join(', ') || '-')}</td><td class="drive-grid-code">${escapeHtml(group.itemCode)}</td><td>${escapeHtml(String(group.rowCount))}</td><td>${escapeHtml(String(group.locationCount))}</td><td>${escapeHtml(managerEvalReport2AssignedToFilter)}</td></tr>`;
             }).join('');
-            return `<div class="drive-grid-sheet" role="region" aria-label="Eval Reports #2 selectable grid" tabindex="0"><div class="drive-grid-sheet-toolbar"><span class="drive-grid-visible-count" aria-live="polite">${safeRows.length} rows</span></div><table class="drive-grid-table"><caption class="sr-only">Selectable Eval Reports #2 inventory rows</caption><thead><tr class="drive-grid-header-row"><th scope="col">Select</th><th scope="col">Common Name</th><th scope="col">Container</th><th scope="col">Item Code</th><th scope="col">Location</th><th scope="col">Lot</th><th scope="col">AssignedTo</th><th scope="col">Reports</th></tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+            return `<div class="drive-grid-sheet" role="region" aria-label="Eval Reports #2 selectable ITEMCODE grid" tabindex="0"><div class="drive-grid-sheet-toolbar"><span class="drive-grid-visible-count" aria-live="polite">${safeGroups.length} ITEMCODEs</span></div><table class="drive-grid-table"><caption class="sr-only">Selectable Eval Reports #2 ITEMCODEs</caption><thead><tr class="drive-grid-header-row"><th scope="col">Select</th><th scope="col">Common Name</th><th scope="col">Container</th><th scope="col">Item Code</th><th scope="col">Report Rows</th><th scope="col">Locations</th><th scope="col">AssignedTo</th></tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
         }
 
         function renderManagerEvalReport2Records() {
             const container = document.getElementById('manager-eval-report-2-records');
             if (!container || activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW || managerEvalReport2Mode !== 'reports') return;
-            const rows = getFilteredManagerEvalReport2Rows();
-            if (!rows.length) {
-                setContainerHtml(container, '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No rows match the selected report and filters.</div>');
+            const itemGroups = getManagerEvalReport2VisibleItemGroups();
+            if (!itemGroups.length) {
+                setContainerHtml(container, '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No ITEMCODEs match the selected report, AssignedTo, Common Name, and optional filters.</div>');
                 return;
             }
-            const renderKey = `manager-eval-2:${activeManagerEvalReport2}:${managerEvalReport2DisplayMode}:${rows.length}:${resolvedViewStateEpoch}:${managersSearchTerm}:${managerEvalReport2AssignedToFilter}:${managerEvalReport2LocationFilter}:${managerEvalReport2SeasonFilter}:${managerEvalReport2ContSizeFilter}:${managerEvalReport2PriorityFilter}:${managerEvalReport2SelectionRevision}`;
+            const renderKey = `manager-eval-2:${activeManagerEvalReport2}:${managerEvalReport2DisplayMode}:${itemGroups.length}:${resolvedViewStateEpoch}:${managersSearchTerm}:${managerEvalReport2AssignedToFilter}:${managerEvalReport2SelectedCommonName}:${managerEvalReport2LocationFilter}:${managerEvalReport2SeasonFilter}:${managerEvalReport2ContSizeFilter}:${managerEvalReport2PriorityFilter}:${managerEvalReport2SelectionMode}:${managerEvalReport2SelectionRevision}`;
             if (managerEvalReport2DisplayMode === 'grid' && isManagerEvalReportGridSupported()) {
                 cancelChunkRenderWorkForContainer(container, 'manager-eval-report-2');
-                applyDriveRenderMarkup(container, null, `${getManagerEvalReport2Meta().label} (${rows.length} items)`, buildManagerEvalReport2SelectableGridHtml(rows), renderKey);
+                applyDriveRenderMarkup(container, null, `${getManagerEvalReport2Meta().label} (${itemGroups.length} ITEMCODEs)`, buildManagerEvalReport2SelectableGridHtml(itemGroups), renderKey);
                 return;
             }
-            const renderRow = (item, index) => renderManagerEvalReport2SelectableCard(item, index);
-            if (shouldUseChunkedCardRender(rows.length, 90, 170)) {
+            const renderRow = (itemGroup, index) => renderManagerEvalReport2SelectableCard(itemGroup, index);
+            if (shouldUseChunkedCardRender(itemGroups.length, 90, 170)) {
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('manager-eval-report-2', container, null, rows, `${getManagerEvalReport2Meta().label} (${rows.length} items)`, renderRow, { approxCardHeight: 310 });
+                renderMarkupChunkedByKey('manager-eval-report-2', container, null, itemGroups, `${getManagerEvalReport2Meta().label} (${itemGroups.length} ITEMCODEs)`, renderRow, { approxCardHeight: 220 });
                 return;
             }
-            applyDriveRenderMarkup(container, null, `${getManagerEvalReport2Meta().label} (${rows.length} items)`, rows.map(renderRow).join(''), renderKey);
+            applyDriveRenderMarkup(container, null, `${getManagerEvalReport2Meta().label} (${itemGroups.length} ITEMCODEs)`, itemGroups.map(renderRow).join(''), renderKey);
         }
 
         function exportManagerEvalReport2ToExcel() {
@@ -119282,12 +119447,13 @@ C.14.043 C.15.000
 
         async function emailSelectedManagerEvalReport2Rows() {
             if (!canViewManagerEvalReports2() || managerEvalReport2EmailSending) return false;
+            const selectedItems = getManagerEvalReport2SelectedItems();
             const rows = getManagerEvalReport2SelectedRows();
-            if (!rows.length) {
-                showToast('Select Rows', 'Select at least one Eval Reports #2 row before sending.', true);
+            if (!selectedItems.length || !rows.length) {
+                showToast('Select ITEMCODEs', 'Select at least one Eval Reports #2 ITEMCODE before choosing recipients.', true);
                 return false;
             }
-            if (managerEvalReport2LoadState.loading || managerEvalReport2LoadState.error) {
+            if (!isDatasetLoaded('master', 'full') || !isDatasetLoaded('warehouseAssignedItems', 'full') || managerEvalReport2LoadState.loading || managerEvalReport2LoadState.error) {
                 showToast('Retry Required', 'Refresh the complete inventory and Assigned Items data successfully before sending.', true);
                 return false;
             }
@@ -119300,12 +119466,12 @@ C.14.043 C.15.000
             }
             const recipientEmails = dedupeRequestEmailRecipients(await openGroupedBloomNcrRecipientModal(rows, [], {
                 brandLabel: 'GNC PH Item Inquiry',
-                title: 'Choose Email Recipients'
+                title: `Choose Recipients — ${selectedItems.length} ITEMCODE${selectedItems.length === 1 ? '' : 's'} / ${rows.length} Rows`
             }) || []);
             if (!recipientEmails.length) return false;
             managerEvalReport2EmailSending = true;
             syncManagerEvalReport2SelectionUi();
-            showToast('Preparing Item Inquiry', `Building ${rows.length} selected row${rows.length === 1 ? '' : 's'} for ${context.assignedTo}.`);
+            showToast('Preparing Item Inquiry', `Building ${selectedItems.length} ITEMCODE${selectedItems.length === 1 ? '' : 's'} into ${rows.length} current rows for ${context.assignedTo}.`);
             try {
                 const subject = `GNC PH Item Inquiry – ${context.assignedTo} – ${rows.length} Rows / ${context.locationCount} Locations`;
                 const attachment = await buildManagerEvalReport2ExcelAttachment(rows);
@@ -119318,9 +119484,11 @@ C.14.043 C.15.000
                     brandLabel: 'GNC PH Item Inquiry',
                     fromName: 'GNC PH Item Inquiry',
                     sourceLabel: 'Eval Reports #2 Item Inquiry',
-                    message: `AssignedTo: ${context.assignedTo}\nSelected rows: ${rows.length}\nLocations: ${context.locationCount}\nReports: ${reportSummary}`,
-                    userMessage: `AssignedTo: ${context.assignedTo}\nSelected rows: ${rows.length}\nLocations: ${context.locationCount}\nReports: ${reportSummary}`,
+                    message: `AssignedTo: ${context.assignedTo}\nSelected ITEMCODEs: ${selectedItems.length}\nExpanded rows: ${rows.length}\nLocations: ${context.locationCount}\nReports: ${reportSummary}`,
+                    userMessage: `AssignedTo: ${context.assignedTo}\nSelected ITEMCODEs: ${selectedItems.length}\nExpanded rows: ${rows.length}\nLocations: ${context.locationCount}\nReports: ${reportSummary}`,
                     itemsCount: rows.length,
+                    selectedItemcodeCount: selectedItems.length,
+                    selectedItemcodes: selectedItems.map((entry) => entry.itemCode),
                     assignedTo: context.assignedTo,
                     locationCount: context.locationCount,
                     reportMemberships: context.reportNames.slice(),
@@ -119350,7 +119518,7 @@ C.14.043 C.15.000
                     throw new Error(getGoogleScriptEmailFailureMessage(responseData, 'The Item Inquiry email did not send.'));
                 }
                 clearManagerEvalReport2Selection(true);
-                showToast('Item Inquiry Sent', `Sent ${rows.length} rows in ${context.locationCount} locations to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'}.`);
+                showToast('Item Inquiry Sent', `Sent ${selectedItems.length} ITEMCODE${selectedItems.length === 1 ? '' : 's'} / ${rows.length} rows / ${context.locationCount} locations to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'}.`);
             } catch (error) {
                 showToast('Item Inquiry Not Sent', getFriendlyBackendErrorMessage(error, 'Could not send the Item Inquiry Excel file.'), true);
                 reportSemanticHealthEvent('eval_report_2_email_failed', 'eval_reports_2', 'EVAL_REPORT_2_EMAIL_FAILED', { affected_count: rows.length });

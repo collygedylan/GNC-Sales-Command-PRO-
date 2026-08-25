@@ -18,7 +18,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 });
 
 test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     const access = getRoleAccessState('Admin', 'brandt_emerson');
@@ -125,7 +125,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -162,9 +162,10 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     assignmentState.fullLoaded = true;
     const index = getManagerEvalReport2Index();
     setManagerEvalReport2Mode('reports');
-    setManagerEvalReport2('culls');
-    setManagerEvalReport2Filter('assignedTo', 'dylan_collyge');
     setManagerEvalReport2('low-stock');
+    setManagerEvalReport2Filter('assignedTo', 'dylan_collyge');
+    const commonNameGroups = getManagerEvalReport2CommonNameGroups();
+    openManagerEvalReport2CommonName('Alpha');
     const locationOptions = getManagerEvalReport2LocationOptions();
     setManagerEvalReport2Filter('locationCode', 'A.01.002');
     const reportRows = getFilteredManagerEvalReport2Rows();
@@ -211,6 +212,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       assignmentStats: index.assignmentStats,
       counts: index.counts,
       drilldown: {
+        commonNameGroups: commonNameGroups.map((group) => ({ name: group.commonName, items: group.itemCount, rows: group.rowCount })),
         locationOptions,
         reportRows: reportRows.length
       },
@@ -238,10 +240,9 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.assignmentStats.matchedCount).toBe(4);
   expect(result.counts['low-stock']).toBe(2);
   expect(result.counts.culls).toBe(1);
-  expect(result.drilldown).toEqual({
-    locationOptions: ['A.01.002'],
-    reportRows: 1,
-  });
+  expect(result.drilldown.commonNameGroups).toContainEqual({ name: 'Alpha', items: 1, rows: 1 });
+  expect(result.drilldown.locationOptions).toContain('A.01.002');
+  expect(result.drilldown.reportRows).toBe(1);
   expect(result.inquiryRows).toBe(1);
   expect(result.sections).toEqual({ item: 1, season: 1, location: 1 });
   expect(result.hasReportsMode).toBe(true);
@@ -255,7 +256,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 preserves one-user selections across reports and sends a grouped Item Inquiry workbook', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports2 = canViewManagerEvalReports2;
@@ -271,9 +272,12 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
       processAndLoadData({ data: [
         { UNIQUE_ID: 'mail-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', PTRONHAND: 20, PTRREVIEWED: 2, PTRAVAILABLE: 18, LOCATIONNOTEDATE: '2026-08-20', LOCATIONNOTE: 'Review first row', LOCATIONPTN1: 'North side' },
         { UNIQUE_ID: 'mail-b', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 30, LOCATIONCODE: 'B.01.001', LOTCODE: '27.F2', PTRONHAND: 30, PTRREVIEWED: 3, PTRAVAILABLE: 27, HOLDSTOPBEGINDATE: '2026-08-19', PULLTAGNOTE1: 'Work in order' },
+        { UNIQUE_ID: 'mail-d1', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', COMMONNAME: 'Delta', CONTSIZE: '#5', SEASON: 'U1', SALEYEAR: 27, PRIORITY: '', S_LTS: 300, LOCATIONCODE: 'A.02.001', LOTCODE: '27.U1', PTRONHAND: 300, PTRREVIEWED: 1, PTRAVAILABLE: 299 },
+        { UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', COMMONNAME: 'Delta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '4', S_LTS: 10, LOCATIONCODE: 'D.01.001', LOTCODE: '27.F1', PTRONHAND: 10, PTRREVIEWED: 0, PTRAVAILABLE: 10 },
         { UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', COMMONNAME: 'Gamma', CONTSIZE: '#7', SEASON: 'X', SALEYEAR: 27, PRIORITY: '3', S_LTS: 40, LOCATIONCODE: 'C.01.001' }
       ], warehouseAssignedItemsData: [
         { UNIQUE_ID: 'assign-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-d', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
         { UNIQUE_ID: 'assign-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
       ], _fromCache: true });
       const masterState = getDatasetState('master');
@@ -286,35 +290,50 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
       clearManagerEvalReport2Filters();
       setManagerEvalReport2Mode('reports');
       setManagerEvalReport2DisplayMode('cards');
-      setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
       setManagerEvalReport2('culls');
-      const rows = getManagerEvalReport2Rows();
-      const firstReportRows = getFilteredManagerEvalReport2Rows();
-      toggleManagerEvalReport2RowSelection(encodeURIComponent(getManagerEvalReport2RowKey(firstReportRows[0], 0)));
+      setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
+      openManagerEvalReport2CommonName('Alpha');
+      const alphaKey = encodeURIComponent(getManagerEvalReport2VisibleItemGroups()[0].key);
+      startManagerEvalReport2LongPress({ type: 'pointerdown', button: 0, clientX: 20, clientY: 20 }, alphaKey);
+      trackManagerEvalReport2LongPress({ clientX: 45, clientY: 20 });
+      await new Promise((resolve) => setTimeout(resolve, 490));
+      const scrollMovementCancelled = getManagerEvalReport2SelectedItems().length === 0;
+      startManagerEvalReport2LongPress({ type: 'pointerdown', button: 0, clientX: 20, clientY: 20 }, alphaKey);
+      await new Promise((resolve) => setTimeout(resolve, 490));
+      const longPressSelected = getManagerEvalReport2SelectedItems().length === 1 && renderManagerEvalReport2SelectionTray().includes('Done');
+      let contextMenuPrevented = false;
+      const contextMenuSuppressed = preventManagerEvalReport2ContextMenu({ preventDefault: () => { contextMenuPrevented = true; } }) === false && contextMenuPrevented;
       setManagerEvalReport2('not-in-f1');
-      const secondReportRows = getFilteredManagerEvalReport2Rows();
-      toggleAllVisibleManagerEvalReport2Rows();
+      openManagerEvalReport2CommonName('Alpha');
+      toggleManagerEvalReport2ItemSelection(encodeURIComponent(getManagerEvalReport2VisibleItemGroups()[0].key), true);
+      const dedupedAcrossReports = getManagerEvalReport2SelectedItems().length;
+      setManagerEvalReport2('low-stock');
+      openManagerEvalReport2CommonName('Delta');
+      const deltaGroup = getManagerEvalReport2VisibleItemGroups().find((group) => group.itemCode === '0004.001.1');
+      toggleManagerEvalReport2ItemSelection(encodeURIComponent(deltaGroup.key), true);
       const selectedBefore = getManagerEvalReport2SelectedRows().map((row) => row.UNIQUE_ID);
-      const selectedAfterReportSwitch = getManagerEvalReport2SelectedRows().length;
+      const selectedItemsBefore = getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode);
       setManagerEvalReport2Filter('assignedto', 'megan_kelly');
-      const assignedToStayedLocked = getManagerEvalReportRowAssignedTo(getFilteredManagerEvalReport2Rows()[0]);
+      const assignedToStayedLocked = getManagerEvalReportRowAssignedTo(getManagerEvalReport2VisibleItemGroups()[0].representativeRow);
       const host = document.createElement('div');
       host.id = 'eval2-email-test-host';
       host.style.width = '390px';
       host.innerHTML = renderManagerEvalReports2Panel();
       document.body.appendChild(host);
       const recordsHost = host.querySelector('#manager-eval-report-2-records');
-      recordsHost.innerHTML = getFilteredManagerEvalReport2Rows().map(renderManagerEvalReport2SelectableCard).join('');
-      const selectButtons = host.querySelectorAll('[data-role="manager-eval2-select"]').length;
-      const emailButtonVisible = !!host.querySelector('#manager-eval-report-2-email-button');
+      recordsHost.innerHTML = getManagerEvalReport2VisibleItemGroups().map(renderManagerEvalReport2SelectableCard).join('');
+      const itemCards = host.querySelectorAll('.manager-eval2-item-card').length;
+      const longPressWired = Array.from(host.querySelectorAll('.manager-eval2-item-card')).every((card) => card.hasAttribute('onpointerdown') && card.hasAttribute('ontouchstart') && card.hasAttribute('oncontextmenu'));
+      const doneButtonVisible = !!host.querySelector('#manager-eval-report-2-done-button');
+      const explicitSelectControl = host.textContent.includes('Select Items');
       isManagerEvalReportGridSupported = () => true;
       setManagerEvalReport2DisplayMode('grid');
-      recordsHost.innerHTML = buildManagerEvalReport2SelectableGridHtml(getFilteredManagerEvalReport2Rows());
-      const gridSelectButtons = host.querySelectorAll('.drive-grid-table [data-role="manager-eval2-select"]').length;
+      recordsHost.innerHTML = buildManagerEvalReport2SelectableGridHtml(getManagerEvalReport2VisibleItemGroups());
+      const gridSelectButtons = host.querySelectorAll('.drive-grid-table [data-manager-eval2-selection-key]').length;
       setManagerEvalReport2DisplayMode('cards');
       openGroupedBloomNcrRecipientModal = async () => [];
       await emailSelectedManagerEvalReport2Rows();
-      const retainedAfterCancel = getManagerEvalReport2SelectedRows().length;
+      const retainedAfterCancel = getManagerEvalReport2SelectedItems().length;
       openGroupedBloomNcrRecipientModal = async () => ['megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com', 'MEGAN_KELLY@greenleafnursery.com'];
       postGoogleScriptEmailPayload = async (payload) => {
         postCalls += 1;
@@ -323,7 +342,7 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
         return { ok: true, status: 200, recipients: payload.recipientEmails.slice() };
       };
       await emailSelectedManagerEvalReport2Rows();
-      const retainedAfterFailure = getManagerEvalReport2SelectedRows().length;
+      const retainedAfterFailure = getManagerEvalReport2SelectedItems().length;
       await emailSelectedManagerEvalReport2Rows();
       const decodeStoredZipEntry = (base64, targetName) => {
         const binary = atob(base64);
@@ -346,18 +365,24 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
       const worksheetXml = decodeStoredZipEntry(sentPayload.shiftReportAttachment.contentBase64, 'xl/worksheets/sheet1.xml');
       const stylesXml = decodeStoredZipEntry(sentPayload.shiftReportAttachment.contentBase64, 'xl/styles.xml');
       return {
-        rowsBefore: rows.map((row) => row.UNIQUE_ID),
+        longPressSelected,
+        scrollMovementCancelled,
+        contextMenuSuppressed,
+        dedupedAcrossReports,
+        selectedItemsBefore,
         selectedBefore,
-        selectedAfterReportSwitch,
         assignedToStayedLocked,
         retainedAfterCancel,
         retainedAfterFailure,
-        selectedAfter: getManagerEvalReport2SelectedRows().length,
-        selectButtons,
+        selectedAfter: getManagerEvalReport2SelectedItems().length,
+        itemCards,
+        longPressWired,
         gridSelectButtons,
-        emailButtonVisible,
+        doneButtonVisible,
+        explicitSelectControl,
         recipients: sentPayload && sentPayload.recipientEmails,
         itemsCount: sentPayload && sentPayload.itemsCount,
+        selectedItemcodeCount: sentPayload && sentPayload.selectedItemcodeCount,
         format: sentPayload && sentPayload.shiftReportFormat,
         subtype: sentPayload && sentPayload.emailSubType,
         assignedTo: sentPayload && sentPayload.assignedTo,
@@ -374,8 +399,8 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
           hasAllHeaders: ['LOCATIONCODE', 'LOTCODE', 'ASSIGNEDTO', 'REPORTS', 'LOCATIONPTN1'].every((header) => worksheetXml.includes('>' + header + '<')),
           locationPtnHeaderCount: (worksheetXml.match(/>LOCATIONPTN1</g) || []).length,
           hasFilterAndFreeze: worksheetXml.includes('<autoFilter ') && worksheetXml.includes('state="frozen"'),
-          locationOrder: worksheetXml.indexOf('A.01.001') < worksheetXml.indexOf('B.01.001'),
-          reportMemberships: worksheetXml.includes('Culls') && worksheetXml.includes('NotInF1'),
+          locationOrder: ['A.01.001', 'A.02.001', 'B.01.001', 'D.01.001'].every((location, index, locations) => index === 0 || worksheetXml.indexOf(locations[index - 1]) < worksheetXml.indexOf(location)),
+          reportMemberships: worksheetXml.includes('Culls') && worksheetXml.includes('NotInF1') && worksheetXml.includes('LowStock'),
           numericCells: worksheetXml.includes('t="n"'),
           dateFormat: stylesXml.includes('formatCode="yyyy-mm-dd"')
         },
@@ -389,23 +414,30 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
     }
   })()`));
 
-  expect(result.rowsBefore).toEqual(['mail-a', 'mail-b', 'mail-c']);
-  expect(result.selectedBefore).toEqual(['mail-a', 'mail-b']);
-  expect(result.selectedAfterReportSwitch).toBe(2);
+  expect(result.longPressSelected).toBe(true);
+  expect(result.scrollMovementCancelled).toBe(true);
+  expect(result.contextMenuSuppressed).toBe(true);
+  expect(result.dedupedAcrossReports).toBe(1);
+  expect(result.selectedItemsBefore).toEqual(['0001.001.1', '0004.001.1']);
+  expect(result.selectedBefore).toEqual(['mail-a', 'mail-b', 'mail-d1', 'mail-d2']);
   expect(result.assignedToStayedLocked).toBe('dylan_collyge');
   expect(result.retainedAfterCancel).toBe(2);
   expect(result.retainedAfterFailure).toBe(2);
   expect(result.selectedAfter).toBe(0);
-  expect(result.selectButtons).toBe(2);
-  expect(result.gridSelectButtons).toBe(2);
-  expect(result.emailButtonVisible).toBe(true);
+  expect(result.itemCards).toBe(1);
+  expect(result.longPressWired).toBe(true);
+  expect(result.gridSelectButtons).toBe(1);
+  expect(result.doneButtonVisible).toBe(true);
+  expect(result.explicitSelectControl).toBe(true);
   expect(result.recipients).toEqual(['megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
-  expect(result.itemsCount).toBe(2);
+  expect(result.itemsCount).toBe(4);
+  expect(result.selectedItemcodeCount).toBe(2);
   expect(result.format).toBe('excel');
   expect(result.subtype).toBe('eval_reports_2_item_inquiry_excel');
   expect(result.assignedTo).toBe('dylan_collyge');
-  expect(result.locationCount).toBe(2);
-  expect(result.subject).toBe('GNC PH Item Inquiry – dylan_collyge – 2 Rows / 2 Locations');
+  expect(result.locationCount).toBe(4);
+  expect(result.subject).toContain('dylan_collyge');
+  expect(result.subject).toContain('4 Rows / 4 Locations');
   expect(result.exactRecipientOverride).toBe(true);
   expect(result.attachment.filename).toMatch(/\.xlsx$/);
   expect(result.attachment.filename).toMatch(/^GNC-PH-Item-Inquiry-dylan_collyge-\d{8}\.xlsx$/);
@@ -426,7 +458,7 @@ test('Eval Reports #2 preserves one-user selections across reports and sends a g
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -505,7 +537,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
 test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
   const desktop = await page.evaluate(() => window.eval(`(() => {
@@ -583,7 +615,7 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -652,7 +684,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -883,7 +915,7 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
 
 test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const requestView = document.getElementById('view-request');
     const container = document.getElementById('request-content');
@@ -1390,7 +1422,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.25.01', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.25.02', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
