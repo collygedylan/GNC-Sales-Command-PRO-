@@ -362,7 +362,7 @@ test('authoritative assignment overlay and classification stay within the 10,000
   assert.ok(elapsed < 500, `assignment overlay and classification took ${elapsed.toFixed(1)} ms`);
 });
 
-test('the live shell exposes the secured Dylan/Megan-only Eval Reports module', () => {
+test('the live shell keeps Eval Reports #1 and settings management Dylan/Megan-only', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.match(html, /const MANAGER_EVAL_REPORTS_VIEW = 'eval-reports'/);
@@ -397,9 +397,20 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function renderManagerEvalReport2SelectableCard\(item = null, index = 0\)/);
   assert.match(html, /function toggleAllVisibleManagerEvalReport2Rows\(\)/);
   assert.match(html, /function buildManagerEvalReport2ExcelAttachment\(rows = \[\]\)/);
+  assert.match(html, /function canViewManagerEvalReports2\(userOverride = ''\)/);
+  assert.match(html, /key === 'dylan_collyge' \|\| key === 'megan_kelly' \|\| key === 'jd_jones'/);
+  assert.match(html, /managerEvalReport2SelectedRowsByKey=new Map\(\)/);
+  assert.match(html, /managerEvalReport2LockedAssignedTo/);
+  assert.match(html, /function buildManagerEvalReport2SelectableGridHtml\(rows = \[\]\)/);
+  assert.match(html, /function buildManagerEvalReport2ItemInquiryWorkbookBlob\(rows = \[\]\)/);
+  assert.match(html, /MANAGER_EVAL_REPORT2_ITEM_INQUIRY_MAX_BYTES = 18 \* 1024 \* 1024/);
+  assert.match(html, /\{ key: 'LOCATIONPTN1', width: 34, wrap: true \}/);
+  assert.match(html, /sheet name="Item Inquiry"/);
   assert.match(html, /function emailSelectedManagerEvalReport2Rows\(\)/);
-  assert.match(html, /emailSubType: 'eval_reports_2_excel'/);
+  assert.match(html, /managerEvalReport2LoadState\.loading \|\| managerEvalReport2LoadState\.error/);
+  assert.match(html, /Refresh the complete inventory and Assigned Items data successfully before sending/);
+  assert.match(html, /emailSubType: 'eval_reports_2_item_inquiry_excel'/);
   assert.match(html, /recipientsSelectedInApp: true/);
   assert.match(html, /shiftReportFormat: 'excel'/);
-  assert.match(html, /Eval Reports #2 is available only to Dylan and Megan/);
+  assert.match(html, /Eval Reports #2 is available only to Dylan, Megan, and JD/);
 });

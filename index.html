@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.12">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.24.13">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.24.12';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.24.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6657,7 +6657,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             scroll-snap-align:start !important;
         }
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.12">
+    <style>
+        .manager-eval2-selection-tray{position:sticky;bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .35rem);z-index:54;max-width:100%;overflow:hidden;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+        @media (min-width:641px){.manager-eval2-selection-tray{position:relative;bottom:auto;z-index:1;backdrop-filter:none;-webkit-backdrop-filter:none}}
+        @media (max-width:640px){.manager-eval2-selection-tray{margin-left:0;margin-right:0}.manager-eval2-selection-tray button{min-width:0;white-space:normal;line-height:1.05}}
+    </style>
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.24.13">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6768,8 +6773,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.12"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.12"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.24.13"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.24.13"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7522,7 +7527,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.12').trim() || 'V2026.08.24.12';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.24.13').trim() || 'V2026.08.24.13';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9008,7 +9013,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.24.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -28810,7 +28815,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
 let activeManagerEvalReport='s1-with-pri'; let activeManagerEvalReportView='name'; let managerEvalReportSelectedCommonName=''; let managerEvalReportSelectedBlock=''; let managerEvalReportSelectedLocation=''; let managerEvalReportSeasonFilter='all'; let managerEvalReportContSizeFilter='all'; let managerEvalReportAssignedToFilter='all'; let managerEvalReportPriorityFilter='all'; let managerEvalReportSettings={lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10,updatedBy:'',updatedAt:''}; let managerEvalReportSettingsState={loaded:false,loading:false,fallback:false,error:'',promise:null,saving:false}; let managerEvalReportCacheKey=''; let managerEvalReportCache=null;
 let managerHistoricalReportState={level:'names',commonNames:[],containerSizes:[],rows:[],selectedCommonName:'',selectedContSize:'',selectedColumns:['report_date','itemcode','locationcode','lotcode','ptravailable','holdstopcode','holdstopreason'],loadedColumns:[],dateStart:'',dateEnd:'',displayMode:'cards',loading:false,loadingMore:false,error:'',hasMore:false,nextCursor:null,dirty:false,requestToken:0,lastSearch:''};
 let managerEvalReportDisplayMode='cards';
-let activeManagerEvalReport2='low-stock'; let managerEvalReport2Mode='reports'; let managerEvalReport2DisplayMode='cards'; let managerEvalReport2SeasonFilter='all'; let managerEvalReport2ContSizeFilter='all'; let managerEvalReport2AssignedToFilter='all'; let managerEvalReport2LocationFilter='all'; let managerEvalReport2PriorityFilter='all'; let managerEvalReport2InquiryAssignedTo=''; let managerEvalReport2InquiryLocationCode=''; let managerEvalReport2InquiryCommonName=''; let managerEvalReport2InquiryContSize=''; let managerEvalReport2CacheKey=''; let managerEvalReport2Cache=null; let managerEvalReport2LoadState={loading:false,error:'',promise:null,lastLoadedAt:'',lastSourceUpdatedAt:''}; let managerEvalReport2SelectedRowKeys=new Set(); let managerEvalReport2SelectionRevision=0; let managerEvalReport2EmailSending=false;
+let activeManagerEvalReport2='low-stock'; let managerEvalReport2Mode='reports'; let managerEvalReport2DisplayMode='cards'; let managerEvalReport2SeasonFilter='all'; let managerEvalReport2ContSizeFilter='all'; let managerEvalReport2AssignedToFilter='all'; let managerEvalReport2LocationFilter='all'; let managerEvalReport2PriorityFilter='all'; let managerEvalReport2InquiryAssignedTo=''; let managerEvalReport2InquiryLocationCode=''; let managerEvalReport2InquiryCommonName=''; let managerEvalReport2InquiryContSize=''; let managerEvalReport2CacheKey=''; let managerEvalReport2Cache=null; let managerEvalReport2LoadState={loading:false,error:'',promise:null,lastLoadedAt:'',lastSourceUpdatedAt:''}; let managerEvalReport2SelectedRowsByKey=new Map(); let managerEvalReport2LockedAssignedTo=''; let managerEvalReport2SelectionRevision=0; let managerEvalReport2EmailSending=false;
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'global-' || prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -30305,7 +30310,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.12').trim() || 'V2026.08.24.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.24.13').trim() || 'V2026.08.24.13';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -115588,7 +115593,7 @@ C.14.043 C.15.000
             else if (requestedTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW && canManageAvBlanksPhotoBypassSettings()) nextTab = AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             else if (requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && canViewAssignedItemsExport()) nextTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
             else if (requestedTab === MANAGER_EVAL_REPORTS_VIEW && canViewManagerEvalReports()) nextTab = MANAGER_EVAL_REPORTS_VIEW;
-            else if (requestedTab === MANAGER_EVAL_REPORTS_2_VIEW && canViewManagerEvalReports()) nextTab = MANAGER_EVAL_REPORTS_2_VIEW;
+            else if (requestedTab === MANAGER_EVAL_REPORTS_2_VIEW && canViewManagerEvalReports2()) nextTab = MANAGER_EVAL_REPORTS_2_VIEW;
             else if (requestedTab === MANAGER_HISTORICAL_REPORT_VIEW && canViewManagerHistoricalReport()) nextTab = MANAGER_HISTORICAL_REPORT_VIEW;
             else if (requestedTab === MANAGER_SHORTAGE_CANCEL_VIEW && canViewManagerShortageCancel()) nextTab = MANAGER_SHORTAGE_CANCEL_VIEW;
             else if (requestedTab === MANAGER_BLOCK_CLEARING_VIEW && canViewManagerBlockClearing()) nextTab = MANAGER_BLOCK_CLEARING_VIEW;
@@ -117813,6 +117818,12 @@ C.14.043 C.15.000
             return canManageEvalItemcodeAssignments(userOverride);
         }
 
+        function canViewManagerEvalReports2(userOverride = '') {
+            return [userOverride, currentUser, currentUserDisplay]
+                .map((value) => normalizeEvalAccessUserKey(value))
+                .some((key) => key === 'dylan_collyge' || key === 'megan_kelly' || key === 'jd_jones');
+        }
+
         function canViewManagerHistoricalReport(userOverride = '') {
             return canManageEvalItemcodeAssignments(userOverride);
         }
@@ -117841,7 +117852,7 @@ C.14.043 C.15.000
         }
 
         async function loadManagerEvalReportSettings(force = false) {
-            if (!canViewManagerEvalReports()) return null;
+            if (!canViewManagerEvalReports() && !canViewManagerEvalReports2()) return null;
             const state = managerEvalReportSettingsState;
             if (state.loading && state.promise) return state.promise;
             if (state.loaded && !force) return managerEvalReportSettings;
@@ -118234,6 +118245,9 @@ C.14.043 C.15.000
             const updatedMeta = managerEvalReportSettings.updatedAt
                 ? `Last changed ${formatInventoryEditMockTimestamp(managerEvalReportSettings.updatedAt)}${managerEvalReportSettings.updatedBy ? ` by ${managerEvalReportSettings.updatedBy}` : ''}`
                 : 'Shared defaults: 150 open stock, 5 hold days, 10 location-note days.';
+            if (!canViewManagerEvalReports()) {
+                return `<details class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><summary class="cursor-pointer text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Eval Report Settings (Read Only)</summary>${fallbackHtml}${errorHtml}<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"><div class="rounded-xl bg-slate-50 px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Low Stock below</div><div class="mt-1 text-sm font-black text-slate-900">${escapeHtml(String(managerEvalReportSettings.lowStockMaxSLts))}</div></div><div class="rounded-xl bg-slate-50 px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Hold age days</div><div class="mt-1 text-sm font-black text-slate-900">${escapeHtml(String(managerEvalReportSettings.holdAgeDays))}</div></div><div class="rounded-xl bg-slate-50 px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Location-note age days</div><div class="mt-1 text-sm font-black text-slate-900">${escapeHtml(String(managerEvalReportSettings.locationNoteAgeDays))}</div></div></div><div class="mt-3 text-[10px] font-bold text-slate-400">${escapeHtml(updatedMeta)} Settings can be changed only by Dylan or Megan.</div></details>`;
+            }
             return `<details class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" ${state.fallback || state.error ? 'open' : ''}><summary class="cursor-pointer text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Eval Report Settings</summary><form class="mt-4" onsubmit="return saveManagerEvalReportSettings(event)">${fallbackHtml}${errorHtml}<div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"><label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Low Stock below</span><input id="manager-eval-low-stock-limit" type="number" min="0" max="100000000" step="1" value="${escapeHtml(String(managerEvalReportSettings.lowStockMaxSLts))}" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-black text-slate-900"></label><label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Hold age days</span><input id="manager-eval-hold-age" type="number" min="0" max="3650" step="1" value="${escapeHtml(String(managerEvalReportSettings.holdAgeDays))}" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-black text-slate-900"></label><label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Location-note age days</span><input id="manager-eval-location-age" type="number" min="0" max="3650" step="1" value="${escapeHtml(String(managerEvalReportSettings.locationNoteAgeDays))}" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-black text-slate-900"></label><button type="submit" class="min-h-[48px] self-end rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.13em] text-white shadow-sm ${state.saving ? 'pointer-events-none opacity-60' : ''}">${state.saving ? 'Saving...' : 'Save Settings'}</button></div><div class="mt-3 text-[10px] font-bold text-slate-400">${escapeHtml(updatedMeta)}</div></form></details>`;
         }
 
@@ -118338,7 +118352,8 @@ C.14.043 C.15.000
         function invalidateManagerEvalReport2Cache() {
             managerEvalReport2CacheKey = '';
             managerEvalReport2Cache = null;
-            managerEvalReport2SelectedRowKeys.clear();
+            managerEvalReport2SelectedRowsByKey.clear();
+            managerEvalReport2LockedAssignedTo = '';
             managerEvalReport2SelectionRevision += 1;
         }
 
@@ -118360,11 +118375,12 @@ C.14.043 C.15.000
         }
 
         async function loadManagerEvalReports2(force = false) {
-            if (!canViewManagerEvalReports()) return null;
+            if (!canViewManagerEvalReports2()) return null;
             const state = managerEvalReport2LoadState;
             if (state.loading && state.promise) return state.promise;
             const lastCompleteCache = managerEvalReport2Cache;
             const lastCompleteCacheKey = managerEvalReport2CacheKey;
+            const lastCompleteSourceSignature = [getDatasetLoadSignature('master'), getDatasetLoadSignature('warehouseAssignedItems')].join('::');
             state.loading = true;
             state.error = '';
             scheduleManagersRender(true);
@@ -118375,7 +118391,11 @@ C.14.043 C.15.000
             ]).then(() => {
                 if (!isDatasetLoaded('master', 'full')) throw new Error('The complete master inventory snapshot is not available yet.');
                 if (!isDatasetLoaded('warehouseAssignedItems', 'full')) throw new Error('The complete Assigned Items snapshot is not available yet.');
-                invalidateManagerEvalReport2Cache();
+                const nextSourceSignature = [getDatasetLoadSignature('master'), getDatasetLoadSignature('warehouseAssignedItems')].join('::');
+                if (lastCompleteCache && lastCompleteSourceSignature === nextSourceSignature) {
+                    managerEvalReport2Cache = lastCompleteCache;
+                    managerEvalReport2CacheKey = lastCompleteCacheKey;
+                } else invalidateManagerEvalReport2Cache();
                 state.lastLoadedAt = new Date().toISOString();
                 state.lastSourceUpdatedAt = getManagerEvalReport2LatestSourceUpdate();
                 state.error = '';
@@ -118424,6 +118444,14 @@ C.14.043 C.15.000
             if (managerEvalReport2Cache && managerEvalReport2CacheKey === cacheKey) return managerEvalReport2Cache;
             const startedAt = performance.now();
             const assignmentModel = api.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
+            assignmentModel.rows.forEach((row, sourceIndex) => {
+                if (!row || typeof row !== 'object') return;
+                try {
+                    Object.defineProperty(row, '__evalReport2SourceIndex', { value: sourceIndex, enumerable: false, configurable: false });
+                } catch (error) {
+                    row.__evalReport2SourceIndex = sourceIndex;
+                }
+            });
             managerEvalReport2Cache = api.classifyScriptCompatibleRows(assignmentModel.rows, {
                 currentSeason,
                 currentSalesYear,
@@ -118438,6 +118466,19 @@ C.14.043 C.15.000
                 matchedCount: assignmentModel.matchedCount,
                 unassignedCount: assignmentModel.unassignedCount
             };
+            managerEvalReport2Cache.rowByKey = new Map();
+            assignmentModel.rows.forEach((row, sourceIndex) => {
+                managerEvalReport2Cache.rowByKey.set(getManagerEvalReport2RowKey(row, sourceIndex), row);
+            });
+            managerEvalReport2Cache.reportMembershipByKey = new Map();
+            api.REPORT_IDS.forEach((reportId) => {
+                const reportRows = Array.isArray(managerEvalReport2Cache.reports[reportId]) ? managerEvalReport2Cache.reports[reportId] : [];
+                reportRows.forEach((row, reportIndex) => {
+                    const key = getManagerEvalReport2RowKey(row, reportIndex);
+                    if (!managerEvalReport2Cache.reportMembershipByKey.has(key)) managerEvalReport2Cache.reportMembershipByKey.set(key, new Set());
+                    managerEvalReport2Cache.reportMembershipByKey.get(key).add(reportId);
+                });
+            });
             managerEvalReport2CacheKey = cacheKey;
             const elapsed = performance.now() - startedAt;
             if (elapsed > 500) {
@@ -118518,39 +118559,64 @@ C.14.043 C.15.000
                 firstNonEmptyValue(safeRow.SOURCE, safeRow.source, ''),
                 firstNonEmptyValue(safeRow.ROW_NUMBER, safeRow.row_number, '')
             ].map((value) => String(value == null ? '' : value).trim().toLowerCase());
-            return parts.some(Boolean) ? `row:${parts.join('|')}` : `row-index:${fallbackIndex}`;
+            const sourceIndex = Number.isFinite(Number(safeRow.__evalReport2SourceIndex)) ? Number(safeRow.__evalReport2SourceIndex) : fallbackIndex;
+            return parts.some(Boolean) ? `row:${parts.join('|')}` : `row-index:${sourceIndex}`;
+        }
+
+        function isNamedManagerEvalReport2AssignedTo(value = '') {
+            const safeValue = String(value || '').trim();
+            return !!safeValue && safeValue !== 'all' && safeValue !== '(Unassigned)';
+        }
+
+        function getManagerEvalReport2SelectedEntries() {
+            return managerEvalReport2SelectedRowsByKey instanceof Map
+                ? Array.from(managerEvalReport2SelectedRowsByKey.values()).filter((entry) => entry && entry.row)
+                : [];
         }
 
         function getManagerEvalReport2SelectedRows() {
-            const selected = managerEvalReport2SelectedRowKeys instanceof Set ? managerEvalReport2SelectedRowKeys : new Set();
-            return getManagerEvalReport2Rows().filter((row, index) => selected.has(getManagerEvalReport2RowKey(row, index)));
+            return getManagerEvalReport2SelectedEntries().map((entry) => entry.row);
         }
 
         function getManagerEvalReport2VisibleSelectionState() {
             const visibleRows = getFilteredManagerEvalReport2Rows();
-            const visibleKeys = visibleRows.map((row, index) => getManagerEvalReport2RowKey(row, index));
-            const selectedVisibleCount = visibleKeys.filter((key) => managerEvalReport2SelectedRowKeys.has(key)).length;
+            const visibleEntries = visibleRows.map((row, index) => ({ row, key: getManagerEvalReport2RowKey(row, index) }));
+            const visibleKeys = visibleEntries.map((entry) => entry.key);
+            const selectedVisibleCount = visibleKeys.filter((key) => managerEvalReport2SelectedRowsByKey.has(key)).length;
             return {
                 visibleRows,
+                visibleEntries,
                 visibleKeys,
                 selectedVisibleCount,
                 allVisibleSelected: visibleKeys.length > 0 && selectedVisibleCount === visibleKeys.length
             };
         }
 
+        function canSendManagerEvalReport2Selection() {
+            return getManagerEvalReport2SelectedEntries().length > 0
+                && isNamedManagerEvalReport2AssignedTo(managerEvalReport2LockedAssignedTo)
+                && !managerEvalReport2LoadState.loading
+                && !managerEvalReport2LoadState.error
+                && !managerEvalReport2EmailSending;
+        }
+
         function syncManagerEvalReport2SelectionUi() {
             const selectedRows = getManagerEvalReport2SelectedRows();
             const visibleState = getManagerEvalReport2VisibleSelectionState();
             const count = selectedRows.length;
+            const locationCount = new Set(selectedRows.map(getManagerEvalReportRowLocation)).size;
             const countElement = document.getElementById('manager-eval-report-2-selection-count');
-            if (countElement) countElement.textContent = `${count} selected`;
+            if (countElement) countElement.textContent = `${count} row${count === 1 ? '' : 's'} / ${locationCount} location${locationCount === 1 ? '' : 's'}`;
+            const assignedElement = document.getElementById('manager-eval-report-2-selection-assignedto');
+            if (assignedElement) assignedElement.textContent = managerEvalReport2LockedAssignedTo || 'Choose AssignedTo';
             const sendButton = document.getElementById('manager-eval-report-2-email-button');
             if (sendButton) {
-                sendButton.disabled = !count || managerEvalReport2EmailSending;
-                sendButton.classList.toggle('pointer-events-none', !count || managerEvalReport2EmailSending);
-                sendButton.classList.toggle('opacity-50', !count || managerEvalReport2EmailSending);
+                const sendReady = canSendManagerEvalReport2Selection();
+                sendButton.disabled = !sendReady;
+                sendButton.classList.toggle('pointer-events-none', !sendReady);
+                sendButton.classList.toggle('opacity-50', !sendReady);
                 const label = sendButton.querySelector('[data-role="label"]');
-                if (label) label.textContent = managerEvalReport2EmailSending ? 'Sending...' : `Email Excel${count ? ` (${count})` : ''}`;
+                if (label) label.textContent = managerEvalReport2EmailSending ? 'Sending...' : `Send Item Inquiry${count ? ` (${count})` : ''}`;
             }
             const clearButton = document.getElementById('manager-eval-report-2-clear-selection');
             if (clearButton) {
@@ -118570,7 +118636,7 @@ C.14.043 C.15.000
                 const encodedKey = String(wrapper.getAttribute('data-manager-eval2-selection-key') || '');
                 let key = '';
                 try { key = decodeURIComponent(encodedKey); } catch (error) { key = encodedKey; }
-                const isSelected = managerEvalReport2SelectedRowKeys.has(key);
+                const isSelected = managerEvalReport2SelectedRowsByKey.has(key);
                 wrapper.setAttribute('data-selected', isSelected ? 'true' : 'false');
                 wrapper.style.boxShadow = isSelected ? '0 0 0 4px rgba(16,185,129,.48)' : '';
                 const button = wrapper.querySelector('[data-role="manager-eval2-select"]');
@@ -118594,28 +118660,69 @@ C.14.043 C.15.000
             let key = '';
             try { key = decodeURIComponent(String(encodedKey || '')); } catch (error) { key = String(encodedKey || ''); }
             if (!key) return false;
-            if (managerEvalReport2SelectedRowKeys.has(key)) managerEvalReport2SelectedRowKeys.delete(key);
-            else managerEvalReport2SelectedRowKeys.add(key);
+            if (managerEvalReport2SelectedRowsByKey.has(key)) {
+                managerEvalReport2SelectedRowsByKey.delete(key);
+                if (!managerEvalReport2SelectedRowsByKey.size) managerEvalReport2LockedAssignedTo = '';
+            } else {
+                if (!isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)) {
+                    showToast('Choose AssignedTo', 'Select one named AssignedTo user before selecting Item Inquiry rows.', true);
+                    return false;
+                }
+                const index = getManagerEvalReport2Index();
+                const row = index && index.rowByKey instanceof Map ? index.rowByKey.get(key) : null;
+                const assignedTo = getManagerEvalReportRowAssignedTo(row);
+                if (!row || assignedTo !== managerEvalReport2AssignedToFilter) {
+                    showToast('Selection Changed', 'Refresh the report and select the row again.', true);
+                    return false;
+                }
+                if (managerEvalReport2LockedAssignedTo && managerEvalReport2LockedAssignedTo !== assignedTo) {
+                    showToast('One AssignedTo Per Email', `Clear the ${managerEvalReport2LockedAssignedTo} selection before choosing another person.`, true);
+                    return false;
+                }
+                managerEvalReport2LockedAssignedTo = assignedTo;
+                managerEvalReport2SelectedRowsByKey.set(key, { key, row, assignedTo });
+            }
             managerEvalReport2SelectionRevision += 1;
             syncManagerEvalReport2SelectionUi();
+            scheduleManagersRender(true);
             return false;
         }
 
         function toggleAllVisibleManagerEvalReport2Rows() {
             const state = getManagerEvalReport2VisibleSelectionState();
             if (!state.visibleKeys.length) return false;
-            if (state.allVisibleSelected) state.visibleKeys.forEach((key) => managerEvalReport2SelectedRowKeys.delete(key));
-            else state.visibleKeys.forEach((key) => managerEvalReport2SelectedRowKeys.add(key));
+            if (state.allVisibleSelected) {
+                state.visibleKeys.forEach((key) => managerEvalReport2SelectedRowsByKey.delete(key));
+                if (!managerEvalReport2SelectedRowsByKey.size) managerEvalReport2LockedAssignedTo = '';
+            } else {
+                if (!isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)) {
+                    showToast('Choose AssignedTo', 'Select one named AssignedTo user before using Select Visible.', true);
+                    return false;
+                }
+                if (managerEvalReport2LockedAssignedTo && managerEvalReport2LockedAssignedTo !== managerEvalReport2AssignedToFilter) {
+                    showToast('One AssignedTo Per Email', `Clear the ${managerEvalReport2LockedAssignedTo} selection before choosing another person.`, true);
+                    return false;
+                }
+                managerEvalReport2LockedAssignedTo = managerEvalReport2AssignedToFilter;
+                state.visibleEntries.forEach(({ key, row }) => {
+                    if (getManagerEvalReportRowAssignedTo(row) === managerEvalReport2LockedAssignedTo) {
+                        managerEvalReport2SelectedRowsByKey.set(key, { key, row, assignedTo: managerEvalReport2LockedAssignedTo });
+                    }
+                });
+            }
             managerEvalReport2SelectionRevision += 1;
             syncManagerEvalReport2SelectionUi();
+            scheduleManagersRender(true);
             return false;
         }
 
         function clearManagerEvalReport2Selection(silent = false) {
-            if (!managerEvalReport2SelectedRowKeys.size) return false;
-            managerEvalReport2SelectedRowKeys.clear();
+            if (!managerEvalReport2SelectedRowsByKey.size && !managerEvalReport2LockedAssignedTo) return false;
+            managerEvalReport2SelectedRowsByKey.clear();
+            managerEvalReport2LockedAssignedTo = '';
             managerEvalReport2SelectionRevision += 1;
             syncManagerEvalReport2SelectionUi();
+            scheduleManagersRender(true);
             if (!silent) showToast('Selection Cleared', 'No Eval Reports #2 cards are selected.');
             return false;
         }
@@ -118623,14 +118730,15 @@ C.14.043 C.15.000
         function renderManagerEvalReport2SelectableCard(item = null, index = 0) {
             const key = getManagerEvalReport2RowKey(item, index);
             const encodedKey = encodeURIComponent(key);
-            const selected = managerEvalReport2SelectedRowKeys.has(key);
+            const selected = managerEvalReport2SelectedRowsByKey.has(key);
+            const selectionAllowed = isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)
+                && (!managerEvalReport2LockedAssignedTo || managerEvalReport2LockedAssignedTo === managerEvalReport2AssignedToFilter);
             const rowLabel = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.ITEMCODE, 'report row') || 'report row');
-            return `<div class="rounded-[1.6rem]" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" style="${selected ? 'box-shadow:0 0 0 4px rgba(16,185,129,.48);' : ''}"><div class="mb-2 flex justify-end"><button type="button" data-role="manager-eval2-select" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Unselect' : 'Select'} ${escapeHtml(rowLabel)}" class="inline-flex min-h-[42px] items-center gap-1.5 rounded-full border-2 border-[#007a4d] px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] shadow-sm ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'}" onclick="event.stopPropagation(); return toggleManagerEvalReport2RowSelection('${escJsAttrValue(encodedKey)}')"><i class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'}"></i><span data-role="label">${selected ? 'Selected' : 'Select'}</span></button></div>${generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-green'))}</div>`;
+            return `<div class="rounded-[1.6rem]" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" style="${selected ? 'box-shadow:0 0 0 4px rgba(16,185,129,.48);' : ''}"><div class="mb-2 flex justify-end"><button type="button" data-role="manager-eval2-select" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Unselect' : 'Select'} ${escapeHtml(rowLabel)}" class="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border-2 border-[#007a4d] px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] shadow-sm ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'} ${selectionAllowed || selected ? '' : 'pointer-events-none opacity-45'}" onclick="event.stopPropagation(); return toggleManagerEvalReport2RowSelection('${escJsAttrValue(encodedKey)}')" ${selectionAllowed || selected ? '' : 'disabled'}><i class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'}"></i><span data-role="label">${selected ? 'Selected' : 'Select'}</span></button></div>${generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-green'))}</div>`;
         }
 
         function setManagerEvalReport2Mode(mode = 'reports') {
             managerEvalReport2Mode = String(mode || '').trim().toLowerCase() === 'inquiry' ? 'inquiry' : 'reports';
-            if (managerEvalReport2Mode !== 'reports') clearManagerEvalReport2Selection(true);
             scheduleManagersRender(true);
             queueScrollMainAreaToTop(`manager-eval-2-mode:${managerEvalReport2Mode}`);
             return false;
@@ -118643,14 +118751,12 @@ C.14.043 C.15.000
             const changed = activeManagerEvalReport2 !== safeId;
             activeManagerEvalReport2 = safeId;
             if (changed) {
-                clearManagerEvalReport2Selection(true);
                 managerEvalReport2SeasonFilter = 'all';
                 managerEvalReport2ContSizeFilter = 'all';
                 managerEvalReport2LocationFilter = 'all';
                 managerEvalReport2PriorityFilter = 'all';
             }
             scheduleManagersRender(true);
-            queueScrollMainAreaToTop(`manager-eval-2-report:${safeId}`);
             return false;
         }
 
@@ -118660,6 +118766,11 @@ C.14.043 C.15.000
             if (safeKind === 'season') managerEvalReport2SeasonFilter = safeValue;
             else if (safeKind === 'contsize') managerEvalReport2ContSizeFilter = safeValue;
             else if (safeKind === 'assignedto') {
+                if (managerEvalReport2LockedAssignedTo && safeValue !== managerEvalReport2LockedAssignedTo) {
+                    showToast('Selection Locked', `Clear the ${managerEvalReport2LockedAssignedTo} selection before switching AssignedTo.`, true);
+                    scheduleManagersRender(true);
+                    return false;
+                }
                 managerEvalReport2AssignedToFilter = safeValue;
                 managerEvalReport2LocationFilter = 'all';
             } else if (safeKind === 'locationcode') managerEvalReport2LocationFilter = safeValue;
@@ -118671,7 +118782,7 @@ C.14.043 C.15.000
         function clearManagerEvalReport2Filters() {
             managerEvalReport2SeasonFilter = 'all';
             managerEvalReport2ContSizeFilter = 'all';
-            managerEvalReport2AssignedToFilter = 'all';
+            managerEvalReport2AssignedToFilter = managerEvalReport2LockedAssignedTo || 'all';
             managerEvalReport2LocationFilter = 'all';
             managerEvalReport2PriorityFilter = 'all';
             managersSearchTerm = '';
@@ -118726,10 +118837,10 @@ C.14.043 C.15.000
             return false;
         }
 
-        function buildManagerEvalReport2Select(label = '', kind = '', currentValue = 'all', options = [], includeAll = true) {
+        function buildManagerEvalReport2Select(label = '', kind = '', currentValue = 'all', options = [], includeAll = true, disabled = false) {
             const leading = includeAll ? [`<option value="all" ${currentValue === 'all' ? 'selected' : ''}>All</option>`] : ['<option value="">All</option>'];
             const optionHtml = leading.concat(options.map((value) => `<option value="${escapeHtml(value)}" ${currentValue === value ? 'selected' : ''}>${escapeHtml(value)}</option>`)).join('');
-            return `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">${escapeHtml(label)}</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return ${includeAll ? 'setManagerEvalReport2Filter' : 'setManagerEvalReport2InquiryFilter'}('${escJsAttrValue(kind)}', this.value)">${optionHtml}</select></label>`;
+            return `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">${escapeHtml(label)}</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800 ${disabled ? 'cursor-not-allowed opacity-60' : ''}" onchange="return ${includeAll ? 'setManagerEvalReport2Filter' : 'setManagerEvalReport2InquiryFilter'}('${escJsAttrValue(kind)}', this.value)" ${disabled ? 'disabled aria-disabled="true"' : ''}>${optionHtml}</select></label>`;
         }
 
         function getManagerEvalReport2InquiryModel() {
@@ -118760,7 +118871,7 @@ C.14.043 C.15.000
             return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.13em] text-[#007a4d]">1. AssignedTo &rarr; 2. Report &rarr; 3. Locationcode</div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]">${buildManagerEvalReport2Select('AssignedTo', 'assignedto', managerEvalReport2InquiryAssignedTo, model.options.assignedTo, false)}${reportSelect}${buildManagerEvalReport2Select('Locationcode', 'locationcode', managerEvalReport2InquiryLocationCode, model.options.locationCodes, false)}${buildManagerEvalReport2Select('Common Name', 'commonname', managerEvalReport2InquiryCommonName, model.options.commonNames, false)}${buildManagerEvalReport2Select('Container Size', 'contsize', managerEvalReport2InquiryContSize, model.options.contSizes, false)}<button type="button" class="min-h-[46px] self-end rounded-xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600" onclick="return resetManagerEvalReport2InquiryFilters()">Reset</button></div><div class="mt-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(model.matchedRows.length))} matching source rows</div></div>${renderManagerEvalReport2InquirySection('Item Information', api.ITEM_INQUIRY_FIELD_GROUPS.item, model.sections.item)}${renderManagerEvalReport2InquirySection('Season Information', api.ITEM_INQUIRY_FIELD_GROUPS.season, model.sections.season)}${renderManagerEvalReport2InquirySection('Location & Hold Information', api.ITEM_INQUIRY_FIELD_GROUPS.location, model.sections.location)}</div>`;
         }
 
-        function renderManagerEvalReport2ReportsPanel() {
+        function renderManagerEvalReport2ReportsPanelLegacy() {
             const api = getManagerEvalReports2Api();
             const index = getManagerEvalReport2Index();
             if (!api || !index) return '';
@@ -118781,8 +118892,44 @@ C.14.043 C.15.000
             return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.13em] text-[#007a4d]">1. AssignedTo &rarr; 2. Report &rarr; 3. Locationcode</div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">${buildManagerEvalReport2Select('AssignedTo', 'assignedto', managerEvalReport2AssignedToFilter, assignedToOptions)}${reportSelect}${buildManagerEvalReport2Select('Locationcode', 'locationcode', managerEvalReport2LocationFilter, locationOptions)}</div><details class="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3"><summary class="cursor-pointer text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">More filters</summary><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">${buildManagerEvalReport2Select('Season', 'season', managerEvalReport2SeasonFilter, filterOptions.seasons)}${buildManagerEvalReport2Select('Container', 'contsize', managerEvalReport2ContSizeFilter, filterOptions.contSizes)}${priorityOptions}</div></details><div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(filteredRows.length))} / ${escapeHtml(String(baseRows.length))} rows</div><div class="flex flex-wrap gap-2">${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}<button type="button" class="min-h-[40px] rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Filters()">Clear Filters</button></div></div><div class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.13em] text-[#007a4d]">Select report cards</div><div id="manager-eval-report-2-selection-count" class="mt-1 text-sm font-black text-slate-800">${selectedCount} selected</div><div class="mt-1 text-[10px] font-bold text-slate-500">The Excel attachment includes only selected cards. Recipient selection happens before sending.</div></div><div class="flex flex-wrap gap-2"><button id="manager-eval-report-2-select-visible" type="button" class="min-h-[42px] rounded-xl border border-emerald-300 bg-white px-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#007a4d] ${selectionState.visibleKeys.length ? '' : 'pointer-events-none opacity-50'}" onclick="return toggleAllVisibleManagerEvalReport2Rows()"><i class="ph-bold ph-checks mr-1"></i><span data-role="label">${selectionState.allVisibleSelected ? 'Unselect Visible' : 'Select Visible'}</span></button><button id="manager-eval-report-2-clear-selection" type="button" class="min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600 ${selectedCount ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Selection()">Clear Selected</button><button id="manager-eval-report-2-email-button" type="button" class="min-h-[42px] rounded-xl bg-[#007a4d] px-4 text-[10px] font-black uppercase tracking-[0.1em] text-white shadow-sm ${selectedCount && !managerEvalReport2EmailSending ? '' : 'pointer-events-none opacity-50'}" onclick="return emailSelectedManagerEvalReport2Rows()" ${selectedCount && !managerEvalReport2EmailSending ? '' : 'disabled'}><i class="ph-bold ph-envelope-simple mr-1"></i><span data-role="label">${managerEvalReport2EmailSending ? 'Sending...' : `Email Excel${selectedCount ? ` (${selectedCount})` : ''}`}</span></button></div></div></div></div><div id="manager-eval-report-2-records"></div></div>`;
         }
 
+        function renderManagerEvalReport2SelectionTray() {
+            const selectedRows = getManagerEvalReport2SelectedRows();
+            const selectedCount = selectedRows.length;
+            const locationCount = new Set(selectedRows.map(getManagerEvalReportRowLocation)).size;
+            const selectionState = getManagerEvalReport2VisibleSelectionState();
+            const selectVisibleReady = selectionState.visibleKeys.length > 0 && isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter);
+            const sendReady = canSendManagerEvalReport2Selection();
+            const staleWarning = managerEvalReport2LoadState.error
+                ? '<div class="mt-2 text-[9px] font-black uppercase tracking-[0.1em] text-amber-800">Retry the data refresh before sending.</div>'
+                : '';
+            return `<div class="manager-eval2-selection-tray rounded-2xl border border-emerald-300 bg-emerald-50/95 p-3 shadow-lg"><div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[9px] font-black uppercase tracking-[0.13em] text-emerald-700">Item Inquiry for</div><div id="manager-eval-report-2-selection-assignedto" class="truncate text-sm font-black text-slate-900">${escapeHtml(managerEvalReport2LockedAssignedTo || 'Choose AssignedTo')}</div><div id="manager-eval-report-2-selection-count" class="text-[10px] font-bold text-slate-600">${selectedCount} row${selectedCount === 1 ? '' : 's'} / ${locationCount} location${locationCount === 1 ? '' : 's'}</div>${staleWarning}</div><div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"><button id="manager-eval-report-2-select-visible" type="button" class="min-h-[44px] rounded-xl border border-emerald-300 bg-white px-2 text-[9px] font-black uppercase tracking-[0.08em] text-[#007a4d] ${selectVisibleReady ? '' : 'pointer-events-none opacity-50'}" onclick="return toggleAllVisibleManagerEvalReport2Rows()" ${selectVisibleReady ? '' : 'disabled'}><i class="ph-bold ph-checks mr-1"></i><span data-role="label">${selectionState.allVisibleSelected ? 'Unselect Visible' : 'Select Visible'}</span></button><button id="manager-eval-report-2-clear-selection" type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-2 text-[9px] font-black uppercase tracking-[0.08em] text-slate-600 ${selectedCount ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Selection()" ${selectedCount ? '' : 'disabled'}>Clear</button><button id="manager-eval-report-2-email-button" type="button" class="min-h-[44px] rounded-xl bg-[#007a4d] px-2 text-[9px] font-black uppercase tracking-[0.08em] text-white shadow-sm ${sendReady ? '' : 'pointer-events-none opacity-50'}" onclick="return emailSelectedManagerEvalReport2Rows()" ${sendReady ? '' : 'disabled'}><i class="ph-bold ph-envelope-simple mr-1"></i><span data-role="label">${managerEvalReport2EmailSending ? 'Sending...' : `Send${selectedCount ? ` (${selectedCount})` : ''}`}</span></button></div></div></div>`;
+        }
+
+        function renderManagerEvalReport2ReportsPanel() {
+            const api = getManagerEvalReports2Api();
+            const index = getManagerEvalReport2Index();
+            if (!api || !index) return '';
+            const baseRows = getManagerEvalReport2Rows();
+            const filteredRows = getFilteredManagerEvalReport2Rows(baseRows);
+            const filterOptions = getManagerEvalReportFilterOptions(baseRows);
+            const assignedToOptions = getManagerEvalReport2AssignedToOptions();
+            const locationOptions = getManagerEvalReport2LocationOptions(baseRows);
+            const assignedLocked = !!managerEvalReport2LockedAssignedTo;
+            const reportSelect = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Report</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReport2(this.value)">${api.REPORT_IDS.map((reportId) => `<option value="${escapeHtml(reportId)}" ${activeManagerEvalReport2 === reportId ? 'selected' : ''}>${escapeHtml(getManagerEvalReport2Meta(reportId).label)} (${escapeHtml(String(index.counts[reportId] || 0))})</option>`).join('')}</select></label>`;
+            const priorityOptions = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Priority</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReport2Filter('priority', this.value)"><option value="all" ${managerEvalReport2PriorityFilter === 'all' ? 'selected' : ''}>All</option><option value="with" ${managerEvalReport2PriorityFilter === 'with' ? 'selected' : ''}>With Priority</option><option value="without" ${managerEvalReport2PriorityFilter === 'without' ? 'selected' : ''}>Without Priority</option></select></label>`;
+            const hasFilters = managerEvalReport2SeasonFilter !== 'all' || managerEvalReport2ContSizeFilter !== 'all' || managerEvalReport2AssignedToFilter !== 'all' || managerEvalReport2LocationFilter !== 'all' || managerEvalReport2PriorityFilter !== 'all' || !!String(managersSearchTerm || '').trim();
+            const displayButton = (mode, label, icon) => {
+                const unavailable = mode === 'grid' && !isManagerEvalReportGridSupported();
+                return `<button type="button" class="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${managerEvalReport2DisplayMode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-500'} ${unavailable ? 'opacity-50' : ''}" onclick="return setManagerEvalReport2DisplayMode('${mode}')" ${unavailable ? 'aria-disabled="true" title="Grid is available on tablets and computers"' : ''}><i class="ph-bold ${icon}"></i>${label}</button>`;
+            };
+            const selectionHelp = isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)
+                ? (assignedLocked ? `Selection is locked to ${escapeHtml(managerEvalReport2LockedAssignedTo)} until Clear.` : 'Select rows here, then switch reports without losing the selection.')
+                : 'Choose one named AssignedTo user to enable row selection.';
+            return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.13em] text-[#007a4d]">1. AssignedTo &rarr; 2. Report &rarr; 3. Locationcode</div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">${buildManagerEvalReport2Select('AssignedTo', 'assignedto', managerEvalReport2AssignedToFilter, assignedToOptions, true, assignedLocked)}${reportSelect}${buildManagerEvalReport2Select('Locationcode', 'locationcode', managerEvalReport2LocationFilter, locationOptions)}</div><details class="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3"><summary class="cursor-pointer text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">More filters</summary><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">${buildManagerEvalReport2Select('Season', 'season', managerEvalReport2SeasonFilter, filterOptions.seasons)}${buildManagerEvalReport2Select('Container', 'contsize', managerEvalReport2ContSizeFilter, filterOptions.contSizes)}${priorityOptions}</div></details><div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(filteredRows.length))} / ${escapeHtml(String(baseRows.length))} rows</div><div class="mt-1 text-[10px] font-bold text-slate-500">${selectionHelp}</div></div><div class="flex flex-wrap gap-2">${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}<button type="button" class="min-h-[40px] rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Filters()">Clear Filters</button></div></div></div>${renderManagerEvalReport2SelectionTray()}<div id="manager-eval-report-2-records"></div></div>`;
+        }
+
         function renderManagerEvalReports2Panel() {
-            if (!canViewManagerEvalReports()) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Eval Reports #2 is available only to Dylan and Megan.</div>';
+            if (!canViewManagerEvalReports2()) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Eval Reports #2 is available only to Dylan, Megan, and JD.</div>';
             const api = getManagerEvalReports2Api();
             if (!api) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Eval Reports #2 could not start. Refresh the app to load the report engine.</div>';
             if ((!isDatasetLoaded('master', 'full') || !isDatasetLoaded('warehouseAssignedItems', 'full')) && !managerEvalReport2LoadState.loading && !managerEvalReport2Cache) setTimeout(() => loadManagerEvalReports2(false), 0);
@@ -118800,6 +118947,30 @@ C.14.043 C.15.000
             return `<div class="space-y-4">${statusHtml}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Complete read-only inventory + Assigned Items snapshot</div><div class="mt-1 text-xl font-black text-slate-900">Eval Reports #2 — ${escapeHtml(meta.label)}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Assigned Items is authoritative. Apps Script-compatible rules run through sales year ${escapeHtml(String(index.currentSalesYear % 100).padStart(2, '0'))}; next target ${escapeHtml(index.nextSeason)} ${escapeHtml(String(index.nextSalesYear % 100).padStart(2, '0'))}. ${sourceUpdated ? `Source updated ${escapeHtml(formatInventoryEditMockTimestamp(sourceUpdated))}.` : ''}</div></div><div class="flex flex-wrap gap-2"><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(String(fullInventory.length))} inventory rows</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">${escapeHtml(String(index.assignmentStats ? index.assignmentStats.assignmentCount : warehouseAssignedItemsInventory.length))} assignments</span><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${managerEvalReport2LoadState.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerEvalReports2(true)"><i class="ph-bold ph-arrows-clockwise mr-1"></i>${managerEvalReport2LoadState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="return exportManagerEvalReport2ToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button></div></div><div class="mt-4 flex flex-wrap gap-2">${modeButton('reports', 'Reports', 'ph-chart-bar')}${modeButton('inquiry', 'Item Inquiry', 'ph-magnifying-glass')}</div></div>${renderManagerEvalReportSettingsPanel()}${managerEvalReport2Mode === 'inquiry' ? renderManagerEvalReport2InquiryPanel() : renderManagerEvalReport2ReportsPanel()}</div>`;
         }
 
+        function getManagerEvalReport2MembershipLabels(rowKey = '') {
+            const api = getManagerEvalReports2Api();
+            const index = getManagerEvalReport2Index();
+            const memberships = index && index.reportMembershipByKey instanceof Map ? index.reportMembershipByKey.get(rowKey) : null;
+            return api && memberships instanceof Set
+                ? api.REPORT_IDS.filter((reportId) => memberships.has(reportId)).map((reportId) => getManagerEvalReport2Meta(reportId).label)
+                : [];
+        }
+
+        function buildManagerEvalReport2SelectableGridHtml(rows = []) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const selectionAllowed = isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)
+                && (!managerEvalReport2LockedAssignedTo || managerEvalReport2LockedAssignedTo === managerEvalReport2AssignedToFilter);
+            const bodyHtml = safeRows.map((row, rowIndex) => {
+                const key = getManagerEvalReport2RowKey(row, rowIndex);
+                const encodedKey = encodeURIComponent(key);
+                const selected = managerEvalReport2SelectedRowsByKey.has(key);
+                const reports = getManagerEvalReport2MembershipLabels(key).join(', ');
+                const rowLabel = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.ITEMCODE, 'report row') || 'report row');
+                return `<tr data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" class="${selected ? 'bg-emerald-50' : ''}"><td class="drive-grid-select"><button type="button" data-role="manager-eval2-select" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Unselect' : 'Select'} ${escapeHtml(rowLabel)}" class="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-[#007a4d] ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'} ${selectionAllowed || selected ? '' : 'pointer-events-none opacity-45'}" onclick="event.stopPropagation(); return toggleManagerEvalReport2RowSelection('${escJsAttrValue(encodedKey)}')" ${selectionAllowed || selected ? '' : 'disabled'}><i class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'}"></i><span class="sr-only" data-role="label">${selected ? 'Selected' : 'Select'}</span></button></td><th scope="row" class="drive-grid-common">${escapeHtml(getManagerEvalReportRowCommonName(row))}</th><td>${escapeHtml(getManagerEvalReportRowContSize(row))}</td><td class="drive-grid-code">${escapeHtml(String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || ''))}</td><td>${escapeHtml(getManagerEvalReportRowLocation(row))}</td><td>${escapeHtml(String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '') || ''))}</td><td>${escapeHtml(getManagerEvalReportRowAssignedTo(row) || '(Unassigned)')}</td><td>${escapeHtml(reports)}</td></tr>`;
+            }).join('');
+            return `<div class="drive-grid-sheet" role="region" aria-label="Eval Reports #2 selectable grid" tabindex="0"><div class="drive-grid-sheet-toolbar"><span class="drive-grid-visible-count" aria-live="polite">${safeRows.length} rows</span></div><table class="drive-grid-table"><caption class="sr-only">Selectable Eval Reports #2 inventory rows</caption><thead><tr class="drive-grid-header-row"><th scope="col">Select</th><th scope="col">Common Name</th><th scope="col">Container</th><th scope="col">Item Code</th><th scope="col">Location</th><th scope="col">Lot</th><th scope="col">AssignedTo</th><th scope="col">Reports</th></tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+        }
+
         function renderManagerEvalReport2Records() {
             const container = document.getElementById('manager-eval-report-2-records');
             if (!container || activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW || managerEvalReport2Mode !== 'reports') return;
@@ -118811,7 +118982,7 @@ C.14.043 C.15.000
             const renderKey = `manager-eval-2:${activeManagerEvalReport2}:${managerEvalReport2DisplayMode}:${rows.length}:${resolvedViewStateEpoch}:${managersSearchTerm}:${managerEvalReport2AssignedToFilter}:${managerEvalReport2LocationFilter}:${managerEvalReport2SeasonFilter}:${managerEvalReport2ContSizeFilter}:${managerEvalReport2PriorityFilter}:${managerEvalReport2SelectionRevision}`;
             if (managerEvalReport2DisplayMode === 'grid' && isManagerEvalReportGridSupported()) {
                 cancelChunkRenderWorkForContainer(container, 'manager-eval-report-2');
-                applyDriveRenderMarkup(container, null, `${getManagerEvalReport2Meta().label} (${rows.length} items)`, buildDriveSpreadsheetTableHtml(rows), renderKey);
+                applyDriveRenderMarkup(container, null, `${getManagerEvalReport2Meta().label} (${rows.length} items)`, buildManagerEvalReport2SelectableGridHtml(rows), renderKey);
                 return;
             }
             const renderRow = (item, index) => renderManagerEvalReport2SelectableCard(item, index);
@@ -118825,7 +118996,7 @@ C.14.043 C.15.000
         }
 
         function exportManagerEvalReport2ToExcel() {
-            if (!canViewManagerEvalReports()) return false;
+            if (!canViewManagerEvalReports2()) return false;
             const index = getManagerEvalReport2Index();
             if (!index) {
                 showToast('Inventory Not Ready', 'Load the complete inventory before exporting Eval Reports #2.', true);
@@ -118873,72 +119044,239 @@ C.14.043 C.15.000
             ];
         }
 
-        async function buildManagerEvalReport2ExcelAttachment(rows = []) {
+        const MANAGER_EVAL_REPORT2_ITEM_INQUIRY_MAX_BYTES = 18 * 1024 * 1024;
+        const MANAGER_EVAL_REPORT2_ITEM_INQUIRY_GROUPS = Object.freeze([
+            { label: 'Routing', styleId: 3, columns: ['LOCATIONCODE', 'LOTCODE', 'ASSIGNEDTO', 'REPORTS'] },
+            { label: 'Item', styleId: 4, columns: ['PLANTGROUPCODE', 'COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY'] },
+            { label: 'Season', styleId: 5, columns: ['SALEYEAR', 'SEASON', 'S_LTS', 'SEASON_SUPPLY', 'SEASON_OH', 'SEASON_DEMAND'] },
+            { label: 'Location / Hold', styleId: 6, columns: ['SOURCE', 'PRIORITY', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'HOLDSTOPCODE', 'HOLDSTOPBEGINDATE', 'HOLDSTOPREASON', 'HSREASONBEGIN', 'LOCATIONNOTEDATE', 'LOCATIONNOTE', 'SUSPEND', 'SUSPENDTO', 'SPECIALPULLER', 'PULLTAGNOTE1', 'LOCATIONPTN1'] }
+        ]);
+        const MANAGER_EVAL_REPORT2_ITEM_INQUIRY_COLUMNS = Object.freeze([
+            { key: 'LOCATIONCODE', width: 15 }, { key: 'LOTCODE', width: 13 }, { key: 'ASSIGNEDTO', width: 20 }, { key: 'REPORTS', width: 38, wrap: true },
+            { key: 'PLANTGROUPCODE', width: 17 }, { key: 'COMMONNAME', width: 30 }, { key: 'CONTSIZE', width: 12 }, { key: 'ITEMCODE', width: 17 }, { key: 'GENUSNAME', width: 22 }, { key: 'FIELDTAGCOLOR', width: 16 }, { key: 'ITEMSPEC', width: 22, wrap: true }, { key: 'PULLERRESPONSIBILITY', width: 24, wrap: true },
+            { key: 'SALEYEAR', width: 11, numeric: true }, { key: 'SEASON', width: 10 }, { key: 'S_LTS', width: 12, numeric: true }, { key: 'SEASON_SUPPLY', width: 15, numeric: true }, { key: 'SEASON_OH', width: 13, numeric: true }, { key: 'SEASON_DEMAND', width: 16, numeric: true },
+            { key: 'SOURCE', width: 24 }, { key: 'PRIORITY', width: 11 }, { key: 'DESIGITEM', width: 17 }, { key: 'DESIGCUST', width: 17 }, { key: 'DESIGLOC', width: 17 }, { key: 'PTRONHAND', width: 13, numeric: true }, { key: 'PTRREVIEWED', width: 13, numeric: true }, { key: 'PTRAVAILABLE', width: 14, numeric: true }, { key: 'HOLDSTOPCODE', width: 15 }, { key: 'HOLDSTOPBEGINDATE', width: 17, date: true }, { key: 'HOLDSTOPREASON', width: 28, wrap: true }, { key: 'HSREASONBEGIN', width: 16, date: true }, { key: 'LOCATIONNOTEDATE', width: 17, date: true }, { key: 'LOCATIONNOTE', width: 34, wrap: true }, { key: 'SUSPEND', width: 12 }, { key: 'SUSPENDTO', width: 17 }, { key: 'SPECIALPULLER', width: 18 }, { key: 'PULLTAGNOTE1', width: 34, wrap: true }, { key: 'LOCATIONPTN1', width: 34, wrap: true }
+        ]);
+
+        function compareManagerEvalReport2Natural(left = '', right = '') {
+            return String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        function getManagerEvalReport2ExportContext(rows = []) {
             const safeRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
-            const meta = getManagerEvalReport2Meta();
-            const title = `Eval Reports #2 - ${meta.label}`;
-            const workbookBlob = buildExcelWorkbookBlob(
-                getDriveReportExportColumns(),
-                safeRows,
-                title,
-                managersSearchTerm || '',
-                getManagerEvalReport2EmailMetaRows(safeRows),
-                DRIVE_MODE_EXCEL_OPTIONS
-            );
+            const assignedTo = String(managerEvalReport2LockedAssignedTo || '').trim();
+            if (!isNamedManagerEvalReport2AssignedTo(assignedTo)) throw new Error('Choose one named AssignedTo user before sending an Item Inquiry.');
+            if (safeRows.some((row) => getManagerEvalReportRowAssignedTo(row) !== assignedTo)) throw new Error('Selected rows contain more than one AssignedTo user. Clear the selection and try again.');
+            const api = getManagerEvalReports2Api();
+            const seasonOrder = api && Array.isArray(api.SEASON_ORDER) ? api.SEASON_ORDER : [];
+            const exportRows = safeRows.map((row, index) => {
+                const key = getManagerEvalReport2RowKey(row, index);
+                return { key, row, reports: getManagerEvalReport2MembershipLabels(key) };
+            }).sort((left, right) => {
+                let result = compareManagerEvalReport2Natural(getManagerEvalReportRowLocation(left.row), getManagerEvalReportRowLocation(right.row));
+                if (result) return result;
+                result = compareManagerEvalReport2Natural(getDriveColumnItemValue(left.row, 'ITEMCODE'), getDriveColumnItemValue(right.row, 'ITEMCODE'));
+                if (result) return result;
+                result = compareManagerEvalReport2Natural(getDriveColumnItemValue(left.row, 'LOTCODE'), getDriveColumnItemValue(right.row, 'LOTCODE'));
+                if (result) return result;
+                const leftSeason = String(getDriveColumnItemValue(left.row, 'SEASON') || '').trim().toUpperCase();
+                const rightSeason = String(getDriveColumnItemValue(right.row, 'SEASON') || '').trim().toUpperCase();
+                const leftRank = seasonOrder.indexOf(leftSeason);
+                const rightRank = seasonOrder.indexOf(rightSeason);
+                result = (leftRank < 0 ? seasonOrder.length : leftRank) - (rightRank < 0 ? seasonOrder.length : rightRank);
+                if (result) return result;
+                const leftYear = api && typeof api.normalizeSalesYear === 'function' ? api.normalizeSalesYear(getDriveColumnItemValue(left.row, 'SALEYEAR')) : Number(getDriveColumnItemValue(left.row, 'SALEYEAR'));
+                const rightYear = api && typeof api.normalizeSalesYear === 'function' ? api.normalizeSalesYear(getDriveColumnItemValue(right.row, 'SALEYEAR')) : Number(getDriveColumnItemValue(right.row, 'SALEYEAR'));
+                return Number(leftYear || 0) - Number(rightYear || 0);
+            });
+            const locationCount = new Set(exportRows.map((entry) => getManagerEvalReportRowLocation(entry.row))).size;
+            const reportNames = Array.from(new Set(exportRows.flatMap((entry) => entry.reports)));
+            return { assignedTo, exportRows, locationCount, reportNames };
+        }
+
+        function getManagerEvalReport2ExportCellValue(entry = null, column = null) {
+            const safeEntry = entry && typeof entry === 'object' ? entry : { row: null, reports: [] };
+            const key = String(column && column.key || '').trim().toUpperCase();
+            if (key === 'REPORTS') return Array.isArray(safeEntry.reports) ? safeEntry.reports.join(', ') : '';
+            if (key === 'ASSIGNEDTO') return getManagerEvalReportRowAssignedTo(safeEntry.row);
+            return getDriveColumnItemValue(safeEntry.row, key);
+        }
+
+        function parseManagerEvalReport2ExcelDateSerial(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw) return null;
+            const parsed = new Date(raw);
+            if (Number.isNaN(parsed.getTime())) return null;
+            return Math.floor(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) / 86400000) + 25569;
+        }
+
+        function buildManagerEvalReport2NumericCell(ref = 'A1', value = '', styleId = 9) {
+            const raw = String(value == null ? '' : value).replace(/,/g, '').trim();
+            const numeric = Number(raw);
+            return raw && Number.isFinite(numeric)
+                ? `<c r="${ref}" s="${styleId}" t="n"><v>${numeric}</v></c>`
+                : buildExcelInlineStringCell(ref, value, styleId === 13 ? 12 : 8);
+        }
+
+        function buildManagerEvalReport2ItemInquiryStylesXml() {
+            return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/></numFmts>
+  <fonts count="4"><font><sz val="10"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="15"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="10"/><name val="Calibri"/></font><font><b/><sz val="10"/><name val="Calibri"/></font></fonts>
+  <fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF006B45"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF007A4D"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF9C6500"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF4B5563"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8F7EF"/><bgColor indexed="64"/></patternFill></fill></fills>
+  <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFC7D2CC"/></left><right style="thin"><color rgb="FFC7D2CC"/></right><top style="thin"><color rgb="FFC7D2CC"/></top><bottom style="thin"><color rgb="FFC7D2CC"/></bottom><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="16">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="7" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+  </cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+        }
+
+        function buildManagerEvalReport2ItemInquiryWorkbookBlob(rows = []) {
+            const context = getManagerEvalReport2ExportContext(rows);
+            const columns = MANAGER_EVAL_REPORT2_ITEM_INQUIRY_COLUMNS;
+            const lastColumn = getExcelColumnName(columns.length - 1);
+            const rowXml = [];
+            const mergeRefs = [];
+            let rowNumber = 1;
+            rowXml.push(buildExcelRowXml(rowNumber, buildExcelInlineStringCell(`A${rowNumber}`, `GNC PH Item Inquiry - ${context.assignedTo}`, 1), 28));
+            mergeRefs.push(`A${rowNumber}:${lastColumn}${rowNumber}`);
+            const metaRows = [
+                ['AssignedTo', context.assignedTo],
+                ['Rows / Locations', `${context.exportRows.length} rows / ${context.locationCount} locations`],
+                ['Reports', context.reportNames.join(', ')],
+                ['Created By / At', `${String(currentUserDisplay || currentUser || '').trim()} / ${new Date().toLocaleString()}`]
+            ];
+            metaRows.forEach(([label, value]) => {
+                rowNumber += 1;
+                rowXml.push(buildExcelRowXml(rowNumber, `${buildExcelInlineStringCell(`A${rowNumber}`, label, 2)}${buildExcelInlineStringCell(`B${rowNumber}`, value, 0)}`, 20));
+                mergeRefs.push(`B${rowNumber}:${lastColumn}${rowNumber}`);
+            });
+            rowNumber += 1;
+            rowXml.push(buildExcelRowXml(rowNumber, '', 7));
+            rowNumber += 1;
+            let groupColumnIndex = 0;
+            const groupCells = [];
+            MANAGER_EVAL_REPORT2_ITEM_INQUIRY_GROUPS.forEach((group) => {
+                const startColumn = getExcelColumnName(groupColumnIndex);
+                const endColumn = getExcelColumnName(groupColumnIndex + group.columns.length - 1);
+                groupCells.push(buildExcelInlineStringCell(`${startColumn}${rowNumber}`, group.label, group.styleId));
+                mergeRefs.push(`${startColumn}${rowNumber}:${endColumn}${rowNumber}`);
+                groupColumnIndex += group.columns.length;
+            });
+            rowXml.push(buildExcelRowXml(rowNumber, groupCells.join(''), 22));
+            rowNumber += 1;
+            const headerRowNumber = rowNumber;
+            rowXml.push(buildExcelRowXml(rowNumber, columns.map((column, index) => buildExcelInlineStringCell(`${getExcelColumnName(index)}${rowNumber}`, column.key, 7)).join(''), 31));
+            let locationBand = false;
+            let previousLocation = null;
+            context.exportRows.forEach((entry) => {
+                rowNumber += 1;
+                const location = getManagerEvalReportRowLocation(entry.row);
+                if (previousLocation !== location) locationBand = !locationBand;
+                previousLocation = location;
+                const cellsXml = columns.map((column, columnIndex) => {
+                    const ref = `${getExcelColumnName(columnIndex)}${rowNumber}`;
+                    const value = getManagerEvalReport2ExportCellValue(entry, column);
+                    if (column.date) {
+                        const serial = parseManagerEvalReport2ExcelDateSerial(value);
+                        return serial == null ? buildExcelInlineStringCell(ref, value, locationBand ? 12 : 8) : `<c r="${ref}" s="${locationBand ? 14 : 10}" t="n"><v>${serial}</v></c>`;
+                    }
+                    if (column.numeric) return buildManagerEvalReport2NumericCell(ref, value, locationBand ? 13 : 9);
+                    return buildExcelInlineStringCell(ref, value, column.wrap ? (locationBand ? 15 : 11) : (locationBand ? 12 : 8));
+                }).join('');
+                rowXml.push(buildExcelRowXml(rowNumber, cellsXml, 30));
+            });
+            const columnDefs = columns.map((column, index) => `<col min="${index + 1}" max="${index + 1}" width="${Number(column.width) || 14}" customWidth="1"/>`).join('');
+            const worksheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${lastColumn}${rowNumber}"/>${buildExcelSheetViewsXml(headerRowNumber, 2)}<sheetFormatPr defaultRowHeight="18"/><cols>${columnDefs}</cols><sheetData>${rowXml.join('')}</sheetData><autoFilter ref="A${headerRowNumber}:${lastColumn}${rowNumber}"/><mergeCells count="${mergeRefs.length}">${mergeRefs.map((ref) => `<mergeCell ref="${ref}"/>`).join('')}</mergeCells>${buildExcelPageMarginsXml({})}<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+            const definedNamesXml = buildExcelDefinedNamesXml('Item Inquiry', headerRowNumber, lastColumn, rowNumber, { includePrintArea: true, repeatHeaderOnPrint: true });
+            const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Item Inquiry" sheetId="1" r:id="rId1"/></sheets>${definedNamesXml}</workbook>`;
+            const workbookRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+            const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+            const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+            return buildStoredZipBlob([{ name: '[Content_Types].xml', data: contentTypesXml }, { name: '_rels/.rels', data: rootRelsXml }, { name: 'xl/workbook.xml', data: workbookXml }, { name: 'xl/_rels/workbook.xml.rels', data: workbookRelsXml }, { name: 'xl/styles.xml', data: buildManagerEvalReport2ItemInquiryStylesXml() }, { name: 'xl/worksheets/sheet1.xml', data: worksheetXml }]);
+        }
+
+        async function buildManagerEvalReport2ExcelAttachment(rows = []) {
+            const context = getManagerEvalReport2ExportContext(rows);
+            const workbookBlob = buildManagerEvalReport2ItemInquiryWorkbookBlob(rows);
+            if (workbookBlob.size > MANAGER_EVAL_REPORT2_ITEM_INQUIRY_MAX_BYTES) {
+                throw new Error('The Excel attachment is larger than 18 MiB. Reduce the selected rows and send a smaller Item Inquiry.');
+            }
             const base64 = await blobToBase64String(workbookBlob);
             const date = new Date();
             const dateKey = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-            const reportKey = String(meta.label || activeManagerEvalReport2 || 'report').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 55) || 'report';
-            const filename = `GNC-Eval-Reports-2-${reportKey}-${dateKey}.xlsx`;
-            return {
-                filename,
-                fileName: filename,
-                name: filename,
-                mimeType: XLSX_MIME_TYPE,
-                contentType: XLSX_MIME_TYPE,
-                encoding: 'base64',
-                contentBase64: base64
-            };
+            const assignedKey = context.assignedTo.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'assigned-user';
+            const filename = `GNC-PH-Item-Inquiry-${assignedKey}-${dateKey}.xlsx`;
+            return { filename, fileName: filename, name: filename, mimeType: XLSX_MIME_TYPE, contentType: XLSX_MIME_TYPE, encoding: 'base64', contentBase64: base64, byteSize: workbookBlob.size };
         }
 
         async function emailSelectedManagerEvalReport2Rows() {
-            if (!canViewManagerEvalReports() || managerEvalReport2EmailSending) return false;
+            if (!canViewManagerEvalReports2() || managerEvalReport2EmailSending) return false;
             const rows = getManagerEvalReport2SelectedRows();
             if (!rows.length) {
-                showToast('Select Cards', 'Select at least one Eval Reports #2 card before sending.', true);
+                showToast('Select Rows', 'Select at least one Eval Reports #2 row before sending.', true);
+                return false;
+            }
+            if (managerEvalReport2LoadState.loading || managerEvalReport2LoadState.error) {
+                showToast('Retry Required', 'Refresh the complete inventory and Assigned Items data successfully before sending.', true);
+                return false;
+            }
+            let context;
+            try {
+                context = getManagerEvalReport2ExportContext(rows);
+            } catch (error) {
+                showToast('Selection Not Ready', getFriendlyBackendErrorMessage(error, 'Choose one named AssignedTo user and try again.'), true);
                 return false;
             }
             const recipientEmails = dedupeRequestEmailRecipients(await openGroupedBloomNcrRecipientModal(rows, [], {
-                brandLabel: 'GNC PH Eval Reports #2',
+                brandLabel: 'GNC PH Item Inquiry',
                 title: 'Choose Email Recipients'
             }) || []);
             if (!recipientEmails.length) return false;
             managerEvalReport2EmailSending = true;
             syncManagerEvalReport2SelectionUi();
-            showToast('Preparing Excel', `Building ${rows.length} selected row${rows.length === 1 ? '' : 's'} and sending inside the app.`);
+            showToast('Preparing Item Inquiry', `Building ${rows.length} selected row${rows.length === 1 ? '' : 's'} for ${context.assignedTo}.`);
             try {
-                const meta = getManagerEvalReport2Meta();
-                const subject = `GNC PH Eval Reports #2 - ${meta.label} - ${rows.length} Row${rows.length === 1 ? '' : 's'}`;
+                const subject = `GNC PH Item Inquiry – ${context.assignedTo} – ${rows.length} Rows / ${context.locationCount} Locations`;
                 const attachment = await buildManagerEvalReport2ExcelAttachment(rows);
-                const exportColumns = getDriveReportExportColumns();
+                const reportSummary = context.reportNames.join(', ') || 'Selected Eval Reports #2 rows';
                 const payload = {
                     type: 'email',
                     emailType: 'drive_shift_report',
-                    emailSubType: 'eval_reports_2_excel',
+                    emailSubType: 'eval_reports_2_item_inquiry_excel',
                     subject,
-                    brandLabel: 'GNC PH Eval Reports #2',
-                    fromName: 'GNC PH Eval Reports #2',
-                    sourceLabel: 'Eval Reports #2',
-                    message: `Report: ${meta.label}\nSelected rows: ${rows.length}`,
-                    userMessage: `Report: ${meta.label}\nSelected rows: ${rows.length}`,
+                    brandLabel: 'GNC PH Item Inquiry',
+                    fromName: 'GNC PH Item Inquiry',
+                    sourceLabel: 'Eval Reports #2 Item Inquiry',
+                    message: `AssignedTo: ${context.assignedTo}\nSelected rows: ${rows.length}\nLocations: ${context.locationCount}\nReports: ${reportSummary}`,
+                    userMessage: `AssignedTo: ${context.assignedTo}\nSelected rows: ${rows.length}\nLocations: ${context.locationCount}\nReports: ${reportSummary}`,
                     itemsCount: rows.length,
+                    assignedTo: context.assignedTo,
+                    locationCount: context.locationCount,
+                    reportMemberships: context.reportNames.slice(),
                     recipientEmails: recipientEmails.slice(),
                     emailRecipients: recipientEmails.slice(),
                     internalRecipients: recipientEmails.slice(),
                     recipients: recipientEmails.map((email) => ({ email, role: 'selected-in-app' })),
                     recipientsSelectedInApp: true,
                     skipDylanRecipientOverride: true,
-                    dylanRecipientOverride: true,
                     recipientOverrideAppliedBy: String(currentUser || '').trim(),
                     sendToAllSalesReps: false,
                     repName: '',
@@ -118946,7 +119284,7 @@ C.14.043 C.15.000
                     repEmail: '',
                     salesRepEmail: '',
                     shiftReportFormat: 'excel',
-                    shiftReportColumns: exportColumns.map((column) => ({ label: String(column.label || '').trim() })),
+                    shiftReportColumns: MANAGER_EVAL_REPORT2_ITEM_INQUIRY_COLUMNS.map((column) => ({ label: column.key })),
                     shiftReportWorkbookFilename: attachment.filename,
                     shiftReportAttachment: attachment,
                     shiftReportAttachments: [attachment],
@@ -118954,14 +119292,14 @@ C.14.043 C.15.000
                     requestedBy: String(currentUser || '').trim(),
                     requestedByDisplay: String(currentUserDisplay || currentUser || '').trim()
                 };
-                const responseData = await postGoogleScriptEmailPayload(payload, Math.max(Number(REQUEST_EMAIL_SCRIPT_TIMEOUT_MS) || 0, 45000), 'Eval Reports #2 Excel Email');
+                const responseData = await postGoogleScriptEmailPayload(payload, Math.max(Number(REQUEST_EMAIL_SCRIPT_TIMEOUT_MS) || 0, 45000), 'Eval Reports #2 Item Inquiry Email');
                 if (!isGoogleScriptEmailResponseSuccessful(responseData)) {
-                    throw new Error(getGoogleScriptEmailFailureMessage(responseData, 'Eval Reports #2 Excel email did not send.'));
+                    throw new Error(getGoogleScriptEmailFailureMessage(responseData, 'The Item Inquiry email did not send.'));
                 }
                 clearManagerEvalReport2Selection(true);
-                showToast('Excel Sent', `Sent ${rows.length} selected row${rows.length === 1 ? '' : 's'} to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'}.`);
+                showToast('Item Inquiry Sent', `Sent ${rows.length} rows in ${context.locationCount} locations to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'}.`);
             } catch (error) {
-                showToast('Email Error', getFriendlyBackendErrorMessage(error, 'Could not send the Eval Reports #2 Excel file.'), true);
+                showToast('Item Inquiry Not Sent', getFriendlyBackendErrorMessage(error, 'Could not send the Item Inquiry Excel file.'), true);
                 reportSemanticHealthEvent('eval_report_2_email_failed', 'eval_reports_2', 'EVAL_REPORT_2_EMAIL_FAILED', { affected_count: rows.length });
             } finally {
                 managerEvalReport2EmailSending = false;
@@ -121026,7 +121364,7 @@ C.14.043 C.15.000
                 canViewInventoryTransactions: canViewInventoryTransactionHistory(),
                 canViewAssignedItemsExport: canViewAssignedItemsExport(),
                 canViewEvalReports: canViewManagerEvalReports(),
-                canViewEvalReports2: canViewManagerEvalReports(),
+                canViewEvalReports2: canViewManagerEvalReports2(),
                 canViewHistoricalReport: canViewManagerHistoricalReport(),
                 canViewShortageCancel: canViewManagerShortageCancel(),
                 canViewBlockClearing: canViewManagerBlockClearing(),
