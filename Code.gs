@@ -9489,6 +9489,16 @@ function getInventoryTransactionEmailRecipients_(payload, actorEmail) {
   ]);
 }
 
+function getReclassInquiryEmailRecipients_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  return dedupeEmailAddresses_([
+    safePayload.recipientEmails,
+    safePayload.emailRecipients,
+    safePayload.internalRecipients,
+    safePayload.recipients
+  ]);
+}
+
 function getInventoryTransactionEmailRowValue_(row, fields, fallback) {
   return getInventoryTransactionRowValue_(row || {}, fields || [], fallback == null ? '' : fallback);
 }
@@ -9937,9 +9947,8 @@ function handleReclassInquiryEmail_(payload) {
     const overlayResult = applyReclassInquiryOverlays_(authoritativeRows, safePayload.rowOverlays, now);
     if (!overlayResult.ok) return overlayResult;
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, safePayload, now);
-    const actor = safePayload.actor && typeof safePayload.actor === 'object' ? safePayload.actor : {};
-    const recipients = getInventoryTransactionEmailRecipients_(safePayload, normalizeInventoryTransactionText_(actor.email));
-    if (!recipients.length) throw new Error('Choose at least one approved email recipient.');
+    const recipients = getReclassInquiryEmailRecipients_(safePayload);
+    if (!recipients.length) throw new Error('Choose at least one email recipient.');
     const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
     const sourceLocation = getInventoryTransactionRowValue_(sourceRow, ['locationcode', 'LOCATIONCODE'], '');
     const subject = '[External] GNC PH Reclass: ' + commonName + (sourceLocation ? ' ' + sourceLocation : '');

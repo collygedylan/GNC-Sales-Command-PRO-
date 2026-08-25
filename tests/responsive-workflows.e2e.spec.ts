@@ -18,7 +18,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
 });
 
 test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     const access = getRoleAccessState('Admin', 'brandt_emerson');
@@ -125,7 +125,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
 test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const access = {
@@ -256,7 +256,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
 
 test('Eval Reports #2 preserves one-user selections and sends a reference-matched Item Inquiry workbook', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalCanViewManagerEvalReports2 = canViewManagerEvalReports2;
@@ -568,7 +568,7 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
   const phone = await page.evaluate(() => window.eval(`(() => {
     const originalCanManage = canManageEvalItemcodeAssignments;
@@ -647,7 +647,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
 
 test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
   const desktop = await page.evaluate(() => window.eval(`(() => {
@@ -725,7 +725,7 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalAssign = assignEvalItemcodes;
@@ -794,7 +794,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
 });
 
 test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalSupabaseRpc = supabaseRpc;
@@ -1025,7 +1025,7 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
 
 test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const requestView = document.getElementById('view-request');
     const container = document.getElementById('request-content');
@@ -1532,7 +1532,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1666,7 +1666,7 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.25.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1687,22 +1687,21 @@ test('Phone Reclass send opens the searchable in-app recipient selector', async 
   await expect(modal).toBeVisible();
   await expect(page.locator('#grouped-bloom-ncr-recipient-title')).toHaveText('Select Reclass Email Recipients');
   await expect(search).toHaveAttribute('placeholder', 'Type a name or email address...');
+  await expect(page.locator('#grouped-bloom-ncr-recipient-count')).toHaveText('0 selected');
+  await expect(page.locator('#grouped-bloom-ncr-recipient-send-btn')).toBeDisabled();
   await search.fill('jd_jones@greenleafnursery.com');
   await expect(page.locator('#grouped-bloom-ncr-recipient-list')).toContainText('jd_jones@greenleafnursery.com');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-list')).toContainText('Required');
+  await expect(page.locator('#grouped-bloom-ncr-recipient-list')).not.toContainText('Required');
   const overflow = await modal.evaluate((root) => Math.max(0, root.scrollWidth - root.clientWidth));
   expect(overflow).toBe(0);
 
-  await modal.getByRole('button', { name: 'Cancel' }).click();
-  const cancellation = await page.evaluate(async () => {
-    try {
-      await (window as any).__reclassRecipientPromise;
-      return '';
-    } catch (error) {
-      return String((error as Error)?.message || error || '');
-    }
-  });
-  expect(cancellation).toContain('canceled');
+  await page.locator('#grouped-bloom-ncr-recipient-list button').filter({ hasText: 'jd_jones@greenleafnursery.com' }).click();
+  await expect(page.locator('#grouped-bloom-ncr-recipient-count')).toHaveText('1 selected');
+  await expect(page.locator('#grouped-bloom-ncr-recipient-send-btn')).toBeEnabled();
+  await page.locator('#grouped-bloom-ncr-recipient-send-btn').click();
+  const payload = await page.evaluate(async () => (window as any).__reclassRecipientPromise);
+  expect(payload.recipientEmails).toEqual(['jd_jones@greenleafnursery.com']);
+  expect(payload.emailRecipients).toEqual(['jd_jones@greenleafnursery.com']);
 });
 
 test('Drive Grid is a readable spreadsheet and every control stays on one rail', async ({ page }) => {

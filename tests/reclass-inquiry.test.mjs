@@ -150,14 +150,29 @@ test('Reclass identity validation uses the defined production comparison helper'
   assert.doesNotMatch(overlayHandler, /normalizeInventoryTransactionComparable_/);
 });
 
-test('Reclass send uses the searchable in-app recipient picker instead of a browser prompt', () => {
+test('Reclass send uses an empty searchable picker and only explicitly selected recipients', () => {
   const start = html.indexOf('async function applyArgosInventoryTransactionEmailRecipients');
   const end = html.indexOf('function generateArgosInventoryTransactionId', start);
   const recipientHandler = html.slice(start, end);
   assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal/);
-  assert.match(recipientHandler, /requiredEmails:\s*requiredRecipients/);
+  assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal\(previewRows, \[\]/);
+  assert.doesNotMatch(recipientHandler, /requiredEmails|requiredRecipients|getDefaultArgosInventoryTransactionRecipients/);
   assert.doesNotMatch(recipientHandler, /window\.prompt/);
   assert.match(html, /placeholder="Type a name or email address\.\.\."/);
+});
+
+test('Reclass server delivery uses only recipients explicitly selected in the picker', () => {
+  const helperStart = code.indexOf('function getReclassInquiryEmailRecipients_');
+  const helperEnd = code.indexOf('function getInventoryTransactionEmailRowValue_', helperStart);
+  const helper = code.slice(helperStart, helperEnd);
+  const handlerStart = code.indexOf('function handleReclassInquiryEmail_');
+  const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
+  const handler = code.slice(handlerStart, handlerEnd);
+  assert.match(helper, /safePayload\.recipientEmails/);
+  assert.match(helper, /safePayload\.recipients/);
+  assert.doesNotMatch(helper, /actorEmail|INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_/);
+  assert.match(handler, /getReclassInquiryEmailRecipients_\(safePayload\)/);
+  assert.doesNotMatch(handler, /getInventoryTransactionEmailRecipients_/);
 });
 
 test('temporary overlays reject invalid hold codes, negative quantities, and stale identities', () => {
