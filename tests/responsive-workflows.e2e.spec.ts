@@ -1026,7 +1026,7 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
 test('Kayla can add non-open-stock Drive rows and receives the operational Bloom actions', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.07', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
-    window.eval("currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; selectedItemSources=new Map([['drive-kayla-row','drive-bloom']]);");
+    window.eval("currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; selectedItemSources=new Map([['drive-kayla-row','drive-bloom']]); window.__qaOriginalGetRoleAccessState=getRoleAccessState; getRoleAccessState=function(){ return { isAdmin:false, isRep:true, isCsr:false, isRepLike:true, isForeman:false }; };");
     return window.eval(`(() => {
       const row = {
         UNIQUE_ID: 'drive-kayla-row',
