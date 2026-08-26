@@ -9700,6 +9700,36 @@ const RECLASS_INQUIRY_SEASON_FIELDS_ = [
   { key: 'season_demand', label: 'Demand', aliases: ['season_demand', 'SEASON_DEMAND', 'demand', 'DEMAND'] }
 ];
 
+const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
+  { key: 'lotcode', label: 'Lotcode' },
+  { key: 'locationcode', label: 'Location' },
+  { key: 'source', label: 'Source' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'ptronhand', label: 'OH' },
+  { key: 'locationnotedate', label: 'Loc Note Date' },
+  { key: 'locationnote', label: 'Location Note' }
+];
+
+const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
+  hold: 'On Hold Request',
+  take_off_hold: 'Off Hold Request',
+  stop_ship: 'On Stop Request',
+  off_stop_ship: 'Off Stop Request',
+  ncr: 'NCR Request',
+  recount: 'Re-Count Request',
+  priority_change: 'Priority Change',
+  move_up: 'Move Up Request',
+  move_down: 'Move Down Request'
+});
+
+const RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_ = 'compact-pilot-20260825-v1';
+const RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_ = 'dylan_collyge@greenleafnursery.com';
+
+function getReclassInquiryActionLabel_(value) {
+  const action = String(value || '').trim().toLowerCase();
+  return RECLASS_INQUIRY_ACTION_LABELS_[action] || 'Reclass Item Inquiry';
+}
+
 function getReclassInquiryExactValue_(row, aliases, fallback) {
   const safeRow = row && typeof row === 'object' ? row : {};
   const safeAliases = Array.isArray(aliases) ? aliases : [aliases];
@@ -9863,12 +9893,16 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     return getReclassInquirySeasonRank_(a.season) - getReclassInquirySeasonRank_(b.season);
   });
   const actor = payload && payload.actor && typeof payload.actor === 'object' ? payload.actor : {};
+  const transaction = payload && payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {};
+  const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
   const editedRows = reportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
   return {
     identity: identity,
     seasons: seasons,
     rows: reportRows,
-    transaction: payload && payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {},
+    transaction: transaction,
+    requestAction: requestAction,
+    requestActionLabel: getReclassInquiryActionLabel_(requestAction),
     actorDisplay: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, 'Unknown User')),
     submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a'),
     editSummary: {
@@ -9931,6 +9965,169 @@ function buildReclassInquiryEmailHtml_(model) {
     '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Edited cells are highlighted yellow.</p>',
     '</div>'
   ].join(''));
+}
+
+function sortReclassInquiryCompactRows_(rows) {
+  return (Array.isArray(rows) ? rows.slice() : []).sort(function(a, b) {
+    const aValues = a && a.values && typeof a.values === 'object' ? a.values : {};
+    const bValues = b && b.values && typeof b.values === 'object' ? b.values : {};
+    const locationCompare = String(aValues.locationcode || '').localeCompare(String(bValues.locationcode || ''), undefined, { numeric: true, sensitivity: 'base' });
+    if (locationCompare) return locationCompare;
+    return String(aValues.lotcode || '').localeCompare(String(bValues.lotcode || ''), undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
+
+function buildReclassInquiryCompactReportHtml_(model, printMode) {
+  const safeModel = model || {};
+  const esc = escapeEmailHtml_;
+  const editSummary = safeModel.editSummary || {};
+  const actionLabel = String(firstNonEmptyRequestValue_(safeModel.requestActionLabel, getReclassInquiryActionLabel_(safeModel.requestAction), 'Reclass Item Inquiry'));
+  const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
+    return '<div class="identity-cell"><span>' + esc(field.label) + '</span><strong>' + esc(safeModel.identity && safeModel.identity[field.key] || '') + '</strong></div>';
+  }).join('');
+  const rowHead = RECLASS_INQUIRY_COMPACT_FIELDS_.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
+  const rowBody = sortReclassInquiryCompactRows_(safeModel.rows).map(function(row) {
+    const changedFields = Array.isArray(row && row.changedFields) ? row.changedFields : [];
+    return '<tr>' + RECLASS_INQUIRY_COMPACT_FIELDS_.map(function(field) {
+      const edited = changedFields.indexOf(field.key) !== -1;
+      const rawValue = row && row.values && Object.prototype.hasOwnProperty.call(row.values, field.key) ? row.values[field.key] : '';
+      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  const pilotBanner = safeModel.isSyntheticPilot
+    ? '<div class="pilot-banner">TEST PILOT - SYNTHETIC DATA ONLY</div>'
+    : '';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong{display:block;font-size:8pt}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt}.location-table th:nth-child(1),.location-table td:nth-child(1){width:.78in}.location-table th:nth-child(2),.location-table td:nth-child(2){width:.88in}.location-table th:nth-child(3),.location-table td:nth-child(3){width:.58in}.location-table th:nth-child(4),.location-table td:nth-child(4){width:.65in}.location-table th:nth-child(5),.location-table td:nth-child(5){width:.62in}.location-table th:nth-child(6),.location-table td:nth-child(6){width:1.12in}.location-table th:nth-child(7),.location-table td:nth-child(7){width:auto;white-space:normal}.edited-cell{background:#fff176!important}' +
+    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div>' +
+    '<div class="identity">' + identityCells + '</div><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
+}
+
+function buildReclassInquiryCompactPilotModel_(action, now) {
+  const submittedAt = Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a');
+  const requestAction = String(action || '').trim().toLowerCase();
+  return {
+    isSyntheticPilot: true,
+    requestAction: requestAction,
+    requestActionLabel: getReclassInquiryActionLabel_(requestAction),
+    actorDisplay: 'GNC Apps Script Pilot',
+    submittedAt: submittedAt,
+    identity: {
+      plantgroupcode: 'TEST_GROUP',
+      commonname: 'Synthetic Reclass Pilot Item',
+      contsize: '#5 TEST',
+      itemcode: 'TEST.RECLASS.001',
+      genusname: 'Testus',
+      fieldtagcolor: 'TEST',
+      itemspec: 'Synthetic data',
+      pullerresponsibility: 'Pilot only'
+    },
+    rows: [
+      {
+        unique_id: 'pilot-f14',
+        values: { lotcode: '27.F1', locationcode: 'F.14.000', source: 'LD', priority: '', ptronhand: '497', locationnotedate: '8/20/2026', locationnote: 'Existing synthetic note' },
+        changedFields: ['priority']
+      },
+      {
+        unique_id: 'pilot-d17',
+        values: { lotcode: '27.F1', locationcode: 'D.17.000', source: 'LD', priority: '1', ptronhand: '92', locationnotedate: submittedAt, locationnote: 'Synthetic pilot note added for review.' },
+        changedFields: ['priority', 'locationnotedate', 'locationnote']
+      },
+      {
+        unique_id: 'pilot-a01',
+        values: { lotcode: '27.S1', locationcode: 'A.01.000', source: 'SH', priority: '4', ptronhand: '36', locationnotedate: '', locationnote: '' },
+        changedFields: []
+      },
+      {
+        unique_id: 'pilot-d12',
+        values: { lotcode: '26.U2', locationcode: 'D.12.000', source: 'LD', priority: '3', ptronhand: '26', locationnotedate: '8/18/2026', locationnote: 'Synthetic unchanged row.' },
+        changedFields: []
+      }
+    ],
+    editSummary: { rowCount: 2, fieldCount: 4 }
+  };
+}
+
+function buildReclassInquiryCompactPilotText_(model) {
+  const safeModel = model || {};
+  const editSummary = safeModel.editSummary || {};
+  return [
+    'TEST PILOT - SYNTHETIC DATA ONLY',
+    'GNC PH Reclass Item Inquiry',
+    'Request: ' + String(safeModel.requestActionLabel || ''),
+    'Item: ' + String(safeModel.identity && safeModel.identity.commonname || ''),
+    'Edited Rows: ' + String(editSummary.rowCount || 0),
+    'Edited Fields: ' + String(editSummary.fieldCount || 0),
+    '',
+    'Open the attached compact PDF to review the pilot format. No production or customer data is included.'
+  ].join('\n');
+}
+
+function buildReclassInquiryCompactPilotEmailHtml_(model) {
+  const safeModel = model || {};
+  const editSummary = safeModel.editSummary || {};
+  return buildPhoneSizedEmailHtml_([
+    '<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;">',
+    '<div style="margin-bottom:14px;padding:10px 12px;border:2px solid #b91c1c;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:700;text-align:center;">TEST PILOT - SYNTHETIC DATA ONLY</div>',
+    '<h2 style="margin:0 0 14px;color:#007a4d;">GNC PH Reclass Item Inquiry</h2>',
+    '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || '') + '<br><strong>Item:</strong> ' + escapeEmailHtml_(safeModel.identity && safeModel.identity.commonname || '') + '</p>',
+    '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>Compact PDF attached:</strong> Open the synthetic Item Inquiry PDF to review the seven-column pilot layout. Edited cells are highlighted yellow.</p>',
+    '<p style="font-size:12px;color:#64748b;">No production inventory, request, customer, or photo data was read or changed.</p>',
+    '</div>'
+  ].join(''));
+}
+
+function getReclassInquiryCompactPilotPropertyKey_(action) {
+  return 'RECLASS_COMPACT_PILOT_SENT_' + RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_ + '_' + String(action || '').trim().toUpperCase();
+}
+
+function sendReclassInquiryCompactPilotEmails() {
+  const actions = Object.keys(RECLASS_INQUIRY_ACTION_LABELS_);
+  const recipient = RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_;
+  const props = PropertiesService.getScriptProperties();
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) throw new Error('Another compact Reclass pilot batch is running. Retry is safe.');
+  try {
+    const results = [];
+    actions.forEach(function(action) {
+      const propertyKey = getReclassInquiryCompactPilotPropertyKey_(action);
+      const prior = String(props.getProperty(propertyKey) || '').trim();
+      if (prior) {
+        results.push({ action: action, label: getReclassInquiryActionLabel_(action), status: 'already_sent', recipient: recipient });
+        return;
+      }
+      const now = new Date();
+      const model = buildReclassInquiryCompactPilotModel_(action, now);
+      const subject = '[TEST] GNC PH Reclass - ' + model.requestActionLabel + ' - Synthetic Item';
+      const pdfBlob = HtmlService.createHtmlOutput(buildReclassInquiryCompactReportHtml_(model, true)).getBlob().getAs(MimeType.PDF);
+      const safeAction = action.replace(/[^a-z0-9]+/gi, '_');
+      pdfBlob.setName('TEST_GNC_PH_Reclass_' + safeAction + '_Compact_Pilot.pdf');
+      GmailApp.sendEmail(recipient, subject, buildReclassInquiryCompactPilotText_(model), {
+        htmlBody: buildReclassInquiryCompactPilotEmailHtml_(model),
+        attachments: [pdfBlob],
+        name: 'GNC PH Reclass Pilot'
+      });
+      props.setProperty(propertyKey, JSON.stringify({
+        policyVersion: RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_,
+        action: action,
+        recipient: recipient,
+        subject: subject,
+        sentAt: now.toISOString()
+      }));
+      results.push({ action: action, label: model.requestActionLabel, status: 'sent', recipient: recipient, subject: subject });
+    });
+    return {
+      ok: true,
+      policyVersion: RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_,
+      recipient: recipient,
+      sent: results.filter(function(result) { return result.status === 'sent'; }).length,
+      alreadySent: results.filter(function(result) { return result.status === 'already_sent'; }).length,
+      results: results
+    };
+  } finally {
+    try { lock.releaseLock(); } catch (releaseError) {}
+  }
 }
 
 function getReclassInquiryCacheKey_(token) {

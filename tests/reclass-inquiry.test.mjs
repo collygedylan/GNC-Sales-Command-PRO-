@@ -31,6 +31,8 @@ function loadServerModel() {
   const start = code.indexOf('const RECLASS_INQUIRY_ROW_FIELDS_');
   const end = code.indexOf('function handleInventoryTransaction_', start);
   assert.ok(start > 0 && end > start);
+  const pilotProperties = new Map();
+  const pilotMessages = [];
   const context = {
     Map,
     Number,
@@ -50,6 +52,29 @@ function loadServerModel() {
     Utilities: {
       formatDate: () => '8/22/2026, 9:15:00 AM',
     },
+    PropertiesService: {
+      getScriptProperties: () => ({
+        getProperty: (key) => pilotProperties.get(key) || '',
+        setProperty: (key, value) => pilotProperties.set(key, String(value)),
+      }),
+    },
+    LockService: {
+      getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }),
+    },
+    HtmlService: {
+      createHtmlOutput: (htmlOutput) => ({
+        getBlob: () => ({
+          htmlOutput,
+          name: '',
+          getAs() { return this; },
+          setName(name) { this.name = name; return this; },
+        }),
+      }),
+    },
+    MimeType: { PDF: 'application/pdf' },
+    GmailApp: {
+      sendEmail: (...args) => pilotMessages.push(args),
+    },
     buildPhoneSizedEmailHtml_: (value) => String(value || ''),
     escapeEmailHtml_: (value) => String(value ?? '')
       .replaceAll('&', '&amp;')
@@ -58,7 +83,9 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.sendReclassInquiryCompactPilotEmails = sendReclassInquiryCompactPilotEmails;`, context);
+  context.__pilotMessages = pilotMessages;
+  context.__pilotProperties = pilotProperties;
   return context;
 }
 
@@ -274,6 +301,75 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.match(output, /Loc PTN 2/);
     assert.equal((output.match(/<tr>/g) || []).length, rowCount + 1, `${rowCount}-row report should include every detail row plus one table header`);
   }
+});
+
+test('compact Reclass pilot PDF has the exact seven columns, natural ordering, and yellow cleared values', () => {
+  const server = loadServerModel();
+  const model = server.buildReclassInquiryCompactPilotModel_('priority_change', new Date('2026-08-22T14:15:00Z'));
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
+  const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
+  assert.deepEqual(headers, ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Loc Note Date', 'Location Note']);
+  for (const removed of ['Rev', 'Avail', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2', 'H/S', 'H/S Reason']) {
+    assert.ok(!headers.includes(removed), `${removed} must not be a compact pilot column`);
+  }
+  assert.ok(output.indexOf('A.01.000') < output.indexOf('D.12.000'));
+  assert.ok(output.indexOf('D.12.000') < output.indexOf('D.17.000'));
+  assert.ok(output.indexOf('D.17.000') < output.indexOf('F.14.000'));
+  assert.match(output, /TEST PILOT - SYNTHETIC DATA ONLY/);
+  assert.match(output, /Request:<\/strong> Priority Change/);
+  assert.match(output, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
+  assert.match(output, /class="edited-cell" data-edited="true">Synthetic pilot note added for review\.<\/td>/);
+  assert.match(output, /thead\{display:table-header-group\}/);
+  assert.match(output, /@page\{size:Letter landscape/);
+});
+
+test('compact Reclass pilot maps all nine actions and sends each synthetic email to Dylan only once', () => {
+  const server = loadServerModel();
+  const expectedLabels = [
+    'On Hold Request',
+    'Off Hold Request',
+    'On Stop Request',
+    'Off Stop Request',
+    'NCR Request',
+    'Re-Count Request',
+    'Priority Change',
+    'Move Up Request',
+    'Move Down Request',
+  ];
+  const first = server.sendReclassInquiryCompactPilotEmails();
+  assert.equal(first.sent, 9);
+  assert.equal(first.alreadySent, 0);
+  assert.equal(server.__pilotMessages.length, 9);
+  assert.deepEqual(Array.from(first.results, (result) => result.label), expectedLabels);
+  assert.equal(new Set(server.__pilotMessages.map((message) => message[1])).size, 9);
+  for (const [recipient, subject, textBody, options] of server.__pilotMessages) {
+    assert.equal(recipient, 'dylan_collyge@greenleafnursery.com');
+    assert.match(subject, /^\[TEST\] GNC PH Reclass - .+ - Synthetic Item$/);
+    assert.match(textBody, /SYNTHETIC DATA ONLY/);
+    assert.match(options.htmlBody, /No production inventory, request, customer, or photo data was read or changed/);
+    assert.equal(options.attachments.length, 1);
+  }
+  const second = server.sendReclassInquiryCompactPilotEmails();
+  assert.equal(second.sent, 0);
+  assert.equal(second.alreadySent, 9);
+  assert.equal(server.__pilotMessages.length, 9);
+});
+
+test('compact pilot is editor-only and the live Reclass handler retains the existing PDF builder', () => {
+  const pilotStart = code.indexOf('function sendReclassInquiryCompactPilotEmails');
+  const pilotEnd = code.indexOf('function getReclassInquiryCacheKey_', pilotStart);
+  const pilot = code.slice(pilotStart, pilotEnd);
+  const handlerStart = code.indexOf('function handleReclassInquiryEmail_');
+  const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
+  const handler = code.slice(handlerStart, handlerEnd);
+  const doPostStart = code.indexOf('function doPost');
+  const doPost = code.slice(doPostStart);
+  assert.match(pilot, /RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_/);
+  assert.doesNotMatch(pilot, /fetchReclassInquiryItemRows_|fetchEmailApprovalMasterRow_|UrlFetchApp/);
+  assert.doesNotMatch(doPost, /compact_pilot|sendReclassInquiryCompactPilotEmails/);
+  assert.match(handler, /buildReclassInquiryReportHtml_\(model, true\)/);
+  assert.doesNotMatch(handler, /buildReclassInquiryCompactReportHtml_/);
 });
 
 test('Reclass email body is a short attachment summary without duplicated row report sections', () => {
