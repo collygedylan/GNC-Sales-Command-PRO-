@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(61);
+select plan(75);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -10,7 +10,8 @@ insert into auth.users (
   ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'csr_test@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dylan_collyge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abigail_vazquez@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
-  ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'chance_alldredge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
+  ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'chance_alldredge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
+  ('10000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'kayla_knepp@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
 on conflict (id) do nothing;
 
 insert into public.profiles (id, username, display_name, role) values
@@ -18,7 +19,8 @@ insert into public.profiles (id, username, display_name, role) values
   ('10000000-0000-0000-0000-000000000002', 'csr_test', 'CSR Test', 'CSR'),
   ('10000000-0000-0000-0000-000000000003', 'dylan_collyge', 'Dylan Collyge', 'ADMIN'),
   ('10000000-0000-0000-0000-000000000004', 'abigail_vazquez', 'Abigail Vazquez', 'EVAL'),
-  ('10000000-0000-0000-0000-000000000005', 'chance_alldredge', 'Chance Alldredge', E'\nREP')
+  ('10000000-0000-0000-0000-000000000005', 'chance_alldredge', 'Chance Alldredge', E'\nREP'),
+  ('10000000-0000-0000-0000-000000000006', 'kayla_knepp', 'Kayla Knepp', E'\nSalesRep')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
 insert into public.ph_master_inventory (
@@ -104,6 +106,48 @@ select throws_ok(
   $q$select public.save_request_work('REQ-CSR-1', 1, '{}'::jsonb, false)$q$,
   '42501', 'REQUEST_ROW_FORBIDDEN',
   'Chance cannot mutate another user Request row'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000006', true);
+select is((public.get_request_capabilities()->>'contract_version')::integer, 2, 'Kayla receives Request capability contract version 2');
+select is((public.get_request_capabilities()->>'scope'), 'global', 'Kayla retains global Request scope despite her SalesRep role');
+select ok((public.get_request_capabilities()->>'can_create_general')::boolean, 'Kayla can create general and plant requests');
+select ok((public.get_request_capabilities()->>'can_create_av')::boolean, 'Kayla can create AV requests');
+select ok((public.get_request_capabilities()->>'can_view_queue')::boolean, 'Kayla can view the Request queue');
+select ok((public.get_request_capabilities()->>'can_take_photo')::boolean, 'Kayla can add Request photos');
+select ok((public.get_request_capabilities()->>'can_edit')::boolean, 'Kayla can edit Request work');
+select ok((public.get_request_capabilities()->>'can_complete')::boolean, 'Kayla can complete Request work');
+select ok((public.get_request_capabilities()->>'can_archive')::boolean, 'Kayla can archive Request work');
+select lives_ok(
+  $q$select public.create_request_batch(
+    '20000000-0000-0000-0000-000000000006',
+    '[{"unique_id":"REQ-KAYLA-GENERAL-1","master_id":"MASTER-TEST-1","requested_by":"Kayla Knepp","request_folder":"KAYLA-FOLDER","req_customer":"Customer","req_qty":"1"}]'::jsonb
+  )$q$,
+  'Kayla can create a general request batch'
+);
+select lives_ok(
+  $q$select public.create_av_request_batch(
+    '20000000-0000-0000-0000-000000000007',
+    '[{"unique_id":"REQ-KAYLA-AV-1","master_id":"MASTER-TEST-1","requested_by":"Kayla Knepp","request_folder":"KAYLA-AV","req_customer":"Customer","req_qty":"1"}]'::jsonb
+  )$q$,
+  'Kayla can create an AV request batch'
+);
+select lives_ok(
+  $q$select public.save_request_work(
+    'REQ-KAYLA-GENERAL-1', 1,
+    '{"req_photo_link":"https://example.invalid/kayla-request-photo.jpg","req_photo_name":"kayla-request-photo.jpg","req_comments":"Kayla request edit"}'::jsonb,
+    false
+  )$q$,
+  'Kayla can save Request edits and photo references'
+);
+select is(
+  (select req_photo_name from public.ph_active_request where unique_id = 'REQ-KAYLA-GENERAL-1'),
+  'kayla-request-photo.jpg',
+  'Kayla Request photo edit is stored on her Request row'
+);
+select lives_ok(
+  $q$select public.save_request_work('REQ-KAYLA-GENERAL-1', 2, '{}'::jsonb, true)$q$,
+  'Kayla can complete Request work'
 );
 
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);

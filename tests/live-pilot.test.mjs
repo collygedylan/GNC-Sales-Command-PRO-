@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.26.04';
+  const release = 'V2026.08.26.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.26.04');
+  assert.equal(packageJson.version, '2026.08.26.05');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -80,7 +80,9 @@ test('Queue and Drive render from the smallest canonical dataset needed for the 
   assert.doesNotMatch(requestLoading, /required: \[requests, \{ key: 'requestHistory'[\s\S]*inventoryEditRequests[\s\S]*soc/);
   const requestTabs = html.slice(html.indexOf('function setReqTab'), html.indexOf('function resolveRequestRecipientEmail'));
   assert.match(requestTabs, /forceRefreshRequestsForView\('request-tab',[\s\S]*force: false[\s\S]*REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS/);
-  assert.match(requestTabs, /refreshActiveRequestQueueSideData\('request-tab-side-data',[\s\S]*force: false[\s\S]*REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS/);
+  assert.doesNotMatch(requestTabs, /refreshActiveRequestQueueSideData\('request-tab-side-data'/);
+  const forcedRefresh = html.slice(html.indexOf('async function forceRefreshRequestsForView'), html.indexOf('function scheduleRequestVisibleRefresh'));
+  assert.match(forcedRefresh, /refreshActiveRequestQueueSideData\(reason \|\| 'request-force-refresh'/);
   assert.match(html, /safeKey === 'master' && visibleView === 'drive'/);
   assert.match(html, /canRenderMasterPreview[\s\S]*state\.firstPagePreviewLoaded/);
 });
@@ -292,7 +294,8 @@ test('precision shell keeps one persistent module back control and promotes queu
   assert.match(css, /#view-wrapper \.back-btn[\s\S]*display: none !important/);
   assert.match(html, /classList\.contains\('ops-precision-pilot'\) && activeReqTab === 'suspend-tag'/);
   assert.match(html, /mode === 'suspend-tag' \? 'Search common name\.\.\.'/);
-  assert.match(html, /const commonSearchHtml = precisionSearch \? ''/);
+  assert.match(html, /const commonSearchHtml = `<label class="workflow-control"><span>Common Name<\/span>/);
+  assert.match(html, /renderRequestCategoryToolbar\(`\$\{commonSearchHtml\}\$\{assignedHtml\}\$\{contSizeHtml\}\$\{dockHtml\}/);
   assert.match(html, /currentView === 'po-management'[\s\S]*goBackPoManagementDrilldown\(\)/);
 });
 

@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.26.04">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.26.05">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.26.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.26.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6699,7 +6699,49 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.26.04">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.26.05">
+    <style id="request-mobile-v2-authority">
+        .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+        .request-av-note-sheet.hidden{display:none!important}
+        .request-av-note-sheet__backdrop{position:absolute;inset:0;border:0;background:rgba(2,20,14,.58);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+        .request-av-note-sheet__panel{position:relative;display:grid;grid-template-rows:auto auto auto minmax(0,1fr);width:min(100%,680px);max-height:min(82dvh,760px);overflow:hidden;border:2px solid #10b981;border-radius:24px;background:#f8fffb;box-shadow:0 24px 70px rgba(2,44,29,.35)}
+        .request-av-note-sheet__header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:14px 16px 10px;border-bottom:1px solid #a7f3d0;background:#ecfdf5;color:#064e3b}
+        .request-av-note-sheet__header span,.request-av-note-sheet__search-label{display:block;font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#047857}
+        .request-av-note-sheet__header strong{display:block;margin-top:2px;font-size:20px;line-height:1.15}
+        .request-av-note-sheet__close{display:inline-flex;width:46px;height:46px;flex:0 0 46px;align-items:center;justify-content:center;border:1px solid #6ee7b7;border-radius:50%;background:#fff;color:#065f46;font-size:22px}
+        .request-av-note-sheet__search-label{padding:12px 16px 5px}
+        .request-av-note-sheet__search{width:calc(100% - 32px);min-height:48px;margin:0 16px 10px;border:2px solid #6ee7b7;border-radius:14px;background:#fff;padding:10px 13px;color:#0f172a;font-size:16px;font-weight:800;outline:none}
+        .request-av-note-sheet__search:focus{border-color:#047857;box-shadow:0 0 0 4px rgba(16,185,129,.18)}
+        .request-av-note-sheet__list-host{min-height:0;overflow:hidden;padding:0 10px 10px}
+        .request-av-note-sheet #req-av-dropdown-list{position:relative!important;inset:auto!important;display:flex!important;width:100%!important;height:100%!important;max-height:none!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;border:0!important;border-radius:14px!important;background:#fff!important;box-shadow:none!important;padding:6px!important}
+        .request-av-note-sheet #req-av-dropdown-list.hidden{display:none!important}
+        .request-av-note-sheet #req-av-dropdown-list .av-note-dropdown-header{position:sticky;top:-6px;margin:-6px -6px 4px;padding:10px 12px;background:#f0fdf4;color:#065f46}
+        .request-av-note-sheet #req-av-dropdown-list .av-note-dropdown-option{min-height:48px;border-color:#a7f3d0;color:#064e3b;font-size:15px}
+        body.request-av-note-sheet-open #main-scroll-area{overflow:hidden!important;overscroll-behavior:none!important;touch-action:none!important}
+        body.request-av-note-sheet-open #req-save-action-wrap{visibility:hidden!important;pointer-events:none!important}
+        @media (max-width:640px){
+            .request-av-note-sheet{padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+            .request-av-note-sheet__panel{max-height:calc(var(--mobile-visible-height,var(--visual-height,100dvh)) - 16px);border-radius:22px}
+            body.keyboard-open .request-av-note-sheet,body.detail-field-active .request-av-note-sheet{align-items:flex-start;padding-top:6px;padding-bottom:6px}
+            body.keyboard-open .request-av-note-sheet__panel,body.detail-field-active .request-av-note-sheet__panel{max-height:calc(var(--mobile-visible-height,var(--visual-height,100dvh)) - 12px)}
+            body.viewport-phone #main-scroll-area{overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important}
+            body.viewport-phone #view-detail.detail-request-mode{position:relative!important;display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;touch-action:pan-y!important}
+            body.viewport-phone #view-detail.detail-request-mode #det-request-content:not(.hidden){display:block!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:.35rem 0 calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 6.5rem + env(safe-area-inset-bottom))!important}
+            body.viewport-phone #view-detail.detail-request-mode :is(#request-photo-section,#global-inputs-container,#detail-shared-panels,#req-input-container){position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;gap:.75rem!important}
+            body.viewport-phone #view-detail.detail-request-mode :is(input,select,textarea,button){min-height:44px;max-width:100%;font-size:16px!important}
+            body.viewport-phone #view-detail.detail-request-mode #req-save-action-wrap{position:fixed!important;left:max(10px,env(safe-area-inset-left))!important;right:max(10px,env(safe-area-inset-right))!important;bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + .35rem)!important;z-index:28000!important;width:auto!important;max-width:none!important;margin:0!important;padding:8px!important;border:1px solid rgba(16,185,129,.5)!important;border-radius:18px!important;background:rgba(248,255,251,.96)!important;box-shadow:0 12px 30px rgba(2,44,29,.24)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important}
+            body.viewport-phone #view-detail.detail-request-mode #req-btn-save-complete{min-height:54px!important;margin:0!important;border-radius:13px!important}
+            body.viewport-phone.keyboard-open #view-detail.detail-request-mode #req-save-action-wrap,body.viewport-phone.detail-field-active #view-detail.detail-request-mode #req-save-action-wrap{bottom:calc(var(--keyboard-offset,0px) + .35rem)!important}
+            body.viewport-phone.keyboard-open #view-detail.detail-request-mode #det-request-content:not(.hidden),body.viewport-phone.detail-field-active #view-detail.detail-request-mode #det-request-content:not(.hidden){padding-bottom:calc(var(--keyboard-offset,0px) + 7rem + env(safe-area-inset-bottom))!important;scroll-padding-bottom:calc(var(--keyboard-offset,0px) + 7rem + env(safe-area-inset-bottom))!important}
+        }
+        body.ops-precision-pilot .request-suspend-search-wrap{display:flex;min-width:0;align-items:center;gap:4px}
+        body.ops-precision-pilot .request-suspend-search-wrap input{width:100%;min-width:0;min-height:28px;border:0;background:transparent;color:var(--ui-text,#13221b);font-size:13px;font-weight:800;letter-spacing:0;outline:0;text-transform:none}
+        body.ops-precision-pilot .request-suspend-search-wrap button{display:inline-flex;width:30px;height:30px;flex:0 0 30px;align-items:center;justify-content:center;border:0;border-radius:50%;background:var(--ui-accent-soft,#e7f7ef);color:var(--ui-accent,#07874f)}
+        body.ops-precision-pilot .workflow-control-action{display:inline-flex;min-width:132px;min-height:44px;flex:0 0 auto;align-items:center;justify-content:center;gap:6px;border:1px solid var(--ops-border-strong,#93a89d);border-radius:10px;background:var(--ops-surface,#fff);color:var(--ops-text,#13221b);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+        body.ops-precision-pilot .workflow-control-count{flex-direction:column;gap:2px}
+        body.ops-precision-pilot .workflow-control-count>span{display:block;color:var(--ui-accent,#07874f);font-size:9px}
+        @media (min-width:641px){.request-av-note-sheet{align-items:center}}
+    </style>
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6810,8 +6852,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.26.04"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.26.04"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.26.05"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.26.05"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7564,7 +7606,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.26.04').trim() || 'V2026.08.26.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.26.05').trim() || 'V2026.08.26.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8838,7 +8880,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="req-match-qty-val">0</span></div></div>
                         </div>
-                        <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="handleRequestAvNoteInputBlur()" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div id="req-reserve-field-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
                             <div id="req-pick-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-comments-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="req-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'req-', true)"></textarea></div>
@@ -9050,7 +9092,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.26.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.26.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -15056,6 +15098,82 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let avNoteOptionLastPressNote = '';
         const AV_NOTE_DROPDOWN_PREFIXES = Object.freeze(['global-','ssn-','lsn-','na-','req-','flyer-','hold-release-']);
         let avNoteDropdownDocumentListenerInitialized = false;
+        let requestAvNoteSheetState = { parent: null, nextSibling: null };
+
+        function ensureRequestAvNoteSheet() {
+            let sheet = document.getElementById('request-av-note-sheet');
+            if (sheet) return sheet;
+            sheet = document.createElement('div');
+            sheet.id = 'request-av-note-sheet';
+            sheet.className = 'request-av-note-sheet hidden';
+            sheet.setAttribute('role', 'dialog');
+            sheet.setAttribute('aria-modal', 'true');
+            sheet.setAttribute('aria-hidden', 'true');
+            sheet.setAttribute('aria-labelledby', 'request-av-note-sheet-title');
+            sheet.innerHTML = `<button type="button" class="request-av-note-sheet__backdrop" aria-label="Close AV Note picker"></button>
+                <section class="request-av-note-sheet__panel">
+                    <header class="request-av-note-sheet__header">
+                        <div><span>Request</span><strong id="request-av-note-sheet-title">Choose AV Note</strong></div>
+                        <button type="button" class="request-av-note-sheet__close" aria-label="Close AV Note picker"><i class="ph-bold ph-x"></i></button>
+                    </header>
+                    <label class="request-av-note-sheet__search-label" for="request-av-note-sheet-search">Search AV Notes</label>
+                    <input id="request-av-note-sheet-search" class="request-av-note-sheet__search" type="search" placeholder="Search all AV Notes..." autocomplete="off" autocapitalize="characters" spellcheck="false">
+                    <div id="request-av-note-sheet-list-host" class="request-av-note-sheet__list-host"></div>
+                </section>`;
+            const close = () => hideAvNoteDropdown('req-');
+            sheet.querySelector('.request-av-note-sheet__backdrop').addEventListener('click', close);
+            sheet.querySelector('.request-av-note-sheet__close').addEventListener('click', close);
+            const search = sheet.querySelector('#request-av-note-sheet-search');
+            search.addEventListener('input', () => {
+                avNoteRenderedKeys['req-'] = '';
+                filterAvNotes('req-', { searchText: search.value, fromRequestSheet: true });
+            });
+            search.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') close();
+            });
+            document.body.appendChild(sheet);
+            return sheet;
+        }
+
+        function openRequestAvNoteSheet(list = null) {
+            const targetList = list || document.getElementById('req-av-dropdown-list');
+            if (!targetList) return false;
+            const sheet = ensureRequestAvNoteSheet();
+            const host = sheet.querySelector('#request-av-note-sheet-list-host');
+            if (targetList.parentNode !== host) {
+                requestAvNoteSheetState.parent = targetList.parentNode;
+                requestAvNoteSheetState.nextSibling = targetList.nextSibling;
+                host.appendChild(targetList);
+            }
+            const search = sheet.querySelector('#request-av-note-sheet-search');
+            if (search && sheet.classList.contains('hidden')) search.value = '';
+            targetList.classList.remove('hidden');
+            sheet.classList.remove('hidden');
+            sheet.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('request-av-note-sheet-open');
+            requestAnimationFrame(verifyRequestAvNoteListScrollable);
+            return true;
+        }
+
+        function closeRequestAvNoteSheet(list = null) {
+            const targetList = list || document.getElementById('req-av-dropdown-list');
+            const sheet = document.getElementById('request-av-note-sheet');
+            if (sheet) {
+                sheet.classList.add('hidden');
+                sheet.setAttribute('aria-hidden', 'true');
+                const search = sheet.querySelector('#request-av-note-sheet-search');
+                if (search) search.value = '';
+            }
+            document.body.classList.remove('request-av-note-sheet-open');
+            if (targetList && requestAvNoteSheetState.parent) {
+                const parent = requestAvNoteSheetState.parent;
+                const nextSibling = requestAvNoteSheetState.nextSibling;
+                if (nextSibling && nextSibling.parentNode === parent) parent.insertBefore(targetList, nextSibling);
+                else parent.appendChild(targetList);
+            }
+            requestAvNoteSheetState = { parent: null, nextSibling: null };
+            return true;
+        }
 
         function isAvNoteInput(target = null) {
             if (!target || !target.id) return false;
@@ -15082,8 +15200,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const trigger = getAvNoteDropdownTrigger(safePrefix);
             if (trigger) trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
             if (safePrefix === 'req-' && document.body) {
-                document.body.classList.toggle('request-av-note-sheet-open', !!expanded);
-                if (expanded) requestAnimationFrame(verifyRequestAvNoteListScrollable);
+                const list = document.getElementById('req-av-dropdown-list');
+                if (expanded) openRequestAvNoteSheet(list);
+                else closeRequestAvNoteSheet(list);
             }
         }
 
@@ -15106,6 +15225,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (list) list.classList.add('hidden');
             setAvNoteDropdownExpanded(safePrefix, false);
             return false;
+        }
+
+        function handleRequestAvNoteInputBlur() {
+            window.setTimeout(() => {
+                const sheet = document.getElementById('request-av-note-sheet');
+                const focusStayedInsideSheet = !!(sheet && sheet.contains(document.activeElement));
+                if (!focusStayedInsideSheet) hideAvNoteDropdown('req-');
+                saveData(false, 'req-', true);
+            }, 200);
         }
 
         function hideAllAvNoteDropdowns(exceptPrefix = '') {
@@ -24975,6 +25103,21 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return masterItem || item;
         }
 
+        function applySuspendTagUploadedPhotoEverywhere(mirrorItem = null, sourceItem = null, publicUrl = '', fileName = '') {
+            if (!mirrorItem || !String(publicUrl || '').trim()) return null;
+            const sourceRow = sourceItem || findDockSuspendDcRequestSourceRow(mirrorItem) || null;
+            const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(mirrorItem, sourceRow);
+            [mirrorItem, sourceRow, linkedMaster].filter((row, index, rows) => row && rows.indexOf(row) === index).forEach((row) => {
+                applyUploadedPhotoFieldsToItem(row, 'req-', publicUrl, fileName);
+                applyUploadedPhotoFieldsToItem(row, 'dock-', publicUrl, fileName);
+            });
+            syncDockSuspendDcRequestPhotoAliases(mirrorItem, sourceRow);
+            if (linkedMaster) syncDockSuspendDcRequestPhotoAliases(linkedMaster, sourceRow || mirrorItem);
+            refreshPhotoAcrossViews(linkedMaster || sourceRow || mirrorItem, 'req-');
+            refreshLocalDockSuspendDcRequestState('dock-suspend-photo-upload', sourceRow || mirrorItem);
+            return linkedMaster || sourceRow || mirrorItem;
+        }
+
         function getPendingPhotoPersistKey(item, prefix = '') {
             return getPendingPhotoUploadKey(item, prefix);
         }
@@ -28856,8 +28999,8 @@ const ncrFilterStateByView = {
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
 let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
-        const REQUEST_CAPABILITY_CONTRACT_VERSION = 1;
-        const REQUEST_CAPABILITY_CACHE_PREFIX = 'gnc_request_capabilities_v1:';
+        const REQUEST_CAPABILITY_CONTRACT_VERSION = 2;
+        const REQUEST_CAPABILITY_CACHE_PREFIX = 'gnc_request_capabilities_v2:';
         let requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
         let requestCapabilityLoadPromise = null;
         let lastHomeEmptyDiagnosticAt = 0;
@@ -29208,7 +29351,7 @@ let taskCustomerOutreachOpen=false; let taskCustomerOutreachSelectedRowIds=new S
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null; let moveUpViewLevel=0; let selectedMoveUpItemCode=null; let selectedMoveUpCommonName=null; let selectedMoveUpContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let activeLocationMoveQueDetailUid=''; let activeShearQueDetailId=''; let activeAvOptionEvalDetailId=''; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let tempExistingReqCustomerSearch=""; let tempExistingReqSelectedCustomer=""; let tempExistingReqConsigneeSearch=""; let tempExistingReqSelectedConsignee=""; let tempExistingReqFolderSearch=""; let tempRequestEmailChainSelectedEmails=new Set(); let tempRequestEmailChainRecipientByEmail=new Map(); let previousReqStep=""; let pendingRequestOverQtyResolution=null; let requestQtyStepDomIds=[]; let requestQtyStepIndex=0; let requestQtyStepItemsData={}; let requestQtyEmailStepActive=false; let requestItemCodeOptionState={ key:'', rows:[], loading:false, loaded:false, error:'' }; let requestAvOptionsDropdownOpen=false; let avOptionEvalRequests=[]; let avOptionEvalRequestsLoaded=false; let avOptionEvalRequestsLoading=false; let avOptionEvalRequestsError=''; let avOptionEvalStatusFilter='open'; let avOptionEvalUserFilter='all'; let avOptionEvalModalState={ open:false, optionUid:'', sourceUid:'', assignedto:'', instructions:'', reviewers:[] }; let driveQuickRequestItems=new Set(); let driveReturnedSelectionToolbarQueued=false; let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
-let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsigneeView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestConsigneeSearchTerm=''; let requestFolderDateFilter=''; let requestConsigneeDrillMode='request'; let salesCreditSelectedRequestUid=''; let salesCreditSelectedFiles=[]; let salesCreditSubmitting=false; let requestDylanFilterMode='all'; let requestDylanFilterValue=''; let requestDylanSalesRepValue=''; let requestDylanLocationValue=''; let requestDylanFilterMenuOpen=''; let requestSuspendTagDockFilter='all'; let requestSuspendTagAssignedToFilter='all'; let requestSuspendTagCommonNameSearchTerm=''; let hiddenCompletedDockSuspendDcRequestMirrorIds=new Set(); let requestDylanPendingEntriesCacheKey=''; let requestDylanPendingEntriesCache=[]; let lastRequestHeaderSearchMode='';
+let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsigneeView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestConsigneeSearchTerm=''; let requestFolderDateFilter=''; let requestConsigneeDrillMode='request'; let salesCreditSelectedRequestUid=''; let salesCreditSelectedFiles=[]; let salesCreditSubmitting=false; let requestDylanFilterMode='all'; let requestDylanFilterValue=''; let requestDylanSalesRepValue=''; let requestDylanLocationValue=''; let requestDylanFilterMenuOpen=''; let requestSuspendTagDockFilter='all'; let requestSuspendTagContSizeFilter='all'; let requestSuspendTagAssignedToFilter='all'; let requestSuspendTagCommonNameSearchTerm=''; let hiddenCompletedDockSuspendDcRequestMirrorIds=new Set(); let requestDylanPendingEntriesCacheKey=''; let requestDylanPendingEntriesCache=[]; let lastRequestHeaderSearchMode='';
 
         function invalidateRequestViewResolvedCaches() {
             requestScopedItemsCacheKey = '';
@@ -30383,7 +30526,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.26.04').trim() || 'V2026.08.26.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.26.05').trim() || 'V2026.08.26.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33550,6 +33693,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDylanLocationValue = '';
             requestDylanFilterMenuOpen = '';
             requestSuspendTagDockFilter = 'all';
+            requestSuspendTagContSizeFilter = 'all';
             requestSuspendTagAssignedToFilter = 'all';
             requestSuspendTagCommonNameSearchTerm = '';
             syncRequestTabButtons();
@@ -33577,6 +33721,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 requestDylanSalesRepValue: String(requestDylanSalesRepValue || '').trim(),
                 requestDylanLocationValue: String(requestDylanLocationValue || '').trim(),
                 requestSuspendTagDockFilter: normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter),
+                requestSuspendTagContSizeFilter: normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter),
                 requestSuspendTagAssignedToFilter: normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter),
                 requestSuspendTagCommonNameSearchTerm: String(requestSuspendTagCommonNameSearchTerm || '').trim()
             };
@@ -33603,6 +33748,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDylanSalesRepValue = String(snapshot.requestDylanSalesRepValue || '').trim();
             requestDylanLocationValue = String(snapshot.requestDylanLocationValue || '').trim();
             requestSuspendTagDockFilter = normalizeRequestSuspendTagDockFilterValue(snapshot.requestSuspendTagDockFilter);
+            requestSuspendTagContSizeFilter = normalizeRequestSuspendTagContSizeFilterValue(snapshot.requestSuspendTagContSizeFilter);
             requestSuspendTagAssignedToFilter = normalizeRequestSuspendTagAssignedToFilterValue(snapshot.requestSuspendTagAssignedToFilter);
             requestSuspendTagCommonNameSearchTerm = String(snapshot.requestSuspendTagCommonNameSearchTerm || '').trim();
             if (!canUseRequestDylanViewerFilter()) {
@@ -33612,11 +33758,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 requestDylanLocationValue = '';
             }
             requestDylanFilterMenuOpen = '';
-            if (activeReqTab !== 'suspend-tag') {
-                requestSuspendTagDockFilter = 'all';
-                requestSuspendTagAssignedToFilter = 'all';
-                requestSuspendTagCommonNameSearchTerm = '';
-            }
             syncRequestTabButtons();
             return true;
         }
@@ -34915,7 +35056,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && getCurrentVisibleViewId() === 'drive'
                 && getDatasetRenderRowCount('master') > 0;
             if (item.key === 'master' && isMasterInitialLoadPartialForCurrentScope(state) && !canRenderMasterPreview) return false;
-            if (item.key === 'soc' && item.mode === 'full') return false;
+            if (item.key === 'soc' && item.mode === 'full') return getDatasetRenderRowCount('soc') > 0;
             if (canRenderMasterPreview) return true;
             if (state.initialLoaded || state.fullLoaded) return true;
             return !!((state.initialPromise || state.fullPromise) && getDatasetRenderRowCount(item.key) > 0);
@@ -39065,6 +39206,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const usernameKey = getRequestCapabilityUsernameKey(username);
             if (!usernameKey) return null;
             try {
+                localStorage.removeItem('gnc_request_capabilities_v1:' + usernameKey);
                 const cached = JSON.parse(localStorage.getItem(getRequestCapabilityCacheKey(usernameKey)) || 'null');
                 const capabilities = normalizeRequestCapabilities(cached && cached.capabilities, usernameKey);
                 if (!capabilities) return null;
@@ -73510,13 +73652,6 @@ function toggleDriveQuickRequestItem(domId) {
                     requestDylanFilterValue = '';
                     requestDylanSalesRepValue = '';
                     requestDylanFilterMenuOpen = '';
-                    requestSuspendTagDockFilter = 'all';
-                    requestSuspendTagAssignedToFilter = 'all';
-                    requestSuspendTagCommonNameSearchTerm = '';
-                } else {
-                    requestSuspendTagDockFilter = 'all';
-                    requestSuspendTagAssignedToFilter = 'all';
-                    requestSuspendTagCommonNameSearchTerm = '';
                 }
                 clearSelection();
             }, {
@@ -73533,11 +73668,6 @@ function toggleDriveQuickRequestItem(domId) {
                 force: false,
                 allowWhileInteractive: true,
                 minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
-            }).catch(() => {});
-            refreshActiveRequestQueueSideData('request-tab-side-data', {
-                force: false,
-                allowWhileInteractive: true,
-                minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
             }).catch(() => {});
             return scheduled;
         }
@@ -100425,10 +100555,22 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return row;
         }
 
+        let dockSuspendDcRequestMirrorRowsCacheKey = '';
+        let dockSuspendDcRequestMirrorRowsCache = [];
+
         function getDockSuspendDcRequestMirrorRows() {
             if (!canCurrentUserViewDockSuspendDcRequests()) return [];
+            const cacheKey = [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('soc'),
+                buildDockSuspendDcRequestMirrorSignature(socInventory),
+                normalizePushUsername(currentUser)
+            ].join('|');
+            if (dockSuspendDcRequestMirrorRowsCacheKey === cacheKey && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
+                return dockSuspendDcRequestMirrorRowsCache.slice();
+            }
             const seen = new Set();
-            return (Array.isArray(socInventory) ? socInventory : [])
+            const rows = (Array.isArray(socInventory) ? socInventory : [])
                 .map((item, index) => buildDockSuspendDcRequestMirrorRow(item, index))
                 .filter((row) => {
                     if (!row) return false;
@@ -100437,6 +100579,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     seen.add(id);
                     return true;
                 });
+            dockSuspendDcRequestMirrorRowsCacheKey = cacheKey;
+            dockSuspendDcRequestMirrorRowsCache = rows;
+            return rows.slice();
         }
 
         function appendDockSuspendDcRequestMirrorRows(items = []) {
@@ -100570,6 +100715,49 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return Array.from(optionByValue.values()).sort(compareRequestSuspendTagDockOptions);
         }
 
+        function getRequestSuspendTagContSizeRaw(item = null) {
+            const sourceRow = findDockSuspendDcRequestSourceRow(item) || {};
+            return String(firstNonEmptyValue(
+                item && item.CONTSIZE,
+                item && item.contsize,
+                item && item.CONT_SIZE,
+                sourceRow && sourceRow.CONTSIZE,
+                sourceRow && sourceRow.contsize,
+                sourceRow && sourceRow.CONT_SIZE,
+                ''
+            ) || '').trim();
+        }
+
+        function normalizeRequestSuspendTagContSizeFilterValue(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw || raw.toLowerCase() === 'all') return 'all';
+            if (raw.toLowerCase() === 'no-size') return 'no-size';
+            const sizeText = raw.replace(/^size:/i, '').trim();
+            const cleaned = sizeText.replace(/\s+/g, ' ').toUpperCase();
+            return cleaned ? `size:${cleaned}` : 'no-size';
+        }
+
+        function getRequestSuspendTagContSizeFilterOptionForItem(item = null) {
+            const rawSize = getRequestSuspendTagContSizeRaw(item);
+            const value = normalizeRequestSuspendTagContSizeFilterValue(rawSize || 'no-size');
+            return { value, label: rawSize || 'No Container Size' };
+        }
+
+        function getRequestSuspendTagContSizeFilterOptions(items = []) {
+            const optionByValue = new Map();
+            (Array.isArray(items) ? items : []).forEach((item) => {
+                const option = getRequestSuspendTagContSizeFilterOptionForItem(item);
+                const existing = optionByValue.get(option.value);
+                if (existing) existing.count += 1;
+                else optionByValue.set(option.value, { ...option, count: 1 });
+            });
+            return Array.from(optionByValue.values()).sort((a, b) => {
+                if (a.value === 'no-size' && b.value !== 'no-size') return 1;
+                if (b.value === 'no-size' && a.value !== 'no-size') return -1;
+                return String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
         function normalizeRequestSuspendTagAssignedToFilterValue(value = '') {
             const raw = String(value == null ? '' : value).trim();
             if (!raw || raw.toLowerCase() === 'all') return 'all';
@@ -100634,12 +100822,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const safeItems = Array.isArray(items) ? items : [];
             const filterValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
             if (filterValue === 'all') return safeItems;
-            const hasFilterValue = safeItems.some((item) => getRequestSuspendTagDockFilterOptionForItem(item).value === filterValue);
-            if (!hasFilterValue) {
-                requestSuspendTagDockFilter = 'all';
-                return safeItems;
-            }
             return safeItems.filter((item) => getRequestSuspendTagDockFilterOptionForItem(item).value === filterValue);
+        }
+
+        function applyRequestSuspendTagContSizeFilter(items = []) {
+            const safeItems = Array.isArray(items) ? items : [];
+            const filterValue = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
+            if (filterValue === 'all') return safeItems;
+            return safeItems.filter((item) => getRequestSuspendTagContSizeFilterOptionForItem(item).value === filterValue);
         }
 
         function applyRequestSuspendTagAssignedToFilter(items = []) {
@@ -100650,11 +100840,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             const filterValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
             if (filterValue === 'all') return safeItems;
-            const hasFilterValue = safeItems.some((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item).value === filterValue);
-            if (!hasFilterValue) {
-                requestSuspendTagAssignedToFilter = 'all';
-                return safeItems;
-            }
             return safeItems.filter((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item).value === filterValue);
         }
 
@@ -100703,78 +100888,57 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return true;
         }
 
-        function renderRequestSuspendTagFilters(allItems = [], searchItems = [], assignedItems = [], visibleItems = []) {
+        function renderRequestSuspendTagFilters(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
             const safeAllItems = Array.isArray(allItems) ? allItems : [];
             const safeSearchItems = Array.isArray(searchItems) ? searchItems : safeAllItems;
             const safeAssignedItems = Array.isArray(assignedItems) ? assignedItems : safeSearchItems;
+            const safeContSizeItems = Array.isArray(contSizeItems) ? contSizeItems : safeAssignedItems;
             const safeVisibleItems = Array.isArray(visibleItems) ? visibleItems : [];
             const canFilterAssigned = canUseRequestSuspendTagAssignedToFilter();
-            const assignedOptions = canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems) : [];
-            const assignedOptionValues = new Set(assignedOptions.map((option) => option.value));
-            const currentAssignedValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
-            if (!canFilterAssigned || (currentAssignedValue !== 'all' && !assignedOptionValues.has(currentAssignedValue))) {
-                requestSuspendTagAssignedToFilter = 'all';
-            } else {
-                requestSuspendTagAssignedToFilter = currentAssignedValue;
-            }
-            const selectedAssignedValue = requestSuspendTagAssignedToFilter;
-            const options = getRequestSuspendTagDockFilterOptions(safeAssignedItems);
-            const optionValues = new Set(options.map((option) => option.value));
-            const currentValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
-            if (currentValue !== 'all' && !optionValues.has(currentValue)) {
-                requestSuspendTagDockFilter = 'all';
-            } else {
-                requestSuspendTagDockFilter = currentValue;
-            }
-            const selectedValue = requestSuspendTagDockFilter;
-            const dockOptionsHtml = options.map((option) => {
-                const selected = option.value === selectedValue ? ' selected' : '';
-                const label = `${option.label} (${option.count})`;
-                return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(label)}</option>`;
-            }).join('');
-            const assignedOptionsHtml = canFilterAssigned ? assignedOptions.map((option) => {
-                const selected = option.value === selectedAssignedValue ? ' selected' : '';
-                const label = `${option.label} (${option.count})`;
-                return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(label)}</option>`;
-            }).join('') : '';
+            const selectedAssignedValue = canFilterAssigned ? normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter) : 'all';
+            const selectedContSizeValue = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
+            const selectedDockValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
+            requestSuspendTagAssignedToFilter = selectedAssignedValue;
+            requestSuspendTagContSizeFilter = selectedContSizeValue;
+            requestSuspendTagDockFilter = selectedDockValue;
+            const ensureSelectedOption = (options, value, label) => {
+                const rows = Array.isArray(options) ? options.slice() : [];
+                if (value !== 'all' && !rows.some((option) => option.value === value)) rows.push({ value, label, count: 0 });
+                return rows;
+            };
+            const assignedOptions = ensureSelectedOption(
+                canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems) : [],
+                selectedAssignedValue,
+                formatRequestSuspendTagAssignedToLabel(selectedAssignedValue)
+            );
+            const contSizeOptions = ensureSelectedOption(
+                getRequestSuspendTagContSizeFilterOptions(safeAssignedItems),
+                selectedContSizeValue,
+                selectedContSizeValue === 'no-size' ? 'No Container Size' : selectedContSizeValue.replace(/^size:/i, '')
+            );
+            const dockOptions = ensureSelectedOption(
+                getRequestSuspendTagDockFilterOptions(safeContSizeItems),
+                selectedDockValue,
+                formatRequestSuspendTagDockLabel(selectedDockValue)
+            );
+            const optionMarkup = (options, selectedValue) => options.map((option) => `<option value="${escapeHtml(option.value)}"${option.value === selectedValue ? ' selected' : ''}>${escapeHtml(`${option.label} (${option.count})`)}</option>`).join('');
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
-            const clearButtonClass = searchTerm ? '' : ' hidden';
-            const hasAssignedFilter = canFilterAssigned && selectedAssignedValue !== 'all';
-            const hasDockFilter = selectedValue !== 'all';
-            const hasAnyFilter = !!searchTerm || hasAssignedFilter || hasDockFilter;
-            const countLabel = hasAnyFilter
-                ? `${safeVisibleItems.length} of ${safeAllItems.length} rows`
-                : `${safeVisibleItems.length} rows`;
-            const totalLabel = hasAnyFilter ? `<span class="mt-1 block text-[10px] text-emerald-500">${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
-            const assignedFilterHtml = canFilterAssigned ? `<label class="block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Assigned To
-                    <select id="request-suspend-tag-assigned-filter" class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[15px] font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setRequestSuspendTagAssignedToFilter(this.value)" onclick="event.stopPropagation()">
-                        <option value="all"${selectedAssignedValue === 'all' ? ' selected' : ''}>All Users (${escapeHtml(String(safeSearchItems.length))})</option>
-                        ${assignedOptionsHtml}
-                    </select>
-                </label>` : '';
-            const precisionSearch = !!(document.body && document.body.classList.contains('ops-precision-pilot'));
-            const commonSearchHtml = precisionSearch ? '' : `<label class="relative block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Common Name
-                    <input id="request-suspend-tag-common-search" type="text" class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 pr-12 text-[16px] font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="return setRequestSuspendTagCommonNameSearch(this.value, event)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
-                    <button id="request-suspend-tag-common-clear" type="button" class="absolute right-3 top-[31px] flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-emerald-50 hover:text-[#007a4d]${clearButtonClass}" onclick="event.stopPropagation(); return clearRequestSuspendTagCommonNameSearch(event)" aria-label="Clear common name search"><i class="ph-bold ph-x text-lg"></i></button>
-                </label>`;
-            const gridColsClass = precisionSearch
-                ? (canFilterAssigned ? 'md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]' : 'md:grid-cols-[minmax(0,1fr)_auto]')
-                : (canFilterAssigned ? 'md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)_auto]' : 'md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]');
-            const dockFilterHtml = `<label class="workflow-control"><span>Dock</span>
-                <select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()">
-                    <option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeAssignedItems.length))})</option>
-                    ${dockOptionsHtml}
-                </select>
-            </label>`;
-            const assignedToolbarHtml = assignedFilterHtml
-                .replace('class="block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"', 'class="workflow-control"')
-                .replace(/ class="mt-1 min-h-\[46px\][^"]+"/, '');
-            const countHtml = `<div id="request-suspend-tag-filter-count" class="workflow-control-count">${escapeHtml(countLabel)}${totalLabel}</div>`;
-            renderRequestCategoryToolbar(`${assignedToolbarHtml}${dockFilterHtml}${countHtml}`);
+            const hasAnyFilter = !!searchTerm || selectedAssignedValue !== 'all' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all';
+            const countLabel = hasAnyFilter ? `${safeVisibleItems.length} of ${safeAllItems.length} rows` : `${safeVisibleItems.length} rows`;
+            const commonSearchHtml = `<label class="workflow-control"><span>Common Name</span><span class="request-suspend-search-wrap">
+                <input id="request-suspend-tag-common-search" type="search" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="return setRequestSuspendTagCommonNameSearch(this.value,event)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
+                <button id="request-suspend-tag-common-clear" type="button" class="${searchTerm ? '' : 'hidden'}" onclick="event.stopPropagation();return clearRequestSuspendTagCommonNameSearch(event)" aria-label="Clear common name search"><i class="ph-bold ph-x"></i></button>
+            </span></label>`;
+            const assignedHtml = canFilterAssigned ? `<label class="workflow-control"><span>Assigned To</span><select id="request-suspend-tag-assigned-filter" onchange="return setRequestSuspendTagAssignedToFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedAssignedValue === 'all' ? ' selected' : ''}>All Users (${escapeHtml(String(safeSearchItems.length))})</option>${optionMarkup(assignedOptions, selectedAssignedValue)}</select></label>` : '';
+            const contSizeHtml = `<label class="workflow-control"><span>Container Size</span><select id="request-suspend-tag-contsize-filter" onchange="return setRequestSuspendTagContSizeFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedContSizeValue === 'all' ? ' selected' : ''}>All Sizes (${escapeHtml(String(safeAssignedItems.length))})</option>${optionMarkup(contSizeOptions, selectedContSizeValue)}</select></label>`;
+            const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
+            const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
+            const countHtml = `<div id="request-suspend-tag-filter-count" class="workflow-control-count">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
+            renderRequestCategoryToolbar(`${commonSearchHtml}${assignedHtml}${contSizeHtml}${dockHtml}${clearHtml}${countHtml}`);
             return '';
         }
 
-        function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], visibleItems = []) {
+        function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
             const input = document.getElementById('request-suspend-tag-common-search');
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
             if (input && document.activeElement !== input && String(input.value || '') !== searchTerm) input.value = searchTerm;
@@ -100784,30 +100948,43 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const safeAllItems = Array.isArray(allItems) ? allItems : [];
             const safeSearchItems = Array.isArray(searchItems) ? searchItems : safeAllItems;
             const safeAssignedItems = Array.isArray(assignedItems) ? assignedItems : safeSearchItems;
+            const safeContSizeItems = Array.isArray(contSizeItems) ? contSizeItems : safeAssignedItems;
             const safeVisibleItems = Array.isArray(visibleItems) ? visibleItems : [];
             const canFilterAssigned = canUseRequestSuspendTagAssignedToFilter();
             const assignedOptions = canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems) : [];
-            const assignedOptionValues = new Set(assignedOptions.map((option) => option.value));
             const currentAssignedValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
-            requestSuspendTagAssignedToFilter = canFilterAssigned && (currentAssignedValue === 'all' || assignedOptionValues.has(currentAssignedValue)) ? currentAssignedValue : 'all';
+            requestSuspendTagAssignedToFilter = canFilterAssigned ? currentAssignedValue : 'all';
             const selectedAssignedValue = requestSuspendTagAssignedToFilter;
             const assignedSelect = document.getElementById('request-suspend-tag-assigned-filter');
             if (assignedSelect && document.activeElement !== assignedSelect) {
-                const nextAssignedOptionsHtml = `<option value="all"${selectedAssignedValue === 'all' ? ' selected' : ''}>All Users (${escapeHtml(String(safeSearchItems.length))})</option>` + assignedOptions.map((option) => {
+                const selectedAssignedOptions = assignedOptions.slice();
+                if (selectedAssignedValue !== 'all' && !selectedAssignedOptions.some((option) => option.value === selectedAssignedValue)) selectedAssignedOptions.push({ value: selectedAssignedValue, label: formatRequestSuspendTagAssignedToLabel(selectedAssignedValue), count: 0 });
+                const nextAssignedOptionsHtml = `<option value="all"${selectedAssignedValue === 'all' ? ' selected' : ''}>All Users (${escapeHtml(String(safeSearchItems.length))})</option>` + selectedAssignedOptions.map((option) => {
                     const selected = option.value === selectedAssignedValue ? ' selected' : '';
                     return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(`${option.label} (${option.count})`)}</option>`;
                 }).join('');
                 if (assignedSelect.innerHTML !== nextAssignedOptionsHtml) assignedSelect.innerHTML = nextAssignedOptionsHtml;
                 if (assignedSelect.value !== selectedAssignedValue) assignedSelect.value = selectedAssignedValue;
             }
-            const options = getRequestSuspendTagDockFilterOptions(safeAssignedItems);
-            const optionValues = new Set(options.map((option) => option.value));
+            const contSizeOptions = getRequestSuspendTagContSizeFilterOptions(safeAssignedItems);
+            const selectedContSizeValue = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
+            const selectedContSizeOptions = contSizeOptions.slice();
+            if (selectedContSizeValue !== 'all' && !selectedContSizeOptions.some((option) => option.value === selectedContSizeValue)) selectedContSizeOptions.push({ value: selectedContSizeValue, label: selectedContSizeValue === 'no-size' ? 'No Container Size' : selectedContSizeValue.replace(/^size:/i, ''), count: 0 });
+            const contSizeSelect = document.getElementById('request-suspend-tag-contsize-filter');
+            if (contSizeSelect && document.activeElement !== contSizeSelect) {
+                const nextContSizeOptionsHtml = `<option value="all"${selectedContSizeValue === 'all' ? ' selected' : ''}>All Sizes (${escapeHtml(String(safeAssignedItems.length))})</option>` + selectedContSizeOptions.map((option) => `<option value="${escapeHtml(option.value)}"${option.value === selectedContSizeValue ? ' selected' : ''}>${escapeHtml(`${option.label} (${option.count})`)}</option>`).join('');
+                if (contSizeSelect.innerHTML !== nextContSizeOptionsHtml) contSizeSelect.innerHTML = nextContSizeOptionsHtml;
+                if (contSizeSelect.value !== selectedContSizeValue) contSizeSelect.value = selectedContSizeValue;
+            }
+            const options = getRequestSuspendTagDockFilterOptions(safeContSizeItems);
             const currentValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
-            requestSuspendTagDockFilter = currentValue !== 'all' && !optionValues.has(currentValue) ? 'all' : currentValue;
+            requestSuspendTagDockFilter = currentValue;
             const selectedValue = requestSuspendTagDockFilter;
             const select = document.getElementById('request-suspend-tag-dock-filter');
             if (select && document.activeElement !== select) {
-                const nextOptionsHtml = `<option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeAssignedItems.length))})</option>` + options.map((option) => {
+                const selectedDockOptions = options.slice();
+                if (selectedValue !== 'all' && !selectedDockOptions.some((option) => option.value === selectedValue)) selectedDockOptions.push({ value: selectedValue, label: formatRequestSuspendTagDockLabel(selectedValue), count: 0 });
+                const nextOptionsHtml = `<option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>` + selectedDockOptions.map((option) => {
                     const selected = option.value === selectedValue ? ' selected' : '';
                     return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(`${option.label} (${option.count})`)}</option>`;
                 }).join('');
@@ -100816,28 +100993,30 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             const count = document.getElementById('request-suspend-tag-filter-count');
             if (count) {
-                const hasAnyFilter = !!searchTerm || (canFilterAssigned && selectedAssignedValue !== 'all') || selectedValue !== 'all';
+                const hasAnyFilter = !!searchTerm || (canFilterAssigned && selectedAssignedValue !== 'all') || selectedContSizeValue !== 'all' || selectedValue !== 'all';
                 const countLabel = hasAnyFilter
                     ? `${safeVisibleItems.length} of ${safeAllItems.length} rows`
                     : `${safeVisibleItems.length} rows`;
-                const totalLabel = hasAnyFilter ? `<span class="mt-1 block text-[10px] text-emerald-500">${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
+                const totalLabel = hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
                 count.innerHTML = `${escapeHtml(countLabel)}${totalLabel}`;
             }
+            const clearFilters = document.getElementById('request-suspend-tag-clear-filters');
+            if (clearFilters) clearFilters.classList.toggle('hidden', !(!!searchTerm || selectedAssignedValue !== 'all' || selectedContSizeValue !== 'all' || selectedValue !== 'all'));
             return true;
         }
 
-        function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], visibleItems = []) {
+        function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
             if (!container) return null;
             const filterShell = container.querySelector('#request-suspend-tag-filter-shell');
             const resultsShell = container.querySelector('#request-suspend-tag-results');
             const activeInput = document.activeElement && document.activeElement.id === 'request-suspend-tag-common-search';
             if (!filterShell || !resultsShell) {
-                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, visibleItems)}</div><div id="request-suspend-tag-results"></div>`);
+                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems)}</div><div id="request-suspend-tag-results"></div>`);
             } else if (activeInput) {
-                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, visibleItems);
+                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             } else {
-                filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, visibleItems);
-                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, visibleItems);
+                filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
+                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             }
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
             return container.querySelector('#request-suspend-tag-results');
@@ -100923,11 +101102,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
-        function setRequestSuspendTagAssignedToFilter(value = 'all') {
-            requestSuspendTagAssignedToFilter = canUseRequestSuspendTagAssignedToFilter()
-                ? normalizeRequestSuspendTagAssignedToFilterValue(value)
-                : 'all';
-            requestSuspendTagDockFilter = 'all';
+        function setRequestSuspendTagContSizeFilter(value = 'all') {
+            requestSuspendTagContSizeFilter = normalizeRequestSuspendTagContSizeFilterValue(value);
             requestViewLevel = 0;
             selectedReqFolder = null;
             selectedReqRepView = null;
@@ -100936,6 +101112,37 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             selectedReqFolderView = null;
             clearSelection();
             syncRequestTabButtons();
+            markViewDirty('request');
+            renderRequest();
+            schedulePersistAppFilterState(120);
+            return false;
+        }
+
+        function setRequestSuspendTagAssignedToFilter(value = 'all') {
+            requestSuspendTagAssignedToFilter = canUseRequestSuspendTagAssignedToFilter()
+                ? normalizeRequestSuspendTagAssignedToFilterValue(value)
+                : 'all';
+            requestViewLevel = 0;
+            selectedReqFolder = null;
+            selectedReqRepView = null;
+            selectedReqCustView = null;
+            selectedReqConsigneeView = null;
+            selectedReqFolderView = null;
+            clearSelection();
+            syncRequestTabButtons();
+            markViewDirty('request');
+            renderRequest();
+            schedulePersistAppFilterState(120);
+            return false;
+        }
+
+        function clearRequestSuspendTagFilters(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            requestSuspendTagCommonNameSearchTerm = '';
+            requestSuspendTagAssignedToFilter = 'all';
+            requestSuspendTagContSizeFilter = 'all';
+            requestSuspendTagDockFilter = 'all';
+            clearSelection();
             markViewDirty('request');
             renderRequest();
             schedulePersistAppFilterState(120);
@@ -100960,37 +101167,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ].join('\u001F'))
                 .sort()
                 .join('\u001E');
-        }
-
-        async function refreshDockSuspendDcRequestMirrorsFromServer(reason = 'request-live-sync') {
-            if (!canCurrentUserViewDockSuspendDcRequests() || navigator.onLine === false) return false;
-            try {
-                const remoteRows = await fetchAllSupabaseRows('ph_soc_master', 'select=*&order=unique_id.asc');
-                const formattedRows = formatFetchedRows(remoteRows || [], 'ph_soc_master').map((row) => normalizeSocDockRowAliases(row));
-                const localSignature = buildDockSuspendDcRequestMirrorSignature(socInventory);
-                const remoteSignature = buildDockSuspendDcRequestMirrorSignature(formattedRows);
-                const socState = getDatasetState('soc');
-                if (remoteSignature === localSignature && socState.fullLoaded) {
-                    updateFooterRequestBadge();
-                    return false;
-                }
-                processAndLoadData({ socData: formattedRows });
-                socState.initialLoaded = true;
-                socState.fullLoaded = true;
-                socState.lastLoadedAt = new Date().toISOString();
-                invalidateResolvedViewStateCaches();
-                updateFooterRequestBadge();
-                markViewDirty('request');
-                markViewDirty('reports');
-                markViewDirty('docks');
-                if (isViewVisible('request')) scheduleRequestRender(0, REQUEST_REALTIME_UI_DELAY_MS, true);
-                if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, 0, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
-                if (isViewVisible('docks')) scheduleDocksRender(0);
-                persistCurrentCache(false, reason);
-                return true;
-            } catch (error) {
-                return false;
-            }
         }
 
         function getScopedRequestItems(items = requestsInventory) {
@@ -102375,7 +102551,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (activeReqTab === 'pending') {
                 items = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             } else if (activeReqTab === 'suspend-tag') {
-                items = applyRequestSuspendTagDockFilter(applyRequestSuspendTagAssignedToFilter(applyRequestSuspendTagCommonNameSearchFilter(getSuspendTagRequestItems(items))));
+                items = applyRequestSuspendTagDockFilter(applyRequestSuspendTagContSizeFilter(applyRequestSuspendTagAssignedToFilter(applyRequestSuspendTagCommonNameSearchFilter(getSuspendTagRequestItems(items)))));
             } else if (activeReqTab === 'reps') {
                 items = mergeRequestHistoryRowsForRequestFolders(items);
                 items = items.filter(i => isRegularRequestQueueItem(i) && doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED);
@@ -103374,25 +103550,27 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (activeReqTab === 'suspend-tag') {
                 const crumbText = `Suspend Tag${requestFilterSuffix}`;
                 const allSuspendTagItems = getSuspendTagRequestItems(items).sort(compareRequestSuspendTagRows);
-                const searchSuspendTagItems = applyRequestSuspendTagCommonNameSearchFilter(allSuspendTagItems).sort(compareRequestSuspendTagRows);
-                const assignedSuspendTagItems = applyRequestSuspendTagAssignedToFilter(searchSuspendTagItems).sort(compareRequestSuspendTagRows);
-                const suspendTagItems = applyRequestSuspendTagDockFilter(assignedSuspendTagItems).sort(compareRequestSuspendTagRows);
+                const searchSuspendTagItems = applyRequestSuspendTagCommonNameSearchFilter(allSuspendTagItems);
+                const assignedSuspendTagItems = applyRequestSuspendTagAssignedToFilter(searchSuspendTagItems);
+                const contSizeSuspendTagItems = applyRequestSuspendTagContSizeFilter(assignedSuspendTagItems);
+                const suspendTagItems = applyRequestSuspendTagDockFilter(contSizeSuspendTagItems);
                 if (!allSuspendTagItems.length) {
                     applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No suspend tag rows.</div>`, 'request:suspend-tag:empty');
                     return;
                 }
                 const searchKey = normalizeSearchValue(requestSuspendTagCommonNameSearchTerm);
                 const assignedKey = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
+                const contSizeKey = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
                 const planstartSignature = suspendTagItems.map((item) => {
                     const info = getDockSuspendDcRequestPlanstartInfo(item);
                     return `${String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim()}:${info.value}:${info.tone}:${info.valid ? 1 : 0}`;
                 }).join('|');
-                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${assignedKey}:${requestSuspendTagDockFilter}:${searchKey}:${planstartSignature}`, `${crumbText}|${assignedKey}|${requestSuspendTagDockFilter}|${searchKey}|${planstartSignature}`, suspendTagItems);
-                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allSuspendTagItems, searchSuspendTagItems, assignedSuspendTagItems, suspendTagItems);
+                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${assignedKey}:${contSizeKey}:${requestSuspendTagDockFilter}:${searchKey}:${planstartSignature}`, `${crumbText}|${assignedKey}|${contSizeKey}|${requestSuspendTagDockFilter}|${searchKey}|${planstartSignature}`, suspendTagItems);
+                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allSuspendTagItems, searchSuspendTagItems, assignedSuspendTagItems, contSizeSuspendTagItems, suspendTagItems);
                 renderMarkupChunkedByKey('request-main', resultsContainer, crumb, suspendTagItems, crumbText, (item) => generateCard(item, 'request', 'status-red'), {
                     approxCardHeight: 360,
                     renderSignature: renderKey,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows for this dock.'}</div>`,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.'}</div>`,
                     onComplete: () => {
                         repairVisibleDockSuspendDcPlanstartCardTones(resultsContainer);
                         decorateRequestRows();
@@ -103636,6 +103814,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         let pendingRequestSourceCompletionReconcileInFlight = false;
         let requestQueueSideRefreshInFlight = false;
         let requestQueueSideRefreshLastAt = 0;
+        let requestSuspendTagRefreshToken = 0;
         let requestRecountMasterRefreshInFlight = false;
         let requestRecountMasterRefreshLastAt = 0;
         let requestRecountMasterRowIds = new Set();
@@ -103853,6 +104032,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!force && requestQueueSideRefreshLastAt && (now - requestQueueSideRefreshLastAt) < minInterval) return false;
             requestQueueSideRefreshInFlight = true;
             requestQueueSideRefreshLastAt = now;
+            const suspendRefreshToken = safeTab === 'suspend-tag' ? ++requestSuspendTagRefreshToken : 0;
             let changed = false;
             try {
                 const targets = [];
@@ -103889,11 +104069,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         allowWhileInteractive: safeOptions.allowWhileInteractive === true,
                         retryReason: reason || 'request-queue-side-refresh'
                     }, 1);
-                    if (safeTab === 'suspend-tag') {
-                        await refreshDockSuspendDcRequestMirrorsFromServer(reason || 'request-suspend-tag-side-refresh').catch(() => {});
-                    }
                     changed = true;
                 }
+                if (safeTab === 'suspend-tag' && (suspendRefreshToken !== requestSuspendTagRefreshToken || String(activeReqTab || '').trim().toLowerCase() !== safeTab)) return false;
                 if (changed && isViewVisible('request') && String(activeReqTab || '').trim().toLowerCase() === safeTab) {
                     scheduleRequestRender(0, REQUEST_REALTIME_UI_DELAY_MS, true);
                 }
@@ -103991,7 +104169,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         allowWhileInteractive: true,
                         minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
                     });
-                    await refreshDockSuspendDcRequestMirrorsFromServer('request-live-sync-soc');
                     updateFooterRequestBadge();
                     if (sideDataChanged) {
                         refreshLocalRequestViewState('request-live-sync-side-data', {
@@ -104024,7 +104201,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 state.fullLoaded = true;
                 state.lastLoadedAt = new Date().toISOString();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(formattedRows);
-                await refreshDockSuspendDcRequestMirrorsFromServer('request-live-sync-soc');
                 updateFooterRequestBadge();
                 schedulePendingRequestSourceCompletionReconcile(36, 'request-live-sync');
                 refreshLocalRequestViewState('request-live-sync', {
@@ -104078,7 +104254,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 state.fullLoaded = true;
                 state.lastLoadedAt = new Date().toISOString();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
-                await refreshDockSuspendDcRequestMirrorsFromServer('request-force-refresh-soc');
                 updateFooterRequestBadge();
                 schedulePendingRequestSourceCompletionReconcile(24, reason || 'request-force-refresh');
                 markViewDirty('request');
@@ -148020,7 +148195,6 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getDockSuspendDcRequestLinkedMasterRow(mirrorRow = null, sourceRow = null) {
             return findLinkedMasterRow(mirrorRow)
                 || findLinkedMasterRow(sourceRow)
-                || getFallbackMasterPhotoRow(mirrorRow || sourceRow)
                 || null;
         }
 
@@ -150520,14 +150694,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             const inputEl = document.getElementById(safePrefix + 'av-note');
             if (!inputEl) return;
-            const inputText = String(inputEl.value || '').trim();
+            const requestSheetSearch = safePrefix === 'req-' && document.body.classList.contains('request-av-note-sheet-open')
+                ? document.getElementById('request-av-note-sheet-search')
+                : null;
+            const fromRequestSheet = safeOptions.fromRequestSheet === true || !!requestSheetSearch;
+            const inputText = String(safeOptions.searchText !== undefined
+                ? safeOptions.searchText
+                : (requestSheetSearch ? requestSheetSearch.value : inputEl.value) || '').trim();
             const inputVal = safeOptions.showAll === true ? '' : inputText.toUpperCase();
-            const keyboardOwnsInput = detailMeasurementKeyboardTarget === inputEl || (inputEl.dataset && inputEl.dataset.detailMeasurementKeyboard === 'true');
-            const shouldRestoreFocus = document.activeElement === inputEl || keyboardOwnsInput;
+            const keyboardOwnsInput = !fromRequestSheet && (detailMeasurementKeyboardTarget === inputEl || (inputEl.dataset && inputEl.dataset.detailMeasurementKeyboard === 'true'));
+            const shouldRestoreFocus = !fromRequestSheet && (document.activeElement === inputEl || keyboardOwnsInput);
             const restoreStart = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : inputText.length;
             const restoreEnd = typeof inputEl.selectionEnd === 'number' ? inputEl.selectionEnd : restoreStart;
             const scrollState = captureAvNoteScrollState(inputEl);
-            const mobileLocked = isMobileTextEntryPositionLocked(inputEl) || (shouldUseMobileTextEntryStabilizer() && document.activeElement === inputEl);
+            const mobileLocked = !fromRequestSheet && (isMobileTextEntryPositionLocked(inputEl) || (shouldUseMobileTextEntryStabilizer() && document.activeElement === inputEl));
             const keepAvNoteFocus = () => {
                 if (!shouldRestoreFocus) {
                     if (mobileLocked) restoreAvNoteScrollState(scrollState);
@@ -150605,11 +150785,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             const input = document.getElementById(normalizedPrefix + 'av-note');
             const list = document.getElementById(normalizedPrefix + 'av-dropdown-list');
             if (!input) return false;
-            const scrollState = captureAvNoteScrollState(input);
+            const requestSheetWasOpen = normalizedPrefix === 'req-' && document.body.classList.contains('request-av-note-sheet-open');
+            const scrollState = requestSheetWasOpen ? null : captureAvNoteScrollState(input);
             input.value = safeNote.toUpperCase();
             if (list) hideAvNoteDropdown(normalizedPrefix);
             const nextCaret = String(input.value || '').length;
-            preserveAvNoteTextFocus(input, nextCaret, nextCaret, { force: safeOptions.fromPressStart === true });
+            if (!requestSheetWasOpen) preserveAvNoteTextFocus(input, nextCaret, nextCaret, { force: safeOptions.fromPressStart === true });
             if (safeOptions.fromPressStart) {
                 avNoteOptionLastPressAt = Date.now();
                 avNoteOptionLastPressPrefix = normalizedPrefix;
@@ -150621,7 +150802,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 restoreAvNoteScrollState(scrollState);
                 return false;
             }
-            const restoreAfterSave = () => restoreAvNoteScrollState(scrollState);
+            const restoreAfterSave = () => {
+                if (!requestSheetWasOpen && scrollState) restoreAvNoteScrollState(scrollState);
+            };
             try {
                 const result = saveData(false, normalizedPrefix, true, null, { photoChanged: true });
                 if (result && typeof result.finally === 'function') {
@@ -150633,7 +150816,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 restoreAfterSave();
                 throw error;
             }
-            restoreAvNoteScrollState(scrollState);
+            if (!requestSheetWasOpen && scrollState) restoreAvNoteScrollState(scrollState);
             return false;
         }
 
@@ -150792,15 +150975,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             if (!publicUrl) throw new Error('Photo upload did not return a public URL.');
                             applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
                             if (isSuspendTagRequestUpload) {
-                                applyUploadedPhotoFieldsToItem(itemToUpload, 'dock-', publicUrl, fileName);
-                                if (suspendTagSourceUploadItem && suspendTagSourceUploadItem !== itemToUpload) {
-                                    applyUploadedPhotoFieldsToItem(suspendTagSourceUploadItem, 'req-', publicUrl, fileName);
-                                    applyUploadedPhotoFieldsToItem(suspendTagSourceUploadItem, 'dock-', publicUrl, fileName);
-                                }
-                                syncDockSuspendDcRequestPhotoAliases(itemToUpload, suspendTagSourceUploadItem);
-                                refreshPhotoAcrossViews(itemToUpload, prefix);
-                                if (suspendTagSourceUploadItem) refreshPhotoAcrossViews(suspendTagSourceUploadItem, 'dock-');
-                                refreshLocalDockSuspendDcRequestState('dock-suspend-photo-upload', suspendTagSourceUploadItem || itemToUpload);
+                                applySuspendTagUploadedPhotoEverywhere(itemToUpload, suspendTagSourceUploadItem, publicUrl, fileName);
                             } else if (detailUploadItem && detailUploadItem !== itemToUpload) {
                                 applyUploadedPhotoFieldsToItem(detailUploadItem, prefix, publicUrl, fileName);
                                 mergeRequestPhotoFields(itemToUpload, detailUploadItem);

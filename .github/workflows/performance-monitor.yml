@@ -61,6 +61,7 @@ jobs:
           cp supabase/migrations/20260825222325_stabilize_request_capabilities.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260825223040_grant_request_policy_helper.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260826133016_allow_chance_alldredge_request_create_own.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260826170020_request_capabilities_v2_restore_kayla.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"

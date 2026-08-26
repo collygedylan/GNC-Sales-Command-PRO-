@@ -7,6 +7,7 @@ const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.met
 const capabilityMigration = readFileSync(new URL('../supabase/migrations/20260825222325_stabilize_request_capabilities.sql', import.meta.url), 'utf8');
 const capabilityPolicyGrantMigration = readFileSync(new URL('../supabase/migrations/20260825223040_grant_request_policy_helper.sql', import.meta.url), 'utf8');
 const chanceCapabilityMigration = readFileSync(new URL('../supabase/migrations/20260826133016_allow_chance_alldredge_request_create_own.sql', import.meta.url), 'utf8');
+const kaylaCapabilityV2Migration = readFileSync(new URL('../supabase/migrations/20260826170020_request_capabilities_v2_restore_kayla.sql', import.meta.url), 'utf8');
 
 test('Request permissions come from one authenticated capability contract', () => {
   assert.match(capabilityMigration, /create or replace function public\.get_request_capabilities\(\)/);
@@ -18,7 +19,9 @@ test('Request permissions come from one authenticated capability contract', () =
   assert.match(capabilityMigration, /grant execute on function public\.get_request_capabilities\(\) to authenticated/);
   assert.doesNotMatch(html, /REQUEST_(?:GLOBAL_ACCESS_TOKENS|REP_ENABLED_TOKENS|ROW_ARCHIVE_USERS)/);
   assert.match(html, /supabaseRpc\('get_request_capabilities'/);
-  assert.match(html, /REQUEST_CAPABILITY_CACHE_PREFIX = 'gnc_request_capabilities_v1:'/);
+  assert.match(html, /REQUEST_CAPABILITY_CONTRACT_VERSION = 2/);
+  assert.match(html, /REQUEST_CAPABILITY_CACHE_PREFIX = 'gnc_request_capabilities_v2:'/);
+  assert.match(html, /localStorage\.removeItem\('gnc_request_capabilities_v1:' \+ usernameKey\)/);
   assert.match(html, /REQUEST_CAPABILITY_LOAD_FAILED/);
 
   const finalizeLoginStart = html.indexOf('async function finalizeLogin');
@@ -29,6 +32,17 @@ test('Request permissions come from one authenticated capability contract', () =
     html.indexOf('function canCurrentUserArchiveRequestRow(item')
   );
   assert.match(permissionCode, /capabilities\.canArchive/);
+});
+
+test('Kayla is evaluated as a global Request manager before SalesRep exclusions', () => {
+  assert.match(kaylaCapabilityV2Migration, /begin;[\s\S]*commit;/);
+  assert.match(kaylaCapabilityV2Migration, /create or replace function private\.can_create_general_requests\(\)/);
+  assert.match(kaylaCapabilityV2Migration, /username_key[\s\S]*\('dylan_collyge', 'jd_jones', 'megan_kelly', 'kayla_knepp'\)[\s\S]*or[\s\S]*not private\.is_sales_request_role\(\)/);
+  assert.match(kaylaCapabilityV2Migration, /'contract_version', 2/);
+  assert.match(kaylaCapabilityV2Migration, /when global_access then 'global'/);
+  assert.match(kaylaCapabilityV2Migration, /set search_path = ''/);
+  assert.match(kaylaCapabilityV2Migration, /revoke all on function public\.get_request_capabilities\(\)[\s\S]*from public, anon/);
+  assert.match(kaylaCapabilityV2Migration, /grant execute on function public\.get_request_capabilities\(\)[\s\S]*to authenticated/);
 });
 
 test('Bloom Picker Request rep selector merges the configured roster with normalized REP profiles', () => {
@@ -115,6 +129,57 @@ test('the final mobile Request layer overrides legacy clipping and keeps touch a
   assert.match(finalCss, /request-av-note-sheet-open[\s\S]*overflow-y: auto !important[\s\S]*touch-action: pan-y !important/);
   assert.doesNotMatch(css, /height:\s*214px\s*!important/);
   assert.doesNotMatch(css, /height:\s*188px\s*!important/);
+});
+
+test('Request AV Notes use one body-level independently scrollable mobile sheet', () => {
+  const sheetCode = html.slice(
+    html.indexOf('function ensureRequestAvNoteSheet'),
+    html.indexOf('function isAvNoteInput')
+  );
+  assert.match(sheetCode, /document\.body\.appendChild\(sheet\)/);
+  assert.match(sheetCode, /request-av-note-sheet-list-host/);
+  assert.match(sheetCode, /host\.appendChild\(targetList\)/);
+  assert.match(sheetCode, /request-av-note-sheet-search/);
+  assert.match(sheetCode, /filterAvNotes\('req-', \{ searchText: search\.value, fromRequestSheet: true \}\)/);
+  assert.match(html, /onblur="handleRequestAvNoteInputBlur\(\)"/);
+  assert.match(html, /function handleRequestAvNoteInputBlur\(\)[\s\S]*sheet\.contains\(document\.activeElement\)[\s\S]*if \(!focusStayedInsideSheet\) hideAvNoteDropdown\('req-'\)/);
+  assert.match(html, /request-av-note-sheet #req-av-dropdown-list\{[\s\S]*overflow-y:auto!important[\s\S]*-webkit-overflow-scrolling:touch!important[\s\S]*touch-action:pan-y!important/);
+  assert.match(html, /body\.request-av-note-sheet-open #main-scroll-area\{[\s\S]*overflow:hidden!important/);
+  assert.match(html, /#req-save-action-wrap\{[\s\S]*position:fixed!important[\s\S]*bottom:calc\(var\(--mobile-bottom-nav-reserve/);
+});
+
+test('Suspend Tag filters compose in one pass and retain cached content during refresh', () => {
+  assert.match(html, /let requestSuspendTagDockFilter='all'; let requestSuspendTagContSizeFilter='all'; let requestSuspendTagAssignedToFilter='all';/);
+  assert.match(html, /function applyRequestSuspendTagCommonNameSearchFilter/);
+  assert.match(html, /function applyRequestSuspendTagAssignedToFilter/);
+  assert.match(html, /function applyRequestSuspendTagContSizeFilter/);
+  assert.match(html, /function applyRequestSuspendTagDockFilter/);
+  assert.match(html, /const searchSuspendTagItems = applyRequestSuspendTagCommonNameSearchFilter\(allSuspendTagItems\);[\s\S]*const assignedSuspendTagItems = applyRequestSuspendTagAssignedToFilter\(searchSuspendTagItems\);[\s\S]*const contSizeSuspendTagItems = applyRequestSuspendTagContSizeFilter\(assignedSuspendTagItems\);[\s\S]*const suspendTagItems = applyRequestSuspendTagDockFilter\(contSizeSuspendTagItems\)/);
+  assert.match(html, /request-suspend-tag-contsize-filter/);
+  assert.match(html, /request-suspend-tag-dock-filter/);
+  assert.match(html, /request-suspend-tag-common-search/);
+  assert.match(html, /request-suspend-tag-clear-filters/);
+  assert.match(html, /if \(item\.key === 'soc' && item\.mode === 'full'\) return getDatasetRenderRowCount\('soc'\) > 0/);
+  assert.match(html, /const suspendRefreshToken = safeTab === 'suspend-tag' \? \+\+requestSuspendTagRefreshToken : 0/);
+  assert.match(html, /suspendRefreshToken !== requestSuspendTagRefreshToken/);
+});
+
+test('Suspend Tag photo propagation is restricted to the exact linked physical row', () => {
+  const helper = html.slice(
+    html.indexOf('function applySuspendTagUploadedPhotoEverywhere'),
+    html.indexOf('function getPendingPhotoPersistKey')
+  );
+  assert.match(helper, /findDockSuspendDcRequestSourceRow\(mirrorItem\)/);
+  assert.match(helper, /getDockSuspendDcRequestLinkedMasterRow\(mirrorItem, sourceRow\)/);
+  assert.match(helper, /\[mirrorItem, sourceRow, linkedMaster\]/);
+  assert.match(helper, /refreshPhotoAcrossViews\(linkedMaster \|\| sourceRow \|\| mirrorItem, 'req-'\)/);
+  assert.doesNotMatch(helper, /masterInventoryByItemCode/);
+  const resolver = html.slice(
+    html.indexOf('function getDockSuspendDcRequestLinkedMasterRow'),
+    html.indexOf('function buildDockSuspendDcRequestMasterSyncPayload')
+  );
+  assert.match(resolver, /findLinkedMasterRow\(mirrorRow\)[\s\S]*findLinkedMasterRow\(sourceRow\)/);
+  assert.doesNotMatch(resolver, /getFallbackMasterPhotoRow/);
 });
 
 test('iOS Request rendering uses the swipe surface instead of disabling it', () => {
