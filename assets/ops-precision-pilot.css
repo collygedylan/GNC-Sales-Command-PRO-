@@ -2255,6 +2255,86 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
+/* V2026.08.26.08 — durable Reclass background-delivery status */
+.reclass-delivery-status-tray {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 12050;
+  display: grid;
+  width: min(24rem, calc(100vw - 2rem));
+  gap: .5rem;
+  pointer-events: none;
+}
+
+.reclass-delivery-status-tray.hidden { display: none !important; }
+
+.reclass-delivery-job {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-height: 3.75rem;
+  padding: .75rem .875rem;
+  border: 2px solid #16a36b;
+  border-radius: 1rem;
+  background: #f8fffb;
+  color: #10271e;
+  box-shadow: 0 .75rem 2rem rgba(1, 35, 23, .22);
+  pointer-events: auto;
+}
+
+.reclass-delivery-job > div { min-width: 0; display: grid; gap: .1rem; }
+.reclass-delivery-job strong { font-size: .8rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.reclass-delivery-job span:not(.reclass-delivery-spinner) { overflow: hidden; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.reclass-delivery-job button {
+  min-width: 4.5rem;
+  min-height: 2.75rem;
+  padding: .55rem .75rem;
+  border: 1px solid currentColor;
+  border-radius: .8rem;
+  background: #fff;
+  color: #075f42;
+  font-size: .75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.reclass-delivery-job--failed,
+.reclass-delivery-job--conflict { border-color: #dc5b43; background: #fff5f2; color: #7f1d1d; }
+.reclass-delivery-job--delivered { border-color: #4cae4f; background: #efffeb; }
+.reclass-delivery-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  border: 3px solid rgba(7, 95, 66, .22);
+  border-top-color: #075f42;
+  border-radius: 999px;
+  animation: reclass-delivery-spin .8s linear infinite;
+}
+
+@keyframes reclass-delivery-spin { to { transform: rotate(360deg); } }
+
+body.dark-mode .reclass-delivery-job,
+html.dark .reclass-delivery-job {
+  border-color: #36dda0;
+  background: #071c14;
+  color: #effff8;
+}
+
+body.dark-mode .reclass-delivery-job--failed,
+body.dark-mode .reclass-delivery-job--conflict,
+html.dark .reclass-delivery-job--failed,
+html.dark .reclass-delivery-job--conflict { border-color: #fb7185; background: #2b1115; }
+
+@media (max-width: 639px) {
+  .reclass-delivery-status-tray {
+    right: .75rem;
+    bottom: calc(6.75rem + env(safe-area-inset-bottom));
+    width: calc(100vw - 1.5rem);
+  }
+  .reclass-delivery-job { min-height: 3.5rem; padding: .625rem .75rem; }
+}
+
 /* V2026.08.25.10 — final Request mobile layout and capability-state authority. */
 body.ops-precision-pilot .request-capability-card {
   display: flex;

@@ -219,7 +219,8 @@ test('Reclass send uses an empty searchable picker and only explicitly selected 
   const end = html.indexOf('function generateArgosInventoryTransactionId', start);
   const recipientHandler = html.slice(start, end);
   assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal/);
-  assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal\(previewRows, \[\]/);
+  assert.match(recipientHandler, /restoredRecipients[\s\S]*: \[\]/);
+  assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal\(previewRows, restoredRecipients/);
   assert.doesNotMatch(recipientHandler, /requiredEmails|requiredRecipients|getDefaultArgosInventoryTransactionRecipients/);
   assert.doesNotMatch(recipientHandler, /window\.prompt/);
   assert.match(html, /placeholder="Type a name or email address\.\.\."/);
@@ -229,9 +230,9 @@ test('Reclass server delivery uses only recipients explicitly selected in the pi
   const helperStart = code.indexOf('function getReclassInquiryEmailRecipients_');
   const helperEnd = code.indexOf('function getInventoryTransactionEmailRowValue_', helperStart);
   const helper = code.slice(helperStart, helperEnd);
-  const handlerStart = code.indexOf('function handleReclassInquiryEmail_');
-  const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
-  const handler = code.slice(handlerStart, handlerEnd);
+  const enqueueStart = code.indexOf('function enqueueReclassInquiryEmail_');
+  const handlerEnd = code.indexOf('function handleInventoryTransaction_', enqueueStart);
+  const handler = code.slice(enqueueStart, handlerEnd);
   assert.match(helper, /safePayload\.recipientEmails/);
   assert.match(helper, /safePayload\.recipients/);
   assert.doesNotMatch(helper, /actorEmail|INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_/);
@@ -518,7 +519,7 @@ test('workflow V3 accepts every pairwise combination as independent proposals', 
 });
 
 test('approved pilot sender is removed and the live Reclass handler accepts V3 before V2 compatibility', () => {
-  const handlerStart = code.indexOf('function handleReclassInquiryEmail_');
+  const handlerStart = code.indexOf('function deliverReclassInquiryPayload_');
   const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
   const handler = code.slice(handlerStart, handlerEnd);
   const doPostStart = code.indexOf('function doPost');
@@ -574,14 +575,63 @@ test('every live Reclass row shows current Hold/Stop fields and direct touch act
 });
 
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {
-  const start = code.indexOf('function handleReclassInquiryEmail_');
+  const start = code.indexOf('function enqueueReclassInquiryEmail_');
   const end = code.indexOf('function handleInventoryTransaction_', start);
   const handler = code.slice(start, end);
   for (const forbidden of ['patchEmailApprovalMasterRow_', 'insertInventoryTransactionAudit_', 'emitAppLiveEvent_', 'propagateCommittedEdit', 'ph_request_history']) {
     assert.doesNotMatch(handler, new RegExp(forbidden));
   }
-  assert.match(handler, /GmailApp\.sendEmail/);
+  assert.doesNotMatch(handler, /LockService\.getScriptLock|GmailApp\.sendEmail/);
+  assert.match(handler, /sendGmailApiMessage_/);
   assert.match(handler, /attachments: \[pdfBlob\]/);
+});
+
+test('Reclass queues idempotently and exposes sanitized status and retry routes', () => {
+  const start = code.indexOf('function getReclassInquiryEventKey_');
+  const end = code.indexOf('function handleInventoryTransaction_', start);
+  const delivery = code.slice(start, end);
+  const doPost = code.slice(code.indexOf('function doPost'));
+  assert.match(delivery, /reclass-inquiry:/);
+  assert.match(delivery, /ph_request_delivery_outbox/);
+  assert.match(delivery, /resolution=ignore-duplicates,return=representation/);
+  assert.match(delivery, /status: 'pending'/);
+  assert.match(delivery, /function handleReclassInquiryStatus_/);
+  assert.match(delivery, /function handleReclassInquiryRetry_/);
+  assert.doesNotMatch(delivery, /push_delivered_at/);
+  assert.match(doPost, /payload\.type === 'reclass_inquiry_status'/);
+  assert.match(doPost, /payload\.type === 'reclass_inquiry_retry'/);
+});
+
+test('Reclass signed delivery recovers deterministic Gmail sends and attaches the PDF', () => {
+  const signedStart = code.indexOf('function handleSignedReclassInquiryDelivery_');
+  const signedEnd = code.indexOf('function handleSignedRequestDeliveryEvent_', signedStart);
+  const signed = code.slice(signedStart, signedEnd);
+  const mimeStart = code.indexOf('function buildMimeEmail_');
+  const mimeEnd = code.indexOf('function extractGmailMessageHeader_', mimeStart);
+  const mime = code.slice(mimeStart, mimeEnd);
+  assert.match(signed, /getRequestDeliveryReceipt_/);
+  assert.match(signed, /findSentRequestDeliveryByMessageId_/);
+  assert.match(signed, /deliverReclassInquiryPayload_/);
+  assert.match(mime, /multipart\/mixed/);
+  assert.match(mime, /Content-Disposition: attachment/);
+  assert.match(mime, /Content-Transfer-Encoding: base64/);
+});
+
+test('Reclass client guards recipient selection and retains background drafts until delivery', () => {
+  const submitStart = html.indexOf('async function submitArgosInventoryTransaction');
+  const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease', submitStart);
+  const submit = html.slice(submitStart, submitEnd);
+  const statusStart = html.indexOf('function readReclassDeliveryJobs');
+  const statusEnd = html.indexOf('async function postArgosInventoryTransactionPayload', statusStart);
+  const status = html.slice(statusStart, statusEnd);
+  assert.ok(submit.indexOf('argosInventoryTransactionState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
+  assert.match(submit, /rememberQueuedReclassDelivery/);
+  assert.match(submit, /Sending in Background/);
+  assert.match(status, /RECLASS_DELIVERY_STORAGE_KEY/);
+  assert.match(status, /reclass_inquiry_status/);
+  assert.match(status, /reclass_inquiry_retry/);
+  assert.match(status, /update\.payload = null/);
+  assert.match(status, /reopenReclassDeliveryJob/);
 });
 
 test('live Reclass payload uses the V3 policy and independent action proposal arrays', () => {

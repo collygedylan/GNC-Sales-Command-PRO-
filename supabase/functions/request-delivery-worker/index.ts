@@ -25,6 +25,8 @@ function jsonResponse(body: unknown, status = 200) {
 
 function sanitizeCode(error: unknown) {
   const raw = String(error instanceof Error ? error.message : error || "DELIVERY_WORKER_FAILED").toUpperCase();
+  if (/RECLASS_CONFLICT/.test(raw)) return "RECLASS_CONFLICT";
+  if (/RECLASS_VALIDATION/.test(raw)) return "RECLASS_VALIDATION";
   if (/SNAPSHOT/.test(raw)) return "REQUEST_SNAPSHOT_MISSING";
   if (/APPS_SCRIPT|EMAIL|GMAIL/.test(raw)) return "EMAIL_SEND_FAILED";
   if (/PUSH/.test(raw)) return "PUSH_SEND_FAILED";
@@ -106,6 +108,7 @@ async function callAppsScript(event: JsonRecord, rows: unknown[], thread: unknow
     requestId: event.request_id,
     requestFolder: event.request_folder,
     messageIdHeader: await stableMessageId(String(event.event_key || event.event_id || "request")),
+    payload: event.payload && typeof event.payload === "object" ? event.payload : {},
     rows,
     thread
   };
@@ -198,6 +201,26 @@ async function failEvent(eventId: string, leaseToken: string, error: unknown) {
   }
 }
 
+async function failEventPermanent(eventId: string, leaseToken: string, error: unknown, attemptCount: unknown) {
+  const { data, error: updateError } = await supabase
+    .from("ph_request_delivery_outbox")
+    .update({
+      status: "failed",
+      attempt_count: Math.max(0, Number(attemptCount) || 0) + 1,
+      sanitized_error_code: sanitizeCode(error),
+      lease_token: null,
+      lease_owner: null,
+      lease_expires_at: null
+    })
+    .eq("event_id", eventId)
+    .eq("status", "processing")
+    .eq("lease_token", leaseToken)
+    .select("event_id")
+    .maybeSingle();
+  if (updateError) throw new Error(`DELIVERY_PERMANENT_FAIL_RECORD_FAILED:${updateError.code || "unknown"}`);
+  if (!data) throw new Error("DELIVERY_LEASE_LOST");
+}
+
 async function ensureCanary(source: string) {
   if (source !== "cron") return false;
   const bucket = Math.floor(Date.now() / 300000);
@@ -254,8 +277,29 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
       let channelResults = event.channel_results && typeof event.channel_results === "object"
         ? { ...(event.channel_results as JsonRecord) } : {};
       try {
-        if (String(event.event_type || "") === "delivery_canary") {
+        const eventType = String(event.event_type || "");
+        if (eventType === "delivery_canary") {
           channelResults = { canary: { delivered_at: new Date().toISOString(), mode: "canary" } };
+          await finishEvent(eventId, leaseToken, channelResults);
+          delivered += 1;
+          continue;
+        }
+
+        if (eventType === "reclass_inquiry") {
+          if (!event.email_delivered_at) {
+            const emailResult = await callAppsScript(event, [], null);
+            channelResults.email = {
+              delivered_at: new Date().toISOString(),
+              gmail_message_id: String(emailResult.gmailMessageId || ""),
+              thread_id: String(emailResult.threadId || ""),
+              message_id: String(emailResult.messageId || ""),
+              message_id_header: String(emailResult.messageIdHeader || ""),
+              mode: String(emailResult.mode || "gmail_api"),
+              recipients: Array.isArray(emailResult.recipients) ? emailResult.recipients : []
+            };
+            event.email_delivered_at = (channelResults.email as JsonRecord).delivered_at;
+            await recordChannels(eventId, leaseToken, { email: channelResults.email });
+          }
           await finishEvent(eventId, leaseToken, channelResults);
           delivered += 1;
           continue;
@@ -301,7 +345,12 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
         delivered += 1;
       } catch (error) {
         failed += 1;
-        await failEvent(eventId, leaseToken, error);
+        const code = sanitizeCode(error);
+        if (String(event.event_type || "") === "reclass_inquiry" && (code === "RECLASS_CONFLICT" || code === "RECLASS_VALIDATION")) {
+          await failEventPermanent(eventId, leaseToken, error, event.attempt_count);
+        } else {
+          await failEvent(eventId, leaseToken, error);
+        }
       }
     }
   } catch (error) {

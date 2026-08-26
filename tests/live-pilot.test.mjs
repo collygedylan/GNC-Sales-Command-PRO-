@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.26.07';
+  const release = 'V2026.08.26.08';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.26.07');
+  assert.equal(packageJson.version, '2026.08.26.08');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -538,10 +538,14 @@ test('Reclass is an email-only Item Inquiry while legacy quantity and transfer l
   const serverHandler = appsScriptBackend.slice(appsScriptBackend.indexOf('function handleInventoryTransaction_'), appsScriptBackend.indexOf('function normalizeInventoryTransactionHistoryLimit_'));
   assert.ok(serverHandler.indexOf("=== 'reclass'") < serverHandler.indexOf('LockService.getScriptLock()'), 'cached Reclass clients must route away before the mutation lock');
   assert.match(appsScriptBackend, /payload\.type === 'reclass_inquiry_email'[\s\S]*handleReclassInquiryEmail_/);
-  const inquiryHandler = appsScriptBackend.slice(appsScriptBackend.indexOf('function handleReclassInquiryEmail_'), appsScriptBackend.indexOf('function handleInventoryTransaction_'));
+  const inquiryHandler = appsScriptBackend.slice(appsScriptBackend.indexOf('function enqueueReclassInquiryEmail_'), appsScriptBackend.indexOf('function handleInventoryTransaction_'));
   assert.doesNotMatch(inquiryHandler, /patchEmailApprovalMasterRow_|insertInventoryTransactionAudit_|emitAppLiveEvent_|updateInventoryRecord|History/);
   assert.match(inquiryHandler, /HtmlService\.createHtmlOutput\(printHtml\)\.getBlob\(\)\.getAs\(MimeType\.PDF\)/);
-  assert.match(inquiryHandler, /CacheService\.getScriptCache\(\)/);
+  assert.match(inquiryHandler, /ph_request_delivery_outbox/);
+  assert.match(inquiryHandler, /sendGmailApiMessage_/);
+  assert.doesNotMatch(inquiryHandler, /GmailApp\.sendEmail|LockService\.getScriptLock/);
+  assert.match(html, /Sending in Background/);
+  assert.match(html, /reclass_inquiry_status/);
   assert.match(html, /if \(safeAction === 'qty'\) return 'QTY'/);
   assert.match(html, /if \(safeAction === 'transfer'\) return 'TRANSFER'/);
 });
@@ -1254,6 +1258,13 @@ test('request completion delivery is leased, idempotent, threaded, and independe
   assert.match(deliveryWorker, /REQUEST_DELIVERY_SIGNING_SECRET/);
   assert.match(deliveryWorker, /record_request_delivery_channel_result/);
   assert.match(deliveryWorker, /request_completed" \? "ph_request_history"/);
+  assert.match(deliveryWorker, /eventType === "reclass_inquiry"/);
+  assert.match(deliveryWorker, /payload: event\.payload/);
+  assert.match(deliveryWorker, /failEventPermanent/);
+  assert.match(deliveryWorker, /RECLASS_CONFLICT/);
+  const reclassBranch = deliveryWorker.slice(deliveryWorker.indexOf('if (eventType === "reclass_inquiry")'), deliveryWorker.indexOf('const rows = await loadRequestRows', deliveryWorker.indexOf('if (eventType === "reclass_inquiry")')));
+  assert.match(reclassBranch, /callAppsScript\(event, \[\], null\)/);
+  assert.doesNotMatch(reclassBranch, /sendPush|loadRequestRows/);
   assert.match(appsScriptBackend, /handleSignedRequestDeliveryEvent_/);
   assert.match(appsScriptBackend, /gmail_api_idempotent_recovery/);
   assert.match(appsScriptBackend, /apps_script_receipt_recovery/);

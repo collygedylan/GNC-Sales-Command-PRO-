@@ -94,6 +94,8 @@ function resolveSupabaseServiceRoleKey_(sourceFallbackKey) {
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = resolveSupabaseServiceRoleKey_('__SUPABASE_SERVICE_ROLE_KEY__');
 const REQUEST_DELIVERY_RECEIPT_PREFIX = 'REQ_DELIVERY_RECEIPT_V1_';
+const RECLASS_BACKGROUND_DELIVERY_ENABLED_ = true;
+const RECLASS_DELIVERY_EVENT_TYPE_ = 'reclass_inquiry';
 
 function getSupabaseHeadersForKey_(key, extraHeaders) {
   const headers = Object.assign({}, extraHeaders || {});
@@ -10658,36 +10660,139 @@ function getReclassInquiryCacheKey_(token) {
   return 'reclass_inquiry_' + bytes.map(function(byte) { return ('0' + ((byte + 256) % 256).toString(16)).slice(-2); }).join('').slice(0, 40);
 }
 
-function handleReclassInquiryEmail_(payload) {
+function getReclassInquiryEventKey_(token) {
+  return 'reclass-inquiry:' + getReclassInquiryCacheKey_(token).replace(/^reclass_inquiry_/, '');
+}
+
+function getReclassInquiryOutboxStatus_(row) {
+  const source = row && typeof row === 'object' ? row : {};
+  const status = String(source.status || 'queued').trim().toLowerCase();
+  const code = String(source.sanitized_error_code || '').trim().toUpperCase();
+  if (status === 'failed' && (code === 'RECLASS_CONFLICT' || code === 'RECLASS_VALIDATION')) return 'conflict';
+  if (status === 'pending') return 'queued';
+  if (status === 'unknown') return 'failed';
+  return ['processing', 'delivered', 'failed'].indexOf(status) !== -1 ? status : 'queued';
+}
+
+function buildReclassInquiryOutboxResponse_(row, duplicate) {
+  const source = row && typeof row === 'object' ? row : {};
+  const status = getReclassInquiryOutboxStatus_(source);
+  const code = String(source.sanitized_error_code || '').trim().toUpperCase();
+  return {
+    ok: status === 'queued' || status === 'processing' || status === 'delivered',
+    status: status,
+    jobId: String(source.event_id || ''),
+    queuedAt: String(source.created_at || ''),
+    deliveredAt: String(source.delivered_at || source.email_delivered_at || ''),
+    attemptCount: Math.max(0, Number(source.attempt_count) || 0),
+    errorCode: code || '',
+    duplicate: duplicate === true,
+    message: status === 'delivered' ? 'Reclass Item Inquiry email delivered.'
+      : status === 'conflict' ? 'Inventory changed before delivery. Reopen the draft against current inventory.'
+      : status === 'failed' ? 'Background delivery needs attention. Your draft is still available.'
+      : status === 'processing' ? 'Reclass Item Inquiry is being sent in the background.'
+      : 'Reclass Item Inquiry queued for background delivery.'
+  };
+}
+
+function getReclassInquiryOutboxRow_(token) {
+  const safeToken = normalizeInventoryTransactionText_(token);
+  if (!safeToken || safeToken.length < 12 || safeToken.length > 180) throw new Error('The Reclass inquiry idempotency token is invalid.');
+  const rows = requestDeliveryRest_(
+    'ph_request_delivery_outbox',
+    'GET',
+    'select=event_id,event_key,event_type,status,attempt_count,next_attempt_at,sanitized_error_code,email_delivered_at,delivered_at,created_at,updated_at&event_key=eq.' + encodeURIComponent(getReclassInquiryEventKey_(safeToken)) + '&event_type=eq.' + encodeURIComponent(RECLASS_DELIVERY_EVENT_TYPE_) + '&limit=1',
+    null
+  );
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+function handleReclassInquiryStatus_(payload) {
+  const token = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(payload && payload.idempotencyToken, payload && payload.idempotency_token));
+  const row = getReclassInquiryOutboxRow_(token);
+  if (!row) return { ok: false, status: 'missing', message: 'This background inquiry was not found.' };
+  return buildReclassInquiryOutboxResponse_(row, true);
+}
+
+function handleReclassInquiryRetry_(payload) {
+  const token = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(payload && payload.idempotencyToken, payload && payload.idempotency_token));
+  const row = getReclassInquiryOutboxRow_(token);
+  if (!row) return { ok: false, status: 'missing', message: 'This background inquiry was not found.' };
+  const normalizedStatus = getReclassInquiryOutboxStatus_(row);
+  if (normalizedStatus === 'conflict') {
+    return { ok: false, status: 'conflict', message: 'Inventory changed before delivery. Reopen the draft against current inventory.' };
+  }
+  if (normalizedStatus === 'delivered' || normalizedStatus === 'queued' || normalizedStatus === 'processing') {
+    return buildReclassInquiryOutboxResponse_(row, true);
+  }
+  const updated = requestDeliveryRest_(
+    'ph_request_delivery_outbox',
+    'PATCH',
+    'event_id=eq.' + encodeURIComponent(String(row.event_id || '')) + '&event_type=eq.' + encodeURIComponent(RECLASS_DELIVERY_EVENT_TYPE_) + '&status=in.(failed,unknown)',
+    {
+      status: 'pending',
+      attempt_count: 0,
+      next_attempt_at: new Date().toISOString(),
+      sanitized_error_code: null,
+      lease_token: null,
+      lease_owner: null,
+      lease_expires_at: null
+    },
+    'return=representation'
+  );
+  return buildReclassInquiryOutboxResponse_(Array.isArray(updated) && updated.length ? updated[0] : row, true);
+}
+
+function enqueueReclassInquiryEmail_(payload) {
   const safePayload = payload && typeof payload === 'object' ? payload : {};
   const token = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safePayload.idempotencyToken, safePayload.idempotency_token));
   if (!token || token.length < 12 || token.length > 180) throw new Error('The Reclass inquiry idempotency token is invalid.');
-  const cache = CacheService.getScriptCache();
-  const cacheKey = getReclassInquiryCacheKey_(token);
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    const cachedResponse = JSON.parse(cached);
-    cachedResponse.duplicate = true;
-    return cachedResponse;
+  const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
+  const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
+  if (!sourceUid) throw new Error('Missing source inventory row id.');
+  const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
+  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
+    return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app and review the current rows.' };
   }
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) return { ok: false, status: 'lock_timeout', message: 'Another Reclass inquiry is being sent. Please retry in a few seconds.' };
-  try {
-    const cachedAfterLock = cache.get(cacheKey);
-    if (cachedAfterLock) {
-      const response = JSON.parse(cachedAfterLock);
-      response.duplicate = true;
-      return response;
-    }
+  const recipients = getReclassInquiryEmailRecipients_(safePayload);
+  if (!recipients.length) throw new Error('Choose at least one email recipient.');
+  safePayload.recipientEmails = recipients;
+  safePayload.emailRecipients = recipients;
+  const serialized = JSON.stringify(safePayload);
+  if (serialized.length > 4 * 1024 * 1024) throw new Error('This Reclass inquiry is too large to queue. Reduce the row selection and try again.');
+  const existing = getReclassInquiryOutboxRow_(token);
+  if (existing) return buildReclassInquiryOutboxResponse_(existing, true);
+  const inserted = requestDeliveryRest_(
+    'ph_request_delivery_outbox',
+    'POST',
+    'on_conflict=event_key',
+    {
+      event_key: getReclassInquiryEventKey_(token),
+      event_type: RECLASS_DELIVERY_EVENT_TYPE_,
+      request_id: null,
+      request_folder: null,
+      payload: { reclassPayload: safePayload },
+      status: 'pending',
+      next_attempt_at: new Date().toISOString()
+    },
+    'resolution=ignore-duplicates,return=representation'
+  );
+  const row = Array.isArray(inserted) && inserted.length ? inserted[0] : getReclassInquiryOutboxRow_(token);
+  if (!row) throw new Error('The Reclass inquiry could not be queued. Retry with the same draft.');
+  return buildReclassInquiryOutboxResponse_(row, false);
+}
+
+function deliverReclassInquiryPayload_(payload, messageIdHeader) {
+    const safePayload = payload && typeof payload === 'object' ? payload : {};
     const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
     const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
-    if (!sourceUid) throw new Error('Missing source inventory row id.');
+    if (!sourceUid) throw new Error('RECLASS_VALIDATION:SOURCE_ID_REQUIRED');
     const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
-    if (!sourceRow) return { ok: false, status: 'conflict', message: 'The source inventory row no longer exists. Sync and try again.' };
+    if (!sourceRow) throw new Error('RECLASS_CONFLICT:SOURCE_ROW_MISSING');
     try {
       validateInventoryTransactionSourceIdentity_(sourceRow, source);
     } catch (identityError) {
-      return { ok: false, status: 'conflict', message: 'The source row changed. Sync and review the Reclass inquiry before sending.' };
+      throw new Error('RECLASS_CONFLICT:SOURCE_ROW_CHANGED');
     }
     const authoritativeRows = fetchReclassInquiryItemRows_(sourceRow);
     const now = new Date();
@@ -10697,23 +10802,27 @@ function handleReclassInquiryEmail_(payload) {
     const isV3 = RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_;
     const isV2 = RECLASS_ACTION_WORKFLOW_V2_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
     if (!isV3 && !isV2) {
-      return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app, reopen Reclass, and review the current rows.' };
+      throw new Error('RECLASS_CONFLICT:WORKFLOW_POLICY_CHANGED');
     }
     if (isV2) {
       if (!getReclassInquiryActionRuleV2_(requestAction)) {
-        throw new Error('Choose a supported Reclass request action before sending.');
+        throw new Error('RECLASS_VALIDATION:ACTION_REQUIRED');
       }
     }
     const authoritativeScope = null;
-    const overlayResult = isV3
-      ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope)
-      : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
-    if (!overlayResult.ok) return overlayResult;
+    let overlayResult;
+    try {
+      overlayResult = isV3
+        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope)
+        : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
+    } catch (validationError) {
+      throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
+    }
+    if (!overlayResult.ok) throw new Error('RECLASS_CONFLICT:' + String(overlayResult.message || 'ROW_IDENTITY_CHANGED'));
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, safePayload, now);
     const recipients = getReclassInquiryEmailRecipients_(safePayload);
-    if (!recipients.length) throw new Error('Choose at least one email recipient.');
+    if (!recipients.length) throw new Error('RECLASS_VALIDATION:RECIPIENT_REQUIRED');
     const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
-    const sourceLocation = getInventoryTransactionRowValue_(sourceRow, ['locationcode', 'LOCATIONCODE'], '');
     const subject = '[External] GNC PH Reclass - ' + model.requestActionLabel + ': ' + commonName;
     let pdfBlob;
     try {
@@ -10723,31 +10832,35 @@ function handleReclassInquiryEmail_(payload) {
       const safeAction = model.requestActionLabel.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 40) || 'Request';
       pdfBlob.setName('GNC_PH_Reclass_' + safeAction + '_' + safeName + '.pdf');
     } catch (pdfError) {
-      throw new Error('The printable Reclass PDF could not be created. Nothing was emailed; retry is safe.');
+      throw new Error('RECLASS_PDF_BUILD_FAILED');
     }
+    if (!isGmailAdvancedServiceAvailable_()) throw new Error('RECLASS_GMAIL_SERVICE_UNAVAILABLE');
     try {
-      GmailApp.sendEmail(recipients.join(','), subject, buildReclassInquiryReportText_(model), {
+      const result = sendGmailApiMessage_({
+        toList: recipients.join(','),
+        toArray: recipients,
+        subject: subject,
+        textBody: buildReclassInquiryReportText_(model),
         htmlBody: buildReclassInquiryEmailHtml_(model),
         attachments: [pdfBlob],
-        name: 'GNC PH Reclass'
+        fromName: 'GNC PH Reclass',
+        fromAddress: resolveAutomatedEmailSenderAddress_(),
+        messageIdHeader: String(messageIdHeader || '').trim()
       });
+      result.subject = subject;
+      result.submittedAt = now.toISOString();
+      result.policyVersion = isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
+      result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Proposed cells are highlighted yellow; no inventory data was changed.';
+      return result;
     } catch (emailError) {
-      throw new Error('The Reclass inquiry could not be delivered. Nothing in inventory was changed; retry with the same draft.');
+      if (/^RECLASS_/.test(String(emailError && emailError.message || ''))) throw emailError;
+      throw new Error('RECLASS_EMAIL_SEND_FAILED');
     }
-    const response = {
-      ok: true,
-      status: 'sent',
-      emailRecipients: recipients,
-      subject: subject,
-      submittedAt: now.toISOString(),
-      policyVersion: isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_,
-      message: model.requestActionLabel + ' Item Inquiry PDF sent. Proposed cells are highlighted yellow; no inventory data was changed.'
-    };
-    cache.put(cacheKey, JSON.stringify(response), 600);
-    return response;
-  } finally {
-    try { lock.releaseLock(); } catch (releaseError) {}
-  }
+}
+
+function handleReclassInquiryEmail_(payload) {
+  if (RECLASS_BACKGROUND_DELIVERY_ENABLED_) return enqueueReclassInquiryEmail_(payload);
+  throw new Error('The legacy synchronous Reclass delivery path is disabled. Refresh the app and try again.');
 }
 
 function handleInventoryTransaction_(payload) {
@@ -12863,7 +12976,9 @@ function resolveAutomatedEmailSenderAddress_() {
 }
 
 function buildMimeEmail_(options) {
-  const boundary = 'gnc_' + Utilities.getUuid().replace(/-/g, '');
+  const alternativeBoundary = 'gnc_alt_' + Utilities.getUuid().replace(/-/g, '');
+  const mixedBoundary = 'gnc_mix_' + Utilities.getUuid().replace(/-/g, '');
+  const attachments = Array.isArray(options.attachments) ? options.attachments.filter(Boolean) : [];
   const lines = [
     'MIME-Version: 1.0',
     'To: ' + String(options.toList || '')
@@ -12873,7 +12988,9 @@ function buildMimeEmail_(options) {
   const messageIdHeader = String(options.messageIdHeader || '').trim();
   if (messageIdHeader) lines.push('Message-ID: ' + messageIdHeader);
   lines.push('Subject: ' + String(options.subject || ''));
-  lines.push('Content-Type: multipart/alternative; boundary="' + boundary + '"');
+  lines.push('Content-Type: ' + (attachments.length
+    ? 'multipart/mixed; boundary="' + mixedBoundary + '"'
+    : 'multipart/alternative; boundary="' + alternativeBoundary + '"'));
 
   const inReplyTo = String(options.inReplyTo || '').trim();
   const references = String(options.references || '').trim();
@@ -12881,17 +12998,40 @@ function buildMimeEmail_(options) {
   if (references) lines.push('References: ' + references);
 
   lines.push('');
-  lines.push('--' + boundary);
+  if (attachments.length) {
+    lines.push('--' + mixedBoundary);
+    lines.push('Content-Type: multipart/alternative; boundary="' + alternativeBoundary + '"');
+    lines.push('');
+  }
+  lines.push('--' + alternativeBoundary);
   lines.push('Content-Type: text/plain; charset=UTF-8');
   lines.push('');
   lines.push(String(options.textBody || ''));
   lines.push('');
-  lines.push('--' + boundary);
+  lines.push('--' + alternativeBoundary);
   lines.push('Content-Type: text/html; charset=UTF-8');
   lines.push('');
   lines.push(String(options.htmlBody || ''));
   lines.push('');
-  lines.push('--' + boundary + '--');
+  lines.push('--' + alternativeBoundary + '--');
+
+  attachments.forEach(function(blob, index) {
+    const safeName = String(blob.getName && blob.getName() || ('attachment-' + (index + 1)))
+      .replace(/[\r\n"\\]+/g, '_').replace(/[\/:*?<>|]+/g, '-').trim() || ('attachment-' + (index + 1));
+    const contentType = String(blob.getContentType && blob.getContentType() || 'application/octet-stream').replace(/[\r\n]+/g, '').trim() || 'application/octet-stream';
+    const encoded = Utilities.base64Encode(blob.getBytes()).replace(/(.{76})/g, '$1\r\n');
+    lines.push('');
+    lines.push('--' + mixedBoundary);
+    lines.push('Content-Type: ' + contentType + '; name="' + safeName + '"');
+    lines.push('Content-Disposition: attachment; filename="' + safeName + '"');
+    lines.push('Content-Transfer-Encoding: base64');
+    lines.push('');
+    lines.push(encoded);
+  });
+  if (attachments.length) {
+    lines.push('');
+    lines.push('--' + mixedBoundary + '--');
+  }
 
   return lines.join('\r\n');
 }
@@ -13518,9 +13658,50 @@ function recoverRequestThreadFromSentMail_(requestFolder) {
   return earliest;
 }
 
+function buildRecoveredDeliveryResult_(messageIdHeader, savedReceipt, mode) {
+  return {
+    ok: true,
+    status: 200,
+    recipients: [],
+    mode: mode,
+    threadId: String(savedReceipt && savedReceipt.threadId || ''),
+    messageId: String(savedReceipt && savedReceipt.messageId || ''),
+    gmailMessageId: String(savedReceipt && savedReceipt.gmailMessageId || ''),
+    replyToMessageId: String(savedReceipt && savedReceipt.replyToMessageId || ''),
+    messageIdHeader: String(messageIdHeader || '')
+  };
+}
+
+function handleSignedReclassInquiryDelivery_(delivery) {
+  const messageIdHeader = String(delivery && delivery.messageIdHeader || '').trim();
+  if (!messageIdHeader) throw new Error('REQUEST_DELIVERY_MESSAGE_ID_REQUIRED');
+  const savedReceipt = getRequestDeliveryReceipt_(messageIdHeader);
+  if (savedReceipt) return buildRecoveredDeliveryResult_(messageIdHeader, savedReceipt, 'apps_script_receipt_recovery');
+
+  const alreadySent = findSentRequestDeliveryByMessageId_(messageIdHeader);
+  if (alreadySent) {
+    const recoveredResult = buildRecoveredDeliveryResult_(messageIdHeader, alreadySent, 'gmail_api_idempotent_recovery');
+    saveRequestDeliveryReceipt_(messageIdHeader, recoveredResult);
+    return recoveredResult;
+  }
+
+  const eventPayload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
+  const reclassPayload = eventPayload.reclassPayload && typeof eventPayload.reclassPayload === 'object'
+    ? eventPayload.reclassPayload
+    : null;
+  if (!reclassPayload) throw new Error('RECLASS_VALIDATION:PAYLOAD_MISSING');
+  const result = deliverReclassInquiryPayload_(reclassPayload, messageIdHeader);
+  result.messageIdHeader = messageIdHeader;
+  saveRequestDeliveryReceipt_(messageIdHeader, result);
+  return result;
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
+  if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
+    return handleSignedReclassInquiryDelivery_(delivery);
+  }
   if (eventType !== 'request_created' && eventType !== 'request_completed') {
     throw new Error('REQUEST_DELIVERY_EVENT_TYPE_INVALID');
   }
@@ -13922,6 +14103,14 @@ function doPost(e) {
 
     if (payload.type === 'request_delivery_event') {
       return jsonOutput_(handleSignedRequestDeliveryEvent_(payload));
+    }
+
+    if (payload.type === 'reclass_inquiry_status') {
+      return jsonOutput_(handleReclassInquiryStatus_(payload));
+    }
+
+    if (payload.type === 'reclass_inquiry_retry') {
+      return jsonOutput_(handleReclassInquiryRetry_(payload));
     }
 
     if (payload.type === 'photo_archive') {

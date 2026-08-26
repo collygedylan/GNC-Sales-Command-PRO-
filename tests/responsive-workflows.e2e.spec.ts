@@ -1532,7 +1532,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.26.07', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.26.08', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1731,7 +1731,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.26.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.26.08', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1767,6 +1767,43 @@ test('Phone Reclass send opens the searchable in-app recipient selector', async 
   const payload = await page.evaluate(async () => (window as any).__reclassRecipientPromise);
   expect(payload.recipientEmails).toEqual(['jd_jones@greenleafnursery.com']);
   expect(payload.emailRecipients).toEqual(['jd_jones@greenleafnursery.com']);
+});
+
+test('Phone Reclass background status survives reload without covering navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.26.08', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
+  await page.waitForLoadState('load');
+  await page.evaluate(() => {
+    localStorage.setItem('gnc_reclass_delivery_jobs_v1', JSON.stringify([{
+      token: 'reclass_inquiry_test_background_1234',
+      actorUsername: 'dylan_collyge',
+      status: 'processing',
+      label: 'On Hold Request + Priority Change',
+      queuedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      payload: { source: { unique_id: 'row-1' } }
+    }]));
+    (window as any).renderReclassDeliveryStatusTray(null, 'dylan_collyge');
+  });
+  const tray = page.locator('#reclass-delivery-status-tray');
+  await expect(tray).toBeVisible();
+  await expect(tray).toContainText('Sending in background');
+  let layout = await tray.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight };
+  });
+  expect(layout.left).toBeGreaterThanOrEqual(0);
+  expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.bottom).toBeLessThan(layout.viewportHeight - 64);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
+  await page.waitForLoadState('load');
+  await page.evaluate(() => {
+    (window as any).renderReclassDeliveryStatusTray(null, 'dylan_collyge');
+  });
+  await expect(page.locator('#reclass-delivery-status-tray')).toContainText('Sending in background');
 });
 
 test('Drive Grid is a readable spreadsheet and every control stays on one rail', async ({ page }) => {
@@ -1821,7 +1858,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
 
 test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.26.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.26.08', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     document.body.classList.add('ops-precision-pilot');
     document.body.setAttribute('data-ops-theme', 'dark');
