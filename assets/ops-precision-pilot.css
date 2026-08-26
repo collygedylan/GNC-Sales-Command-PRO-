@@ -8125,3 +8125,127 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
     background: var(--ops-surface) !important;
   }
 }
+
+/* V2026.08.26.07 — one continuous Request detail column on desktop. */
+@media (min-width: 900px) {
+  body.ops-precision-pilot:has(#view-detail.detail-request-mode:not(.hidden) > #det-request-content:not(.hidden)) #main-scroll-area {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden):has(> #det-request-content:not(.hidden)) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: none !important;
+    align-content: start !important;
+    align-items: start !important;
+    gap: 12px !important;
+    width: min(100%, 980px) !important;
+    max-width: 980px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 auto !important;
+    padding: 0 0 calc(var(--footer-nav-reserve, 7rem) + 24px) !important;
+    overflow: visible !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden):has(> #det-request-content:not(.hidden)) > .freeze-panel,
+  body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden):has(> #det-request-content:not(.hidden)) > #det-request-content:not(.hidden) {
+    display: contents !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) > #det-av-hero { order: -30; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) > .freeze-panel > .back-btn { order: -20; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #det-tabs-container { order: 0; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #det-mobile-tab-select-wrap { order: 1; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) > .freeze-panel > .mb-4 { order: 10; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #global-inputs-container { order: 20; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #request-detail-load-state { order: 25; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-input-container { order: 30; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-av-note-wrap { order: 40; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-reserve-field-wrap { order: 50; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-pick-wrap { order: 60; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-comments-wrap { order: 70; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #request-photo-section { order: 80; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) :is(#inventory-edit-request-detail-action, #req-matching-inventory-container) { order: 85; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #detail-shared-panels { order: 90; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-save-action-wrap { order: 100; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-shear-action { order: 110; }
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-correction-actions { order: 120; }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) :is(
+    #det-tabs-container,
+    #det-mobile-tab-select-wrap,
+    #global-inputs-container,
+    #detail-shared-panels,
+    #request-detail-load-state,
+    #req-input-container,
+    #req-av-note-wrap,
+    #req-reserve-field-wrap,
+    #req-pick-wrap,
+    #req-comments-wrap,
+    #request-photo-section,
+    #inventory-edit-request-detail-action,
+    #req-matching-inventory-container,
+    #req-save-action-wrap,
+    #req-shear-action,
+    #req-correction-actions
+  ),
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) > .freeze-panel > .mb-4 {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-input-container {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-input-container > div {
+    grid-column: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #det-request-content label {
+    margin: 0 0 6px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #det-request-content :is(.input-field, select, textarea) {
+    width: 100% !important;
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 10px 12px !important;
+    font-size: 15px !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-comments {
+    min-height: 76px !important;
+    height: auto !important;
+    resize: vertical !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) :is(#req-save-action-wrap, #req-shear-action) {
+    position: static !important;
+    inset: auto !important;
+    min-height: 48px !important;
+    height: auto !important;
+    margin-top: 0 !important;
+    transform: none !important;
+  }
+
+  body.ops-precision-pilot #view-detail.detail-request-mode:has(> #det-request-content:not(.hidden)) #req-btn-save-complete {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+  }
+}

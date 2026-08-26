@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.26.06';
+  const release = 'V2026.08.26.07';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.26.06');
+  assert.equal(packageJson.version, '2026.08.26.07');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1030,16 +1030,22 @@ test('V06 contains runaway requests and uses bounded retry and cache policies', 
   assert.doesNotMatch(serviceWorker.slice(serviceWorker.indexOf("self.addEventListener('activate'"), serviceWorker.indexOf("self.addEventListener('message'")), /client\.navigate/);
 });
 
-test('V06 request detail fits the viewport and never renders collapsed AV cards', () => {
+test('V07 request detail uses one naturally scrolling desktop column and never renders collapsed AV cards', () => {
   assert.match(html, /const visibleRows = isOpen \? rows\.slice\(0, 80\) : \[\]/);
   assert.match(html, /const rowsHtml = isOpen && visibleRows\.length/);
   assert.match(html, /collectRequestItemCodeOptionRowsFromLocalCache/);
   assert.match(html, /if \(end < fullInventory\.length\) await yieldToUiFrame\(\)/);
   assert.match(html, /const settleLayoutOnly = \(settleReason = ''\) =>/);
   assert.match(css, /request detail viewport fit and collapsed-panel performance shell/);
-  assert.match(css, /#view-detail\.detail-request-mode:not\(\.hidden\)[\s\S]*overflow: hidden !important/);
-  assert.match(css, /#det-request-content:not\(\.hidden\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important/);
+  const desktopAuthority = css.slice(css.lastIndexOf('one continuous Request detail column on desktop'));
+  assert.match(desktopAuthority, /grid-template-columns: minmax\(0, 1fr\) !important/);
+  assert.match(desktopAuthority, /width: min\(100%, 980px\) !important/);
+  assert.match(desktopAuthority, /height: auto !important/);
+  assert.match(desktopAuthority, /overflow: visible !important/);
+  assert.match(desktopAuthority, /> \.freeze-panel,[\s\S]*> #det-request-content:not\(\.hidden\)[\s\S]*display: contents !important/);
+  assert.match(desktopAuthority, /#req-input-container[\s\S]*grid-template-columns: minmax\(0, 1fr\) !important/);
   assert.match(css, /request-detail-av-options-open[\s\S]*overflow-y: auto !important/);
+  assert.match(html, /const renderedHeight = Array\.from\(content\.children \|\| \[\]\)\.reduce/);
 });
 
 test('V09 avoids billable Storage transforms and unifies Columns and Excel controls', () => {

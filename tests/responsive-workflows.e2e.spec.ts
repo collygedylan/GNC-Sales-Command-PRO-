@@ -1532,7 +1532,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.26.06', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.26.07', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1731,7 +1731,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.26.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.26.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1821,7 +1821,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
 
 test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.26.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.26.07', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     document.body.classList.add('ops-precision-pilot');
     document.body.setAttribute('data-ops-theme', 'dark');
@@ -1940,6 +1940,76 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
       await sheet.locator('.av-note-dropdown-option').last().scrollIntoViewIfNeeded();
       await expect(sheet.locator('.av-note-dropdown-option').last()).toBeInViewport();
       expect(await page.locator('#main-scroll-area').evaluate((main) => main.scrollTop)).toBe(mainScrollBeforeSheetScroll);
+    }
+  }
+});
+
+test('desktop Request detail is one readable single-column workflow', async ({ page }) => {
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
+    for (const theme of ['light', 'dark']) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${fixtureUrl}?view=detail&theme=${theme}&ua=edge&monitoring=0`, { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('#view-detail')).toBeVisible();
+      await expect(page.locator('#req-spec')).toBeVisible();
+      await expect(page.locator('#req-comments')).toBeVisible();
+      await expect(page.locator('#request-photo-section')).toBeVisible();
+      await expect(page.locator('#detail-shared-panels')).toBeVisible();
+      await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+      await expect(page.locator('#req-shear-action')).toBeVisible();
+
+      const state = await page.locator('#view-detail').evaluate((detail) => {
+        const rect = (selector: string) => (document.querySelector(selector) as HTMLElement).getBoundingClientRect();
+        const fieldRects = Array.from(document.querySelectorAll<HTMLElement>('#req-input-container > .request-detail-field'))
+          .filter((field) => field.offsetParent !== null)
+          .map((field) => field.getBoundingClientRect());
+        const detailRect = detail.getBoundingClientRect();
+        const overviewRect = rect('#view-detail > .freeze-panel > .mb-4');
+        const photoRect = rect('#request-photo-section');
+        const sharedRect = rect('#detail-shared-panels');
+        const saveRect = rect('#req-save-action-wrap');
+        const saveButtonRect = rect('#req-btn-save-complete');
+        const shearRect = rect('#req-shear-action');
+        const main = document.getElementById('main-scroll-area')!;
+        return {
+          detailDisplay: getComputedStyle(detail).display,
+          detailWidth: detailRect.width,
+          freezeDisplay: getComputedStyle(document.querySelector('#view-detail > .freeze-panel')!).display,
+          formDisplay: getComputedStyle(document.getElementById('det-request-content')!).display,
+          mainOverflowY: getComputedStyle(main).overflowY,
+          horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          fieldRects: fieldRects.map((field) => ({ x: field.x, y: field.y, width: field.width, height: field.height, bottom: field.bottom })),
+          overviewBottom: overviewRect.bottom,
+          photoTop: photoRect.top,
+          photoBottom: photoRect.bottom,
+          sharedTop: sharedRect.top,
+          sharedBottom: sharedRect.bottom,
+          saveTop: saveRect.top,
+          saveBottom: saveRect.bottom,
+          saveWidth: saveRect.width,
+          saveButtonWidth: saveButtonRect.width,
+          shearTop: shearRect.top,
+        };
+      });
+
+      expect(state.detailDisplay).toBe('grid');
+      expect(state.detailWidth).toBeLessThanOrEqual(980);
+      expect(state.freezeDisplay).toBe('contents');
+      expect(state.formDisplay).toBe('contents');
+      expect(state.mainOverflowY).toBe('auto');
+      expect(state.horizontalOverflow).toBe(0);
+      expect(state.fieldRects.length).toBeGreaterThanOrEqual(5);
+      state.fieldRects.slice(1).forEach((field, index) => {
+        const previous = state.fieldRects[index];
+        expect(field.y).toBeGreaterThanOrEqual(previous.bottom);
+        expect(Math.abs(field.x - state.fieldRects[0].x)).toBeLessThanOrEqual(1);
+        expect(Math.abs(field.width - state.fieldRects[0].width)).toBeLessThanOrEqual(1);
+      });
+      expect(state.overviewBottom).toBeLessThanOrEqual(state.fieldRects[0].y);
+      expect(state.fieldRects.at(-1)!.bottom).toBeLessThanOrEqual(state.photoTop);
+      expect(state.photoBottom).toBeLessThanOrEqual(state.sharedTop);
+      expect(state.sharedBottom).toBeLessThanOrEqual(state.saveTop);
+      expect(Math.abs(state.saveButtonWidth - state.saveWidth)).toBeLessThanOrEqual(1);
+      expect(state.saveBottom).toBeLessThanOrEqual(state.shearTop);
     }
   }
 });
