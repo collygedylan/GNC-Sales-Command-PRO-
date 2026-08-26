@@ -9732,8 +9732,8 @@ const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
   move_down: 'Move Down Request'
 });
 
-const RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = false;
-const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = 'reclass-action-workflow-v2-20260826';
+const RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = true;
+const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = 'reclass-action-workflow-v2-live-20260826';
 const RECLASS_INQUIRY_DESTINATION_SEASONS_V2_ = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
 const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request' }),
@@ -9745,19 +9745,6 @@ const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   move_up: Object.freeze({ kind: 'move', label: 'Move Up Request' }),
   move_down: Object.freeze({ kind: 'move', label: 'Move Down Request' })
 });
-const RECLASS_INQUIRY_COMPACT_PILOT_ACTIONS_ = Object.freeze([
-  'hold',
-  'take_off_hold',
-  'stop_ship',
-  'off_stop_ship',
-  'recount',
-  'priority_change',
-  'move_up',
-  'move_down'
-]);
-const RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_ = 'compact-pilot-20260826-v2';
-const RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_ = 'dylan_collyge@greenleafnursery.com';
-
 function getReclassInquiryActionLabel_(value) {
   const action = String(value || '').trim().toLowerCase();
   return RECLASS_INQUIRY_ACTION_LABELS_[action] || 'Reclass Item Inquiry';
@@ -9772,9 +9759,10 @@ function getReclassInquiryCompactFields_(value) {
   const rule = getReclassInquiryActionRuleV2_(value);
   const prefix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 5);
   const suffix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(5);
-  if (rule && rule.kind === 'move') return prefix.concat(RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_, suffix);
-  if (rule && (rule.kind === 'hold_on' || rule.kind === 'hold_off')) return prefix.concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_, suffix);
-  return RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
+  if (rule && rule.kind === 'move') {
+    return prefix.concat(RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_, RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_, suffix);
+  }
+  return prefix.concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_, suffix);
 }
 
 function getReclassInquiryExactValue_(row, aliases, fallback) {
@@ -10143,6 +10131,7 @@ function buildReclassInquiryReportText_(model) {
     'GNC PH Reclass Item Inquiry',
     'Submitted: ' + String(safeModel.submittedAt || ''),
     'Submitted By: ' + String(safeModel.actorDisplay || ''),
+    'Request: ' + String(safeModel.requestActionLabel || 'Reclass Item Inquiry'),
     'Item: ' + String(identity.commonname || ''),
     'Item Code: ' + String(identity.itemcode || ''),
     'Container: ' + String(identity.contsize || ''),
@@ -10161,6 +10150,7 @@ function buildReclassInquiryEmailHtml_(model) {
     '<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;">',
     '<h2 style="margin:0 0 14px;color:#007a4d;">GNC PH Reclass Item Inquiry</h2>',
     '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(safeModel.actorDisplay || '') + '<br><strong>Submitted:</strong> ' + escapeEmailHtml_(safeModel.submittedAt || '') + '</p>',
+    '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
     '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Edited cells are highlighted yellow.</p>',
@@ -10316,58 +10306,6 @@ function buildReclassInquiryCompactPilotEmailHtml_(model) {
   ].join(''));
 }
 
-function getReclassInquiryCompactPilotPropertyKey_(action) {
-  return 'RECLASS_COMPACT_PILOT_SENT_' + RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_ + '_' + String(action || '').trim().toUpperCase();
-}
-
-function sendReclassInquiryCompactPilotEmails() {
-  const actions = RECLASS_INQUIRY_COMPACT_PILOT_ACTIONS_.slice();
-  const recipient = RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_;
-  const props = PropertiesService.getScriptProperties();
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) throw new Error('Another compact Reclass pilot batch is running. Retry is safe.');
-  try {
-    const results = [];
-    actions.forEach(function(action) {
-      const propertyKey = getReclassInquiryCompactPilotPropertyKey_(action);
-      const prior = String(props.getProperty(propertyKey) || '').trim();
-      if (prior) {
-        results.push({ action: action, label: getReclassInquiryActionLabel_(action), status: 'already_sent', recipient: recipient });
-        return;
-      }
-      const now = new Date();
-      const model = buildReclassInquiryCompactPilotModel_(action, now);
-      const subject = '[TEST] GNC PH Reclass - ' + model.requestActionLabel + ' - Synthetic Item';
-      const pdfBlob = HtmlService.createHtmlOutput(buildReclassInquiryCompactReportHtml_(model, true)).getBlob().getAs(MimeType.PDF);
-      const safeAction = action.replace(/[^a-z0-9]+/gi, '_');
-      pdfBlob.setName('TEST_GNC_PH_Reclass_' + safeAction + '_Compact_Pilot.pdf');
-      GmailApp.sendEmail(recipient, subject, buildReclassInquiryCompactPilotText_(model), {
-        htmlBody: buildReclassInquiryCompactPilotEmailHtml_(model),
-        attachments: [pdfBlob],
-        name: 'GNC PH Reclass Pilot'
-      });
-      props.setProperty(propertyKey, JSON.stringify({
-        policyVersion: RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_,
-        action: action,
-        recipient: recipient,
-        subject: subject,
-        sentAt: now.toISOString()
-      }));
-      results.push({ action: action, label: model.requestActionLabel, status: 'sent', recipient: recipient, subject: subject });
-    });
-    return {
-      ok: true,
-      policyVersion: RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_,
-      recipient: recipient,
-      sent: results.filter(function(result) { return result.status === 'sent'; }).length,
-      alreadySent: results.filter(function(result) { return result.status === 'already_sent'; }).length,
-      results: results
-    };
-  } finally {
-    try { lock.releaseLock(); } catch (releaseError) {}
-  }
-}
-
 function getReclassInquiryCacheKey_(token) {
   const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token || ''), Utilities.Charset.UTF_8);
   return 'reclass_inquiry_' + bytes.map(function(byte) { return ('0' + ((byte + 256) % 256).toString(16)).slice(-2); }).join('').slice(0, 40);
@@ -10406,20 +10344,38 @@ function handleReclassInquiryEmail_(payload) {
     }
     const authoritativeRows = fetchReclassInquiryItemRows_(sourceRow);
     const now = new Date();
-    const overlayResult = applyReclassInquiryOverlays_(authoritativeRows, safePayload.rowOverlays, now);
+    const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
+    const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
+    if (RECLASS_ACTION_WORKFLOW_V2_ENABLED_) {
+      const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
+      if (policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
+        return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app, reopen Reclass, and review the current rows.' };
+      }
+      if (!getReclassInquiryActionRuleV2_(requestAction)) {
+        throw new Error('Choose a supported Reclass request action before sending.');
+      }
+    }
+    const overlayResult = RECLASS_ACTION_WORKFLOW_V2_ENABLED_
+      ? buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays)
+      : applyReclassInquiryOverlays_(authoritativeRows, safePayload.rowOverlays, now);
     if (!overlayResult.ok) return overlayResult;
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, safePayload, now);
     const recipients = getReclassInquiryEmailRecipients_(safePayload);
     if (!recipients.length) throw new Error('Choose at least one email recipient.');
     const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
     const sourceLocation = getInventoryTransactionRowValue_(sourceRow, ['locationcode', 'LOCATIONCODE'], '');
-    const subject = '[External] GNC PH Reclass: ' + commonName + (sourceLocation ? ' ' + sourceLocation : '');
+    const subject = RECLASS_ACTION_WORKFLOW_V2_ENABLED_
+      ? '[External] GNC PH Reclass - ' + model.requestActionLabel + ': ' + commonName
+      : '[External] GNC PH Reclass: ' + commonName + (sourceLocation ? ' ' + sourceLocation : '');
     let pdfBlob;
     try {
-      const printHtml = buildReclassInquiryReportHtml_(model, true);
+      const printHtml = RECLASS_ACTION_WORKFLOW_V2_ENABLED_
+        ? buildReclassInquiryCompactReportHtml_(model, true)
+        : buildReclassInquiryReportHtml_(model, true);
       pdfBlob = HtmlService.createHtmlOutput(printHtml).getBlob().getAs(MimeType.PDF);
       const safeName = commonName.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Item';
-      pdfBlob.setName('GNC_PH_Reclass_Item_Inquiry_' + safeName + '.pdf');
+      const safeAction = model.requestActionLabel.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 40) || 'Request';
+      pdfBlob.setName('GNC_PH_Reclass_' + safeAction + '_' + safeName + '.pdf');
     } catch (pdfError) {
       throw new Error('The printable Reclass PDF could not be created. Nothing was emailed; retry is safe.');
     }
@@ -10438,7 +10394,8 @@ function handleReclassInquiryEmail_(payload) {
       emailRecipients: recipients,
       subject: subject,
       submittedAt: now.toISOString(),
-      message: 'Reclass Item Inquiry PDF sent. Edited cells are highlighted yellow; no inventory data was changed.'
+      policyVersion: RECLASS_ACTION_WORKFLOW_V2_ENABLED_ ? RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ : 'legacy',
+      message: model.requestActionLabel + ' Item Inquiry PDF sent. Proposed cells are highlighted yellow; no inventory data was changed.'
     };
     cache.put(cacheKey, JSON.stringify(response), 600);
     return response;

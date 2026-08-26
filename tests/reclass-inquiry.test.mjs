@@ -83,7 +83,7 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.sendReclassInquiryCompactPilotEmails = sendReclassInquiryCompactPilotEmails; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_;`, context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
@@ -110,11 +110,14 @@ function loadClientPayloadBuilder(values = {}) {
     currentUserDisplay: 'Test User',
     APP_SHELL_VERSION: 'test',
     APP_SHELL_BUILD: 'test',
+    RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION: 'reclass-action-workflow-v2-live-20260826',
+    getReclassActionWorkflowV2Config: (value) => ({ hold: { kind: 'hold_on' }, recount: { kind: 'recount' }, move_up: { kind: 'move' } }[value] || null),
     getArgosInventoryTransactionInputValue: (id) => values[id] ?? '',
     parseAppNumber: (value) => Number(String(value).replaceAll(',', '')),
     normalizeArgosInventoryTransactionRequestAction: (value) => String(value || '').trim().toLowerCase(),
     isArgosInventoryTransactionMoveSeasonRequestAction: (value) => ['move_up', 'move_down'].includes(value),
-    collectArgosReclassInquiryOverlays: () => [{ unique_id: 'u1', expected: {}, values: { holdstopcode: 'H' } }],
+    collectArgosReclassInquiryOverlays: () => [{ unique_id: 'u1', expected: {}, values: { holdstopcode: 'H', holdstopreason: 'Field review' }, actionValues: { included: true } }],
     generateArgosInventoryTransactionId: () => 'reclass-token-123456',
     getArgosInventoryTransactionActorEmail: () => 'tester@example.invalid',
     getCurrentRoleAccessValue: () => 'Manager',
@@ -303,29 +306,30 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
   }
 });
 
-test('Reclass workflow V2 is disabled, versioned, excludes NCR, and leaves the production action list intact', () => {
+test('Reclass workflow V2 is live, versioned, and excludes NCR from the production action list', () => {
   const server = loadServerModel();
-  assert.equal(server.RECLASS_ACTION_WORKFLOW_V2_ENABLED_, false);
-  assert.equal(server.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_, 'reclass-action-workflow-v2-20260826');
+  assert.equal(server.RECLASS_ACTION_WORKFLOW_V2_ENABLED_, true);
+  assert.equal(server.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_, 'reclass-action-workflow-v2-live-20260826');
   assert.deepEqual(Array.from(Object.keys(server.RECLASS_INQUIRY_ACTION_RULES_V2_)), [
     'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down',
   ]);
   const clientStart = html.indexOf('const RECLASS_ACTION_WORKFLOW_V2_ENABLED');
   const clientEnd = html.indexOf('const ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS', clientStart);
   const clientContract = html.slice(clientStart, clientEnd);
-  assert.match(clientContract, /RECLASS_ACTION_WORKFLOW_V2_ENABLED = false/);
-  assert.match(clientContract, /reclass-action-workflow-v2-20260826/);
+  assert.match(clientContract, /RECLASS_ACTION_WORKFLOW_V2_ENABLED = true/);
+  assert.match(clientContract, /reclass-action-workflow-v2-live-20260826/);
   assert.doesNotMatch(clientContract, /\bncr\s*:/);
-  assert.match(html, /ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object\.freeze\(\['hold'.*'ncr'/);
+  assert.match(clientContract, /Object\.keys\(RECLASS_ACTION_WORKFLOW_V2_CONFIG\)/);
+  assert.doesNotMatch(html.slice(html.indexOf('function ensureArgosInventoryTransactionModal'), html.indexOf('function renderArgosInventoryTransactionSource')), /NCR Request/);
 });
 
 test('action-specific compact PDFs use exact columns, natural ordering, preserved OH, and yellow proposals', () => {
   const server = loadServerModel();
   const expected = {
-    priority_change: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Loc Note Date', 'Location Note'],
-    recount: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Loc Note Date', 'Location Note'],
-    move_up: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Loc Note Date', 'Location Note'],
-    move_down: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Loc Note Date', 'Location Note'],
+    priority_change: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    recount: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    move_up: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    move_down: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
     hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
     take_off_hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
     stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
@@ -387,52 +391,18 @@ test('workflow V2 validates every action and rejects mixed, stale, and unsafe pr
   assert.deepEqual(row, { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', priority: '3', ptronhand: '20', season: 'F1', holdstopcode: 'H', holdstopreason: 'Reason' });
 });
 
-test('compact Reclass pilot maps eight actions, removes NCR, and sends each synthetic email to Dylan only once', () => {
-  const server = loadServerModel();
-  const expectedLabels = [
-    'On Hold Request',
-    'Off Hold Request',
-    'On Stop Request',
-    'Off Stop Request',
-    'Re-Count Request',
-    'Priority Change',
-    'Move Up Request',
-    'Move Down Request',
-  ];
-  const first = server.sendReclassInquiryCompactPilotEmails();
-  assert.equal(first.sent, 8);
-  assert.equal(first.alreadySent, 0);
-  assert.equal(server.__pilotMessages.length, 8);
-  assert.deepEqual(Array.from(first.results, (result) => result.label), expectedLabels);
-  assert.equal(new Set(server.__pilotMessages.map((message) => message[1])).size, 8);
-  for (const [recipient, subject, textBody, options] of server.__pilotMessages) {
-    assert.equal(recipient, 'dylan_collyge@greenleafnursery.com');
-    assert.match(subject, /^\[TEST\] GNC PH Reclass - .+ - Synthetic Item$/);
-    assert.doesNotMatch(subject, /NCR/i);
-    assert.match(textBody, /SYNTHETIC DATA ONLY/);
-    assert.match(options.htmlBody, /No production inventory, request, customer, or photo data was read or changed/);
-    assert.equal(options.attachments.length, 1);
-  }
-  const second = server.sendReclassInquiryCompactPilotEmails();
-  assert.equal(second.sent, 0);
-  assert.equal(second.alreadySent, 8);
-  assert.equal(server.__pilotMessages.length, 8);
-});
-
-test('compact pilot is editor-only and the live Reclass handler retains the existing PDF builder', () => {
-  const pilotStart = code.indexOf('function sendReclassInquiryCompactPilotEmails');
-  const pilotEnd = code.indexOf('function getReclassInquiryCacheKey_', pilotStart);
-  const pilot = code.slice(pilotStart, pilotEnd);
+test('approved pilot sender is removed and the live Reclass handler uses the compact V2 builder', () => {
   const handlerStart = code.indexOf('function handleReclassInquiryEmail_');
   const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
   const handler = code.slice(handlerStart, handlerEnd);
   const doPostStart = code.indexOf('function doPost');
   const doPost = code.slice(doPostStart);
-  assert.match(pilot, /RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_/);
-  assert.doesNotMatch(pilot, /fetchReclassInquiryItemRows_|fetchEmailApprovalMasterRow_|UrlFetchApp/);
+  assert.doesNotMatch(code, /function sendReclassInquiryCompactPilotEmails/);
   assert.doesNotMatch(doPost, /compact_pilot|sendReclassInquiryCompactPilotEmails/);
-  assert.match(handler, /buildReclassInquiryReportHtml_\(model, true\)/);
-  assert.doesNotMatch(handler, /buildReclassInquiryCompactReportHtml_/);
+  assert.match(handler, /buildReclassInquiryActionRowsV2_/);
+  assert.match(handler, /buildReclassInquiryCompactReportHtml_\(model, true\)/);
+  assert.match(handler, /workflowPolicyVersion/);
+  assert.match(handler, /GNC PH Reclass - ' \+ model\.requestActionLabel/);
 });
 
 test('Reclass email body is a short attachment summary without duplicated row report sections', () => {
@@ -463,6 +433,17 @@ test('Reclass editor marks changed and cleared controls plus Location Note date 
   assert.match(html, /data-reclass-row-edit-count/);
 });
 
+test('every live Reclass action shows current Hold/Stop Code and Reason in the row editor', () => {
+  const start = html.indexOf('function buildArgosReclassActionFieldsHtml');
+  const end = html.indexOf('function buildArgosReclassRowFieldsHtml', start);
+  const builder = html.slice(start, end);
+  assert.match(builder, /Current HOLDSTOPCODE/);
+  assert.match(builder, /Current HOLDSTOPREASON/);
+  assert.match(builder, /rule\.kind === 'recount'[\s\S]*currentHoldHtml/);
+  assert.match(builder, /return `\$\{currentHoldHtml\}\$\{selectHtml\}\$\{proposalHtml\}`/);
+  assert.match(html, /setArgosInventoryTransactionHoldAction[\s\S]*renderArgosReclassInquiryEditor/);
+});
+
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {
   const start = code.indexOf('function handleReclassInquiryEmail_');
   const end = code.indexOf('function handleInventoryTransaction_', start);
@@ -474,7 +455,7 @@ test('Reclass send path contains no inventory, audit, History, cache-row, or liv
   assert.match(handler, /attachments: \[pdfBlob\]/);
 });
 
-test('hold-only Reclass inquiry does not require a quantity or move destination', () => {
+test('live hold Reclass payload uses the V2 policy and row proposals without quantity or move destination', () => {
   const buildPayload = loadClientPayloadBuilder({
     'argos-inventory-transaction-qty': '0',
     'argos-inventory-transaction-new-item': 'A1',
@@ -486,10 +467,12 @@ test('hold-only Reclass inquiry does not require a quantity or move destination'
   const payload = buildPayload();
   assert.equal(payload.type, 'reclass_inquiry_email');
   assert.equal(payload.transaction.requestAction, 'hold');
-  assert.equal(payload.transaction.quantity, null);
+  assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v2-live-20260826');
+  assert.equal(payload.transaction.quantity, undefined);
+  assert.equal(payload.rowOverlays[0].actionValues.included, true);
 });
 
-test('a proposed move still requires a positive quantity', () => {
+test('live Reclass payload requires one of the eight approved actions', () => {
   const buildPayload = loadClientPayloadBuilder({
     'argos-inventory-transaction-qty': '0',
     'argos-inventory-transaction-new-item': 'A1',
@@ -497,5 +480,5 @@ test('a proposed move still requires a positive quantity', () => {
     'argos-inventory-transaction-new-location': 'B.2',
     'argos-inventory-transaction-hold-action': 'none',
   });
-  assert.throws(() => buildPayload(), /greater than 0 when proposing a move/);
+  assert.throws(() => buildPayload(), /Choose a Reclass request action/);
 });

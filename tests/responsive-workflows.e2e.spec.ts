@@ -1528,7 +1528,7 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
   }
 });
 
-test('Phone Reclass editor keeps large inquiries responsive and every row editable', async ({ page }) => {
+test('Phone Reclass V2 keeps large inquiries responsive with visible Hold/Stop fields and row proposals', async ({ page }) => {
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
@@ -1584,8 +1584,14 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
         })),
       };
       (window as any).__reclassResponsiveModel = model;
-      (window as any).eval('argosInventoryTransactionState = { inquiryModel: window.__reclassResponsiveModel };');
       const modal = (window as any).ensureArgosInventoryTransactionModal();
+      const actionSelect = modal.querySelector('#argos-inventory-transaction-hold-action') as HTMLSelectElement;
+      actionSelect.value = 'priority_change';
+      (window as any).eval(`argosInventoryTransactionState = {
+        inquiryModel: window.__reclassResponsiveModel,
+        snapshot: { uniqueId: 'row-0' },
+        idempotencyToken: 'reclass-e2e-token-123456'
+      };`);
       modal.querySelector('#argos-reclass-item-inquiry').innerHTML = (window as any).renderArgosReclassInquiryEditor(model, 'row-0');
       modal.classList.remove('hidden');
     });
@@ -1600,31 +1606,31 @@ test('Phone Reclass editor keeps large inquiries responsive and every row editab
     await expect(origin.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await expect(second.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
-    await expect(second.locator('[data-reclass-field]')).toHaveCount(0);
+    await expect(second.locator('[data-reclass-action-field]')).toHaveCount(0);
 
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
-    const secondNote = second.locator('[data-reclass-field="locationnote"]');
-    const secondPriority = second.locator('[data-reclass-field="priority"]');
-    await secondNote.fill('Mobile draft is preserved');
+    await expect(second).toContainText('Current HOLDSTOPCODE');
+    await expect(second).toContainText('Current HOLDSTOPREASON');
+    const includeRow = second.locator('[data-reclass-action-included]');
+    const secondPriority = second.locator('[data-reclass-action-field="priority"]');
+    await includeRow.check();
     await secondPriority.fill('');
-    await expect(second.locator('[data-reclass-field-wrapper="locationnote"]')).toHaveAttribute('data-edited', 'true');
-    await expect(second.locator('[data-reclass-system-field-wrapper="locationnotedate"]')).toHaveAttribute('data-edited', 'true');
-    await expect(second.locator('[data-reclass-field-wrapper="priority"]')).toHaveAttribute('data-edited', 'true');
-    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
-    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Edited');
+    await expect(second.locator('[data-reclass-action-proposal="priority"]')).toHaveAttribute('data-edited', 'true');
+    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '1');
+    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('1 Proposed');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
-    await expect(secondNote).toHaveValue('Mobile draft is preserved');
     await expect(secondPriority).toHaveValue('');
 
     const overlays = await page.evaluate(() => (window as any).eval('collectArgosReclassInquiryOverlays()'));
     expect(overlays).toHaveLength(41);
-    expect(overlays[1].values.locationnote).toBe('Mobile draft is preserved');
     expect(overlays[1].values.priority).toBe('');
-    expect(overlays[40].values.ptronhand).toBe('140');
+    expect(overlays[1].actionValues.included).toBe(true);
+    expect(overlays[40].values).toEqual({});
+    expect(overlays[40].actionValues.included).toBe(false);
 
     const layout = await modal.evaluate((root) => {
       const panel = root.querySelector('.argos-tx-panel') as HTMLElement;
