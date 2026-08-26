@@ -31,6 +31,30 @@ test('Request permissions come from one authenticated capability contract', () =
   assert.match(permissionCode, /capabilities\.canArchive/);
 });
 
+test('Bloom Picker Request rep selector merges the configured roster with normalized REP profiles', () => {
+  const roster = html.slice(
+    html.indexOf('const salesRepList='),
+    html.indexOf('const PRIVILEGED_MANAGER_USER_KEYS')
+  );
+  assert.match(roster, /"Chance Alldredge"/);
+  assert.match(roster, /"Chris Farrow"/);
+
+  const loader = html.slice(
+    html.indexOf('async function ensureRequestRepUserOptionsReady'),
+    html.indexOf('function resolveCanonicalRequestRepName')
+  );
+  assert.match(loader, /select=username,role&order=username\.asc&limit=1000/);
+  assert.doesNotMatch(loader, /role=in\.\(REP,Rep,rep\)/);
+  assert.match(loader, /map\(normalizeRequestRepUserOption\)\.filter\(Boolean\)/);
+  assert.match(loader, /mergeRequestModalRepOptions\(REQUEST_MODAL_REP_OPTIONS, directoryRepOptions\)/);
+
+  const roleNormalizer = html.slice(
+    html.indexOf('function isRequestRepRoleValue'),
+    html.indexOf('function resolveStaticRequestRepLabel')
+  );
+  assert.match(roleNormalizer, /normalizeRoleAccessToken\(role\) === 'REP'/);
+});
+
 test('Ben create-and-own access is enforced in both policies and the save RPC', () => {
   assert.match(capabilityMigration, /username_key = 'ben_brown' then 'own'/);
   assert.match(capabilityMigration, /general_create_access := private\.can_create_general_requests\(\) or username_key = 'ben_brown'/);
