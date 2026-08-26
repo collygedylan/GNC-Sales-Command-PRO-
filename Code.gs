@@ -9701,13 +9701,23 @@ const RECLASS_INQUIRY_SEASON_FIELDS_ = [
 ];
 
 const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
-  { key: 'lotcode', label: 'Lotcode' },
-  { key: 'locationcode', label: 'Location' },
-  { key: 'source', label: 'Source' },
-  { key: 'priority', label: 'Priority' },
-  { key: 'ptronhand', label: 'OH' },
-  { key: 'locationnotedate', label: 'Loc Note Date' },
+  { key: 'lotcode', label: 'Lotcode', width: '.72in' },
+  { key: 'locationcode', label: 'Location', width: '.86in' },
+  { key: 'source', label: 'Source', width: '.55in' },
+  { key: 'priority', label: 'Priority', width: '.58in' },
+  { key: 'ptronhand', label: 'OH', width: '.58in' },
+  { key: 'locationnotedate', label: 'Loc Note Date', width: '1.08in' },
   { key: 'locationnote', label: 'Location Note' }
+];
+
+const RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_ = [
+  { key: 'movequantity', label: 'Move Qty', source: 'actionValues', width: '.68in' },
+  { key: 'destinationseason', label: 'To Season', source: 'actionValues', width: '.72in' }
+];
+
+const RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_ = [
+  { key: 'holdstopcode', label: 'Hold/Stop Code', width: '.88in' },
+  { key: 'holdstopreason', label: 'Hold/Stop Reason', width: '1.34in' }
 ];
 
 const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
@@ -9722,12 +9732,49 @@ const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
   move_down: 'Move Down Request'
 });
 
-const RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_ = 'compact-pilot-20260825-v1';
+const RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = false;
+const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = 'reclass-action-workflow-v2-20260826';
+const RECLASS_INQUIRY_DESTINATION_SEASONS_V2_ = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
+const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
+  hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request' }),
+  take_off_hold: Object.freeze({ kind: 'hold_off', code: 'H', label: 'Off Hold Request' }),
+  stop_ship: Object.freeze({ kind: 'hold_on', code: 'S', label: 'On Stop Request' }),
+  off_stop_ship: Object.freeze({ kind: 'hold_off', code: 'S', label: 'Off Stop Request' }),
+  recount: Object.freeze({ kind: 'recount', label: 'Re-Count Request' }),
+  priority_change: Object.freeze({ kind: 'priority', label: 'Priority Change' }),
+  move_up: Object.freeze({ kind: 'move', label: 'Move Up Request' }),
+  move_down: Object.freeze({ kind: 'move', label: 'Move Down Request' })
+});
+const RECLASS_INQUIRY_COMPACT_PILOT_ACTIONS_ = Object.freeze([
+  'hold',
+  'take_off_hold',
+  'stop_ship',
+  'off_stop_ship',
+  'recount',
+  'priority_change',
+  'move_up',
+  'move_down'
+]);
+const RECLASS_INQUIRY_COMPACT_PILOT_POLICY_VERSION_ = 'compact-pilot-20260826-v2';
 const RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_ = 'dylan_collyge@greenleafnursery.com';
 
 function getReclassInquiryActionLabel_(value) {
   const action = String(value || '').trim().toLowerCase();
   return RECLASS_INQUIRY_ACTION_LABELS_[action] || 'Reclass Item Inquiry';
+}
+
+function getReclassInquiryActionRuleV2_(value) {
+  const action = String(value || '').trim().toLowerCase();
+  return RECLASS_INQUIRY_ACTION_RULES_V2_[action] || null;
+}
+
+function getReclassInquiryCompactFields_(value) {
+  const rule = getReclassInquiryActionRuleV2_(value);
+  const prefix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 5);
+  const suffix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(5);
+  if (rule && rule.kind === 'move') return prefix.concat(RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_, suffix);
+  if (rule && (rule.kind === 'hold_on' || rule.kind === 'hold_off')) return prefix.concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_, suffix);
+  return RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
 }
 
 function getReclassInquiryExactValue_(row, aliases, fallback) {
@@ -9869,6 +9916,160 @@ function applyReclassInquiryOverlays_(rows, overlays, now) {
   return { ok: true, rows: reportRows };
 }
 
+function getReclassInquiryCurrentSeasonV2_(row) {
+  const explicit = getReclassInquiryExactValue_(row, ['season', 'SEASON'], '').trim().toUpperCase();
+  if (explicit) return explicit;
+  const lotCode = getReclassInquiryExactValue_(row, ['lotcode', 'LOTCODE'], '').trim().toUpperCase();
+  const parts = lotCode.split('.').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : '';
+}
+
+function assertReclassInquiryObjectKeysV2_(value, allowedKeys, label) {
+  const safeValue = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const allowed = Array.isArray(allowedKeys) ? allowedKeys : [];
+  Object.keys(safeValue).forEach(function(key) {
+    if (allowed.indexOf(key) === -1) throw new Error(label + ' contains an unrelated field: ' + key + '.');
+  });
+  return safeValue;
+}
+
+function buildReclassInquiryActionRowsV2_(action, authoritativeRows, overlays) {
+  const requestAction = String(action || '').trim().toLowerCase();
+  const rule = getReclassInquiryActionRuleV2_(requestAction);
+  if (!rule) throw new Error('The Reclass action is not supported by workflow V2.');
+  const safeRows = Array.isArray(authoritativeRows) ? authoritativeRows : [];
+  const safeOverlays = Array.isArray(overlays) ? overlays : [];
+  if (!safeRows.length || safeRows.length !== safeOverlays.length) {
+    return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
+  }
+  const overlayByUid = new Map();
+  safeOverlays.forEach(function(rawOverlay) {
+    const overlay = assertReclassInquiryObjectKeysV2_(rawOverlay, ['unique_id', 'expected', 'values', 'actionValues'], 'A row proposal');
+    const uid = normalizeInventoryTransactionText_(overlay.unique_id);
+    if (!uid || overlayByUid.has(uid)) throw new Error('The Item Inquiry proposal row ids are invalid.');
+    overlayByUid.set(uid, overlay);
+  });
+  const allowedValueKeys = rule.kind === 'priority'
+    ? ['priority']
+    : (rule.kind === 'hold_on' || rule.kind === 'hold_off' ? ['holdstopcode', 'holdstopreason'] : []);
+  const allowedActionKeys = rule.kind === 'move'
+    ? ['included', 'moveQuantity', 'destinationSeason']
+    : ['included'];
+  const reportRows = [];
+  let includedCount = 0;
+  for (let i = 0; i < safeRows.length; i++) {
+    const row = safeRows[i];
+    const uid = getInventoryTransactionRowUid_(row);
+    const overlay = overlayByUid.get(uid);
+    if (!overlay) return { ok: false, status: 'conflict', message: 'An Item Inquiry row changed or is no longer available. Sync and try again.' };
+    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, ['itemcode', 'lotcode', 'locationcode'], 'The expected row identity');
+    const checks = [
+      ['ItemCode', getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''), expected.itemcode],
+      ['Lot', getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''), expected.lotcode],
+      ['Location', getInventoryTransactionRowValue_(row, ['locationcode', 'LOCATIONCODE'], ''), expected.locationcode]
+    ];
+    const mismatch = checks.find(function(check) {
+      return normalizeInventoryTransactionCompareText_(check[1]) !== normalizeInventoryTransactionCompareText_(check[2]);
+    });
+    if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
+    const overlayValues = assertReclassInquiryObjectKeysV2_(overlay.values, allowedValueKeys, 'The proposed inventory values');
+    const actionValues = assertReclassInquiryObjectKeysV2_(overlay.actionValues, allowedActionKeys, 'The proposed action values');
+    if (Object.prototype.hasOwnProperty.call(actionValues, 'included') && typeof actionValues.included !== 'boolean') {
+      throw new Error('The row included flag must be true or false.');
+    }
+    const included = actionValues.included === true;
+    const values = {};
+    RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) {
+      values[field.key] = getReclassInquiryExactValue_(row, field.aliases, '');
+    });
+    const changedFields = [];
+    const reportActionValues = {};
+    if (!included) {
+      if (Object.keys(overlayValues).length || Object.keys(actionValues).some(function(key) { return key !== 'included'; })) {
+        throw new Error('Only selected rows may contain proposed values.');
+      }
+    } else {
+      includedCount++;
+      if (rule.kind === 'move') {
+        const originalOhRaw = String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, '');
+        const originalOh = Number(originalOhRaw);
+        const moveQuantity = Number(actionValues.moveQuantity);
+        if (!Number.isFinite(originalOh) || originalOh < 1) throw new Error('Selected Move rows must have a positive original OH.');
+        if (!Number.isInteger(moveQuantity) || moveQuantity < 1 || moveQuantity > originalOh) {
+          throw new Error('Move Qty must be a whole number from 1 through the original OH.');
+        }
+        const destinationSeason = String(actionValues.destinationSeason || '').trim().toUpperCase();
+        const currentSeason = getReclassInquiryCurrentSeasonV2_(row);
+        if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destinationSeason) === -1) {
+          throw new Error('To Season must be a configured destination season.');
+        }
+        if (destinationSeason === currentSeason) throw new Error('To Season must be different from the current season.');
+        reportActionValues.movequantity = String(moveQuantity);
+        reportActionValues.destinationseason = destinationSeason;
+        changedFields.push('movequantity', 'destinationseason');
+      } else if (rule.kind === 'hold_on') {
+        const proposedCode = String(overlayValues.holdstopcode || '').trim().toUpperCase();
+        const proposedReason = String(overlayValues.holdstopreason || '').trim();
+        if (proposedCode !== rule.code) throw new Error(rule.label + ' must propose Hold/Stop Code ' + rule.code + '.');
+        if (!proposedReason) throw new Error(rule.label + ' requires a Hold/Stop Reason.');
+        const originalCode = String(values.holdstopcode || '').trim().toUpperCase();
+        const originalReason = String(values.holdstopreason || '').trim();
+        values.holdstopcode = proposedCode;
+        values.holdstopreason = proposedReason;
+        if (proposedCode !== originalCode) changedFields.push('holdstopcode');
+        if (proposedReason !== originalReason) changedFields.push('holdstopreason');
+        if (!changedFields.length) throw new Error(rule.label + ' must change at least one Hold/Stop field.');
+      } else if (rule.kind === 'hold_off') {
+        const originalCode = String(values.holdstopcode || '').trim().toUpperCase();
+        if (originalCode !== rule.code) throw new Error(rule.label + ' can select only rows currently coded ' + rule.code + '.');
+        if (!Object.prototype.hasOwnProperty.call(overlayValues, 'holdstopcode') || !Object.prototype.hasOwnProperty.call(overlayValues, 'holdstopreason')) {
+          throw new Error(rule.label + ' must explicitly clear Hold/Stop Code and Hold/Stop Reason.');
+        }
+        if (String(overlayValues.holdstopcode || '').trim() || String(overlayValues.holdstopreason || '').trim()) {
+          throw new Error(rule.label + ' must clear Hold/Stop Code and Hold/Stop Reason.');
+        }
+        values.holdstopcode = '';
+        values.holdstopreason = '';
+        changedFields.push('holdstopcode');
+        if (String(getReclassInquiryExactValue_(row, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], '')).trim()) changedFields.push('holdstopreason');
+      } else if (rule.kind === 'priority') {
+        if (!Object.prototype.hasOwnProperty.call(overlayValues, 'priority')) throw new Error('Priority Change requires a proposed Priority value.');
+        const requestedRaw = String(overlayValues.priority == null ? '' : overlayValues.priority).trim();
+        let requestedPriority = '';
+        if (requestedRaw) {
+          const number = Number(requestedRaw);
+          if (!Number.isInteger(number) || number < 1 || number > 99) throw new Error('Priority must be blank or a whole number from 1 through 99.');
+          requestedPriority = String(number);
+        }
+        const originalRaw = String(values.priority == null ? '' : values.priority).trim();
+        const originalNumber = originalRaw ? Number(originalRaw) : null;
+        const originalPriority = Number.isInteger(originalNumber) ? String(originalNumber) : originalRaw;
+        if (requestedPriority === originalPriority) throw new Error('Priority Change must add, replace, or remove the selected row Priority.');
+        values.priority = requestedPriority;
+        changedFields.push('priority');
+      } else if (rule.kind === 'recount') {
+        throw new Error('Re-Count rows must remain read-only and unselected.');
+      }
+    }
+    reportRows.push({
+      unique_id: uid,
+      values: values,
+      actionValues: reportActionValues,
+      changedFields: changedFields,
+      included: included
+    });
+  }
+  if (overlayByUid.size !== safeRows.length) {
+    return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
+  }
+  if (rule.kind === 'recount') {
+    if (includedCount) throw new Error('Re-Count must not contain proposed row changes.');
+  } else if (!includedCount) {
+    throw new Error(rule.label + ' requires at least one selected row.');
+  }
+  return { ok: true, rows: reportRows };
+}
+
 function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, payload, now) {
   const identity = {};
   RECLASS_INQUIRY_IDENTITY_FIELDS_.forEach(function(field) {
@@ -9982,15 +10183,18 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const esc = escapeEmailHtml_;
   const editSummary = safeModel.editSummary || {};
   const actionLabel = String(firstNonEmptyRequestValue_(safeModel.requestActionLabel, getReclassInquiryActionLabel_(safeModel.requestAction), 'Reclass Item Inquiry'));
+  const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction);
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
     return '<div class="identity-cell"><span>' + esc(field.label) + '</span><strong>' + esc(safeModel.identity && safeModel.identity[field.key] || '') + '</strong></div>';
   }).join('');
-  const rowHead = RECLASS_INQUIRY_COMPACT_FIELDS_.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
+  const columnWidths = compactFields.map(function(field) { return '<col' + (field.width ? ' style="width:' + esc(field.width) + '"' : '') + '>'; }).join('');
+  const rowHead = compactFields.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
   const rowBody = sortReclassInquiryCompactRows_(safeModel.rows).map(function(row) {
     const changedFields = Array.isArray(row && row.changedFields) ? row.changedFields : [];
-    return '<tr>' + RECLASS_INQUIRY_COMPACT_FIELDS_.map(function(field) {
+    return '<tr>' + compactFields.map(function(field) {
       const edited = changedFields.indexOf(field.key) !== -1;
-      const rawValue = row && row.values && Object.prototype.hasOwnProperty.call(row.values, field.key) ? row.values[field.key] : '';
+      const sourceValues = field.source === 'actionValues' ? row && row.actionValues : row && row.values;
+      const rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
       return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</td>';
     }).join('') + '</tr>';
   }).join('');
@@ -9998,14 +10202,66 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     ? '<div class="pilot-banner">TEST PILOT - SYNTHETIC DATA ONLY</div>'
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong{display:block;font-size:8pt}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt}.location-table th:nth-child(1),.location-table td:nth-child(1){width:.78in}.location-table th:nth-child(2),.location-table td:nth-child(2){width:.88in}.location-table th:nth-child(3),.location-table td:nth-child(3){width:.58in}.location-table th:nth-child(4),.location-table td:nth-child(4){width:.65in}.location-table th:nth-child(5),.location-table td:nth-child(5){width:.62in}.location-table th:nth-child(6),.location-table td:nth-child(6){width:1.12in}.location-table th:nth-child(7),.location-table td:nth-child(7){width:auto;white-space:normal}.edited-cell{background:#fff176!important}' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong{display:block;font-size:8pt}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt}.edited-cell{background:#fff176!important}' +
     '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div>' +
-    '<div class="identity">' + identityCells + '</div><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
+    '<div class="identity">' + identityCells + '</div><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
+}
+
+function getReclassInquiryCompactPilotRows_() {
+  return [
+    { unique_id: 'pilot-a01', itemcode: 'TEST.RECLASS.001', lotcode: '27.S1', locationcode: 'A.01.000', source: 'SH', priority: '4', ptronhand: '36', locationnotedate: '', locationnote: '', holdstopcode: '', holdstopreason: '', season: 'S1' },
+    { unique_id: 'pilot-d12', itemcode: 'TEST.RECLASS.001', lotcode: '26.U2', locationcode: 'D.12.000', source: 'LD', priority: '3', ptronhand: '26', locationnotedate: '8/18/2026', locationnote: 'Synthetic unchanged row.', holdstopcode: 'S', holdstopreason: 'Synthetic stop', season: 'U2' },
+    { unique_id: 'pilot-d17', itemcode: 'TEST.RECLASS.001', lotcode: '27.F1', locationcode: 'D.17.000', source: 'LD', priority: '', ptronhand: '92', locationnotedate: '', locationnote: '', holdstopcode: '', holdstopreason: '', season: 'F1' },
+    { unique_id: 'pilot-f14', itemcode: 'TEST.RECLASS.001', lotcode: '27.F1', locationcode: 'F.14.000', source: 'LD', priority: '3', ptronhand: '497', locationnotedate: '8/20/2026', locationnote: 'Existing synthetic note', holdstopcode: 'H', holdstopreason: 'Synthetic hold', season: 'F1' }
+  ];
+}
+
+function buildReclassInquiryCompactPilotOverlays_(action, rows) {
+  const requestAction = String(action || '').trim().toLowerCase();
+  return (Array.isArray(rows) ? rows : []).map(function(row) {
+    const overlay = {
+      unique_id: row.unique_id,
+      expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode },
+      values: {},
+      actionValues: { included: false }
+    };
+    if (requestAction === 'hold' && row.unique_id === 'pilot-d17') {
+      overlay.values = { holdstopcode: 'H', holdstopreason: 'Synthetic hold reason' };
+      overlay.actionValues.included = true;
+    } else if (requestAction === 'stop_ship' && row.unique_id === 'pilot-d17') {
+      overlay.values = { holdstopcode: 'S', holdstopreason: 'Synthetic stop reason' };
+      overlay.actionValues.included = true;
+    } else if (requestAction === 'take_off_hold' && row.unique_id === 'pilot-f14') {
+      overlay.values = { holdstopcode: '', holdstopreason: '' };
+      overlay.actionValues.included = true;
+    } else if (requestAction === 'off_stop_ship' && row.unique_id === 'pilot-d12') {
+      overlay.values = { holdstopcode: '', holdstopreason: '' };
+      overlay.actionValues.included = true;
+    } else if (requestAction === 'priority_change' && row.unique_id === 'pilot-f14') {
+      overlay.values = { priority: '' };
+      overlay.actionValues.included = true;
+    } else if (requestAction === 'priority_change' && row.unique_id === 'pilot-d17') {
+      overlay.values = { priority: '1' };
+      overlay.actionValues.included = true;
+    } else if (requestAction === 'move_up' && row.unique_id === 'pilot-d12') {
+      overlay.actionValues = { included: true, moveQuantity: 20, destinationSeason: 'F1' };
+    } else if (requestAction === 'move_down' && row.unique_id === 'pilot-a01') {
+      overlay.actionValues = { included: true, moveQuantity: 15, destinationSeason: 'U2' };
+    }
+    return overlay;
+  });
 }
 
 function buildReclassInquiryCompactPilotModel_(action, now) {
   const submittedAt = Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a');
   const requestAction = String(action || '').trim().toLowerCase();
+  const rule = getReclassInquiryActionRuleV2_(requestAction);
+  if (!rule) throw new Error('The synthetic pilot action is not supported.');
+  const authoritativeRows = getReclassInquiryCompactPilotRows_();
+  const overlays = buildReclassInquiryCompactPilotOverlays_(requestAction, authoritativeRows);
+  const proposal = buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, overlays);
+  if (!proposal.ok) throw new Error(proposal.message || 'The synthetic pilot rows could not be validated.');
+  const editedRows = proposal.rows.filter(function(row) { return row.changedFields.length; });
   return {
     isSyntheticPilot: true,
     requestAction: requestAction,
@@ -10022,29 +10278,11 @@ function buildReclassInquiryCompactPilotModel_(action, now) {
       itemspec: 'Synthetic data',
       pullerresponsibility: 'Pilot only'
     },
-    rows: [
-      {
-        unique_id: 'pilot-f14',
-        values: { lotcode: '27.F1', locationcode: 'F.14.000', source: 'LD', priority: '', ptronhand: '497', locationnotedate: '8/20/2026', locationnote: 'Existing synthetic note' },
-        changedFields: ['priority']
-      },
-      {
-        unique_id: 'pilot-d17',
-        values: { lotcode: '27.F1', locationcode: 'D.17.000', source: 'LD', priority: '1', ptronhand: '92', locationnotedate: submittedAt, locationnote: 'Synthetic pilot note added for review.' },
-        changedFields: ['priority', 'locationnotedate', 'locationnote']
-      },
-      {
-        unique_id: 'pilot-a01',
-        values: { lotcode: '27.S1', locationcode: 'A.01.000', source: 'SH', priority: '4', ptronhand: '36', locationnotedate: '', locationnote: '' },
-        changedFields: []
-      },
-      {
-        unique_id: 'pilot-d12',
-        values: { lotcode: '26.U2', locationcode: 'D.12.000', source: 'LD', priority: '3', ptronhand: '26', locationnotedate: '8/18/2026', locationnote: 'Synthetic unchanged row.' },
-        changedFields: []
-      }
-    ],
-    editSummary: { rowCount: 2, fieldCount: 4 }
+    rows: proposal.rows,
+    editSummary: {
+      rowCount: editedRows.length,
+      fieldCount: editedRows.reduce(function(total, row) { return total + row.changedFields.length; }, 0)
+    }
   };
 }
 
@@ -10072,7 +10310,7 @@ function buildReclassInquiryCompactPilotEmailHtml_(model) {
     '<h2 style="margin:0 0 14px;color:#007a4d;">GNC PH Reclass Item Inquiry</h2>',
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || '') + '<br><strong>Item:</strong> ' + escapeEmailHtml_(safeModel.identity && safeModel.identity.commonname || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
-    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>Compact PDF attached:</strong> Open the synthetic Item Inquiry PDF to review the seven-column pilot layout. Edited cells are highlighted yellow.</p>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>Compact PDF attached:</strong> Open the synthetic Item Inquiry PDF to review the action-specific pilot layout. Proposed cells are highlighted yellow.</p>',
     '<p style="font-size:12px;color:#64748b;">No production inventory, request, customer, or photo data was read or changed.</p>',
     '</div>'
   ].join(''));
@@ -10083,7 +10321,7 @@ function getReclassInquiryCompactPilotPropertyKey_(action) {
 }
 
 function sendReclassInquiryCompactPilotEmails() {
-  const actions = Object.keys(RECLASS_INQUIRY_ACTION_LABELS_);
+  const actions = RECLASS_INQUIRY_COMPACT_PILOT_ACTIONS_.slice();
   const recipient = RECLASS_INQUIRY_COMPACT_PILOT_RECIPIENT_;
   const props = PropertiesService.getScriptProperties();
   const lock = LockService.getScriptLock();

@@ -40953,6 +40953,24 @@ let avTopControlsRenderToken = 0;
         const ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         const ARGOS_INVENTORY_TRANSACTION_MOVE_SEASON_REQUEST_ACTIONS = Object.freeze(['move_up', 'move_down']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'priority_change', 'move_up', 'move_down']);
+        const RECLASS_ACTION_WORKFLOW_V2_ENABLED = false;
+        const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION = 'reclass-action-workflow-v2-20260826';
+        const RECLASS_ACTION_WORKFLOW_V2_SEASONS = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
+        const RECLASS_ACTION_WORKFLOW_V2_CONFIG = Object.freeze({
+            hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request', valueFields: Object.freeze(['holdstopcode', 'holdstopreason']), actionFields: Object.freeze(['included']) }),
+            take_off_hold: Object.freeze({ kind: 'hold_off', code: 'H', label: 'Off Hold Request', valueFields: Object.freeze(['holdstopcode', 'holdstopreason']), actionFields: Object.freeze(['included']) }),
+            stop_ship: Object.freeze({ kind: 'hold_on', code: 'S', label: 'On Stop Request', valueFields: Object.freeze(['holdstopcode', 'holdstopreason']), actionFields: Object.freeze(['included']) }),
+            off_stop_ship: Object.freeze({ kind: 'hold_off', code: 'S', label: 'Off Stop Request', valueFields: Object.freeze(['holdstopcode', 'holdstopreason']), actionFields: Object.freeze(['included']) }),
+            recount: Object.freeze({ kind: 'recount', label: 'Re-Count Request', valueFields: Object.freeze([]), actionFields: Object.freeze(['included']) }),
+            priority_change: Object.freeze({ kind: 'priority', label: 'Priority Change', valueFields: Object.freeze(['priority']), actionFields: Object.freeze(['included']) }),
+            move_up: Object.freeze({ kind: 'move', label: 'Move Up Request', valueFields: Object.freeze([]), actionFields: Object.freeze(['included', 'moveQuantity', 'destinationSeason']) }),
+            move_down: Object.freeze({ kind: 'move', label: 'Move Down Request', valueFields: Object.freeze([]), actionFields: Object.freeze(['included', 'moveQuantity', 'destinationSeason']) })
+        });
+
+        function getReclassActionWorkflowV2Config(action = '') {
+            const normalized = String(action || '').trim().toLowerCase();
+            return RECLASS_ACTION_WORKFLOW_V2_CONFIG[normalized] || null;
+        }
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS = Object.freeze({
             hold: 'On Hold',
             take_off_hold: 'Off Hold',

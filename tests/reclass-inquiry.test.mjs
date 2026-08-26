@@ -83,7 +83,7 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.sendReclassInquiryCompactPilotEmails = sendReclassInquiryCompactPilotEmails;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.sendReclassInquiryCompactPilotEmails = sendReclassInquiryCompactPilotEmails; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_;`, context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
@@ -303,57 +303,120 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
   }
 });
 
-test('compact Reclass pilot PDF has the exact seven columns, natural ordering, and yellow cleared values', () => {
+test('Reclass workflow V2 is disabled, versioned, excludes NCR, and leaves the production action list intact', () => {
   const server = loadServerModel();
-  const model = server.buildReclassInquiryCompactPilotModel_('priority_change', new Date('2026-08-22T14:15:00Z'));
-  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
-  const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
-  assert.deepEqual(headers, ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Loc Note Date', 'Location Note']);
-  for (const removed of ['Rev', 'Avail', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2', 'H/S', 'H/S Reason']) {
-    assert.ok(!headers.includes(removed), `${removed} must not be a compact pilot column`);
-  }
-  assert.ok(output.indexOf('A.01.000') < output.indexOf('D.12.000'));
-  assert.ok(output.indexOf('D.12.000') < output.indexOf('D.17.000'));
-  assert.ok(output.indexOf('D.17.000') < output.indexOf('F.14.000'));
-  assert.match(output, /TEST PILOT - SYNTHETIC DATA ONLY/);
-  assert.match(output, /Request:<\/strong> Priority Change/);
-  assert.match(output, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
-  assert.match(output, /class="edited-cell" data-edited="true">Synthetic pilot note added for review\.<\/td>/);
-  assert.match(output, /thead\{display:table-header-group\}/);
-  assert.match(output, /@page\{size:Letter landscape/);
+  assert.equal(server.RECLASS_ACTION_WORKFLOW_V2_ENABLED_, false);
+  assert.equal(server.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_, 'reclass-action-workflow-v2-20260826');
+  assert.deepEqual(Array.from(Object.keys(server.RECLASS_INQUIRY_ACTION_RULES_V2_)), [
+    'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down',
+  ]);
+  const clientStart = html.indexOf('const RECLASS_ACTION_WORKFLOW_V2_ENABLED');
+  const clientEnd = html.indexOf('const ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS', clientStart);
+  const clientContract = html.slice(clientStart, clientEnd);
+  assert.match(clientContract, /RECLASS_ACTION_WORKFLOW_V2_ENABLED = false/);
+  assert.match(clientContract, /reclass-action-workflow-v2-20260826/);
+  assert.doesNotMatch(clientContract, /\bncr\s*:/);
+  assert.match(html, /ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object\.freeze\(\['hold'.*'ncr'/);
 });
 
-test('compact Reclass pilot maps all nine actions and sends each synthetic email to Dylan only once', () => {
+test('action-specific compact PDFs use exact columns, natural ordering, preserved OH, and yellow proposals', () => {
+  const server = loadServerModel();
+  const expected = {
+    priority_change: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Loc Note Date', 'Location Note'],
+    recount: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Loc Note Date', 'Location Note'],
+    move_up: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Loc Note Date', 'Location Note'],
+    move_down: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Loc Note Date', 'Location Note'],
+    hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    take_off_hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    off_stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+  };
+  const outputs = {};
+  for (const [action, expectedHeaders] of Object.entries(expected)) {
+    const model = server.buildReclassInquiryCompactPilotModel_(action, new Date('2026-08-22T14:15:00Z'));
+    const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+    outputs[action] = output;
+    const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
+    const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
+    assert.deepEqual(headers, expectedHeaders, `${action} should have its exact columns`);
+    assert.ok(output.indexOf('A.01.000') < output.indexOf('D.12.000'));
+    assert.ok(output.indexOf('D.12.000') < output.indexOf('D.17.000'));
+    assert.ok(output.indexOf('D.17.000') < output.indexOf('F.14.000'));
+    assert.match(output, /TEST PILOT - SYNTHETIC DATA ONLY/);
+    assert.match(output, /thead\{display:table-header-group\}/);
+    assert.match(output, /@page\{size:Letter landscape/);
+    assert.equal((output.match(/<tr>/g) || []).length, 5, `${action} should include all four current rows plus the header`);
+  }
+  for (const removed of ['Rev', 'Avail', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2', 'H/S', 'H/S Reason']) {
+    for (const output of Object.values(outputs)) assert.doesNotMatch(output, new RegExp(`<th>${removed}<\\/th>`), `${removed} must not be an action pilot column`);
+  }
+  assert.match(outputs.priority_change, /Request:<\/strong> Priority Change/);
+  assert.match(outputs.priority_change, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
+  assert.match(outputs.priority_change, /class="edited-cell" data-edited="true">1<\/td>/);
+  assert.match(outputs.move_up, /class="edited-cell" data-edited="true">20<\/td>/);
+  assert.match(outputs.move_up, /class="edited-cell" data-edited="true">F1<\/td>/);
+  assert.match(outputs.move_up, />26<\/td><td class="edited-cell" data-edited="true">20<\/td>/, 'Move Up must preserve original OH 26');
+  assert.match(outputs.move_down, />36<\/td><td class="edited-cell" data-edited="true">15<\/td>/, 'Move Down must preserve original OH 36');
+  assert.match(outputs.take_off_hold, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
+  assert.match(outputs.off_stop_ship, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
+  assert.doesNotMatch(outputs.recount, /class="edited-cell"/);
+});
+
+test('workflow V2 validates every action and rejects mixed, stale, and unsafe proposals', () => {
+  const server = loadServerModel();
+  const pilotRows = server.getReclassInquiryCompactPilotRows_();
+  for (const action of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']) {
+    const result = server.buildReclassInquiryActionRowsV2_(action, pilotRows, server.buildReclassInquiryCompactPilotOverlays_(action, pilotRows));
+    assert.equal(result.ok, true, `${action} should validate`);
+  }
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', priority: '3', ptronhand: '20', season: 'F1', holdstopcode: 'H', holdstopreason: 'Reason' };
+  const overlay = (values = {}, actionValues = { included: true }, expected = { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' }) => ({ unique_id: 'u1', expected, values, actionValues });
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('hold', [row], [overlay({ holdstopcode: 'S', holdstopreason: 'Reason' })]), /must propose Hold\/Stop Code H/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('hold', [row], [overlay({ holdstopcode: 'H', holdstopreason: '' })]), /requires a Hold\/Stop Reason/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('priority_change', [row], [overlay({ priority: '2', holdstopcode: 'H' })]), /unrelated field: holdstopcode/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('priority_change', [row], [overlay({ priority: '0' })]), /1 through 99/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('priority_change', [row], [overlay({ priority: '3' })]), /must add, replace, or remove/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('move_up', [row], [overlay({}, { included: true, moveQuantity: 21, destinationSeason: 'S1' })]), /1 through the original OH/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('move_up', [row], [overlay({}, { included: true, moveQuantity: 10.5, destinationSeason: 'S1' })]), /whole number/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('move_up', [row], [overlay({}, { included: true, moveQuantity: 10, destinationSeason: 'F1' })]), /different from the current season/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('move_up', [row], [overlay({}, { included: true, moveQuantity: 10, destinationSeason: 'Q1' })]), /configured destination season/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('off_stop_ship', [row], [overlay({ holdstopcode: '', holdstopreason: '' })]), /currently coded S/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV2_('recount', [row], [overlay({}, { included: true })]), /read-only and unselected/);
+  const stale = server.buildReclassInquiryActionRowsV2_('priority_change', [row], [overlay({ priority: '2' }, { included: true }, { itemcode: 'A1', lotcode: '27.F1', locationcode: 'Z.9' })]);
+  assert.equal(stale.status, 'conflict');
+  assert.deepEqual(row, { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', priority: '3', ptronhand: '20', season: 'F1', holdstopcode: 'H', holdstopreason: 'Reason' });
+});
+
+test('compact Reclass pilot maps eight actions, removes NCR, and sends each synthetic email to Dylan only once', () => {
   const server = loadServerModel();
   const expectedLabels = [
     'On Hold Request',
     'Off Hold Request',
     'On Stop Request',
     'Off Stop Request',
-    'NCR Request',
     'Re-Count Request',
     'Priority Change',
     'Move Up Request',
     'Move Down Request',
   ];
   const first = server.sendReclassInquiryCompactPilotEmails();
-  assert.equal(first.sent, 9);
+  assert.equal(first.sent, 8);
   assert.equal(first.alreadySent, 0);
-  assert.equal(server.__pilotMessages.length, 9);
+  assert.equal(server.__pilotMessages.length, 8);
   assert.deepEqual(Array.from(first.results, (result) => result.label), expectedLabels);
-  assert.equal(new Set(server.__pilotMessages.map((message) => message[1])).size, 9);
+  assert.equal(new Set(server.__pilotMessages.map((message) => message[1])).size, 8);
   for (const [recipient, subject, textBody, options] of server.__pilotMessages) {
     assert.equal(recipient, 'dylan_collyge@greenleafnursery.com');
     assert.match(subject, /^\[TEST\] GNC PH Reclass - .+ - Synthetic Item$/);
+    assert.doesNotMatch(subject, /NCR/i);
     assert.match(textBody, /SYNTHETIC DATA ONLY/);
     assert.match(options.htmlBody, /No production inventory, request, customer, or photo data was read or changed/);
     assert.equal(options.attachments.length, 1);
   }
   const second = server.sendReclassInquiryCompactPilotEmails();
   assert.equal(second.sent, 0);
-  assert.equal(second.alreadySent, 9);
-  assert.equal(server.__pilotMessages.length, 9);
+  assert.equal(second.alreadySent, 8);
+  assert.equal(server.__pilotMessages.length, 8);
 });
 
 test('compact pilot is editor-only and the live Reclass handler retains the existing PDF builder', () => {
