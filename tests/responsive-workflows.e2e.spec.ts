@@ -1528,11 +1528,11 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
   }
 });
 
-test('Phone Reclass V2 keeps large inquiries responsive with visible Hold/Stop fields and row proposals', async ({ page }) => {
+test('Phone Reclass V3 supports all eight direct actions without row checkboxes or horizontal overflow', async ({ page }) => {
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.26.04', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1564,6 +1564,8 @@ test('Phone Reclass V2 keeps large inquiries responsive with visible Hold/Stop f
           values: {
             lotcode: index % 2 ? '27.F1' : '26.Y',
             locationcode: `A.${String(index + 1).padStart(2, '0')}.000`,
+            season: 'F1',
+            saleyear: index === 40 ? '2028' : (index % 2 ? '27' : '2027'),
             source: index % 2 ? 'SH' : 'LD',
             priority: String((index % 9) + 1),
             desigitem: '',
@@ -1578,23 +1580,50 @@ test('Phone Reclass V2 keeps large inquiries responsive with visible Hold/Stop f
             pulltagnote2: '',
             locationptn1: index === 0 ? longNote : '',
             locationptn2: '',
-            holdstopcode: index === 0 ? 'H' : '',
-            holdstopreason: index === 0 ? longNote : '',
+            holdstopcode: index === 0 ? 'H' : (index === 2 ? 'S' : ''),
+            holdstopreason: index === 0 ? longNote : (index === 2 ? 'Current stop' : ''),
           },
         })),
       };
       (window as any).__reclassResponsiveModel = model;
-      const modal = (window as any).ensureArgosInventoryTransactionModal();
-      const actionSelect = modal.querySelector('#argos-inventory-transaction-hold-action') as HTMLSelectElement;
-      actionSelect.value = 'priority_change';
-      (window as any).eval(`argosInventoryTransactionState = {
-        inquiryModel: window.__reclassResponsiveModel,
-        snapshot: { uniqueId: 'row-0' },
-        idempotencyToken: 'reclass-e2e-token-123456'
-      };`);
-      modal.querySelector('#argos-reclass-item-inquiry').innerHTML = (window as any).renderArgosReclassInquiryEditor(model, 'row-0');
-      modal.classList.remove('hidden');
+      (window as any).__reclassResponsiveRows = model.locationRows.map((entry: any) => ({
+        UNIQUE_ID: entry.unique_id,
+        ITEMCODE: model.identity.itemcode,
+        COMMONNAME: model.identity.commonname,
+        CONTSIZE: model.identity.contsize,
+        PLANTGROUPCODE: model.identity.plantgroupcode,
+        GENUSNAME: model.identity.genusname,
+        FIELDTAGCOLOR: model.identity.fieldtagcolor,
+        ITEMSPEC: model.identity.itemspec,
+        PULLERRESPONSIBILITY: model.identity.pullerresponsibility,
+        LOTCODE: entry.values.lotcode,
+        LOCATIONCODE: entry.values.locationcode,
+        SEASON: entry.values.season,
+        SALEYEAR: entry.values.saleyear,
+        SOURCE: entry.values.source,
+        PRIORITY: entry.values.priority,
+        PTRONHAND: entry.values.ptronhand,
+        PTRREVIEWED: entry.values.ptrreviewed,
+        PTRAVAILABLE: entry.values.ptravailable,
+        LOCATIONNOTEDATE: entry.values.locationnotedate,
+        LOCATIONNOTE: entry.values.locationnote,
+        HOLDSTOPCODE: entry.values.holdstopcode,
+        HOLDSTOPREASON: entry.values.holdstopreason,
+        SOURCE_TABLE: 'ph_master_inventory',
+      }));
+      (window as any).processAndLoadData({ data: (window as any).__reclassResponsiveRows, _fromCache: true });
+      (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: '2027' });
+      (window as any).__reclassResponsiveSetup = {
+        found: !!(window as any).findItemByUniqueId('row-0'),
+        settings: (window as any).getCurrentAppSeasonSettings(),
+      };
     });
+
+    expect(await page.evaluate(() => (window as any).__reclassResponsiveSetup)).toEqual({
+      found: true,
+      settings: expect.objectContaining({ seasonCode: 'F1', salesYear: 27 }),
+    });
+    await page.evaluate(() => (window as any).openArgosInventoryTransactionModal('row-0', 'reclass', ''));
 
     const modal = page.locator('#argos-inventory-transaction-modal');
     const cards = modal.locator('[data-reclass-row-card]');
@@ -1606,38 +1635,89 @@ test('Phone Reclass V2 keeps large inquiries responsive with visible Hold/Stop f
     await expect(origin.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await expect(second.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
-    await expect(second.locator('[data-reclass-action-field]')).toHaveCount(0);
+    await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(0);
 
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
     await expect(second).toContainText('Current HOLDSTOPCODE');
     await expect(second).toContainText('Current HOLDSTOPREASON');
-    const includeRow = second.locator('[data-reclass-action-included]');
-    const secondPriority = second.locator('[data-reclass-action-field="priority"]');
-    await includeRow.check();
+    await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(8);
+    await expect(second.locator('[data-reclass-action-included]')).toHaveCount(0);
+    const scopeState = await page.evaluate(() => {
+      const runtime = window as any;
+      const scopedModel = runtime.buildItemInquiryViewModel(runtime.__reclassResponsiveRows[0], runtime.__reclassResponsiveRows);
+      return {
+        settings: runtime.getArgosReclassScopeSettings(),
+        firstRow: scopedModel.locationRows[0].sourceRow,
+        firstYear: runtime.normalizeArgosReclassSalesYear(scopedModel.locationRows[0].sourceRow.SALEYEAR),
+        firstInScope: runtime.isArgosReclassHoldScopeEntry(scopedModel.locationRows[0]),
+        rowCount: scopedModel.locationRows.length,
+        rawHoldRows: scopedModel.locationRows.filter(runtime.isArgosReclassHoldScopeEntry).length,
+        holdRule: runtime.getReclassActionWorkflowV2Config('hold'),
+        holdRows: runtime.getArgosReclassHoldScopeEntries('hold').length,
+        offHoldRows: runtime.getArgosReclassHoldScopeEntries('take_off_hold').length,
+        offStopRows: runtime.getArgosReclassHoldScopeEntries('off_stop_ship').length,
+      };
+    });
+    expect(scopeState.settings).toEqual({ season: 'F1', salesYear: 2027 });
+    expect(scopeState.firstRow).toMatchObject({ SEASON: 'F1', SALEYEAR: '2027' });
+    expect(scopeState.firstYear).toBe(2027);
+    expect(scopeState.firstInScope).toBe(true);
+    expect(scopeState.rowCount).toBe(41);
+    expect(scopeState.rawHoldRows).toBe(40);
+    expect(scopeState.holdRule).toMatchObject({ kind: 'hold_on', code: 'H' });
+    expect(scopeState.holdRows).toBe(40);
+    expect(scopeState.offHoldRows).toBe(1);
+    expect(scopeState.offStopRows).toBe(1);
+
+    for (const action of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']) {
+      await second.locator(`[data-reclass-v3-action="${action}"]`).click();
+    }
+    const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]');
+    const stopReason = second.locator('[data-reclass-v3-proposal-action="stop_ship"][data-reclass-v3-proposal-field="reason"]');
+    const secondPriority = second.locator('[data-reclass-v3-proposal-action="priority_change"][data-reclass-v3-proposal-field="priority"]');
+    await holdReason.fill('Hold review');
+    await stopReason.fill('Stop review');
     await secondPriority.fill('');
-    await expect(second.locator('[data-reclass-action-proposal="priority"]')).toHaveAttribute('data-edited', 'true');
-    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '1');
-    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('1 Proposed');
+    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="moveQuantity"]').fill('5');
+    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('S1');
+    await second.locator('[data-reclass-v3-proposal-action="move_down"][data-reclass-v3-proposal-field="moveQuantity"]').fill('6');
+    await second.locator('[data-reclass-v3-proposal-action="move_down"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('U1');
+    await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(8);
+    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '6');
+    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('6 Actions');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(secondPriority).toHaveValue('');
+    await expect(holdReason).toHaveValue('Hold review');
 
-    const overlays = await page.evaluate(() => (window as any).eval('collectArgosReclassInquiryOverlays()'));
-    expect(overlays).toHaveLength(41);
-    expect(overlays[1].values.priority).toBe('');
-    expect(overlays[1].actionValues.included).toBe(true);
-    expect(overlays[40].values).toEqual({});
-    expect(overlays[40].actionValues.included).toBe(false);
+    const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
+    expect(draft.requestActions).toEqual(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']);
+    expect(draft.holdStopProposals).toEqual([
+      { action: 'hold', reason: 'Hold review' },
+      { action: 'take_off_hold' },
+      { action: 'stop_ship', reason: 'Stop review' },
+      { action: 'off_stop_ship' },
+    ]);
+    expect(draft.rowOverlays).toHaveLength(41);
+    expect(draft.rowOverlays[1].proposals).toEqual([
+      { action: 'recount' },
+      { action: 'priority_change', priority: '' },
+      { action: 'move_up', moveQuantity: 5, destinationSeason: 'S1' },
+      { action: 'move_down', moveQuantity: 6, destinationSeason: 'U1' },
+    ]);
+    expect(draft.rowOverlays[40].proposals).toEqual([]);
+    expect(draft.scope).toEqual({ season: 'F1', salesYear: 2027 });
 
     const layout = await modal.evaluate((root) => {
       const panel = root.querySelector('.argos-tx-panel') as HTMLElement;
       const body = root.querySelector('.argos-tx-body') as HTMLElement;
       const footer = root.querySelector('.argos-tx-footer') as HTMLElement;
       const visibleInputs = Array.from(root.querySelectorAll('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-input')) as HTMLElement[];
-      const overflowers = Array.from(root.querySelectorAll('.argos-tx-panel, .argos-tx-body, .argos-tx-form, .argos-reclass-inquiry, .argos-reclass-row-list, .argos-reclass-row-card, .argos-reclass-row-grid'))
+      const visibleActions = Array.from(root.querySelectorAll('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-action-btn')) as HTMLElement[];
+      const overflowers = Array.from(root.querySelectorAll('.argos-tx-panel, .argos-tx-body, .argos-tx-form, .argos-reclass-inquiry, .argos-reclass-row-list, .argos-reclass-row-card, .argos-reclass-row-grid, .argos-reclass-action-panel, .argos-reclass-action-grid, .argos-reclass-action-proposal-grid'))
         .filter((element) => (element as HTMLElement).scrollWidth > (element as HTMLElement).clientWidth + 1)
         .map((element) => (element as HTMLElement).className);
       const panelRect = panel.getBoundingClientRect();
@@ -1657,6 +1737,7 @@ test('Phone Reclass V2 keeps large inquiries responsive with visible Hold/Stop f
         footerBottom: footerRect.bottom,
         minInputHeight: Math.min(...visibleInputs.map((input) => input.getBoundingClientRect().height)),
         minInputFont: Math.min(...visibleInputs.map((input) => Number.parseFloat(getComputedStyle(input).fontSize))),
+        minActionHeight: Math.min(...visibleActions.map((button) => button.getBoundingClientRect().height)),
         clippedInput: visibleInputs.some((input) => {
           const rect = input.getBoundingClientRect();
           return rect.left < panelRect.left - 1 || rect.right > panelRect.right + 1;
@@ -1675,13 +1756,14 @@ test('Phone Reclass V2 keeps large inquiries responsive with visible Hold/Stop f
     expect(layout.footerBottom).toBeLessThanOrEqual(viewport.height + 1);
     expect(layout.minInputHeight).toBeGreaterThanOrEqual(44);
     expect(layout.minInputFont).toBeGreaterThanOrEqual(16);
+    expect(layout.minActionHeight).toBeGreaterThanOrEqual(44);
     expect(layout.clippedInput).toBe(false);
   }
 });
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.26.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'

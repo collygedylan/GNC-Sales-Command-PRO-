@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.26.03">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.26.04">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.26.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.26.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -879,6 +879,20 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .argos-reclass-row-select>input{width:2.75rem;height:2.75rem;margin:0;accent-color:#007a4d}
 .argos-reclass-row-select>small{grid-column:1/-1;color:#64748b;font-size:.68rem;font-weight:700;line-height:1.25}
 .argos-reclass-row-select:has(input:checked){border-color:#10b981;background:#ecfdf5;box-shadow:0 0 0 2px rgba(16,185,129,.15)}
+.argos-reclass-action-panel{grid-column:1/-1;display:grid;gap:.55rem;border:1px solid #bbf7d0;border-radius:.8rem;background:#f8fffb;padding:.62rem}
+.argos-reclass-action-panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;color:#065f46;font-size:.69rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.argos-reclass-action-panel-title small{color:#64748b;font-size:.62rem;letter-spacing:0;text-align:right;text-transform:none}
+.argos-reclass-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.42rem}
+.argos-reclass-action-btn{min-height:2.75rem;border:1.5px solid #a7f3d0;border-radius:.7rem;background:#fff;padding:.48rem .55rem;color:#065f46;font-size:.68rem;font-weight:900;line-height:1.2;text-align:left;touch-action:manipulation}
+.argos-reclass-action-btn[aria-pressed="true"]{border-color:#059669;background:#d1fae5;box-shadow:0 0 0 2px rgba(5,150,105,.16)}
+.argos-reclass-action-btn:disabled{border-color:#e2e8f0;background:#f8fafc;color:#94a3b8;box-shadow:none}
+.argos-reclass-action-proposal-grid{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.48rem}
+.argos-reclass-action-proposal{border:1px solid #f59e0b;border-radius:.7rem;background:#fff7cc;padding:.5rem}
+.argos-reclass-action-proposal>span{display:block;margin-bottom:.24rem;color:#92400e;font-size:.65rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase}
+.argos-reclass-action-proposal small{display:block;margin-top:.25rem;color:#92400e;font-size:.64rem;font-weight:700;line-height:1.25}
+.argos-reclass-action-proposal .argos-reclass-row-input{border-color:#f59e0b;background:#fffef5}
+.argos-reclass-action-scope{grid-column:1/-1;border:1px solid #86efac;border-radius:.65rem;background:#ecfdf5;padding:.48rem .55rem;color:#047857;font-size:.67rem;font-weight:800;line-height:1.3}
+.argos-reclass-row-card[data-reclass-scope-actions]:not([data-reclass-scope-actions=""]){border-color:#10b981;box-shadow:0 0 0 2px rgba(16,185,129,.12)}
 .argos-reclass-edited-badge{display:inline-flex;align-items:center;margin-left:.35rem;border-radius:999px;background:#fde68a;padding:.12rem .34rem;color:#78350f;font-size:.44rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .argos-reclass-edited-badge[hidden]{display:none!important}
 .argos-reclass-row-edit-count{border-radius:999px;background:#fde68a;padding:.22rem .4rem;color:#78350f;font-size:.48rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
@@ -947,6 +961,9 @@ textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
     .argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-caret{transform:rotate(180deg)}
     .argos-reclass-row-card[data-reclass-row-expanded="false"] .argos-reclass-row-grid{display:none}
     .argos-reclass-row-grid{grid-template-columns:minmax(0,1fr);gap:.62rem;padding:.66rem}
+    .argos-reclass-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.48rem}
+    .argos-reclass-action-proposal-grid{grid-template-columns:minmax(0,1fr)}
+    .argos-reclass-action-btn{min-height:3rem;font-size:.72rem}
     .argos-reclass-row-field--wide{grid-column:1/-1}
     .argos-reclass-row-field>span{margin:0 0 .28rem .05rem;color:#475569;font-size:.64rem}
     .argos-reclass-row-input{min-height:2.85rem;padding:.6rem .66rem;border-radius:.68rem;font-size:16px}
@@ -6682,7 +6699,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.26.03">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.26.04">
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -6793,8 +6810,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.26.03"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.26.03"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.26.04"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.26.04"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7547,7 +7564,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.26.03').trim() || 'V2026.08.26.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.26.04').trim() || 'V2026.08.26.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9033,7 +9050,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.26.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.26.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30366,7 +30383,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.26.03').trim() || 'V2026.08.26.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.26.04').trim() || 'V2026.08.26.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40863,6 +40880,7 @@ let avTopControlsRenderToken = 0;
 
         let argosInventoryTransactionState = null;
         let argosReclassRowEditorEntries = new Map();
+        let argosReclassMultiActionState = { holdStopProposals: {}, rowProposals: new Map() };
 
         function isArgosInventoryTransactionEligible(item = null) {
             if (!item || typeof item !== 'object') return false;
@@ -40959,6 +40977,8 @@ let avTopControlsRenderToken = 0;
         const ARGOS_INVENTORY_TRANSACTION_MOVE_SEASON_REQUEST_ACTIONS = Object.freeze(['move_up', 'move_down']);
         const RECLASS_ACTION_WORKFLOW_V2_ENABLED = true;
         const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION = 'reclass-action-workflow-v2-live-20260826';
+        const RECLASS_ACTION_WORKFLOW_V3_ENABLED = true;
+        const RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION = 'reclass-action-workflow-v3-multi-action-20260826';
         const RECLASS_ACTION_WORKFLOW_V2_SEASONS = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         const RECLASS_ACTION_WORKFLOW_V2_CONFIG = Object.freeze({
             hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request', valueFields: Object.freeze(['holdstopcode', 'holdstopreason']), actionFields: Object.freeze(['included']) }),
@@ -40975,6 +40995,8 @@ let avTopControlsRenderToken = 0;
             const normalized = String(action || '').trim().toLowerCase();
             return RECLASS_ACTION_WORKFLOW_V2_CONFIG[normalized] || null;
         }
+        const RECLASS_ACTION_WORKFLOW_V3_ORDER = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']);
+        const RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(
             RECLASS_ACTION_WORKFLOW_V2_ENABLED
                 ? Object.keys(RECLASS_ACTION_WORKFLOW_V2_CONFIG)
@@ -41172,7 +41194,7 @@ let avTopControlsRenderToken = 0;
                             <span class="argos-transaction-tab active" data-argos-transaction-tab="reclass"><i class="ph ph-arrows-clockwise"></i>Reclass</span>
                         </div>
                         <div id="argos-inventory-transaction-source" class="argos-tx-source"></div>
-                        <div class="argos-tx-send-as" aria-label="Send as request actions">
+                        <div class="argos-tx-send-as" data-reclass-v2-global-action aria-label="Send as request actions">
                             <span class="argos-tx-send-as-label">Send As</span>
                             <button type="button" class="argos-tx-send-as-btn" data-argos-send-as="take_off_hold" onclick="return selectArgosInventoryTransactionHoldAction('take_off_hold')"><i class="ph-bold ph-lock-open"></i>Take Off Hold</button>
                             <button type="button" class="argos-tx-send-as-btn" data-argos-send-as="move_up" onclick="return selectArgosInventoryTransactionHoldAction('move_up')"><i class="ph-bold ph-arrow-circle-up"></i>Move Up</button>
@@ -41324,79 +41346,216 @@ let avTopControlsRenderToken = 0;
             return lotParts.length ? lotParts[lotParts.length - 1] : '';
         }
 
-        function syncArgosReclassActionRowUi(card = null) {
-            if (!RECLASS_ACTION_WORKFLOW_V2_ENABLED || !card || !card.querySelector) return 0;
-            const includedControl = card.querySelector('[data-reclass-action-included]');
-            const included = !!(includedControl && includedControl.checked);
-            let changedCount = 0;
-            card.querySelectorAll('[data-reclass-action-proposal]').forEach((wrapper) => {
-                const changed = included;
-                wrapper.classList.toggle('argos-reclass-row-field--edited', changed);
-                wrapper.setAttribute('data-edited', changed ? 'true' : 'false');
-                const badge = wrapper.querySelector('[data-reclass-edited-badge]');
-                if (badge) badge.hidden = !changed;
-                if (changed) changedCount++;
-            });
-            card.querySelectorAll('[data-reclass-action-field]').forEach((control) => {
-                control.disabled = !included;
-            });
-            const counter = card.querySelector('[data-reclass-row-edit-count]');
-            if (counter) {
-                counter.hidden = changedCount === 0;
-                counter.textContent = `${changedCount} Proposed`;
-            }
-            card.setAttribute('data-reclass-row-edit-count', String(changedCount));
-            return changedCount;
+        function resetArgosReclassMultiActionState() {
+            argosReclassMultiActionState = { holdStopProposals: {}, rowProposals: new Map() };
+            return argosReclassMultiActionState;
         }
 
-        function handleArgosReclassActionInput(input = null) {
-            const card = input && input.closest ? input.closest('[data-reclass-row-card]') : null;
-            syncArgosReclassActionRowUi(card);
+        function normalizeArgosReclassSalesYear(value = '') {
+            const raw = String(value == null ? '' : value).replace(/[^\d]/g, '');
+            if (!raw) return null;
+            const parsed = Number(raw);
+            if (!Number.isInteger(parsed)) return null;
+            return parsed < 100 ? 2000 + parsed : parsed;
+        }
+
+        function getArgosReclassScopeSettings() {
+            const season = String(typeof getConfiguredCurrentSeasonCode === 'function' ? getConfiguredCurrentSeasonCode() : '').trim().toUpperCase();
+            const salesYear = normalizeArgosReclassSalesYear(typeof getConfiguredCurrentSalesYearCode === 'function' ? getConfiguredCurrentSalesYearCode() : '');
+            return { season, salesYear };
+        }
+
+        function isArgosReclassHoldScopeEntry(entry = null) {
+            const values = entry && entry.values && typeof entry.values === 'object' ? entry.values : {};
+            const sourceRow = entry && entry.sourceRow && typeof entry.sourceRow === 'object' ? entry.sourceRow : {};
+            const settings = getArgosReclassScopeSettings();
+            const rowSeason = String(firstNonEmptyValue(values.season, sourceRow.SEASON, sourceRow.season, '') || '').trim().toUpperCase();
+            const rowYear = normalizeArgosReclassSalesYear(firstNonEmptyValue(values.saleyear, sourceRow.SALEYEAR, sourceRow.saleyear, sourceRow.SALESYEAR, sourceRow.salesyear, ''));
+            return !!settings.season && settings.salesYear != null && rowSeason === settings.season && rowYear != null && rowYear <= settings.salesYear;
+        }
+
+        function getArgosReclassHoldScopeEntries(action = '') {
+            const normalized = String(action || '').trim().toLowerCase();
+            const rule = getReclassActionWorkflowV2Config(normalized);
+            const model = argosInventoryTransactionState && argosInventoryTransactionState.inquiryModel;
+            const rows = model && Array.isArray(model.locationRows) ? model.locationRows : [];
+            return rows.filter((entry) => {
+                if (!isArgosReclassHoldScopeEntry(entry)) return false;
+                if (!rule || rule.kind !== 'hold_off') return true;
+                return String(entry && entry.values && entry.values.holdstopcode || '').trim().toUpperCase() === rule.code;
+            });
+        }
+
+        function getArgosReclassRowProposalMap(uid = '', create = false) {
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return null;
+            let proposals = argosReclassMultiActionState.rowProposals.get(safeUid) || null;
+            if (!proposals && create) {
+                proposals = {};
+                argosReclassMultiActionState.rowProposals.set(safeUid, proposals);
+            }
+            return proposals;
+        }
+
+        function getArgosReclassV3Proposal(uid = '', action = '') {
+            const normalized = String(action || '').trim().toLowerCase();
+            if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized)) {
+                return argosReclassMultiActionState.holdStopProposals[normalized] || null;
+            }
+            const rowMap = getArgosReclassRowProposalMap(uid, false);
+            return rowMap && rowMap[normalized] ? rowMap[normalized] : null;
+        }
+
+        function getArgosReclassV3ScopeActionsForEntry(entry = null) {
+            if (!isArgosReclassHoldScopeEntry(entry)) return [];
+            const holdCode = String(entry && entry.values && entry.values.holdstopcode || '').trim().toUpperCase();
+            return RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.filter((action) => {
+                if (!argosReclassMultiActionState.holdStopProposals[action]) return false;
+                const rule = getReclassActionWorkflowV2Config(action);
+                return !rule || rule.kind !== 'hold_off' || holdCode === rule.code;
+            });
+        }
+
+        function getArgosReclassV3ActionCountForEntry(entry = null) {
+            const uid = String(entry && entry.unique_id || '').trim();
+            const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
+            return Object.keys(rowMap).length + getArgosReclassV3ScopeActionsForEntry(entry).length;
+        }
+
+        function refreshArgosReclassMultiActionUi() {
+            document.querySelectorAll('[data-reclass-row-card]').forEach((card) => {
+                const body = card.querySelector('[data-reclass-row-body]');
+                if (!body || body.getAttribute('data-reclass-row-hydrated') !== 'true') return;
+                const entry = getArgosReclassRowEditorEntry(card.getAttribute('data-reclass-row-card'));
+                if (!entry) return;
+                body.innerHTML = buildArgosReclassActionFieldsHtml(entry);
+                const scopeActions = getArgosReclassV3ScopeActionsForEntry(entry);
+                card.setAttribute('data-reclass-scope-actions', scopeActions.join(','));
+                const count = getArgosReclassV3ActionCountForEntry(entry);
+                const counter = card.querySelector('[data-reclass-row-edit-count]');
+                if (counter) {
+                    counter.hidden = count === 0;
+                    counter.textContent = `${count} Action${count === 1 ? '' : 's'}`;
+                }
+                card.setAttribute('data-reclass-row-edit-count', String(count));
+            });
             return true;
+        }
+
+        function toggleArgosReclassV3Action(button = null, action = '') {
+            const normalized = String(action || '').trim().toLowerCase();
+            const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
+            const uid = String(card && card.getAttribute('data-reclass-row-card') || '').trim();
+            const entry = getArgosReclassRowEditorEntry(uid);
+            const rule = getReclassActionWorkflowV2Config(normalized);
+            if (!entry || !rule) return false;
+            const existing = getArgosReclassV3Proposal(uid, normalized);
+            if (existing) {
+                const hasEnteredData = Object.keys(existing).some((key) => key !== 'action' && String(existing[key] == null ? '' : existing[key]).trim());
+                if (hasEnteredData && !window.confirm(`Remove ${rule.label} and discard its entered proposal?`)) return false;
+                if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized)) delete argosReclassMultiActionState.holdStopProposals[normalized];
+                else {
+                    const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
+                    delete rowMap[normalized];
+                    if (!Object.keys(rowMap).length) argosReclassMultiActionState.rowProposals.delete(uid);
+                }
+            } else if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized)) {
+                const eligibleRows = getArgosReclassHoldScopeEntries(normalized);
+                if (!eligibleRows.length) {
+                    showToast('No Eligible Rows', rule.kind === 'hold_off' ? `${rule.label} has no matching ${rule.code} rows in the configured season scope.` : 'No rows match the configured current-season scope.', true);
+                    return false;
+                }
+                argosReclassMultiActionState.holdStopProposals[normalized] = { action: normalized, reason: '' };
+            } else {
+                const values = entry.values && typeof entry.values === 'object' ? entry.values : {};
+                const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
+                if (rule.kind === 'move' && (!Number.isFinite(originalOh) || originalOh < 1)) {
+                    showToast('Move Unavailable', 'Move actions require a positive original OH.', true);
+                    return false;
+                }
+                const rowMap = getArgosReclassRowProposalMap(uid, true);
+                if (rule.kind === 'priority') rowMap[normalized] = { action: normalized, priority: String(values.priority == null ? '' : values.priority) };
+                else if (rule.kind === 'move') rowMap[normalized] = { action: normalized, moveQuantity: '', destinationSeason: '' };
+                else rowMap[normalized] = { action: normalized };
+            }
+            if (argosInventoryTransactionState) argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
+            refreshArgosReclassMultiActionUi();
+            return false;
+        }
+
+        function handleArgosReclassV3ProposalInput(input = null) {
+            const card = input && input.closest ? input.closest('[data-reclass-row-card]') : null;
+            const uid = String(card && card.getAttribute('data-reclass-row-card') || '').trim();
+            const action = String(input && input.getAttribute('data-reclass-v3-proposal-action') || '').trim().toLowerCase();
+            const field = String(input && input.getAttribute('data-reclass-v3-proposal-field') || '').trim();
+            const proposal = getArgosReclassV3Proposal(uid, action);
+            if (!proposal || !field) return false;
+            proposal[field] = String(input.value == null ? '' : input.value);
+            if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)) {
+                document.querySelectorAll(`[data-reclass-v3-proposal-action="${action}"][data-reclass-v3-proposal-field="${field}"]`).forEach((control) => {
+                    if (control !== input && control.value !== input.value) control.value = input.value;
+                });
+            }
+            return true;
+        }
+
+        function buildArgosReclassV3ProposalHtml(entry = null, action = '') {
+            const uid = String(entry && entry.unique_id || '').trim();
+            const values = entry && entry.values && typeof entry.values === 'object' ? entry.values : {};
+            const normalized = String(action || '').trim().toLowerCase();
+            const rule = getReclassActionWorkflowV2Config(normalized);
+            const proposal = getArgosReclassV3Proposal(uid, normalized);
+            if (!rule || !proposal) return '';
+            if (rule.kind === 'hold_on') {
+                return `<label class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)} · Proposed ${escapeHtml(rule.code)}</span><textarea class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="reason" oninput="return handleArgosReclassV3ProposalInput(this)" placeholder="Required Hold/Stop reason">${escapeHtml(proposal.reason || '')}</textarea><small>Applies automatically to all rows in the configured season scope.</small></label>`;
+            }
+            if (rule.kind === 'hold_off') {
+                return `<div class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)}</span><strong>Clear ${escapeHtml(rule.code)} and Hold/Stop Reason</strong><small>Only matching ${escapeHtml(rule.code)} rows in the configured season scope are included.</small></div>`;
+            }
+            if (rule.kind === 'priority') {
+                return `<label class="argos-reclass-action-proposal"><span>Priority Change</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" max="99" step="1" value="${escapeHtml(proposal.priority || '')}" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="priority" oninput="return handleArgosReclassV3ProposalInput(this)"><small>Enter 1–99, or clear the field to remove Priority.</small></label>`;
+            }
+            if (rule.kind === 'move') {
+                const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
+                const currentSeason = getArgosReclassRowCurrentSeason(entry);
+                const seasonOptions = RECLASS_ACTION_WORKFLOW_V2_SEASONS.filter((season) => season !== currentSeason).map((season) => `<option value="${escapeHtml(season)}" ${String(proposal.destinationSeason || '').toUpperCase() === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('');
+                return `<label class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)} · Qty</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(originalOh) ? Math.trunc(originalOh) : ''))}" value="${escapeHtml(proposal.moveQuantity || '')}" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="moveQuantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)} · To Season</span><select class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Choose season</option>${seasonOptions}</select><small>Move Up + Move Down quantities together cannot exceed original OH.</small></label>`;
+            }
+            return `<div class="argos-reclass-action-proposal"><span>Re-Count Request</span><strong>Read-only Item Inquiry</strong><small>No proposed inventory values or yellow changes.</small></div>`;
         }
 
         function buildArgosReclassActionFieldsHtml(entry = null) {
             const safeEntry = entry && typeof entry === 'object' ? entry : { unique_id: '', values: {} };
             const uid = String(safeEntry.unique_id || '').trim();
             const values = safeEntry.values && typeof safeEntry.values === 'object' ? safeEntry.values : {};
-            const requestAction = getArgosInventoryTransactionRequestAction();
-            const rule = getReclassActionWorkflowV2Config(requestAction);
             const holdCode = String(values.holdstopcode || '').trim().toUpperCase();
             const holdReason = String(values.holdstopreason || '').trim();
             const currentHoldHtml = [
                 ['Current HOLDSTOPCODE', holdCode || '—'],
                 ['Current HOLDSTOPREASON', holdReason || '—']
             ].map(([label, value]) => `<label class="argos-reclass-row-field ${label.includes('REASON') ? 'argos-reclass-row-field--wide' : ''}"><span>${escapeHtml(label)}</span><input class="argos-reclass-row-input" value="${escapeHtml(value)}" readonly></label>`).join('');
-            if (!rule) {
-                return `${currentHoldHtml}<div class="argos-tx-hold-note argos-reclass-row-field--wide">Choose a Reclass request action above to select rows and enter proposals.</div>`;
-            }
-            if (rule.kind === 'recount') {
-                return `${currentHoldHtml}<div class="argos-tx-hold-note argos-reclass-row-field--wide">Re-Count is read-only. Every current ItemCode row will be included.</div>`;
-            }
+            if (!RECLASS_ACTION_WORKFLOW_V3_ENABLED) return currentHoldHtml;
             const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
-            const eligible = rule.kind === 'hold_off'
-                ? holdCode === rule.code
-                : (rule.kind === 'move' ? Number.isFinite(originalOh) && originalOh >= 1 : true);
-            const eligibilityMessage = rule.kind === 'hold_off' && !eligible
-                ? `Only rows currently coded ${rule.code} can be selected for ${rule.label}.`
-                : (rule.kind === 'move' && !eligible ? 'Move rows must have a positive original OH.' : '');
-            const selectHtml = `<label class="argos-reclass-row-field argos-reclass-row-field--wide argos-reclass-row-select"><span>Select Row for ${escapeHtml(rule.label)}</span><input type="checkbox" data-reclass-action-included="${escapeHtml(uid)}" onchange="return handleArgosReclassActionInput(this)" ${eligible ? '' : 'disabled'}><small>${escapeHtml(eligibilityMessage || 'Select only the rows that should contain a proposal.')}</small></label>`;
-            let proposalHtml = '';
-            if (rule.kind === 'move') {
-                const currentSeason = getArgosReclassRowCurrentSeason(safeEntry);
-                const seasonOptions = RECLASS_ACTION_WORKFLOW_V2_SEASONS
-                    .filter((season) => season !== currentSeason)
-                    .map((season) => `<option value="${escapeHtml(season)}">${escapeHtml(season)}</option>`)
-                    .join('');
-                proposalHtml = `<label class="argos-reclass-row-field" data-reclass-action-proposal="moveQuantity" data-edited="false"><span>MOVE QTY <em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Proposed</em></span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(originalOh) ? Math.trunc(originalOh) : ''))}" data-reclass-action-field="moveQuantity" oninput="return handleArgosReclassActionInput(this)" disabled></label><label class="argos-reclass-row-field" data-reclass-action-proposal="destinationSeason" data-edited="false"><span>TO SEASON <em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Proposed</em></span><select class="argos-reclass-row-input" data-reclass-action-field="destinationSeason" onchange="return handleArgosReclassActionInput(this)" disabled><option value="">Choose season</option>${seasonOptions}</select></label>`;
-            } else if (rule.kind === 'hold_on') {
-                proposalHtml = `<label class="argos-reclass-row-field" data-reclass-action-proposal="holdstopcode" data-edited="false"><span>PROPOSED HOLDSTOPCODE <em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Proposed</em></span><input class="argos-reclass-row-input" data-reclass-action-field="holdstopcode" value="${escapeHtml(rule.code)}" readonly disabled></label><label class="argos-reclass-row-field argos-reclass-row-field--wide" data-reclass-action-proposal="holdstopreason" data-edited="false"><span>PROPOSED HOLDSTOPREASON <em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Proposed</em></span><textarea class="argos-reclass-row-input" data-reclass-action-field="holdstopreason" oninput="return handleArgosReclassActionInput(this)" disabled></textarea></label>`;
-            } else if (rule.kind === 'hold_off') {
-                proposalHtml = `<label class="argos-reclass-row-field" data-reclass-action-proposal="holdstopcode" data-edited="false"><span>PROPOSED HOLDSTOPCODE <em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Proposed</em></span><input class="argos-reclass-row-input" value="Blank (remove ${escapeHtml(rule.code)})" readonly></label><label class="argos-reclass-row-field argos-reclass-row-field--wide" data-reclass-action-proposal="holdstopreason" data-edited="false"><span>PROPOSED HOLDSTOPREASON <em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Proposed</em></span><input class="argos-reclass-row-input" value="Blank (remove reason)" readonly></label>`;
-            } else if (rule.kind === 'priority') {
-                proposalHtml = `<label class="argos-reclass-row-field" data-reclass-action-proposal="priority" data-edited="false"><span>PROPOSED PRIORITY <em class="argos-reclass-edited-badge" data-reclass-edited-badge hidden>Proposed</em></span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" max="99" step="1" value="${escapeHtml(String(values.priority == null ? '' : values.priority))}" data-reclass-action-field="priority" oninput="return handleArgosReclassActionInput(this)" disabled><small>Enter 1–99, or clear the field to remove Priority.</small></label>`;
-            }
-            return `${currentHoldHtml}${selectHtml}${proposalHtml}`;
+            const settings = getArgosReclassScopeSettings();
+            const buttons = RECLASS_ACTION_WORKFLOW_V3_ORDER.map((action) => {
+                const rule = getReclassActionWorkflowV2Config(action);
+                const active = !!getArgosReclassV3Proposal(uid, action);
+                let eligible = true;
+                let title = '';
+                if (rule.kind === 'move' && (!Number.isFinite(originalOh) || originalOh < 1)) {
+                    eligible = false;
+                    title = 'Requires positive original OH';
+                } else if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) && !getArgosReclassHoldScopeEntries(action).length) {
+                    eligible = false;
+                    title = rule.kind === 'hold_off' ? `No current ${rule.code} rows in scope` : 'No rows in current-season scope';
+                }
+                return `<button type="button" class="argos-reclass-action-btn" data-reclass-v3-action="${escapeHtml(action)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return toggleArgosReclassV3Action(this, '${escapeHtml(action)}')" ${eligible || active ? '' : 'disabled'} title="${escapeHtml(title)}"><i class="ph-bold ${active ? 'ph-check-circle' : 'ph-circle'}"></i> ${escapeHtml(rule.label)}</button>`;
+            }).join('');
+            const activeActions = RECLASS_ACTION_WORKFLOW_V3_ORDER.filter((action) => !!getArgosReclassV3Proposal(uid, action));
+            const proposalsHtml = activeActions.map((action) => buildArgosReclassV3ProposalHtml(safeEntry, action)).join('');
+            const scopeActions = getArgosReclassV3ScopeActionsForEntry(safeEntry);
+            const scopeHtml = scopeActions.length ? `<div class="argos-reclass-action-scope"><strong>Automatically included:</strong> ${escapeHtml(scopeActions.map((action) => getReclassActionWorkflowV2Config(action).label).join(', '))}</div>` : '';
+            return `${currentHoldHtml}<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span><small>Hold/Stop scope: ${escapeHtml(settings.season || '—')} · sales year ≤ ${escapeHtml(settings.salesYear == null ? '—' : settings.salesYear)}</small></div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>`;
         }
 
         function buildArgosReclassRowFieldsHtml(entry = null) {
@@ -41439,8 +41598,10 @@ let avTopControlsRenderToken = 0;
             if (!entry) return false;
             body.innerHTML = buildArgosReclassRowFieldsHtml(entry);
             body.setAttribute('data-reclass-row-hydrated', 'true');
-            if (RECLASS_ACTION_WORKFLOW_V2_ENABLED) syncArgosReclassActionRowUi(card);
-            else syncArgosReclassRowEditUi(card);
+            if (RECLASS_ACTION_WORKFLOW_V3_ENABLED) {
+                const scopeActions = getArgosReclassV3ScopeActionsForEntry(entry);
+                card.setAttribute('data-reclass-scope-actions', scopeActions.join(','));
+            } else if (!RECLASS_ACTION_WORKFLOW_V2_ENABLED) syncArgosReclassRowEditUi(card);
             return true;
         }
 
@@ -41483,9 +41644,11 @@ let avTopControlsRenderToken = 0;
                     ['REV', values.ptrreviewed],
                     ['AVL', values.ptravailable]
                 ].map(([label, value]) => `<span>${escapeHtml(label)} ${escapeHtml(String(value == null || value === '' ? '—' : value))}</span>`).join('');
-                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-row-edit-count="0"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${rowBodyId}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}<span class="argos-reclass-row-edit-count" data-reclass-row-edit-count hidden>0 Edited</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${rowBodyId}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
+                const scopeActions = getArgosReclassV3ScopeActionsForEntry(entry);
+                const actionCount = getArgosReclassV3ActionCountForEntry(entry);
+                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-scope-actions="${escapeHtml(scopeActions.join(','))}" data-reclass-row-edit-count="${actionCount}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${rowBodyId}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}<span class="argos-reclass-row-edit-count" data-reclass-row-edit-count ${actionCount ? '' : 'hidden'}>${actionCount} Action${actionCount === 1 ? '' : 's'}</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${rowBodyId}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
             }).join('') || '<div class="p-4 text-sm font-bold text-slate-600">No current rows were found for this ItemCode.</div>';
-            return `<div class="argos-reclass-inquiry-heading"><span>Temporary Item Inquiry Worksheet</span><span>${safeModel.locationRows.length} row${safeModel.locationRows.length === 1 ? '' : 's'} · Tap a row to edit</span></div><div class="argos-reclass-identity">${identityHtml}</div><div class="argos-reclass-season">${seasonHtml}</div><div class="argos-reclass-row-list">${rowsHtml}</div>`;
+            return `<div class="argos-reclass-inquiry-heading"><span>Multi-Action Item Inquiry</span><span>${safeModel.locationRows.length} row${safeModel.locationRows.length === 1 ? '' : 's'} · Open a row and tap every action needed</span></div><div class="argos-reclass-identity">${identityHtml}</div><div class="argos-reclass-season">${seasonHtml}</div><div class="argos-reclass-row-list">${rowsHtml}</div>`;
         }
 
         function handleArgosReclassLocationNoteInput(input = null) {
@@ -41496,6 +41659,82 @@ let avTopControlsRenderToken = 0;
             const entry = model && Array.isArray(model.locationRows) ? model.locationRows.find((row) => String(row.unique_id || '') === uid) : null;
             const changed = String(input && input.value || '') !== String(entry && entry.values && entry.values.locationnote || '');
             if (note) note.textContent = changed ? 'A new America/Chicago date and time will be stamped when sent.' : 'Location Note is unchanged; its existing date will be retained.';
+        }
+
+        function collectArgosReclassV3Draft() {
+            const state = argosInventoryTransactionState || {};
+            const model = state.inquiryModel || { locationRows: [] };
+            const rows = Array.isArray(model.locationRows) ? model.locationRows : [];
+            const requestActions = new Set();
+            const holdStopProposals = [];
+            RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.forEach((action) => {
+                const proposal = argosReclassMultiActionState.holdStopProposals[action];
+                if (!proposal) return;
+                const rule = getReclassActionWorkflowV2Config(action);
+                const eligibleCount = getArgosReclassHoldScopeEntries(action).length;
+                if (!eligibleCount) throw new Error(`${rule.label} has no eligible rows in the configured current-season scope.`);
+                const outgoing = { action };
+                if (rule.kind === 'hold_on') {
+                    outgoing.reason = String(proposal.reason || '').trim();
+                    if (!outgoing.reason) throw new Error(`${rule.label} requires a Hold/Stop Reason.`);
+                }
+                requestActions.add(action);
+                holdStopProposals.push(outgoing);
+            });
+            const rowOverlays = rows.map((entry) => {
+                const uid = String(entry && entry.unique_id || '').trim();
+                if (!uid) throw new Error('One Item Inquiry row is missing its unique id. Sync and try again.');
+                const values = entry && entry.values && typeof entry.values === 'object' ? entry.values : {};
+                const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
+                const proposals = [];
+                let combinedMoveQuantity = 0;
+                RECLASS_ACTION_WORKFLOW_V3_ORDER.filter((action) => !RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)).forEach((action) => {
+                    const proposal = rowMap[action];
+                    if (!proposal) return;
+                    const rule = getReclassActionWorkflowV2Config(action);
+                    const outgoing = { action };
+                    if (rule.kind === 'priority') {
+                        const raw = String(proposal.priority == null ? '' : proposal.priority).trim();
+                        if (raw) {
+                            const priority = Number(raw);
+                            if (!Number.isInteger(priority) || priority < 1 || priority > 99) throw new Error('Priority must be blank or a whole number from 1 through 99.');
+                            outgoing.priority = String(priority);
+                        } else outgoing.priority = '';
+                        const originalRaw = String(values.priority == null ? '' : values.priority).trim();
+                        const originalNumber = originalRaw ? Number(originalRaw) : null;
+                        const originalPriority = Number.isInteger(originalNumber) ? String(originalNumber) : originalRaw;
+                        if (outgoing.priority === originalPriority) throw new Error('Priority Change must add, replace, or remove the selected row Priority.');
+                    } else if (rule.kind === 'move') {
+                        const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
+                        const moveQuantity = Number(String(proposal.moveQuantity == null ? '' : proposal.moveQuantity).trim());
+                        if (!Number.isInteger(moveQuantity) || moveQuantity < 1 || !Number.isFinite(originalOh) || moveQuantity > originalOh) throw new Error(`${rule.label} Qty must be a whole number from 1 through original OH.`);
+                        const destinationSeason = String(proposal.destinationSeason || '').trim().toUpperCase();
+                        if (!RECLASS_ACTION_WORKFLOW_V2_SEASONS.includes(destinationSeason)) throw new Error(`${rule.label} requires a configured destination season.`);
+                        if (destinationSeason === getArgosReclassRowCurrentSeason(entry)) throw new Error(`${rule.label} destination season must differ from the current season.`);
+                        outgoing.moveQuantity = moveQuantity;
+                        outgoing.destinationSeason = destinationSeason;
+                        combinedMoveQuantity += moveQuantity;
+                    }
+                    requestActions.add(action);
+                    proposals.push(outgoing);
+                });
+                const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
+                if (combinedMoveQuantity && (!Number.isFinite(originalOh) || combinedMoveQuantity > originalOh)) throw new Error('Combined Move Up and Move Down quantities cannot exceed original OH.');
+                return {
+                    unique_id: uid,
+                    expected: {
+                        itemcode: getItemInquiryItemCode(entry.sourceRow),
+                        lotcode: String(values.lotcode || ''),
+                        locationcode: String(values.locationcode || '')
+                    },
+                    proposals
+                };
+            });
+            const orderedActions = RECLASS_ACTION_WORKFLOW_V3_ORDER.filter((action) => requestActions.has(action));
+            if (!orderedActions.length) throw new Error('Choose at least one Reclass action inside a Location/Lot row.');
+            const scope = getArgosReclassScopeSettings();
+            if (!scope.season || scope.salesYear == null) throw new Error('Current season settings are unavailable. Refresh the app before sending.');
+            return { requestActions: orderedActions, holdStopProposals, rowOverlays, scope };
         }
 
         function collectArgosReclassInquiryOverlays() {
@@ -41602,6 +41841,7 @@ let avTopControlsRenderToken = 0;
             const modal = ensureArgosInventoryTransactionModal();
             const snapshot = getArgosInventorySourceSnapshot(item);
             const inquiryModel = buildItemInquiryViewModel(item, getItemInquiryRows(item));
+            resetArgosReclassMultiActionState();
             argosInventoryTransactionState = {
                 uid: snapshot.uniqueId,
                 item,
@@ -41660,6 +41900,7 @@ let avTopControlsRenderToken = 0;
             toggleArgosInventoryTransactionHoldActionPicker(false);
             argosInventoryTransactionState = null;
             argosReclassRowEditorEntries = new Map();
+            resetArgosReclassMultiActionState();
             return false;
         }
 
@@ -41805,6 +42046,8 @@ let avTopControlsRenderToken = 0;
                 const newLotInput = document.getElementById('argos-inventory-transaction-new-lot');
                 const newLocationInput = document.getElementById('argos-inventory-transaction-new-location');
                 const advanced = document.querySelector('.argos-tx-advanced');
+                const globalActionField = document.querySelector('[data-argos-hold-field="action"]');
+                const globalQuickActions = document.querySelector('[data-reclass-v2-global-action]');
                 if (reasonField) reasonField.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V2_ENABLED || requestOnly);
                 if (sourceField) sourceField.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V2_ENABLED || requestOnly);
                 if (qtyField) qtyField.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V2_ENABLED || requestOnly);
@@ -41823,13 +42066,17 @@ let avTopControlsRenderToken = 0;
                     advanced.classList.add('hidden');
                     advanced.open = false;
                 }
+                if (globalActionField) globalActionField.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V3_ENABLED);
+                if (globalQuickActions) globalQuickActions.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V3_ENABLED);
                 if (notice) {
                     notice.innerHTML = '<span class="font-black">Email Only</span> - Sending creates a printable inquiry. No inventory, History, audit, cache, or live-event data is changed.';
                     notice.classList.add('bg-emerald-50', 'text-emerald-800');
                 }
                 if (note) {
                     note.hidden = false;
-                    note.textContent = requestAction && requestAction !== 'none'
+                    note.textContent = RECLASS_ACTION_WORKFLOW_V3_ENABLED
+                        ? 'Open a Location/Lot row and tap every Reclass action needed. Hold/Stop actions automatically mark the configured current-season scope.'
+                        : requestAction && requestAction !== 'none'
                         ? `${getArgosInventoryTransactionRequestLabel(requestAction)} uses the row controls below. Hold/Stop Code and Reason remain visible on every row. No inventory data will be changed.`
                         : 'Choose one of the eight email-only actions, then review the Hold/Stop values and select rows below.';
                 }
@@ -41926,7 +42173,7 @@ let avTopControlsRenderToken = 0;
             }
             refreshArgosInventoryTransactionLotOptions(argosInventoryTransactionState && argosInventoryTransactionState.item);
             syncArgosInventoryTransactionRequestOnlyMode();
-            if (RECLASS_ACTION_WORKFLOW_V2_ENABLED && argosInventoryTransactionState) {
+            if (RECLASS_ACTION_WORKFLOW_V2_ENABLED && !RECLASS_ACTION_WORKFLOW_V3_ENABLED && argosInventoryTransactionState) {
                 argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
                 const inquiryEl = document.getElementById('argos-reclass-item-inquiry');
                 if (inquiryEl && argosInventoryTransactionState.inquiryModel) {
@@ -42301,6 +42548,37 @@ let avTopControlsRenderToken = 0;
                 const newLotCode = getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot');
                 const newLocationCode = getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-location');
                 const requestAction = normalizeArgosInventoryTransactionRequestAction(getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-action')) || 'none';
+                if (RECLASS_ACTION_WORKFLOW_V3_ENABLED) {
+                    const draft = collectArgosReclassV3Draft();
+                    return {
+                        type: 'reclass_inquiry_email',
+                        action: 'reclass',
+                        workflowPolicyVersion: RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION,
+                        idempotencyToken: String(state.idempotencyToken || generateArgosInventoryTransactionId('reclass_inquiry')).trim(),
+                        actor: {
+                            username: String(currentUser || '').trim(),
+                            display: String(currentUserDisplay || currentUser || '').trim(),
+                            email: getArgosInventoryTransactionActorEmail(),
+                            role: typeof getCurrentRoleAccessValue === 'function' ? getCurrentRoleAccessValue() : ''
+                        },
+                        source: {
+                            unique_id: snapshot.uniqueId,
+                            source_table: snapshot.sourceTable,
+                            itemcode: snapshot.itemCode,
+                            lotcode: snapshot.lotCode,
+                            locationcode: snapshot.locationCode,
+                            season: snapshot.season,
+                            saleyear: snapshot.salesYear
+                        },
+                        transaction: {
+                            requestActions: draft.requestActions,
+                            holdStopProposals: draft.holdStopProposals,
+                            scope: draft.scope
+                        },
+                        rowOverlays: draft.rowOverlays,
+                        clientVersion: String(APP_SHELL_VERSION || APP_SHELL_BUILD || '').trim()
+                    };
+                }
                 if (RECLASS_ACTION_WORKFLOW_V2_ENABLED) {
                     if (!getReclassActionWorkflowV2Config(requestAction)) throw new Error('Choose a Reclass request action before sending.');
                     const rowOverlays = collectArgosReclassInquiryOverlays();
