@@ -1532,7 +1532,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.26.05', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.26.06', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1562,16 +1562,16 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
           unique_id: `row-${index}`,
           sourceRow: { ITEMCODE: '001884.031.1' },
           values: {
-            lotcode: index % 2 ? '27.F1' : '26.Y',
+            lotcode: index === 1 ? '27.S1' : (index % 2 ? '27.F1' : '26.Y'),
             locationcode: `A.${String(index + 1).padStart(2, '0')}.000`,
-            season: 'F1',
+            season: index === 1 ? 'S1' : 'F1',
             saleyear: index === 40 ? '2028' : (index % 2 ? '27' : '2027'),
             source: index % 2 ? 'SH' : 'LD',
             priority: String((index % 9) + 1),
             desigitem: '',
             desigcust: '',
             desigloc: '',
-            ptronhand: String(100 + index),
+            ptronhand: String(index === 1 ? 526 : 100 + index),
             ptrreviewed: String(index),
             ptravailable: String(100),
             locationnotedate: '8/22/2026, 2:15:00 PM',
@@ -1644,72 +1644,40 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second).toContainText('Current HOLDSTOPREASON');
     await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(8);
     await expect(second.locator('[data-reclass-action-included]')).toHaveCount(0);
-    const scopeState = await page.evaluate(() => {
-      const runtime = window as any;
-      const scopedModel = runtime.buildItemInquiryViewModel(runtime.__reclassResponsiveRows[0], runtime.__reclassResponsiveRows);
-      return {
-        settings: runtime.getArgosReclassScopeSettings(),
-        firstRow: scopedModel.locationRows[0].sourceRow,
-        firstYear: runtime.normalizeArgosReclassSalesYear(scopedModel.locationRows[0].sourceRow.SALEYEAR),
-        firstInScope: runtime.isArgosReclassHoldScopeEntry(scopedModel.locationRows[0]),
-        rowCount: scopedModel.locationRows.length,
-        rawHoldRows: scopedModel.locationRows.filter(runtime.isArgosReclassHoldScopeEntry).length,
-        holdRule: runtime.getReclassActionWorkflowV2Config('hold'),
-        holdRows: runtime.getArgosReclassHoldScopeEntries('hold').length,
-        offHoldRows: runtime.getArgosReclassHoldScopeEntries('take_off_hold').length,
-        offStopRows: runtime.getArgosReclassHoldScopeEntries('off_stop_ship').length,
-      };
-    });
-    expect(scopeState.settings).toEqual({ season: 'F1', salesYear: 2027 });
-    expect(scopeState.firstRow).toMatchObject({ SEASON: 'F1', SALEYEAR: '2027' });
-    expect(scopeState.firstYear).toBe(2027);
-    expect(scopeState.firstInScope).toBe(true);
-    expect(scopeState.rowCount).toBe(41);
-    expect(scopeState.rawHoldRows).toBe(40);
-    expect(scopeState.holdRule).toMatchObject({ kind: 'hold_on', code: 'H' });
-    expect(scopeState.holdRows).toBe(40);
-    expect(scopeState.offHoldRows).toBe(1);
-    expect(scopeState.offStopRows).toBe(1);
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
+    await expect(second.locator('[data-reclass-v3-action="stop_ship"]')).toBeEnabled();
+    await expect(second.locator('[data-reclass-v3-action="take_off_hold"]')).toBeDisabled();
+    await expect(second.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
 
-    for (const action of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']) {
+    for (const action of ['hold', 'priority_change', 'move_up']) {
       await second.locator(`[data-reclass-v3-action="${action}"]`).click();
     }
-    const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]');
-    const stopReason = second.locator('[data-reclass-v3-proposal-action="stop_ship"][data-reclass-v3-proposal-field="reason"]');
+    const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="holdstopreason"]');
     const secondPriority = second.locator('[data-reclass-v3-proposal-action="priority_change"][data-reclass-v3-proposal-field="priority"]');
-    await holdReason.fill('Hold review');
-    await stopReason.fill('Stop review');
-    await secondPriority.fill('');
-    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="moveQuantity"]').fill('5');
-    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('S1');
-    await second.locator('[data-reclass-v3-proposal-action="move_down"][data-reclass-v3-proposal-field="moveQuantity"]').fill('6');
-    await second.locator('[data-reclass-v3-proposal-action="move_down"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('U1');
-    await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(8);
-    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '6');
-    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('6 Actions');
+    await holdReason.fill('sheared');
+    await secondPriority.fill('1');
+    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="moveQuantity"]').fill('150');
+    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
+    await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(3);
+    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
+    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Actions');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
-    await expect(secondPriority).toHaveValue('');
-    await expect(holdReason).toHaveValue('Hold review');
+    await expect(secondPriority).toHaveValue('1');
+    await expect(holdReason).toHaveValue('sheared');
 
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
-    expect(draft.requestActions).toEqual(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']);
-    expect(draft.holdStopProposals).toEqual([
-      { action: 'hold', reason: 'Hold review' },
-      { action: 'take_off_hold' },
-      { action: 'stop_ship', reason: 'Stop review' },
-      { action: 'off_stop_ship' },
-    ]);
+    expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up']);
+    expect(draft.holdStopProposals).toEqual([]);
     expect(draft.rowOverlays).toHaveLength(41);
     expect(draft.rowOverlays[1].proposals).toEqual([
-      { action: 'recount' },
-      { action: 'priority_change', priority: '' },
-      { action: 'move_up', moveQuantity: 5, destinationSeason: 'S1' },
-      { action: 'move_down', moveQuantity: 6, destinationSeason: 'U1' },
+      { action: 'hold', holdstopcode: 'H', holdstopreason: 'sheared' },
+      { action: 'priority_change', priority: '1' },
+      { action: 'move_up', moveQuantity: 150, destinationSeason: 'F1' },
     ]);
     expect(draft.rowOverlays[40].proposals).toEqual([]);
-    expect(draft.scope).toEqual({ season: 'F1', salesYear: 2027 });
+    expect(draft.scope).toEqual({});
 
     const layout = await modal.evaluate((root) => {
       const panel = root.querySelector('.argos-tx-panel') as HTMLElement;
@@ -1763,7 +1731,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.26.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.26.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1849,6 +1817,59 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
     expect(railState.scrollable).toBe(true);
   }
   await expect(page.getByText('Season Sales Notes', { exact: true })).toHaveCount(0);
+});
+
+test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.26.06', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    document.body.classList.add('ops-precision-pilot');
+    document.body.setAttribute('data-ops-theme', 'dark');
+    const modal = document.getElementById('request-rep-modal')!;
+    modal.classList.remove('hidden');
+    modal.style.setProperty('display', 'flex', 'important');
+    document.getElementById('step-1-rep')!.classList.add('hidden');
+    const customerStep = document.getElementById('step-2-cust')!;
+    customerStep.classList.remove('hidden');
+    customerStep.style.setProperty('display', 'flex', 'important');
+  });
+
+  const state = await page.locator('#request-rep-modal').evaluate((modal) => {
+    const panel = modal.querySelector('.request-create-panel') as HTMLElement;
+    const heading = panel.querySelector('h3') as HTMLElement;
+    const label = panel.querySelector('label') as HTMLElement;
+    const input = panel.querySelector('#cust-search-input') as HTMLElement;
+    const cancel = panel.querySelector('.request-cancel-btn') as HTMLElement;
+    const rgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    const luminance = (value: string) => {
+      const channels = rgb(value).map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const contrast = (foreground: string, background: string) => {
+      const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+      return (lighter + 0.05) / (darker + 0.05);
+    };
+    const panelStyle = getComputedStyle(panel);
+    const inputStyle = getComputedStyle(input);
+    const cancelStyle = getComputedStyle(cancel);
+    return {
+      headingContrast: contrast(getComputedStyle(heading).color, panelStyle.backgroundColor),
+      labelContrast: contrast(getComputedStyle(label).color, panelStyle.backgroundColor),
+      inputContrast: contrast(inputStyle.color, inputStyle.backgroundColor),
+      cancelContrast: contrast(cancelStyle.color, cancelStyle.backgroundColor),
+      inputHeight: input.getBoundingClientRect().height,
+      overflow: Math.max(0, modal.scrollWidth - modal.clientWidth),
+    };
+  });
+  expect(state.headingContrast).toBeGreaterThanOrEqual(4.5);
+  expect(state.labelContrast).toBeGreaterThanOrEqual(4.5);
+  expect(state.inputContrast).toBeGreaterThanOrEqual(4.5);
+  expect(state.cancelContrast).toBeGreaterThanOrEqual(4.5);
+  expect(state.inputHeight).toBeGreaterThanOrEqual(44);
+  expect(state.overflow).toBe(0);
 });
 
 test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', async ({ page }) => {

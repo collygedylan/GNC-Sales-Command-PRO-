@@ -2631,6 +2631,188 @@ body.ops-precision-pilot #view-detail.detail-request-mode .request-detail-load-s
   }
 }
 
+/* V2026.08.26.06 — compact row-specific Reclass and readable Request creation. */
+body.ops-precision-pilot .argos-reclass-action-proposal > label {
+  display: block !important;
+  min-width: 0 !important;
+}
+
+body.ops-precision-pilot .argos-reclass-action-proposal > label + label {
+  margin-top: 10px !important;
+}
+
+body.ops-precision-pilot .argos-reclass-action-proposal > label > span {
+  display: block !important;
+  margin-bottom: 6px !important;
+  color: #92400e !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #argos-inventory-transaction-modal :is(
+  .argos-tx-panel,
+  .argos-tx-body,
+  .argos-tx-form,
+  .argos-tx-source,
+  .argos-tx-source-chip,
+  .argos-reclass-row-card,
+  .argos-reclass-row-title,
+  .argos-reclass-row-grid,
+  .argos-reclass-action-panel
+) {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #argos-inventory-transaction-modal :is(
+  .argos-tx-title,
+  .argos-tx-source-chip strong,
+  .argos-reclass-row-toggle-copy > span:first-child,
+  .argos-reclass-action-panel-title > span,
+  .argos-reclass-action-btn
+) {
+  color: var(--ops-text) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #argos-inventory-transaction-modal :is(
+  .argos-tx-subtitle,
+  .argos-tx-source-chip span,
+  .argos-reclass-action-panel-title small,
+  .argos-reclass-row-field > span
+) {
+  color: var(--ops-text-muted) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #argos-inventory-transaction-modal :is(
+  .argos-reclass-row-input,
+  .argos-reclass-action-btn
+) {
+  border-color: var(--ops-border-strong) !important;
+  color: var(--ops-text) !important;
+  background: #07120e !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #argos-inventory-transaction-modal .argos-reclass-action-btn[aria-pressed="true"] {
+  border-color: #63e6ad !important;
+  color: #dffff0 !important;
+  background: #123d2d !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: #0b1c16 !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel :is(
+  .bg-white,
+  .bg-slate-50,
+  .bg-gray-50,
+  .bg-emerald-50,
+  .bg-green-50,
+  .bg-orange-50,
+  .bg-yellow-50,
+  .request-summary-card,
+  .request-choice-card,
+  .request-empty-state
+) {
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  background: #10261d !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel :is(
+  .text-slate-900,
+  .text-gray-900,
+  .text-slate-800,
+  .text-gray-800,
+  .request-choice-title,
+  .request-summary-value
+) {
+  color: #f4fff8 !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel :is(
+  .text-slate-700,
+  .text-slate-600,
+  .text-slate-500,
+  .text-gray-700,
+  .text-gray-600,
+  .text-gray-500,
+  label,
+  small
+) {
+  color: #c7ddd2 !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel :is(
+  h3,
+  .request-create-kicker,
+  .request-choice-meta,
+  .text-orange-600,
+  .text-orange-500,
+  .text-yellow-500,
+  .text-yellow-700,
+  .text-yellow-800
+) {
+  color: #63e6ad !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel :is(
+  .input-field,
+  input,
+  select,
+  textarea
+) {
+  border-color: #4bd89a !important;
+  color: #ffffff !important;
+  background: #07120e !important;
+  opacity: 1 !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel :is(input, textarea)::placeholder {
+  color: #93ab9f !important;
+  opacity: 1 !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-create-panel .request-cancel-btn {
+  border-color: var(--ops-border-strong) !important;
+  color: #e8fff3 !important;
+  background: #10261d !important;
+}
+
+@media (max-width: 640px) {
+  body.ops-precision-pilot #argos-inventory-transaction-modal .argos-tx-source-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.ops-precision-pilot #argos-inventory-transaction-modal .argos-reclass-inquiry-heading {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  body.ops-precision-pilot #argos-inventory-transaction-modal .argos-reclass-inquiry-heading span:first-child {
+    max-width: none !important;
+  }
+
+  body.ops-precision-pilot #request-rep-modal {
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.ops-precision-pilot #request-rep-modal .request-create-panel {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: calc(var(--visual-height, 100dvh) - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom))) !important;
+  }
+}
+
 /* V2026.08.15.08 — Dylan-only two-mode theme selector and complete dual-theme shell. */
 body.ops-precision-pilot {
   --ops-command: #f7fbf9;
