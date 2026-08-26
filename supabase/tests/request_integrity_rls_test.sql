@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(53);
+select plan(61);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -9,14 +9,16 @@ insert into auth.users (
   ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rep_test@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'csr_test@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dylan_collyge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
-  ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abigail_vazquez@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
+  ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abigail_vazquez@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
+  ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'chance_alldredge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
 on conflict (id) do nothing;
 
 insert into public.profiles (id, username, display_name, role) values
   ('10000000-0000-0000-0000-000000000001', 'rep_test', 'Rep Test', 'REP'),
   ('10000000-0000-0000-0000-000000000002', 'csr_test', 'CSR Test', 'CSR'),
   ('10000000-0000-0000-0000-000000000003', 'dylan_collyge', 'Dylan Collyge', 'ADMIN'),
-  ('10000000-0000-0000-0000-000000000004', 'abigail_vazquez', 'Abigail Vazquez', 'EVAL')
+  ('10000000-0000-0000-0000-000000000004', 'abigail_vazquez', 'Abigail Vazquez', 'EVAL'),
+  ('10000000-0000-0000-0000-000000000005', 'chance_alldredge', 'Chance Alldredge', E'\nREP')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
 insert into public.ph_master_inventory (
@@ -83,6 +85,28 @@ select lives_ok(
 
 select is((select count(*)::integer from public.ph_active_request where unique_id = 'REQ-CSR-1'), 1, 'batch retry key created exactly one request row');
 select is((select count(*)::integer from public.ph_request_history where unique_id = 'REQ-CSR-1'), 1, 'creation transaction persisted History snapshot');
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000005', true);
+select is((public.get_request_capabilities()->>'scope'), 'own', 'Chance receives create-and-own Request scope');
+select ok((public.get_request_capabilities()->>'can_create_general')::boolean, 'Chance can create general and plant requests');
+select ok((public.get_request_capabilities()->>'can_create_av')::boolean, 'Chance can create AV requests');
+select lives_ok(
+  $q$select public.create_request_batch(
+    '20000000-0000-0000-0000-000000000005',
+    '[{"unique_id":"REQ-CHANCE-1","master_id":"MASTER-TEST-1","requested_by":"Chance Alldredge","request_folder":"CHANCE-FOLDER","req_customer":"Customer","req_qty":"1"}]'::jsonb
+  )$q$,
+  'Chance can create a general request batch'
+);
+select is((select count(*)::integer from public.ph_active_request where unique_id = 'REQ-CHANCE-1'), 1, 'Chance can read the Request row he created');
+select is((select request_created_by_username from public.ph_active_request where unique_id = 'REQ-CHANCE-1'), 'chance_alldredge', 'Chance creator identity is stamped by the server');
+select is((select count(*)::integer from public.ph_active_request where unique_id = 'REQ-CSR-1'), 0, 'Chance cannot read another user Request row');
+select throws_ok(
+  $q$select public.save_request_work('REQ-CSR-1', 1, '{}'::jsonb, false)$q$,
+  '42501', 'REQUEST_ROW_FORBIDDEN',
+  'Chance cannot mutate another user Request row'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);
 set local role postgres;
 select is((select count(*)::integer from public.ph_request_delivery_outbox where event_key = 'request-created:20000000-0000-0000-0000-000000000003'), 1, 'creation transaction persisted delivery outbox');
 set local role authenticated;

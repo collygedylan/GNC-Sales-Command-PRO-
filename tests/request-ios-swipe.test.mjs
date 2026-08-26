@@ -6,6 +6,7 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
 const capabilityMigration = readFileSync(new URL('../supabase/migrations/20260825222325_stabilize_request_capabilities.sql', import.meta.url), 'utf8');
 const capabilityPolicyGrantMigration = readFileSync(new URL('../supabase/migrations/20260825223040_grant_request_policy_helper.sql', import.meta.url), 'utf8');
+const chanceCapabilityMigration = readFileSync(new URL('../supabase/migrations/20260826133016_allow_chance_alldredge_request_create_own.sql', import.meta.url), 'utf8');
 
 test('Request permissions come from one authenticated capability contract', () => {
   assert.match(capabilityMigration, /create or replace function public\.get_request_capabilities\(\)/);
@@ -53,6 +54,17 @@ test('Ben create-and-own access is enforced in both policies and the save RPC', 
   assert.equal(canBenWork({ creator: '', selectedRep: 'BEN_BROWN', requestedBy: '' }), true);
   assert.equal(canBenWork({ creator: '', selectedRep: '', requestedBy: 'ben.brown@greenleafnursery.com' }), true);
   assert.equal(canBenWork({ creator: 'kayla_knepp', selectedRep: 'jd_jones', requestedBy: 'Megan Kelly' }), false);
+});
+
+test('Chance receives create-and-own Request access without Manager or global scope', () => {
+  assert.match(chanceCapabilityMigration, /not in \('ben_brown', 'chance_alldredge'\)/);
+  assert.match(chanceCapabilityMigration, /lower\(btrim\(\(private\.current_active_profile\(\)\)\.username\)\) in[\s\S]*\('ben_brown', 'chance_alldredge'\)/);
+  assert.match(chanceCapabilityMigration, /when username_key in \('ben_brown', 'chance_alldredge'\) then 'own'/);
+  assert.match(chanceCapabilityMigration, /'can_create_general', general_create_access/);
+  assert.match(chanceCapabilityMigration, /'can_create_av', av_create_access/);
+  assert.match(chanceCapabilityMigration, /'can_archive', global_access/);
+  assert.match(chanceCapabilityMigration, /if lower\(btrim\(coalesce\(profile\.username, ''\)\)\) in \('ben_brown', 'chance_alldredge'\)[\s\S]*message = 'REQUEST_ROW_FORBIDDEN'/);
+  assert.match(chanceCapabilityMigration, /grant execute on function private\.can_work_request_identity\(text, text, text\)[\s\S]*to authenticated/);
 });
 
 test('Home and Request details always render a visible loading, stale, or retry state', () => {
