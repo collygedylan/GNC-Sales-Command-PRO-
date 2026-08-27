@@ -301,7 +301,9 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
   await page.evaluate(() => {
     const target = document.getElementById('eval2-multiselect-host')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-    (window as any).renderManagerEvalReport2Records();
+    const records = target.querySelector('#manager-eval-report-2-records')!;
+    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
+      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
   });
 
   const alphaCheckbox = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CLICK.A"]');
@@ -327,7 +329,9 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
   await page.evaluate(() => {
     const target = document.getElementById('eval2-multiselect-host')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-    (window as any).renderManagerEvalReport2Records();
+    const records = target.querySelector('#manager-eval-report-2-records')!;
+    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
+      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
   });
 
   const betaCheckbox = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CLICK.B"]');

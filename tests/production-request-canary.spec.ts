@@ -218,7 +218,9 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-    (window as any).renderManagerEvalReport2Records();
+    const records = target.querySelector('#manager-eval-report-2-records')!;
+    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
+      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
   });
   const alpha = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CANARY.EVAL.A"]');
   await alpha.click();
@@ -239,7 +241,9 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-    (window as any).renderManagerEvalReport2Records();
+    const records = target.querySelector('#manager-eval-report-2-records')!;
+    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
+      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
   });
   const beta = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CANARY.EVAL.B"]');
   await beta.click();
