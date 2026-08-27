@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.26.08';
+  const release = 'V2026.08.27.01';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.26.08');
+  assert.equal(packageJson.version, '2026.08.27.01');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1258,11 +1258,12 @@ test('request completion delivery is leased, idempotent, threaded, and independe
   assert.match(deliveryWorker, /REQUEST_DELIVERY_SIGNING_SECRET/);
   assert.match(deliveryWorker, /record_request_delivery_channel_result/);
   assert.match(deliveryWorker, /request_completed" \? "ph_request_history"/);
-  assert.match(deliveryWorker, /eventType === "reclass_inquiry"/);
+  assert.match(deliveryWorker, /\["reclass_inquiry", "eval_work_assignment", "eval_work_completion"\]\.includes\(eventType\)/);
   assert.match(deliveryWorker, /payload: event\.payload/);
   assert.match(deliveryWorker, /failEventPermanent/);
   assert.match(deliveryWorker, /RECLASS_CONFLICT/);
-  const reclassBranch = deliveryWorker.slice(deliveryWorker.indexOf('if (eventType === "reclass_inquiry")'), deliveryWorker.indexOf('const rows = await loadRequestRows', deliveryWorker.indexOf('if (eventType === "reclass_inquiry")')));
+  const deliveryBranchStart = deliveryWorker.indexOf('if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion"].includes(eventType))');
+  const reclassBranch = deliveryWorker.slice(deliveryBranchStart, deliveryWorker.indexOf('const rows = await loadRequestRows', deliveryBranchStart));
   assert.match(reclassBranch, /callAppsScript\(event, \[\], null\)/);
   assert.doesNotMatch(reclassBranch, /sendPush|loadRequestRows/);
   assert.match(appsScriptBackend, /handleSignedRequestDeliveryEvent_/);

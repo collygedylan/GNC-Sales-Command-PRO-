@@ -2255,7 +2255,7 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
-/* V2026.08.26.08 — durable Reclass background-delivery status */
+/* V2026.08.27.01 — Eval Work review assignment and evidence workflow */
 .reclass-delivery-status-tray {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
