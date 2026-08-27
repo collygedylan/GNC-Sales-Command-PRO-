@@ -9692,7 +9692,8 @@ const RECLASS_INQUIRY_IDENTITY_FIELDS_ = [
   { key: 'genusname', label: 'Genus', aliases: ['genusname', 'GENUSNAME', 'genus', 'GENUS'] },
   { key: 'fieldtagcolor', label: 'Tag Color', aliases: ['fieldtagcolor', 'FIELDTAGCOLOR'] },
   { key: 'itemspec', label: 'Item Spec', aliases: ['itemspec', 'ITEMSPEC'] },
-  { key: 'pullerresponsibility', label: 'Puller Resp.', aliases: ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER'] }
+  { key: 'pullerresponsibility', label: 'Puller Resp.', aliases: ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER'] },
+  { key: 'holdstopcode', label: 'HOLDSTOPCODE', aliases: ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'] }
 ];
 
 const RECLASS_INQUIRY_SEASON_FIELDS_ = [
@@ -9710,6 +9711,7 @@ const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
   { key: 'source', label: 'Source', width: '.55in' },
   { key: 'priority', label: 'Priority', width: '.58in' },
   { key: 'ptronhand', label: 'OH', width: '.58in' },
+  { key: 'ptrreviewed', label: 'PTRREVIEWED', width: '.82in' },
   { key: 'locationnotedate', label: 'Loc Note Date', width: '1.08in' },
   { key: 'locationnote', label: 'Location Note' }
 ];
@@ -9720,7 +9722,6 @@ const RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_ = [
 ];
 
 const RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_ = [
-  { key: 'holdstopcode', label: 'Hold/Stop Code', width: '.88in' },
   { key: 'holdstopreason', label: 'Hold/Stop Reason', width: '1.34in' }
 ];
 
@@ -9777,15 +9778,15 @@ function getReclassInquiryActionRuleV2_(value) {
 function getReclassInquiryCompactFields_(value, requestActions) {
   const multiActions = Array.isArray(requestActions) ? requestActions : [];
   if (multiActions.length) {
-    let fields = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 5);
+    let fields = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 6);
     if (multiActions.indexOf('move_up') !== -1) fields = fields.concat(RECLASS_INQUIRY_COMPACT_V3_MOVE_UP_FIELDS_);
     if (multiActions.indexOf('move_down') !== -1) fields = fields.concat(RECLASS_INQUIRY_COMPACT_V3_MOVE_DOWN_FIELDS_);
     fields = fields.concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_);
-    return fields.concat(RECLASS_INQUIRY_COMPACT_FIELDS_.slice(5));
+    return fields.concat(RECLASS_INQUIRY_COMPACT_FIELDS_.slice(6));
   }
   const rule = getReclassInquiryActionRuleV2_(value);
-  const prefix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 5);
-  const suffix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(5);
+  const prefix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 6);
+  const suffix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(6);
   if (rule && rule.kind === 'move') {
     return prefix.concat(RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_, RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_, suffix);
   }
@@ -10024,11 +10025,11 @@ function buildReclassInquiryActionRowsV2_(action, authoritativeRows, overlays) {
         changedFields.push('movequantity', 'destinationseason');
       } else if (rule.kind === 'hold_on') {
         const proposedCode = String(overlayValues.holdstopcode || '').trim().toUpperCase();
-        const proposedReason = String(overlayValues.holdstopreason || '').trim();
+        const proposedReason = String(overlayValues.holdstopreason || '').trim().toLowerCase();
         if (proposedCode !== rule.code) throw new Error(rule.label + ' must propose Hold/Stop Code ' + rule.code + '.');
         if (!proposedReason) throw new Error(rule.label + ' requires a Hold/Stop Reason.');
         const originalCode = String(values.holdstopcode || '').trim().toUpperCase();
-        const originalReason = String(values.holdstopreason || '').trim();
+        const originalReason = String(values.holdstopreason || '').trim().toLowerCase();
         values.holdstopcode = proposedCode;
         values.holdstopreason = proposedReason;
         if (proposedCode !== originalCode) changedFields.push('holdstopcode');
@@ -10334,9 +10335,9 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
         if (holdActionCount > 1) throw new Error('Choose only one Hold/Stop action for a Location/Lot row.');
         const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'holdstopcode', 'holdstopreason'], 'A row Hold/Stop proposal');
         const originalCode = String(values.holdstopcode || '').trim().toUpperCase();
-        const originalReason = String(values.holdstopreason || '').trim();
+        const originalReason = String(values.holdstopreason || '').trim().toLowerCase();
         const requestedCode = String(proposal.holdstopcode == null ? '' : proposal.holdstopcode).trim().toUpperCase();
-        const requestedReason = String(proposal.holdstopreason == null ? '' : proposal.holdstopreason).trim();
+        const requestedReason = String(proposal.holdstopreason == null ? '' : proposal.holdstopreason).trim().toLowerCase();
         if (rule.kind === 'hold_on') {
           if (requestedCode !== rule.code) throw new Error(rule.label + ' must place ' + rule.code + ' in Hold/Stop Code.');
           if (!requestedReason) throw new Error(rule.label + ' requires a Hold/Stop Reason.');
@@ -10408,6 +10409,24 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   RECLASS_INQUIRY_IDENTITY_FIELDS_.forEach(function(field) {
     identity[field.key] = getReclassInquiryExactValue_(sourceRow, field.aliases, getReclassInquiryExactValue_(authoritativeRows[0], field.aliases, ''));
   });
+  const normalizedReportRows = (Array.isArray(reportRows) ? reportRows : []).map(function(row) {
+    const normalizedRow = Object.assign({}, row || {});
+    normalizedRow.values = Object.assign({}, row && row.values || {});
+    normalizedRow.values.holdstopreason = String(normalizedRow.values.holdstopreason || '').trim().toLowerCase();
+    normalizedRow.changedFields = Array.isArray(row && row.changedFields) ? row.changedFields.slice() : [];
+    return normalizedRow;
+  });
+  const sourceUid = getInventoryTransactionRowUid_(sourceRow);
+  const originReportRow = normalizedReportRows.find(function(row) {
+    return normalizeInventoryTransactionCompareText_(row && row.unique_id) === normalizeInventoryTransactionCompareText_(sourceUid);
+  });
+  const identityChangedFields = [];
+  if (originReportRow && originReportRow.values) {
+    identity.holdstopcode = String(originReportRow.values.holdstopcode || '').trim().toUpperCase();
+    if (originReportRow.changedFields.indexOf('holdstopcode') !== -1) identityChangedFields.push('holdstopcode');
+  } else {
+    identity.holdstopcode = String(identity.holdstopcode || '').trim().toUpperCase();
+  }
   const seen = {};
   const seasons = [];
   authoritativeRows.forEach(function(row) {
@@ -10432,11 +10451,12 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   const requestActions = Array.isArray(transaction.requestActions)
     ? RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return transaction.requestActions.indexOf(action) !== -1; })
     : (requestAction ? [requestAction] : []);
-  const editedRows = reportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
+  const editedRows = normalizedReportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
   return {
     identity: identity,
+    identityChangedFields: identityChangedFields,
     seasons: seasons,
-    rows: reportRows,
+    rows: normalizedReportRows,
     transaction: transaction,
     requestAction: requestAction,
     requestActions: requestActions,
@@ -10453,25 +10473,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
 }
 
 function buildReclassInquiryReportHtml_(model, printMode) {
-  const safeModel = model || {};
-  const esc = escapeEmailHtml_;
-  const editSummary = safeModel.editSummary || {};
-  const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
-    return '<div class="identity-cell"><span>' + esc(field.label) + '</span><strong>' + esc(safeModel.identity && safeModel.identity[field.key] || '') + '</strong></div>';
-  }).join('');
-  const rowHead = RECLASS_INQUIRY_ROW_FIELDS_.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
-  const rowBody = (safeModel.rows || []).map(function(row) {
-    const changedFields = Array.isArray(row && row.changedFields) ? row.changedFields : [];
-    return '<tr>' + RECLASS_INQUIRY_ROW_FIELDS_.map(function(field) {
-      const edited = changedFields.indexOf(field.key) !== -1;
-      const rawValue = row && row.values && Object.prototype.hasOwnProperty.call(row.values, field.key) ? row.values[field.key] : '';
-      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</td>';
-    }).join('') + '</tr>';
-  }).join('');
-  return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.32in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.2}h1{margin:0 0 3px;font-size:15pt}h2{margin:8px 0 3px;font-size:9pt;text-transform:uppercase}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong{display:block;font-size:8pt}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{font-size:7pt;text-align:left}td{font-size:8pt}.location-table th:nth-child(11),.location-table td:nth-child(11){width:.62in}.location-table th:nth-child(12),.location-table td:nth-child(12),.location-table th:nth-child(18),.location-table td:nth-child(18){width:.78in}.edited-cell{background:#fff176!important}' +
-    '</style></head><body><h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div>' +
-    '<div class="identity">' + identityCells + '</div><h2>Location / Lot Item Inquiry</h2><table class="location-table"><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
+  return buildReclassInquiryCompactReportHtml_(model, printMode);
 }
 
 function buildReclassInquiryReportText_(model) {
@@ -10525,8 +10527,11 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const editSummary = safeModel.editSummary || {};
   const actionLabel = String(firstNonEmptyRequestValue_(safeModel.requestActionLabel, getReclassInquiryActionLabel_(safeModel.requestAction), 'Reclass Item Inquiry'));
   const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions);
+  const identityChangedFields = Array.isArray(safeModel.identityChangedFields) ? safeModel.identityChangedFields : [];
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
-    return '<div class="identity-cell"><span>' + esc(field.label) + '</span><strong>' + esc(safeModel.identity && safeModel.identity[field.key] || '') + '</strong></div>';
+    const edited = identityChangedFields.indexOf(field.key) !== -1;
+    const rawValue = safeModel.identity && Object.prototype.hasOwnProperty.call(safeModel.identity, field.key) ? safeModel.identity[field.key] : '';
+    return '<div class="identity-cell' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span><strong>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong></div>';
   }).join('');
   const columnWidths = compactFields.map(function(field) { return '<col' + (field.width ? ' style="width:' + esc(field.width) + '"' : '') + '>'; }).join('');
   const rowHead = compactFields.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
@@ -10535,7 +10540,8 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     return '<tr>' + compactFields.map(function(field) {
       const edited = changedFields.indexOf(field.key) !== -1;
       const sourceValues = field.source === 'actionValues' ? row && row.actionValues : row && row.values;
-      const rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
+      let rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
+      if (field.key === 'holdstopreason') rawValue = String(rawValue == null ? '' : rawValue).trim().toLowerCase();
       return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</td>';
     }).join('') + '</tr>';
   }).join('');
@@ -10557,17 +10563,17 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
           }).join('') + '</div>' : '')
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity,.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span,.evaluation-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong,.evaluation-cell strong{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span,.evaluation-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong,.evaluation-cell strong{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
     '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div>' +
     '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
 }
 
 function getReclassInquiryCompactPilotRows_() {
   return [
-    { unique_id: 'pilot-a01', itemcode: 'TEST.RECLASS.001', lotcode: '27.S1', locationcode: 'A.01.000', source: 'SH', priority: '4', ptronhand: '36', locationnotedate: '', locationnote: '', holdstopcode: '', holdstopreason: '', season: 'S1' },
-    { unique_id: 'pilot-d12', itemcode: 'TEST.RECLASS.001', lotcode: '26.U2', locationcode: 'D.12.000', source: 'LD', priority: '3', ptronhand: '26', locationnotedate: '8/18/2026', locationnote: 'Synthetic unchanged row.', holdstopcode: 'S', holdstopreason: 'Synthetic stop', season: 'U2' },
-    { unique_id: 'pilot-d17', itemcode: 'TEST.RECLASS.001', lotcode: '27.F1', locationcode: 'D.17.000', source: 'LD', priority: '', ptronhand: '92', locationnotedate: '', locationnote: '', holdstopcode: '', holdstopreason: '', season: 'F1' },
-    { unique_id: 'pilot-f14', itemcode: 'TEST.RECLASS.001', lotcode: '27.F1', locationcode: 'F.14.000', source: 'LD', priority: '3', ptronhand: '497', locationnotedate: '8/20/2026', locationnote: 'Existing synthetic note', holdstopcode: 'H', holdstopreason: 'Synthetic hold', season: 'F1' }
+    { unique_id: 'pilot-a01', itemcode: 'TEST.RECLASS.001', lotcode: '27.S1', locationcode: 'A.01.000', source: 'SH', priority: '4', ptronhand: '36', ptrreviewed: '2', locationnotedate: '', locationnote: '', holdstopcode: '', holdstopreason: '', season: 'S1' },
+    { unique_id: 'pilot-d12', itemcode: 'TEST.RECLASS.001', lotcode: '26.U2', locationcode: 'D.12.000', source: 'LD', priority: '3', ptronhand: '26', ptrreviewed: '1', locationnotedate: '8/18/2026', locationnote: 'Synthetic unchanged row.', holdstopcode: 'S', holdstopreason: 'Synthetic stop', season: 'U2' },
+    { unique_id: 'pilot-d17', itemcode: 'TEST.RECLASS.001', lotcode: '27.F1', locationcode: 'D.17.000', source: 'LD', priority: '', ptronhand: '92', ptrreviewed: '4', locationnotedate: '', locationnote: '', holdstopcode: '', holdstopreason: '', season: 'F1' },
+    { unique_id: 'pilot-f14', itemcode: 'TEST.RECLASS.001', lotcode: '27.F1', locationcode: 'F.14.000', source: 'LD', priority: '3', ptronhand: '497', ptrreviewed: '12', locationnotedate: '8/20/2026', locationnote: 'Existing synthetic note', holdstopcode: 'H', holdstopreason: 'Synthetic hold', season: 'F1' }
   ];
 }
 
@@ -10616,7 +10622,14 @@ function buildReclassInquiryCompactPilotModel_(action, now) {
   const overlays = buildReclassInquiryCompactPilotOverlays_(requestAction, authoritativeRows);
   const proposal = buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, overlays);
   if (!proposal.ok) throw new Error(proposal.message || 'The synthetic pilot rows could not be validated.');
-  const editedRows = proposal.rows.filter(function(row) { return row.changedFields.length; });
+  const normalizedRows = proposal.rows.map(function(row) {
+    const normalizedRow = Object.assign({}, row);
+    normalizedRow.values = Object.assign({}, row.values || {});
+    normalizedRow.values.holdstopreason = String(normalizedRow.values.holdstopreason || '').trim().toLowerCase();
+    return normalizedRow;
+  });
+  const originRow = normalizedRows.find(function(row) { return row && row.included; }) || normalizedRows[0];
+  const editedRows = normalizedRows.filter(function(row) { return row.changedFields.length; });
   return {
     isSyntheticPilot: true,
     requestAction: requestAction,
@@ -10631,9 +10644,11 @@ function buildReclassInquiryCompactPilotModel_(action, now) {
       genusname: 'Testus',
       fieldtagcolor: 'TEST',
       itemspec: 'Synthetic data',
-      pullerresponsibility: 'Pilot only'
+      pullerresponsibility: 'Pilot only',
+      holdstopcode: String(originRow && originRow.values && originRow.values.holdstopcode || '').trim().toUpperCase()
     },
-    rows: proposal.rows,
+    identityChangedFields: originRow && originRow.changedFields.indexOf('holdstopcode') !== -1 ? ['holdstopcode'] : [],
+    rows: normalizedRows,
     editSummary: {
       rowCount: editedRows.length,
       fieldCount: editedRows.reduce(function(total, row) { return total + row.changedFields.length; }, 0)

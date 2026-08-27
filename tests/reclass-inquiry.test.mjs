@@ -83,7 +83,7 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
@@ -281,7 +281,8 @@ test('Reclass server fetch paginates every current row for the selected ITEMCODE
 test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landscape, and repeat-header capable', () => {
   const server = loadServerModel();
   const baseModel = {
-    identity: { commonname: '<Unsafe & Name>', itemcode: 'A1' },
+    identity: { commonname: '<Unsafe & Name>', itemcode: 'A1', holdstopcode: 'H' },
+    identityChangedFields: ['holdstopcode'],
     seasons: [{ saleyear: '2027', season: 'F1', s_lts: '1', season_supply: '2', season_oh: '2', season_demand: '0' }],
     transaction: { quantity: 1, newItemCode: 'A2', newLotCode: '27.S1', newLocationCode: 'B.1' },
     actorDisplay: 'Tester',
@@ -305,15 +306,16 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
     assert.match(output, /\.edited-cell\{background:#fff176!important\}/);
-    assert.match(output, /class="edited-cell" data-edited="true">H<\/td>/);
+    assert.match(output, /identity-cell edited-cell" data-edited="true"><span>HOLDSTOPCODE<\/span><strong>H<\/strong>/);
+    assert.match(output, /class="edited-cell" data-edited="true">check<\/td>/);
     assert.doesNotMatch(output, /<img/i);
     assert.doesNotMatch(output, /Reclass Request/);
     assert.doesNotMatch(output, /Season Summary/);
     assert.doesNotMatch(output, /Field Notes/);
     assert.doesNotMatch(output, /Abbreviations:/);
     assert.match(output, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
-    assert.match(output, /Pull Tag 1/);
-    assert.match(output, /Loc PTN 2/);
+    assert.match(output, /<th>PTRREVIEWED<\/th>/);
+    assert.doesNotMatch(output, /<th>Hold\/Stop Code<\/th>/);
     assert.equal((output.match(/<tr>/g) || []).length, rowCount + 1, `${rowCount}-row report should include every detail row plus one table header`);
   }
 });
@@ -345,14 +347,14 @@ test('Reclass workflow V3 row actions are live while V2 remains available for co
 test('action-specific compact PDFs use exact columns, natural ordering, preserved OH, and yellow proposals', () => {
   const server = loadServerModel();
   const expected = {
-    priority_change: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    recount: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    move_up: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    move_down: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Move Qty', 'To Season', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    take_off_hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    off_stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    priority_change: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    recount: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    move_up: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Move Qty', 'To Season', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    move_down: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Move Qty', 'To Season', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    take_off_hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
+    off_stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
   };
   const outputs = {};
   for (const [action, expectedHeaders] of Object.entries(expected)) {
@@ -378,11 +380,28 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
   assert.match(outputs.priority_change, /class="edited-cell" data-edited="true">1<\/td>/);
   assert.match(outputs.move_up, /class="edited-cell" data-edited="true">20<\/td>/);
   assert.match(outputs.move_up, /class="edited-cell" data-edited="true">F1<\/td>/);
-  assert.match(outputs.move_up, />26<\/td><td class="edited-cell" data-edited="true">20<\/td>/, 'Move Up must preserve original OH 26');
-  assert.match(outputs.move_down, />36<\/td><td class="edited-cell" data-edited="true">15<\/td>/, 'Move Down must preserve original OH 36');
+  assert.match(outputs.move_up, />26<\/td><td>1<\/td><td class="edited-cell" data-edited="true">20<\/td>/, 'Move Up must preserve original OH 26 and place PTRREVIEWED next');
+  assert.match(outputs.move_down, />36<\/td><td>2<\/td><td class="edited-cell" data-edited="true">15<\/td>/, 'Move Down must preserve original OH 36 and place PTRREVIEWED next');
   assert.match(outputs.take_off_hold, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
   assert.match(outputs.off_stop_ship, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
   assert.doesNotMatch(outputs.recount, /class="edited-cell"/);
+});
+
+test('Reclass identity is exactly nine balanced fields and movement pairs follow PTRREVIEWED', () => {
+  const server = loadServerModel();
+  assert.deepEqual(Array.from(server.RECLASS_INQUIRY_IDENTITY_FIELDS_, (field) => [field.key, field.label]), [
+    ['plantgroupcode', 'Plant Grp'], ['commonname', 'Common Name'], ['contsize', 'Cont.'],
+    ['itemcode', 'Item Code'], ['genusname', 'Genus'], ['fieldtagcolor', 'Tag Color'],
+    ['itemspec', 'Item Spec'], ['pullerresponsibility', 'Puller Resp.'], ['holdstopcode', 'HOLDSTOPCODE'],
+  ]);
+  assert.deepEqual(Array.from(server.getReclassInquiryCompactFields_('', ['move_down', 'move_up']), (field) => field.label), [
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED',
+    'Move Up Qty', 'Move Up To Season', 'Move Down Qty', 'Move Down To Season',
+    'Hold/Stop Reason', 'Loc Note Date', 'Location Note',
+  ]);
+  const htmlOutput = server.buildReclassInquiryCompactReportHtml_({ identity: {}, rows: [] }, true);
+  assert.match(htmlOutput, /\.identity\{display:grid;grid-template-columns:repeat\(3,1fr\)/);
+  assert.doesNotMatch(htmlOutput, /<th>Hold\/Stop Code<\/th>/);
 });
 
 test('workflow V2 validates every action and rejects mixed, stale, and unsafe proposals', () => {
@@ -449,17 +468,44 @@ test('workflow V3 writes Dallas Move + Hold + Priority values into existing repo
   const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
   const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
   assert.deepEqual(headers, [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED',
     'Move Up Qty', 'Move Up To Season',
-    'Hold/Stop Code', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note',
+    'Hold/Stop Reason', 'Loc Note Date', 'Location Note',
   ]);
   assert.match(output, /class="edited-cell" data-edited="true">1<\/td>/);
   assert.match(output, /class="edited-cell" data-edited="true">150<\/td>/);
-  assert.match(output, /class="edited-cell" data-edited="true">H<\/td>/);
+  assert.equal(model.identity.holdstopcode, 'H');
+  assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode']);
+  assert.match(output, /identity-cell edited-cell" data-edited="true"><span>HOLDSTOPCODE<\/span><strong>H<\/strong>/);
   assert.match(output, /class="edited-cell" data-edited="true">sheared<\/td>/);
   assert.doesNotMatch(output, /Hold\/Stop Proposals|<th>Actions<\/th>/);
   assert.ok(output.indexOf('A.01.000') < output.indexOf('C.16.000'));
   assert.equal((output.match(/<tr>/g) || []).length, rows.length + 1);
+});
+
+test('originating Hold/Stop proposals drive the top code and all PDF reasons render lowercase', () => {
+  const server = loadServerModel();
+  const rows = [
+    { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', ptrreviewed: '3', holdstopcode: 'H', holdstopreason: 'Mixed CASE Reason' },
+    { unique_id: 'context', itemcode: 'A1', lotcode: '27.S1', locationcode: 'B.1', ptronhand: '5', ptrreviewed: '1', holdstopcode: 'S', holdstopreason: 'Older MIXED Reason' },
+  ];
+  const transaction = { requestActions: ['take_off_hold'], holdStopProposals: [], scope: {} };
+  const overlays = rows.map((row) => ({
+    unique_id: row.unique_id,
+    expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode },
+    proposals: row.unique_id === 'origin' ? [{ action: 'take_off_hold', holdstopcode: '', holdstopreason: '' }] : [],
+  }));
+  const proposal = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, null);
+  assert.equal(proposal.ok, true);
+  const model = server.buildReclassInquiryReportModel_(rows[0], rows, proposal.rows, { transaction, actor: { display: 'Tester' } }, new Date());
+  assert.equal(model.identity.holdstopcode, '');
+  assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode']);
+  assert.equal(model.rows[1].values.holdstopreason, 'older mixed reason');
+  assert.equal(rows[1].holdstopreason, 'Older MIXED Reason', 'authoritative source must remain untouched');
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(output, /identity-cell edited-cell" data-edited="true"><span>HOLDSTOPCODE<\/span><strong>&nbsp;<\/strong>/);
+  assert.match(output, />older mixed reason<\/td>/);
+  assert.doesNotMatch(output, /Mixed CASE|Older MIXED/);
 });
 
 test('workflow V3 rejects duplicate actions, bad row fields, missing reasons, conflicting Hold/Stop, and move totals above OH', () => {
