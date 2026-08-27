@@ -187,8 +187,8 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
-    managerEvalReport2LoadState.loading = false;
-    managerEvalReport2LoadState.error = '';
+    scheduleManagersRender = () => {};
+    queueScrollMainAreaToTop = () => {};
     invalidateManagerEvalReport2Cache();
     setManagerEvalReport2Mode('reports');
     setManagerEvalReport2('low-stock');
@@ -248,8 +248,8 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
 
   const state = await page.evaluate(() => (window as any).eval(`(() => ({
     selected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode).sort(),
-    report: managerEvalReport2LockedReportId,
-    assignedTo: managerEvalReport2LockedAssignedTo,
+    report: getManagerEvalReport2SelectedItems()[0]?.reportId || '',
+    assignedTo: getManagerEvalReport2SelectedItems()[0]?.assignedTo || '',
     hasLegacySelectMode: document.getElementById('hosted-eval2-canary').textContent.includes('Select Items')
   }))()`));
   expect(state).toEqual({

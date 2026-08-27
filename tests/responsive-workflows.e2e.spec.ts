@@ -275,8 +275,8 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
-    managerEvalReport2LoadState.loading = false;
-    managerEvalReport2LoadState.error = '';
+    scheduleManagersRender = () => {};
+    queueScrollMainAreaToTop = () => {};
     invalidateManagerEvalReport2Cache();
     setManagerEvalReport2Mode('reports');
     setManagerEvalReport2('low-stock');
@@ -343,8 +343,8 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
 
   const state = await page.evaluate(() => (window as any).eval(`(() => ({
     selected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode).sort(),
-    lockedReport: managerEvalReport2LockedReportId,
-    lockedAssignedTo: managerEvalReport2LockedAssignedTo,
+    lockedReport: getManagerEvalReport2SelectedItems()[0]?.reportId || '',
+    lockedAssignedTo: getManagerEvalReport2SelectedItems()[0]?.assignedTo || '',
     compactHeader: document.getElementById('eval2-multiselect-host').textContent.includes('Eval Reports #2'),
     hasMore: !!document.querySelector('#eval2-multiselect-host #manager-eval-report-2-more-menu'),
     noLegacySelectMode: !document.getElementById('eval2-multiselect-host').textContent.includes('Select Items')

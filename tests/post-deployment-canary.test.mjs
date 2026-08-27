@@ -39,7 +39,7 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
   assert.match(workflow, /production-request-canary\.spec\.ts/);
   assert.match(canary, /live Eval Reports #2 drill and multi-select remain actionable without mutations/);
   assert.match(canary, /data-role="manager-eval2-selection-toggle"/);
-  assert.match(canary, /managerEvalReport2LockedReportId/);
+  assert.match(canary, /getManagerEvalReport2SelectedItems\(\)\[0\]\?\.reportId/);
 });
 
 test('scheduled production health checks exact live parity without racing the push deployment', () => {
