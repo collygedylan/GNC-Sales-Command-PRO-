@@ -168,6 +168,13 @@ const HL_PO_PARSED_TABLE = 'ph_27f1_hl_po';
 const HL_PO_PARSED_SOURCE_FOLDER_ID = '1681oPSyfz7mURdywOKH_9FQNnBQmmSWO';
 const HL_PO_PARSED_PROCESSED_FOLDER_ID = '13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2';
 const HL_PO_PARSED_TIMEZONE = 'America/Chicago';
+const TRANSACTIONS_KEYED_FILES_TABLE = 'ph_transactions_keyed_files';
+const TRANSACTIONS_KEYED_ROWS_TABLE = 'ph_transactions_keyed_rows';
+const TRANSACTIONS_KEYED_PENDING_FOLDER_ID = '1aP8zvY9SwOEV3ThcQf7t9oBBinEr3gMe';
+const TRANSACTIONS_KEYED_PROCESSED_FOLDER_ID = '1glpzw3zr1Q2YyNj2OtD_O5fBBFpPe78Q';
+const TRANSACTIONS_KEYED_TIMEZONE = 'America/Chicago';
+const TRANSACTIONS_KEYED_MAX_FILES_PER_RUN = 3;
+const TRANSACTIONS_KEYED_MAX_RUN_MS = 240000;
 
 const FOLDERS = {
   MASTER_DROP: '1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48',
@@ -182,7 +189,9 @@ const FOLDERS = {
   CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5',
   WAREHOUSE_ASSIGNED_ITEMS_SOURCE: WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID,
   HL_PO_PARSED_DROP: HL_PO_PARSED_SOURCE_FOLDER_ID,
-  HL_PO_PARSED_PROCESSED: HL_PO_PARSED_PROCESSED_FOLDER_ID
+  HL_PO_PARSED_PROCESSED: HL_PO_PARSED_PROCESSED_FOLDER_ID,
+  TRANSACTIONS_KEYED_DROP: TRANSACTIONS_KEYED_PENDING_FOLDER_ID,
+  TRANSACTIONS_KEYED_PROCESSED: TRANSACTIONS_KEYED_PROCESSED_FOLDER_ID
 };
 
 const CUSTOMER_REP_MAP_TABLE = 'ph_customer_consignee_sales_reps';
@@ -243,6 +252,7 @@ function runRetiredDiseaseManualSyncStage_() {
 }
 function runDiseaseDriveToSupabaseSyncOnly() { return runRetiredDiseaseManualSyncStage_(); }
 function runHlPoParsedOnly() { return syncHlPoParsedFolder_(FOLDERS.HL_PO_PARSED_DROP, FOLDERS.HL_PO_PARSED_PROCESSED, HL_PO_PARSED_TABLE); }
+function runTransactionsKeyedOnly() { return syncTransactionsKeyedFolder_(FOLDERS.TRANSACTIONS_KEYED_DROP, FOLDERS.TRANSACTIONS_KEYED_PROCESSED); }
 
 const SITE_SPLIT_SITE_CODES_ = Object.freeze(['PH', 'TX', 'NC', 'HL']);
 const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
@@ -368,7 +378,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'hl_po_parsed', 'transactions_keyed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -509,6 +519,7 @@ function getAppLiveEventAreaForTable_(tableName) {
   if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'ph_hold_release_cycles' || safeTable === HOLD_STOP_ITEMCODE_SUMMARY_TABLE) return 'weather-hold';
   if (safeTable === 'ph_sales_office') return 'sales-office';
   if (safeTable === 'ph_active_request') return 'request';
+  if (safeTable === TRANSACTIONS_KEYED_FILES_TABLE || safeTable === TRANSACTIONS_KEYED_ROWS_TABLE) return 'transactions-keyed';
   return '';
 }
 
@@ -590,7 +601,8 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   disease: { label: 'Disease Lab Assets (Retired)', run: runRetiredDiseaseManualSyncStage_ },
   lab: { label: 'Lab Assets (Retired)', run: runRetiredDiseaseManualSyncStage_ },
   lab_reports: { label: 'Lab Reports (Retired)', run: runRetiredDiseaseManualSyncStage_ },
-  hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly }
+  hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly },
+  transactions_keyed: { label: 'Transactions Keyed', run: runTransactionsKeyedOnly }
 });
 
 function runDriveSocReservesSequence() {
@@ -714,6 +726,7 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'cav') return ['cav'];
   if (normalized === 'disease' || normalized === 'lab' || normalized === 'lab_reports') return [normalized];
   if (normalized === 'hl_po_parsed' || normalized === 'hlpo_parsed' || normalized === 'hl_po_import' || normalized === 'hl_po_upload') return ['hl_po_parsed'];
+  if (normalized === 'transactions_keyed' || normalized === 'transaction_keyed' || normalized === 'transactions') return ['transactions_keyed'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
 }
 
@@ -5173,6 +5186,492 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
   return {
     tableName: safeTableName,
     filesProcessed: filesProcessed,
+    tempFilesRemoved: tempFilesRemoved,
+    unsupportedFiles: unsupportedFiles,
+    failedFiles: failedFiles.length,
+    failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles,
+    upsertCount: upsertCount,
+    deleteCount: 0,
+    totalRows: totalRows,
+    runId: runId
+  };
+}
+
+const TRANSACTIONS_KEYED_COLUMNS = Object.freeze([
+  { header: 'Transaction Date', key: 'transaction_datetime', type: 'datetime' },
+  { header: 'Invoice Date', key: 'invoice_datetime', type: 'datetime' },
+  { header: 'Commit Date', key: 'commit_datetime', type: 'datetime' },
+  { header: 'Code - Item', key: 'code_item', type: 'text' },
+  { header: 'Description 1 - Item', key: 'description_1_item', type: 'text' },
+  { header: 'Code - Lot', key: 'code_lot', type: 'text' },
+  { header: 'Code - Location', key: 'code_location', type: 'text' },
+  { header: 'Source', key: 'source', type: 'text' },
+  { header: 'Code 2 - Detail', key: 'code_2_detail', type: 'text' },
+  { header: 'DesigItem', key: 'desig_item', type: 'text' },
+  { header: 'Code 5 - Detail', key: 'code_5_detail', type: 'text' },
+  { header: 'DesigCust', key: 'desig_cust', type: 'text' },
+  { header: 'Code 3 - Detail', key: 'code_3_detail', type: 'text' },
+  { header: 'DesigLoc', key: 'desig_loc', type: 'text' },
+  { header: 'Code 4 - Detail', key: 'code_4_detail', type: 'text' },
+  { header: 'Out Ordered - Transaction Location', key: 'out_ordered_transaction_location', type: 'number' },
+  { header: 'Quantity', key: 'quantity', type: 'number' },
+  { header: 'Code 1 - Detail', key: 'code_1_detail', type: 'text' },
+  { header: 'Reference', key: 'reference', type: 'text' },
+  { header: 'Status', key: 'transaction_status', type: 'text' },
+  { header: 'Created By - Detail', key: 'created_by_detail', type: 'text' },
+  { header: 'Transaction Number', key: 'transaction_number', type: 'text' },
+  { header: 'Date 1 - Detail', key: 'date_1_detail', type: 'datetime' },
+  { header: 'Reference 1 - Detail', key: 'reference_1_detail', type: 'text' },
+  { header: 'Reference 2 - Detail', key: 'reference_2_detail', type: 'text' },
+  { header: 'Program', key: 'program', type: 'text' },
+  { header: 'Module', key: 'module', type: 'text' },
+  { header: 'Transaction Type', key: 'transaction_type', type: 'text' },
+  { header: 'Stage', key: 'stage', type: 'text' },
+  { header: 'Shipping Date - OM Transaction Header', key: 'shipping_datetime_om_transaction_header', type: 'datetime' },
+  { header: 'Ship To Name - OM Transaction Header', key: 'ship_to_name_om_transaction_header', type: 'text' },
+  { header: 'FM PU Stop Number - OM Transaction Header', key: 'fm_pu_stop_number_om_transaction_header', type: 'text' },
+  { header: 'FM Trip Number - OM Transaction Header', key: 'fm_trip_number_om_transaction_header', type: 'text' },
+  { header: 'Ordered Quantity', key: 'ordered_quantity', type: 'number' },
+  { header: 'Shipped Quantity - OM Transaction Detail', key: 'shipped_quantity_om_transaction_detail', type: 'number' },
+  { header: 'Price', key: 'price', type: 'number' },
+  { header: 'Amount', key: 'amount', type: 'number' },
+  { header: 'Reference 1 - Lot', key: 'reference_1_lot', type: 'text' },
+  { header: 'Reference 2 - Lot', key: 'reference_2_lot', type: 'text' },
+  { header: 'Reference 4 - Lot', key: 'reference_4_lot', type: 'text' }
+]);
+
+function normalizeTransactionsKeyedHeader_(value) {
+  return String(value == null ? '' : value).replace(/\u00a0/g, ' ').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+const TRANSACTIONS_KEYED_COLUMN_BY_HEADER = Object.freeze(TRANSACTIONS_KEYED_COLUMNS.reduce(function(map, column) {
+  map[normalizeTransactionsKeyedHeader_(column.header)] = column;
+  return map;
+}, {}));
+
+function inspectTransactionsKeyedHeaderRow_(row) {
+  const cells = Array.isArray(row) ? row : [];
+  const normalized = cells.map(normalizeTransactionsKeyedHeader_);
+  const recognizedCount = normalized.filter(function(key) { return !!TRANSACTIONS_KEYED_COLUMN_BY_HEADER[key]; }).length;
+  const candidate = recognizedCount >= 8 && normalized.indexOf('transactiondate') >= 0 && normalized.indexOf('createdbydetail') >= 0;
+  if (!candidate) return { candidate: false, valid: false };
+
+  const indexByKey = {};
+  const duplicateHeaders = [];
+  const unexpectedHeaders = [];
+  normalized.forEach(function(headerKey, index) {
+    if (!headerKey) return;
+    const column = TRANSACTIONS_KEYED_COLUMN_BY_HEADER[headerKey];
+    if (!column) {
+      unexpectedHeaders.push(String(cells[index] || '').trim());
+      return;
+    }
+    if (indexByKey[column.key] != null) duplicateHeaders.push(column.header);
+    else indexByKey[column.key] = index;
+  });
+  const missingHeaders = TRANSACTIONS_KEYED_COLUMNS.filter(function(column) {
+    return indexByKey[column.key] == null;
+  }).map(function(column) { return column.header; });
+
+  return {
+    candidate: true,
+    valid: !missingHeaders.length && !duplicateHeaders.length && !unexpectedHeaders.length,
+    indexByKey: indexByKey,
+    missingHeaders: missingHeaders,
+    duplicateHeaders: duplicateHeaders,
+    unexpectedHeaders: unexpectedHeaders
+  };
+}
+
+function isTransactionsKeyedFileSupported_(file) {
+  const fileName = String(file && file.getName ? file.getName() : '').toLowerCase();
+  const mime = String(file && file.getMimeType ? file.getMimeType() : '').toLowerCase();
+  return (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) && isExcelLikeFile_(mime, fileName);
+}
+
+function formatTransactionsKeyedHeaderError_(sheetName, headerRowNumber, inspection) {
+  const parts = [];
+  if (inspection.missingHeaders && inspection.missingHeaders.length) parts.push('missing: ' + inspection.missingHeaders.join(', '));
+  if (inspection.duplicateHeaders && inspection.duplicateHeaders.length) parts.push('duplicated: ' + inspection.duplicateHeaders.join(', '));
+  if (inspection.unexpectedHeaders && inspection.unexpectedHeaders.length) parts.push('unexpected: ' + inspection.unexpectedHeaders.join(', '));
+  return `Invalid Transactions Keyed headers on ${sheetName} row ${headerRowNumber} (${parts.join('; ')}).`;
+}
+
+function extractTransactionsKeyedSheet_(file, folderId) {
+  const fileName = String(file.getName() || '').trim();
+  let tempSheetId = '';
+  try {
+    tempSheetId = createTempGoogleSheetFromExcel_(file, folderId);
+    const spreadsheet = openSpreadsheetWithRetry_(tempSheetId, fileName);
+    const sheets = spreadsheet.getSheets();
+    const validMatches = [];
+    const invalidCandidates = [];
+
+    sheets.forEach(function(sheet) {
+      const values = sheet.getDataRange().getValues();
+      const displayValues = sheet.getDataRange().getDisplayValues();
+      const scanLimit = Math.min(75, displayValues.length);
+      for (let rowIndex = 0; rowIndex < scanLimit; rowIndex++) {
+        const inspection = inspectTransactionsKeyedHeaderRow_(displayValues[rowIndex]);
+        if (!inspection.candidate) continue;
+        if (inspection.valid) {
+          validMatches.push({
+            values: values,
+            displayValues: displayValues,
+            sourceSheetName: sheet.getName(),
+            headerRowIndex: rowIndex,
+            indexByKey: inspection.indexByKey
+          });
+        } else {
+          invalidCandidates.push(formatTransactionsKeyedHeaderError_(sheet.getName(), rowIndex + 1, inspection));
+        }
+        break;
+      }
+    });
+
+    if (validMatches.length > 1) {
+      throw new Error(`Multiple sheets in ${fileName} contain the complete Transactions Keyed header set.`);
+    }
+    if (!validMatches.length) {
+      if (invalidCandidates.length) throw new Error(invalidCandidates[0]);
+      throw new Error(`No sheet in ${fileName} contains the exact 40-column Transactions Keyed header set.`);
+    }
+    if (invalidCandidates.length) {
+      throw new Error(`Ambiguous Transactions Keyed workbook ${fileName}: ${invalidCandidates[0]}`);
+    }
+    return validMatches[0];
+  } finally {
+    cleanupTempGoogleSheet_(tempSheetId, fileName);
+  }
+}
+
+function bytesToSha256Hex_(bytes) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes || []);
+  return digest.map(function(value) {
+    return ((value + 256) % 256).toString(16).padStart(2, '0');
+  }).join('');
+}
+
+function getTransactionsKeyedFileHash_(file) {
+  return bytesToSha256Hex_(file.getBlob().getBytes());
+}
+
+function normalizeTransactionsKeyedText_(value) {
+  if (value == null) return null;
+  const text = String(value).replace(/\u00a0/g, ' ').trim();
+  return text === '' ? null : text;
+}
+
+function parseTransactionsKeyedNumber_(value, columnName, rowNumber, fileName) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'number') {
+    if (!isFinite(value)) throw new Error(`Invalid numeric ${columnName} at row ${rowNumber} in ${fileName}.`);
+    return value;
+  }
+  const raw = String(value).replace(/\u00a0/g, ' ').trim();
+  if (!raw) return null;
+  let cleaned = raw.replace(/[$,%]/g, '').replace(/,/g, '').trim();
+  if (/^\([0-9.+-]+\)$/.test(cleaned)) cleaned = '-' + cleaned.slice(1, -1);
+  const parsed = Number(cleaned);
+  if (!isFinite(parsed)) throw new Error(`Invalid numeric ${columnName} at row ${rowNumber} in ${fileName}.`);
+  return parsed;
+}
+
+function padTransactionsKeyedDatePart_(value) {
+  return String(value).padStart(2, '0');
+}
+
+function buildTransactionsKeyedTimestamp_(year, month, day, hour, minute, second, columnName, rowNumber, fileName) {
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  const hh = Number(hour || 0);
+  const mm = Number(minute || 0);
+  const ss = Number(second || 0);
+  const check = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() + 1 !== m || check.getUTCDate() !== d ||
+      check.getUTCHours() !== hh || check.getUTCMinutes() !== mm || check.getUTCSeconds() !== ss) {
+    throw new Error(`Invalid date ${columnName} at row ${rowNumber} in ${fileName}.`);
+  }
+  return `${String(y).padStart(4, '0')}-${padTransactionsKeyedDatePart_(m)}-${padTransactionsKeyedDatePart_(d)}` +
+    `T${padTransactionsKeyedDatePart_(hh)}:${padTransactionsKeyedDatePart_(mm)}:${padTransactionsKeyedDatePart_(ss)}`;
+}
+
+function parseTransactionsKeyedDateTime_(value, columnName, rowNumber, fileName) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) throw new Error(`Invalid date ${columnName} at row ${rowNumber} in ${fileName}.`);
+    return Utilities.formatDate(value, TRANSACTIONS_KEYED_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss");
+  }
+  if (typeof value === 'number') {
+    if (!isFinite(value)) throw new Error(`Invalid date ${columnName} at row ${rowNumber} in ${fileName}.`);
+    const excelDate = new Date(Math.round((value - 25569) * 86400000));
+    return Utilities.formatDate(excelDate, 'UTC', "yyyy-MM-dd'T'HH:mm:ss");
+  }
+
+  const raw = String(value).replace(/\u00a0/g, ' ').trim();
+  if (!raw) return null;
+  let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  if (match) {
+    return buildTransactionsKeyedTimestamp_(match[1], match[2], match[3], match[4], match[5], match[6], columnName, rowNumber, fileName);
+  }
+  match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i);
+  if (match) {
+    let year = Number(match[3]);
+    if (year < 100) year += year >= 70 ? 1900 : 2000;
+    let hour = Number(match[4] || 0);
+    const meridiem = String(match[7] || '').toUpperCase();
+    if (meridiem) {
+      if (hour < 1 || hour > 12) throw new Error(`Invalid date ${columnName} at row ${rowNumber} in ${fileName}.`);
+      if (meridiem === 'AM' && hour === 12) hour = 0;
+      if (meridiem === 'PM' && hour !== 12) hour += 12;
+    }
+    return buildTransactionsKeyedTimestamp_(year, match[1], match[2], hour, match[5], match[6], columnName, rowNumber, fileName);
+  }
+  throw new Error(`Invalid date ${columnName} at row ${rowNumber} in ${fileName}.`);
+}
+
+function isTransactionsKeyedDataRowBlank_(row, indexByKey) {
+  return TRANSACTIONS_KEYED_COLUMNS.every(function(column) {
+    const value = row[indexByKey[column.key]];
+    return value == null || String(value).replace(/\u00a0/g, ' ').trim() === '';
+  });
+}
+
+function buildTransactionsKeyedRows_(file, sheetData, contentHash, importBatchId) {
+  const rows = [];
+  const fileId = String(file.getId() || '').trim();
+  const fileName = String(file.getName() || '').trim();
+  for (let rowIndex = sheetData.headerRowIndex + 1; rowIndex < sheetData.values.length; rowIndex++) {
+    const sourceRow = sheetData.values[rowIndex] || [];
+    const sourceDisplayRow = (sheetData.displayValues && sheetData.displayValues[rowIndex]) || sourceRow;
+    const sourceRowNumber = rowIndex + 1;
+    if (isTransactionsKeyedDataRowBlank_(sourceRow, sheetData.indexByKey)) continue;
+
+    const parsed = {
+      drive_file_id: fileId,
+      content_sha256: contentHash,
+      source_sheet_name: sheetData.sourceSheetName,
+      source_row_number: sourceRowNumber,
+      import_batch_id: importBatchId
+    };
+    const hashValues = [];
+    TRANSACTIONS_KEYED_COLUMNS.forEach(function(column) {
+      const columnIndex = sheetData.indexByKey[column.key];
+      const rawValue = sourceRow[columnIndex];
+      const displayValue = sourceDisplayRow[columnIndex];
+      const value = column.type === 'text'
+        ? displayValue
+        : column.type === 'datetime' && String(displayValue == null ? '' : displayValue).trim()
+          ? displayValue
+          : rawValue;
+      const parsedValue = column.type === 'number'
+        ? parseTransactionsKeyedNumber_(value, column.header, sourceRowNumber, fileName)
+        : column.type === 'datetime'
+          ? parseTransactionsKeyedDateTime_(value, column.header, sourceRowNumber, fileName)
+          : normalizeTransactionsKeyedText_(value);
+      parsed[column.key] = parsedValue;
+      hashValues.push(parsedValue);
+    });
+    parsed.source_row_hash = bytesToSha256Hex_(Utilities.newBlob(JSON.stringify(hashValues), 'application/json').getBytes());
+    rows.push(parsed);
+  }
+  return rows;
+}
+
+function upsertTransactionsKeyedRows_(rows) {
+  const payloadRows = Array.isArray(rows) ? rows : [];
+  if (!payloadRows.length) return 0;
+  const requests = [];
+  const chunkSize = 200;
+  for (let index = 0; index < payloadRows.length; index += chunkSize) {
+    requests.push({
+      url: `${SUPABASE_URL}/rest/v1/${TRANSACTIONS_KEYED_ROWS_TABLE}?on_conflict=drive_file_id,content_sha256,source_sheet_name,source_row_number`,
+      method: 'post',
+      headers: getSupabaseHeaders_({
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      }),
+      payload: JSON.stringify(payloadRows.slice(index, index + chunkSize)),
+      muteHttpExceptions: true
+    });
+  }
+  const responses = executeFetchAllBatches(requests, 1);
+  responses.forEach(function(response) {
+    const code = response.getResponseCode();
+    if (code !== 200 && code !== 201 && code !== 204) {
+      throw new Error(`Transactions Keyed row upload failed (${code}).`);
+    }
+  });
+  return payloadRows.length;
+}
+
+function callTransactionsKeyedRpcWithRetry_(rpcName, payload) {
+  return withRetry_(`Transactions Keyed RPC ${rpcName}`, 3, 1000, function() {
+    return callSupabaseRpc_(rpcName, payload || {});
+  }, shouldRetrySupabaseRead_);
+}
+
+function getTransactionsKeyedErrorCode_(error) {
+  const message = String(error && error.message ? error.message : error || '').toLowerCase();
+  if (message.indexOf('header') >= 0 || message.indexOf('40-column') >= 0) return 'HEADER_SCHEMA_INVALID';
+  if (message.indexOf('multiple sheets') >= 0 || message.indexOf('ambiguous') >= 0) return 'WORKBOOK_SHEET_AMBIGUOUS';
+  if (message.indexOf('numeric') >= 0) return 'NUMERIC_VALUE_INVALID';
+  if (message.indexOf('date') >= 0) return 'DATE_VALUE_INVALID';
+  if (message.indexOf('row count') >= 0) return 'ROW_COUNT_MISMATCH';
+  if (message.indexOf('no importable') >= 0) return 'NO_IMPORTABLE_ROWS';
+  if (message.indexOf('move file') >= 0) return 'ARCHIVE_MOVE_FAILED';
+  if (message.indexOf('convert excel') >= 0 || message.indexOf('converted sheet') >= 0) return 'EXCEL_CONVERSION_FAILED';
+  if (message.indexOf('supabase') >= 0 || message.indexOf('upload') >= 0) return 'SUPABASE_IMPORT_FAILED';
+  return 'IMPORT_FAILED';
+}
+
+function syncTransactionsKeyedFolder_(sourceFolderId, processedFolderId) {
+  if (String(sourceFolderId || '').trim() === String(processedFolderId || '').trim()) {
+    throw new Error('Transactions Keyed source and processed folders must be different.');
+  }
+  const startedAtMs = Date.now();
+  const sourceFolder = getDriveFolderByIdWithRetry_(sourceFolderId, 'Transactions Keyed source folder');
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'Transactions Keyed processed folder');
+  const iterator = listDriveFilesWithRetry_(sourceFolder, 'Transactions Keyed source folder');
+  const pendingFiles = [];
+  const failedFiles = [];
+  let unsupportedFiles = 0;
+  let tempFilesRemoved = 0;
+  let filesProcessed = 0;
+  let duplicateFiles = 0;
+  let upsertCount = 0;
+  let totalRows = 0;
+  const runId = Utilities.getUuid();
+
+  while (iterator.hasNext()) {
+    const file = iterator.next();
+    const fileName = String(file.getName() || '').trim();
+    if (fileName.startsWith('TEMP_')) {
+      tempFilesRemoved++;
+      trashDriveFileWithRetry_(file, `Transactions Keyed temp file ${fileName}`);
+      continue;
+    }
+    if (!isTransactionsKeyedFileSupported_(file)) {
+      unsupportedFiles++;
+      continue;
+    }
+    pendingFiles.push(file);
+  }
+
+  pendingFiles.sort(function(a, b) {
+    const createdDiff = a.getDateCreated().getTime() - b.getDateCreated().getTime();
+    return createdDiff || String(a.getName() || '').localeCompare(String(b.getName() || ''), undefined, { numeric: true });
+  });
+
+  const filesToProcess = pendingFiles.slice(0, TRANSACTIONS_KEYED_MAX_FILES_PER_RUN);
+  for (let fileIndex = 0; fileIndex < filesToProcess.length; fileIndex++) {
+    if (Date.now() - startedAtMs >= TRANSACTIONS_KEYED_MAX_RUN_MS) break;
+    const file = filesToProcess[fileIndex];
+    const fileName = String(file.getName() || '').trim();
+    const fileId = String(file.getId() || '').trim();
+    let contentHash = '';
+    try {
+      contentHash = getTransactionsKeyedFileHash_(file);
+      const importBatchId = Utilities.getUuid();
+      const prepared = callTransactionsKeyedRpcWithRetry_('prepare_transactions_keyed_import', {
+        source_drive_file_id: fileId,
+        source_file_name: fileName,
+        source_content_sha256: contentHash,
+        source_content_bytes: Number(file.getSize() || 0),
+        source_import_batch_id: importBatchId
+      }) || {};
+      const preparedStatus = String(prepared.status || '').toLowerCase();
+
+      if (preparedStatus === 'duplicate_archive_pending' || preparedStatus === 'duplicate') {
+        moveDriveFileToFolderWithRetry_(file, processedFolder, `Transactions Keyed duplicate ${fileName}`);
+        callTransactionsKeyedRpcWithRetry_('mark_transactions_keyed_file_archived', {
+          source_drive_file_id: fileId,
+          source_content_sha256: contentHash
+        });
+        filesProcessed++;
+        duplicateFiles++;
+        continue;
+      }
+
+      if (preparedStatus === 'archive_pending' || preparedStatus === 'processed') {
+        moveDriveFileToFolderWithRetry_(file, processedFolder, `Transactions Keyed finalized file ${fileName}`);
+        callTransactionsKeyedRpcWithRetry_('mark_transactions_keyed_file_archived', {
+          source_drive_file_id: fileId,
+          source_content_sha256: contentHash
+        });
+        filesProcessed++;
+        totalRows += Number(prepared.rowCount || 0);
+        continue;
+      }
+
+      if (preparedStatus !== 'importing') {
+        throw new Error('Supabase returned an invalid Transactions Keyed import state.');
+      }
+
+      const sheetData = extractTransactionsKeyedSheet_(file, sourceFolderId);
+      const rows = buildTransactionsKeyedRows_(file, sheetData, contentHash, importBatchId);
+      if (!rows.length) throw new Error(`No importable Transactions Keyed rows found in ${fileName}.`);
+      const uploaded = upsertTransactionsKeyedRows_(rows);
+      const finalized = callTransactionsKeyedRpcWithRetry_('finalize_transactions_keyed_import', {
+        source_drive_file_id: fileId,
+        source_content_sha256: contentHash,
+        source_sheet_name: sheetData.sourceSheetName,
+        source_header_row: sheetData.headerRowIndex + 1,
+        expected_row_count: rows.length
+      }) || {};
+      const finalizedStatus = String(finalized.status || '').toLowerCase();
+      if (finalizedStatus !== 'archive_pending' && finalizedStatus !== 'duplicate_archive_pending') {
+        throw new Error('Supabase did not finalize the Transactions Keyed import.');
+      }
+
+      moveDriveFileToFolderWithRetry_(file, processedFolder, `Transactions Keyed processed file ${fileName}`);
+      callTransactionsKeyedRpcWithRetry_('mark_transactions_keyed_file_archived', {
+        source_drive_file_id: fileId,
+        source_content_sha256: contentHash
+      });
+      filesProcessed++;
+      if (finalizedStatus === 'duplicate_archive_pending') duplicateFiles++;
+      else {
+        upsertCount += uploaded;
+        totalRows += rows.length;
+      }
+    } catch (err) {
+      const errorMessage = err && err.message ? err.message : String(err);
+      const errorCode = getTransactionsKeyedErrorCode_(err);
+      failedFiles.push({ name: fileName, error: `${errorCode}: ${errorMessage}` });
+      console.error(`[TRANSACTIONS KEYED] ${fileName} failed with ${errorCode}. The file remains pending.`);
+      if (contentHash) {
+        try {
+          callTransactionsKeyedRpcWithRetry_('record_transactions_keyed_import_failure', {
+            source_drive_file_id: fileId,
+            source_content_sha256: contentHash,
+            sanitized_error_code: errorCode
+          });
+        } catch (recordError) {
+          console.warn(`[TRANSACTIONS KEYED] Could not record sanitized failure state for ${fileName}.`);
+        }
+      }
+    }
+  }
+
+  if (filesProcessed > 0) {
+    emitTableSyncLiveEvent_(TRANSACTIONS_KEYED_FILES_TABLE, {
+      filesProcessed: filesProcessed,
+      tempFilesRemoved: tempFilesRemoved,
+      upsertCount: upsertCount,
+      deleteCount: 0,
+      totalRows: totalRows,
+      runId: runId
+    });
+  }
+
+  return {
+    tableName: TRANSACTIONS_KEYED_ROWS_TABLE,
+    filesProcessed: filesProcessed,
+    duplicateFiles: duplicateFiles,
+    remainingFiles: Math.max(0, pendingFiles.length - filesProcessed),
     tempFilesRemoved: tempFilesRemoved,
     unsupportedFiles: unsupportedFiles,
     failedFiles: failedFiles.length,

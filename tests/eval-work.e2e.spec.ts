@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('assigned Eval Work is a phone-safe single-column editor with every AV Note reachable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
