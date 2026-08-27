@@ -20,12 +20,13 @@ const PHOTO_BUCKETS: Record<string, string> = {
   "ssn-": "season_sales_notes_photos",
   "lsn-": "location_sales_notes_photos",
   "req-": "request_photos",
+  "eval-": "request_photos",
   "credit-": "credit_photos",
   "dock-": "dock_photos",
   "flyer-": "flyer_photos",
   default: "flyer_photos",
 };
-const REP_ALLOWED_PHOTO_PREFIXES = new Set(["req-", "credit-"]);
+const REP_ALLOWED_PHOTO_PREFIXES = new Set(["req-", "credit-", "eval-"]);
 const LEGACY_TABLE_ALIASES: Record<string, string> = {
   v2_cav: "ph_cav_import",
   ph_cav: "ph_cav_import",
@@ -447,6 +448,222 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
 function getSessionUserKey(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>) {
   if (!session) return "";
   return normalizeUsername(session.username || session.displayName || "");
+}
+
+const EVAL_WORK_MANAGER_USERS = new Set(["dylan_collyge", "megan_kelly"]);
+
+function isEvalWorkManager(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>) {
+  return EVAL_WORK_MANAGER_USERS.has(normalizeUsername(session?.username || session?.displayName || ""));
+}
+
+async function resolveEvalWorkAssignee(usernameValue: unknown) {
+  const username = normalizeUsername(usernameValue);
+  if (!username) throw new Error("eval_work_assignee_not_active");
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id,username,display_name,disabled_at,locked_until")
+    .eq("username", username)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  const lockedUntil = Date.parse(String(profile?.locked_until || ""));
+  if (!profile?.id || profile.disabled_at || (Number.isFinite(lockedUntil) && lockedUntil > Date.now())) {
+    throw new Error("eval_work_assignee_not_active");
+  }
+  const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(String(profile.id));
+  if (authUserError) throw authUserError;
+  const email = String(authUser?.user?.email || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("eval_work_assignee_email_unavailable");
+  return {
+    username: normalizeUsername(profile.username),
+    display: String(profile.display_name || profile.username || username).trim(),
+    email,
+  };
+}
+
+function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown) {
+  const evidence = evidenceValue && typeof evidenceValue === "object"
+    ? { ...(evidenceValue as Record<string, unknown>) }
+    : {};
+  const prefix = `eval/${workId}/`;
+  const photos = Array.isArray(evidence.photos) ? evidence.photos : [];
+  evidence.photos = photos.map((photoValue) => {
+    const photo = photoValue && typeof photoValue === "object" ? photoValue as Record<string, unknown> : {};
+    const filePath = String(photo.filePath || photo.file_path || photo.path || "").replace(/^\/+/, "").trim();
+    if (!filePath.startsWith(prefix) || filePath.includes("..")) throw new Error("eval_work_photo_scope_invalid");
+    const publicUrlData = supabase.storage.from("request_photos").getPublicUrl(filePath);
+    const url = String(publicUrlData.data.publicUrl || "").trim();
+    if (!url) throw new Error("eval_work_photo_url_unavailable");
+    return {
+      filePath,
+      url,
+      name: String(photo.name || filePath.split("/").pop() || "eval-photo").trim().slice(0, 160),
+    };
+  });
+  return evidence;
+}
+
+function evalWorkError(error: unknown) {
+  const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const code = String(source.code || "").trim();
+  const message = String(source.message || error || "eval_work_failed").trim();
+  const safeCode = (message.match(/eval_work_[a-z0-9_]+/i) || [code || "eval_work_failed"])[0].toLowerCase();
+  const status = code === "42501" || /forbidden|not_authorized/.test(safeCode)
+    ? 403
+    : (code === "40001" || /conflict/.test(safeCode) ? 409 : 400);
+  return errorResponse("Eval Work request could not be completed.", status, { code: safeCode });
+}
+
+async function loadAuthorizedEvalWork(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  workId: string,
+) {
+  const actor = normalizeUsername(session?.username || session?.displayName || "");
+  if (!actor || !workId) return null;
+  const query = supabase.from("ph_eval_work").select("*").eq("id", workId).maybeSingle();
+  const { data, error } = await query;
+  if (error) throw error;
+  if (!data) return null;
+  if (!isEvalWorkManager(session) && normalizeUsername(data.assignee_username) !== actor) return null;
+  return data as Record<string, unknown>;
+}
+
+async function withEvalWorkDeliveryStatus(row: Record<string, unknown>) {
+  const eventIds = [row.assignment_event_id, row.completion_event_id].map((value) => String(value || "").trim()).filter(Boolean);
+  if (!eventIds.length) return { ...row, delivery: {} };
+  const { data, error } = await supabase
+    .from("ph_request_delivery_outbox")
+    .select("event_id,event_type,status,attempt_count,sanitized_error_code,delivered_at,updated_at")
+    .in("event_id", eventIds);
+  if (error) throw error;
+  const delivery: Record<string, unknown> = {};
+  for (const event of data || []) {
+    const key = event.event_type === "eval_work_completion" ? "completion" : "assignment";
+    delivery[key] = event;
+  }
+  return { ...row, delivery };
+}
+
+async function withEvalWorkDeliveryStatuses(rows: Record<string, unknown>[]) {
+  const eventIds = rows.flatMap((row) => [row.assignment_event_id, row.completion_event_id])
+    .map((value) => String(value || "").trim()).filter(Boolean);
+  if (!eventIds.length) return rows.map((row) => ({ ...row, delivery: {} }));
+  const { data, error } = await supabase.from("ph_request_delivery_outbox")
+    .select("event_id,event_type,status,attempt_count,sanitized_error_code,delivered_at,updated_at")
+    .in("event_id", Array.from(new Set(eventIds)));
+  if (error) throw error;
+  const byId = new Map((data || []).map((event) => [String(event.event_id || ""), event]));
+  return rows.map((row) => {
+    const delivery: Record<string, unknown> = {};
+    const assignment = byId.get(String(row.assignment_event_id || ""));
+    const completion = byId.get(String(row.completion_event_id || ""));
+    if (assignment) delivery.assignment = assignment;
+    if (completion) delivery.completion = completion;
+    return { ...row, delivery };
+  });
+}
+
+async function handleEvalWorkAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401);
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  const actor = normalizeUsername(session.username || session.displayName || "");
+  if (!actor) return errorResponse("Authenticated user identity is required.", 403);
+  const operation = String(payload.operation || "list").trim().toLowerCase();
+  try {
+    if (operation === "list") {
+      let query = supabase.from("ph_eval_work").select("*").order("updated_at", { ascending: false }).limit(500);
+      if (!isEvalWorkManager(session)) query = query.eq("assignee_username", actor);
+      const status = String(payload.status || "").trim().toLowerCase();
+      if (["open", "in_progress", "submitted", "cancelled"].includes(status)) query = query.eq("status", status);
+      const { data, error } = await query;
+      if (error) throw error;
+      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]), manager: isEvalWorkManager(session) });
+    }
+    if (operation === "get") {
+      const row = await loadAuthorizedEvalWork(session, String(payload.workId || "").trim());
+      if (!row) return errorResponse("Eval Work assignment was not found.", 404, { code: "eval_work_not_found" });
+      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(row), manager: isEvalWorkManager(session) });
+    }
+    if (operation === "create") {
+      if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_create_forbidden" });
+      const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
+      const source = payload.source && typeof payload.source === "object" ? payload.source as Record<string, unknown> : {};
+      const rpcPayload = {
+        actorUsername: actor,
+        createToken: String(payload.createToken || "").trim(),
+        assigneeUsername: assignee.username,
+        assigneeEmail: assignee.email,
+        instructions: String(payload.instructions || "").trim(),
+        completionRecipients: Array.isArray(payload.completionRecipients) ? payload.completionRecipients : [],
+        source,
+        inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
+      };
+      const { data, error } = await supabase.rpc("create_eval_work_v1", { p_payload: rpcPayload });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
+    }
+    if (operation === "save" || operation === "submit") {
+      const workId = String(payload.workId || "").trim();
+      const row = await loadAuthorizedEvalWork(session, workId);
+      if (!row || normalizeUsername(row.assignee_username) !== actor) {
+        return errorResponse("Only the assigned evaluator can update this work.", 403, { code: "eval_work_edit_forbidden" });
+      }
+      const rpcName = operation === "submit" ? "submit_eval_work_v1" : "save_eval_work_v1";
+      const evidence = normalizeEvalWorkEvidence(workId, payload.evidence && typeof payload.evidence === "object" ? payload.evidence : {});
+      const { data, error } = await supabase.rpc(rpcName, {
+        p_work_id: workId,
+        p_actor_username: actor,
+        p_expected_version: Number(payload.expectedVersion),
+        p_inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft,
+        p_evidence: evidence,
+        ...(operation === "submit" ? { p_submission_token: String(payload.submissionToken || "").trim() } : {}),
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
+    }
+    if (operation === "reassign") {
+      if (!isEvalWorkManager(session)) return errorResponse("Forbidden", 403, { code: "eval_work_manage_forbidden" });
+      const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
+      const { data, error } = await supabase.rpc("reassign_eval_work_v1", {
+        p_work_id: String(payload.workId || "").trim(),
+        p_actor_username: actor,
+        p_expected_version: Number(payload.expectedVersion),
+        p_assignee_username: assignee.username,
+        p_assignee_email: assignee.email,
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
+    }
+    if (operation === "cancel") {
+      if (!isEvalWorkManager(session)) return errorResponse("Forbidden", 403, { code: "eval_work_manage_forbidden" });
+      const { data, error } = await supabase.rpc("cancel_eval_work_v1", {
+        p_work_id: String(payload.workId || "").trim(),
+        p_actor_username: actor,
+        p_expected_version: Number(payload.expectedVersion),
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    }
+    if (operation === "remove_photo") {
+      const workId = String(payload.workId || "").trim();
+      const row = await loadAuthorizedEvalWork(session, workId);
+      if (!row || normalizeUsername(row.assignee_username) !== actor || !["open", "in_progress"].includes(String(row.status || ""))) {
+        return errorResponse("Only the assigned evaluator can remove an open Eval photo.", 403, { code: "eval_work_photo_forbidden" });
+      }
+      const filePath = String(payload.filePath || "").replace(/^\/+/, "");
+      const requiredPrefix = `eval/${workId}/`;
+      if (!filePath.startsWith(requiredPrefix) || filePath.includes("..")) return errorResponse("Invalid Eval photo path.", 400);
+      const { error } = await supabase.storage.from("request_photos").remove([filePath]);
+      if (error) throw error;
+      return jsonResponse({ ok: true });
+    }
+    return errorResponse("Unsupported Eval Work operation.", 400);
+  } catch (error) {
+    recordHandledError("app-api", `eval_work_${operation}`, error, 500);
+    return evalWorkError(error);
+  }
 }
 
 type LivePilotFeatureKey = typeof LIVE_PILOT_FEATURE_KEYS[number];
@@ -978,7 +1195,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   return jsonResponse({ ok: true, data: responsePayload });
 }
 
-async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>, req: Request) {
+async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, req: Request) {
   if (!session) return errorResponse("Unauthorized", 401);
   const access = getRoleAccessState(session.role);
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -991,11 +1208,26 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessi
   const file = form.get("file");
   if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
 
+  let evalWorkId = "";
+  if (prefix === "eval-") {
+    evalWorkId = String(form.get("workId") || "").trim();
+    const originUid = String(form.get("originUid") || "").trim();
+    const row = await loadAuthorizedEvalWork(session, evalWorkId).catch(() => null);
+    const actor = normalizeUsername(session.username || session.displayName || "");
+    if (!row || normalizeUsername(row.assignee_username) !== actor
+      || !["open", "in_progress"].includes(String(row.status || ""))
+      || String(row.origin_unique_id || "") !== originUid) {
+      return errorResponse("Eval photo upload is not authorized for this assignment and row.", 403, { code: "eval_work_photo_forbidden" });
+    }
+  }
+
   const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
   const requestedFileName = sanitizeStorageFileName(String(form.get("fileName") || file.name || ""));
   const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
   const fileName = requestedFileName || `${originalName}-${Date.now()}.jpg`;
-  const filePath = `${new Date().toISOString().split("T")[0]}/${fileName}`;
+  const filePath = prefix === "eval-"
+    ? `eval/${evalWorkId}/${fileName}`
+    : `${new Date().toISOString().split("T")[0]}/${fileName}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
 
   const uploadResult = await supabase.storage.from(bucketName).upload(filePath, bytes, {
@@ -1040,6 +1272,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   if (action === "set_user_preferences" || action === "live_pilot_preferences_save") {
     return await handleSetUserPreferences(session, payload);
   }
+  if (action === "eval_work") return await handleEvalWorkAction(session, payload);
   if (action === "db") {
     if (session && session.ver >= 2) {
       return errorResponse("Native Auth sessions must use PostgREST with RLS for database access.", 410, {

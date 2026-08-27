@@ -285,7 +285,7 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
-        if (eventType === "reclass_inquiry") {
+        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion"].includes(eventType)) {
           if (!event.email_delivered_at) {
             const emailResult = await callAppsScript(event, [], null);
             channelResults.email = {
@@ -346,7 +346,8 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
       } catch (error) {
         failed += 1;
         const code = sanitizeCode(error);
-        if (String(event.event_type || "") === "reclass_inquiry" && (code === "RECLASS_CONFLICT" || code === "RECLASS_VALIDATION")) {
+        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion"].includes(String(event.event_type || ""))
+          && ["RECLASS_CONFLICT", "RECLASS_VALIDATION", "EVAL_WORK_CONFLICT", "EVAL_WORK_VALIDATION"].includes(code)) {
           await failEventPermanent(eventId, leaseToken, error, event.attempt_count);
         } else {
           await failEvent(eventId, leaseToken, error);

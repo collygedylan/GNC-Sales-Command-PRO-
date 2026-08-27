@@ -96,6 +96,8 @@ const SUPABASE_KEY = resolveSupabaseServiceRoleKey_('__SUPABASE_SERVICE_ROLE_KEY
 const REQUEST_DELIVERY_RECEIPT_PREFIX = 'REQ_DELIVERY_RECEIPT_V1_';
 const RECLASS_BACKGROUND_DELIVERY_ENABLED_ = true;
 const RECLASS_DELIVERY_EVENT_TYPE_ = 'reclass_inquiry';
+const EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ = 'eval_work_assignment';
+const EVAL_WORK_COMPLETION_EVENT_TYPE_ = 'eval_work_completion';
 
 function getSupabaseHeadersForKey_(key, extraHeaders) {
   const headers = Object.assign({}, extraHeaders || {});
@@ -10540,10 +10542,24 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const pilotBanner = safeModel.isSyntheticPilot
     ? '<div class="pilot-banner">TEST PILOT - SYNTHETIC DATA ONLY</div>'
     : '';
+  const evidence = safeModel.evaluationResults && typeof safeModel.evaluationResults === 'object' ? safeModel.evaluationResults : null;
+  const evidenceFields = evidence ? [
+    ['Spec', evidence.spec], ['Caliper', evidence.caliper], ['Loc Match %', evidence.locMatchPercent],
+    ['AV Note', evidence.avNote], ['Pick Note', evidence.pickNote], ['Comments', evidence.comments]
+  ] : [];
+  const evidenceHtml = evidence
+    ? '<div class="section-title">Evaluation Results</div><div class="evaluation-results">' + evidenceFields.map(function(field) {
+        return '<div class="evaluation-cell"><span>' + esc(field[0]) + '</span><strong>' + (String(field[1] == null ? '' : field[1]) ? esc(field[1]) : '&nbsp;') + '</strong></div>';
+      }).join('') + '</div>' + ((Array.isArray(evidence.photos) ? evidence.photos : []).length
+        ? '<div class="evaluation-photos">' + evidence.photos.slice(0, 8).map(function(photo) {
+            const url = String(photo && (photo.url || photo.publicUrl) || '').trim();
+            return url ? '<img src="' + esc(url) + '" alt="Evaluation photo">' : '';
+          }).join('') + '</div>' : '')
+    : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong{display:block;font-size:8pt}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity,.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(4n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+4),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span,.evaluation-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong,.evaluation-cell strong{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
     '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div>' +
-    '<div class="identity">' + identityCells + '</div><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
+    '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></body></html>';
 }
 
 function getReclassInquiryCompactPilotRows_() {
@@ -13696,11 +13712,174 @@ function handleSignedReclassInquiryDelivery_(delivery) {
   return result;
 }
 
+function buildEvalWorkReportModel_(eventPayload) {
+  const payload = eventPayload && typeof eventPayload === 'object' ? eventPayload : {};
+  const inquiry = payload.inquiry && typeof payload.inquiry === 'object' ? payload.inquiry : {};
+  const source = payload.source && typeof payload.source === 'object'
+    ? payload.source
+    : (inquiry.source && typeof inquiry.source === 'object' ? inquiry.source : {});
+  const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
+  if (!sourceUid) throw new Error('EVAL_WORK_VALIDATION:SOURCE_ID_REQUIRED');
+  const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+  if (!sourceRow) throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_MISSING');
+  try {
+    validateInventoryTransactionSourceIdentity_(sourceRow, source);
+  } catch (error) {
+    throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_CHANGED');
+  }
+  const authoritativeRows = fetchReclassInquiryItemRows_(sourceRow);
+  const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
+  const requestActions = Array.isArray(transaction.requestActions)
+    ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
+    : [];
+  let reportRows;
+  if (requestActions.length) {
+    let proposal;
+    try {
+      proposal = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, null);
+    } catch (error) {
+      throw new Error('EVAL_WORK_VALIDATION:' + String(error && error.message || 'PROPOSAL_INVALID'));
+    }
+    if (!proposal.ok) throw new Error('EVAL_WORK_CONFLICT:' + String(proposal.message || 'ROW_IDENTITY_CHANGED'));
+    reportRows = proposal.rows;
+  } else {
+    reportRows = authoritativeRows.map(function(row) {
+      const values = {};
+      RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) {
+        values[field.key] = getReclassInquiryExactValue_(row, field.aliases, '');
+      });
+      return {
+        unique_id: getInventoryTransactionRowUid_(row),
+        values: values,
+        actionValues: {},
+        changedFields: [],
+        actions: [],
+        included: false
+      };
+    });
+  }
+  const actorDisplay = String(payload.deliveryKind || '') === 'completion'
+    ? firstNonEmptyRequestValue_(payload.assigneeDisplay, payload.assigneeUsername, 'Evaluator')
+    : firstNonEmptyRequestValue_(payload.creatorDisplay, payload.creatorUsername, 'Eval Work Manager');
+  const reportPayload = Object.assign({}, inquiry, {
+    source: source,
+    actor: { display: actorDisplay, username: firstNonEmptyRequestValue_(payload.assigneeUsername, payload.creatorUsername, '') },
+    transaction: Object.assign({ requestActions: [], holdStopProposals: [], scope: {} }, transaction)
+  });
+  const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, reportPayload, new Date());
+  model.requestActionLabel = requestActions.length ? getReclassInquiryActionsLabelV3_(requestActions) : 'Evidence Review';
+  model.evalWork = {
+    id: String(payload.evalWorkId || ''),
+    deliveryKind: String(payload.deliveryKind || ''),
+    instructions: String(payload.instructions || ''),
+    assigneeDisplay: String(firstNonEmptyRequestValue_(payload.assigneeDisplay, payload.assigneeUsername, ''))
+  };
+  if (String(payload.deliveryKind || '') === 'completion') {
+    const evidence = payload.evidence && typeof payload.evidence === 'object' ? payload.evidence : {};
+    model.evaluationResults = {
+      photos: Array.isArray(evidence.photos) ? evidence.photos : [],
+      spec: String(evidence.spec || ''),
+      caliper: String(evidence.caliper || ''),
+      locMatchPercent: String(firstNonEmptyRequestValue_(evidence.locMatchPercent, evidence.loc_match_percent, '')),
+      avNote: String(firstNonEmptyRequestValue_(evidence.avNote, evidence.av_note, '')),
+      pickNote: String(firstNonEmptyRequestValue_(evidence.pickNote, evidence.pick_note, '')),
+      comments: String(evidence.comments || '')
+    };
+  }
+  return model;
+}
+
+function buildEvalWorkEmailText_(model, kind) {
+  const safeModel = model || {};
+  const identity = safeModel.identity || {};
+  const evalWork = safeModel.evalWork || {};
+  const assignment = kind === 'assignment';
+  return [
+    assignment ? 'GNC PH Eval Work Assignment' : 'GNC PH Eval Work Completed',
+    'Item: ' + String(identity.commonname || ''),
+    'Item Code: ' + String(identity.itemcode || ''),
+    'Container: ' + String(identity.contsize || ''),
+    'Origin: ' + String(identity.locationcode || '') + ' / ' + String(identity.lotcode || ''),
+    'Evaluator: ' + String(evalWork.assigneeDisplay || ''),
+    assignment && evalWork.instructions ? 'Instructions: ' + String(evalWork.instructions) : '',
+    '',
+    assignment
+      ? 'Open Queue > Eval Work to complete the evidence and Item Inquiry. The current inquiry PDF is attached.'
+      : 'The completed Eval Work Item Inquiry PDF is attached.'
+  ].filter(function(value) { return value !== ''; }).join('\n');
+}
+
+function buildEvalWorkEmailHtml_(model, kind) {
+  const safeModel = model || {};
+  const identity = safeModel.identity || {};
+  const evalWork = safeModel.evalWork || {};
+  const assignment = kind === 'assignment';
+  return buildPhoneSizedEmailHtml_([
+    '<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;">',
+    '<h2 style="margin:0 0 14px;color:#007a4d;">' + (assignment ? 'Eval Work Assignment' : 'Eval Work Completed') + '</h2>',
+    '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
+    '<p><strong>Evaluator:</strong> ' + escapeEmailHtml_(evalWork.assigneeDisplay || '') + '</p>',
+    assignment && evalWork.instructions ? '<p><strong>Instructions:</strong><br>' + escapeEmailHtml_(evalWork.instructions) + '</p>' : '',
+    '<p style="padding:12px 14px;border-radius:10px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;"><strong>PDF attached:</strong> ' + (assignment ? 'Open Queue &gt; Eval Work to complete this assignment.' : 'Open the completed Item Inquiry and Evaluation Results.') + '</p>',
+    '</div>'
+  ].join(''));
+}
+
+function handleSignedEvalWorkDelivery_(delivery) {
+  const messageIdHeader = String(delivery && delivery.messageIdHeader || '').trim();
+  if (!messageIdHeader) throw new Error('REQUEST_DELIVERY_MESSAGE_ID_REQUIRED');
+  const savedReceipt = getRequestDeliveryReceipt_(messageIdHeader);
+  if (savedReceipt) return buildRecoveredDeliveryResult_(messageIdHeader, savedReceipt, 'apps_script_receipt_recovery');
+  const alreadySent = findSentRequestDeliveryByMessageId_(messageIdHeader);
+  if (alreadySent) {
+    const recovered = buildRecoveredDeliveryResult_(messageIdHeader, alreadySent, 'gmail_api_idempotent_recovery');
+    saveRequestDeliveryReceipt_(messageIdHeader, recovered);
+    return recovered;
+  }
+  const eventType = String(delivery && delivery.eventType || '').trim();
+  const eventPayload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
+  const kind = eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ ? 'assignment' : 'completion';
+  const recipients = kind === 'assignment'
+    ? dedupeEmailAddresses_([eventPayload.assigneeEmail])
+    : dedupeEmailAddresses_([eventPayload.completionRecipients]);
+  if (!recipients.length) throw new Error('EVAL_WORK_VALIDATION:RECIPIENT_REQUIRED');
+  const model = buildEvalWorkReportModel_(eventPayload);
+  const commonName = String(model.identity && model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
+  const subject = '[External] GNC PH Eval Work - ' + (kind === 'assignment' ? 'Assigned' : 'Completed') + ': ' + commonName;
+  let pdfBlob;
+  try {
+    pdfBlob = HtmlService.createHtmlOutput(buildReclassInquiryCompactReportHtml_(model, true)).getBlob().getAs(MimeType.PDF);
+    const safeName = commonName.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Item';
+    pdfBlob.setName('GNC_PH_Eval_Work_' + (kind === 'assignment' ? 'Assignment_' : 'Completed_') + safeName + '.pdf');
+  } catch (error) {
+    throw new Error('EVAL_WORK_PDF_BUILD_FAILED');
+  }
+  if (!isGmailAdvancedServiceAvailable_()) throw new Error('EVAL_WORK_GMAIL_SERVICE_UNAVAILABLE');
+  try {
+    const result = sendGmailApiMessage_({
+      toList: recipients.join(','), toArray: recipients, subject: subject,
+      textBody: buildEvalWorkEmailText_(model, kind), htmlBody: buildEvalWorkEmailHtml_(model, kind),
+      attachments: [pdfBlob], fromName: 'GNC PH Eval Work', fromAddress: resolveAutomatedEmailSenderAddress_(),
+      messageIdHeader: messageIdHeader
+    });
+    result.subject = subject;
+    result.messageIdHeader = messageIdHeader;
+    saveRequestDeliveryReceipt_(messageIdHeader, result);
+    return result;
+  } catch (error) {
+    if (/^EVAL_WORK_/.test(String(error && error.message || ''))) throw error;
+    throw new Error('EVAL_WORK_EMAIL_SEND_FAILED');
+  }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
   if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
     return handleSignedReclassInquiryDelivery_(delivery);
+  }
+  if (eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ || eventType === EVAL_WORK_COMPLETION_EVENT_TYPE_) {
+    return handleSignedEvalWorkDelivery_(delivery);
   }
   if (eventType !== 'request_created' && eventType !== 'request_completed') {
     throw new Error('REQUEST_DELIVERY_EVENT_TYPE_INVALID');
