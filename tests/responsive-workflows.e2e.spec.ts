@@ -254,7 +254,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
 });
 
-test('Eval Reports #2 preserves one-user selections and sends a reference-matched Item Inquiry workbook', async ({ page }) => {
+test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
@@ -564,6 +564,118 @@ test('Eval Reports #2 preserves one-user selections and sends a reference-matche
     changedCellsHighlighted: true,
   });
   expect(result.controlsFit).toBe(true);
+});
+
+test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per selected ITEMCODE', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).openManagerEvalReport2BatchSetup === 'function');
+  const result = await page.evaluate(() => window.eval(`(async () => {
+    const originals = {
+      canView: canViewManagerEvalReports2,
+      isEvalManager: isEvalWorkManagerUser,
+      ensureUsers: ensureAssignableAppUsers,
+      userOptions: getAssignableAppUserOptions,
+      recipientPicker: openGroupedBloomNcrRecipientModal,
+      confirm: showAppConfirm,
+      api: evalWorkApi
+    };
+    let captured = null;
+    try {
+      currentUser = 'dylan_collyge';
+      currentUserDisplay = 'Dylan Collyge';
+      canViewManagerEvalReports2 = () => true;
+      isEvalWorkManagerUser = () => true;
+      ensureAssignableAppUsers = async () => [];
+      getAssignableAppUserOptions = () => [{ username: 'chance_alldredge', display: 'Chance Alldredge', email: 'chance_alldredge@greenleafnursery.com' }];
+      openGroupedBloomNcrRecipientModal = async () => ['megan_kelly@greenleafnursery.com'];
+      showAppConfirm = async () => true;
+      evalWorkApi = async (operation, payload, options) => {
+        captured = { operation, payload, options };
+        return { data: payload.items.map((item, index) => ({ id: 'eval-batch-' + index, itemcode: item.source.itemcode, assignment_delivery_status: 'queued' })) };
+      };
+      processAndLoadData({ data: [
+        { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
+        { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
+      ], warehouseAssignedItemsData: [
+        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+      ], _fromCache: true });
+      fullInventory = [
+        { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
+        { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
+      ];
+      warehouseAssignedItemsInventory = [
+        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+      ];
+      const masterState = getDatasetState('master');
+      const assignmentState = getDatasetState('warehouseAssignedItems');
+      masterState.initialLoaded = masterState.fullLoaded = true;
+      assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+      managerEvalReport2LoadState = { loading: false, error: '', promise: null, lastLoadedAt: new Date().toISOString(), lastSourceUpdatedAt: new Date().toISOString() };
+      invalidateManagerEvalReport2Cache();
+      clearManagerEvalReport2Filters();
+      setManagerEvalReport2Mode('reports');
+      setManagerEvalReport2('culls');
+      setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
+      setManagerEvalReport2BrowseMode('plant');
+      openManagerEvalReport2DrillValue('commonname', encodeURIComponent('Alpha'));
+      openManagerEvalReport2DrillValue('contsize', encodeURIComponent('#3'));
+      const batchIndex = getManagerEvalReport2Index();
+      const visibleGroups = getManagerEvalReport2VisibleItemGroups();
+      visibleGroups.forEach((group) => toggleManagerEvalReport2ItemSelection(encodeURIComponent(group.key), true));
+      await openManagerEvalReport2BatchSetup();
+      const modal = document.getElementById('manager-eval2-batch-modal');
+      const assignee = document.getElementById('manager-eval2-batch-assignee');
+      if (!modal || !assignee) throw new Error('Batch setup unavailable: ' + JSON.stringify({ canSend: canSendManagerEvalReport2Selection(), selected: getManagerEvalReport2SelectedEntries().length, fullInventory: fullInventory.length, indexedItems: batchIndex && batchIndex.rowsByItemCode instanceof Map ? batchIndex.rowsByItemCode.size : -1, loadedMaster: isDatasetLoaded('master', 'full'), loadedAssignments: isDatasetLoaded('warehouseAssignedItems', 'full'), loading: managerEvalReport2LoadState.loading, loadError: managerEvalReport2LoadState.error, currentUser }));
+      assignee.value = 'chance_alldredge';
+      await chooseManagerEvalReport2BatchRecipients();
+      syncManagerEvalReport2BatchSetup();
+      const originSelects = Array.from(modal.querySelectorAll('[data-manager-eval2-origin-key]'));
+      const createButton = document.getElementById('manager-eval2-batch-create');
+      const modalFits = modal.scrollWidth <= 391;
+      await createManagerEvalReport2Batch(createButton);
+      return {
+        modalFits,
+        originCount: originSelects.length,
+        everyOriginResolved: originSelects.every((select) => !!select.value),
+        createEnabled: !createButton.disabled,
+        operation: captured && captured.operation,
+        itemCount: captured && captured.payload.items.length,
+        onePerItemcode: captured && new Set(captured.payload.items.map((item) => item.source.itemcode)).size,
+        fullRowOverlays: captured && captured.payload.items.every((item) => item.inquiry.rowOverlays.length === 1),
+        pdfOutboxOnly: captured && captured.operation === 'create_batch' && !('shiftReportAttachment' in captured.payload),
+        assignee: captured && captured.payload.assigneeUsername,
+        recipients: captured && captured.payload.completionRecipients,
+        clearedAfterAcceptance: getManagerEvalReport2SelectedItems().length === 0
+      };
+    } finally {
+      canViewManagerEvalReports2 = originals.canView;
+      isEvalWorkManagerUser = originals.isEvalManager;
+      ensureAssignableAppUsers = originals.ensureUsers;
+      getAssignableAppUserOptions = originals.userOptions;
+      openGroupedBloomNcrRecipientModal = originals.recipientPicker;
+      showAppConfirm = originals.confirm;
+      evalWorkApi = originals.api;
+      const modal = document.getElementById('manager-eval2-batch-modal');
+      if (modal) modal.remove();
+    }
+  })()`));
+  expect(result).toEqual({
+    modalFits: true,
+    originCount: 2,
+    everyOriginResolved: true,
+    createEnabled: true,
+    operation: 'create_batch',
+    itemCount: 2,
+    onePerItemcode: 2,
+    fullRowOverlays: true,
+    pdfOutboxOnly: true,
+    assignee: 'chance_alldredge',
+    recipients: ['megan_kelly@greenleafnursery.com'],
+    clearedAfterAcceptance: true,
+  });
 });
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
@@ -1532,7 +1644,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.27.04', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1731,7 +1843,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1771,7 +1883,7 @@ test('Phone Reclass send opens the searchable in-app recipient selector', async 
 
 test('Phone Reclass background status survives reload without covering navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
   await page.waitForLoadState('load');
   await page.evaluate(() => {
@@ -1858,7 +1970,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
 
 test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     document.body.classList.add('ops-precision-pilot');
     document.body.setAttribute('data-ops-theme', 'dark');
@@ -1913,7 +2025,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
-      await page.goto('/?e2e=V2026.08.27.04', { waitUntil: 'domcontentloaded' });
+      await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
       await page.evaluate((activeTheme) => {
         document.body.classList.add('ops-precision-pilot');
         document.body.setAttribute('data-ops-theme', activeTheme);
@@ -1981,7 +2093,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
 
 test('toast can be closed or swiped up without blocking the rest of the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     const button = document.createElement('button');
     button.id = 'toast-underlay-test';

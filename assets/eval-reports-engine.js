@@ -239,8 +239,13 @@
             return toEpochDay(year, month, day);
         }
         match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\D|$)/);
+        if (match) return toEpochDay(Number(match[1]), Number(match[2]), Number(match[3]));
+        // Apps Script serializes Date cells with a weekday/month prefix. Read
+        // only the calendar portion so timezone and DST text cannot shift it.
+        match = raw.match(/^(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})(?:\s|$)/i);
         if (!match) return null;
-        return toEpochDay(Number(match[1]), Number(match[2]), Number(match[3]));
+        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        return toEpochDay(Number(match[3]), monthNames.indexOf(String(match[1]).toLowerCase()) + 1, Number(match[2]));
     }
 
     function isOlderThanDays(value, thresholdDays, todayEpochDay) {
@@ -270,6 +275,11 @@
 
     function getHoldStopCode(row) {
         return textValue(row, ['HOLDSTOPCODE', 'holdstopcode', 'HOLSTOPCODE', 'holstopcode']);
+    }
+
+    function isActiveHoldStopCode(value) {
+        const code = String(value == null ? '' : value).trim().toUpperCase();
+        return code === 'H' || code === 'S';
     }
 
     function getLocationNoteDate(row) {
@@ -310,6 +320,7 @@
         const currentSeason = String(config.currentSeason || 'F1').trim().toUpperCase() || 'F1';
         const currentSalesYear = normalizeConfiguredSalesYear(config.currentSalesYear);
         const configuredYearCode = currentSalesYear % 100;
+        const diagnostics = { invalidHoldStartDateCount: 0, invalidLocationNoteDateCount: 0 };
         const nextSeason = String(config.nextSeason || (currentSeason === 'F1' ? 'S1' : 'F1')).trim().toUpperCase();
         const nextSalesYear = normalizeConfiguredSalesYear(
             config.nextSalesYear == null ? (currentSeason === 'F1' ? configuredYearCode : configuredYearCode + 1) : config.nextSalesYear
@@ -325,16 +336,23 @@
             const season = normalizeSeason(row);
             const salesYear = getRowSalesYear(row);
             const priority = getPriority(row);
+            const holdStopCode = getHoldStopCode(row);
+            const holdStartValue = getHoldStart(row);
+            const locationNoteDateValue = getLocationNoteDate(row);
+            const holdStartDay = parseInventoryDateEpochDay(holdStartValue);
+            const locationNoteDay = parseInventoryDateEpochDay(locationNoteDateValue);
+            if (holdStartValue && holdStartDay == null) diagnostics.invalidHoldStartDateCount += 1;
+            if (locationNoteDateValue && locationNoteDay == null) diagnostics.invalidLocationNoteDateCount += 1;
             const metadata = {
                 itemCode,
                 season,
                 salesYear,
                 priority,
                 assignedTo: getAssignedTo(row),
-                holdStopCode: getHoldStopCode(row),
+                holdStopCode,
                 location: textValue(row, ['LOCATIONCODE', 'locationcode']),
-                oldHold: isOlderThanDays(getHoldStart(row), settings.holdAgeDays, todayEpochDay),
-                oldLocationNote: isOlderThanDays(getLocationNoteDate(row), settings.locationNoteAgeDays, todayEpochDay),
+                oldHold: isActiveHoldStopCode(holdStopCode) && holdStartDay != null && todayEpochDay - holdStartDay > settings.holdAgeDays,
+                oldLocationNote: locationNoteDay != null && todayEpochDay - locationNoteDay > settings.locationNoteAgeDays,
                 slts: getRowSLts(row)
             };
             rowMetadata.set(row, metadata);
@@ -413,6 +431,7 @@
             currentSalesYear,
             nextSeason,
             nextSalesYear,
+            diagnostics,
             centralDateKey: `${todayParts.year}-${String(todayParts.month).padStart(2, '0')}-${String(todayParts.day).padStart(2, '0')}`
         };
     }
@@ -431,6 +450,7 @@
         const todayEpochDay = toEpochDay(todayParts.year, todayParts.month, todayParts.day);
         const aggregates = new Map();
         const rowMetadata = new Map();
+        const diagnostics = { invalidHoldStartDateCount: 0, invalidLocationNoteDateCount: 0 };
 
         sourceRows.forEach((row, sourceIndex) => {
             const itemCode = normalizeItemCode(row);
@@ -438,6 +458,13 @@
             const season = normalizeSeason(row);
             const salesYear = getRowSalesYear(row);
             const validSalesYear = salesYear != null && salesYear > 0 && salesYear <= currentSalesYear;
+            const holdStopCode = getHoldStopCode(row);
+            const holdStartValue = getHoldStart(row);
+            const locationNoteDateValue = getLocationNoteDate(row);
+            const holdStartDay = parseInventoryDateEpochDay(holdStartValue);
+            const locationNoteDay = parseInventoryDateEpochDay(locationNoteDateValue);
+            if (holdStartValue && holdStartDay == null) diagnostics.invalidHoldStartDateCount += 1;
+            if (locationNoteDateValue && locationNoteDay == null) diagnostics.invalidLocationNoteDateCount += 1;
             const metadata = {
                 itemCode,
                 season,
@@ -445,9 +472,9 @@
                 validSalesYear,
                 priority: getPriority(row),
                 assignedTo: getAssignedTo(row),
-                holdStopCode: getHoldStopCode(row),
-                oldHold: isOlderThanDays(getHoldStart(row), settings.holdAgeDays, todayEpochDay),
-                oldLocationNote: isOlderThanDays(getLocationNoteDate(row), settings.locationNoteAgeDays, todayEpochDay),
+                holdStopCode,
+                oldHold: isActiveHoldStopCode(holdStopCode) && holdStartDay != null && todayEpochDay - holdStartDay > settings.holdAgeDays,
+                oldLocationNote: locationNoteDay != null && todayEpochDay - locationNoteDay > settings.locationNoteAgeDays,
                 slts: getRowSLts(row),
                 sourceIndex
             };
@@ -525,6 +552,7 @@
             currentSalesYear,
             nextSeason,
             nextSalesYear,
+            diagnostics,
             centralDateKey: `${todayParts.year}-${String(todayParts.month).padStart(2, '0')}-${String(todayParts.day).padStart(2, '0')}`
         };
     }

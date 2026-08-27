@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20260827005258_eval_work_v1.sql', import.meta.url), 'utf8');
+const batchMigration = readFileSync(new URL('../supabase/migrations/20260827161513_eval_work_create_batch_v1.sql', import.meta.url), 'utf8');
 const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../supabase/functions/request-delivery-worker/index.ts', import.meta.url), 'utf8');
 const appsScript = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
@@ -125,4 +126,32 @@ test('completed PDF reuses the Reclass report and adds compact evidence once', (
   assert.match(appsScript, /evidence\.photos\.slice\(0, 8\)/);
   assert.match(appsScript, /sortReclassInquiryCompactRows_/);
   assert.match(appsScript, /edited-cell/);
+});
+
+test('Eval Reports #2 batch creation is service-only, atomic, complete-row, and retry-safe', () => {
+  assert.match(batchMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(batchMigration, /create or replace function public\.create_eval_work_batch_v1\(p_payload jsonb\)/);
+  assert.match(batchMigration, /lower\(actor\.username\) not in \('dylan_collyge', 'megan_kelly'\)/);
+  assert.match(batchMigration, /Validate every member before creating any durable assignment/);
+  assert.ok(batchMigration.indexOf('perform private.validate_eval_work_inquiry_v1') < batchMigration.indexOf('select * into new_work from public.create_eval_work_v1'));
+  assert.match(batchMigration, /eval_work_batch_complete_row_set_required/);
+  assert.match(batchMigration, /batch_token = batch_token_value/);
+  assert.match(batchMigration, /revoke all on function public\.create_eval_work_batch_v1\(jsonb\) from public, anon, authenticated/);
+  assert.match(batchMigration, /grant execute on function public\.create_eval_work_batch_v1\(jsonb\) to service_role/);
+  assert.doesNotMatch(batchMigration, /update public\.ph_master_inventory|delete from public\./i);
+  assert.match(appApi, /operation === "create_batch"/);
+  assert.match(appApi, /normalizeEvalWorkBatchInquiry/);
+  assert.match(appApi, /supabase\.rpc\("create_eval_work_batch_v1"/);
+});
+
+test('Eval Reports #2 uses PDF Eval Work delivery and preserves temporary report overlays', () => {
+  assert.match(html, /function getManagerEvalReport2AllCurrentItemRows\(itemCode = ''\)/);
+  assert.match(html, /function openManagerEvalReport2BatchSetup\(\)/);
+  assert.match(html, /evalWorkApi\('create_batch'/);
+  assert.doesNotMatch(html, /eval_reports_2_item_inquiry_excel/);
+  assert.match(html, /evalWorkTemporaryRowOverlays = new Map\(\)/);
+  assert.match(html, /overlay\.temporaryChangedFields = Object\.keys\(temporaryValues\)/);
+  assert.match(appsScript, /applyReclassInquiryTemporaryOverlayV3_/);
+  assert.match(appsScript, /Temporary Report Edits/);
+  assert.match(appsScript, /allowEmptyActions: true/);
 });

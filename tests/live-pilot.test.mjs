@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.27.04';
+  const release = 'V2026.08.27.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.27.04');
+  assert.equal(packageJson.version, '2026.08.27.05');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -624,18 +624,19 @@ test('Kayla can add every inventory Drive row to Bloom Picker and use the full o
   assert.match(html, /renderDriveQuickRequestBar[\s\S]*activeDriveTab === 'card' && canUseDriveQuickRequest\(\)/);
 });
 
-test('Drive Location tab drills through Common Name and Container before showing location-sorted rows', () => {
+test('Drive Location tab drills through Block Alpha and Block Number before showing physical rows', () => {
   const locationDrill = html.slice(
     html.indexOf('function renderDriveLocationDrill'),
     html.indexOf('function renderDriveHoldStopCodeView')
   );
-  assert.match(locationDrill, /Location > Select Common Name/);
-  assert.match(locationDrill, /getDrivePlantCommonName\(item\)/);
-  assert.match(locationDrill, /Select Cont Size/);
-  assert.match(locationDrill, /getDrivePlantContSize\(item\)/);
-  assert.match(locationDrill, /locationCount = new Set\(finalItems\.map\(\(item\) => getTaskLocationBucket\(item\)\)\)\.size/);
+  assert.match(locationDrill, /Location > Select Block Alpha/);
+  assert.match(locationDrill, /getDriveBlockAlphaValue\(item\)/);
+  assert.match(locationDrill, /Select Block Number/);
+  assert.match(locationDrill, /getDriveBlockNumberValue\(item\)/);
+  assert.match(locationDrill, /No Block Alpha/);
+  assert.match(locationDrill, /No Block Number/);
   assert.match(locationDrill, /compareLocationCodeValues/);
-  assert.doesNotMatch(locationDrill, /Select Block/);
+  assert.match(locationDrill, /physical rows/);
 });
 
 test('phone Home tiles fill both columns and Drive cards retain the thumbnail with Reclass at top right', () => {

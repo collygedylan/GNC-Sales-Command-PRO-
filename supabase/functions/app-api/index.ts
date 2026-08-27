@@ -562,6 +562,57 @@ async function withEvalWorkDeliveryStatuses(rows: Record<string, unknown>[]) {
   });
 }
 
+const EVAL_WORK_TEMPORARY_ROW_FIELD_LIMITS: Record<string, number> = {
+  holdstopreason: 1000,
+  holdstopbegindate: 180,
+  locationnote: 4000,
+  locationnotedate: 180,
+  locationptn1: 2000,
+  suspendto: 1000,
+  specialpuller: 1000,
+};
+
+function normalizeEvalWorkBatchInquiry(value: unknown) {
+  const inquiry = value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+  const rawOverlays = Array.isArray(inquiry.rowOverlays) ? inquiry.rowOverlays : [];
+  inquiry.rowOverlays = rawOverlays.map((rawOverlay) => {
+    const overlay = rawOverlay && typeof rawOverlay === "object" && !Array.isArray(rawOverlay)
+      ? { ...(rawOverlay as Record<string, unknown>) }
+      : {};
+    const hasValues = Object.prototype.hasOwnProperty.call(overlay, "temporaryValues");
+    const hasFields = Object.prototype.hasOwnProperty.call(overlay, "temporaryChangedFields");
+    if (!hasValues && !hasFields) return overlay;
+    const rawValues = overlay.temporaryValues;
+    const rawFields = overlay.temporaryChangedFields;
+    if (!hasValues || !hasFields || !rawValues || typeof rawValues !== "object" || Array.isArray(rawValues) || !Array.isArray(rawFields)) {
+      throw new Error("eval_work_batch_temporary_fields_invalid");
+    }
+    const normalizedValues: Record<string, string> = {};
+    for (const [rawKey, rawValue] of Object.entries(rawValues as Record<string, unknown>)) {
+      const key = String(rawKey || "").trim().toLowerCase();
+      const limit = EVAL_WORK_TEMPORARY_ROW_FIELD_LIMITS[key];
+      if (!limit || key !== rawKey || Object.prototype.hasOwnProperty.call(normalizedValues, key)) {
+        throw new Error("eval_work_batch_temporary_field_invalid");
+      }
+      let text = String(rawValue == null ? "" : rawValue);
+      if (key === "holdstopreason") text = text.trim().toLowerCase();
+      if (text.length > limit) throw new Error("eval_work_batch_temporary_value_too_long");
+      normalizedValues[key] = text;
+    }
+    const normalizedFields = rawFields.map((field) => String(field || "").trim().toLowerCase());
+    if (new Set(normalizedFields).size !== normalizedFields.length
+      || Object.keys(normalizedValues).sort().join("|") !== normalizedFields.slice().sort().join("|")) {
+      throw new Error("eval_work_batch_temporary_fields_mismatch");
+    }
+    overlay.temporaryValues = normalizedValues;
+    overlay.temporaryChangedFields = normalizedFields;
+    return overlay;
+  });
+  return inquiry;
+}
+
 async function handleEvalWorkAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -603,6 +654,50 @@ async function handleEvalWorkAction(
       const { data, error } = await supabase.rpc("create_eval_work_v1", { p_payload: rpcPayload });
       if (error) throw error;
       return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
+    }
+    if (operation === "create_batch") {
+      if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_batch_create_forbidden" });
+      const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
+      const rawItems = Array.isArray(payload.items) ? payload.items : [];
+      if (rawItems.length < 1 || rawItems.length > 50) return errorResponse("Choose from 1 through 50 ITEMCODEs.", 400, { code: "eval_work_batch_size_invalid" });
+      const items = rawItems.map((rawItem) => {
+        const item = rawItem && typeof rawItem === "object" ? rawItem as Record<string, unknown> : {};
+        const sourceInput = item.source && typeof item.source === "object" ? item.source as Record<string, unknown> : {};
+        const contextInput = item.reportContext && typeof item.reportContext === "object" ? item.reportContext as Record<string, unknown> : {};
+        const source = {
+          unique_id: String(sourceInput.unique_id || "").trim(),
+          source_table: "ph_master_inventory",
+          itemcode: String(sourceInput.itemcode || "").trim(),
+          locationcode: String(sourceInput.locationcode || "").trim(),
+          lotcode: String(sourceInput.lotcode || "").trim(),
+        };
+        if (!source.unique_id || !source.itemcode) throw new Error("eval_work_batch_origin_invalid");
+        return {
+          createToken: String(item.createToken || "").trim(),
+          source,
+          inquiry: normalizeEvalWorkBatchInquiry(item.inquiry),
+          reportContext: {
+            reportId: String(contextInput.reportId || "").trim().slice(0, 100),
+            reportLabel: String(contextInput.reportLabel || "").trim().slice(0, 200),
+            assignedTo: String(contextInput.assignedTo || "").trim().slice(0, 200),
+            browseMode: String(contextInput.browseMode || "").trim().slice(0, 40),
+          },
+        };
+      });
+      const rpcPayload = {
+        actorUsername: actor,
+        batchToken: String(payload.batchToken || "").trim(),
+        assigneeUsername: assignee.username,
+        assigneeEmail: assignee.email,
+        instructions: String(payload.instructions || "").trim().slice(0, 4000),
+        completionRecipients: Array.isArray(payload.completionRecipients) ? payload.completionRecipients : [],
+        inventorySignature: String(payload.inventorySignature || "").trim().slice(0, 512),
+        settingsSignature: String(payload.settingsSignature || "").trim().slice(0, 1024),
+        items,
+      };
+      const { data, error } = await supabase.rpc("create_eval_work_batch_v1", { p_payload: rpcPayload });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]), manager: true });
     }
     if (operation === "save" || operation === "submit") {
       const workId = String(payload.workId || "").trim();

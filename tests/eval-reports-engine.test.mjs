@@ -111,8 +111,29 @@ test('normalizes two-digit sales years and parses inventory dates without locale
   assert.equal(engine.normalizeSalesYear('2027'), 2027);
   assert.equal(engine.normalizeSalesYear(''), null);
   assert.equal(engine.parseInventoryDateEpochDay('8/9/26'), engine.parseInventoryDateEpochDay('2026-08-09'));
+  assert.equal(
+    engine.parseInventoryDateEpochDay('Wed Aug 12 2026 00:00:00 GMT-0500 (Central Daylight Time)'),
+    engine.parseInventoryDateEpochDay('2026-08-12')
+  );
   assert.equal(engine.parseInventoryDateEpochDay('2/30/2026'), null);
+  assert.equal(engine.parseInventoryDateEpochDay('Mon Feb 30 2026 00:00:00 GMT-0600 (Central Standard Time)'), null);
   assert.equal(engine.parseInventoryDateEpochDay('not-a-date'), null);
+});
+
+test('HS+5days accepts serialized Apps Script dates, requires H/S, and keeps the strict boundary', () => {
+  const rows = [
+    row('SERIAL-H', 'F1', 27, { TEST_ID: 'serialized-h', HOLDSTOPCODE: 'H', HOLDSTOPBEGINDATE: 'Wed Aug 12 2026 00:00:00 GMT-0500 (Central Daylight Time)' }),
+    row('SERIAL-S', 'F1', 27, { TEST_ID: 'serialized-s', HOLDSTOPCODE: 'S', HOLDSTOPBEGINDATE: 'Fri Aug 14 2026 00:00:00 GMT-0500 (Central Daylight Time)' }),
+    row('BOUNDARY', 'F1', 27, { TEST_ID: 'exact-five', HOLDSTOPCODE: 'H', HOLDSTOPBEGINDATE: 'Sat Aug 15 2026 00:00:00 GMT-0500 (Central Daylight Time)' }),
+    row('NO-CODE', 'F1', 27, { TEST_ID: 'no-code', HOLDSTOPCODE: '', HOLDSTOPBEGINDATE: 'Wed Aug 12 2026 00:00:00 GMT-0500 (Central Daylight Time)' }),
+    row('INVALID', 'F1', 27, { TEST_ID: 'invalid-date', HOLDSTOPCODE: 'S', HOLDSTOPBEGINDATE: 'bad-date' })
+  ];
+  const result = engine.classifyScriptCompatibleRows(rows, {
+    currentSeason: 'F1', currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27,
+    settings: { holdAgeDays: 5 }, now
+  });
+  assert.deepEqual(ids(result.reports['hs-plus-5-days']), ['serialized-h', 'serialized-s']);
+  assert.equal(result.diagnostics.invalidHoldStartDateCount, 1);
 });
 
 test('classifies the eight F1/27 reports with strict date and low-stock boundaries', () => {
@@ -390,9 +411,10 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /invalidateManagerEvalReport2Cache\(\)/);
   assert.match(html, /function getManagerEvalReport2LocationOptions\(rows = null\)/);
   assert.match(html, /managerEvalReport2LocationFilter !== 'all'/);
-  assert.match(html, /Report &rarr; AssignedTo &rarr; Common Name &rarr; ITEMCODE/);
+  assert.match(html, /Common Name &rarr; Container Size/);
+  assert.match(html, /Block Alpha &rarr; Block Number/);
   assert.match(html, /Choose Report/);
-  assert.match(html, /function getManagerEvalReport2CommonNameGroups\(rows = null\)/);
+  assert.match(html, /function getManagerEvalReport2DrillGroups\(rows = null\)/);
   assert.match(html, /function openManagerEvalReport2CommonName\(commonName = ''\)/);
   assert.match(html, /Refresh failed; the last complete results remain visible/);
   assert.match(html, /return managerEvalReport2Cache/);
@@ -401,7 +423,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function openManagerEvalReport2ItemDetail\(encodedKey = ''\)/);
   assert.match(html, /function closeManagerEvalReport2ItemDetail\(\)/);
   assert.match(html, /function renderManagerEvalReport2ItemDetail\(\)/);
-  assert.match(html, /Tap for details \/ press and hold to select/);
+  assert.match(html, /Select ITEMCODE/);
   assert.match(html, /\['LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'S_LTS', 'SALESNOTE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRAVAILABLE'\]/);
   assert.match(html, /const MANAGER_EVAL_REPORT2_EDITABLE_FIELDS = Object\.freeze/);
   for (const field of ['HOLDSTOPCODE', 'HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 'PRIORITY', 'LOCATIONNOTE', 'LOCATIONPTN1', 'SUSPENDTO', 'SPECIALPULLER']) {
@@ -411,13 +433,10 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function setManagerEvalReport2RowEditValue\(rowKey = '', fieldKey = '', value = ''\)/);
   assert.match(html, /values\.LOCATIONNOTEDATE = getManagerEvalReportCentralDateKey\(\)/);
   assert.match(html, /function ensureManagerEvalReport2ItemSelectedForEdit\(row = null\)/);
-  assert.match(html, /temporary email-only proposals/);
+  assert.match(html, /temporary report-only proposals/);
   assert.match(html, /function toggleManagerEvalReport2ItemSelection\(encodedKey = '', forceSelected = null\)/);
   assert.match(html, /function beginManagerEvalReport2SelectionMode\(\)/);
-  assert.match(html, /MANAGER_EVAL_REPORT2_LONG_PRESS_MS = 450/);
-  assert.match(html, /function startManagerEvalReport2LongPress\(event = null, encodedKey = ''\)/);
-  assert.match(html, /function trackManagerEvalReport2LongPress\(event = null\)/);
-  assert.match(html, /oncontextmenu="return preventManagerEvalReport2ContextMenu\(event\)"/);
+  assert.match(html, /function getManagerEvalReport2AllCurrentItemRows\(itemCode = ''\)/);
   assert.match(html, /function buildManagerEvalReport2ExcelAttachment\(rows = \[\]\)/);
   assert.match(html, /function canViewManagerEvalReports2\(userOverride = ''\)/);
   assert.match(html, /key === 'dylan_collyge' \|\| key === 'megan_kelly' \|\| key === 'jd_jones'/);
@@ -443,17 +462,34 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /<autoFilter ref="A1:\$\{lastColumn\}\$\{rowNumber\}"\/>/);
   assert.match(html, /sheet name="Item Inquiry"/);
   assert.match(html, /function emailSelectedManagerEvalReport2Rows\(\)/);
-  assert.match(html, /Selected ITEMCODEs:/);
+  assert.match(html, /function openManagerEvalReport2BatchSetup\(\)/);
+  assert.match(html, /function createManagerEvalReport2Batch\(button = null\)/);
   assert.match(html, /id="manager-eval-report-2-done-button"/);
   assert.match(html, /managerEvalReport2LoadState\.loading \|\| managerEvalReport2LoadState\.error/);
-  assert.match(html, /Refresh the complete inventory and Assigned Items data successfully before sending/);
-  assert.match(html, /emailSubType: 'eval_reports_2_item_inquiry_excel'/);
-  assert.match(html, /recipientsSelectedInApp: true/);
-  assert.match(html, /shiftReportFormat: 'excel'/);
+  assert.match(html, /evalWorkApi\('create_batch'/);
+  assert.match(html, /PDF assignment/);
+  assert.doesNotMatch(html, /eval_reports_2_item_inquiry_excel/);
   assert.match(html, /isManagerEvalReport2ExportCellEdited\(entry, column\)/);
   assert.match(html, /rgb="FFFFF2CC"/);
-  assert.match(html, /proposedEditRowCount: context\.editSummary\.rowCount/);
-  assert.match(html, /proposedEditFieldCount: context\.editSummary\.fieldCount/);
+  assert.match(html, /overlay\.temporaryChangedFields = Object\.keys\(temporaryValues\)/);
+  assert.match(html, /const allRows = getManagerEvalReport2AllCurrentItemRows\(entry\.itemCode\)/);
   assert.doesNotMatch(html.slice(html.indexOf('function setManagerEvalReport2RowEditValue'), html.indexOf('function isNamedManagerEvalReport2AssignedTo')), /supabase(Update|Insert|Delete|Rpc)|fetch\(/i);
   assert.match(html, /Eval Reports #2 is available only to Dylan, Megan, and JD/);
+});
+
+test('detail teardown and BlockAlpha drilldowns keep navigation state explicit', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /function teardownDetailPresentation\(reason = 'detail-teardown', options = \{\}\)/);
+  assert.match(html, /const leavingDetail = safeViewId !== 'detail' && isViewVisible\('detail'\)/);
+  assert.match(html, /teardownDetailPresentation\('primary-view-change', \{ preserveDraft: true \}\)/);
+  assert.match(html, /document\.body\.classList\.remove\('request-av-note-sheet-open'/);
+  assert.match(html, /DRIVE_NO_BLOCK_ALPHA = '__NO_BLOCK_ALPHA__'/);
+  assert.match(html, /DRIVE_NO_BLOCK_NUMBER = '__NO_BLOCK_NUMBER__'/);
+  assert.match(html, /function getDriveBlockAlphaValue\(item = null\)/);
+  assert.match(html, /function getDriveBlockNumberValue\(item = null\)/);
+  assert.match(html, /> Location > Select Block Alpha/);
+  assert.match(html, /> \$\{selectedBlockLabel\} > Select Block Number/);
+  assert.match(html, /function backManagerEvalReport2Drill\(\)/);
+  assert.match(html, /managerEvalReport2DetailItemKey \|\| managerEvalReport2DrillLevel > 0/);
+  assert.match(html, /\[data-manager-eval2-detail\]>div:first-child>button:first-child\{display:none!important\}/);
 });
