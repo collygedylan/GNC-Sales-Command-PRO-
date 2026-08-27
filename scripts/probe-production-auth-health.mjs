@@ -11,6 +11,7 @@ const serviceRoleKey = String(process.env.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY |
 const deliveryCronSecret = String(process.env.REQUEST_DELIVERY_CRON_SECRET || '').trim();
 const appsScriptDeploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
 const requireAppsScriptHealth = String(process.env.REQUIRE_APPS_SCRIPT_HEALTH || '').trim() === '1';
+const requireLiveReleaseMatch = String(process.env.REQUIRE_LIVE_RELEASE_MATCH || '').trim() === '1';
 const appOrigin = String(process.env.PRODUCTION_APP_ORIGIN || 'https://agmetricapp.com').replace(/\/+$/, '');
 const expectedRelease = source.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1] || '';
 const expectedLifecyclePolicyVersion = 'plant-request-lifecycle-v2';
@@ -92,6 +93,9 @@ if (!shellResponse.ok || !/window\.__APP_SHELL_VERSION__\s*=/.test(shellText)) {
   throw new Error(`app_shell_unhealthy_http_${shellResponse.status}`);
 }
 const liveRelease = shellText.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1] || 'unknown';
+if (requireLiveReleaseMatch && (!expectedRelease || liveRelease !== expectedRelease)) {
+  throw new Error('production_live_release_mismatch');
+}
 checks.push({ name: 'app_shell', status: shellResponse.status, release: liveRelease });
 
 appsScriptHealth = await probeAppsScriptDeploymentHealth();

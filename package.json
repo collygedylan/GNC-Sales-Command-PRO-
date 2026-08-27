@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.08.27.06",
+  "version": "2026.08.27.07",
   "type": "module",
   "scripts": {
     "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
@@ -20,7 +20,7 @@
     "build:storybook:v2": "storybook build -c v2/.storybook -o v2/storybook-static",
     "lighthouse:v2": "lhci autorun --config=v2/lighthouserc.json",
     "check:inline": "node scripts/check-inline-scripts.mjs",
-    "test:pilot": "node --test tests/live-pilot.test.mjs tests/eval-reports-engine.test.mjs tests/reclass-inquiry.test.mjs tests/eval-work.test.mjs tests/apps-script-sync.test.mjs tests/apps-script-lifecycle.test.mjs tests/request-ios-swipe.test.mjs tests/transactions-keyed.test.mjs",
+    "test:pilot": "node --test tests/live-pilot.test.mjs tests/eval-reports-engine.test.mjs tests/reclass-inquiry.test.mjs tests/eval-work.test.mjs tests/apps-script-sync.test.mjs tests/apps-script-lifecycle.test.mjs tests/request-ios-swipe.test.mjs tests/transactions-keyed.test.mjs tests/post-deployment-canary.test.mjs",
     "migrate:auth-domain": "node scripts/migrate-native-auth-email-domain.mjs"
   },
   "dependencies": {

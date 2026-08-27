@@ -4,16 +4,6 @@ on:
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'index.html'
-      - 'Code.gs'
-      - 'scripts/apps-script-sync-lib.mjs'
-      - 'scripts/sync-codegs-to-apps-script.js'
-      - 'scripts/probe-production-auth-health.mjs'
-      - '.github/workflows/apps-script-sync.yml'
-      - '.github/workflows/production-auth-health.yml'
 
 permissions:
   contents: read
@@ -26,12 +16,21 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Verify the scheduled checkout is the exact live release
+        id: live_release
+        continue-on-error: true
+        env:
+          CANARY_BASE_URL: https://agmetricapp.com
+          EXPECTED_COMMIT: ${{ github.sha }}
+          CANARY_WAIT_TIMEOUT_MS: '180000'
+          CANARY_WAIT_INTERVAL_MS: '5000'
+        run: node scripts/wait-for-live-release.mjs
       - name: Probe and self-heal production app services
         id: production_probe
         continue-on-error: true
@@ -41,9 +40,10 @@ jobs:
           REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
           APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
           REQUIRE_APPS_SCRIPT_HEALTH: '1'
+          REQUIRE_LIVE_RELEASE_MATCH: '1'
         run: node scripts/probe-production-auth-health.mjs
       - name: Open or update the production health incident
-        if: steps.production_probe.outcome == 'failure'
+        if: steps.live_release.outcome == 'failure' || steps.production_probe.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
@@ -53,9 +53,13 @@ jobs:
               owner, repo, state: 'open', per_page: 100
             });
             const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            const code = '${{ steps.live_release.outcome }}' === 'failure'
+              ? 'LIVE_RELEASE_MISMATCH'
+              : 'PRODUCTION_SERVICE_PROBE_FAILED';
             const body = [
               'The five-minute hosted production check failed after its safe self-healing pass.',
               '',
+              `Error code: ${code}`,
               `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
               `Commit: ${context.sha}`,
               '',
@@ -67,7 +71,7 @@ jobs:
               await github.rest.issues.create({ owner, repo, title, body });
             }
       - name: Close a recovered production health incident
-        if: steps.production_probe.outcome == 'success'
+        if: steps.live_release.outcome == 'success' && steps.production_probe.outcome == 'success'
         uses: actions/github-script@v7
         with:
           script: |
@@ -84,5 +88,5 @@ jobs:
               await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed' });
             }
       - name: Fail when production remains unhealthy
-        if: steps.production_probe.outcome == 'failure'
+        if: steps.live_release.outcome == 'failure' || steps.production_probe.outcome == 'failure'
         run: exit 1

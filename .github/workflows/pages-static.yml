@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   pages: write
   id-token: write
 
@@ -21,6 +22,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,6 +80,7 @@ jobs:
           mkdir -p _site/v2
           cp -r v2/dist/* _site/v2/
           npm run build:live:shell
+          node scripts/write-deployment-fingerprint.mjs
           test "$(wc -c < _site/index.html)" -le 1500000
           ! grep -Eq 'cdn\.tailwindcss\.com|unpkg\.com/@phosphor-icons|cdn\.jsdelivr\.net/npm/@supabase' _site/index.html
 
@@ -91,3 +95,95 @@ jobs:
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  post-deployment-canary:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install production canary browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Wait for exact live release and commit
+        id: live_release
+        env:
+          CANARY_BASE_URL: https://agmetricapp.com
+          EXPECTED_COMMIT: ${{ github.sha }}
+          CANARY_WAIT_TIMEOUT_MS: '240000'
+          CANARY_WAIT_INTERVAL_MS: '5000'
+        run: node scripts/wait-for-live-release.mjs
+
+      - name: Run mutation-blocked production Request canary
+        id: request_canary
+        env:
+          CANARY_BASE_URL: https://agmetricapp.com
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: npx playwright test --config=playwright.production.config.ts tests/production-request-canary.spec.ts
+
+      - name: Upload sanitized canary diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-request-canary-diagnostics
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  report-production-health:
+    if: always()
+    needs: [deploy, post-deployment-canary]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open, update, or close the sanitized hosted-health incident
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '[Hosted Health] Production health check failing';
+            const { owner, repo } = context.repo;
+            const deployResult = '${{ needs.deploy.result }}';
+            const canaryResult = '${{ needs.post-deployment-canary.result }}';
+            const healthy = deployResult === 'success' && canaryResult === 'success';
+            const code = deployResult !== 'success'
+              ? 'DEPLOY_TO_PAGES_FAILED'
+              : 'POST_DEPLOYMENT_REQUEST_CANARY_FAILED';
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            if (healthy) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `Recovered automatically. Post-deployment canary passed for commit ${context.sha}.`
+                });
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+              }
+              return;
+            }
+            const body = [
+              'The production deployment or its sanitized Request canary failed.',
+              '',
+              `Error code: ${code}`,
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              `Commit: ${context.sha}`,
+              '',
+              'No customer data, notes, photos, names, request contents, credentials, or tokens are included.'
+            ].join('\n');
+            if (existing) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body });
+            }

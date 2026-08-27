@@ -568,7 +568,7 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
 
 test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per selected ITEMCODE', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openManagerEvalReport2BatchSetup === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originals = {
@@ -1644,7 +1644,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1843,7 +1843,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1883,7 +1883,7 @@ test('Phone Reclass send opens the searchable in-app recipient selector', async 
 
 test('Phone Reclass background status survives reload without covering navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
   await page.waitForLoadState('load');
   await page.evaluate(() => {
@@ -1970,7 +1970,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
 
 test('Request rep selection always renders customer choices or a recoverable error state', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).selectRepForRequest === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -2072,7 +2072,7 @@ test('Request rep selection always renders customer choices or a recoverable err
 
 test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     document.body.classList.add('ops-precision-pilot');
     document.body.setAttribute('data-ops-theme', 'dark');
@@ -2127,7 +2127,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
-      await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+      await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
       await page.evaluate((activeTheme) => {
         document.body.classList.add('ops-precision-pilot');
         document.body.setAttribute('data-ops-theme', activeTheme);
@@ -2195,7 +2195,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
 
 test('toast can be closed or swiped up without blocking the rest of the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     const button = document.createElement('button');
     button.id = 'toast-underlay-test';
