@@ -620,6 +620,32 @@ test('every live Reclass row shows current Hold/Stop fields and direct touch act
   assert.match(html, /\.argos-reclass-action-btn\{min-height:2\.75rem/);
 });
 
+test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoing proposal', () => {
+  const start = html.indexOf('function handleArgosReclassV3ProposalInput');
+  const end = html.indexOf('function buildArgosReclassV3ProposalHtml', start);
+  assert.ok(start > 0 && end > start);
+  const proposal = {};
+  const input = {
+    value: 'Sheared MIXED Case',
+    closest: () => ({ getAttribute: () => 'origin' }),
+    getAttribute: (name) => name === 'data-reclass-v3-proposal-action' ? 'hold' : 'holdstopreason',
+  };
+  const context = {
+    getArgosReclassV3Proposal: () => proposal,
+    captureEvalWorkLocalDraftSoon: () => {},
+  };
+  vm.createContext(context);
+  vm.runInContext(`${html.slice(start, end)}; this.handleArgosReclassV3ProposalInput = handleArgosReclassV3ProposalInput;`, context);
+  assert.equal(context.handleArgosReclassV3ProposalInput(input), true);
+  assert.equal(input.value, 'sheared mixed case');
+  assert.equal(proposal.holdstopreason, 'sheared mixed case');
+
+  const collectorStart = html.indexOf('function collectArgosReclassV3Draft');
+  const collectorEnd = html.indexOf('function buildArgosInventoryTransactionPayload', collectorStart);
+  assert.match(html.slice(collectorStart, collectorEnd), /proposal\.holdstopreason \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(html, /originating row's effective code appears once in the PDF overview/);
+});
+
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {
   const start = code.indexOf('function enqueueReclassInquiryEmail_');
   const end = code.indexOf('function handleInventoryTransaction_', start);

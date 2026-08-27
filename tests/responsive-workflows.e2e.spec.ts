@@ -1532,7 +1532,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.27.01', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.27.02', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1731,7 +1731,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1771,7 +1771,7 @@ test('Phone Reclass send opens the searchable in-app recipient selector', async 
 
 test('Phone Reclass background status survives reload without covering navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
   await page.waitForLoadState('load');
   await page.evaluate(() => {
@@ -1858,7 +1858,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
 
 test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.02', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     document.body.classList.add('ops-precision-pilot');
     document.body.setAttribute('data-ops-theme', 'dark');

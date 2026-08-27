@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.27.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.27.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.27.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.27.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6699,7 +6699,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.27.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.27.02">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6870,8 +6870,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.27.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.27.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.27.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.27.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7624,7 +7624,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.27.01').trim() || 'V2026.08.27.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.27.02').trim() || 'V2026.08.27.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9111,7 +9111,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.27.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.27.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30564,7 +30564,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.27.01').trim() || 'V2026.08.27.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.27.02').trim() || 'V2026.08.27.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -42394,7 +42394,11 @@ let avTopControlsRenderToken = 0;
             const field = String(input && input.getAttribute('data-reclass-v3-proposal-field') || '').trim();
             const proposal = getArgosReclassV3Proposal(uid, action);
             if (!proposal || !field) return false;
-            proposal[field] = String(input.value == null ? '' : input.value);
+            const value = field === 'holdstopreason'
+                ? String(input.value == null ? '' : input.value).toLowerCase()
+                : String(input.value == null ? '' : input.value);
+            if (field === 'holdstopreason' && input.value !== value) input.value = value;
+            proposal[field] = value;
             captureEvalWorkLocalDraftSoon();
             return true;
         }
@@ -42407,10 +42411,12 @@ let avTopControlsRenderToken = 0;
             const proposal = getArgosReclassV3Proposal(uid, normalized);
             if (!rule || !proposal) return '';
             if (rule.kind === 'hold_on') {
-                return `<div class="argos-reclass-action-proposal"><label><span>Hold/Stop Code</span><input class="argos-reclass-row-input" value="${escapeHtml(rule.code)}" readonly aria-label="Proposed Hold Stop Code"></label><label><span>Hold/Stop Reason</span><textarea class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="holdstopreason" oninput="return handleArgosReclassV3ProposalInput(this)" placeholder="Required reason">${escapeHtml(proposal.holdstopreason || '')}</textarea></label><small>${escapeHtml(rule.code)} and this reason will appear in the existing PDF Hold/Stop columns for this row.</small></div>`;
+                const lowerReason = String(proposal.holdstopreason || '').toLowerCase();
+                if (proposal.holdstopreason !== lowerReason) proposal.holdstopreason = lowerReason;
+                return `<div class="argos-reclass-action-proposal"><label><span>Hold/Stop Code</span><input class="argos-reclass-row-input" value="${escapeHtml(rule.code)}" readonly aria-label="Proposed Hold Stop Code"></label><label><span>Hold/Stop Reason</span><textarea class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="holdstopreason" oninput="return handleArgosReclassV3ProposalInput(this)" placeholder="Required reason">${escapeHtml(lowerReason)}</textarea></label><small>This row's reason appears in Hold/Stop Reason. The originating row's effective code appears once in the PDF overview.</small></div>`;
             }
             if (rule.kind === 'hold_off') {
-                return `<div class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)}</span><strong>Hold/Stop Code and Hold/Stop Reason will be cleared for this row.</strong><small>The two existing PDF cells will be blank and highlighted yellow.</small></div>`;
+                return `<div class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)}</span><strong>Hold/Stop Code and Hold/Stop Reason will be cleared for this row.</strong><small>This row's reason will be blank and yellow. For the originating row, HOLDSTOPCODE is blank and yellow in the PDF overview.</small></div>`;
             }
             if (rule.kind === 'priority') {
                 return `<label class="argos-reclass-action-proposal"><span>Priority Change</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" max="99" step="1" value="${escapeHtml(proposal.priority || '')}" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="priority" oninput="return handleArgosReclassV3ProposalInput(this)"><small>Enter 1–99, or clear the field to remove Priority.</small></label>`;
@@ -42429,7 +42435,7 @@ let avTopControlsRenderToken = 0;
             const uid = String(safeEntry.unique_id || '').trim();
             const values = safeEntry.values && typeof safeEntry.values === 'object' ? safeEntry.values : {};
             const holdCode = String(values.holdstopcode || '').trim().toUpperCase();
-            const holdReason = String(values.holdstopreason || '').trim();
+            const holdReason = String(values.holdstopreason || '').trim().toLowerCase();
             const currentHoldHtml = [
                 ['Current HOLDSTOPCODE', holdCode || '—'],
                 ['Current HOLDSTOPREASON', holdReason || '—']
@@ -42575,7 +42581,7 @@ let avTopControlsRenderToken = 0;
                         const currentCode = String(values.holdstopcode || '').trim().toUpperCase();
                         if (rule.kind === 'hold_off' && currentCode !== rule.code) throw new Error(`${rule.label} requires current Hold/Stop Code ${rule.code}.`);
                         outgoing.holdstopcode = rule.kind === 'hold_on' ? rule.code : '';
-                        outgoing.holdstopreason = rule.kind === 'hold_on' ? String(proposal.holdstopreason || '').trim() : '';
+                        outgoing.holdstopreason = rule.kind === 'hold_on' ? String(proposal.holdstopreason || '').trim().toLowerCase() : '';
                         if (rule.kind === 'hold_on' && !outgoing.holdstopreason) throw new Error(`${rule.label} requires a Hold/Stop Reason.`);
                     } else if (rule.kind === 'priority') {
                         const raw = String(proposal.priority == null ? '' : proposal.priority).trim();
