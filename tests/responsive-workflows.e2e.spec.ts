@@ -263,7 +263,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     currentUser = 'dylan_collyge';
     currentUserDisplay = 'Dylan Collyge';
     currentRole = 'Manager';
-    activeHomeTab = MANAGER_EVAL_REPORTS_2_VIEW;
+    activeHomeTab = 'eval-reports-2';
     processAndLoadData({ data: [
       { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }

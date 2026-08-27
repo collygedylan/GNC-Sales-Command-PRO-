@@ -175,7 +175,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     currentUser = 'dylan_collyge';
     currentUserDisplay = 'Dylan Collyge';
     currentRole = 'Manager';
-    activeHomeTab = MANAGER_EVAL_REPORTS_2_VIEW;
+    activeHomeTab = 'eval-reports-2';
     processAndLoadData({ data: [
       { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
