@@ -197,7 +197,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
     const host = document.createElement('main');
     host.id = 'hosted-eval2-canary';
-    host.style.width = '390px';
+    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:390px;overflow:auto;background:#fff;';
     host.innerHTML = renderManagerEvalReports2Panel();
     document.body.appendChild(host);
     return { release: String(window.__APP_SHELL_VERSION__ || '') };

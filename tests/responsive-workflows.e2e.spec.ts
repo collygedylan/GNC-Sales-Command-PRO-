@@ -285,7 +285,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
     const host = document.createElement('div');
     host.id = 'eval2-multiselect-host';
-    host.style.width = '390px';
+    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:390px;overflow:auto;background:#fff;';
     host.innerHTML = renderManagerEvalReports2Panel();
     document.body.appendChild(host);
   })()`));
