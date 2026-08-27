@@ -265,8 +265,8 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     currentRole = 'Manager';
     activeHomeTab = 'eval-reports-2';
     processAndLoadData({ data: [
-      { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
-      { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }
+      { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
+      { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
       { UNIQUE_ID: 'eval2-assign-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
       { UNIQUE_ID: 'eval2-assign-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
@@ -279,7 +279,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     queueScrollMainAreaToTop = () => {};
     invalidateManagerEvalReport2Cache();
     setManagerEvalReport2Mode('reports');
-    setManagerEvalReport2('low-stock');
+    setManagerEvalReport2('no-pri');
     setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
     const host = document.createElement('div');
     host.id = 'eval2-multiselect-host';
@@ -289,6 +289,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
   })()`));
 
   const host = page.locator('#eval2-multiselect-host');
+  await expect(host).toContainText('Alpha Canary');
   await host.locator('button.drill-item', { hasText: 'Alpha Canary' }).click();
   await page.evaluate(() => {
     const target = document.getElementById('eval2-multiselect-host')!;
@@ -351,7 +352,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
   }))()`));
   expect(state).toEqual({
     selected: ['CLICK.A', 'CLICK.B'],
-    lockedReport: 'low-stock',
+    lockedReport: 'no-pri',
     lockedAssignedTo: 'dylan_collyge',
     compactHeader: true,
     hasMore: true,

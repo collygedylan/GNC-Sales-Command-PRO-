@@ -177,8 +177,8 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     currentRole = 'Manager';
     activeHomeTab = 'eval-reports-2';
     processAndLoadData({ data: [
-      { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
-      { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
+      { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
+      { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
       { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
       { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
@@ -191,7 +191,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     queueScrollMainAreaToTop = () => {};
     invalidateManagerEvalReport2Cache();
     setManagerEvalReport2Mode('reports');
-    setManagerEvalReport2('low-stock');
+    setManagerEvalReport2('no-pri');
     setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
     const host = document.createElement('main');
     host.id = 'hosted-eval2-canary';
@@ -206,6 +206,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   const host = page.locator('#hosted-eval2-canary');
   await expect(host).toContainText('Eval Reports #2');
   await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
+  await expect(host).toContainText('Alpha Eval Canary');
   await host.locator('button.drill-item', { hasText: 'Alpha Eval Canary' }).click();
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
@@ -254,7 +255,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   }))()`));
   expect(state).toEqual({
     selected: ['CANARY.EVAL.A', 'CANARY.EVAL.B'],
-    report: 'low-stock',
+    report: 'no-pri',
     assignedTo: 'dylan_collyge',
     hasLegacySelectMode: false,
   });
