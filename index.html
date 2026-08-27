@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.27.05">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.27.06">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.27.05';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.27.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6700,7 +6700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.27.05">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.27.06">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6871,8 +6871,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.27.05"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.27.05"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.27.06"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.27.06"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7625,7 +7625,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.27.05').trim() || 'V2026.08.27.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.27.06').trim() || 'V2026.08.27.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9112,7 +9112,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.27.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.27.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30599,7 +30599,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.27.05').trim() || 'V2026.08.27.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.27.06').trim() || 'V2026.08.27.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -130779,6 +130779,9 @@ C.14.043 C.15.000
                     searchToken: normalizeRepMatchToken(`${group.label || ''} ${consignees.map((entry) => `${entry.consigneeLabel || ''} ${entry.consigneeName || ''}`).join(' ')}`)
                 });
             }).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
+            requestExistingFolderGroupsCacheKey = cacheKey;
+            requestExistingFolderGroupsCache = groups;
+            return groups;
         }
 
         function getExistingRequestPickerSearchRenderOptions(options = {}) {
@@ -130926,11 +130929,47 @@ C.14.043 C.15.000
             return false;
         }
 
-        function renderExistingRequestFolderPicker() {
+        function retryExistingRequestFolderPicker() {
+            requestExistingFolderGroupsCacheKey = '';
+            requestExistingFolderGroupsCache = [];
+            requestModalCustomerOptionsError = '';
+            ensureRequestModalCustomerOptionsReady();
+            renderExistingRequestFolderPicker();
+            return false;
+        }
+
+        function leaveRequestFolderPickerFailure() {
+            if (isRequestRepPickerLockedForCurrentUser()) return closeRequestModal();
+            return backToRequestRepStep();
+        }
+
+        function renderExistingRequestFolderPickerFailure() {
             const container = document.getElementById('existing-folder-container');
-            if (!container) return;
+            if (!container) return false;
+            try {
+                reportSemanticHealthEvent('request_folder_group_render_failed', 'request_entry', 'REQUEST_FOLDER_GROUP_RENDER_FAILED', {
+                    affected_count: Array.isArray(detailRequestSourceDomIds) ? detailRequestSourceDomIds.length : 0,
+                    picker_locked: isRequestRepPickerLockedForCurrentUser() ? 1 : 0
+                }, 'error');
+            } catch (_) {}
+            container.innerHTML = `<div class="request-step-header flex-shrink-0"><h3 class="font-bold text-lg text-orange-600">Customer</h3></div><div class="request-folder-picker-body"><div class="request-empty-state"><div class="request-choice-title">Customer choices could not be prepared.</div><div class="request-choice-meta mt-2">Your selected rows and sales rep are still saved. Retry or go back.</div></div><button class="request-primary-action request-folder-create-action" ${buildFastInvokeAttrs('retryExistingRequestFolderPicker', [], 'Retry loading Request customers')}>Retry</button><button class="request-secondary-action mt-2" ${buildFastInvokeAttrs('leaveRequestFolderPickerFailure', [], 'Back from Request customer loading error')}>Back</button></div>`;
+            return false;
+        }
+
+        function renderExistingRequestFolderPicker() {
+            try {
+                return renderExistingRequestFolderPickerContent();
+            } catch (_) {
+                return renderExistingRequestFolderPickerFailure();
+            }
+        }
+
+        function renderExistingRequestFolderPickerContent() {
+            const container = document.getElementById('existing-folder-container');
+            if (!container) return false;
             const focusSnapshot = captureExistingRequestPickerSearchFocus();
             const groups = buildExistingRequestFolderCustomerGroups(tempSelectedReqRep);
+            if (!Array.isArray(groups)) throw new Error('REQUEST_FOLDER_GROUPS_UNAVAILABLE');
             const customerSearch = normalizeRepMatchToken(tempExistingReqCustomerSearch || '');
             const { customerGroup: selectedGroup, consigneeGroup: selectedConsigneeGroup } = getSelectedExistingRequestFolderGroups(groups);
             const stepTitle = selectedConsigneeGroup ? 'Select Request Folder' : (selectedGroup ? 'Select Consignee' : 'Select Customer');
@@ -131002,6 +131041,7 @@ C.14.043 C.15.000
             html += `</div>`;
             container.innerHTML = html;
             restoreExistingRequestPickerSearchFocus(focusSnapshot);
+            return true;
         }
 
         function selectRepForRequest(repName) {
@@ -131014,12 +131054,13 @@ C.14.043 C.15.000
             resetExistingRequestFolderPickerState();
             resetRequestCustomerSelectionState();
             ensureRequestModalCustomerOptionsReady();
+            const rendered = renderExistingRequestFolderPicker();
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('step-3-qty').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('step-1.5-folder').classList.remove('hidden');
-            renderExistingRequestFolderPicker();
+            if (!rendered) showToast('Customer List', 'Customer choices did not load. Your Request draft is still saved.', true);
             return false;
         }
 
@@ -131080,9 +131121,6 @@ C.14.043 C.15.000
                 const consignees = Array.from(group.consignees.values()).sort((a, b) => String(a.consigneeLabel || '').localeCompare(String(b.consigneeLabel || ''), undefined, { numeric: true, sensitivity: 'base' }));
                 return Object.assign(group, { consignees, consigneeCount: consignees.length });
             }).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
-            requestExistingFolderGroupsCacheKey = cacheKey;
-            requestExistingFolderGroupsCache = groups;
-            return groups;
         }
 
         function getRequestCustomerPickerGroupsCached(options = []) {

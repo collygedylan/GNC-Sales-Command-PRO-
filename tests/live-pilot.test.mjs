@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.27.05';
+  const release = 'V2026.08.27.06';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.27.05');
+  assert.equal(packageJson.version, '2026.08.27.06');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -91,6 +91,24 @@ test('Request entry uses semantic high-contrast fields, bounded lists, cached gr
   assert.match(html, /if \(requestSubmitInFlight\) return false/);
   assert.match(css, /#request-rep-modal \.request-entry-control[\s\S]*min-height: 48px/);
   assert.match(css, /data-ops-theme="dark"[\s\S]*#request-rep-modal \.request-entry-label[\s\S]*#9ff3c9/);
+});
+
+test('Request rep selection returns folder groups and cannot leave a blank customer step', () => {
+  const folderBuilder = html.slice(
+    html.indexOf('function buildExistingRequestFolderCustomerGroups'),
+    html.indexOf('function getExistingRequestPickerSearchRenderOptions')
+  );
+  const customerBuilder = html.slice(
+    html.indexOf('function buildRequestCustomerPickerGroups'),
+    html.indexOf('function getRequestCustomerPickerGroupsCached')
+  );
+  assert.match(folderBuilder, /requestExistingFolderGroupsCacheKey = cacheKey;[\s\S]*requestExistingFolderGroupsCache = groups;[\s\S]*return groups;/);
+  assert.doesNotMatch(customerBuilder, /requestExistingFolderGroupsCacheKey|requestExistingFolderGroupsCache = groups/);
+  assert.match(html, /function renderExistingRequestFolderPicker\(\)[\s\S]*renderExistingRequestFolderPickerContent\(\)[\s\S]*renderExistingRequestFolderPickerFailure\(\)/);
+  assert.match(html, /REQUEST_FOLDER_GROUP_RENDER_FAILED/);
+  assert.match(html, /Customer choices could not be prepared\./);
+  assert.match(html, /Retry loading Request customers/);
+  assert.match(html, /const rendered = renderExistingRequestFolderPicker\(\);[\s\S]*step-1-rep'\)\.classList\.add\('hidden'\)/);
 });
 
 test('HL PO failures retain files and expose sanitized parse reason codes', () => {

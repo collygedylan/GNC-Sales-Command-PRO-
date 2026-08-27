@@ -568,7 +568,7 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
 
 test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per selected ITEMCODE', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openManagerEvalReport2BatchSetup === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originals = {
@@ -1644,7 +1644,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
-    await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof (window as any).ensureArgosInventoryTransactionModal === 'function'
       && typeof (window as any).renderArgosReclassInquiryEditor === 'function'
@@ -1843,7 +1843,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
 test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
     && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
@@ -1883,7 +1883,7 @@ test('Phone Reclass send opens the searchable in-app recipient selector', async 
 
 test('Phone Reclass background status survives reload without covering navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
   await page.waitForLoadState('load');
   await page.evaluate(() => {
@@ -1968,9 +1968,111 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
   await expect(page.getByText('Season Sales Notes', { exact: true })).toHaveCount(0);
 });
 
+test('Request rep selection always renders customer choices or a recoverable error state', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).selectRepForRequest === 'function');
+
+  const result = await page.evaluate(() => window.eval(`(() => {
+    document.body.classList.add('ops-precision-pilot');
+    customerRepMapRows = [
+      { SALESREPNAME: 'Kevin Effinger', CUSTOMERNAME: 'Test Garden Center', CONSIGNEENAME: 'Main Dock' }
+    ];
+    requestsInventory = [];
+    requestModalCustomerOptionsLoading = false;
+    requestModalCustomerOptionsReady = true;
+    requestModalCustomerOptionsError = '';
+    ensureRequestModalCustomerOptionsReady = () => Promise.resolve(true);
+    canUseRequestMappedFoldersForCurrentUser = () => true;
+    getExistingRequestFolderRepRows = () => [{
+      UNIQUE_ID: 'request-folder-row',
+      REQUEST_FOLDER: 'test-garden-center-2026-08-27-REQ-001',
+      CUSTOMERNAME: 'Test Garden Center',
+      CONSIGNEENAME: 'Main Dock'
+    }];
+    resolveCanonicalRequestRepName = (name) => String(name || 'Kevin Effinger');
+    resolveRequestRepSelectionForCurrentUser = (name) => String(name || 'Kevin Effinger');
+    doesRequestRepMatchValue = () => true;
+    showToast = () => {};
+
+    const modes = [
+      { name: 'manager-item-detail', locked: false, rows: ['detail-row'] },
+      { name: 'manager-drive', locked: false, rows: ['drive-row'] },
+      { name: 'manager-bloom', locked: false, rows: ['bloom-row-1', 'bloom-row-2'] },
+      { name: 'manager-av', locked: false, rows: ['av-row'] },
+      { name: 'salesrep-self', locked: true, rows: ['rep-row'] },
+      { name: 'csr-assistant', locked: false, rows: ['csr-row'] }
+    ];
+    const modeResults = modes.map((mode) => {
+      isRequestRepPickerLockedForCurrentUser = () => mode.locked;
+      detailRequestSourceDomIds = mode.rows.slice();
+      requestExistingFolderGroupsCacheKey = '';
+      requestExistingFolderGroupsCache = [];
+      resetExistingRequestFolderPickerState();
+      document.getElementById('step-1-rep').classList.remove('hidden');
+      document.getElementById('step-1.5-folder').classList.add('hidden');
+      document.getElementById('existing-folder-container').innerHTML = '';
+      selectRepForRequest('Kevin Effinger');
+      const folderStep = document.getElementById('step-1.5-folder');
+      const folderContent = document.getElementById('existing-folder-container');
+      return {
+        name: mode.name,
+        visible: !folderStep.classList.contains('hidden'),
+        hasHeading: folderContent.textContent.includes('Select Customer'),
+        hasCustomer: folderContent.textContent.includes('Test Garden Center'),
+        hasAction: !!folderContent.querySelector('button'),
+        content: folderContent.textContent,
+        rowsPreserved: JSON.stringify(detailRequestSourceDomIds) === JSON.stringify(mode.rows)
+      };
+    });
+
+    const diagnostics = [];
+    reportSemanticHealthEvent = (eventName, area, code, context) => diagnostics.push({ eventName, area, code, context });
+    buildExistingRequestFolderCustomerGroups = () => { throw new Error('sensitive raw failure'); };
+    isRequestRepPickerLockedForCurrentUser = () => false;
+    detailRequestSourceDomIds = ['preserved-row'];
+    document.getElementById('step-1-rep').classList.remove('hidden');
+    document.getElementById('step-1.5-folder').classList.add('hidden');
+    selectRepForRequest('Kevin Effinger');
+    const failureText = document.getElementById('existing-folder-container').textContent;
+    return {
+      modeResults,
+      failure: {
+        visible: !document.getElementById('step-1.5-folder').classList.contains('hidden'),
+        hasRetry: failureText.includes('Retry'),
+        hasBack: failureText.includes('Back'),
+        rowsPreserved: JSON.stringify(detailRequestSourceDomIds) === JSON.stringify(['preserved-row']),
+        diagnostic: diagnostics[0]
+      }
+    };
+  })()`));
+
+  for (const mode of result.modeResults) {
+    expect(mode, `${mode.name}: ${mode.content}`).toMatchObject({
+      visible: true,
+      hasHeading: true,
+      hasCustomer: true,
+      hasAction: true,
+      rowsPreserved: true,
+    });
+  }
+  expect(result.failure).toMatchObject({
+    visible: true,
+    hasRetry: true,
+    hasBack: true,
+    rowsPreserved: true,
+    diagnostic: {
+      eventName: 'request_folder_group_render_failed',
+      area: 'request_entry',
+      code: 'REQUEST_FOLDER_GROUP_RENDER_FAILED',
+    },
+  });
+  expect(JSON.stringify(result.failure.diagnostic)).not.toContain('sensitive raw failure');
+});
+
 test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     document.body.classList.add('ops-precision-pilot');
     document.body.setAttribute('data-ops-theme', 'dark');
@@ -2025,7 +2127,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
-      await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+      await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
       await page.evaluate((activeTheme) => {
         document.body.classList.add('ops-precision-pilot');
         document.body.setAttribute('data-ops-theme', activeTheme);
@@ -2093,7 +2195,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
 
 test('toast can be closed or swiped up without blocking the rest of the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.27.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.27.06', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     const button = document.createElement('button');
     button.id = 'toast-underlay-test';
