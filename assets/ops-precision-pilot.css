@@ -2255,6 +2255,248 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
+/* V2026.08.27.04 — nonblocking notifications and high-contrast Request entry */
+#toast-notification {
+  --toast-drag-y: 0px;
+  width: min(92vw, 34rem) !important;
+  max-width: min(92vw, 34rem) !important;
+  min-width: 0 !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  border: 1px solid rgba(255, 255, 255, .36) !important;
+  border-radius: 18px !important;
+  padding: 12px 12px 12px 14px !important;
+  pointer-events: none !important;
+  touch-action: pan-y !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  overscroll-behavior: contain !important;
+  box-shadow: 0 16px 34px rgba(2, 12, 8, .28) !important;
+}
+
+#toast-notification.show {
+  transform: translate(-50%, var(--toast-drag-y)) !important;
+  pointer-events: auto !important;
+}
+
+#toast-notification.toast-dragging {
+  transition: none !important;
+}
+
+#toast-notification.toast-dismissing {
+  --toast-drag-y: -140% !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+#toast-notification[data-kind="error"] {
+  background: #d92d37 !important;
+}
+
+#toast-notification[data-kind="success"] {
+  background: #087a4d !important;
+}
+
+#toast-notification .toast-content {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 3px;
+  color: #fff;
+}
+
+#toast-notification .toast-title {
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+#toast-notification .toast-message {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+#toast-notification .toast-dismiss {
+  display: inline-flex;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  margin: -5px -5px -5px 0;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .16);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+#toast-notification .toast-dismiss:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+#request-rep-modal .request-entry-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 14px;
+  border: 2px solid #86d7b2;
+  border-radius: 18px;
+  background: #f5fff9;
+  color: #11271e;
+  box-shadow: 0 12px 26px rgba(7, 56, 37, .09);
+}
+
+#request-rep-modal .request-entry-name {
+  color: #064e3b;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+#request-rep-modal .request-entry-meta {
+  margin-top: 4px;
+  color: #365f50;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+#request-rep-modal .request-entry-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+#request-rep-modal .request-entry-field {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+#request-rep-modal .request-entry-field--qty,
+#request-rep-modal .request-entry-field--wide {
+  grid-column: 1 / -1;
+}
+
+#request-rep-modal .request-entry-label {
+  display: block;
+  margin: 0 2px;
+  color: #245443 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.2;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+#request-rep-modal .request-entry-control {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0 !important;
+  border: 2px solid #66c69f !important;
+  border-radius: 13px !important;
+  background: #fff !important;
+  color: #10271e !important;
+  padding: 11px 12px !important;
+  font-size: 16px !important;
+  font-weight: 850 !important;
+  line-height: 1.25;
+  opacity: 1 !important;
+  box-shadow: 0 5px 12px rgba(7, 56, 37, .07) !important;
+}
+
+#request-rep-modal textarea.request-entry-control {
+  min-height: 82px;
+  resize: vertical;
+}
+
+#request-rep-modal .request-entry-control::placeholder {
+  color: #637f73 !important;
+  opacity: 1 !important;
+}
+
+#request-rep-modal .request-entry-control:focus {
+  border-color: #007a4d !important;
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, .22) !important;
+}
+
+#request-rep-modal .request-entry-control:invalid:not(:placeholder-shown) {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .15) !important;
+}
+
+#request-rep-modal .request-primary-action[aria-busy="true"],
+#request-rep-modal .request-choice-card[aria-busy="true"] {
+  cursor: wait !important;
+  opacity: .72 !important;
+  transform: none !important;
+}
+
+#request-rep-modal .request-load-more {
+  width: 100%;
+  min-height: 48px;
+  border: 2px dashed #55b98f;
+  border-radius: 14px;
+  background: #effcf5;
+  color: #075f42;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-entry-card {
+  border-color: #37c98a !important;
+  background: #0d2a1f !important;
+  color: #f4fff8 !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .3) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-entry-name {
+  color: #f7fffa !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-entry-meta {
+  color: #bfe4d2 !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-entry-label {
+  color: #9ff3c9 !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-entry-control {
+  border-color: #4bd89a !important;
+  background: #041710 !important;
+  color: #fff !important;
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .25) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-entry-control::placeholder {
+  color: #9ab9aa !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-entry-control:focus {
+  border-color: #67f3b5 !important;
+  box-shadow: 0 0 0 4px rgba(76, 233, 163, .25) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-load-more {
+  border-color: #37c98a;
+  background: #102f23;
+  color: #d9ffec;
+}
+
+
 /* V2026.08.27.01 — Eval Work review assignment and evidence workflow */
 .reclass-delivery-status-tray {
   position: fixed;

@@ -738,7 +738,8 @@ function normalizeManualSyncFailedFileEntries_(stageResult) {
     return errors.map(function(entry, index) {
       return {
         name: String(entry && entry.name || names[index] || '').trim(),
-        error: String(entry && entry.error || safeResult.error || '').trim()
+        error: String(entry && entry.error || safeResult.error || '').trim(),
+        errorCode: String(entry && (entry.errorCode || entry.error_code) || '').trim().toUpperCase()
       };
     }).filter(function(entry) { return entry.name || entry.error; });
   }
@@ -830,7 +831,8 @@ function queueManualSyncRequest_(options) {
       updatedAt: timestamp,
       finishedAt: '',
       message: `Queued ${stageLabels.join(' -> ')} sync.`,
-      error: ''
+      error: '',
+      errorCode: ''
     };
 
     saveManualSyncStatus_(status);
@@ -942,6 +944,7 @@ function runQueuedManualSyncStage_(options) {
 
       if (failedFiles > 0 || failedFileErrors.length || stageResult.error) {
         status.updatedAt = completedAt;
+        status.errorCode = String(failedFileErrors[0] && failedFileErrors[0].errorCode || stageResult.errorCode || stageResult.error_code || 'MANUAL_SYNC_STAGE_FAILED').trim().toUpperCase();
         status.error = buildManualSyncStageFailureMessage_(stageDef, stageResult);
         status.message = `Failed during ${stageDef.label}: ${status.error}`;
         saveManualSyncStatus_(status);
@@ -4939,6 +4942,14 @@ function isHlPoParsedFileSupported_(file) {
     isExcelLikeFile_(mime, fileName);
 }
 
+function hasHlPoNonBlankCells_(values) {
+  return (Array.isArray(values) ? values : []).some(function(row) {
+    return (Array.isArray(row) ? row : []).some(function(value) {
+      return value != null && String(value).replace(/\u00a0/g, ' ').trim() !== '';
+    });
+  });
+}
+
 function extractHlPoParsedSheet_(file, folderId) {
   const fileName = String(file.getName() || '').trim();
   const normalizedFileName = fileName.toLowerCase();
@@ -4948,9 +4959,12 @@ function extractHlPoParsedSheet_(file, folderId) {
   try {
     if (mime === MimeType.CSV || normalizedFileName.endsWith('.csv')) {
       const csvValues = Utilities.parseCsv(file.getBlob().getDataAsString());
+      if (!hasHlPoNonBlankCells_(csvValues)) {
+        throw createHlPoParsedError_('HL_PO_EMPTY_SHEET', `No data was found in ${fileName}.`);
+      }
       const csvHeaderMatch = findHlPoHeaderRow_(csvValues);
       if (!csvHeaderMatch) {
-        throw new Error(`No required HL PO header row found in ${fileName}. Required headers: ${formatHlPoRequiredHeaderList_()}.`);
+        throw createHlPoParsedError_('HL_PO_MISSING_HEADERS', `No required HL PO header row found in ${fileName}. Required headers: ${formatHlPoRequiredHeaderList_()}.`);
       }
       return {
         values: csvValues,
@@ -4970,11 +4984,13 @@ function extractHlPoParsedSheet_(file, folderId) {
       ? openSpreadsheetWithRetry_(sheetId, fileName)
       : SpreadsheetApp.openById(sheetId);
     const sheets = ss.getSheets();
-    if (!sheets || !sheets.length) throw new Error(`No sheets found in ${fileName}.`);
+    if (!sheets || !sheets.length) throw createHlPoParsedError_('HL_PO_EMPTY_WORKBOOK', `No sheets found in ${fileName}.`);
 
+    let hasNonBlankSheet = false;
     for (let i = 0; i < sheets.length; i++) {
       const sheet = sheets[i];
       const values = sheet.getDataRange().getValues();
+      if (hasHlPoNonBlankCells_(values)) hasNonBlankSheet = true;
       const headerMatch = findHlPoHeaderRow_(values);
       if (headerMatch) {
         return {
@@ -4986,7 +5002,11 @@ function extractHlPoParsedSheet_(file, folderId) {
       }
     }
 
-    throw new Error(`No sheet/tab in ${fileName} has all required HL PO headers: ${formatHlPoRequiredHeaderList_()}.`);
+    if (!hasNonBlankSheet) {
+      throw createHlPoParsedError_('HL_PO_EMPTY_SHEET', `No data was found in any sheet/tab in ${fileName}.`);
+    }
+
+    throw createHlPoParsedError_('HL_PO_MISSING_HEADERS', `No sheet/tab in ${fileName} has all required HL PO headers: ${formatHlPoRequiredHeaderList_()}.`);
   } finally {
     cleanupTempGoogleSheet_(tempSheetId, fileName);
   }
@@ -5011,6 +5031,13 @@ function normalizeHlPoTextValue_(value) {
   return text;
 }
 
+function createHlPoParsedError_(code, message) {
+  const safeCode = String(code || 'HL_PO_PARSE_FAILED').trim().toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
+  const error = new Error(`[${safeCode}] ${String(message || 'HL PO Parsed failed.').trim()}`);
+  error.code = safeCode;
+  return error;
+}
+
 function parseHlPoNumericValue_(value, columnName, rowNumber, fileName) {
   if (value == null || value === '') return null;
   if (typeof value === 'number') return isNaN(value) ? null : value;
@@ -5020,7 +5047,7 @@ function parseHlPoNumericValue_(value, columnName, rowNumber, fileName) {
   if (/^\([0-9.]+\)$/.test(cleaned)) cleaned = '-' + cleaned.slice(1, -1);
   const numericValue = Number(cleaned);
   if (isNaN(numericValue)) {
-    throw new Error(`Invalid numeric value for ${columnName} at row ${rowNumber} in ${fileName}: "${rawText}".`);
+    throw createHlPoParsedError_('HL_PO_ROWS_REJECTED', `Invalid numeric value for ${columnName} at row ${rowNumber} in ${fileName}: "${rawText}".`);
   }
   return numericValue;
 }
@@ -5144,7 +5171,7 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
       const sheetData = extractHlPoParsedSheet_(file, sourceFolderId);
       const rows = buildHlPoParsedRows_(file, sheetData, runId, importedAt);
       if (!rows.length) {
-        throw new Error(`No importable HL PO rows found in ${fileName} on sheet ${sheetData.sourceSheetName}.`);
+        throw createHlPoParsedError_('HL_PO_NO_IMPORTABLE_ROWS', `No importable HL PO rows found in ${fileName} on sheet ${sheetData.sourceSheetName}. The sheet has a valid header but no nonblank data rows.`);
       }
       const uploadedRows = upsertHlPoParsedRows_(safeTableName, rows);
       moveDriveFileToFolderWithRetry_(file, processedFolder, `${safeTableName} processed file ${fileName}`);
@@ -5154,7 +5181,8 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
       console.log(`[HL PO] Uploaded ${uploadedRows} row${uploadedRows === 1 ? '' : 's'} from ${fileName}; moved to processed.`);
     } catch (err) {
       const errorMessage = err && err.message ? err.message : String(err);
-      failedFiles.push({ name: fileName, error: errorMessage });
+      const errorCode = String(err && err.code || 'HL_PO_PARSE_FAILED').trim().toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
+      failedFiles.push({ name: fileName, error: errorMessage, errorCode: errorCode });
       console.error(`[HL PO] Failed ${fileName}: ${err && err.stack ? err.stack : errorMessage}`);
       console.warn(`[HL PO] Keeping ${fileName} in source folder for correction/retry.`);
     }

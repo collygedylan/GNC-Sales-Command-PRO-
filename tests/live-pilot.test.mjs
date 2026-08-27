@@ -61,13 +61,45 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.27.03';
+  const release = 'V2026.08.27.04';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.27.03');
+  assert.equal(packageJson.version, '2026.08.27.04');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
+});
+
+test('global alerts are dismissible, swipeable, deduplicated, and sync details are manager-scoped', () => {
+  assert.match(html, /function dismissToast\(reason = 'dismiss'\)/);
+  assert.match(html, /deltaY <= -46 \|\| velocity <= -0\.42/);
+  assert.match(html, /data-toast-dismiss aria-label="Dismiss notification"/);
+  assert.match(html, /fingerprint === toastLastFingerprint && now - toastLastShownAt < dedupeWindowMs/);
+  assert.match(html, /if \(isPrivilegedManagerUser\(\)\)[\s\S]*showToast\('Sync Error', detailedMessage/);
+  assert.match(html, /showToast\('Data Update Delayed', 'Some data may be delayed\. You can continue working\.'/);
+  assert.match(css, /#toast-notification\.show[\s\S]*pointer-events: auto !important/);
+  assert.match(css, /#toast-notification\.toast-dismissing/);
+});
+
+test('Request entry uses semantic high-contrast fields, bounded lists, cached grouping, and a submit guard', () => {
+  assert.match(html, /class="request-entry-card"/);
+  assert.match(html, /request-entry-field request-entry-field--qty/);
+  assert.match(html, /request-entry-field request-entry-field--wide/);
+  assert.match(html, /const REQUEST_MODAL_OPTION_PAGE_SIZE = 60/);
+  assert.match(html, /getRequestCustomerPickerGroupsCached\(options\)/);
+  assert.match(html, /requestGeneration === requestModalAsyncGeneration/);
+  assert.match(html, /if \(requestSubmitInFlight\) return false/);
+  assert.match(css, /#request-rep-modal \.request-entry-control[\s\S]*min-height: 48px/);
+  assert.match(css, /data-ops-theme="dark"[\s\S]*#request-rep-modal \.request-entry-label[\s\S]*#9ff3c9/);
+});
+
+test('HL PO failures retain files and expose sanitized parse reason codes', () => {
+  for (const code of ['HL_PO_NO_IMPORTABLE_ROWS', 'HL_PO_MISSING_HEADERS', 'HL_PO_EMPTY_WORKBOOK', 'HL_PO_EMPTY_SHEET', 'HL_PO_ROWS_REJECTED']) {
+    assert.match(appsScriptBackend, new RegExp(code));
+  }
+  assert.match(appsScriptBackend, /failedFiles\.push\(\{ name: fileName, error: errorMessage, errorCode: errorCode \}\)/);
+  assert.match(appsScriptBackend, /Keeping \$\{fileName\} in source folder for correction\/retry/);
+  assert.match(appsScriptBackend, /status\.errorCode = String\(failedFileErrors\[0\]/);
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {
