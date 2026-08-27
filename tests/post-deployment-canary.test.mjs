@@ -32,10 +32,14 @@ test('deployment fingerprint normalization rejects ambiguous identifiers', () =>
 
 test('Pages workflow publishes and gates the production deployment fingerprint', () => {
   const workflow = fs.readFileSync(new URL('../.github/workflows/pages-static.yml', import.meta.url), 'utf8');
+  const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
   assert.match(workflow, /write-deployment-fingerprint\.mjs/);
   assert.match(workflow, /post-deployment-canary:[\s\S]*needs: deploy/);
   assert.match(workflow, /wait-for-live-release\.mjs/);
   assert.match(workflow, /production-request-canary\.spec\.ts/);
+  assert.match(canary, /live Eval Reports #2 drill and multi-select remain actionable without mutations/);
+  assert.match(canary, /data-role="manager-eval2-selection-toggle"/);
+  assert.match(canary, /managerEvalReport2LockedReportId/);
 });
 
 test('scheduled production health checks exact live parity without racing the push deployment', () => {

@@ -144,3 +144,120 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
   await page.evaluate(() => (window as any).closeRequestModal());
   await expect(modal).toBeHidden();
 });
+
+test('live Eval Reports #2 drill and multi-select remain actionable without mutations', async ({ page }) => {
+  const blockedMutations: string[] = [];
+  const pageErrors: string[] = [];
+  let collectPageErrors = false;
+  await page.route('**/*', async (route) => {
+    const request = route.request();
+    const method = request.method().toUpperCase();
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      let pathname = 'unknown';
+      try { pathname = new URL(request.url()).pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120); } catch {}
+      blockedMutations.push(`${method}:${pathname}`);
+      await route.abort('blockedbyclient');
+      return;
+    }
+    await route.continue();
+  });
+  page.on('pageerror', (error) => {
+    if (!collectPageErrors) return;
+    pageErrors.push(String(error?.message || 'PAGE_ERROR').replace(/[^a-z0-9 _.-]+/gi, '_').slice(0, 160));
+  });
+
+  const nonce = `${Date.now()}-${expectedCommit.slice(0, 7) || 'local'}`;
+  await page.goto(`/?post_deploy_eval2_canary=${encodeURIComponent(nonce)}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function'
+    && typeof (window as any).toggleManagerEvalReport2ItemSelection === 'function');
+
+  const setup = await page.evaluate(() => (window as any).eval(`(() => {
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    currentRole = 'Manager';
+    activeHomeTab = MANAGER_EVAL_REPORTS_2_VIEW;
+    processAndLoadData({ data: [
+      { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
+      { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
+    ], warehouseAssignedItemsData: [
+      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+    ], _fromCache: true });
+    const masterState = getDatasetState('master');
+    const assignmentState = getDatasetState('warehouseAssignedItems');
+    masterState.initialLoaded = masterState.fullLoaded = true;
+    assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+    managerEvalReport2LoadState.loading = false;
+    managerEvalReport2LoadState.error = '';
+    invalidateManagerEvalReport2Cache();
+    setManagerEvalReport2Mode('reports');
+    setManagerEvalReport2('low-stock');
+    setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
+    const host = document.createElement('main');
+    host.id = 'hosted-eval2-canary';
+    host.style.width = '390px';
+    host.innerHTML = renderManagerEvalReports2Panel();
+    document.body.appendChild(host);
+    return { release: String(window.__APP_SHELL_VERSION__ || '') };
+  })()`));
+  expect(setup.release).toBe(expectedRelease);
+  collectPageErrors = true;
+
+  const host = page.locator('#hosted-eval2-canary');
+  await expect(host).toContainText('Eval Reports #2');
+  await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
+  await host.locator('button.drill-item', { hasText: 'Alpha Eval Canary' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('hosted-eval2-canary')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+  });
+  await host.locator('button.drill-item', { hasText: '#3 TEST' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('hosted-eval2-canary')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+    (window as any).renderManagerEvalReport2Records();
+  });
+  const alpha = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CANARY.EVAL.A"]');
+  await alpha.click();
+  await expect(alpha).toHaveAttribute('aria-pressed', 'true');
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
+
+  await page.evaluate(() => (window as any).eval(`(() => {
+    backManagerEvalReport2Drill();
+    backManagerEvalReport2Drill();
+    document.getElementById('hosted-eval2-canary').innerHTML = renderManagerEvalReports2Panel();
+  })()`));
+  await host.locator('button.drill-item', { hasText: 'Beta Eval Canary' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('hosted-eval2-canary')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+  });
+  await host.locator('button.drill-item', { hasText: '#5 TEST' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('hosted-eval2-canary')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+    (window as any).renderManagerEvalReport2Records();
+  });
+  const beta = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CANARY.EVAL.B"]');
+  await beta.click();
+  await expect(beta).toHaveAttribute('aria-pressed', 'true');
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('2 ITEMCODEs');
+  await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
+  await expect(host.locator('#manager-eval-report-2-assigned-select')).toBeDisabled();
+  await expect(host.locator('#manager-eval-report-2-select-shown')).toContainText('Deselect Shown');
+
+  const state = await page.evaluate(() => (window as any).eval(`(() => ({
+    selected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode).sort(),
+    report: managerEvalReport2LockedReportId,
+    assignedTo: managerEvalReport2LockedAssignedTo,
+    hasLegacySelectMode: document.getElementById('hosted-eval2-canary').textContent.includes('Select Items')
+  }))()`));
+  expect(state).toEqual({
+    selected: ['CANARY.EVAL.A', 'CANARY.EVAL.B'],
+    report: 'low-stock',
+    assignedTo: 'dylan_collyge',
+    hasLegacySelectMode: false,
+  });
+  expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
+  expect(blockedMutations, `production mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
+});

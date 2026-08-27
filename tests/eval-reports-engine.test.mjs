@@ -411,8 +411,8 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /invalidateManagerEvalReport2Cache\(\)/);
   assert.match(html, /function getManagerEvalReport2LocationOptions\(rows = null\)/);
   assert.match(html, /managerEvalReport2LocationFilter !== 'all'/);
-  assert.match(html, /Common Name &rarr; Container Size/);
-  assert.match(html, /Block Alpha &rarr; Block Number/);
+  assert.match(html, /\? '3\. Common Name' : '4\. Container Size'/);
+  assert.match(html, /\? '3\. Block Alpha' : '4\. Block Number'/);
   assert.match(html, /Choose Report/);
   assert.match(html, /function getManagerEvalReport2DrillGroups\(rows = null\)/);
   assert.match(html, /function openManagerEvalReport2CommonName\(commonName = ''\)/);
@@ -423,7 +423,9 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function openManagerEvalReport2ItemDetail\(encodedKey = ''\)/);
   assert.match(html, /function closeManagerEvalReport2ItemDetail\(\)/);
   assert.match(html, /function renderManagerEvalReport2ItemDetail\(\)/);
-  assert.match(html, /Select ITEMCODE/);
+  assert.match(html, /data-role="manager-eval2-selection-toggle"/);
+  assert.match(html, /Select All Shown/);
+  assert.match(html, /Deselect Shown/);
   assert.match(html, /\['LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'S_LTS', 'SALESNOTE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRAVAILABLE'\]/);
   assert.match(html, /const MANAGER_EVAL_REPORT2_EDITABLE_FIELDS = Object\.freeze/);
   for (const field of ['HOLDSTOPCODE', 'HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 'PRIORITY', 'LOCATIONNOTE', 'LOCATIONPTN1', 'SUSPENDTO', 'SPECIALPULLER']) {
@@ -435,7 +437,8 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function ensureManagerEvalReport2ItemSelectedForEdit\(row = null\)/);
   assert.match(html, /temporary report-only proposals/);
   assert.match(html, /function toggleManagerEvalReport2ItemSelection\(encodedKey = '', forceSelected = null\)/);
-  assert.match(html, /function beginManagerEvalReport2SelectionMode\(\)/);
+  assert.match(html, /function toggleAllShownManagerEvalReport2Items\(\)/);
+  assert.doesNotMatch(html, /managerEvalReport2SelectionMode|startManagerEvalReport2LongPress|renderManagerEvalReport2ReportsPanelLegacy/);
   assert.match(html, /function getManagerEvalReport2AllCurrentItemRows\(itemCode = ''\)/);
   assert.match(html, /function buildManagerEvalReport2ExcelAttachment\(rows = \[\]\)/);
   assert.match(html, /function canViewManagerEvalReports2\(userOverride = ''\)/);
@@ -443,6 +446,8 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /managerEvalReport2SelectedItemsByKey=new Map\(\)/);
   assert.match(html, /managerEvalReport2EditsByRowKey=new Map\(\)/);
   assert.match(html, /managerEvalReport2LockedAssignedTo/);
+  assert.match(html, /managerEvalReport2LockedReportId/);
+  assert.match(html, /id="manager-eval-report-2-more-menu"/);
   assert.match(html, /managerEvalReport2Cache\.rowsByItemCode = new Map\(\)/);
   assert.match(html, /function getManagerEvalReport2SelectedRows\(\)/);
   assert.match(html, /function buildManagerEvalReport2SelectableGridHtml\(itemGroups = \[\]\)/);

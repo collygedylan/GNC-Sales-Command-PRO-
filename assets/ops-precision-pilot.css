@@ -2255,7 +2255,7 @@ body.ops-precision-pilot #bottom-nav {
   }
 }
 
-/* V2026.08.27.07 — exact post-deployment release and Request canary */
+/* V2026.08.27.08 — Eval Reports #2 direct multi-select and compact header */
 #toast-notification {
   --toast-drag-y: 0px;
   width: min(92vw, 34rem) !important;

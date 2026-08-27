@@ -207,7 +207,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     const staleHtml = renderManagerEvalReports2Panel();
     const output = {
       access,
-      partialGate: !partialHtml.includes('inventory rows') && (partialHtml.includes('Retry') || partialHtml.includes('Loading complete inventory and assignments')),
+      partialGate: !partialHtml.includes('inventory rows') && (partialHtml.includes('Retry') || partialHtml.includes('Loading inventory and assignments')),
       assignedToOptions: initialAssignedToOptions,
       assignmentStats: index.assignmentStats,
       counts: index.counts,
@@ -252,6 +252,112 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.hostOverflow).toBe(true);
   expect(result.immediateAssignmentRefresh).toBe(true);
   expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
+});
+
+test('Eval Reports #2 uses real checkbox clicks and preserves selection across drill groups', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=eval2-direct-multiselect', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
+
+  await page.evaluate(() => (window as any).eval(`(() => {
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    currentRole = 'Manager';
+    activeHomeTab = MANAGER_EVAL_REPORTS_2_VIEW;
+    processAndLoadData({ data: [
+      { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
+      { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '1', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }
+    ], warehouseAssignedItemsData: [
+      { UNIQUE_ID: 'eval2-assign-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+      { UNIQUE_ID: 'eval2-assign-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+    ], _fromCache: true });
+    const masterState = getDatasetState('master');
+    const assignmentState = getDatasetState('warehouseAssignedItems');
+    masterState.initialLoaded = masterState.fullLoaded = true;
+    assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+    managerEvalReport2LoadState.loading = false;
+    managerEvalReport2LoadState.error = '';
+    invalidateManagerEvalReport2Cache();
+    setManagerEvalReport2Mode('reports');
+    setManagerEvalReport2('low-stock');
+    setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
+    const host = document.createElement('div');
+    host.id = 'eval2-multiselect-host';
+    host.style.width = '390px';
+    host.innerHTML = renderManagerEvalReports2Panel();
+    document.body.appendChild(host);
+  })()`));
+
+  const host = page.locator('#eval2-multiselect-host');
+  await host.locator('button.drill-item', { hasText: 'Alpha Canary' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('eval2-multiselect-host')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+  });
+  await host.locator('button.drill-item', { hasText: '#3' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('eval2-multiselect-host')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+    (window as any).renderManagerEvalReport2Records();
+  });
+
+  const alphaCheckbox = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CLICK.A"]');
+  await expect(alphaCheckbox).toBeVisible();
+  await alphaCheckbox.click();
+  await expect(alphaCheckbox).toHaveAttribute('aria-pressed', 'true');
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
+  await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
+  await expect(host.locator('#manager-eval-report-2-assigned-select')).toBeDisabled();
+
+  await page.evaluate(() => (window as any).eval(`(() => {
+    backManagerEvalReport2Drill();
+    backManagerEvalReport2Drill();
+    const target = document.getElementById('eval2-multiselect-host');
+    target.innerHTML = renderManagerEvalReports2Panel();
+  })()`));
+  await host.locator('button.drill-item', { hasText: 'Beta Canary' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('eval2-multiselect-host')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+  });
+  await host.locator('button.drill-item', { hasText: '#5' }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('eval2-multiselect-host')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+    (window as any).renderManagerEvalReport2Records();
+  });
+
+  const betaCheckbox = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CLICK.B"]');
+  await betaCheckbox.focus();
+  await page.keyboard.press('Space');
+  await expect(betaCheckbox).toHaveAttribute('aria-pressed', 'true');
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('2 ITEMCODEs');
+
+  const selectShown = host.locator('#manager-eval-report-2-select-shown');
+  await expect(selectShown).toContainText('Deselect Shown');
+  await selectShown.click();
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
+  await expect(selectShown).toContainText('Select All Shown');
+  await selectShown.click();
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('2 ITEMCODEs');
+
+  const state = await page.evaluate(() => (window as any).eval(`(() => ({
+    selected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode).sort(),
+    lockedReport: managerEvalReport2LockedReportId,
+    lockedAssignedTo: managerEvalReport2LockedAssignedTo,
+    compactHeader: document.getElementById('eval2-multiselect-host').textContent.includes('Eval Reports #2'),
+    hasMore: !!document.querySelector('#eval2-multiselect-host #manager-eval-report-2-more-menu'),
+    noLegacySelectMode: !document.getElementById('eval2-multiselect-host').textContent.includes('Select Items')
+  }))()`));
+  expect(state).toEqual({
+    selected: ['CLICK.A', 'CLICK.B'],
+    lockedReport: 'low-stock',
+    lockedAssignedTo: 'dylan_collyge',
+    compactHeader: true,
+    hasMore: true,
+    noLegacySelectMode: true,
+  });
+  expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
 test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page }) => {
