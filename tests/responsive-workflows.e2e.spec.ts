@@ -2000,12 +2000,16 @@ test('toast can be closed or swiped up without blocking the rest of the screen',
 
   await page.evaluate(() => (window as any).showToast('Sync Error', 'Manager diagnostic', true, { fingerprint: 'e2e-toast-2' }));
   await expect(toast).toHaveClass(/show/);
-  const box = await toast.boundingBox();
-  expect(box).not.toBeNull();
-  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + box!.width / 2, Math.max(2, box!.y - 70), { steps: 4 });
-  await page.mouse.up();
+  await toast.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const pointerId = 91;
+    const clientX = box.left + box.width / 2;
+    const startY = box.top + box.height / 2;
+    const endY = Math.max(2, box.top - 70);
+    element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId, clientX, clientY: startY }));
+    element.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId, clientX, clientY: endY }));
+    element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId, clientX, clientY: endY }));
+  });
   await expect(toast).not.toHaveClass(/show/);
   await expect(toast).toHaveAttribute('data-dismiss-reason', 'swipe-up');
 });
