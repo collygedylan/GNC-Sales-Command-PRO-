@@ -175,6 +175,8 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     currentUser = 'dylan_collyge';
     currentUserDisplay = 'Dylan Collyge';
     currentRole = 'Manager';
+    canViewManagerEvalReports2 = () => true;
+    isEvalWorkManagerUser = () => true;
     activeHomeTab = 'eval-reports-2';
     processAndLoadData({ data: [
       { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
