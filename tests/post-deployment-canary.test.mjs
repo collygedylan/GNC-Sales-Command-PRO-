@@ -44,10 +44,11 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
   assert.match(canary, /getManagerEvalAssignedUsers\('eval2'\)/);
   assert.match(canary, /live PO Management uses authenticated PostgREST and never the retired database proxy/);
   assert.match(canary, /\/rest\/v1\/ph_view_po_27f1_hl/);
-  assert.match(canary, /live access snapshot and read-only manager matrix remain mutation-blocked/);
+  assert.match(canary, /authorized Admin opens Access Control from the manager module card without mutation/);
   assert.match(canary, /\/rest\/v1\/rpc\/get_my_app_permissions_v1/);
   assert.match(canary, /\/rest\/v1\/rpc\/get_access_control_matrix_v2/);
-  assert.match(canary, /canEditMatrix: false/);
+  assert.match(canary, /moduleCard\.click\(\)/);
+  assert.match(canary, /managerSearchPlaceholder: 'Search usernames, names, roles, or permissions\.\.\.'/);
 });
 
 test('scheduled production health checks exact live parity without racing the push deployment', () => {

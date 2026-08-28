@@ -317,7 +317,7 @@ test('live PO Management uses authenticated PostgREST and never the retired data
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
 });
 
-test('live access snapshot and read-only manager matrix remain mutation-blocked', async ({ page }) => {
+test('live authorized Admin opens Access Control from the manager module card without mutation', async ({ page }) => {
   const blockedMutations: string[] = [];
   const accessRequests: string[] = [];
   const forbiddenPolicyMutations: string[] = [];
@@ -339,11 +339,11 @@ test('live access snapshot and read-only manager matrix remain mutation-blocked'
           enforcementMode: 'audit',
           policyVersion: 1,
           policyRevision: 1,
-          username: 'hosted_access_canary',
-          role: 'MANAGER',
+          username: 'dylan_collyge',
+          role: 'ADMIN',
           permissions: [
             { permissionKey: 'module.managers.view', kind: 'module', moduleKey: 'managers', label: 'Managers', allowed: true, scope: null, source: 'role' },
-            { permissionKey: 'access_control.manage', kind: 'action', moduleKey: 'access-control', label: 'Access Control', allowed: false, scope: null, source: 'default-deny' }
+            { permissionKey: 'access_control.manage', kind: 'action', moduleKey: 'access-control', label: 'Access Control', allowed: true, scope: null, source: 'role' }
           ]
         })
       });
@@ -358,16 +358,16 @@ test('live access snapshot and read-only manager matrix remain mutation-blocked'
           contractVersion: 'app-access-view-v2',
           enforcementMode: 'audit',
           policy: { id: 1, version: 1, revision: 1, status: 'draft' },
-          capabilities: { canView: true, canEdit: false },
+          capabilities: { canView: true, canEdit: true },
           filters: { modules: ['managers'], roles: ['MANAGER'] },
           page: { subjectType: 'users', subjectOffset: 0, subjectLimit: 100, subjectTotal: 1, permissionOffset: 0, permissionLimit: 8, permissionTotal: 1 },
           summary: { userCount: 1, permissionCount: 1, mismatchCount: 0, baselineMissingCount: 0 },
           permissions: [{ permissionKey: 'module.managers.view', kind: 'module', moduleKey: 'managers', label: 'Managers', scopeOptions: [], sortOrder: 1 }],
           users: [{
-            username: 'hosted_access_canary',
-            displayName: 'Hosted Access Canary',
-            role: 'MANAGER',
-            roleKey: 'MANAGER',
+            username: 'dylan_collyge',
+            displayName: 'Dylan Collyge',
+            role: 'ADMIN',
+            roleKey: 'ADMIN',
             decisions: { 'module.managers.view': { allowed: true, scope: null, source: 'role' } }
           }],
           roles: []
@@ -398,17 +398,23 @@ test('live access snapshot and read-only manager matrix remain mutation-blocked'
     && typeof (window as any).getAuditedAppPermission === 'function');
 
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
-    if (!installMutationBlockedAccessCanaryIdentity()) throw new Error('ACCESS_CANARY_IDENTITY_UNAVAILABLE');
-    scheduleManagersRender = () => {};
+    if (!installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN')) throw new Error('ACCESS_CANARY_IDENTITY_UNAVAILABLE');
     const snapshot = await initializeAppAccessSnapshot({ force: true, reason: 'post-deploy-canary' });
     const managers = getAuditedAppPermission('module.managers.view');
     const accessControl = getAuditedAppPermission('access_control.manage');
-    await loadAccessControlMatrix(true);
-    const host = document.createElement('main');
-    host.id = 'hosted-access-control-canary';
-    host.innerHTML = renderAccessControlPanel();
-    document.body.appendChild(host);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    const managerView = document.getElementById('view-managers');
+    if (!managerView) throw new Error('ACCESS_CANARY_MANAGERS_VIEW_UNAVAILABLE');
+    ensureViewDataForRender = () => false;
+    scheduleManagersRender = () => renderManagers();
+    currentPrimaryViewId = 'managers';
+    managerView.classList.remove('hidden');
+    renderManagers();
+    const moduleCard = Array.from(managerView.querySelectorAll('button.manager-module-card'))
+      .find((button) => /access control/i.test(String(button.textContent || '')));
+    if (!moduleCard) throw new Error('ACCESS_CANARY_MODULE_CARD_UNAVAILABLE');
+    moduleCard.click();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    renderManagers();
     const accessCanaryState = getMutationBlockedAccessCanaryState();
     return {
       release: String(window.__APP_SHELL_VERSION__ || ''),
@@ -421,7 +427,8 @@ test('live access snapshot and read-only manager matrix remain mutation-blocked'
       accessControlSource: accessControl && accessControl.source,
       matrixContract: accessCanaryState && accessCanaryState.matrixContract,
       canViewMatrix: accessCanaryState && accessCanaryState.canViewMatrix,
-      canEditMatrix: accessCanaryState && accessCanaryState.canEditMatrix
+      canEditMatrix: accessCanaryState && accessCanaryState.canEditMatrix,
+      managerSearchPlaceholder: getManagersSearchPlaceholder()
     };
   })()`));
 
@@ -433,22 +440,16 @@ test('live access snapshot and read-only manager matrix remain mutation-blocked'
     release: expectedRelease,
     contractVersion: 'app-access-v1',
     enforcementMode: 'audit',
-    username: 'hosted_access_canary',
+    username: 'dylan_collyge',
     managersAllowed: true,
     managersSource: 'role',
-    accessControlAllowed: false,
-    accessControlSource: 'default-deny',
+    accessControlAllowed: true,
+    accessControlSource: 'role',
     matrixContract: 'app-access-view-v2',
     canViewMatrix: true,
-    canEditMatrix: false
+    canEditMatrix: true,
+    managerSearchPlaceholder: 'Search usernames, names, roles, or permissions...'
   });
-  const matrix = page.locator('#hosted-access-control-canary');
-  await expect(matrix).toContainText('Hosted Access Canary');
-  await expect(matrix).toContainText(/read-only manager view/i);
-  await expect(matrix.getByRole('button', { name: /Publish Audit Snapshot/i })).toHaveCount(0);
-  const decisionCells = matrix.locator('button.access-control-cell');
-  await expect(decisionCells).toHaveCount(2);
-  expect(await decisionCells.evaluateAll((buttons) => buttons.every((button) => (button as HTMLButtonElement).disabled))).toBe(true);
   expect(forbiddenPolicyMutations).toEqual([]);
   expect(blockedMutations, `unexpected mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);

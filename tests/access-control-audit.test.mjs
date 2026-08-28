@@ -73,6 +73,8 @@ test('Manager Access Control renders the effective matrix and saves only the dra
   assert.match(html, /Live authorization remains unchanged/);
   assert.match(html, /exportAccessControlCsv/);
   assert.match(html, /PRIVILEGED_MANAGER_USER_KEYS\.includes/);
+  assert.match(html, /requestedTab === MANAGER_ACCESS_CONTROL_VIEW && canViewAccessControl\(\)/);
+  assert.match(html, /nextTab === MANAGER_ACCESS_CONTROL_VIEW[\s\S]{0,120}loadAccessControlMatrix\(false\)/);
 });
 
 test('active managers can read bounded V2 pages while only maintainers can edit', () => {
@@ -88,12 +90,14 @@ test('active managers can read bounded V2 pages while only maintainers can edit'
   assert.match(html, /if \(!canManageAccessControl\(\)\) return false/);
 });
 
-test('hosted health and exact-live canary cover the audit contract without policy mutation', () => {
+test('hosted health and exact-live canary cover the card-to-matrix audit route without policy mutation', () => {
   assert.match(health, /get_access_control_health_snapshot_v1/);
   assert.match(health, /production_access_control_audit_contract_unhealthy/);
   assert.match(health, /unknown_permission_count/);
   assert.match(health, /legacy_mismatch_count/);
-  assert.match(canary, /live access snapshot and read-only manager matrix remain mutation-blocked/);
+  assert.match(canary, /authorized Admin opens Access Control from the manager module card without mutation/);
+  assert.match(canary, /moduleCard\.click\(\)/);
+  assert.match(canary, /managerSearchPlaceholder: 'Search usernames, names, roles, or permissions\.\.\.'/);
   assert.match(canary, /\/rest\/v1\/rpc\/get_my_app_permissions_v1/);
   assert.match(canary, /\/rest\/v1\/rpc\/get_access_control_matrix_v2/);
   assert.match(canary, /save_access_control_draft_v1/);
