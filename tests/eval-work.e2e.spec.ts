@@ -68,3 +68,47 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
   expect(result.noHorizontalOverflow).toBe(true);
   expect(result.controlsFit).toBe(true);
 });
+
+test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.28.06', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
+
+  await page.evaluate(() => window.eval(`(() => {
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    assignableAppUsersLoaded = true;
+    evalWorkSetupState = { assigneeUsername: '', assigneeEmail: '', instructions: '', completionRecipients: [] };
+    argosInventoryTransactionState = {
+      snapshot: { commonName: 'Synthetic Review Item', itemCode: 'TEST.001', contSize: '#3', uniqueId: 'review-origin', locationCode: 'A.01.001', lotCode: '27.F1' },
+      item: { UNIQUE_ID: 'review-origin', ITEMCODE: 'TEST.001', COMMONNAME: 'Synthetic Review Item', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1' }
+    };
+    const modal = ensureEvalWorkSetupModal();
+    modal.classList.remove('hidden');
+    syncEvalWorkSetupSummary();
+  })()`));
+
+  await page.locator('#eval-work-setup-assignee-button').click();
+  const picker = page.locator('#grouped-bloom-ncr-recipient-modal');
+  await expect(picker).toBeVisible();
+  await expect(page.locator('#grouped-bloom-ncr-recipient-title')).toHaveText('Select Evaluator');
+  await expect(page.locator('#grouped-bloom-ncr-recipient-send-btn')).toHaveText('Use Evaluator');
+  await expect(page.locator('#grouped-bloom-ncr-recipient-bulk-actions')).toBeHidden();
+
+  await page.locator('#grouped-bloom-ncr-recipient-search').fill('Kayla');
+  const evaluator = page.locator('#grouped-bloom-ncr-recipient-list button', { hasText: 'kayla_knepp' });
+  await expect(evaluator).toBeVisible();
+  await evaluator.click();
+  await expect(evaluator).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#grouped-bloom-ncr-recipient-send-btn').click();
+
+  await expect(picker).toBeHidden();
+  await expect(page.locator('#eval-work-setup-assignee-copy')).toContainText('kayla_knepp');
+  const result = await page.evaluate(() => window.eval(`({
+    assignee: getEvalWorkSetupAssignee() && getEvalWorkSetupAssignee().username,
+    pickerZ: Number.parseInt(getComputedStyle(document.getElementById('grouped-bloom-ncr-recipient-modal')).zIndex || '0', 10),
+    setupZ: Number.parseInt(getComputedStyle(document.getElementById('eval-work-setup-modal')).zIndex || '0', 10)
+  })`));
+  expect(result.assignee).toBe('kayla_knepp');
+  expect(result.pickerZ).toBeGreaterThan(result.setupZ);
+});

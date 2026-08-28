@@ -110,7 +110,9 @@ test('Review setup is manager-only, searchable, explicit, and supports blank inq
   assert.match(html, /Email Item Inquiry/);
   assert.match(html, /Send as Review/);
   assert.match(html, /isEvalWorkManagerUser/);
-  assert.match(html, /list="eval-work-setup-assignee-options"/);
+  assert.match(html, /id="eval-work-setup-assignee-button"[\s\S]*chooseEvalWorkAssignee/);
+  assert.match(html, /function chooseEvalWorkAssignee\(\)[\s\S]*openGroupedBloomNcrRecipientModal[\s\S]*singleSelect: true[\s\S]*appUsersOnly: true/);
+  assert.match(html, /getAssignableAppUserByEmail/);
   assert.match(html, /chooseEvalWorkCompletionRecipients/);
   assert.match(html, /completionRecipients: recipients/);
   assert.match(html, /proposalCount/);
