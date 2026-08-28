@@ -82,6 +82,7 @@ const startedAt = Date.now();
 const checks = [];
 let deliveryWorkerResult = null;
 let requestIntegrityHealth = null;
+let poManagementHealth = null;
 let recentSemanticFailures = [];
 let appsScriptHealth = null;
 
@@ -205,6 +206,38 @@ if (serviceRoleKey) {
     unassignedItemcodes: Math.max(0, Number(requestIntegrityHealth?.unassigned_itemcode_count) || 0)
   });
 
+  const poHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_po_management_health_snapshot`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const poHealthText = await poHealthResponse.text();
+  try { poManagementHealth = poHealthText ? JSON.parse(poHealthText) : null; } catch {}
+  if (!poHealthResponse.ok || !poManagementHealth || typeof poManagementHealth !== 'object') {
+    throw new Error(`production_po_management_health_unavailable_HTTP_${poHealthResponse.status}`);
+  }
+  const poContractHealthy = poManagementHealth.contract_version === 'po-management-native-auth-v1'
+    && poManagementHealth.source_authenticated_select === true
+    && poManagementHealth.view_authenticated_select === true
+    && poManagementHealth.anonymous_access_denied === true
+    && poManagementHealth.authenticated_writes_denied === true
+    && poManagementHealth.manager_policy_present === true
+    && poManagementHealth.security_invoker_enabled === true;
+  const poRowCount = Math.max(0, Number(poManagementHealth.row_count) || 0);
+  const poLatestBuiltAtMs = Date.parse(String(poManagementHealth.latest_built_at || ''));
+  const poAgeMs = Number.isFinite(poLatestBuiltAtMs) ? Date.now() - poLatestBuiltAtMs : Number.POSITIVE_INFINITY;
+  const poStaleAfterMs = 72 * 60 * 60 * 1000;
+  if (!poContractHealthy) throw new Error('production_po_management_auth_contract_unhealthy');
+  if (poRowCount < 1) throw new Error('production_po_management_empty');
+  if (poAgeMs < 0 || poAgeMs > poStaleAfterMs) throw new Error('production_po_management_stale');
+  checks.push({
+    name: 'po_management',
+    status: poHealthResponse.status,
+    contractVersion: poManagementHealth.contract_version,
+    rowCount: poRowCount,
+    ageMinutes: Math.max(0, Math.round(poAgeMs / 60000))
+  });
+
   // Read only non-PII health fields. The current scheduled audit was evaluated
   // above, so older audit rows are excluded from semantic client failures.
   const recentSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -255,6 +288,11 @@ const result = {
     missingThreads: Math.max(0, Number(requestIntegrityHealth.delivery_missing_thread_count) || 0),
     unassignedItemcodes: Math.max(0, Number(requestIntegrityHealth.unassigned_itemcode_count) || 0)
   } : null,
+  poManagement: poManagementHealth ? {
+    contractVersion: String(poManagementHealth.contract_version || ''),
+    rowCount: Math.max(0, Number(poManagementHealth.row_count) || 0),
+    latestBuiltAt: String(poManagementHealth.latest_built_at || '')
+  } : null,
   appsScript: appsScriptHealth,
   recentSemanticFailureCount: recentSemanticFailures.length
 };
@@ -264,6 +302,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }

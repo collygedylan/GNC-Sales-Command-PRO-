@@ -268,3 +268,67 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
   expect(blockedMutations, `production mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
 });
+
+test('live PO Management uses authenticated PostgREST and never the retired database proxy', async ({ page }) => {
+  const blockedMutations: string[] = [];
+  const poRequests: string[] = [];
+  const pageErrors: string[] = [];
+
+  await page.route('**/*', async (route) => {
+    const request = route.request();
+    const method = request.method().toUpperCase();
+    let parsedUrl: URL | null = null;
+    try { parsedUrl = new URL(request.url()); } catch {}
+    if (method === 'GET' && parsedUrl?.pathname.endsWith('/rest/v1/ph_view_po_27f1_hl')) {
+      poRequests.push(parsedUrl.search);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 1, run_id: 'CANARY', row_index: 1, itemcode: 'CANARY.PO.001', commonname: 'Synthetic PO Canary', contsize: '#1 TEST', lotcode: '27.F1', po_remain: 12, built_at: '2026-08-27T00:00:00Z' },
+          { id: 2, run_id: 'CANARY', row_index: 2, itemcode: 'CANARY.PO.002', commonname: 'Synthetic PO Canary Two', contsize: '#3 TEST', lotcode: '27.F1', po_remain: 8, built_at: '2026-08-27T00:00:00Z' }
+        ])
+      });
+      return;
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      const pathname = parsedUrl?.pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120) || 'unknown';
+      blockedMutations.push(`${method}:${pathname}`);
+      await route.abort('blockedbyclient');
+      return;
+    }
+    await route.continue();
+  });
+  page.on('pageerror', (error) => {
+    pageErrors.push(String(error?.message || 'PAGE_ERROR').replace(/[^a-z0-9 _.-]+/gi, '_').slice(0, 160));
+  });
+
+  const nonce = `${Date.now()}-${expectedCommit.slice(0, 7) || 'local'}`;
+  await page.goto(`/?post_deploy_po_canary=${encodeURIComponent(nonce)}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).fetchPoManagementRows === 'function'
+    && typeof (window as any).fetchAuthenticatedSupabaseReadPage === 'function');
+
+  const result = await page.evaluate(() => (window as any).eval(`(async () => {
+    getNativeAuthRequestHeaders = async () => ({
+      apikey: 'synthetic-canary-key',
+      Authorization: 'Bearer synthetic-canary-token',
+      'Content-Type': 'application/json'
+    });
+    const rows = await fetchPoManagementRows();
+    return {
+      release: String(window.__APP_SHELL_VERSION__ || ''),
+      rowCount: rows.length,
+      itemcodes: rows.map((row) => row.itemcode)
+    };
+  })()`));
+
+  expect(result.release).toBe(expectedRelease);
+  expect(result.rowCount).toBe(2);
+  expect(result.itemcodes).toEqual(['CANARY.PO.001', 'CANARY.PO.002']);
+  expect(poRequests).toHaveLength(1);
+  expect(poRequests[0]).toContain('order=row_index.asc');
+  expect(poRequests[0]).toContain('limit=1000');
+  expect(poRequests[0]).toContain('offset=0');
+  expect(blockedMutations, `retired proxy or mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
+  expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
+});

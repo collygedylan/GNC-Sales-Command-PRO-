@@ -40,6 +40,8 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
   assert.match(canary, /live Eval Reports #2 drill and multi-select remain actionable without mutations/);
   assert.match(canary, /data-role="manager-eval2-selection-toggle"/);
   assert.match(canary, /getManagerEvalReport2SelectedItems\(\)\[0\]\?\.reportId/);
+  assert.match(canary, /live PO Management uses authenticated PostgREST and never the retired database proxy/);
+  assert.match(canary, /\/rest\/v1\/ph_view_po_27f1_hl/);
 });
 
 test('scheduled production health checks exact live parity without racing the push deployment', () => {
@@ -49,4 +51,6 @@ test('scheduled production health checks exact live parity without racing the pu
   assert.match(workflow, /Verify the scheduled checkout is the exact live release/);
   assert.match(workflow, /REQUIRE_LIVE_RELEASE_MATCH: '1'/);
   assert.match(probe, /requireLiveReleaseMatch[\s\S]*production_live_release_mismatch/);
+  assert.match(probe, /get_po_management_health_snapshot/);
+  assert.match(probe, /production_po_management_auth_contract_unhealthy/);
 });
