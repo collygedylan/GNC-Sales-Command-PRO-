@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.28.06';
+  const release = 'V2026.08.28.07';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.28.06');
+  assert.equal(packageJson.version, '2026.08.28.07');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1170,7 +1170,7 @@ test('acknowledged Eval assignments replace stale local rows before the unassign
   assert.match(html, /await reloadWarehouseAssignmentsAfterMutation\(\);[\s\S]*finally \{[\s\S]*applyAcknowledgedEvalAssignmentResults\(assignments, rpcResults, assignee\)/);
 });
 
-test('Kayla remains a sales rep while her global request-manager permission enables request photos and saves', () => {
+test('legacy Request capability checks remain compatible after Kayla becomes a standard Admin', () => {
   assert.match(requestCapabilitiesMigration, /global_access := private\.can_manage_requests\(\)/);
   assert.match(requestCapabilitiesMigration, /'can_take_photo', save_access/);
   assert.match(requestCapabilitiesMigration, /'can_edit', save_access/);

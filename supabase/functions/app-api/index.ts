@@ -27,6 +27,7 @@ const PHOTO_BUCKETS: Record<string, string> = {
   default: "flyer_photos",
 };
 const REP_ALLOWED_PHOTO_PREFIXES = new Set(["req-", "credit-", "eval-"]);
+const PROTECTED_DRIVE_PHOTO_PREFIXES = new Set(["ssn-", "lsn-", "na-", "flyer-"]);
 const LEGACY_TABLE_ALIASES: Record<string, string> = {
   v2_cav: "ph_cav_import",
   ph_cav: "ph_cav_import",
@@ -1322,13 +1323,40 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
     }
   }
 
+  let protectedMasterUid = "";
+  if (PROTECTED_DRIVE_PHOTO_PREFIXES.has(prefix)) {
+    if (!access.isAdmin) {
+      return errorResponse("Drive photo upload requires an active Admin profile.", 403, { code: "drive_photo_forbidden" });
+    }
+    protectedMasterUid = String(form.get("masterUid") || "").trim();
+    const expectedItemcode = String(form.get("itemCode") || "").trim();
+    const expectedLocation = String(form.get("locationCode") || "").trim();
+    const expectedLot = String(form.get("lotCode") || "").trim();
+    if (!protectedMasterUid || !expectedItemcode || !expectedLocation || !expectedLot) {
+      return errorResponse("Exact Drive row identity is required.", 400, { code: "drive_photo_identity_required" });
+    }
+    const { data: masterRow, error: masterError } = await supabase
+      .from("ph_master_inventory")
+      .select("unique_id,itemcode,locationcode,lotcode")
+      .eq("unique_id", protectedMasterUid)
+      .maybeSingle();
+    if (masterError || !masterRow
+      || String(masterRow.itemcode || "").trim() !== expectedItemcode
+      || String(masterRow.locationcode || "").trim() !== expectedLocation
+      || String(masterRow.lotcode || "").trim() !== expectedLot) {
+      return errorResponse("Drive row identity changed. Refresh before uploading.", 409, { code: "drive_photo_row_conflict" });
+    }
+  }
+
   const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
   const requestedFileName = sanitizeStorageFileName(String(form.get("fileName") || file.name || ""));
   const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
   const fileName = requestedFileName || `${originalName}-${Date.now()}.jpg`;
   const filePath = prefix === "eval-"
     ? `eval/${evalWorkId}/${fileName}`
-    : `${new Date().toISOString().split("T")[0]}/${fileName}`;
+    : (protectedMasterUid
+      ? `drive/${sanitizeStorageFileName(protectedMasterUid)}/${fileName}`
+      : `${new Date().toISOString().split("T")[0]}/${fileName}`);
   const bytes = new Uint8Array(await file.arrayBuffer());
 
   const uploadResult = await supabase.storage.from(bucketName).upload(filePath, bytes, {
@@ -1341,7 +1369,7 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
 
   const publicUrlData = supabase.storage.from(bucketName).getPublicUrl(filePath);
   const publicUrl = String(publicUrlData.data.publicUrl || "").trim();
-  return jsonResponse({ ok: true, publicUrl, bucketName, filePath });
+  return jsonResponse({ ok: true, publicUrl, bucketName, filePath, masterUid: protectedMasterUid || undefined });
 }
 
 serve((req) => withObservedRequest("app-api", req, async () => {

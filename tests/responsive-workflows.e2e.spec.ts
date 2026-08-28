@@ -1239,10 +1239,10 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
   expect(configs.avCheck).toEqual({ required: [], background: ['requests:full'] });
 });
 
-test('Kayla keeps request photo and save access without gaining other sales-rep row edits', async ({ page }) => {
+test('Kayla receives standard Admin Request, Drive, and photo access', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   const permissions = await page.evaluate(() => {
-    window.eval("window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalRequestIdentityTokens=getRequestRepScopedIdentityTokens; window.__qaOriginalGetRequestCapabilities=getRequestCapabilities; currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='Rep'; getRequestCapabilities=function(){ return {contractVersion:1,username:'kayla_knepp',scope:'global',canCreateGeneral:true,canCreateAv:true,canViewQueue:true,canTakePhoto:true,canEdit:true,canComplete:true,canArchive:true}; }; getRequestRepScopedIdentityTokens=function(){ return new Set(['kayla_knepp']); }; getRoleAccessState=function(){ return window.__qaOriginalGetRoleAccessState('SALESREP','kayla_knepp'); };");
+    window.eval("window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalRequestIdentityTokens=getRequestRepScopedIdentityTokens; window.__qaOriginalGetRequestCapabilities=getRequestCapabilities; currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='ADMIN'; getRequestCapabilities=function(){ return {contractVersion:2,username:'kayla_knepp',scope:'global',canCreateGeneral:true,canCreateAv:true,canViewQueue:true,canTakePhoto:true,canEdit:true,canComplete:true,canArchive:true}; }; getRequestRepScopedIdentityTokens=function(){ return new Set(['kayla_knepp']); }; getRoleAccessState=function(){ return window.__qaOriginalGetRoleAccessState('ADMIN','kayla_knepp'); };");
     const result = window.eval(`({
       repReadOnly: isRepReadOnlyUser(),
       globalRequestManager: canUseGlobalRequestAccess(),
@@ -1257,12 +1257,12 @@ test('Kayla keeps request photo and save access without gaining other sales-rep 
   });
 
   expect(permissions).toEqual({
-    repReadOnly: true,
+    repReadOnly: false,
     globalRequestManager: true,
     canArchiveRequestRows: true,
     canArchiveRequestRow: true,
     requestEditable: true,
-    driveEditable: false,
+    driveEditable: true,
     requestPhotoLabel: 'Take Request Photo',
   });
 });

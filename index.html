@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.28.06">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.28.07">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.28.06';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.28.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6744,7 +6744,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.28.06">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.28.07">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6915,8 +6915,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.28.06"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.28.06"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.28.07"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.28.07"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7669,7 +7669,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.28.06').trim() || 'V2026.08.28.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.28.07').trim() || 'V2026.08.28.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9156,7 +9156,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.28.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.28.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9321,6 +9321,98 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             syncPasskeyPilotUi(data);
             return data;
         }
+
+        let nativeRoleRefreshPromise = null;
+
+        function clearRoleScopedClientCaches(username = currentUser) {
+            const userKey = String(username || '').trim().toLowerCase();
+            [localStorage, sessionStorage].forEach((storage) => {
+                try {
+                    const removeKeys = [];
+                    for (let index = 0; index < storage.length; index += 1) {
+                        const key = String(storage.key(index) || '');
+                        if (key.startsWith('gnc_request_capabilities_v2:')
+                            || key.startsWith('gnc_app_access_v1:')
+                            || key.startsWith('gnc_access_control_')
+                            || (userKey && key.includes(`:${userKey}`) && /capabilit|access/i.test(key))) {
+                            removeKeys.push(key);
+                        }
+                    }
+                    removeKeys.forEach((key) => storage.removeItem(key));
+                } catch (error) {}
+            });
+            requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
+            requestCapabilityLoadPromise = null;
+            appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
+            appAccessSnapshotLoadPromise = null;
+            accessControlAdminState = { data:null, loading:false, loaded:false, saving:false, publishing:false, error:'', selectedModule:'all', selectedRole:'all', viewMode:'users', editor:null, publishReason:'', requestToken:0, columnOffset:0, columnPageSize:8, subjectOffset:0, subjectPageSize:100, capabilities:null };
+            assignableAppUsersLoaded = false;
+            assignableAppUsersPromise = null;
+            flyerAssignableUsersPromise = null;
+        }
+
+        async function refreshNativeRoleAndCapabilities(reason = 'session-refresh') {
+            if (!NATIVE_AUTH_ENABLED || !nativeAuthSessionActive || !currentUser) return false;
+            if (nativeRoleRefreshPromise) return nativeRoleRefreshPromise;
+            nativeRoleRefreshPromise = (async () => {
+                const previousRole = String(currentRole || '').trim();
+                const profile = await loadNativeAuthProfile(true);
+                if (!profile) return false;
+                const nextRole = String(profile.role || 'User').trim() || 'User';
+                currentUserDisplay = String(profile.display_name || profile.username || currentUserDisplay || currentUser || '').trim();
+                currentUserDivision = String(profile.division || currentUserDivision || '10').trim() || '10';
+                currentUserLanguage = normalizeAppUserLanguage(profile.language || currentUserLanguage || 'English');
+                if (normalizeRoleAccessToken(previousRole) === normalizeRoleAccessToken(nextRole)) return false;
+
+                currentRole = nextRole;
+                safeRole = nextRole.toUpperCase().replace(/\s+/g, '');
+                try { localStorage.setItem('gnc_role_v3', nextRole); } catch (error) {}
+                clearRoleScopedClientCaches(profile.username || currentUser);
+                persistAppSessionRecord(null);
+                await ensureNativeAppSessionBridge(true).catch(() => null);
+                await Promise.allSettled([
+                    initializeRequestCapabilities({ force: true, render: false, reason: 'native-role-refresh' }),
+                    initializeAppAccessSnapshot({ force: true, reason: 'native-role-refresh' }),
+                    ensureAssignableAppUsers(true),
+                    ensureFlyerAssignableUsers(true)
+                ]);
+                applyRolePermissions();
+                refreshProtectedSections();
+                markViewDirty('home');
+                markViewDirty('drive');
+                markViewDirty('tasks');
+                if (typeof renderHome === 'function') renderHome();
+                reportSemanticHealthEvent('native_role_refreshed', 'auth', 'NATIVE_ROLE_CHANGED', {
+                    reason: String(reason || 'refresh').slice(0, 48)
+                });
+                return true;
+            })().catch((error) => {
+                console.warn('Native role refresh failed.', error);
+                return false;
+            }).finally(() => {
+                nativeRoleRefreshPromise = null;
+            });
+            return nativeRoleRefreshPromise;
+        }
+
+        function installNativeRoleRefreshWatchers() {
+            const client = getSupabaseBrowserClient();
+            if (client && client.auth && typeof client.auth.onAuthStateChange === 'function' && !window.__gncNativeRoleAuthWatcher) {
+                const subscription = client.auth.onAuthStateChange((event) => {
+                    if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+                        setTimeout(() => refreshNativeRoleAndCapabilities(`auth:${String(event || '').toLowerCase()}`), 0);
+                    }
+                });
+                window.__gncNativeRoleAuthWatcher = subscription && subscription.data && subscription.data.subscription
+                    ? subscription.data.subscription
+                    : subscription;
+            }
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') refreshNativeRoleAndCapabilities('foreground');
+        }, { passive: true });
+        window.addEventListener('focus', () => refreshNativeRoleAndCapabilities('window-focus'), { passive: true });
+        queueMicrotask(installNativeRoleRefreshWatchers);
 
         async function tryNativeAuthPasswordLogin(username = '', password = '') {
             if (!NATIVE_AUTH_ENABLED || navigator.onLine === false) return null;
@@ -25635,6 +25727,66 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return text ? JSON.parse(text) : null;
         }
 
+        const SECURE_DRIVE_EVIDENCE_PREFIXES = new Set(['ssn-', 'lsn-', 'na-']);
+        const PROTECTED_DRIVE_PHOTO_PREFIXES = new Set(['ssn-', 'lsn-', 'na-', 'flyer-']);
+
+        function getSecureDriveEvidenceWorkflow(prefix = '') {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            if (safePrefix === 'ssn-') return 'season';
+            if (safePrefix === 'lsn-') return 'location';
+            if (safePrefix === 'na-') return 'notes';
+            return '';
+        }
+
+        function buildSecureDriveEvidencePayload(payload = {}) {
+            const source = payload && typeof payload === 'object' ? payload : {};
+            const evidence = {};
+            const copy = (sourceKey, targetKey = sourceKey) => {
+                if (Object.prototype.hasOwnProperty.call(source, sourceKey)) evidence[targetKey] = source[sourceKey];
+            };
+            copy('spec');
+            copy('caliper');
+            copy('match');
+            copy('loc_match_qty');
+            copy('initial_ptr');
+            copy('av_note');
+            copy('pic_note', 'pick_note');
+            copy('sales_note', 'comments');
+            copy('photo_link');
+            copy('photo_name');
+            return evidence;
+        }
+
+        async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false) {
+            if (!item || !SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
+                throw new Error('Secure Drive evidence context is invalid.');
+            }
+            const evidenceSignature = JSON.stringify({
+                prefix: String(prefix || '').trim().toLowerCase(),
+                complete: !!isComplete,
+                evidence: buildSecureDriveEvidencePayload(payload)
+            });
+            if (!item.__driveEvidenceIdempotencyKey || item.__driveEvidenceIdempotencySignature !== evidenceSignature) {
+                item.__driveEvidenceIdempotencyKey = `drive-${createStableClientBatchId()}`;
+                item.__driveEvidenceIdempotencySignature = evidenceSignature;
+            }
+            const result = await supabaseRpc('save_drive_evidence_v1', {
+                p_master_uid: String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim(),
+                p_expected_itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim(),
+                p_expected_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim(),
+                p_expected_lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim(),
+                p_expected_signature: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
+                p_evidence: buildSecureDriveEvidencePayload(payload),
+                p_complete: !!isComplete,
+                p_workflow: getSecureDriveEvidenceWorkflow(prefix),
+                p_idempotency_key: item.__driveEvidenceIdempotencyKey
+            }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) });
+            if (!result || result.ok !== true || !result.row) throw new Error('DRIVE_SAVE_UNCONFIRMED');
+            delete item.__driveEvidenceIdempotencyKey;
+            delete item.__driveEvidenceIdempotencySignature;
+            return result;
+        }
+
         const HEALTH_METADATA_KEYS = new Set([
             'expected_count', 'rendered_count', 'pending_count', 'attempt_count',
             'affected_count', 'status_code', 'duration_bucket', 'reason'
@@ -30670,7 +30822,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.28.06').trim() || 'V2026.08.28.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.28.07').trim() || 'V2026.08.28.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -49532,43 +49684,74 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
-        function createFlyerFolderRowsForItems(sourceItems = [], flyerFolder = '', isAddingToExistingFolder = false, assignees = [], options = {}) {
+        const flyerFolderBatchIdempotencyKeys = new Map();
+        const flyerFolderBatchPromises = new Map();
+
+        async function createFlyerFolderRowsForItems(sourceItems = [], flyerFolder = '', isAddingToExistingFolder = false, assignees = [], options = {}) {
             const safeItems = (Array.isArray(sourceItems) ? sourceItems : []).filter(Boolean);
             const safeOptions = options && typeof options === 'object' ? options : {};
-            const selectedAssignees = getFlyerAssigneeList(assignees);
+            const selectedAssignees = getFlyerAssigneeList(assignees).map(normalizePushUsername).filter(Boolean);
             if (!selectedAssignees.length) {
                 showToast('Assign Someone', 'Select at least one user for this flyer folder.', true);
                 return false;
             }
-            const flyerAssignedTo = selectedAssignees.join(', ');
-            const primaryAssignee = selectedAssignees[0] || currentUser;
-            const createdAt = new Date().toISOString();
-            const payloads = safeItems.map((item) => buildFlyerFolderRowPayload(item, flyerFolder, flyerAssignedTo, primaryAssignee, createdAt));
-            if (!payloads.length) {
+            if (!nativeAuthSessionActive || !getRoleAccessState().isAdmin) {
+                showToast('Admin Session Required', 'Refresh your signed-in Admin session before creating a Flyer folder.', true);
+                return false;
+            }
+            const masterUids = [...new Set(safeItems.map((item) => {
+                const master = findLinkedMasterRow(item) || item;
+                return String(firstNonEmptyValue(master && master.UNIQUE_ID, master && master.unique_id, item && item.MASTER_UNIQUE_ID, item && item.master_unique_id, '') || '').trim();
+            }).filter(Boolean))];
+            if (!masterUids.length || masterUids.length !== safeItems.length) {
                 showToast('Error', safeOptions.emptyMessage || 'No valid inventory rows were available for Flyer.', true);
                 return false;
             }
             if (safeOptions.closeCart) toggleCartPanel(false);
             showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
-            ensureFlyerFolderRowsSchemaReady().then((ready) => {
-                if (!ready) throw new Error('Flyer folder row table is missing. Run flyer_folder_rows_migration.sql in Supabase.');
-                const emailItems = payloads.map((payload) => cacheFlyerFolderRow(payload)).filter(Boolean);
+            const batchSignature = JSON.stringify({
+                folder: String(flyerFolder || '').trim().toLowerCase(),
+                masterUids: masterUids.slice().sort(),
+                assignees: selectedAssignees.slice().sort(),
+                add: !!isAddingToExistingFolder
+            });
+            if (!flyerFolderBatchIdempotencyKeys.has(batchSignature)) {
+                flyerFolderBatchIdempotencyKeys.set(batchSignature, `flyer-${createStableClientBatchId()}`);
+                while (flyerFolderBatchIdempotencyKeys.size > 40) {
+                    flyerFolderBatchIdempotencyKeys.delete(flyerFolderBatchIdempotencyKeys.keys().next().value);
+                }
+            }
+            if (flyerFolderBatchPromises.has(batchSignature)) return flyerFolderBatchPromises.get(batchSignature);
+            const batchPromise = (async () => {
+                const result = await supabaseRpc('create_flyer_folder_batch_v1', {
+                    p_folder_name: String(flyerFolder || '').trim(),
+                    p_master_uids: masterUids,
+                    p_assignee_usernames: selectedAssignees,
+                    p_add_to_existing: !!isAddingToExistingFolder,
+                    p_idempotency_key: flyerFolderBatchIdempotencyKeys.get(batchSignature)
+                }, { timeoutMs: 30000 });
+                if (!result || result.ok !== true || !Array.isArray(result.rows) || !result.rows.length) {
+                    throw new Error('FLYER_CREATE_UNCONFIRMED');
+                }
+                const emailItems = result.rows.map((row, index) => {
+                    const formatted = formatFetchedRows([row], FLYER_FOLDER_ROWS_TABLE)[0] || row;
+                    return cacheFlyerFolderRow(formatted, index);
+                }).filter(Boolean);
                 touchFlyerFolderRowsDatasetState();
                 invalidateResolvedViewStateCaches();
                 markViewDirty('tasks');
                 scheduleTasksRender(0);
-                return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
-            }).then(async (emailItems) => {
-                if (emailItems.length) upsertFlyerFolderHistoryRows(emailItems, 'created').catch(() => {});
+                const displayMap = new Map(getFlyerAssignableUserOptions(selectedAssignees).map((entry) => [entry.username, entry.display || entry.username]));
+                const flyerAssignedTo = selectedAssignees.map((username) => displayMap.get(username) || username).join(', ');
                 let notificationResult = null;
                 if (!isAddingToExistingFolder && emailItems.length) {
                     notificationResult = await sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '', {
-                        assigneeUsernames: selectedAssignees.map(normalizePushUsername).filter(Boolean)
+                        assigneeUsernames: selectedAssignees
                     });
                 }
                 if (safeOptions.clearSelection) clearSelection();
                 finalizeFlyerFolderNavigation(flyerFolder);
-                const successMessage = `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`;
+                const successMessage = `${emailItems.length} row${emailItems.length === 1 ? '' : 's'} added to ${flyerFolder}.`;
                 if (notificationResult && notificationResult.ok) {
                     showToast('Success', `${successMessage} Email sent and push queued.`);
                 } else if (notificationResult && notificationResult.ok === false) {
@@ -49577,11 +49760,15 @@ function toggleDriveQuickRequestItem(domId) {
                 } else {
                     showToast('Success', successMessage);
                 }
-            }).catch((err) => {
-                payloads.forEach((payload) => removeFlyerFolderRowFromCache(payload.unique_id));
+                return true;
+            })().catch((err) => {
                 showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
+                return false;
+            }).finally(() => {
+                flyerFolderBatchPromises.delete(batchSignature);
             });
-            return false;
+            flyerFolderBatchPromises.set(batchSignature, batchPromise);
+            return batchPromise;
         }
 
         async function createDriveQuickFlyers() {
@@ -153286,6 +153473,26 @@ ${folderNote ? `Folder Note: ${folderNote}
                             else finalizeRpcSave();
                             return;
                         }
+                        if (nativeAuthSessionActive
+                            && targetTable === 'ph_master_inventory'
+                            && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
+                            const rpcResult = await saveSecureDriveEvidence(itemToSave, prefix, payload, isComplete);
+                            const serverRow = formatFetchedRows([rpcResult.row], 'ph_master_inventory')[0] || rpcResult.row;
+                            Object.assign(itemToSave, serverRow);
+                            normalizeRowPhotoFields(itemToSave);
+                            buildSearchIndex(itemToSave);
+                            const atomicDriveArtifacts = completionArtifacts || buildCompletionArtifacts();
+                            if (atomicDriveArtifacts) {
+                                atomicDriveArtifacts.masterSyncPayload = null;
+                                atomicDriveArtifacts.skipRemoteMasterSync = true;
+                                atomicDriveArtifacts.extraMasterSyncPatches = [];
+                            }
+                            queueAppLiveEventForWrite('ph_master_inventory', 'PATCH', [{ unique_id: itemToSave.UNIQUE_ID }], '');
+                            const finalizeDriveRpcSave = () => handleSaveSuccess(atomicDriveArtifacts);
+                            if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeDriveRpcSave, 0);
+                            else finalizeDriveRpcSave();
+                            return;
+                        }
                         await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
                         if (prefix === 'req-') {
                             requestMasterUpdateResult = await syncLinkedMasterFromRequestSave(itemToSave, payload, requestMasterItem, saveRequestOptions);
@@ -153840,12 +154047,27 @@ ${folderNote ? `Folder Note: ${folderNote}
                             let lastUploadError = null;
                             for (let uploadAttempt = 1; uploadAttempt <= maxUploadAttempts && !publicUrl; uploadAttempt++) {
                                 try {
-                                    const apiUpload = await uploadPhotoViaAppApi(prefix, blob, fileName, contentType || 'image/jpeg', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                                    const protectedDrivePhoto = PROTECTED_DRIVE_PHOTO_PREFIXES.has(String(prefix || '').trim().toLowerCase());
+                                    const photoIdentityItem = prefix === 'flyer-'
+                                        ? (findLinkedMasterRow(itemToUpload) || itemToUpload)
+                                        : itemToUpload;
+                                    const apiUpload = await uploadPhotoViaAppApi(prefix, blob, fileName, contentType || 'image/jpeg', {
+                                        timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS,
+                                        formFields: protectedDrivePhoto ? {
+                                            masterUid: firstNonEmptyValue(photoIdentityItem && photoIdentityItem.UNIQUE_ID, photoIdentityItem && photoIdentityItem.unique_id, itemToUpload.MASTER_UNIQUE_ID, itemToUpload.master_unique_id, ''),
+                                            itemCode: firstNonEmptyValue(photoIdentityItem && photoIdentityItem.ITEMCODE, photoIdentityItem && photoIdentityItem.itemcode, ''),
+                                            locationCode: firstNonEmptyValue(photoIdentityItem && photoIdentityItem.LOCATIONCODE, photoIdentityItem && photoIdentityItem.locationcode, ''),
+                                            lotCode: firstNonEmptyValue(photoIdentityItem && photoIdentityItem.LOTCODE, photoIdentityItem && photoIdentityItem.lotcode, '')
+                                        } : null
+                                    });
                                     bucketName = String(apiUpload.bucketName || bucketName).trim() || bucketName;
                                     filePath = String(apiUpload.filePath || filePath).trim() || filePath;
                                     publicUrl = String(apiUpload.publicUrl || '').trim();
                                 } catch (secureUploadError) {
                                     try {
+                                        if (PROTECTED_DRIVE_PHOTO_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
+                                            throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure Drive photo upload failed.'));
+                                        }
                                         const fallbackStorageClient = getSupabaseBrowserClient();
                                         if (!fallbackStorageClient || !fallbackStorageClient.storage) {
                                             throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure photo upload proxy unavailable.'));

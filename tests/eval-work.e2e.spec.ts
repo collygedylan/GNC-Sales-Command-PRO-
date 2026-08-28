@@ -71,7 +71,7 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.28.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.28.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
