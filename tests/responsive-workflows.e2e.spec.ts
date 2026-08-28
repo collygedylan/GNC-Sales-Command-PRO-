@@ -312,7 +312,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
   await expect(alphaCheckbox).toHaveAttribute('aria-pressed', 'true');
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
   await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
-  await expect(host.locator('#manager-eval-report-2-assigned-select')).toBeDisabled();
+  await expect(host.locator("button[onclick*=\"openManagerEvalUserPicker('eval2')\"]")).toBeEnabled();
 
   await page.evaluate(() => (window as any).eval(`(() => {
     backManagerEvalReport2Drill();
