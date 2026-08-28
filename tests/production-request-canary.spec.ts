@@ -174,6 +174,9 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
 
   const host = page.locator('#hosted-eval2-canary');
   await expect(host).toContainText('Eval Reports #2');
+  await expect(host.locator('.manager-eval2-drive-controls')).toBeVisible();
+  await expect(host.locator('.manager-eval2-drive-tabs .task-tab')).toHaveText(['Common Name', 'Location']);
+  await expect(host.locator('.manager-eval2-drive-crumb')).toBeVisible();
   await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
   await host.getByRole('button', { name: /All Users/i }).click();
   const initialUserSheet = page.locator('#manager-eval-user-picker');
@@ -225,6 +228,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   const beta = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CANARY.EVAL.B"]');
   await beta.click();
   await expect(beta).toHaveAttribute('aria-pressed', 'true');
+  await expect(host).not.toContainText('Open ITEMCODE Details');
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('2 ITEMCODEs');
   await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
   await expect(host.locator('#manager-eval-report-2-select-shown')).toContainText('Deselect Shown');
