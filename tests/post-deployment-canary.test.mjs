@@ -44,6 +44,9 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
   assert.match(canary, /getManagerEvalReport2SelectedItems\(\)\[0\]\?\.reportId/);
   assert.match(canary, /getByRole\('button', \{ name: \/Apply 2 Users\/i \}\)/);
   assert.match(canary, /getManagerEvalAssignedUsers\('eval2'\)/);
+  assert.match(canary, /Select All Lots/);
+  assert.match(canary, /Dylan/);
+  assert.match(canary, /Megan/);
   assert.match(canary, /live PO Management uses authenticated PostgREST and never the retired database proxy/);
   assert.match(canary, /\/rest\/v1\/ph_view_po_27f1_hl/);
   assert.match(canary, /authorized Admin opens Access Control from the manager module card without mutation/);
@@ -64,4 +67,6 @@ test('scheduled production health checks exact live parity without racing the pu
   assert.match(probe, /production_po_management_auth_contract_unhealthy/);
   assert.match(probe, /get_access_control_health_snapshot_v1/);
   assert.match(probe, /production_access_control_audit_contract_unhealthy/);
+  assert.match(probe, /get_eval_request_delivery_health_snapshot_v2/);
+  assert.match(probe, /production_eval_request_delivery_contract_unhealthy/);
 });

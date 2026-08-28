@@ -11221,22 +11221,27 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const pilotBanner = safeModel.isSyntheticPilot
     ? '<div class="pilot-banner">TEST PILOT - SYNTHETIC DATA ONLY</div>'
     : '';
-  const evidence = safeModel.evaluationResults && typeof safeModel.evaluationResults === 'object' ? safeModel.evaluationResults : null;
-  const evidenceFields = evidence ? [
-    ['Spec', evidence.spec], ['Caliper', evidence.caliper], ['Loc Match %', evidence.locMatchPercent],
-    ['AV Note', evidence.avNote], ['Pick Note', evidence.pickNote], ['Comments', evidence.comments]
-  ] : [];
-  const evidenceHtml = evidence
-    ? '<div class="section-title">Evaluation Results</div><div class="evaluation-results">' + evidenceFields.map(function(field) {
-        return '<div class="evaluation-cell"><span>' + esc(field[0]) + '</span><strong>' + (String(field[1] == null ? '' : field[1]) ? esc(field[1]) : '&nbsp;') + '</strong></div>';
-      }).join('') + '</div>' + ((Array.isArray(evidence.photos) ? evidence.photos : []).length
-        ? '<div class="evaluation-photos">' + evidence.photos.slice(0, 8).map(function(photo) {
-            const url = String(photo && (photo.url || photo.publicUrl) || '').trim();
-            return url ? '<img src="' + esc(url) + '" alt="Evaluation photo">' : '';
-          }).join('') + '</div>' : '')
+  const evidenceRows = Array.isArray(safeModel.evaluationResultsRows)
+    ? safeModel.evaluationResultsRows
+    : (safeModel.evaluationResults && typeof safeModel.evaluationResults === 'object' ? [safeModel.evaluationResults] : []);
+  const evidenceHtml = evidenceRows.length
+    ? '<div class="section-title">Evaluation Results</div>' + evidenceRows.map(function(evidence, evidenceIndex) {
+        const evidenceFields = [
+          ['Spec', evidence.spec], ['Caliper', evidence.caliper], ['Loc Match %', evidence.locMatchPercent],
+          ['AV Note', evidence.avNote], ['Pick Note', evidence.pickNote], ['Comments', evidence.comments]
+        ];
+        const originLabel = String(evidence.locationcode || '') + ' / ' + String(evidence.lotcode || '');
+        return '<section class="evaluation-origin"><h3>Lot ' + esc(String(evidenceIndex + 1)) + ': ' + esc(originLabel) + '</h3><div class="evaluation-results">' + evidenceFields.map(function(field) {
+          return '<div class="evaluation-cell"><span>' + esc(field[0]) + '</span><strong>' + (String(field[1] == null ? '' : field[1]) ? esc(field[1]) : '&nbsp;') + '</strong></div>';
+        }).join('') + '</div>' + ((Array.isArray(evidence.photos) ? evidence.photos : []).length
+          ? '<div class="evaluation-photos">' + evidence.photos.slice(0, 8).map(function(photo) {
+              const url = String(photo && (photo.url || photo.publicUrl) || '').trim();
+              return url ? '<img src="' + esc(url) + '" alt="Evaluation photo">' : '';
+            }).join('') + '</div>' : '') + '</section>';
+      }).join('')
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
     '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span class="proposal-swatch">PROPOSED</span><span>Yellow, boxed values are proposals and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
     '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + supplementalTemporaryHtml + '</body></html>';
 }
@@ -13030,6 +13035,7 @@ function buildRequestEmailMessage_(payload) {
   }
 
   if (emailType === 'request_complete') {
+    const completionHeading = payload.updatedCompletion === true ? 'Updated Plant Request Completion' : 'Plant Request Completed!';
     const folderNote = String(payload.folderNote || '').trim();
     const folderNoteHtml = folderNote ? '<p><strong>Folder Note:</strong> ' + escapeEmailHtml_(folderNote) + '</p>' : '';
     const completedBySummary = buildRequestCompletedBySummary_(payload);
@@ -13127,7 +13133,7 @@ function buildRequestEmailMessage_(payload) {
     return {
       subject: subject,
       textBody: [
-        'Plant Request Completed!',
+        completionHeading,
         'Hello ' + String(payload.repName || payload.salesRepName || '') + ',',
         'Your recent plant request has been fully processed and marked as complete.',
         'Customer: ' + String(payload.customer || ''),
@@ -13139,7 +13145,7 @@ function buildRequestEmailMessage_(payload) {
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
-        '<h2 style="color: #007a4d;">Plant Request Completed!</h2>',
+        '<h2 style="color: #007a4d;">' + escapeEmailHtml_(completionHeading) + '</h2>',
         '<p>Hello ' + repName + ',</p>',
         '<p>Your recent plant request has been fully processed and marked as complete.</p>',
         '<p><strong>Customer:</strong> ' + customer + '</p>',
@@ -14204,6 +14210,8 @@ function buildRequestDeliveryEmailPayload_(eventRow, rows) {
   const requestCreatedByUsername = String(firstRow.request_created_by_username || '');
   const requestCreatedByDisplay = String(firstRow.request_created_by_display || '');
   const requestCreatedByEmail = String(firstRow.request_created_by_email || '');
+  const deliveryPayload = eventRow && eventRow.payload && typeof eventRow.payload === 'object' ? eventRow.payload : {};
+  const updatedCompletion = eventType === 'request_completed' && deliveryPayload.updatedCompletion === true;
   return {
     type: 'email',
     emailType: eventType === 'request_completed' ? 'request_complete' : 'new_request',
@@ -14223,6 +14231,8 @@ function buildRequestDeliveryEmailPayload_(eventRow, rows) {
     submittedByDisplay: requestCreatedByDisplay,
     submittedByEmail: requestCreatedByEmail,
     internalRecipients: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.slice(),
+    updatedCompletion: updatedCompletion,
+    subject: updatedCompletion ? 'Updated Completion - ' + String(eventRow && eventRow.request_folder || firstRow.request_folder || '') : '',
     requestCreator: {
       creatorUsername: requestCreatedByUsername,
       creatorDisplay: requestCreatedByDisplay,
@@ -14417,6 +14427,9 @@ function buildEvalWorkReportModel_(eventPayload) {
     : (inquiry.source && typeof inquiry.source === 'object' ? inquiry.source : {});
   const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
   if (!sourceUid) throw new Error('EVAL_WORK_VALIDATION:SOURCE_ID_REQUIRED');
+  const contractVersion = String(payload.contractVersion || 'eval-work-v1');
+  const selectedOrigins = contractVersion === 'eval-work-v2-multi-origin' && Array.isArray(payload.origins)
+    ? payload.origins.filter(Boolean) : [];
   const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
   if (!sourceRow) throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_MISSING');
   try {
@@ -14424,7 +14437,14 @@ function buildEvalWorkReportModel_(eventPayload) {
   } catch (error) {
     throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_CHANGED');
   }
-  const authoritativeRows = fetchReclassInquiryItemRows_(sourceRow);
+  const authoritativeRows = selectedOrigins.length ? selectedOrigins.map(function(originInput) {
+    const uid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(originInput.unique_id, originInput.uniqueId));
+    const current = uid ? fetchEmailApprovalMasterRow_(uid) : null;
+    if (!current) throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_MISSING');
+    try { validateInventoryTransactionSourceIdentity_(current, originInput); }
+    catch (error) { throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_CHANGED'); }
+    return current;
+  }) : fetchReclassInquiryItemRows_(sourceRow);
   const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
   const requestActions = Array.isArray(transaction.requestActions)
     ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
@@ -14482,16 +14502,31 @@ function buildEvalWorkReportModel_(eventPayload) {
     assigneeDisplay: String(firstNonEmptyRequestValue_(payload.assigneeDisplay, payload.assigneeUsername, ''))
   };
   if (String(payload.deliveryKind || '') === 'completion') {
-    const evidence = payload.evidence && typeof payload.evidence === 'object' ? payload.evidence : {};
-    model.evaluationResults = {
-      photos: Array.isArray(evidence.photos) ? evidence.photos : [],
-      spec: String(evidence.spec || ''),
-      caliper: String(evidence.caliper || ''),
-      locMatchPercent: String(firstNonEmptyRequestValue_(evidence.locMatchPercent, evidence.loc_match_percent, '')),
-      avNote: String(firstNonEmptyRequestValue_(evidence.avNote, evidence.av_note, '')),
-      pickNote: String(firstNonEmptyRequestValue_(evidence.pickNote, evidence.pick_note, '')),
-      comments: String(evidence.comments || '')
-    };
+    if (selectedOrigins.length) {
+      model.evaluationResultsRows = selectedOrigins.map(function(originInput) {
+        const evidence = originInput.evidence && typeof originInput.evidence === 'object' ? originInput.evidence : {};
+        return {
+          locationcode: String(originInput.locationcode || ''), lotcode: String(originInput.lotcode || ''),
+          photos: Array.isArray(evidence.photos) ? evidence.photos : [], spec: String(evidence.spec || ''),
+          caliper: String(evidence.caliper || ''),
+          locMatchPercent: String(firstNonEmptyRequestValue_(evidence.locMatchPercent, evidence.loc_match_percent, '')),
+          avNote: String(firstNonEmptyRequestValue_(evidence.avNote, evidence.av_note, '')),
+          pickNote: String(firstNonEmptyRequestValue_(evidence.pickNote, evidence.pick_note, '')),
+          comments: String(evidence.comments || '')
+        };
+      });
+    } else {
+      const evidence = payload.evidence && typeof payload.evidence === 'object' ? payload.evidence : {};
+      model.evaluationResults = {
+        locationcode: String(source.locationcode || ''), lotcode: String(source.lotcode || ''),
+        photos: Array.isArray(evidence.photos) ? evidence.photos : [], spec: String(evidence.spec || ''),
+        caliper: String(evidence.caliper || ''),
+        locMatchPercent: String(firstNonEmptyRequestValue_(evidence.locMatchPercent, evidence.loc_match_percent, '')),
+        avNote: String(firstNonEmptyRequestValue_(evidence.avNote, evidence.av_note, '')),
+        pickNote: String(firstNonEmptyRequestValue_(evidence.pickNote, evidence.pick_note, '')),
+        comments: String(evidence.comments || '')
+      };
+    }
   }
   return model;
 }
@@ -14547,7 +14582,7 @@ function handleSignedEvalWorkDelivery_(delivery) {
   const eventPayload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
   const kind = eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ ? 'assignment' : 'completion';
   const recipients = kind === 'assignment'
-    ? dedupeEmailAddresses_([eventPayload.assigneeEmail])
+    ? dedupeEmailAddresses_([eventPayload.assignmentRecipients || eventPayload.assigneeEmail])
     : dedupeEmailAddresses_([eventPayload.completionRecipients]);
   if (!recipients.length) throw new Error('EVAL_WORK_VALIDATION:RECIPIENT_REQUIRED');
   const model = buildEvalWorkReportModel_(eventPayload);

@@ -145,6 +145,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     activeHomeTab = 'eval-reports-2';
     processAndLoadData({ data: [
       { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
+      { UNIQUE_ID: 'HOSTED-EVAL2-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 12, LOCATIONCODE: 'U.02.001', PTRAVAILABLE: 12 },
       { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
       { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
@@ -253,6 +254,28 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     activeUsers: ['megan_kelly'],
     hasLegacySelectMode: false,
   });
+
+  await page.evaluate(() => (window as any).eval(`(async () => {
+    assignableAppUsers = [
+      { username: 'assigned_evaluator', display: 'Assigned Evaluator', email: 'assigned-evaluator@example.invalid' },
+      { username: 'dylan_collyge', display: 'Dylan Collyge', email: 'dylan@example.invalid' },
+      { username: 'megan_kelly', display: 'Megan Kelly', email: 'megan@example.invalid' }
+    ];
+    assignableAppUsersLoaded = true;
+    ensureAssignableAppUsers = async () => assignableAppUsers;
+    await openManagerEvalReport2BatchSetup();
+  })()`));
+  const lotSheet = page.locator('#manager-eval2-batch-modal');
+  await expect(lotSheet).toBeVisible();
+  await expect(lotSheet).toContainText('Dylan');
+  await expect(lotSheet).toContainText('Megan');
+  await expect(lotSheet).toContainText('Block Alpha T');
+  await expect(lotSheet).toContainText('Block Alpha U');
+  const selectAllLots = lotSheet.getByRole('button', { name: 'Select All Lots' }).first();
+  await selectAllLots.click();
+  await expect(lotSheet).toContainText('2 of 2 lots selected');
+  await expect(lotSheet.locator('#manager-eval2-batch-summary')).toContainText('Selected lots3');
+  await page.evaluate(() => (window as any).closeManagerEvalReport2BatchSetup());
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
   expect(blockedMutations, `production mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
 });

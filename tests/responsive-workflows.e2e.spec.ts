@@ -764,19 +764,24 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       assignee.value = 'chance_alldredge';
       await chooseManagerEvalReport2BatchRecipients();
       syncManagerEvalReport2BatchSetup();
-      const originSelects = Array.from(modal.querySelectorAll('[data-manager-eval2-origin-key]'));
+      const originButtons = Array.from(modal.querySelectorAll('#manager-eval2-batch-origins button[aria-pressed]'));
+      const selectedOriginButtons = originButtons.filter((button) => button.getAttribute('aria-pressed') === 'true');
+      const setupCopy = modal.textContent || '';
       const createButton = document.getElementById('manager-eval2-batch-create');
       const modalFits = modal.scrollWidth <= 391;
       await createManagerEvalReport2Batch(createButton);
       return {
         modalFits,
-        originCount: originSelects.length,
-        everyOriginResolved: originSelects.every((select) => !!select.value),
+        originCount: originButtons.length,
+        everyOriginResolved: originButtons.length === 2 && selectedOriginButtons.length === 2,
+        requiredManagersVisible: setupCopy.includes('Dylan') && setupCopy.includes('Megan'),
         createEnabled: !createButton.disabled,
         operation: captured && captured.operation,
         itemCount: captured && captured.payload.items.length,
         onePerItemcode: captured && new Set(captured.payload.items.map((item) => item.source.itemcode)).size,
         fullRowOverlays: captured && captured.payload.items.every((item) => item.inquiry.rowOverlays.length === 1),
+        multiOriginContract: captured && captured.payload.items.every((item) => Array.isArray(item.origins) && item.origins.length === 1),
+        assignedUserScope: captured && captured.payload.items.every((item) => Array.isArray(item.reportContext.assignedToUsers) && item.reportContext.assignedToUsers.includes('dylan_collyge')),
         pdfOutboxOnly: captured && captured.operation === 'create_batch' && !('shiftReportAttachment' in captured.payload),
         assignee: captured && captured.payload.assigneeUsername,
         recipients: captured && captured.payload.completionRecipients,
@@ -798,11 +803,14 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
     modalFits: true,
     originCount: 2,
     everyOriginResolved: true,
+    requiredManagersVisible: true,
     createEnabled: true,
     operation: 'create_batch',
     itemCount: 2,
     onePerItemcode: 2,
     fullRowOverlays: true,
+    multiOriginContract: true,
+    assignedUserScope: true,
     pdfOutboxOnly: true,
     assignee: 'chance_alldredge',
     recipients: ['megan_kelly@greenleafnursery.com'],

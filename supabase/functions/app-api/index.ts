@@ -481,11 +481,11 @@ async function resolveEvalWorkAssignee(usernameValue: unknown) {
   };
 }
 
-function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown) {
+function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown, originUid = "") {
   const evidence = evidenceValue && typeof evidenceValue === "object"
     ? { ...(evidenceValue as Record<string, unknown>) }
     : {};
-  const prefix = `eval/${workId}/`;
+  const prefix = originUid ? `eval/${workId}/${originUid}/` : `eval/${workId}/`;
   const photos = Array.isArray(evidence.photos) ? evidence.photos : [];
   evidence.photos = photos.map((photoValue) => {
     const photo = photoValue && typeof photoValue === "object" ? photoValue as Record<string, unknown> : {};
@@ -501,6 +501,47 @@ function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown) {
     };
   });
   return evidence;
+}
+
+function evalWorkV1Origin(row: Record<string, unknown>) {
+  return {
+    eval_work_id: row.id,
+    origin_unique_id: row.origin_unique_id,
+    itemcode: row.itemcode,
+    locationcode: row.origin_locationcode,
+    lotcode: row.origin_lotcode,
+    source: row.origin_source,
+    block_alpha: "",
+    block_number: "",
+    ordinal: 1,
+    origin_snapshot: row.origin_snapshot,
+    evidence_draft: row.evidence_draft,
+    submitted_evidence: row.submitted_evidence,
+  };
+}
+
+async function withEvalWorkOrigins(rows: Record<string, unknown>[]) {
+  const v2Ids = rows.filter((row) => String(row.contract_version || "") === "eval-work-v2-multi-origin")
+    .map((row) => String(row.id || "")).filter(Boolean);
+  let byWork = new Map<string, Record<string, unknown>[]>();
+  if (v2Ids.length) {
+    const { data, error } = await supabase.from("ph_eval_work_origin_rows").select("*")
+      .in("eval_work_id", v2Ids).order("ordinal", { ascending: true });
+    if (error) throw error;
+    byWork = (data || []).reduce((map, origin) => {
+      const key = String(origin.eval_work_id || "");
+      const list = map.get(key) || [];
+      list.push(origin as Record<string, unknown>);
+      map.set(key, list);
+      return map;
+    }, new Map<string, Record<string, unknown>[]>());
+  }
+  return rows.map((row) => ({
+    ...row,
+    origins: String(row.contract_version || "") === "eval-work-v2-multi-origin"
+      ? (byWork.get(String(row.id || "")) || [])
+      : [evalWorkV1Origin(row)],
+  }));
 }
 
 function evalWorkError(error: unknown) {
@@ -631,12 +672,14 @@ async function handleEvalWorkAction(
       if (["open", "in_progress", "submitted", "cancelled"].includes(status)) query = query.eq("status", status);
       const { data, error } = await query;
       if (error) throw error;
-      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]), manager: isEvalWorkManager(session) });
+      const withDelivery = await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]);
+      return jsonResponse({ ok: true, data: await withEvalWorkOrigins(withDelivery), manager: isEvalWorkManager(session) });
     }
     if (operation === "get") {
       const row = await loadAuthorizedEvalWork(session, String(payload.workId || "").trim());
       if (!row) return errorResponse("Eval Work assignment was not found.", 404, { code: "eval_work_not_found" });
-      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(row), manager: isEvalWorkManager(session) });
+      const withDelivery = await withEvalWorkDeliveryStatus(row);
+      return jsonResponse({ ok: true, data: (await withEvalWorkOrigins([withDelivery]))[0], manager: isEvalWorkManager(session) });
     }
     if (operation === "create") {
       if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_create_forbidden" });
@@ -661,6 +704,7 @@ async function handleEvalWorkAction(
       const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
       const rawItems = Array.isArray(payload.items) ? payload.items : [];
       if (rawItems.length < 1 || rawItems.length > 50) return errorResponse("Choose from 1 through 50 ITEMCODEs.", 400, { code: "eval_work_batch_size_invalid" });
+      let useMultiOriginV2 = true;
       const items = rawItems.map((rawItem) => {
         const item = rawItem && typeof rawItem === "object" ? rawItem as Record<string, unknown> : {};
         const sourceInput = item.source && typeof item.source === "object" ? item.source as Record<string, unknown> : {};
@@ -677,10 +721,24 @@ async function handleEvalWorkAction(
           locationcode: String(sourceInput.locationcode || "").trim(),
           lotcode: String(sourceInput.lotcode || "").trim(),
         };
-        if (!source.unique_id || !source.itemcode) throw new Error("eval_work_batch_origin_invalid");
+        const rawOrigins = Array.isArray(item.origins) ? item.origins : [];
+        if (!rawOrigins.length) useMultiOriginV2 = false;
+        const origins = rawOrigins.map((value) => {
+          const origin = value && typeof value === "object" ? value as Record<string, unknown> : {};
+          return {
+            unique_id: String(origin.unique_id || "").trim(),
+            itemcode: String(origin.itemcode || source.itemcode || "").trim(),
+            locationcode: String(origin.locationcode || "").trim(),
+            lotcode: String(origin.lotcode || "").trim(),
+            source: String(origin.source || "").trim(),
+          };
+        });
+        if ((!source.unique_id || !source.itemcode) && !origins.length) throw new Error("eval_work_batch_origin_invalid");
         return {
           createToken: String(item.createToken || "").trim(),
           source,
+          itemcode: String(item.itemcode || source.itemcode || origins[0]?.itemcode || "").trim(),
+          origins,
           inquiry: normalizeEvalWorkBatchInquiry(item.inquiry),
           reportContext: {
             reportId: String(contextInput.reportId || "").trim().slice(0, 100),
@@ -702,28 +760,44 @@ async function handleEvalWorkAction(
         settingsSignature: String(payload.settingsSignature || "").trim().slice(0, 1024),
         items,
       };
-      const { data, error } = await supabase.rpc("create_eval_work_batch_v1", { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc(useMultiOriginV2 ? "create_eval_work_batch_v2" : "create_eval_work_batch_v1", { p_payload: rpcPayload });
       if (error) throw error;
-      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]), manager: true });
+      const withDelivery = await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]);
+      return jsonResponse({ ok: true, data: await withEvalWorkOrigins(withDelivery), manager: true });
     }
     if (operation === "save" || operation === "submit") {
       const workId = String(payload.workId || "").trim();
-      const row = await loadAuthorizedEvalWork(session, workId);
+      const rawRow = await loadAuthorizedEvalWork(session, workId);
+      const row = rawRow ? (await withEvalWorkOrigins([rawRow]))[0] : null;
       if (!row || normalizeUsername(row.assignee_username) !== actor) {
         return errorResponse("Only the assigned evaluator can update this work.", 403, { code: "eval_work_edit_forbidden" });
       }
-      const rpcName = operation === "submit" ? "submit_eval_work_v1" : "save_eval_work_v1";
-      const evidence = normalizeEvalWorkEvidence(workId, payload.evidence && typeof payload.evidence === "object" ? payload.evidence : {});
+      const isV2 = String(row.contract_version || "") === "eval-work-v2-multi-origin";
+      const rpcName = isV2
+        ? (operation === "submit" ? "submit_eval_work_v2" : "save_eval_work_v2")
+        : (operation === "submit" ? "submit_eval_work_v1" : "save_eval_work_v1");
+      let evidence: Record<string, unknown> = {};
+      if (isV2) {
+        const input = payload.evidenceByOrigin && typeof payload.evidenceByOrigin === "object"
+          ? payload.evidenceByOrigin as Record<string, unknown> : {};
+        for (const origin of Array.isArray(row.origins) ? row.origins as Record<string, unknown>[] : []) {
+          const originUid = String(origin.origin_unique_id || "").trim();
+          if (originUid) evidence[originUid] = normalizeEvalWorkEvidence(workId, input[originUid], originUid);
+        }
+      } else {
+        evidence = normalizeEvalWorkEvidence(workId, payload.evidence && typeof payload.evidence === "object" ? payload.evidence : {});
+      }
       const { data, error } = await supabase.rpc(rpcName, {
         p_work_id: workId,
         p_actor_username: actor,
         p_expected_version: Number(payload.expectedVersion),
         p_inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft,
-        p_evidence: evidence,
+        ...(isV2 ? { p_evidence_by_origin: evidence } : { p_evidence: evidence }),
         ...(operation === "submit" ? { p_submission_token: String(payload.submissionToken || "").trim() } : {}),
       });
       if (error) throw error;
-      return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
+      const withDelivery = await withEvalWorkDeliveryStatus(data as Record<string, unknown>);
+      return jsonResponse({ ok: true, data: (await withEvalWorkOrigins([withDelivery]))[0] });
     }
     if (operation === "reassign") {
       if (!isEvalWorkManager(session)) return errorResponse("Forbidden", 403, { code: "eval_work_manage_forbidden" });
@@ -750,12 +824,19 @@ async function handleEvalWorkAction(
     }
     if (operation === "remove_photo") {
       const workId = String(payload.workId || "").trim();
-      const row = await loadAuthorizedEvalWork(session, workId);
+      const rawRow = await loadAuthorizedEvalWork(session, workId);
+      const row = rawRow ? (await withEvalWorkOrigins([rawRow]))[0] : null;
       if (!row || normalizeUsername(row.assignee_username) !== actor || !["open", "in_progress"].includes(String(row.status || ""))) {
         return errorResponse("Only the assigned evaluator can remove an open Eval photo.", 403, { code: "eval_work_photo_forbidden" });
       }
       const filePath = String(payload.filePath || "").replace(/^\/+/, "");
-      const requiredPrefix = `eval/${workId}/`;
+      const originUid = String(payload.originUid || row.origin_unique_id || "").trim();
+      const isV2 = String(row.contract_version || "") === "eval-work-v2-multi-origin";
+      if (isV2 && !(Array.isArray(row.origins) && (row.origins as Record<string, unknown>[])
+        .some((origin) => String(origin.origin_unique_id || "") === originUid))) {
+        return errorResponse("Invalid Eval origin.", 400, { code: "eval_work_photo_origin_invalid" });
+      }
+      const requiredPrefix = isV2 ? `eval/${workId}/${originUid}/` : `eval/${workId}/`;
       if (!filePath.startsWith(requiredPrefix) || filePath.includes("..")) return errorResponse("Invalid Eval photo path.", 400);
       const { error } = await supabase.storage.from("request_photos").remove([filePath]);
       if (error) throw error;
@@ -1311,14 +1392,26 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
   if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
 
   let evalWorkId = "";
+  let evalOriginUid = "";
+  let evalMultiOrigin = false;
   if (prefix === "eval-") {
     evalWorkId = String(form.get("workId") || "").trim();
     const originUid = String(form.get("originUid") || "").trim();
-    const row = await loadAuthorizedEvalWork(session, evalWorkId).catch(() => null);
+    evalOriginUid = originUid;
+    if (!/^[A-Za-z0-9._-]+$/.test(originUid)) {
+      return errorResponse("Invalid Eval origin.", 400, { code: "eval_work_photo_origin_invalid" });
+    }
+    const rawRow = await loadAuthorizedEvalWork(session, evalWorkId).catch(() => null);
+    const row = rawRow ? (await withEvalWorkOrigins([rawRow]).catch(() => []))[0] : null;
     const actor = normalizeUsername(session.username || session.displayName || "");
+    const originAllowed = row && String(row.contract_version || "") === "eval-work-v2-multi-origin"
+      ? (Array.isArray(row.origins) && (row.origins as Record<string, unknown>[])
+        .some((origin) => String(origin.origin_unique_id || "") === originUid))
+      : String(row && row.origin_unique_id || "") === originUid;
+    evalMultiOrigin = !!row && String(row.contract_version || "") === "eval-work-v2-multi-origin";
     if (!row || normalizeUsername(row.assignee_username) !== actor
       || !["open", "in_progress"].includes(String(row.status || ""))
-      || String(row.origin_unique_id || "") !== originUid) {
+      || !originAllowed) {
       return errorResponse("Eval photo upload is not authorized for this assignment and row.", 403, { code: "eval_work_photo_forbidden" });
     }
   }
@@ -1353,7 +1446,7 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
   const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
   const fileName = requestedFileName || `${originalName}-${Date.now()}.jpg`;
   const filePath = prefix === "eval-"
-    ? `eval/${evalWorkId}/${fileName}`
+    ? (evalMultiOrigin ? `eval/${evalWorkId}/${String(evalOriginUid)}/${fileName}` : `eval/${evalWorkId}/${fileName}`)
     : (protectedMasterUid
       ? `drive/${sanitizeStorageFileName(protectedMasterUid)}/${fileName}`
       : `${new Date().toISOString().split("T")[0]}/${fileName}`);

@@ -67,7 +67,7 @@ test('submission validates current identities and updates only exact-row evaluat
 test('assignment and completion recipient paths remain strictly separated', () => {
   assert.match(migration, /'eval_work_assignment'[\s\S]*'assigneeEmail', new_work\.assignee_email/);
   assert.match(migration, /'eval_work_completion'[\s\S]*'completionRecipients', to_jsonb\(work\.completion_recipients\)/);
-  assert.match(appsScript, /kind === 'assignment'[\s\S]*dedupeEmailAddresses_\(\[eventPayload\.assigneeEmail\]\)[\s\S]*dedupeEmailAddresses_\(\[eventPayload\.completionRecipients\]\)/);
+  assert.match(appsScript, /kind === 'assignment'[\s\S]*eventPayload\.assignmentRecipients \|\| eventPayload\.assigneeEmail[\s\S]*eventPayload\.completionRecipients/);
   assert.match(html, /Only .* is receiving the assignment email\. Completion recipients will be emailed after submission/);
   assert.doesNotMatch(appsScript.slice(appsScript.indexOf('function handleSignedEvalWorkDelivery_'), appsScript.indexOf('function handleSignedRequestDeliveryEvent_')), /requiredRecipient|requiredRecipients|hiddenRecipient/i);
 });
@@ -102,8 +102,8 @@ test('assigned sales reps can use only the ownership-checked Eval photo scope', 
   assert.match(appApi, /REP_ALLOWED_PHOTO_PREFIXES = new Set\(\["req-", "credit-", "eval-"\]\)/);
   assert.match(appApi, /prefix === "eval-"[\s\S]*loadAuthorizedEvalWork\(session, evalWorkId\)/);
   assert.match(appApi, /normalizeUsername\(row\.assignee_username\) !== actor/);
-  assert.match(appApi, /String\(row\.origin_unique_id \|\| ""\) !== originUid/);
-  assert.match(appApi, /`eval\/\$\{evalWorkId\}\/\$\{fileName\}`/);
+  assert.match(appApi, /originAllowed = row[\s\S]*row\.origins[\s\S]*origin_unique_id/);
+  assert.match(appApi, /evalMultiOrigin \? `eval\/\$\{evalWorkId\}\/\$\{String\(evalOriginUid\)\}\/\$\{fileName\}` : `eval\/\$\{evalWorkId\}\/\$\{fileName\}`/);
 });
 
 test('Review setup is manager-only, searchable, explicit, and supports blank inquiries', () => {
@@ -143,7 +143,7 @@ test('Eval Reports #2 batch creation is service-only, atomic, complete-row, and 
   assert.doesNotMatch(batchMigration, /update public\.ph_master_inventory|delete from public\./i);
   assert.match(appApi, /operation === "create_batch"/);
   assert.match(appApi, /normalizeEvalWorkBatchInquiry/);
-  assert.match(appApi, /supabase\.rpc\("create_eval_work_batch_v1"/);
+  assert.match(appApi, /create_eval_work_batch_v2" : "create_eval_work_batch_v1/);
 });
 
 test('Eval Reports #2 uses PDF Eval Work delivery and preserves temporary report overlays', () => {

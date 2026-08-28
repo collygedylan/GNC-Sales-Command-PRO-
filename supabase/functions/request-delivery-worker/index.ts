@@ -73,6 +73,28 @@ function requestIdsForEvent(event: JsonRecord) {
   return [...new Set((Array.isArray(raw) ? raw : [raw]).map((value) => String(value || "").trim()).filter(Boolean))];
 }
 
+function isFolderCompletionV2(event: JsonRecord) {
+  const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
+  return String(event.event_type || "") === "request_completed"
+    && String(payload.contractVersion || "") === "request-folder-completion-v2";
+}
+
+async function prepareFolderCompletionV2(event: JsonRecord) {
+  const { data, error } = await supabase.rpc("prepare_request_folder_completion_v2", {
+    p_event_id: String(event.event_id || ""),
+    p_lease_token: String(event.lease_token || ""),
+  });
+  if (error) throw new Error(`FOLDER_COMPLETION_PREPARE_FAILED:${error.code || "unknown"}`);
+  return data && typeof data === "object" ? data as JsonRecord : {};
+}
+
+async function acknowledgeFolderCompletionV2(event: JsonRecord) {
+  const { error } = await supabase.rpc("acknowledge_request_folder_completion_v2", {
+    p_event_id: String(event.event_id || ""),
+  });
+  if (error) throw new Error(`FOLDER_COMPLETION_ACK_FAILED:${error.code || "unknown"}`);
+}
+
 async function loadRequestRows(event: JsonRecord) {
   const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
   const eventType = String(event.event_type || "");
@@ -305,6 +327,16 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
+        if (isFolderCompletionV2(event)) {
+          const readiness = await prepareFolderCompletionV2(event);
+          if (readiness.ready !== true) continue;
+          const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
+          payload.request_ids = Array.isArray(readiness.requestIds) ? readiness.requestIds : payload.request_ids;
+          payload.activeRequestIds = payload.request_ids;
+          payload.updatedCompletion = readiness.updatedCompletion === true;
+          event.payload = payload;
+        }
+
         const rows = await loadRequestRows(event) as JsonRecord[];
         const isRequestEvent = ["request_created", "request_completed"].includes(String(event.event_type || ""));
         if (isRequestEvent && !rows.length) throw new Error("REQUEST_SNAPSHOT_MISSING");
@@ -342,6 +374,11 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
         }
 
         await finishEvent(eventId, leaseToken, channelResults);
+        if (isFolderCompletionV2(event)) {
+          await acknowledgeFolderCompletionV2(event).catch((error) => {
+            console.error(JSON.stringify({ action: "folder_completion_ack", error_code: sanitizeCode(error) }));
+          });
+        }
         delivered += 1;
       } catch (error) {
         failed += 1;

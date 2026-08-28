@@ -84,6 +84,7 @@ let deliveryWorkerResult = null;
 let requestIntegrityHealth = null;
 let poManagementHealth = null;
 let accessControlHealth = null;
+let evalRequestDeliveryHealth = null;
 let recentSemanticFailures = [];
 let appsScriptHealth = null;
 
@@ -268,6 +269,30 @@ if (serviceRoleKey) {
     unknownRoleCount: Math.max(0, Number(accessControlHealth.unknown_role_count) || 0)
   });
 
+  const evalRequestHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_request_delivery_health_snapshot_v2`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const evalRequestHealthText = await evalRequestHealthResponse.text();
+  try { evalRequestDeliveryHealth = evalRequestHealthText ? JSON.parse(evalRequestHealthText) : null; } catch {}
+  if (!evalRequestHealthResponse.ok || !evalRequestDeliveryHealth || typeof evalRequestDeliveryHealth !== 'object') {
+    throw new Error(`production_eval_request_delivery_health_unavailable_HTTP_${evalRequestHealthResponse.status}`);
+  }
+  const evalRequestContractHealthy = evalRequestDeliveryHealth.contract_version === 'eval-request-delivery-health-v2'
+    && Number(evalRequestDeliveryHealth.required_manager_recipient_count) === 2
+    && Number(evalRequestDeliveryHealth.creation_order_violation_count) === 0
+    && Number(evalRequestDeliveryHealth.completion_membership_mismatch_count) === 0
+    && Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) === 0
+    && Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) === 0;
+  if (!evalRequestContractHealthy) throw new Error('production_eval_request_delivery_contract_unhealthy');
+  checks.push({
+    name: 'eval_request_delivery_v2',
+    status: evalRequestHealthResponse.status,
+    contractVersion: evalRequestDeliveryHealth.contract_version,
+    requiredManagerRecipientCount: Number(evalRequestDeliveryHealth.required_manager_recipient_count)
+  });
+
   // Read only non-PII health fields. The current scheduled audit was evaluated
   // above, so older audit rows are excluded from semantic client failures.
   const recentSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -331,6 +356,14 @@ const result = {
     legacyMismatchCount: Math.max(0, Number(accessControlHealth.legacy_mismatch_count) || 0),
     unknownRoleCount: Math.max(0, Number(accessControlHealth.unknown_role_count) || 0)
   } : null,
+  evalRequestDelivery: evalRequestDeliveryHealth ? {
+    contractVersion: String(evalRequestDeliveryHealth.contract_version || ''),
+    requiredManagerRecipientCount: Math.max(0, Number(evalRequestDeliveryHealth.required_manager_recipient_count) || 0),
+    creationOrderViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.creation_order_violation_count) || 0),
+    completionMembershipMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.completion_membership_mismatch_count) || 0),
+    evalOriginScopeMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) || 0),
+    evalRequiredRecipientViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) || 0)
+  } : null,
   appsScript: appsScriptHealth,
   recentSemanticFailureCount: recentSemanticFailures.length
 };
@@ -340,6 +373,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }
