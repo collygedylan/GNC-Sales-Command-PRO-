@@ -121,10 +121,9 @@ function loadClientPayloadBuilder(values = {}) {
     isArgosInventoryTransactionMoveSeasonRequestAction: (value) => ['move_up', 'move_down'].includes(value),
     collectArgosReclassV3Draft: () => ({
       requestActions: ['hold', 'priority_change'],
-      holdStopProposals: [],
-      scope: {},
+      holdStopProposals: [{ action: 'hold', reason: 'field review' }],
+      scope: { season: 'F1', salesYear: 2027 },
       rowOverlays: [{ unique_id: 'u1', expected: {}, proposals: [
-        { action: 'hold', holdstopcode: 'H', holdstopreason: 'Field review' },
         { action: 'priority_change', priority: '2' },
       ] }],
     }),
@@ -200,8 +199,8 @@ test('cleared and added Priority values are retained as changed fields and highl
   assert.equal(Array.from(result.rows[1].changedFields).join('|'), 'priority');
   const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, { actor: { display: 'Tester' } }, new Date('2026-08-22T14:15:00Z'));
   const output = server.buildReclassInquiryReportHtml_(model, true);
-  assert.match(output, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
-  assert.match(output, /class="edited-cell" data-edited="true">7<\/td>/);
+  assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>\[blank\]<\/strong>/);
+  assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>7<\/strong>/);
   assert.match(output, /Edited:<\/strong> 2 field\(s\) across 2 row\(s\)/);
 });
 
@@ -281,10 +280,10 @@ test('Reclass server fetch paginates every current row for the selected ITEMCODE
 test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landscape, and repeat-header capable', () => {
   const server = loadServerModel();
   const baseModel = {
-    identity: { commonname: '<Unsafe & Name>', itemcode: 'A1', holdstopcode: 'H' },
-    identityChangedFields: ['holdstopcode'],
+    identity: { commonname: '<Unsafe & Name>', itemcode: 'A1', holdstopcode: 'H', holdstopreason: 'check' },
+    identityChangedFields: ['holdstopcode', 'holdstopreason'],
     seasons: [{ saleyear: '2027', season: 'F1', s_lts: '1', season_supply: '2', season_oh: '2', season_demand: '0' }],
-    transaction: { quantity: 1, newItemCode: 'A2', newLotCode: '27.S1', newLocationCode: 'B.1' },
+    transaction: { quantity: 1, newItemCode: 'A2', newLotCode: '27.S1', newLocationCode: 'B.1', scope: { season: 'F1', salesYear: 2027, affectedCount: 3 } },
     actorDisplay: 'Tester',
     submittedAt: '8/22/2026, 9:15:00 AM',
   };
@@ -306,8 +305,11 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
     assert.match(output, /\.edited-cell\{background:#fff176!important\}/);
-    assert.match(output, /identity-cell edited-cell" data-edited="true"><span>HOLDSTOPCODE<\/span><strong>H<\/strong>/);
-    assert.match(output, /class="edited-cell" data-edited="true">check<\/td>/);
+    assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?<span class="proposal-label">PROPOSED<\/span><strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>check<\/strong>/);
+    assert.match(output, /F1 \| sales year &lt;= 27 \| 3 rows/);
+    assert.match(output, /proposal-legend/);
+    assert.match(output, /border:2px solid #000/);
+    assert.doesNotMatch(output, /<th>Hold\/Stop Reason<\/th>/);
     assert.doesNotMatch(output, /<img/i);
     assert.doesNotMatch(output, /Reclass Request/);
     assert.doesNotMatch(output, /Season Summary/);
@@ -346,24 +348,16 @@ test('Reclass workflow V3 row actions are live while V2 remains available for co
 
 test('action-specific compact PDFs use exact columns, natural ordering, preserved OH, and yellow proposals', () => {
   const server = loadServerModel();
-  const expected = {
-    priority_change: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    recount: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    move_up: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Move Qty', 'To Season', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    move_down: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Move Qty', 'To Season', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    take_off_hold: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-    off_stop_ship: ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Hold/Stop Reason', 'Loc Note Date', 'Location Note'],
-  };
+  const actions = ['priority_change', 'recount', 'move_up', 'move_down', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'];
+  const fixedHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'Location Note'];
   const outputs = {};
-  for (const [action, expectedHeaders] of Object.entries(expected)) {
+  for (const action of actions) {
     const model = server.buildReclassInquiryCompactPilotModel_(action, new Date('2026-08-22T14:15:00Z'));
     const output = server.buildReclassInquiryCompactReportHtml_(model, true);
     outputs[action] = output;
     const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
     const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
-    assert.deepEqual(headers, expectedHeaders, `${action} should have its exact columns`);
+    assert.deepEqual(headers, fixedHeaders, `${action} should keep the fixed compact columns`);
     assert.ok(output.indexOf('A.01.000') < output.indexOf('D.12.000'));
     assert.ok(output.indexOf('D.12.000') < output.indexOf('D.17.000'));
     assert.ok(output.indexOf('D.17.000') < output.indexOf('F.14.000'));
@@ -376,18 +370,17 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
     for (const output of Object.values(outputs)) assert.doesNotMatch(output, new RegExp(`<th>${removed}<\\/th>`), `${removed} must not be an action pilot column`);
   }
   assert.match(outputs.priority_change, /Request:<\/strong> Priority Change/);
-  assert.match(outputs.priority_change, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
-  assert.match(outputs.priority_change, /class="edited-cell" data-edited="true">1<\/td>/);
-  assert.match(outputs.move_up, /class="edited-cell" data-edited="true">20<\/td>/);
-  assert.match(outputs.move_up, /class="edited-cell" data-edited="true">F1<\/td>/);
-  assert.match(outputs.move_up, />26<\/td><td>1<\/td><td class="edited-cell" data-edited="true">20<\/td>/, 'Move Up must preserve original OH 26 and place PTRREVIEWED next');
-  assert.match(outputs.move_down, />36<\/td><td>2<\/td><td class="edited-cell" data-edited="true">15<\/td>/, 'Move Down must preserve original OH 36 and place PTRREVIEWED next');
-  assert.match(outputs.take_off_hold, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
-  assert.match(outputs.off_stop_ship, /class="edited-cell" data-edited="true">&nbsp;<\/td>/);
+  assert.match(outputs.priority_change, /PROPOSED[\s\S]*?\[blank\]/);
+  assert.match(outputs.priority_change, /PROPOSED[\s\S]*?<strong>1<\/strong>/);
+  assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?PROPOSED[\s\S]*?UP 20 TO F1/);
+  assert.match(outputs.move_down, /<strong class="original-oh">36<\/strong>[\s\S]*?PROPOSED[\s\S]*?DOWN 15 TO U2/);
+  assert.doesNotMatch(outputs.move_up, /<th>Move Qty<\/th>|<th>To Season<\/th>/);
+  assert.match(outputs.take_off_hold, /PROPOSED[\s\S]*?\[blank\]/);
+  assert.match(outputs.off_stop_ship, /PROPOSED[\s\S]*?\[blank\]/);
   assert.doesNotMatch(outputs.recount, /class="edited-cell"/);
 });
 
-test('Reclass identity is exactly nine balanced fields and movement pairs follow PTRREVIEWED', () => {
+test('Reclass identity is exactly nine balanced fields and the detail table stays fixed', () => {
   const server = loadServerModel();
   assert.deepEqual(Array.from(server.RECLASS_INQUIRY_IDENTITY_FIELDS_, (field) => [field.key, field.label]), [
     ['plantgroupcode', 'Plant Grp'], ['commonname', 'Common Name'], ['contsize', 'Cont.'],
@@ -395,13 +388,13 @@ test('Reclass identity is exactly nine balanced fields and movement pairs follow
     ['itemspec', 'Item Spec'], ['pullerresponsibility', 'Puller Resp.'], ['holdstopcode', 'HOLDSTOPCODE'],
   ]);
   assert.deepEqual(Array.from(server.getReclassInquiryCompactFields_('', ['move_down', 'move_up']), (field) => field.label), [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED',
-    'Move Up Qty', 'Move Up To Season', 'Move Down Qty', 'Move Down To Season',
-    'Hold/Stop Reason', 'Loc Note Date', 'Location Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'Location Note',
   ]);
   const htmlOutput = server.buildReclassInquiryCompactReportHtml_({ identity: {}, rows: [] }, true);
   assert.match(htmlOutput, /\.identity\{display:grid;grid-template-columns:repeat\(3,1fr\)/);
   assert.doesNotMatch(htmlOutput, /<th>Hold\/Stop Code<\/th>/);
+  assert.doesNotMatch(htmlOutput, /<th>Hold\/Stop Reason<\/th>|<th>Move Up|<th>Move Down/);
+  assert.match(htmlOutput, /HOLDSTOPREASON/);
 });
 
 test('workflow V2 validates every action and rejects mixed, stale, and unsafe proposals', () => {
@@ -429,28 +422,27 @@ test('workflow V2 validates every action and rejects mixed, stale, and unsafe pr
   assert.deepEqual(row, { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', priority: '3', ptronhand: '20', season: 'F1', holdstopcode: 'H', holdstopreason: 'Reason' });
 });
 
-test('workflow V3 writes Dallas Move + Hold + Priority values into existing report columns', () => {
+test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals in compact cells', () => {
   const server = loadServerModel();
   const rows = [
     { unique_id: 'dallas', itemcode: '000748.010.1', lotcode: '27.S1', locationcode: 'C.16.000', source: 'LD', priority: '', ptronhand: '526', season: 'S1', saleyear: '27', holdstopcode: '', holdstopreason: '' },
     { unique_id: 'context', itemcode: '000748.010.1', lotcode: '27.F1', locationcode: 'A.01.000', source: 'SH', priority: '3', ptronhand: '20', season: 'F1', saleyear: '27', holdstopcode: '', holdstopreason: '' },
   ];
-  const expected = (row) => ({ itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode });
+  const expected = (row) => ({ itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode, ptronhand: row.ptronhand });
   const overlays = rows.map((row) => ({
     unique_id: row.unique_id,
     expected: expected(row),
     proposals: row.unique_id === 'dallas' ? [
-      { action: 'hold', holdstopcode: 'H', holdstopreason: 'sheared' },
       { action: 'priority_change', priority: '1' },
       { action: 'move_up', moveQuantity: 150, destinationSeason: 'F1' },
     ] : [],
   }));
   const transaction = {
     requestActions: ['hold', 'priority_change', 'move_up'],
-    holdStopProposals: [],
-    scope: {},
+    holdStopProposals: [{ action: 'hold', reason: 'SHEARED' }],
+    scope: { season: 'S1', salesYear: 2027 },
   };
-  const result = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, null);
+  const result = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, { season: 'S1', salesYear: 2027, updatedAt: 'now' });
   assert.equal(result.ok, true);
   assert.deepEqual(Array.from(result.requestActions), transaction.requestActions);
   const byId = Object.fromEntries(Array.from(result.rows, (row) => [row.unique_id, row]));
@@ -462,49 +454,98 @@ test('workflow V3 writes Dallas Move + Hold + Priority values into existing repo
   assert.equal(byId.dallas.actionValues.moveupquantity, '150');
   assert.equal(byId.dallas.actionValues.moveupseason, 'F1');
   assert.deepEqual(Array.from(byId.dallas.changedFields), ['holdstopcode', 'holdstopreason', 'priority', 'moveupquantity', 'moveupseason']);
+  assert.equal(byId.context.values.holdstopcode, '');
+  assert.equal(result.scope.affectedCount, 1);
 
-  const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, { transaction, actor: { display: 'Tester' } }, new Date('2026-08-26T14:00:00Z'));
+  const reportTransaction = { ...transaction, holdStopProposals: result.holdStopProposals, requestActions: result.requestActions, scope: result.scope };
+  const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, { transaction: reportTransaction, actor: { display: 'Tester' } }, new Date('2026-08-26T14:00:00Z'));
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
   const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
   const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
   assert.deepEqual(headers, [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED',
-    'Move Up Qty', 'Move Up To Season',
-    'Hold/Stop Reason', 'Loc Note Date', 'Location Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'Location Note',
   ]);
-  assert.match(output, /class="edited-cell" data-edited="true">1<\/td>/);
-  assert.match(output, /class="edited-cell" data-edited="true">150<\/td>/);
+  assert.match(output, /PROPOSED[\s\S]*?<strong>1<\/strong>/);
+  assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?PROPOSED[\s\S]*?UP 150 TO F1/);
   assert.equal(model.identity.holdstopcode, 'H');
-  assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode']);
-  assert.match(output, /identity-cell edited-cell" data-edited="true"><span>HOLDSTOPCODE<\/span><strong>H<\/strong>/);
-  assert.match(output, /class="edited-cell" data-edited="true">sheared<\/td>/);
+  assert.equal(model.identity.holdstopreason, 'sheared');
+  assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode', 'holdstopreason']);
+  assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>sheared<\/strong>/);
+  assert.match(output, /S1 \| sales year &lt;= 27 \| 1 row/);
   assert.doesNotMatch(output, /Hold\/Stop Proposals|<th>Actions<\/th>/);
   assert.ok(output.indexOf('A.01.000') < output.indexOf('C.16.000'));
   assert.equal((output.match(/<tr>/g) || []).length, rows.length + 1);
 });
 
+test('Hold/Stop scope honors season, two/four digit years, future rows, and mixed H/S eligibility', () => {
+  const server = loadServerModel();
+  const rows = [
+    { unique_id: 'old-h', itemcode: 'A1', lotcode: '26.F1', locationcode: 'A.1', ptronhand: '5', season: 'F1', saleyear: '26', holdstopcode: 'H', holdstopreason: 'OLD HOLD' },
+    { unique_id: 'current-s', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.2', ptronhand: '6', season: 'F1', saleyear: '2027', holdstopcode: 'S', holdstopreason: 'CURRENT STOP' },
+    { unique_id: 'future-h', itemcode: 'A1', lotcode: '28.F1', locationcode: 'A.3', ptronhand: '7', season: 'F1', saleyear: '28', holdstopcode: 'H', holdstopreason: 'FUTURE HOLD' },
+    { unique_id: 'other-h', itemcode: 'A1', lotcode: '27.S1', locationcode: 'A.4', ptronhand: '8', season: 'S1', saleyear: '27', holdstopcode: 'H', holdstopreason: 'OTHER HOLD' },
+  ];
+  const overlays = rows.map((row) => ({ unique_id: row.unique_id, expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode, ptronhand: row.ptronhand }, proposals: [] }));
+  const scope = { season: 'F1', salesYear: 2027 };
+  const run = (action, reason = '') => server.buildReclassInquiryActionRowsV3_({ requestActions: [action], holdStopProposals: [{ action, reason }], scope }, rows, overlays, scope);
+  const on = run('hold', 'REVIEW');
+  assert.equal(on.scope.affectedCount, 2);
+  assert.deepEqual(Array.from(on.rows.filter((row) => row.actions.includes('hold')), (row) => row.unique_id), ['old-h', 'current-s']);
+  assert.equal(on.rows[0].values.holdstopreason, 'review');
+  const offHold = run('take_off_hold');
+  assert.equal(offHold.scope.affectedCount, 1);
+  assert.deepEqual(Array.from(offHold.rows.filter((row) => row.actions.includes('take_off_hold')), (row) => row.unique_id), ['old-h']);
+  const offStop = run('off_stop_ship');
+  assert.equal(offStop.scope.affectedCount, 1);
+  assert.deepEqual(Array.from(offStop.rows.filter((row) => row.actions.includes('off_stop_ship')), (row) => row.unique_id), ['current-s']);
+  const staleScope = server.buildReclassInquiryActionRowsV3_({ requestActions: ['hold'], holdStopProposals: [{ action: 'hold', reason: 'review' }], scope: { season: 'S1', salesYear: 2027 } }, rows, overlays, scope);
+  assert.equal(staleScope.ok, false);
+  assert.equal(staleScope.status, 'conflict');
+  assert.match(staleScope.message, /current season settings changed/i);
+  assert.equal(rows[0].holdstopreason, 'OLD HOLD');
+});
+
+test('both movement proposals share the original OH cell and remain boxed in grayscale', () => {
+  const server = loadServerModel();
+  const model = {
+    identity: { commonname: 'Example', itemcode: 'A1', holdstopcode: '', holdstopreason: '' },
+    identityChangedFields: [],
+    transaction: { scope: {} },
+    requestActions: ['move_up', 'move_down'],
+    rows: [{ unique_id: 'u1', values: { lotcode: '27.S1', locationcode: 'A.1', source: 'LD', priority: '', ptronhand: '800', ptrreviewed: '2', locationnotedate: '', locationnote: '' }, actionValues: { moveupquantity: '40', moveupseason: 'F1', movedownquantity: '20', movedownseason: 'S1' }, changedFields: ['moveupquantity', 'moveupseason', 'movedownquantity', 'movedownseason'] }],
+    editSummary: { rowCount: 1, fieldCount: 4 },
+  };
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(output, /<strong class="original-oh">800<\/strong>[\s\S]*?UP 40 TO F1[\s\S]*?DOWN 20 TO S1/);
+  assert.equal((output.match(/class="proposal-label">PROPOSED<\/span>/g) || []).length, 2, 'both movement proposals must be labeled');
+  assert.match(output, /box-shadow:inset 0 0 0 1px #000/);
+  assert.doesNotMatch(output, /<th>Move Up|<th>Move Down/);
+});
+
 test('originating Hold/Stop proposals drive the top code and all PDF reasons render lowercase', () => {
   const server = loadServerModel();
   const rows = [
-    { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', ptrreviewed: '3', holdstopcode: 'H', holdstopreason: 'Mixed CASE Reason' },
-    { unique_id: 'context', itemcode: 'A1', lotcode: '27.S1', locationcode: 'B.1', ptronhand: '5', ptrreviewed: '1', holdstopcode: 'S', holdstopreason: 'Older MIXED Reason' },
+    { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', ptrreviewed: '3', season: 'F1', saleyear: '27', holdstopcode: 'H', holdstopreason: 'Mixed CASE Reason' },
+    { unique_id: 'context', itemcode: 'A1', lotcode: '27.S1', locationcode: 'B.1', ptronhand: '5', ptrreviewed: '1', season: 'S1', saleyear: '27', holdstopcode: 'S', holdstopreason: 'Older MIXED Reason' },
   ];
-  const transaction = { requestActions: ['take_off_hold'], holdStopProposals: [], scope: {} };
+  const transaction = { requestActions: ['take_off_hold'], holdStopProposals: [{ action: 'take_off_hold', reason: '' }], scope: { season: 'F1', salesYear: 2027 } };
   const overlays = rows.map((row) => ({
     unique_id: row.unique_id,
     expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode },
-    proposals: row.unique_id === 'origin' ? [{ action: 'take_off_hold', holdstopcode: '', holdstopreason: '' }] : [],
+    proposals: [],
   }));
-  const proposal = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, null);
+  const proposal = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, { season: 'F1', salesYear: 2027 });
   assert.equal(proposal.ok, true);
-  const model = server.buildReclassInquiryReportModel_(rows[0], rows, proposal.rows, { transaction, actor: { display: 'Tester' } }, new Date());
+  const reportTransaction = { ...transaction, scope: proposal.scope, holdStopProposals: proposal.holdStopProposals };
+  const model = server.buildReclassInquiryReportModel_(rows[0], rows, proposal.rows, { transaction: reportTransaction, actor: { display: 'Tester' } }, new Date());
   assert.equal(model.identity.holdstopcode, '');
-  assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode']);
+  assert.equal(model.identity.holdstopreason, '');
+  assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode', 'holdstopreason']);
   assert.equal(model.rows[1].values.holdstopreason, 'older mixed reason');
   assert.equal(rows[1].holdstopreason, 'Older MIXED Reason', 'authoritative source must remain untouched');
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  assert.match(output, /identity-cell edited-cell" data-edited="true"><span>HOLDSTOPCODE<\/span><strong>&nbsp;<\/strong>/);
-  assert.match(output, />older mixed reason<\/td>/);
+  assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?PROPOSED[\s\S]*?\[blank\][\s\S]*?HOLDSTOPREASON[\s\S]*?\[blank\]/);
+  assert.doesNotMatch(output, /<th>Hold\/Stop Reason<\/th>/);
   assert.doesNotMatch(output, /Mixed CASE|Older MIXED/);
 });
 
@@ -513,22 +554,24 @@ test('workflow V3 rejects duplicate actions, bad row fields, missing reasons, co
   const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', priority: '3', ptronhand: '10', season: 'F1', saleyear: '27', holdstopcode: 'H', holdstopreason: 'Reason' };
   const overlay = (proposals) => [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' }, proposals }];
   const tx = (requestActions) => ({ requestActions, holdStopProposals: [], scope: {} });
+  const scope = { season: 'F1', salesYear: 2027 };
 
   assert.throws(() => server.buildReclassInquiryActionRowsV3_(tx(['recount', 'recount']), [row], overlay([{ action: 'recount' }]), null), /empty or duplicated/);
-  assert.throws(() => server.buildReclassInquiryActionRowsV3_(tx(['hold']), [row], overlay([{ action: 'hold', holdstopcode: 'H', holdstopreason: '' }]), null), /requires a Hold\/Stop Reason/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['hold'], holdStopProposals: [{ action: 'hold', reason: '' }], scope }, [row], overlay([]), scope), /requires a Hold\/Stop Reason/);
   assert.throws(() => server.buildReclassInquiryActionRowsV3_(tx(['priority_change']), [row], overlay([{ action: 'priority_change', priority: '2', holdstopcode: 'S' }]), null), /unrelated field: holdstopcode/);
   assert.throws(() => server.buildReclassInquiryActionRowsV3_(tx(['move_up', 'move_down']), [row], overlay([
     { action: 'move_up', moveQuantity: 6, destinationSeason: 'S1' },
     { action: 'move_down', moveQuantity: 5, destinationSeason: 'U1' },
   ]), null), /cannot exceed original OH/);
-  assert.throws(() => server.buildReclassInquiryActionRowsV3_(tx(['off_stop_ship']), [row], overlay([{ action: 'off_stop_ship', holdstopcode: '', holdstopreason: '' }]), null), /requires current Hold\/Stop Code S/);
-  assert.throws(() => server.buildReclassInquiryActionRowsV3_(tx(['hold', 'stop_ship']), [row], overlay([
-    { action: 'hold', holdstopcode: 'H', holdstopreason: 'Hold reason' },
-    { action: 'stop_ship', holdstopcode: 'S', holdstopreason: 'Stop reason' },
-  ]), null), /only one Hold\/Stop action/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['off_stop_ship'], holdStopProposals: [{ action: 'off_stop_ship', reason: '' }], scope }, [row], overlay([]), scope), /no eligible rows/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['hold', 'stop_ship'], holdStopProposals: [
+    { action: 'hold', reason: 'hold reason' }, { action: 'stop_ship', reason: 'stop reason' },
+  ], scope }, [row], overlay([]), scope), /only one Hold\/Stop action/);
+  const staleOh = server.buildReclassInquiryActionRowsV3_(tx(['recount']), [row], [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '11' }, proposals: [{ action: 'recount' }] }], null);
+  assert.equal(staleOh.status, 'conflict');
 });
 
-test('workflow V3 accepts every pairwise combination as independent proposals', () => {
+test('workflow V3 accepts every pair with at most one Hold/Stop proposal and rejects Hold/Stop pairs', () => {
   const server = loadServerModel();
   const actions = ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down'];
   const rows = [
@@ -540,13 +583,11 @@ test('workflow V3 accepts every pairwise combination as independent proposals', 
   for (let left = 0; left < actions.length; left++) {
     for (let right = left + 1; right < actions.length; right++) {
       const pair = [actions[left], actions[right]];
+      const holdActions = pair.filter((action) => ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(action));
+      if (holdActions.length > 1) continue;
       const proposalsByUid = { h: [], s: [], n1: [], n2: [] };
       pair.forEach((action) => {
-        if (action === 'hold') proposalsByUid.n1.push({ action, holdstopcode: 'H', holdstopreason: 'Hold reason' });
-        else if (action === 'take_off_hold') proposalsByUid.h.push({ action, holdstopcode: '', holdstopreason: '' });
-        else if (action === 'stop_ship') proposalsByUid.n2.push({ action, holdstopcode: 'S', holdstopreason: 'Stop reason' });
-        else if (action === 'off_stop_ship') proposalsByUid.s.push({ action, holdstopcode: '', holdstopreason: '' });
-        else if (action === 'recount') proposalsByUid.n1.push({ action });
+        if (action === 'recount') proposalsByUid.n1.push({ action });
         else if (action === 'priority_change') proposalsByUid.n1.push({ action, priority: '2' });
         else if (action === 'move_up') proposalsByUid.n1.push({ action, moveQuantity: 5, destinationSeason: 'S1' });
         else if (action === 'move_down') proposalsByUid.n1.push({ action, moveQuantity: 6, destinationSeason: 'U1' });
@@ -556,12 +597,18 @@ test('workflow V3 accepts every pairwise combination as independent proposals', 
         expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode },
         proposals: proposalsByUid[row.unique_id],
       }));
-      const transaction = { requestActions: pair, holdStopProposals: [], scope: {} };
-      const result = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, null);
+      const holdAction = holdActions[0] || '';
+      const transaction = {
+        requestActions: pair,
+        holdStopProposals: holdAction ? [{ action: holdAction, reason: holdAction === 'hold' ? 'hold reason' : (holdAction === 'stop_ship' ? 'stop reason' : '') }] : [],
+        scope: holdAction ? { season: 'F1', salesYear: 2027 } : {},
+      };
+      const result = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, holdAction ? { season: 'F1', salesYear: 2027 } : null);
       assert.equal(result.ok, true, `${pair.join(' + ')} should validate independently`);
       assert.deepEqual(Array.from(result.requestActions), pair);
     }
   }
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['hold', 'stop_ship'], holdStopProposals: [{ action: 'hold', reason: 'one' }, { action: 'stop_ship', reason: 'two' }], scope: { season: 'F1', salesYear: 2027 } }, rows, rows.map((row) => ({ unique_id: row.unique_id, expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode }, proposals: [] })), { season: 'F1', salesYear: 2027 }), /only one Hold\/Stop action/);
 });
 
 test('approved pilot sender is removed and the live Reclass handler accepts V3 before V2 compatibility', () => {
@@ -576,6 +623,9 @@ test('approved pilot sender is removed and the live Reclass handler accepts V3 b
   assert.match(handler, /buildReclassInquiryActionRowsV2_/);
   assert.match(handler, /buildReclassInquiryCompactReportHtml_\(model, true\)/);
   assert.match(handler, /workflowPolicyVersion/);
+  assert.match(handler, /hasReclassInquiryHoldProposalV3_/);
+  assert.match(handler, /fetchReclassInquiryScopeSettingsV3_/);
+  assert.match(handler, /scope: overlayResult\.scope/);
   assert.match(handler, /GNC PH Reclass - ' \+ model\.requestActionLabel/);
 });
 
@@ -592,7 +642,7 @@ test('Reclass email body is a short attachment summary without duplicated row re
   assert.match(text, /Edited Rows: 2/);
   assert.match(text, /Edited Fields: 2/);
   assert.match(htmlBody, /PDF attached:/);
-  assert.match(htmlBody, /Edited cells are highlighted yellow/);
+  assert.match(htmlBody, /yellow, boxed, and labeled/);
   for (const removed of ['Reclass Request', 'Season Summary', 'Location \/ Lot Item Inquiry', '<table']) {
     assert.doesNotMatch(htmlBody, new RegExp(removed));
   }
@@ -624,26 +674,28 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
   const start = html.indexOf('function handleArgosReclassV3ProposalInput');
   const end = html.indexOf('function buildArgosReclassV3ProposalHtml', start);
   assert.ok(start > 0 && end > start);
-  const proposal = {};
+  const proposal = { action: 'hold', reason: '', sourceUid: 'origin' };
   const input = {
     value: 'Sheared MIXED Case',
     closest: () => ({ getAttribute: () => 'origin' }),
-    getAttribute: (name) => name === 'data-reclass-v3-proposal-action' ? 'hold' : 'holdstopreason',
+    getAttribute: (name) => name === 'data-reclass-v3-proposal-action' ? 'hold' : 'reason',
   };
   const context = {
     getArgosReclassV3Proposal: () => proposal,
+    getArgosReclassV3HoldProposal: () => proposal,
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
     captureEvalWorkLocalDraftSoon: () => {},
   };
   vm.createContext(context);
   vm.runInContext(`${html.slice(start, end)}; this.handleArgosReclassV3ProposalInput = handleArgosReclassV3ProposalInput;`, context);
   assert.equal(context.handleArgosReclassV3ProposalInput(input), true);
   assert.equal(input.value, 'sheared mixed case');
-  assert.equal(proposal.holdstopreason, 'sheared mixed case');
+  assert.equal(proposal.reason, 'sheared mixed case');
 
   const collectorStart = html.indexOf('function collectArgosReclassV3Draft');
   const collectorEnd = html.indexOf('function buildArgosInventoryTransactionPayload', collectorStart);
-  assert.match(html.slice(collectorStart, collectorEnd), /proposal\.holdstopreason \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
-  assert.match(html, /originating row's effective code appears once in the PDF overview/);
+  assert.match(html.slice(collectorStart, collectorEnd), /globalHoldProposal\.reason \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(html, /code and lowercase reason appear together in the PDF overview/);
 });
 
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {
@@ -718,12 +770,11 @@ test('live Reclass payload uses the V3 policy and independent action proposal ar
   const payload = buildPayload();
   assert.equal(payload.type, 'reclass_inquiry_email');
   assert.deepEqual(Array.from(payload.transaction.requestActions), ['hold', 'priority_change']);
-  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.holdStopProposals)), []);
-  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.scope)), {});
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.holdStopProposals)), [{ action: 'hold', reason: 'field review' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.scope)), { season: 'F1', salesYear: 2027 });
   assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v3-row-actions-20260826');
   assert.equal(payload.transaction.quantity, undefined);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.rowOverlays[0].proposals)), [
-    { action: 'hold', holdstopcode: 'H', holdstopreason: 'Field review' },
     { action: 'priority_change', priority: '2' },
   ]);
 });

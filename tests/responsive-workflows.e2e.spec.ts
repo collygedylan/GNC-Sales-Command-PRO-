@@ -1890,13 +1890,13 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.locator('[data-reclass-action-included]')).toHaveCount(0);
     await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="stop_ship"]')).toBeEnabled();
-    await expect(second.locator('[data-reclass-v3-action="take_off_hold"]')).toBeDisabled();
-    await expect(second.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
+    await expect(second.locator('[data-reclass-v3-action="take_off_hold"]')).toBeEnabled();
+    await expect(second.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
 
     for (const action of ['hold', 'priority_change', 'move_up']) {
       await second.locator(`[data-reclass-v3-action="${action}"]`).click();
     }
-    const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="holdstopreason"]');
+    const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]');
     const secondPriority = second.locator('[data-reclass-v3-proposal-action="priority_change"][data-reclass-v3-proposal-field="priority"]');
     await holdReason.fill('sheared');
     await secondPriority.fill('1');
@@ -1905,6 +1905,8 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(3);
     await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
     await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Actions');
+    await expect(origin).toHaveAttribute('data-reclass-scope-actions', 'hold');
+    await expect(origin).toContainText('Automatically included: On Hold Request');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
@@ -1913,15 +1915,14 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
 
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up']);
-    expect(draft.holdStopProposals).toEqual([]);
+    expect(draft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared' }]);
     expect(draft.rowOverlays).toHaveLength(41);
     expect(draft.rowOverlays[1].proposals).toEqual([
-      { action: 'hold', holdstopcode: 'H', holdstopreason: 'sheared' },
       { action: 'priority_change', priority: '1' },
       { action: 'move_up', moveQuantity: 150, destinationSeason: 'F1' },
     ]);
     expect(draft.rowOverlays[40].proposals).toEqual([]);
-    expect(draft.scope).toEqual({});
+    expect(draft.scope).toEqual({ season: 'F1', salesYear: 2027 });
 
     const layout = await modal.evaluate((root) => {
       const panel = root.querySelector('.argos-tx-panel') as HTMLElement;

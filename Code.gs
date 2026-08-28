@@ -10233,35 +10233,15 @@ const RECLASS_INQUIRY_SEASON_FIELDS_ = [
 ];
 
 const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
-  { key: 'lotcode', label: 'Lotcode', width: '.55in' },
-  { key: 'locationcode', label: 'Location', width: '.70in' },
-  { key: 'source', label: 'Source', width: '.40in' },
-  { key: 'priority', label: 'Priority', width: '.40in' },
-  { key: 'ptronhand', label: 'OH', width: '.45in' },
-  { key: 'ptrreviewed', label: 'PTRREVIEWED', width: '.62in' },
-  { key: 'locationnotedate', label: 'Loc Note Date', width: '.85in' },
+  { key: 'lotcode', label: 'Lotcode', width: '.65in' },
+  { key: 'locationcode', label: 'Location', width: '.80in' },
+  { key: 'source', label: 'Source', width: '.50in' },
+  { key: 'priority', label: 'Priority', width: '.75in' },
+  { key: 'ptronhand', label: 'OH', width: '1.25in' },
+  { key: 'ptrreviewed', label: 'PTRREVIEWED', width: '.85in' },
+  { key: 'locationnotedate', label: 'Loc Note Date', width: '.90in' },
   { key: 'locationnote', label: 'Location Note' }
 ];
-
-const RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_ = [
-  { key: 'movequantity', label: 'Move Qty', source: 'actionValues', width: '.55in' },
-  { key: 'destinationseason', label: 'To Season', source: 'actionValues', width: '.62in' }
-];
-
-const RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_ = [
-  { key: 'holdstopreason', label: 'Hold/Stop Reason', width: '1in' }
-];
-
-const RECLASS_INQUIRY_COMPACT_V3_MOVE_UP_FIELDS_ = [
-  { key: 'moveupquantity', label: 'Move Up Qty', source: 'actionValues', width: '.55in' },
-  { key: 'moveupseason', label: 'Move Up To Season', source: 'actionValues', width: '.62in' }
-];
-const RECLASS_INQUIRY_COMPACT_V3_MOVE_DOWN_FIELDS_ = [
-  { key: 'movedownquantity', label: 'Move Down Qty', source: 'actionValues', width: '.58in' },
-  { key: 'movedownseason', label: 'Move Down To Season', source: 'actionValues', width: '.65in' }
-];
-const RECLASS_INQUIRY_COMPACT_V3_HOLD_PROPOSAL_FIELD_ = { key: 'holdstopproposals', label: 'Hold/Stop Proposals', source: 'actionValues', width: '1.75in' };
-const RECLASS_INQUIRY_COMPACT_V3_ACTIONS_FIELD_ = { key: 'actions', label: 'Actions', source: 'actionValues', width: '1.35in' };
 
 const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
   hold: 'On Hold Request',
@@ -10342,21 +10322,7 @@ function getReclassInquiryActionRuleV2_(value) {
 }
 
 function getReclassInquiryCompactFields_(value, requestActions) {
-  const multiActions = Array.isArray(requestActions) ? requestActions : [];
-  if (multiActions.length) {
-    let fields = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 6);
-    if (multiActions.indexOf('move_up') !== -1) fields = fields.concat(RECLASS_INQUIRY_COMPACT_V3_MOVE_UP_FIELDS_);
-    if (multiActions.indexOf('move_down') !== -1) fields = fields.concat(RECLASS_INQUIRY_COMPACT_V3_MOVE_DOWN_FIELDS_);
-    fields = fields.concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_);
-    return fields.concat(RECLASS_INQUIRY_COMPACT_FIELDS_.slice(6));
-  }
-  const rule = getReclassInquiryActionRuleV2_(value);
-  const prefix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(0, 6);
-  const suffix = RECLASS_INQUIRY_COMPACT_FIELDS_.slice(6);
-  if (rule && rule.kind === 'move') {
-    return prefix.concat(RECLASS_INQUIRY_COMPACT_MOVE_FIELDS_, RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_, suffix);
-  }
-  return prefix.concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_, suffix);
+  return RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
 }
 
 function getReclassInquiryExactValue_(row, aliases, fallback) {
@@ -10837,9 +10803,6 @@ function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authorit
   return { ok: true, rows: reportRows, requestActions: canonicalActions, scope: scope };
 }
 
-// Row-specific V3 policy. This declaration intentionally supersedes the
-// season-wide pilot implementation above while V2 remains available for
-// already-open legacy clients.
 function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overlays, authoritativeScope, options) {
   const safeOptions = options && typeof options === 'object' ? options : {};
   const allowEmptyActions = safeOptions.allowEmptyActions === true;
@@ -10856,24 +10819,71 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
   requestedActions.forEach(function(action) {
     if (RECLASS_INQUIRY_ACTION_ORDER_V3_.indexOf(action) === -1) throw new Error('The Reclass action list contains an unsupported action.');
   });
+  const normalizedHoldProposals = [];
+  function addHoldProposal_(rawAction, rawReason, label) {
+    const action = String(rawAction || '').trim().toLowerCase();
+    const rule = getReclassInquiryActionRuleV2_(action);
+    if (!rule || RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) === -1) throw new Error(label + ' contains an unsupported Hold/Stop action.');
+    const reason = String(rawReason == null ? '' : rawReason).trim().toLowerCase();
+    if (rule.kind === 'hold_on' && !reason) throw new Error(rule.label + ' requires a Hold/Stop Reason.');
+    if (rule.kind === 'hold_off' && reason) throw new Error(rule.label + ' must clear Hold/Stop Code and Hold/Stop Reason.');
+    if (normalizedHoldProposals.length) {
+      const current = normalizedHoldProposals[0];
+      if (current.action !== action || current.reason !== reason) throw new Error('Choose only one Hold/Stop action for the complete Item Inquiry.');
+      return;
+    }
+    normalizedHoldProposals.push({ action: action, reason: reason });
+  }
   const holdStopProposals = Array.isArray(safeTransaction.holdStopProposals) ? safeTransaction.holdStopProposals : [];
-  if (holdStopProposals.length) throw new Error('Hold/Stop actions must be attached to a specific Location/Lot row. Refresh the app and reopen Reclass.');
+  if (holdStopProposals.length > 1) throw new Error('Choose only one Hold/Stop action for the complete Item Inquiry.');
+  holdStopProposals.forEach(function(rawProposal) {
+    const proposal = assertReclassInquiryObjectKeysV2_(rawProposal, ['action', 'reason'], 'A Hold/Stop proposal');
+    addHoldProposal_(proposal.action, proposal.reason, 'A Hold/Stop proposal');
+  });
   const overlayByUid = new Map();
   safeOverlays.forEach(function(rawOverlay) {
     const overlay = assertReclassInquiryObjectKeysV2_(rawOverlay, ['unique_id', 'expected', 'proposals', 'temporaryValues', 'temporaryChangedFields'], 'A row proposal');
     const uid = normalizeInventoryTransactionText_(overlay.unique_id);
     if (!uid || overlayByUid.has(uid)) throw new Error('The Item Inquiry proposal row ids are invalid.');
     if (!Array.isArray(overlay.proposals)) throw new Error('Each Item Inquiry row must contain a proposal list.');
+    overlay.proposals.forEach(function(rawProposal) {
+      const baseProposal = rawProposal && typeof rawProposal === 'object' && !Array.isArray(rawProposal) ? rawProposal : {};
+      const action = String(baseProposal.action || '').trim().toLowerCase();
+      if (RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) === -1) return;
+      const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'holdstopcode', 'holdstopreason'], 'A cached row Hold/Stop proposal');
+      const rule = getReclassInquiryActionRuleV2_(action);
+      const requestedCode = String(proposal.holdstopcode == null ? '' : proposal.holdstopcode).trim().toUpperCase();
+      const requestedReason = String(proposal.holdstopreason == null ? '' : proposal.holdstopreason).trim().toLowerCase();
+      if (rule.kind === 'hold_on' && requestedCode !== rule.code) throw new Error(rule.label + ' must place ' + rule.code + ' in Hold/Stop Code.');
+      if (rule.kind === 'hold_off' && (requestedCode || requestedReason)) throw new Error(rule.label + ' must clear Hold/Stop Code and Hold/Stop Reason.');
+      addHoldProposal_(action, requestedReason, 'A cached row Hold/Stop proposal');
+    });
     overlayByUid.set(uid, overlay);
   });
-  const actionUnion = new Set();
+  const holdProposal = normalizedHoldProposals.length ? normalizedHoldProposals[0] : null;
+  const scope = authoritativeScope && typeof authoritativeScope === 'object' ? authoritativeScope : {};
+  const clientScope = assertReclassInquiryObjectKeysV2_(safeTransaction.scope, ['season', 'salesYear'], 'The Reclass season scope');
+  if (holdProposal) {
+    const authoritativeSeason = String(scope.season || '').trim().toUpperCase();
+    const authoritativeSalesYear = normalizeReclassInquirySalesYearV3_(scope.salesYear);
+    if (!authoritativeSeason || authoritativeSalesYear == null) throw new Error('Current Reclass season settings could not be refreshed.');
+    if (Object.keys(clientScope).length) {
+      const clientSeason = String(clientScope.season || '').trim().toUpperCase();
+      const clientSalesYear = normalizeReclassInquirySalesYearV3_(clientScope.salesYear);
+      if (clientSeason !== authoritativeSeason || clientSalesYear !== authoritativeSalesYear) {
+        return { ok: false, status: 'conflict', message: 'The current season settings changed. Refresh the app and reopen Reclass before sending.' };
+      }
+    }
+  }
+  const actionUnion = new Set(holdProposal ? [holdProposal.action] : []);
+  let holdAffectedCount = 0;
   const reportRows = [];
   for (let i = 0; i < safeRows.length; i++) {
     const row = safeRows[i];
     const uid = getInventoryTransactionRowUid_(row);
     const overlay = overlayByUid.get(uid);
     if (!overlay) return { ok: false, status: 'conflict', message: 'An Item Inquiry row changed or is no longer available. Sync and try again.' };
-    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, ['itemcode', 'lotcode', 'locationcode'], 'The expected row identity');
+    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, ['itemcode', 'lotcode', 'locationcode', 'ptronhand'], 'The expected row identity');
     const checks = [
       ['ItemCode', getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''), expected.itemcode],
       ['Lot', getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''), expected.lotcode],
@@ -10881,6 +10891,11 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     ];
     const mismatch = checks.find(function(check) { return normalizeInventoryTransactionCompareText_(check[1]) !== normalizeInventoryTransactionCompareText_(check[2]); });
     if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
+    if (Object.prototype.hasOwnProperty.call(expected, 'ptronhand')) {
+      const currentOh = String(getInventoryTransactionRowValue_(row, ['ptronhand', 'PTRONHAND'], '')).trim().replace(/,/g, '');
+      const expectedOh = String(expected.ptronhand == null ? '' : expected.ptronhand).trim().replace(/,/g, '');
+      if (currentOh !== expectedOh) return { ok: false, status: 'conflict', message: 'OH changed for an Item Inquiry row. Sync and review it before sending.' };
+    }
     const values = {};
     RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) { values[field.key] = getReclassInquiryExactValue_(row, field.aliases, ''); });
     const actionValues = {};
@@ -10888,37 +10903,34 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const rowActions = [];
     const seenRowActions = new Set();
     let combinedMoveQuantity = 0;
-    let holdActionCount = 0;
+    if (holdProposal) {
+      const rowSeason = getReclassInquiryCurrentSeasonV2_(row);
+      const rowSalesYear = normalizeReclassInquirySalesYearV3_(getReclassInquiryExactValue_(row, ['saleyear', 'SALEYEAR', 'salesyear', 'SALESYEAR'], ''));
+      const scopeSeason = String(scope.season || '').trim().toUpperCase();
+      const scopeSalesYear = normalizeReclassInquirySalesYearV3_(scope.salesYear);
+      const rule = getReclassInquiryActionRuleV2_(holdProposal.action);
+      const originalCode = String(values.holdstopcode || '').trim().toUpperCase();
+      const inScope = rowSeason === scopeSeason && rowSalesYear != null && rowSalesYear <= scopeSalesYear;
+      const eligible = inScope && (rule.kind === 'hold_on' || originalCode === rule.code);
+      if (eligible) {
+        holdAffectedCount++;
+        values.holdstopcode = rule.kind === 'hold_on' ? rule.code : '';
+        values.holdstopreason = rule.kind === 'hold_on' ? holdProposal.reason : '';
+        changedFields.push('holdstopcode', 'holdstopreason');
+        rowActions.push(holdProposal.action);
+      }
+    }
     overlay.proposals.forEach(function(rawProposal) {
       const baseProposal = rawProposal && typeof rawProposal === 'object' && !Array.isArray(rawProposal) ? rawProposal : {};
       const action = String(baseProposal.action || '').trim().toLowerCase();
       const rule = getReclassInquiryActionRuleV2_(action);
       if (!rule) throw new Error('A row proposal contains an unsupported action.');
+      if (RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) !== -1) return;
       if (seenRowActions.has(action)) throw new Error('A row action may be selected only once.');
       seenRowActions.add(action);
       actionUnion.add(action);
       rowActions.push(action);
-      if (RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) !== -1) {
-        holdActionCount++;
-        if (holdActionCount > 1) throw new Error('Choose only one Hold/Stop action for a Location/Lot row.');
-        const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'holdstopcode', 'holdstopreason'], 'A row Hold/Stop proposal');
-        const originalCode = String(values.holdstopcode || '').trim().toUpperCase();
-        const originalReason = String(values.holdstopreason || '').trim().toLowerCase();
-        const requestedCode = String(proposal.holdstopcode == null ? '' : proposal.holdstopcode).trim().toUpperCase();
-        const requestedReason = String(proposal.holdstopreason == null ? '' : proposal.holdstopreason).trim().toLowerCase();
-        if (rule.kind === 'hold_on') {
-          if (requestedCode !== rule.code) throw new Error(rule.label + ' must place ' + rule.code + ' in Hold/Stop Code.');
-          if (!requestedReason) throw new Error(rule.label + ' requires a Hold/Stop Reason.');
-        } else {
-          if (originalCode !== rule.code) throw new Error(rule.label + ' requires current Hold/Stop Code ' + rule.code + '.');
-          if (requestedCode || requestedReason) throw new Error(rule.label + ' must clear Hold/Stop Code and Hold/Stop Reason.');
-        }
-        if (requestedCode !== originalCode) changedFields.push('holdstopcode');
-        if (requestedReason !== originalReason) changedFields.push('holdstopreason');
-        if (rule.kind === 'hold_on' && requestedCode === originalCode && requestedReason === originalReason) throw new Error(rule.label + ' must change the selected row Hold/Stop values.');
-        values.holdstopcode = requestedCode;
-        values.holdstopreason = requestedReason;
-      } else if (rule.kind === 'priority') {
+      if (rule.kind === 'priority') {
         const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'priority'], 'A Priority proposal');
         if (!Object.prototype.hasOwnProperty.call(proposal, 'priority')) throw new Error('Priority Change requires a proposed Priority value.');
         const requestedRaw = String(proposal.priority == null ? '' : proposal.priority).trim();
@@ -10966,12 +10978,37 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     });
   }
   if (overlayByUid.size !== safeRows.length) return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
+  if (holdProposal && !holdAffectedCount) throw new Error(getReclassInquiryActionLabel_(holdProposal.action) + ' has no eligible rows in the configured current-season scope.');
   const canonicalActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return actionUnion.has(action); });
   if (!canonicalActions.length && !allowEmptyActions) throw new Error('Choose at least one Reclass action before sending.');
   if (canonicalActions.join('|') !== RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return requestedActions.indexOf(action) !== -1; }).join('|')) {
     throw new Error('The Reclass action summary does not match the row proposals.');
   }
-  return { ok: true, rows: reportRows, requestActions: canonicalActions, scope: {} };
+  return {
+    ok: true,
+    rows: reportRows,
+    requestActions: canonicalActions,
+    holdStopProposals: holdProposal ? [holdProposal] : [],
+    scope: holdProposal ? {
+      season: String(scope.season || '').trim().toUpperCase(),
+      salesYear: normalizeReclassInquirySalesYearV3_(scope.salesYear),
+      updatedAt: String(scope.updatedAt || ''),
+      holdAction: holdProposal.action,
+      affectedCount: holdAffectedCount
+    } : {}
+  };
+}
+
+function hasReclassInquiryHoldProposalV3_(transaction, overlays) {
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  const requestActions = Array.isArray(safeTransaction.requestActions) ? safeTransaction.requestActions : [];
+  if (requestActions.some(function(action) { return RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(String(action || '').trim().toLowerCase()) !== -1; })) return true;
+  if (Array.isArray(safeTransaction.holdStopProposals) && safeTransaction.holdStopProposals.length) return true;
+  return (Array.isArray(overlays) ? overlays : []).some(function(overlay) {
+    return Array.isArray(overlay && overlay.proposals) && overlay.proposals.some(function(proposal) {
+      return RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(String(proposal && proposal.action || '').trim().toLowerCase()) !== -1;
+    });
+  });
 }
 
 function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, payload, now) {
@@ -10979,6 +11016,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   RECLASS_INQUIRY_IDENTITY_FIELDS_.forEach(function(field) {
     identity[field.key] = getReclassInquiryExactValue_(sourceRow, field.aliases, getReclassInquiryExactValue_(authoritativeRows[0], field.aliases, ''));
   });
+  identity.holdstopreason = getReclassInquiryExactValue_(sourceRow, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], getReclassInquiryExactValue_(authoritativeRows[0], ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], '')).trim().toLowerCase();
   const normalizedReportRows = (Array.isArray(reportRows) ? reportRows : []).map(function(row) {
     const normalizedRow = Object.assign({}, row || {});
     normalizedRow.values = Object.assign({}, row && row.values || {});
@@ -10995,9 +11033,12 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   const identityChangedFields = [];
   if (originReportRow && originReportRow.values) {
     identity.holdstopcode = String(originReportRow.values.holdstopcode || '').trim().toUpperCase();
+    identity.holdstopreason = String(originReportRow.values.holdstopreason || '').trim().toLowerCase();
     if (originReportRow.changedFields.indexOf('holdstopcode') !== -1) identityChangedFields.push('holdstopcode');
+    if (originReportRow.changedFields.indexOf('holdstopreason') !== -1) identityChangedFields.push('holdstopreason');
   } else {
     identity.holdstopcode = String(identity.holdstopcode || '').trim().toUpperCase();
+    identity.holdstopreason = String(identity.holdstopreason || '').trim().toLowerCase();
   }
   const seen = {};
   const seasons = [];
@@ -11027,6 +11068,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   return {
     identity: identity,
     identityChangedFields: identityChangedFields,
+    originUid: sourceUid,
     seasons: seasons,
     rows: normalizedReportRows,
     transaction: transaction,
@@ -11063,7 +11105,7 @@ function buildReclassInquiryReportText_(model) {
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
     '',
-    'Open the attached PDF to review the complete Item Inquiry. Edited cells are highlighted yellow.'
+    'Open the attached PDF to review the complete Item Inquiry. Proposed values are yellow, boxed, and labeled for color and black-and-white printing.'
   ].join('\n');
 }
 
@@ -11078,7 +11120,7 @@ function buildReclassInquiryEmailHtml_(model) {
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
-    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Edited cells are highlighted yellow.</p>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Proposed values are yellow, boxed, and labeled for color and black-and-white printing.</p>',
     '</div>'
   ].join(''));
 }
@@ -11093,6 +11135,22 @@ function sortReclassInquiryCompactRows_(rows) {
   });
 }
 
+function buildReclassInquiryProposalBoxHtml_(value, cssClass) {
+  const raw = String(value == null ? '' : value);
+  const display = raw ? escapeEmailHtml_(raw) : '[blank]';
+  return '<span class="proposal-box' + (cssClass ? ' ' + escapeEmailHtml_(cssClass) : '') + '"><span class="proposal-label">PROPOSED</span><strong>' + display + '</strong></span>';
+}
+
+function formatReclassInquiryScopeNote_(scope) {
+  const safeScope = scope && typeof scope === 'object' ? scope : {};
+  const season = String(safeScope.season || '').trim().toUpperCase();
+  const year = normalizeReclassInquirySalesYearV3_(safeScope.salesYear);
+  const count = Number(safeScope.affectedCount);
+  if (!season || year == null || !Number.isFinite(count)) return '';
+  const displayYear = year >= 2000 && year <= 2099 ? String(year).slice(-2) : String(year);
+  return season + ' | sales year <= ' + displayYear + ' | ' + String(Math.max(0, Math.trunc(count))) + ' row' + (Math.trunc(count) === 1 ? '' : 's');
+}
+
 function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const safeModel = model || {};
   const esc = escapeEmailHtml_;
@@ -11100,10 +11158,20 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const actionLabel = String(firstNonEmptyRequestValue_(safeModel.requestActionLabel, getReclassInquiryActionLabel_(safeModel.requestAction), 'Reclass Item Inquiry'));
   const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions);
   const identityChangedFields = Array.isArray(safeModel.identityChangedFields) ? safeModel.identityChangedFields : [];
+  const scopeNote = formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
+    if (field.key === 'holdstopcode') {
+      const code = String(safeModel.identity && safeModel.identity.holdstopcode || '').trim().toUpperCase();
+      const reason = String(safeModel.identity && safeModel.identity.holdstopreason || '').trim().toLowerCase();
+      const edited = identityChangedFields.indexOf('holdstopcode') !== -1 || identityChangedFields.indexOf('holdstopreason') !== -1;
+      const valueHtml = edited
+        ? '<span class="proposal-box proposal-box-identity"><span class="proposal-label">PROPOSED</span><strong>' + (code ? esc(code) : '[blank]') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '[blank]') + '</strong></span>'
+        : '<strong>' + (code ? esc(code) : '&nbsp;') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '&nbsp;') + '</strong>';
+      return '<div class="identity-cell holdstop-identity' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + valueHtml + (scopeNote ? '<small class="scope-note">' + esc(scopeNote) + '</small>' : '') + '</div>';
+    }
     const edited = identityChangedFields.indexOf(field.key) !== -1;
     const rawValue = safeModel.identity && Object.prototype.hasOwnProperty.call(safeModel.identity, field.key) ? safeModel.identity[field.key] : '';
-    return '<div class="identity-cell' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span><strong>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong></div>';
+    return '<div class="identity-cell' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : '<strong>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>') + '</div>';
   }).join('');
   const columnWidths = compactFields.map(function(field) { return '<col' + (field.width ? ' style="width:' + esc(field.width) + '"' : '') + '>'; }).join('');
   const rowHead = compactFields.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
@@ -11114,8 +11182,18 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       const edited = changedFields.indexOf(field.key) !== -1;
       const sourceValues = field.source === 'actionValues' ? row && row.actionValues : row && row.values;
       let rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
-      if (field.key === 'holdstopreason') rawValue = String(rawValue == null ? '' : rawValue).trim().toLowerCase();
-      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</td>';
+      if (field.key === 'ptronhand') {
+        const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
+        const movementLines = [];
+        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.moveupquantity).trim() + ' TO ' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('DOWN ' + String(actionValues.movedownquantity).trim() + ' TO ' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (!movementLines.length && String(actionValues.movequantity || '').trim()) {
+          const direction = String(safeModel.requestAction || '').trim().toLowerCase() === 'move_down' ? 'DOWN' : 'UP';
+          movementLines.push(buildReclassInquiryProposalBoxHtml_(direction + ' ' + String(actionValues.movequantity).trim() + ' TO ' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        }
+        return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
+      }
+      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + '</td>';
     }).join('') + '</tr>';
   }).join('');
   const compactFieldKeys = new Set(compactFields.map(function(field) { return field.key; }));
@@ -11125,7 +11203,8 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     (Array.isArray(row && row.temporaryChanges) ? row.temporaryChanges : []).forEach(function(change) {
       const key = String(change && change.key || '').trim().toLowerCase();
       const rule = RECLASS_INQUIRY_TEMPORARY_FIELDS_V3_[key];
-      if (!rule || (rule.renderKey && compactFieldKeys.has(rule.renderKey))) return;
+      const isOriginHoldReason = key === 'holdstopreason' && normalizeInventoryTransactionCompareText_(row && row.unique_id) === normalizeInventoryTransactionCompareText_(safeModel.originUid);
+      if (!rule || isOriginHoldReason || (rule.renderKey && compactFieldKeys.has(rule.renderKey))) return;
       supplementalTemporaryRows.push({
         locationcode: String(values.locationcode || ''),
         lotcode: String(values.lotcode || ''),
@@ -11136,7 +11215,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   });
   const supplementalTemporaryHtml = supplementalTemporaryRows.length
     ? '<div class="section-title">Temporary Report Edits</div><table class="temporary-table"><thead><tr><th>Location</th><th>Lotcode</th><th>Field</th><th>Proposed Value</th></tr></thead><tbody>' + supplementalTemporaryRows.map(function(change) {
-        return '<tr><td>' + esc(change.locationcode) + '</td><td>' + esc(change.lotcode) + '</td><td>' + esc(change.label) + '</td><td class="edited-cell" data-edited="true">' + (change.value ? esc(change.value) : '&nbsp;') + '</td></tr>';
+        return '<tr><td>' + esc(change.locationcode) + '</td><td>' + esc(change.lotcode) + '</td><td>' + esc(change.label) + '</td><td class="edited-cell" data-edited="true">' + buildReclassInquiryProposalBoxHtml_(change.value) + '</td></tr>';
       }).join('') + '</tbody></table>'
     : '';
   const pilotBanner = safeModel.isSyntheticPilot
@@ -11157,8 +11236,8 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
           }).join('') + '</div>' : '')
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #b91c1c;background:#fee2e2;color:#991b1b;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:6px}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell span,.evaluation-cell span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell strong,.evaluation-cell strong{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
-    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div>' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
+    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span class="proposal-swatch">PROPOSED</span><span>Yellow, boxed values are proposals and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
     '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + supplementalTemporaryHtml + '</body></html>';
 }
 
@@ -11434,7 +11513,9 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader) {
         throw new Error('RECLASS_VALIDATION:ACTION_REQUIRED');
       }
     }
-    const authoritativeScope = null;
+    const authoritativeScope = isV3 && hasReclassInquiryHoldProposalV3_(transaction, safePayload.rowOverlays)
+      ? fetchReclassInquiryScopeSettingsV3_()
+      : null;
     let overlayResult;
     try {
       overlayResult = isV3
@@ -11444,7 +11525,14 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader) {
       throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
     }
     if (!overlayResult.ok) throw new Error('RECLASS_CONFLICT:' + String(overlayResult.message || 'ROW_IDENTITY_CHANGED'));
-    const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, safePayload, now);
+    const reportPayload = isV3 ? Object.assign({}, safePayload, {
+      transaction: Object.assign({}, transaction, {
+        requestActions: overlayResult.requestActions,
+        holdStopProposals: overlayResult.holdStopProposals || [],
+        scope: overlayResult.scope || {}
+      })
+    }) : safePayload;
+    const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, reportPayload, now);
     const recipients = getReclassInquiryEmailRecipients_(safePayload);
     if (!recipients.length) throw new Error('RECLASS_VALIDATION:RECIPIENT_REQUIRED');
     const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
@@ -14345,15 +14433,18 @@ function buildEvalWorkReportModel_(eventPayload) {
     return overlay && overlay.temporaryValues && typeof overlay.temporaryValues === 'object' && Object.keys(overlay.temporaryValues).length;
   });
   let reportRows;
-  if (requestActions.length || hasTemporaryChanges) {
-    let proposal;
+  let proposalResult = null;
+  if (requestActions.length || hasTemporaryChanges || hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)) {
     try {
-      proposal = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, null, { allowEmptyActions: true });
+      const authoritativeScope = hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)
+        ? fetchReclassInquiryScopeSettingsV3_()
+        : null;
+      proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, { allowEmptyActions: true });
     } catch (error) {
       throw new Error('EVAL_WORK_VALIDATION:' + String(error && error.message || 'PROPOSAL_INVALID'));
     }
-    if (!proposal.ok) throw new Error('EVAL_WORK_CONFLICT:' + String(proposal.message || 'ROW_IDENTITY_CHANGED'));
-    reportRows = proposal.rows;
+    if (!proposalResult.ok) throw new Error('EVAL_WORK_CONFLICT:' + String(proposalResult.message || 'ROW_IDENTITY_CHANGED'));
+    reportRows = proposalResult.rows;
   } else {
     reportRows = authoritativeRows.map(function(row) {
       const values = {};
@@ -14376,7 +14467,11 @@ function buildEvalWorkReportModel_(eventPayload) {
   const reportPayload = Object.assign({}, inquiry, {
     source: source,
     actor: { display: actorDisplay, username: firstNonEmptyRequestValue_(payload.assigneeUsername, payload.creatorUsername, '') },
-    transaction: Object.assign({ requestActions: [], holdStopProposals: [], scope: {} }, transaction)
+    transaction: Object.assign({ requestActions: [], holdStopProposals: [], scope: {} }, transaction, proposalResult ? {
+      requestActions: proposalResult.requestActions,
+      holdStopProposals: proposalResult.holdStopProposals || [],
+      scope: proposalResult.scope || {}
+    } : {})
   });
   const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, reportPayload, new Date());
   model.requestActionLabel = requestActions.length ? getReclassInquiryActionsLabelV3_(requestActions) : 'Evidence Review';
