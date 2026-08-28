@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.28.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.28.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.28.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.28.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1877,6 +1877,10 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         body.dark-mode .access-control-cell{background:#0b2419;color:#e2e8f0;border-color:#35604d}
         body.dark-mode .access-control-cell.is-allowed{background:#14532d;color:#d1fae5;border-color:#34d399}
         body.dark-mode .access-control-cell.is-denied{background:#3f121b;color:#fecdd3;border-color:#fb7185}
+        #manager-eval-user-picker section{padding-bottom:env(safe-area-inset-bottom);color-scheme:light dark}
+        body.dark-mode #manager-eval-user-picker section,body.dark-mode #manager-eval-user-picker section>div{background:#071b13;border-color:#1f6b4b;color:#f8fafc}
+        body.dark-mode #manager-eval-user-picker button,body.dark-mode #manager-eval-user-picker input{background:#0b2419;border-color:#2f7d5a;color:#f8fafc}
+        body.dark-mode #manager-eval-user-picker button[aria-checked="true"]{background:#14532d;border-color:#34d399;color:#d1fae5}
         #home-dashboard-modules{margin-top:-.1rem}
         #home-dashboard-modules h2,
         #home-rep-dashboard-modules h2{margin-bottom:.46rem!important;font-size:.58rem!important;letter-spacing:.12em!important}
@@ -6719,7 +6723,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.28.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.28.02">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6890,8 +6894,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.28.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.28.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.28.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.28.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7644,7 +7648,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.28.01').trim() || 'V2026.08.28.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.28.02').trim() || 'V2026.08.28.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9131,7 +9135,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.28.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.28.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9208,7 +9212,26 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             return data.session;
         }
 
+        let mutationBlockedAccessCanaryAuthEnabled = false;
+
+        function hasMutationBlockedCanaryQuery(kind = '') {
+            const safeKind = String(kind || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '');
+            if (!safeKind) return false;
+            try {
+                return new URLSearchParams(window.location.search || '').has(`post_deploy_${safeKind}_canary`);
+            } catch (error) {
+                return false;
+            }
+        }
+
         async function getNativeAuthRequestHeaders() {
+            if (mutationBlockedAccessCanaryAuthEnabled && hasMutationBlockedCanaryQuery('access')) {
+                return {
+                    apikey: 'mutation-blocked-canary',
+                    Authorization: 'Bearer mutation-blocked-canary',
+                    'Content-Type': 'application/json'
+                };
+            }
             const session = await getNativeAuthSession();
             if (!session || !nativeAuthAccessToken) return null;
             return {
@@ -27148,7 +27171,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             requestCapabilityLoadPromise = null;
             appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
             appAccessSnapshotLoadPromise = null;
-            accessControlAdminState = { data:null, loading:false, loaded:false, saving:false, publishing:false, error:'', selectedModule:'all', selectedRole:'all', viewMode:'users', editor:null, publishReason:'', requestToken:0 };
+            accessControlAdminState = { data:null, loading:false, loaded:false, saving:false, publishing:false, error:'', selectedModule:'all', selectedRole:'all', viewMode:'users', editor:null, publishReason:'', requestToken:0, columnOffset:0, columnPageSize:8, subjectOffset:0, subjectPageSize:100, capabilities:null };
         }
 
         const APP_SESSION_RECORD_STORAGE_KEY = 'gnc_app_session_v1';
@@ -29090,9 +29113,10 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
 let activeManagerEvalReport='s1-with-pri'; let activeManagerEvalReportView='name'; let managerEvalReportSelectedCommonName=''; let managerEvalReportSelectedBlock=''; let managerEvalReportSelectedLocation=''; let managerEvalReportSeasonFilter='all'; let managerEvalReportContSizeFilter='all'; let managerEvalReportAssignedToFilter='all'; let managerEvalReportPriorityFilter='all'; let managerEvalReportSettings={lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10,updatedBy:'',updatedAt:''}; let managerEvalReportSettingsState={loaded:false,loading:false,fallback:false,error:'',promise:null,saving:false}; let managerEvalReportCacheKey=''; let managerEvalReportCache=null;
 let managerHistoricalReportState={level:'names',commonNames:[],containerSizes:[],rows:[],selectedCommonName:'',selectedContSize:'',selectedColumns:['report_date','itemcode','locationcode','lotcode','ptravailable','holdstopcode','holdstopreason'],loadedColumns:[],dateStart:'',dateEnd:'',displayMode:'cards',loading:false,loadingMore:false,error:'',hasMore:false,nextCursor:null,dirty:false,requestToken:0,lastSearch:''};
 let managerTransactionsKeyedState={summary:{},availableDates:[],dateMetrics:[],allDates:[],files:[],selectedDate:'',search:'',loading:false,loadingMoreDates:false,loadingMoreFiles:false,loaded:false,error:'',allDatesHasMore:false,filesHasMore:false,allDatesTotal:0,filesTotal:0,requestToken:0};
-let accessControlAdminState={data:null,loading:false,loaded:false,saving:false,publishing:false,error:'',selectedModule:'all',selectedRole:'all',viewMode:'users',editor:null,publishReason:'',requestToken:0,columnOffset:0,columnPageSize:12};
+let accessControlAdminState={data:null,loading:false,loaded:false,saving:false,publishing:false,error:'',selectedModule:'all',selectedRole:'all',viewMode:'users',editor:null,publishReason:'',requestToken:0,columnOffset:0,columnPageSize:8,subjectOffset:0,subjectPageSize:100,capabilities:null};
 let managerEvalReportDisplayMode='cards';
 let activeManagerEvalReport2=''; let managerEvalReport2Mode='reports'; let managerEvalReport2DisplayMode='cards'; let managerEvalReport2SeasonFilter='all'; let managerEvalReport2ContSizeFilter='all'; let managerEvalReport2AssignedToFilter='all'; let managerEvalReport2LocationFilter='all'; let managerEvalReport2PriorityFilter='all'; let managerEvalReport2BrowseMode='plant'; let managerEvalReport2DrillLevel=0; let managerEvalReport2SelectedCommonName=''; let managerEvalReport2SelectedContSize=''; let managerEvalReport2SelectedBlockAlpha=''; let managerEvalReport2SelectedBlockNumber=''; let managerEvalReport2DrillScrollByKey=new Map(); let managerEvalReport2InquiryAssignedTo=''; let managerEvalReport2InquiryLocationCode=''; let managerEvalReport2InquiryCommonName=''; let managerEvalReport2InquiryContSize=''; let managerEvalReport2CacheKey=''; let managerEvalReport2Cache=null; let managerEvalReport2LoadState={loading:false,error:'',promise:null,lastLoadedAt:'',lastSourceUpdatedAt:''}; let managerEvalReport2SelectedItemsByKey=new Map(); let managerEvalReport2EditsByRowKey=new Map(); let managerEvalReport2LockedReportId=''; let managerEvalReport2LockedAssignedTo=''; let managerEvalReport2SelectionRevision=0; let managerEvalReport2EditRevision=0; let managerEvalReport2EmailSending=false; let managerEvalReport2DetailItemKey=''; let managerEvalReport2DetailReturnScrollTop=0; let managerEvalReport2BatchSetupState={completionRecipients:[]};
+let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2AssignedToFilters=new Set(); let managerEvalUserPickerState={target:'',options:[],draft:new Set(),search:''};
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'global-' || prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -30625,7 +30649,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.28.01').trim() || 'V2026.08.28.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.28.02').trim() || 'V2026.08.28.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40037,6 +40061,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getAppAccessCacheKey(username = currentUser) {
             return APP_ACCESS_CACHE_PREFIX + getRequestCapabilityUsernameKey(username);
+        }
+
+        function installMutationBlockedAccessCanaryIdentity() {
+            if (!hasMutationBlockedCanaryQuery('access')) return false;
+            currentUser = 'hosted_access_canary';
+            currentUserDisplay = 'Hosted Access Canary';
+            currentRole = 'MANAGER';
+            safeRole = 'MANAGER';
+            mutationBlockedAccessCanaryAuthEnabled = true;
+            appAccessSnapshotState = { status:'idle', snapshot:null, stale:false, errorCode:'', loadedAt:0, username:'' };
+            appAccessSnapshotLoadPromise = null;
+            accessControlAdminState = { data:null, loading:false, loaded:false, saving:false, publishing:false, error:'', selectedModule:'all', selectedRole:'all', viewMode:'users', editor:null, publishReason:'', requestToken:0, columnOffset:0, columnPageSize:8, subjectOffset:0, subjectPageSize:100, capabilities:null };
+            return true;
+        }
+
+        function getMutationBlockedAccessCanaryState() {
+            if (!hasMutationBlockedCanaryQuery('access')) return null;
+            return {
+                matrixContract: String(accessControlAdminState && accessControlAdminState.data && accessControlAdminState.data.contractVersion || ''),
+                canViewMatrix: canViewAccessControl(),
+                canEditMatrix: canManageAccessControl()
+            };
         }
 
         function normalizeAppAccessSnapshot(value = null, expectedUsername = currentUser) {
@@ -49917,6 +49963,50 @@ function toggleDriveQuickRequestItem(domId) {
             if (customerInput) customerInput.value = '';
             const consigneeInput = document.getElementById('quick-consignee-input');
             if (consigneeInput) consigneeInput.value = '';
+        }
+
+        function installMutationBlockedRequestCanaryFixture() {
+            if (!hasMutationBlockedCanaryQuery('request')) return null;
+            const fixture = {
+                UNIQUE_ID: 'HOSTED-REQUEST-CANARY-ROW',
+                DOM_ID: 'hosted-request-canary-row',
+                ITEMCODE: 'CANARY.ITEM.001',
+                COMMONNAME: 'Synthetic Canary Plant',
+                CONTSIZE: '#1 TEST',
+                LOCATIONCODE: 'T.00.000',
+                LOTCODE: '99.F1',
+                SOURCE: 'TEST',
+                PTRAVAILABLE: '25',
+                PTRONHAND: '25',
+                PTRREVIEWED: '0',
+                PLANTGROUPCODE: 'TEST_GROUP'
+            };
+            currentUser = 'dylan_collyge';
+            currentUserDisplay = 'Hosted Request Canary';
+            currentRole = 'ADMIN';
+            safeRole = 'ADMIN';
+            fullInventory = [fixture];
+            requestsInventory = [];
+            reservesInventory = [];
+            customerRepMapRows = [{
+                SALESREPNAME: 'Hosted Canary Rep',
+                CUSTOMERNAME: 'Synthetic Canary Customer',
+                CONSIGNEENAME: 'Synthetic Canary Dock'
+            }];
+            ['customerRepMap', 'reserves'].forEach((datasetName) => {
+                const state = getDatasetState(datasetName);
+                if (!state) return;
+                state.initialLoaded = true;
+                state.fullLoaded = true;
+                state.error = '';
+            });
+            requestModalCustomerOptionsCacheKey = '';
+            requestModalCustomerOptionsByRepCache = new Map();
+            requestExistingFolderGroupsCacheKey = '';
+            requestExistingFolderGroupsCache = [];
+            detailRequestSourceDomIds = [fixture.DOM_ID];
+            invalidateInventoryDomIdLookup();
+            return fixture;
         }
 
         function showRequestModalBase() {
@@ -120635,6 +120725,19 @@ C.14.043 C.15.000
             return String(firstNonEmptyValue(row && row.ASSIGNEDTO, row && row.assignedto, '') || '').trim();
         }
 
+        function getManagerEvalReportRowAssignedToUsers(row = null) {
+            const source = Array.isArray(row && row.ASSIGNEDTO_USERS)
+                ? row.ASSIGNEDTO_USERS
+                : (Array.isArray(row && row.assignedto_users) ? row.assignedto_users : [getManagerEvalReportRowAssignedTo(row)]);
+            const seen = new Set();
+            return source.map((value) => normalizeManagerEvalAssignedUser(value || '(Unassigned)')).filter((value) => {
+                const key = value.toLocaleLowerCase();
+                if (!value || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
         function getManagerEvalReportRowPriority(row = null) {
             return String(firstNonEmptyValue(row && row.PRIORITY, row && row.priority, '') || '').trim();
         }
@@ -120656,7 +120759,7 @@ C.14.043 C.15.000
             return {
                 seasons: makeOptions(rows.map(getManagerEvalReportRowSeason)),
                 contSizes: makeOptions(rows.map(getManagerEvalReportRowContSize)),
-                assignedTo: makeOptions(rows.map((row) => getManagerEvalReportRowAssignedTo(row) || '(Unassigned)'))
+                assignedTo: makeOptions(rows.flatMap(getManagerEvalReportRowAssignedToUsers))
             };
         }
 
@@ -120671,7 +120774,7 @@ C.14.043 C.15.000
                 firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''),
                 getManagerEvalReportRowSeason(row),
                 getManagerEvalReportRowPriority(row),
-                getManagerEvalReportRowAssignedTo(row),
+                getManagerEvalReportRowAssignedToUsers(row).join(' '),
                 firstNonEmptyValue(row && row.GENUSNAME, row && row.genusname, ''),
                 firstNonEmptyValue(row && row.HOLDSTOPCODE, row && row.holdstopcode, ''),
                 firstNonEmptyValue(row && row.LOCATIONNOTEDATE, row && row.locationnotedate, '')
@@ -120683,10 +120786,7 @@ C.14.043 C.15.000
             return sourceRows.filter((row) => {
                 if (managerEvalReportSeasonFilter !== 'all' && getManagerEvalReportRowSeason(row) !== managerEvalReportSeasonFilter) return false;
                 if (managerEvalReportContSizeFilter !== 'all' && getManagerEvalReportRowContSize(row) !== managerEvalReportContSizeFilter) return false;
-                if (managerEvalReportAssignedToFilter !== 'all') {
-                    const assigned = getManagerEvalReportRowAssignedTo(row) || '(Unassigned)';
-                    if (assigned !== managerEvalReportAssignedToFilter) return false;
-                }
+                if (!managerEvalAssignedUserMatches(row, 'eval1')) return false;
                 if (managerEvalReportPriorityFilter === 'with' && !getManagerEvalReportRowPriority(row)) return false;
                 if (managerEvalReportPriorityFilter === 'without' && getManagerEvalReportRowPriority(row)) return false;
                 return managerEvalReportRowMatchesSearch(row);
@@ -120709,6 +120809,7 @@ C.14.043 C.15.000
                 managerEvalReportSeasonFilter = 'all';
                 managerEvalReportContSizeFilter = 'all';
                 managerEvalReportAssignedToFilter = 'all';
+                managerEvalReportAssignedToFilters = new Set();
                 managerEvalReportPriorityFilter = 'all';
             }
             resetManagerEvalReportDrill();
@@ -120730,7 +120831,10 @@ C.14.043 C.15.000
             const safeValue = String(value == null ? 'all' : value).trim() || 'all';
             if (kind === 'season') managerEvalReportSeasonFilter = safeValue;
             else if (kind === 'contsize') managerEvalReportContSizeFilter = safeValue;
-            else if (kind === 'assignedto') managerEvalReportAssignedToFilter = safeValue;
+            else if (kind === 'assignedto') {
+                managerEvalReportAssignedToFilter = safeValue;
+                managerEvalReportAssignedToFilters = safeValue === 'all' ? new Set() : new Set([safeValue]);
+            }
             else if (kind === 'priority') managerEvalReportPriorityFilter = safeValue;
             resetManagerEvalReportDrill();
             scheduleManagersRender(true);
@@ -120741,6 +120845,7 @@ C.14.043 C.15.000
             managerEvalReportSeasonFilter = 'all';
             managerEvalReportContSizeFilter = 'all';
             managerEvalReportAssignedToFilter = 'all';
+            managerEvalReportAssignedToFilters = new Set();
             managerEvalReportPriorityFilter = 'all';
             managersSearchTerm = '';
             const input = document.getElementById('managers-search');
@@ -120886,6 +120991,7 @@ C.14.043 C.15.000
         }
 
         function buildManagerEvalReportSelect(label = '', kind = '', currentValue = 'all', options = []) {
+            if (kind === 'assignedto') return renderManagerEvalAssignedUserControl('eval1', options, false);
             const optionHtml = [`<option value="all" ${currentValue === 'all' ? 'selected' : ''}>All</option>`]
                 .concat(options.map((value) => `<option value="${escapeHtml(value)}" ${currentValue === value ? 'selected' : ''}>${escapeHtml(value)}</option>`))
                 .join('');
@@ -120913,7 +121019,7 @@ C.14.043 C.15.000
                 return `<button type="button" class="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${managerEvalReportDisplayMode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-500'} ${unavailable ? 'opacity-50' : ''}" onclick="return setManagerEvalReportDisplayMode('${mode}')" ${unavailable ? 'aria-disabled="true" title="Grid is available on tablets and computers"' : ''}><i class="ph-bold ${icon}"></i>${label}</button>`;
             };
             const priorityOptions = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Priority</span><select class="w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReportFilter('priority', this.value)"><option value="all" ${managerEvalReportPriorityFilter === 'all' ? 'selected' : ''}>All</option><option value="with" ${managerEvalReportPriorityFilter === 'with' ? 'selected' : ''}>With Priority</option><option value="without" ${managerEvalReportPriorityFilter === 'without' ? 'selected' : ''}>Without Priority</option></select></label>`;
-            const hasFilters = managerEvalReportSeasonFilter !== 'all' || managerEvalReportContSizeFilter !== 'all' || managerEvalReportAssignedToFilter !== 'all' || managerEvalReportPriorityFilter !== 'all' || !!String(managersSearchTerm || '').trim();
+            const hasFilters = managerEvalReportSeasonFilter !== 'all' || managerEvalReportContSizeFilter !== 'all' || managerEvalReportAssignedToFilters.size > 0 || managerEvalReportPriorityFilter !== 'all' || !!String(managersSearchTerm || '').trim();
             return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Direct from ph_master_inventory</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(meta.label)}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">${escapeHtml(meta.description)} Current source: ${escapeHtml(index.currentSeason)} / sales year ${escapeHtml(String(index.currentSalesYear % 100).padStart(2, '0'))}.</div></div><div class="flex flex-wrap gap-2"><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(String(filteredRows.length))} / ${escapeHtml(String(baseRows.length))} rows</span><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return loadManagerEvalReportSettings(true)"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button><button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 ${filteredRows.length ? '' : 'pointer-events-none opacity-50'}" onclick="return exportManagerEvalReportToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button></div></div><div class="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">${reportTabsHtml}</div></div>${renderManagerEvalReportSettingsPanel()}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between"><div class="flex flex-wrap gap-2">${viewButton('name', 'Common Name', 'ph-plant')}${viewButton('loc', 'Location', 'ph-map-pin')}${viewButton('card', 'Card', 'ph-cards')}</div><div class="flex gap-2">${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}</div></div><div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">${buildManagerEvalReportSelect('Season', 'season', managerEvalReportSeasonFilter, filterOptions.seasons)}${buildManagerEvalReportSelect('Container', 'contsize', managerEvalReportContSizeFilter, filterOptions.contSizes)}${buildManagerEvalReportSelect('AssignedTo', 'assignedto', managerEvalReportAssignedToFilter, filterOptions.assignedTo)}${priorityOptions}<button type="button" class="min-h-[42px] self-end rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReportFilters()">Clear</button></div></div><div>${renderManagerEvalReportBrowseResults(filteredRows)}</div></div>`;
         }
 
@@ -121030,7 +121136,7 @@ C.14.043 C.15.000
                 ensureDatasetLoaded('master', 'full', force ? { force: true, preserveRequestedMode: true } : {}),
                 ensureDatasetLoaded('warehouseAssignedItems', 'full', force ? { force: true, preserveRequestedMode: true } : {}),
                 loadManagerEvalReportSettings(false)
-            ]).then(() => {
+            ]).then(async () => {
                 if (!isDatasetLoaded('master', 'full')) throw new Error('The complete master inventory snapshot is not available yet.');
                 if (!isDatasetLoaded('warehouseAssignedItems', 'full')) throw new Error('The complete Assigned Items snapshot is not available yet.');
                 const nextSourceSignature = [getDatasetLoadSignature('master'), getDatasetLoadSignature('warehouseAssignedItems')].join('::');
@@ -121042,7 +121148,7 @@ C.14.043 C.15.000
                 state.lastSourceUpdatedAt = getManagerEvalReport2LatestSourceUpdate();
                 state.error = '';
                 if (force) showToast('Eval Reports #2 Refreshed', `Loaded ${fullInventory.length} inventory rows and ${warehouseAssignedItemsInventory.length} assignment records.`);
-                return getManagerEvalReport2Index();
+                return await buildManagerEvalReport2IndexAsync();
             }).catch((error) => {
                 if (!managerEvalReport2Cache && lastCompleteCache) {
                     managerEvalReport2Cache = lastCompleteCache;
@@ -121060,6 +121166,51 @@ C.14.043 C.15.000
             return state.promise;
         }
 
+        function getManagerEvalReport2CacheKeyValue() {
+            const nextTarget = getConfiguredNextSaleSeasonTarget();
+            return [getDatasetLoadSignature('master'), fullInventory.length, getDatasetLoadSignature('warehouseAssignedItems'), warehouseAssignedItemsInventory.length, resolvedViewStateEpoch, getConfiguredCurrentSeasonCode(), getConfiguredCurrentSalesYearCode(), nextTarget.season, nextTarget.salesYear, managerEvalReportSettings.lowStockMaxSLts, managerEvalReportSettings.holdAgeDays, managerEvalReportSettings.locationNoteAgeDays, getManagerEvalReportCentralDateKey()].join('::');
+        }
+
+        async function buildManagerEvalReport2IndexAsync() {
+            const cacheKey = getManagerEvalReport2CacheKeyValue();
+            if (managerEvalReport2Cache && managerEvalReport2CacheKey === cacheKey) return managerEvalReport2Cache;
+            const api = getManagerEvalReports2Api();
+            const nextTarget = getConfiguredNextSaleSeasonTarget();
+            if (typeof Worker === 'function' && api) {
+                let workerUrl = '';
+                try {
+                    const engineUrl = new URL('./assets/eval-reports-engine.js', window.location.href).href;
+                    const workerSource = `self.onmessage=(event)=>{try{importScripts(event.data.engineUrl);const api=self.GncEvalReports;const assignment=api.buildAuthoritativeAssignmentModel(event.data.inventory,event.data.assignments);const classified=api.classifyScriptCompatibleRows(assignment.rows,event.data.options);const rowKey=(row,i)=>{const id=String(row.UNIQUE_ID||row.unique_id||row.MASTER_UNIQUE_ID||row.master_unique_id||row.ID||row.id||'').trim();return id?'uid:'+id:['row',row.ITEMCODE||row.itemcode||'',row.LOCATIONCODE||row.locationcode||'',row.LOTCODE||row.lotcode||'',row.SOURCE||row.source||'',i].join('|')};const rowsByItemCode=new Map(),rowByKey=new Map(),memberships=new Map();assignment.rows.forEach((row,i)=>{const code=String(row.ITEMCODE||row.itemcode||'').trim().toUpperCase();if(code){if(!rowsByItemCode.has(code))rowsByItemCode.set(code,[]);rowsByItemCode.get(code).push(row)}rowByKey.set(rowKey(row,i),row)});api.REPORT_IDS.forEach((reportId)=>{(classified.reports[reportId]||[]).forEach((row,i)=>{const key=rowKey(row,i);if(!memberships.has(key))memberships.set(key,new Set());memberships.get(key).add(reportId)})});self.postMessage({classified,assignedToOptions:assignment.assignedToOptions,stats:{assignmentCount:assignment.assignmentCount,matchedCount:assignment.matchedCount,unassignedCount:assignment.unassignedCount},allRows:assignment.rows,rowsByItemCode,rowByKey,memberships})}catch(error){self.postMessage({error:String(error&&error.message||error)})}}`;
+                    workerUrl = URL.createObjectURL(new Blob([workerSource], { type:'text/javascript' }));
+                    const result = await new Promise((resolve, reject) => {
+                        const worker = new Worker(workerUrl);
+                        const timeout = setTimeout(() => { worker.terminate(); reject(new Error('EVAL_REPORT_WORKER_TIMEOUT')); }, 30000);
+                        worker.onmessage = (event) => { clearTimeout(timeout); worker.terminate(); event.data && event.data.error ? reject(new Error(event.data.error)) : resolve(event.data); };
+                        worker.onerror = (event) => { clearTimeout(timeout); worker.terminate(); reject(new Error(event.message || 'EVAL_REPORT_WORKER_FAILED')); };
+                        worker.postMessage({ engineUrl, inventory:fullInventory, assignments:warehouseAssignedItemsInventory, options:{ currentSeason:getConfiguredCurrentSeasonCode(), currentSalesYear:getConfiguredCurrentSalesYearCode(), nextSeason:nextTarget.season, nextSalesYear:nextTarget.salesYear, settings:managerEvalReportSettings, now:new Date().toISOString() } });
+                    });
+                    managerEvalReport2Cache = result.classified;
+                    managerEvalReport2Cache.assignedToOptions = result.assignedToOptions;
+                    managerEvalReport2Cache.assignmentStats = result.stats;
+                    managerEvalReport2Cache.allRows = result.allRows;
+                    managerEvalReport2Cache.rowsByItemCode = result.rowsByItemCode;
+                    managerEvalReport2Cache.rowByKey = result.rowByKey;
+                    managerEvalReport2Cache.reportMembershipByKey = result.memberships;
+                    managerEvalReport2CacheKey = cacheKey;
+                    return managerEvalReport2Cache;
+                } catch (error) {
+                    reportSemanticHealthEvent('eval_report_2_worker_fallback', 'eval_reports_2', 'EVAL_REPORT_2_WORKER_FALLBACK', {});
+                } finally {
+                    if (workerUrl) URL.revokeObjectURL(workerUrl);
+                }
+            }
+            await new Promise((resolve) => {
+                if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout:500 });
+                else setTimeout(resolve, 0);
+            });
+            return getManagerEvalReport2Index();
+        }
+
         function getManagerEvalReport2Index() {
             const api = getManagerEvalReports2Api();
             if (!api) return null;
@@ -121068,21 +121219,7 @@ C.14.043 C.15.000
             const currentSeason = getConfiguredCurrentSeasonCode();
             const currentSalesYear = getConfiguredCurrentSalesYearCode();
             const nextTarget = getConfiguredNextSaleSeasonTarget();
-            const cacheKey = [
-                getDatasetLoadSignature('master'),
-                fullInventory.length,
-                getDatasetLoadSignature('warehouseAssignedItems'),
-                warehouseAssignedItemsInventory.length,
-                resolvedViewStateEpoch,
-                currentSeason,
-                currentSalesYear,
-                nextTarget.season,
-                nextTarget.salesYear,
-                managerEvalReportSettings.lowStockMaxSLts,
-                managerEvalReportSettings.holdAgeDays,
-                managerEvalReportSettings.locationNoteAgeDays,
-                getManagerEvalReportCentralDateKey()
-            ].join('::');
+            const cacheKey = getManagerEvalReport2CacheKeyValue();
             if (managerEvalReport2Cache && managerEvalReport2CacheKey === cacheKey) return managerEvalReport2Cache;
             const startedAt = performance.now();
             const assignmentModel = api.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
@@ -121171,9 +121308,7 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2LocationOptions(rows = null) {
             const sourceRows = Array.isArray(rows) ? rows : getManagerEvalReport2Rows();
-            const assignedRows = managerEvalReport2AssignedToFilter === 'all'
-                ? sourceRows
-                : sourceRows.filter((row) => (getManagerEvalReportRowAssignedTo(row) || '(Unassigned)') === managerEvalReport2AssignedToFilter);
+            const assignedRows = sourceRows.filter((row) => managerEvalAssignedUserMatches(row, 'eval2'));
             return Array.from(new Set(assignedRows.map(getManagerEvalReportRowLocation).filter(Boolean)))
                 .sort((left, right) => String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' }));
         }
@@ -121183,10 +121318,7 @@ C.14.043 C.15.000
             return sourceRows.filter((row) => {
                 if (managerEvalReport2SeasonFilter !== 'all' && getManagerEvalReportRowSeason(row) !== managerEvalReport2SeasonFilter) return false;
                 if (managerEvalReport2ContSizeFilter !== 'all' && getManagerEvalReportRowContSize(row) !== managerEvalReport2ContSizeFilter) return false;
-                if (managerEvalReport2AssignedToFilter !== 'all') {
-                    const assigned = getManagerEvalReportRowAssignedTo(row) || '(Unassigned)';
-                    if (assigned !== managerEvalReport2AssignedToFilter) return false;
-                }
+                if (!managerEvalAssignedUserMatches(row, 'eval2')) return false;
                 if (managerEvalReport2LocationFilter !== 'all' && getManagerEvalReportRowLocation(row) !== managerEvalReport2LocationFilter) return false;
                 const priority = getManagerEvalReportRowPriority(row);
                 if (managerEvalReport2PriorityFilter === 'with' && !priority) return false;
@@ -121274,7 +121406,7 @@ C.14.043 C.15.000
         }
 
         function getManagerEvalReport2CommonNameGroups(rows = null) {
-            if (!activeManagerEvalReport2 || !isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)) return [];
+            if (!activeManagerEvalReport2) return [];
             const groups = new Map();
             getManagerEvalReport2RowsBeforeCommonName(rows).forEach((row) => {
                 const commonName = getManagerEvalReportRowCommonName(row);
@@ -121339,22 +121471,29 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2VisibleItemGroups() {
             const groups = new Map();
-            getFilteredManagerEvalReport2Rows().forEach((row) => {
+            getFilteredManagerEvalReport2Rows().forEach((row, rowIndex) => {
                 const itemCode = getManagerEvalReport2ItemCode(row);
                 if (!itemCode) return;
-                if (!groups.has(itemCode)) groups.set(itemCode, []);
-                groups.get(itemCode).push(row);
+                if (!groups.has(itemCode)) groups.set(itemCode, { rowsByIdentity:new Map(), assignedToUsers:new Set() });
+                const group = groups.get(itemCode);
+                getManagerEvalReportRowAssignedToUsers(row).forEach((value) => group.assignedToUsers.add(value));
+                const rowKey = getManagerEvalReport2RowKey(row, rowIndex);
+                if (!group.rowsByIdentity.has(rowKey)) group.rowsByIdentity.set(rowKey, row);
             });
-            return Array.from(groups.entries()).map(([itemCode, rows]) => ({
+            return Array.from(groups.entries()).map(([itemCode, group]) => {
+                const rows = Array.from(group.rowsByIdentity.values());
+                return ({
                 key: getManagerEvalReport2ItemKey(itemCode),
                 itemCode,
                 commonName: getManagerEvalReportRowCommonName(rows[0]),
                 rows,
                 representativeRow: rows[0],
+                assignedToUsers: Array.from(group.assignedToUsers).sort(compareManagerEvalReport2Natural),
                 containerSizes: Array.from(new Set(rows.map(getManagerEvalReportRowContSize))).sort(compareManagerEvalReport2Natural),
                 rowCount: rows.length,
                 locationCount: new Set(rows.map(getManagerEvalReportRowLocation)).size
-            })).sort((left, right) => compareManagerEvalReport2Natural(left.itemCode, right.itemCode));
+                });
+            }).sort((left, right) => compareManagerEvalReport2Natural(left.itemCode, right.itemCode));
         }
 
         function getManagerEvalReport2RowKey(row = null, fallbackIndex = 0) {
@@ -121456,6 +121595,141 @@ C.14.043 C.15.000
             };
         }
 
+        function normalizeManagerEvalAssignedUser(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw || /^all(?: users)?$/i.test(raw)) return '';
+            if (/^\(?unassigned\)?$/i.test(raw)) return '(Unassigned)';
+            return raw;
+        }
+
+        function getManagerEvalAssignedUserSet(target = 'eval2') {
+            return target === 'eval1' ? managerEvalReportAssignedToFilters : managerEvalReport2AssignedToFilters;
+        }
+
+        function managerEvalAssignedUserMatches(row = null, target = 'eval2') {
+            const selected = getManagerEvalAssignedUserSet(target);
+            if (!(selected instanceof Set) || !selected.size) return true;
+            const assignedKeys = new Set(getManagerEvalReportRowAssignedToUsers(row).map((value) => value.toLocaleLowerCase()));
+            return Array.from(selected).some((value) => assignedKeys.has(normalizeManagerEvalAssignedUser(value).toLocaleLowerCase()));
+        }
+
+        function getManagerEvalAssignedUsers(target = 'eval2') {
+            const selected = getManagerEvalAssignedUserSet(target);
+            return selected instanceof Set ? Array.from(selected).map(normalizeManagerEvalAssignedUser).filter(Boolean) : [];
+        }
+
+        function getManagerEvalAssignedUserLabel(target = 'eval2') {
+            const values = getManagerEvalAssignedUsers(target);
+            if (!values.length) return 'All Users';
+            if (values.length === 1) return values[0];
+            return `${values.length} Users`;
+        }
+
+        function renderManagerEvalAssignedUserControl(target = 'eval2', options = [], disabled = false) {
+            const selected = getManagerEvalAssignedUsers(target);
+            const chips = selected.slice(0, 3).map((value) => `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9px] font-black text-emerald-800">${escapeHtml(value)}</span>`).join('');
+            const overflow = selected.length > 3 ? `<span class="text-[9px] font-black text-slate-500">+${selected.length - 3}</span>` : '';
+            return `<div class="min-w-0"><div class="mb-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Users</div><button type="button" class="flex min-h-[46px] w-full items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-left text-sm font-black text-slate-900 shadow-sm disabled:opacity-50" ${disabled ? 'disabled' : ''} onclick="return openManagerEvalUserPicker('${escapeHtml(target)}')"><span class="min-w-0 truncate">${escapeHtml(getManagerEvalAssignedUserLabel(target))}</span><i class="ph-bold ph-users-three text-lg text-emerald-700"></i></button>${selected.length ? `<div class="mt-2 flex min-w-0 flex-wrap gap-1">${chips}${overflow}</div>` : ''}</div>`;
+        }
+
+        function getManagerEvalUserPickerOptions(target = 'eval2') {
+            if (target === 'eval1') return getManagerEvalReportFilterOptions(getManagerEvalReportRows()).assignedTo;
+            return getManagerEvalReport2AssignedToOptions();
+        }
+
+        function openManagerEvalUserPicker(target = 'eval2') {
+            const safeTarget = target === 'eval1' ? 'eval1' : 'eval2';
+            managerEvalUserPickerState = {
+                target: safeTarget,
+                options: getManagerEvalUserPickerOptions(safeTarget),
+                draft: new Set(getManagerEvalAssignedUsers(safeTarget)),
+                search: ''
+            };
+            renderManagerEvalUserPicker();
+            return false;
+        }
+
+        function closeManagerEvalUserPicker() {
+            const sheet = document.getElementById('manager-eval-user-picker');
+            if (sheet) sheet.remove();
+            managerEvalUserPickerState = { target:'', options:[], draft:new Set(), search:'' };
+            return false;
+        }
+
+        function setManagerEvalUserPickerSearch(value = '') {
+            managerEvalUserPickerState.search = String(value || '');
+            renderManagerEvalUserPicker();
+            const input = document.getElementById('manager-eval-user-picker-search');
+            if (input) { input.focus({ preventScroll:true }); input.setSelectionRange(input.value.length, input.value.length); }
+            return false;
+        }
+
+        function toggleManagerEvalUserPickerValue(encodedValue = '') {
+            const value = normalizeManagerEvalAssignedUser(decodeURIComponent(String(encodedValue || '')));
+            if (!value) return false;
+            const draft = managerEvalUserPickerState.draft instanceof Set ? managerEvalUserPickerState.draft : new Set();
+            const existing = Array.from(draft).find((entry) => normalizeManagerEvalAssignedUser(entry).toLocaleLowerCase() === value.toLocaleLowerCase());
+            if (existing) draft.delete(existing); else draft.add(value);
+            managerEvalUserPickerState.draft = draft;
+            renderManagerEvalUserPicker();
+            return false;
+        }
+
+        function selectVisibleManagerEvalUsers() {
+            const term = normalizeSearchValue(managerEvalUserPickerState.search || '');
+            const draft = managerEvalUserPickerState.draft instanceof Set ? managerEvalUserPickerState.draft : new Set();
+            (managerEvalUserPickerState.options || []).filter((value) => !term || normalizeSearchValue(value).includes(term)).forEach((value) => draft.add(value));
+            managerEvalUserPickerState.draft = draft;
+            renderManagerEvalUserPicker();
+            return false;
+        }
+
+        function clearManagerEvalUserPickerDraft() {
+            managerEvalUserPickerState.draft = new Set();
+            renderManagerEvalUserPicker();
+            return false;
+        }
+
+        function applyManagerEvalUserPicker() {
+            const target = managerEvalUserPickerState.target === 'eval1' ? 'eval1' : 'eval2';
+            const next = new Set(Array.from(managerEvalUserPickerState.draft || []).map(normalizeManagerEvalAssignedUser).filter(Boolean));
+            if (target === 'eval1') {
+                managerEvalReportAssignedToFilters = next;
+                managerEvalReportAssignedToFilter = next.size === 1 ? Array.from(next)[0] : 'all';
+                resetManagerEvalReportDrill();
+            } else {
+                managerEvalReport2AssignedToFilters = next;
+                managerEvalReport2AssignedToFilter = next.size === 1 ? Array.from(next)[0] : 'all';
+                resetManagerEvalReport2Drill({ keepScroll:true });
+            }
+            closeManagerEvalUserPicker();
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function renderManagerEvalUserPicker() {
+            const state = managerEvalUserPickerState;
+            if (!state || !state.target) return false;
+            let host = document.getElementById('manager-eval-user-picker');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'manager-eval-user-picker';
+                host.className = 'fixed inset-0 z-[10000] flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4';
+                host.addEventListener('click', (event) => { if (event.target === host) closeManagerEvalUserPicker(); });
+                document.body.appendChild(host);
+            }
+            const term = normalizeSearchValue(state.search || '');
+            const visible = (state.options || []).filter((value) => !term || normalizeSearchValue(value).includes(term));
+            const draft = state.draft instanceof Set ? state.draft : new Set();
+            const optionHtml = visible.slice(0, 60).map((value) => {
+                const selected = Array.from(draft).some((entry) => normalizeManagerEvalAssignedUser(entry).toLocaleLowerCase() === normalizeManagerEvalAssignedUser(value).toLocaleLowerCase());
+                const encoded = encodeURIComponent(value);
+                return `<button type="button" role="checkbox" aria-checked="${selected ? 'true' : 'false'}" class="flex min-h-[48px] w-full items-center gap-3 rounded-xl border px-3 text-left text-sm font-black ${selected ? 'border-emerald-400 bg-emerald-50 text-emerald-950' : 'border-slate-200 bg-white text-slate-800'}" onclick="return toggleManagerEvalUserPickerValue('${escJsAttrValue(encoded)}')"><i class="ph-bold ${selected ? 'ph-check-square text-emerald-700' : 'ph-square text-slate-400'} text-xl"></i><span class="truncate">${escapeHtml(value)}</span></button>`;
+            }).join('');
+            host.innerHTML = `<section role="dialog" aria-modal="true" aria-label="Filter report users" class="flex max-h-[min(82dvh,720px)] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-emerald-300 bg-slate-50 shadow-2xl sm:rounded-3xl"><div class="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3"><div><div class="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">AssignedTo Filter</div><div class="text-lg font-black text-slate-900">Choose one or more users</div></div><button type="button" aria-label="Close" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-700" onclick="return closeManagerEvalUserPicker()"><i class="ph-bold ph-x text-xl"></i></button></div><div class="border-b border-slate-200 bg-white p-3"><input id="manager-eval-user-picker-search" type="search" inputmode="search" class="min-h-[46px] w-full rounded-xl border border-emerald-300 bg-white px-3 text-base font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-400" value="${escapeHtml(state.search || '')}" placeholder="Search users" oninput="return setManagerEvalUserPickerSearch(this.value)"><div class="mt-2 grid grid-cols-3 gap-2"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-emerald-50 px-2 text-[9px] font-black uppercase text-emerald-800" onclick="return selectVisibleManagerEvalUsers()">Select Visible</button><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-2 text-[9px] font-black uppercase text-slate-600" onclick="return clearManagerEvalUserPickerDraft()">All Users</button><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-2 text-[9px] font-black uppercase text-slate-600" onclick="return clearManagerEvalUserPickerDraft()">Clear</button></div></div><div class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3">${optionHtml || '<div class="p-6 text-center text-sm font-bold text-slate-500">No users match.</div>'}${visible.length > 60 ? `<div class="p-3 text-center text-[10px] font-black uppercase text-slate-400">Search to narrow ${visible.length} users</div>` : ''}</div><div class="grid grid-cols-[1fr_2fr] gap-2 border-t border-slate-200 bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))]"><button type="button" class="min-h-[48px] rounded-xl border border-slate-200 text-[10px] font-black uppercase text-slate-600" onclick="return closeManagerEvalUserPicker()">Cancel</button><button type="button" class="min-h-[48px] rounded-xl bg-emerald-700 text-[10px] font-black uppercase tracking-[0.12em] text-white" onclick="return applyManagerEvalUserPicker()">Apply ${draft.size ? `${draft.size} Users` : 'All Users'}</button></div></section>`;
+            return false;
+        }
+
         function getManagerEvalReport2ItemEditEntries(itemKey = '') {
             const safeKey = String(itemKey || '').trim();
             return managerEvalReport2EditsByRowKey instanceof Map
@@ -121471,14 +121745,15 @@ C.14.043 C.15.000
         function ensureManagerEvalReport2ItemSelectedForEdit(row = null) {
             const itemCode = getManagerEvalReport2ItemCode(row);
             const itemKey = getManagerEvalReport2ItemKey(itemCode);
-            const assignedTo = getManagerEvalReportRowAssignedTo(row);
-            if (!itemKey || !isNamedManagerEvalReport2AssignedTo(assignedTo)) throw new Error('Choose one named AssignedTo user before editing an Item Inquiry.');
+            const assignedTo = getManagerEvalReportRowAssignedTo(row) || '(Unassigned)';
+            if (!itemKey) throw new Error('Choose a valid ITEMCODE before editing an Item Inquiry.');
             if (managerEvalReport2LockedReportId && managerEvalReport2LockedReportId !== activeManagerEvalReport2) throw new Error(`Clear the ${getManagerEvalReport2Meta(managerEvalReport2LockedReportId).label} selection before editing another report.`);
-            if (managerEvalReport2LockedAssignedTo && managerEvalReport2LockedAssignedTo !== assignedTo) throw new Error(`Clear the ${managerEvalReport2LockedAssignedTo} Item Inquiry before editing another AssignedTo user.`);
             managerEvalReport2LockedReportId = activeManagerEvalReport2;
-            managerEvalReport2LockedAssignedTo = assignedTo;
+            managerEvalReport2LockedAssignedTo = '';
             if (!managerEvalReport2SelectedItemsByKey.has(itemKey)) {
-                managerEvalReport2SelectedItemsByKey.set(itemKey, { key: itemKey, itemCode, representativeRow: row, assignedTo, reportId: activeManagerEvalReport2 });
+                const visibleGroup = getManagerEvalReport2VisibleItemGroups().find((entry) => entry.key === itemKey);
+                const assignedToUsers = visibleGroup && Array.isArray(visibleGroup.assignedToUsers) ? visibleGroup.assignedToUsers.slice() : [assignedTo];
+                managerEvalReport2SelectedItemsByKey.set(itemKey, { key: itemKey, itemCode, representativeRow: row, assignedTo, assignedToUsers, reportId: activeManagerEvalReport2 });
             }
             return itemKey;
         }
@@ -121547,13 +121822,12 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2SelectedRows() {
             const index = getManagerEvalReport2Index();
-            if (!index || !(index.rowsByItemCode instanceof Map) || !isNamedManagerEvalReport2AssignedTo(managerEvalReport2LockedAssignedTo)) return [];
+            if (!index || !(index.rowsByItemCode instanceof Map)) return [];
             const output = [];
             const seen = new Set();
             getManagerEvalReport2SelectedEntries().forEach((entry) => {
                 const itemRows = index.rowsByItemCode.get(entry.itemCode) || [];
                 itemRows.forEach((row, rowIndex) => {
-                    if (getManagerEvalReportRowAssignedTo(row) !== managerEvalReport2LockedAssignedTo) return;
                     const rowKey = getManagerEvalReport2RowKey(row, rowIndex);
                     if (seen.has(rowKey)) return;
                     seen.add(rowKey);
@@ -121580,7 +121854,6 @@ C.14.043 C.15.000
                 && getManagerEvalReport2SelectedEntries().length > 0
                 && !!managerEvalReport2LockedReportId
                 && activeManagerEvalReport2 === managerEvalReport2LockedReportId
-                && isNamedManagerEvalReport2AssignedTo(managerEvalReport2LockedAssignedTo)
                 && isDatasetLoaded('master', 'full')
                 && isDatasetLoaded('warehouseAssignedItems', 'full')
                 && !managerEvalReport2LoadState.loading
@@ -121598,7 +121871,7 @@ C.14.043 C.15.000
             const countElement = document.getElementById('manager-eval-report-2-selection-count');
             if (countElement) countElement.textContent = `${itemCount} ITEMCODE${itemCount === 1 ? '' : 's'} / ${rowCount} row${rowCount === 1 ? '' : 's'} / ${locationCount} location${locationCount === 1 ? '' : 's'} / ${editStats.fieldCount} edited field${editStats.fieldCount === 1 ? '' : 's'}`;
             const assignedElement = document.getElementById('manager-eval-report-2-selection-assignedto');
-            if (assignedElement) assignedElement.textContent = managerEvalReport2LockedAssignedTo || 'Choose AssignedTo';
+            if (assignedElement) assignedElement.textContent = getManagerEvalAssignedUserLabel('eval2');
             const reportElement = document.getElementById('manager-eval-report-2-selection-report');
             if (reportElement) reportElement.textContent = managerEvalReport2LockedReportId ? getManagerEvalReport2Meta(managerEvalReport2LockedReportId).label : 'Choose Report';
             const tray = document.getElementById('manager-eval-report-2-selection-tray');
@@ -121622,11 +121895,11 @@ C.14.043 C.15.000
             const reportSelect = document.getElementById('manager-eval-report-2-report-select');
             if (reportSelect) reportSelect.disabled = !!managerEvalReport2LockedReportId;
             const assignedSelect = document.getElementById('manager-eval-report-2-assigned-select');
-            if (assignedSelect) assignedSelect.disabled = !!managerEvalReport2LockedAssignedTo || !activeManagerEvalReport2;
+            if (assignedSelect) assignedSelect.disabled = !activeManagerEvalReport2;
             const lockNote = document.getElementById('manager-eval-report-2-lock-note');
             if (lockNote) {
                 lockNote.classList.toggle('hidden', !itemCount);
-                lockNote.textContent = itemCount ? `${getManagerEvalReport2Meta(managerEvalReport2LockedReportId).label} / ${managerEvalReport2LockedAssignedTo} locked until Clear.` : '';
+                lockNote.textContent = itemCount ? `${getManagerEvalReport2Meta(managerEvalReport2LockedReportId).label} locked until Clear. User filters remain editable.` : '';
             }
             const visibleState = getManagerEvalReport2VisibleSelectionState();
             const shownButton = document.getElementById('manager-eval-report-2-select-shown');
@@ -121682,18 +121955,9 @@ C.14.043 C.15.000
                     managerEvalReport2LockedAssignedTo = '';
                 }
             } else {
-                if (!isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)) {
-                    showToast('Choose AssignedTo', 'Select one named AssignedTo user before selecting Item Inquiry ITEMCODEs.', true);
-                    return false;
-                }
                 const itemGroup = getManagerEvalReport2VisibleItemGroups().find((entry) => entry.key === key);
-                const assignedTo = itemGroup && getManagerEvalReportRowAssignedTo(itemGroup.representativeRow);
-                if (!itemGroup || assignedTo !== managerEvalReport2AssignedToFilter) {
+                if (!itemGroup) {
                     showToast('Selection Changed', 'Refresh the report and select the ITEMCODE again.', true);
-                    return false;
-                }
-                if (managerEvalReport2LockedAssignedTo && managerEvalReport2LockedAssignedTo !== assignedTo) {
-                    showToast('One AssignedTo Per Email', `Clear the ${managerEvalReport2LockedAssignedTo} selection before choosing another person.`, true);
                     return false;
                 }
                 if (managerEvalReport2LockedReportId && managerEvalReport2LockedReportId !== activeManagerEvalReport2) {
@@ -121701,8 +121965,8 @@ C.14.043 C.15.000
                     return false;
                 }
                 managerEvalReport2LockedReportId = activeManagerEvalReport2;
-                managerEvalReport2LockedAssignedTo = assignedTo;
-                managerEvalReport2SelectedItemsByKey.set(key, { key, itemCode: itemGroup.itemCode, representativeRow: itemGroup.representativeRow, assignedTo, reportId: activeManagerEvalReport2 });
+                managerEvalReport2LockedAssignedTo = '';
+                managerEvalReport2SelectedItemsByKey.set(key, { key, itemCode: itemGroup.itemCode, representativeRow: itemGroup.representativeRow, assignedTo: itemGroup.assignedToUsers[0] || '', assignedToUsers: itemGroup.assignedToUsers.slice(), reportId: activeManagerEvalReport2 });
             }
             managerEvalReport2SelectionRevision += 1;
             syncManagerEvalReport2SelectionUi();
@@ -121717,12 +121981,12 @@ C.14.043 C.15.000
             const state = getManagerEvalReport2VisibleSelectionState();
             if (!state.visibleEntries.length) return false;
             const shouldSelect = !state.allVisibleSelected;
-            if (shouldSelect && (!activeManagerEvalReport2 || !isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter))) {
-                showToast('Finish The Drilldown', 'Choose one Report and one named AssignedTo user before selecting ITEMCODEs.', true);
+            if (shouldSelect && !activeManagerEvalReport2) {
+                showToast('Choose Report', 'Choose one Report before selecting ITEMCODEs.', true);
                 return false;
             }
-            if (shouldSelect && ((managerEvalReport2LockedReportId && managerEvalReport2LockedReportId !== activeManagerEvalReport2) || (managerEvalReport2LockedAssignedTo && managerEvalReport2LockedAssignedTo !== managerEvalReport2AssignedToFilter))) {
-                showToast('Selection Locked', 'Clear the current selection before selecting ITEMCODEs from another Report or AssignedTo.', true);
+            if (shouldSelect && managerEvalReport2LockedReportId && managerEvalReport2LockedReportId !== activeManagerEvalReport2) {
+                showToast('Selection Locked', 'Clear the current selection before selecting ITEMCODEs from another Report.', true);
                 return false;
             }
             if (!shouldSelect) {
@@ -121734,12 +121998,13 @@ C.14.043 C.15.000
                 });
             } else {
                 managerEvalReport2LockedReportId = activeManagerEvalReport2;
-                managerEvalReport2LockedAssignedTo = managerEvalReport2AssignedToFilter;
+                managerEvalReport2LockedAssignedTo = '';
                 state.visibleEntries.forEach((entry) => managerEvalReport2SelectedItemsByKey.set(entry.key, {
                     key: entry.key,
                     itemCode: entry.itemCode,
                     representativeRow: entry.representativeRow,
-                    assignedTo: managerEvalReport2AssignedToFilter,
+                    assignedTo: entry.assignedToUsers[0] || '',
+                    assignedToUsers: entry.assignedToUsers.slice(),
                     reportId: activeManagerEvalReport2
                 }));
             }
@@ -121757,10 +122022,10 @@ C.14.043 C.15.000
             const safeAssignedTo = String(assignedTo || '').trim();
             const safeKey = String(itemKey || '').trim();
             const itemCode = safeKey.startsWith('item:') ? safeKey.slice(5) : safeKey;
-            if (!index || !(index.rowsByItemCode instanceof Map) || !itemCode || !isNamedManagerEvalReport2AssignedTo(safeAssignedTo)) return [];
+            if (!index || !(index.rowsByItemCode instanceof Map) || !itemCode) return [];
             const seen = new Set();
             return (index.rowsByItemCode.get(itemCode) || []).filter((row, rowIndex) => {
-                if (getManagerEvalReportRowAssignedTo(row) !== safeAssignedTo) return false;
+                if (safeAssignedTo && isNamedManagerEvalReport2AssignedTo(safeAssignedTo) && getManagerEvalReportRowAssignedTo(row) !== safeAssignedTo) return false;
                 const rowKey = getManagerEvalReport2RowKey(row, rowIndex);
                 if (seen.has(rowKey)) return false;
                 seen.add(rowKey);
@@ -121874,16 +122139,16 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2DetailModel(itemKey = managerEvalReport2DetailItemKey) {
             const safeKey = String(itemKey || '').trim();
-            const assignedTo = String(managerEvalReport2AssignedToFilter || managerEvalReport2LockedAssignedTo || '').trim();
-            if (!safeKey || !isNamedManagerEvalReport2AssignedTo(assignedTo)) return null;
-            const rows = getManagerEvalReport2ExpandedItemRows(safeKey, assignedTo);
+            if (!safeKey) return null;
+            const rows = getManagerEvalReport2ExpandedItemRows(safeKey);
             if (!rows.length) return null;
             const itemCode = getManagerEvalReport2ItemCode(rows[0]);
             const reportRows = getFilteredManagerEvalReport2Rows().filter((row) => getManagerEvalReport2ItemCode(row) === itemCode);
             return {
                 key: safeKey,
                 itemCode,
-                assignedTo,
+                assignedTo: getManagerEvalAssignedUserLabel('eval2'),
+                assignedToUsers: Array.from(new Set(reportRows.flatMap(getManagerEvalReportRowAssignedToUsers))).sort(compareManagerEvalReport2Natural),
                 rows,
                 reportRowCount: reportRows.length,
                 commonName: getManagerEvalReportRowCommonName(rows[0]),
@@ -121984,21 +122249,18 @@ C.14.043 C.15.000
 
         function renderManagerEvalReport2SelectableCard(itemGroup = null, index = 0) {
             const safeGroup = itemGroup && itemGroup.representativeRow ? itemGroup : {
-                key: getManagerEvalReport2ItemKey(itemGroup),
-                itemCode: getManagerEvalReport2ItemCode(itemGroup),
-                commonName: getManagerEvalReportRowCommonName(itemGroup),
-                rows: itemGroup ? [itemGroup] : [],
-                representativeRow: itemGroup,
-                containerSizes: itemGroup ? [getManagerEvalReportRowContSize(itemGroup)] : [],
-                rowCount: itemGroup ? 1 : 0,
-                locationCount: itemGroup ? 1 : 0
+                key: getManagerEvalReport2ItemKey(itemGroup), itemCode: getManagerEvalReport2ItemCode(itemGroup),
+                commonName: getManagerEvalReportRowCommonName(itemGroup), rows: itemGroup ? [itemGroup] : [], representativeRow: itemGroup,
+                containerSizes: itemGroup ? [getManagerEvalReportRowContSize(itemGroup)] : [], assignedToUsers: itemGroup ? [getManagerEvalReportRowAssignedTo(itemGroup) || '(Unassigned)'] : [],
+                rowCount: itemGroup ? 1 : 0, locationCount: itemGroup ? 1 : 0
             };
             const key = safeGroup.key || getManagerEvalReport2ItemKey(safeGroup.itemCode);
             const encodedKey = encodeURIComponent(key);
             const selected = managerEvalReport2SelectedItemsByKey.has(key);
+            const users = Array.isArray(safeGroup.assignedToUsers) ? safeGroup.assignedToUsers : [];
+            const userChips = users.slice(0, 4).map((value) => `<span class="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[9px] font-black text-cyan-800">${escapeHtml(value)}</span>`).join('') + (users.length > 4 ? `<span class="px-1 py-1 text-[9px] font-black text-slate-500">+${users.length - 4}</span>` : '');
             const checkHtml = `<button type="button" data-role="manager-eval2-selection-toggle" data-itemcode="${escapeHtml(safeGroup.itemCode)}" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-[#007a4d] ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'}" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Deselect' : 'Select'} ${escapeHtml(safeGroup.itemCode)}" onclick="event.stopPropagation(); return toggleManagerEvalReport2ItemSelection('${escJsAttrValue(encodedKey)}')"><i data-role="manager-eval2-check" class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'} text-xl"></i></button>`;
-            const containers = safeGroup.containerSizes.join(', ') || '-';
-            return `<article role="button" tabindex="0" aria-label="Open details for ${escapeHtml(safeGroup.itemCode)} ${escapeHtml(safeGroup.commonName)}" class="manager-eval2-item-card rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" onclick="return openManagerEvalReport2ItemDetail('${escJsAttrValue(encodedKey)}')" onkeydown="if((event.key==='Enter'||event.key===' ')&&event.target===this){event.preventDefault();return openManagerEvalReport2ItemDetail('${escJsAttrValue(encodedKey)}');}"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeHtml(getManagerEvalReport2Meta().label)}</div><div class="mt-1 break-all font-mono text-[15px] font-black text-blue-700">${escapeHtml(safeGroup.itemCode || '-')}</div><div class="mt-1 text-[18px] font-black leading-tight text-slate-900">${escapeHtml(safeGroup.commonName || 'Unknown')}</div><div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(containers)}</div></div>${checkHtml}</div><div class="mt-3 grid grid-cols-2 gap-2"><div class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-emerald-700">Report rows</div><div class="mt-1 text-lg font-black text-emerald-900">${escapeHtml(String(safeGroup.rowCount))}</div></div><div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-blue-700">Locations</div><div class="mt-1 text-lg font-black text-blue-900">${escapeHtml(String(safeGroup.locationCount))}</div></div></div><div class="mt-3 flex min-h-[44px] items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]"><i class="ph-bold ph-arrow-square-out mr-1"></i>Open ITEMCODE Details</div></article>`;
+            return `<article role="button" tabindex="0" aria-label="Open details for ${escapeHtml(safeGroup.itemCode)}" class="manager-eval2-item-card rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" onclick="return openManagerEvalReport2ItemDetail('${escJsAttrValue(encodedKey)}')"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeHtml(getManagerEvalReport2Meta().label)}</div><div class="mt-1 break-all font-mono text-[15px] font-black text-blue-700">${escapeHtml(safeGroup.itemCode || '-')}</div><div class="mt-1 text-[18px] font-black leading-tight text-slate-900">${escapeHtml(safeGroup.commonName || 'Unknown')}</div><div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(safeGroup.containerSizes.join(', ') || '-')}</div><div class="mt-2 flex flex-wrap gap-1">${userChips}</div></div>${checkHtml}</div><div class="mt-3 grid grid-cols-2 gap-2"><div class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[8px] font-black uppercase text-emerald-700">Report rows</div><div class="mt-1 text-lg font-black text-emerald-900">${safeGroup.rowCount}</div></div><div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2"><div class="text-[8px] font-black uppercase text-blue-700">Locations</div><div class="mt-1 text-lg font-black text-blue-900">${safeGroup.locationCount}</div></div></div><div class="mt-3 flex min-h-[44px] items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 px-3 text-[10px] font-black uppercase text-[#007a4d]">Open ITEMCODE Details</div></article>`;
         }
 
         function setManagerEvalReport2Mode(mode = 'reports') {
@@ -122022,7 +122284,6 @@ C.14.043 C.15.000
             activeManagerEvalReport2 = safeId;
             if (changed) {
                 managerEvalReport2DetailItemKey = '';
-                managerEvalReport2AssignedToFilter = managerEvalReport2LockedAssignedTo || 'all';
                 resetManagerEvalReport2Drill();
                 managerEvalReport2SeasonFilter = 'all';
                 managerEvalReport2ContSizeFilter = 'all';
@@ -122039,12 +122300,8 @@ C.14.043 C.15.000
             if (safeKind === 'season') managerEvalReport2SeasonFilter = safeValue;
             else if (safeKind === 'contsize') managerEvalReport2ContSizeFilter = safeValue;
             else if (safeKind === 'assignedto') {
-                if (managerEvalReport2LockedAssignedTo && safeValue !== managerEvalReport2LockedAssignedTo) {
-                    showToast('Selection Locked', `Clear the ${managerEvalReport2LockedAssignedTo} selection before switching AssignedTo.`, true);
-                    scheduleManagersRender(true);
-                    return false;
-                }
                 managerEvalReport2AssignedToFilter = safeValue;
+                managerEvalReport2AssignedToFilters = safeValue === 'all' ? new Set() : new Set([safeValue]);
                 managerEvalReport2DetailItemKey = '';
                 resetManagerEvalReport2Drill({ keepScroll: true });
                 managerEvalReport2LocationFilter = 'all';
@@ -122058,7 +122315,8 @@ C.14.043 C.15.000
             managerEvalReport2DetailItemKey = '';
             managerEvalReport2SeasonFilter = 'all';
             managerEvalReport2ContSizeFilter = 'all';
-            managerEvalReport2AssignedToFilter = managerEvalReport2LockedAssignedTo || 'all';
+            managerEvalReport2AssignedToFilter = 'all';
+            managerEvalReport2AssignedToFilters = new Set();
             resetManagerEvalReport2Drill();
             managerEvalReport2LocationFilter = 'all';
             managerEvalReport2PriorityFilter = 'all';
@@ -122116,6 +122374,7 @@ C.14.043 C.15.000
 
         function buildManagerEvalReport2Select(label = '', kind = '', currentValue = 'all', options = [], includeAll = true, disabled = false) {
             const assignedToSelect = String(kind || '').trim().toLowerCase() === 'assignedto';
+            if (assignedToSelect && includeAll) return renderManagerEvalAssignedUserControl('eval2', options, disabled);
             const leadingLabel = assignedToSelect ? 'Choose AssignedTo' : 'All';
             const leading = includeAll ? [`<option value="all" ${currentValue === 'all' ? 'selected' : ''}>${leadingLabel}</option>`] : ['<option value="">All</option>'];
             const optionHtml = leading.concat(options.map((value) => `<option value="${escapeHtml(value)}" ${currentValue === value ? 'selected' : ''}>${escapeHtml(value)}</option>`)).join('');
@@ -122176,18 +122435,16 @@ C.14.043 C.15.000
             if (!api || !index) return '';
             const baseRows = getManagerEvalReport2Rows();
             const assignedToOptions = getManagerEvalReport2AssignedToOptions();
-            const assignedLocked = !!managerEvalReport2LockedAssignedTo;
+            const assignedLocked = false;
             const reportLocked = !!managerEvalReport2LockedReportId;
             const reportSelect = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Report</span><select id="manager-eval-report-2-report-select" class="min-h-[48px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800 ${reportLocked ? 'cursor-not-allowed opacity-60' : ''}" onchange="return setManagerEvalReport2(this.value)" ${reportLocked ? 'disabled aria-disabled="true"' : ''}><option value="" ${activeManagerEvalReport2 ? '' : 'selected'}>Choose Report</option>${api.REPORT_IDS.map((reportId) => `<option value="${escapeHtml(reportId)}" ${activeManagerEvalReport2 === reportId ? 'selected' : ''}>${escapeHtml(getManagerEvalReport2Meta(reportId).label)} (${escapeHtml(String(index.counts[reportId] || 0))})</option>`).join('')}</select></label>`;
             const assignedSelect = buildManagerEvalReport2Select('AssignedTo', 'assignedto', managerEvalReport2AssignedToFilter, assignedToOptions, true, !activeManagerEvalReport2 || assignedLocked);
             const reportReady = !!activeManagerEvalReport2;
-            const assignedReady = reportReady && isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter);
+            const assignedReady = reportReady;
             const drillGroups = assignedReady ? getManagerEvalReport2DrillGroups(baseRows) : [];
             let drillHtml = '';
             if (!reportReady) {
                 drillHtml = '<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center text-sm font-black text-slate-500">Choose a report to begin.</div>';
-            } else if (!assignedReady) {
-                drillHtml = '<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center text-sm font-black text-slate-500">Choose one named AssignedTo user for this report.</div>';
             } else if (managerEvalReport2DrillLevel >= 2) {
                 const pathLabel = managerEvalReport2BrowseMode === 'location'
                     ? `${getDriveBlockAlphaLabel(managerEvalReport2SelectedBlockAlpha)} / ${getDriveBlockNumberLabel(managerEvalReport2SelectedBlockNumber)}`
@@ -122217,7 +122474,7 @@ C.14.043 C.15.000
                 return `<button type="button" class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${managerEvalReport2DisplayMode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-600'} ${unavailable ? 'opacity-50' : ''}" onclick="return setManagerEvalReport2DisplayMode('${mode}')" ${unavailable ? 'aria-disabled="true" title="Grid is available on tablets and computers"' : ''}><i class="ph-bold ${icon}"></i>${label}</button>`;
             };
             const modeButton = (mode, label, icon) => `<button type="button" class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${managerEvalReport2Mode === mode ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-emerald-200 bg-white text-emerald-700'}" onclick="return setManagerEvalReport2Mode('${mode}')"><i class="ph-bold ${icon}"></i>${label}</button>`;
-            const filtersHtml = managerEvalReport2Mode === 'reports' && activeManagerEvalReport2 && isNamedManagerEvalReport2AssignedTo(managerEvalReport2AssignedToFilter)
+            const filtersHtml = managerEvalReport2Mode === 'reports' && activeManagerEvalReport2
                 ? `<div class="mt-4 border-t border-slate-200 pt-4"><div class="text-[9px] font-black uppercase tracking-[0.13em] text-slate-500">Optional row filters</div><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">${buildManagerEvalReport2Select('Location', 'locationcode', managerEvalReport2LocationFilter, locationOptions)}${buildManagerEvalReport2Select('Season', 'season', managerEvalReport2SeasonFilter, filterOptions.seasons)}${buildManagerEvalReport2Select('Container', 'contsize', managerEvalReport2ContSizeFilter, filterOptions.contSizes)}${priorityOptions}</div><div class="mt-3 flex flex-wrap gap-2">${displayButton('cards', 'Cards', 'ph-cards')}${displayButton('grid', 'Grid', 'ph-table')}<button type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasSecondaryFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Filters()" ${hasSecondaryFilters ? '' : 'disabled'}>Clear Optional Filters</button></div></div>`
                 : '';
             return `<details id="manager-eval-report-2-more-menu" class="rounded-2xl border border-slate-200 bg-white shadow-sm"><summary class="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 text-[10px] font-black uppercase tracking-[0.13em] text-slate-700 marker:content-none"><span><i class="ph-bold ph-dots-three-circle mr-1 text-base text-[#007a4d]"></i>More</span><i class="ph-bold ph-caret-down"></i></summary><div class="border-t border-slate-100 p-4"><div class="text-[11px] font-bold leading-relaxed text-slate-600">${escapeHtml(String(fullInventory.length))} inventory rows / ${escapeHtml(String(index.assignmentStats ? index.assignmentStats.assignmentCount : warehouseAssignedItemsInventory.length))} assignments.${sourceUpdated ? ` Source updated ${escapeHtml(formatInventoryEditMockTimestamp(sourceUpdated))}.` : ''}</div><div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${managerEvalReport2LoadState.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerEvalReports2(true)" ${managerEvalReport2LoadState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise mr-1"></i>${managerEvalReport2LoadState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" class="min-h-[44px] rounded-xl border border-blue-200 bg-blue-50 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="return exportManagerEvalReport2ToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button>${modeButton('reports', 'Reports', 'ph-chart-bar')}${modeButton('inquiry', 'Item Inquiry', 'ph-magnifying-glass')}</div>${filtersHtml}<div class="mt-4 border-t border-slate-200 pt-4">${renderManagerEvalReportSettingsPanel()}</div></div></details>`;
@@ -122395,9 +122652,8 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2ExportContext(rows = []) {
             const safeRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
-            const assignedTo = String(managerEvalReport2LockedAssignedTo || '').trim();
-            if (!isNamedManagerEvalReport2AssignedTo(assignedTo)) throw new Error('Choose one named AssignedTo user before sending an Item Inquiry.');
-            if (safeRows.some((row) => getManagerEvalReportRowAssignedTo(row) !== assignedTo)) throw new Error('Selected rows contain more than one AssignedTo user. Clear the selection and try again.');
+            const assignedToUsers = Array.from(new Set(safeRows.flatMap(getManagerEvalReportRowAssignedToUsers))).sort(compareManagerEvalReport2Natural);
+            const assignedTo = assignedToUsers[0] || '';
             const exportRows = safeRows.map((row, index) => {
                 const key = getManagerEvalReport2RowKey(row, index);
                 return { key, row, reports: getManagerEvalReport2MembershipLabels(key), editEntry: getManagerEvalReport2EditEntry(key) };
@@ -122409,7 +122665,7 @@ C.14.043 C.15.000
                 rowCount: editedEntries.length,
                 fieldCount: editedEntries.reduce((total, entry) => total + entry.editEntry.changedFields.length, 0)
             };
-            return { assignedTo, exportRows, locationCount, reportNames, editSummary };
+            return { assignedTo, assignedToUsers, exportRows, locationCount, reportNames, editSummary };
         }
 
         function getManagerEvalReport2ExportCellValue(entry = null, column = null) {
@@ -122654,7 +122910,7 @@ C.14.043 C.15.000
             if (options) options.innerHTML = getAssignableAppUserOptions().map((entry) => `<option value="${escapeHtml(entry.username)}">${escapeHtml(entry.display || entry.username)}</option>`).join('');
             const origins = document.getElementById('manager-eval2-batch-origins');
             if (origins) origins.innerHTML = entries.map((entry) => {
-                const rows = getManagerEvalReport2ExpandedItemRows(entry.key, managerEvalReport2LockedAssignedTo);
+                const rows = getManagerEvalReport2ExpandedItemRows(entry.key);
                 const selectedValue = rows.length === 1 ? String(firstNonEmptyValue(rows[0].UNIQUE_ID, rows[0].unique_id, '') || '').trim() : '';
                 const rowOptions = rows.map((row) => {
                     const uid = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
@@ -122693,13 +122949,19 @@ C.14.043 C.15.000
             const items = entries.map((entry) => {
                 const select = document.querySelector(`[data-manager-eval2-origin-key="${escapeDataAttributeSelectorValue(entry.key)}"]`);
                 const originUid = String(select && select.value || '').trim();
-                const origin = getManagerEvalReport2ExpandedItemRows(entry.key, managerEvalReport2LockedAssignedTo).find((row) => String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim() === originUid);
+                const origin = getManagerEvalReport2ExpandedItemRows(entry.key).find((row) => String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim() === originUid);
                 if (!origin) throw new Error(`Choose an originating Location/Lot for ${entry.itemCode}.`);
                 return {
                     createToken: `${managerEvalReport2BatchSetupState.batchToken}:${entry.itemCode}`,
                     source: { unique_id: originUid, source_table: 'ph_master_inventory', itemcode: entry.itemCode, locationcode: getManagerEvalReportRowLocation(origin), lotcode: String(getDriveColumnItemValue(origin, 'LOTCODE') || '').trim() },
                     inquiry: buildManagerEvalReport2InquiryForBatch(entry, origin),
-                    reportContext: { reportId: activeManagerEvalReport2, reportLabel: getManagerEvalReport2Meta().label, assignedTo: managerEvalReport2LockedAssignedTo, browseMode: managerEvalReport2BrowseMode }
+                    reportContext: {
+                        reportId: activeManagerEvalReport2,
+                        reportLabel: getManagerEvalReport2Meta().label,
+                        assignedTo: (entry.assignedToUsers || [entry.assignedTo]).filter(Boolean)[0] || '',
+                        assignedToUsers: Array.from(new Set((entry.assignedToUsers || [entry.assignedTo]).map(normalizeManagerEvalAssignedUser).filter(Boolean))),
+                        browseMode: managerEvalReport2BrowseMode
+                    }
                 };
             });
             const confirmed = await showAppConfirm(`Create ${items.length} independent Eval Work assignment${items.length === 1 ? '' : 's'} for ${assignee.display || assignee.username}?`, { title: 'Confirm Eval Work Batch', confirmLabel: 'Create Batch' });
@@ -124781,7 +125043,8 @@ C.14.043 C.15.000
         function normalizeAccessControlMatrix(value = null) {
             const source = Array.isArray(value) ? value.find((entry) => entry && typeof entry === 'object') : value;
             if (!source || typeof source !== 'object') return null;
-            if (String(firstNonEmptyValue(source.contractVersion, source.contract_version, '') || '').trim() !== APP_ACCESS_CONTRACT_VERSION) return null;
+            const contractVersion = String(firstNonEmptyValue(source.contractVersion, source.contract_version, '') || '').trim();
+            if (![APP_ACCESS_CONTRACT_VERSION, 'app-access-view-v2'].includes(contractVersion)) return null;
             const policySource = source.policy && typeof source.policy === 'object' ? source.policy : {};
             const permissions = (Array.isArray(source.permissions) ? source.permissions : []).map((permission) => ({
                 permissionKey: String(firstNonEmptyValue(permission && permission.permissionKey, permission && permission.permission_key, '') || '').trim().toLowerCase(),
@@ -124807,7 +125070,7 @@ C.14.043 C.15.000
                 };
             };
             return {
-                contractVersion: APP_ACCESS_CONTRACT_VERSION,
+                contractVersion,
                 enforcementMode: String(firstNonEmptyValue(source.enforcementMode, source.enforcement_mode, 'audit') || 'audit').trim().toLowerCase(),
                 policy: {
                     id: Number(policySource.id || 0) || 0,
@@ -124820,6 +125083,23 @@ C.14.043 C.15.000
                 permissions,
                 users: (Array.isArray(source.users) ? source.users : []).map((subject) => normalizeSubject(subject, 'user')).filter(Boolean),
                 roles: (Array.isArray(source.roles) ? source.roles : []).map((subject) => normalizeSubject(subject, 'role')).filter(Boolean),
+                capabilities: {
+                    canView: source.capabilities && source.capabilities.canView === true,
+                    canEdit: source.capabilities && source.capabilities.canEdit === true
+                },
+                filters: {
+                    modules: Array.isArray(source.filters && source.filters.modules) ? source.filters.modules.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean) : [],
+                    roles: Array.isArray(source.filters && source.filters.roles) ? source.filters.roles.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : []
+                },
+                page: {
+                    subjectType: String(firstNonEmptyValue(source.page && source.page.subjectType, source.page && source.page.subject_type, 'users') || 'users'),
+                    subjectOffset: Number(firstNonEmptyValue(source.page && source.page.subjectOffset, source.page && source.page.subject_offset, 0)) || 0,
+                    subjectLimit: Number(firstNonEmptyValue(source.page && source.page.subjectLimit, source.page && source.page.subject_limit, 20)) || 20,
+                    subjectTotal: Number(firstNonEmptyValue(source.page && source.page.subjectTotal, source.page && source.page.subject_total, 0)) || 0,
+                    permissionOffset: Number(firstNonEmptyValue(source.page && source.page.permissionOffset, source.page && source.page.permission_offset, 0)) || 0,
+                    permissionLimit: Number(firstNonEmptyValue(source.page && source.page.permissionLimit, source.page && source.page.permission_limit, 8)) || 8,
+                    permissionTotal: Number(firstNonEmptyValue(source.page && source.page.permissionTotal, source.page && source.page.permission_total, 0)) || 0
+                },
                 summary: {
                     userCount: Number(firstNonEmptyValue(source.summary && source.summary.userCount, source.summary && source.summary.user_count, 0)) || 0,
                     permissionCount: Number(firstNonEmptyValue(source.summary && source.summary.permissionCount, source.summary && source.summary.permission_count, 0)) || 0,
@@ -124839,7 +125119,7 @@ C.14.043 C.15.000
         }
 
         async function loadAccessControlMatrix(force = false) {
-            if (!canManageAccessControl()) return false;
+            if (!canViewAccessControl()) return false;
             const state = accessControlAdminState;
             if (state.loading && !force) return false;
             if (state.loaded && !force) return false;
@@ -124849,11 +125129,21 @@ C.14.043 C.15.000
             state.error = '';
             scheduleManagersRender(true);
             try {
-                const result = await supabaseRpc('get_access_control_matrix_v1', { p_policy_version_id: null }, { timeoutMs: 20000 });
+                const result = await supabaseRpc('get_access_control_matrix_v2', { p_query: {
+                    subjectType: state.viewMode,
+                    search: String(managersSearchTerm || '').trim(),
+                    role: state.selectedRole === 'all' ? '' : state.selectedRole,
+                    module: state.selectedModule === 'all' ? '' : state.selectedModule,
+                    subjectOffset: Number(state.subjectOffset || 0),
+                    subjectLimit: Number(state.subjectPageSize || 20),
+                    permissionOffset: Number(state.columnOffset || 0),
+                    permissionLimit: Number(state.columnPageSize || 8)
+                } }, { timeoutMs: 20000 });
                 if (requestToken !== state.requestToken) return false;
                 const normalized = normalizeAccessControlMatrix(result);
                 if (!normalized) throw new Error('ACCESS_CONTROL_RESPONSE_INVALID');
                 state.data = normalized;
+                state.capabilities = normalized.capabilities;
                 state.loaded = true;
                 state.error = '';
                 return true;
@@ -124877,31 +125167,44 @@ C.14.043 C.15.000
             accessControlAdminState.selectedModule = String(value || 'all').trim().toLowerCase() || 'all';
             accessControlAdminState.columnOffset = 0;
             accessControlAdminState.editor = null;
-            scheduleManagersRender(true);
+            accessControlAdminState.subjectOffset = 0;
+            loadAccessControlMatrix(true);
             return false;
         }
 
         function setAccessControlRoleFilter(value = 'all') {
             accessControlAdminState.selectedRole = String(value || 'all').trim().toUpperCase() || 'all';
             accessControlAdminState.editor = null;
-            scheduleManagersRender(true);
+            accessControlAdminState.subjectOffset = 0;
+            loadAccessControlMatrix(true);
             return false;
         }
 
         function setAccessControlViewMode(value = 'users') {
             accessControlAdminState.viewMode = value === 'roles' ? 'roles' : 'users';
             accessControlAdminState.editor = null;
-            scheduleManagersRender(true);
+            accessControlAdminState.subjectOffset = 0;
+            loadAccessControlMatrix(true);
             return false;
         }
 
         function setAccessControlColumnWindow(delta = 0) {
-            const allPermissions = getFilteredAccessControlPermissions();
-            const pageSize = Math.max(1, Number(accessControlAdminState.columnPageSize) || 12);
-            const maxOffset = Math.max(0, Math.floor(Math.max(0, allPermissions.length - 1) / pageSize) * pageSize);
+            const page = accessControlAdminState.data && accessControlAdminState.data.page || {};
+            const pageSize = Math.max(1, Number(accessControlAdminState.columnPageSize) || 8);
+            const maxOffset = Math.max(0, Math.floor(Math.max(0, Number(page.permissionTotal || 0) - 1) / pageSize) * pageSize);
             accessControlAdminState.columnOffset = Math.max(0, Math.min(maxOffset, Number(accessControlAdminState.columnOffset || 0) + Number(delta || 0) * pageSize));
             accessControlAdminState.editor = null;
-            scheduleManagersRender(true);
+            loadAccessControlMatrix(true);
+            return false;
+        }
+
+        function setAccessControlSubjectWindow(delta = 0) {
+            const page = accessControlAdminState.data && accessControlAdminState.data.page || {};
+            const pageSize = Math.max(1, Number(accessControlAdminState.subjectPageSize) || 20);
+            const maxOffset = Math.max(0, Math.floor(Math.max(0, Number(page.subjectTotal || 0) - 1) / pageSize) * pageSize);
+            accessControlAdminState.subjectOffset = Math.max(0, Math.min(maxOffset, Number(accessControlAdminState.subjectOffset || 0) + Number(delta || 0) * pageSize));
+            accessControlAdminState.editor = null;
+            loadAccessControlMatrix(true);
             return false;
         }
 
@@ -124959,6 +125262,7 @@ C.14.043 C.15.000
         }
 
         async function saveAccessControlEditor() {
+            if (!canManageAccessControl()) return false;
             const state = accessControlAdminState;
             const editor = state.editor;
             const data = state.data;
@@ -125008,6 +125312,7 @@ C.14.043 C.15.000
         }
 
         async function publishAccessControlAuditPolicy() {
+            if (!canManageAccessControl()) return false;
             const state = accessControlAdminState;
             const data = state.data;
             const reason = String(state.publishReason || '').trim();
@@ -125076,10 +125381,12 @@ C.14.043 C.15.000
             const mismatch = decision.mismatch === true;
             const targetKey = targetType === 'role' ? subject.roleKey : subject.username;
             const label = `${permission.label}: ${allowed ? 'Yes' : 'No'} from ${source}${decision.scope ? `, ${decision.scope}` : ''}`;
-            return `<button type="button" class="access-control-cell ${allowed ? 'is-allowed' : 'is-denied'} ${mismatch ? 'is-mismatch' : ''}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" onclick="return openAccessControlEditor('${escapeHtml(targetType)}','${escJsAttrValue(targetKey)}','${escJsAttrValue(permission.permissionKey)}')"><span>${allowed ? 'Y' : 'N'}<span class="access-control-source">${escapeHtml(source === 'default-deny' ? 'default' : source)}${decision.scope ? ` · ${escapeHtml(decision.scope)}` : ''}</span></span></button>`;
+            const editable = canManageAccessControl();
+            return `<button type="button" class="access-control-cell ${allowed ? 'is-allowed' : 'is-denied'} ${mismatch ? 'is-mismatch' : ''}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${editable ? `onclick="return openAccessControlEditor('${escapeHtml(targetType)}','${escJsAttrValue(targetKey)}','${escJsAttrValue(permission.permissionKey)}')"` : 'disabled'}><span>${allowed ? 'Y' : 'N'}<span class="access-control-source">${escapeHtml(source === 'default-deny' ? 'default' : source)}${decision.scope ? ` · ${escapeHtml(decision.scope)}` : ''}</span></span></button>`;
         }
 
         function renderAccessControlEditor() {
+            if (!canManageAccessControl()) return '';
             const editor = accessControlAdminState.editor;
             if (!editor) return '';
             const permission = getAccessControlPermission(editor.permissionKey);
@@ -125139,21 +125446,19 @@ C.14.043 C.15.000
         }
 
         function renderAccessControlPanel() {
-            if (!canManageAccessControl()) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Access Control is available only to Dylan, Megan, and JD.</div>';
+            if (!canViewAccessControl()) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Access Control is available only to active Admin and Manager profiles.</div>';
             const state = accessControlAdminState;
             if (!state.loaded && !state.loading) setTimeout(() => loadAccessControlMatrix(false), 0);
             const data = state.data;
             if (!data && state.loading) return '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">Loading the access audit matrix…</div>';
             const errorHtml = state.error ? `<div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"><div>${escapeHtml(state.error)}</div><button type="button" class="mt-3 min-h-[44px] rounded-xl border border-red-200 bg-white px-4 text-[10px] font-black uppercase text-red-700" onclick="return refreshAccessControlMatrix()">Retry</button></div>` : '';
             if (!data) return `${errorHtml}<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">The access audit matrix is unavailable.</div>`;
-            const allFilteredPermissions = getFilteredAccessControlPermissions();
-            const pageSize = Math.max(1, Number(state.columnPageSize) || 12);
-            const maxOffset = Math.max(0, Math.floor(Math.max(0, allFilteredPermissions.length - 1) / pageSize) * pageSize);
-            state.columnOffset = Math.max(0, Math.min(maxOffset, Number(state.columnOffset || 0)));
-            const permissions = allFilteredPermissions.slice(state.columnOffset, state.columnOffset + pageSize);
-            const subjects = getFilteredAccessControlSubjects();
-            const modules = Array.from(new Set((data.permissions || []).map((permission) => permission.moduleKey))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-            const roles = Array.from(new Set((data.users || []).map((user) => user.roleKey).filter(Boolean))).sort();
+            const page = data.page || {};
+            const pageSize = Math.max(1, Number(state.columnPageSize) || 8);
+            const permissions = Array.isArray(data.permissions) ? data.permissions : [];
+            const subjects = state.viewMode === 'roles' ? (data.roles || []) : (data.users || []);
+            const modules = Array.isArray(data.filters && data.filters.modules) ? data.filters.modules : [];
+            const roles = Array.isArray(data.filters && data.filters.roles) ? data.filters.roles : [];
             const summary = data.summary || {};
             const statusCards = [
                 ['Active Users', summary.userCount, 'ph-users-three'],
@@ -125165,15 +125470,27 @@ C.14.043 C.15.000
                 ? '<div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Audit Mode · No Live Access Changes</div><div class="mt-1">Edits build a reviewed policy for comparison. Existing production authorization remains authoritative.</div></div>'
                 : '<div class="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm font-black text-red-800">Centralized enforcement is active.</div>';
             const publishDisabled = state.publishing || String(state.publishReason || '').trim().length < 4;
-            const columnWindowHtml = allFilteredPermissions.length > pageSize ? `<div class="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Permission column window"><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.columnOffset <= 0 ? 'disabled' : ''} onclick="return setAccessControlColumnWindow(-1)">Previous Columns</button><div class="text-center text-[10px] font-black uppercase text-slate-500">Permissions ${state.columnOffset + 1}-${Math.min(allFilteredPermissions.length, state.columnOffset + permissions.length)} of ${allFilteredPermissions.length}</div><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.columnOffset + pageSize >= allFilteredPermissions.length ? 'disabled' : ''} onclick="return setAccessControlColumnWindow(1)">Next Columns</button></div>` : '';
-            return `<div class="space-y-5">${auditBanner}${errorHtml}<section class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Managers · Access Control</div><div class="mt-1 text-xl font-black text-slate-900">Policy v${escapeHtml(String(data.policy.version || 0))} · Revision ${escapeHtml(String(data.policy.revision || 0))}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Y/N shows effective access. Role supplies the default; a user override takes precedence. Click a cell to edit the audit draft.</div></div><div class="flex flex-wrap gap-2"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase text-emerald-800" onclick="return refreshAccessControlMatrix()"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button><button type="button" class="min-h-[44px] rounded-xl border border-blue-200 bg-blue-50 px-4 text-[10px] font-black uppercase text-blue-800" onclick="return exportAccessControlCsv()"><i class="ph-bold ph-download-simple mr-1"></i>CSV</button></div></div><div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">${statusCards}</div></section>${renderAccessControlEditor()}<section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="grid gap-3 md:grid-cols-4"><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">View<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlViewMode(this.value)"><option value="users" ${state.viewMode === 'users' ? 'selected' : ''}>Users</option><option value="roles" ${state.viewMode === 'roles' ? 'selected' : ''}>Role Defaults</option></select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Module<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlModuleFilter(this.value)"><option value="all">All Modules</option>${modules.map((moduleKey) => `<option value="${escapeHtml(moduleKey)}" ${state.selectedModule === moduleKey ? 'selected' : ''}>${escapeHtml(moduleKey)}</option>`).join('')}</select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Role Filter<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlRoleFilter(this.value)" ${state.viewMode === 'roles' ? 'disabled' : ''}><option value="all">All Roles</option>${roles.map((roleKey) => `<option value="${escapeHtml(roleKey)}" ${state.selectedRole === roleKey ? 'selected' : ''}>${escapeHtml(roleKey)}</option>`).join('')}</select></label><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Shown</div><div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(String(subjects.length))} × ${escapeHtml(String(permissions.length))}</div></div></div></section>${columnWindowHtml}${renderAccessControlMatrixTable(subjects, permissions)}<section class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Publish Reviewed Audit Snapshot</div><div class="mt-1 text-sm font-bold text-indigo-950">This records an immutable reviewed version and starts the next draft. It does not enable centralized enforcement.</div><div class="mt-3 flex flex-col gap-2 md:flex-row"><input type="text" maxlength="500" class="min-h-[48px] min-w-0 flex-1 rounded-xl border border-indigo-200 bg-white px-3 text-sm font-bold text-slate-900" value="${escapeHtml(state.publishReason || '')}" placeholder="Required review reason" oninput="return updateAccessControlPublishReason(this.value)"><button type="button" class="min-h-[48px] rounded-xl bg-indigo-700 px-5 text-[10px] font-black uppercase tracking-[0.12em] text-white disabled:opacity-50" ${publishDisabled ? 'disabled' : ''} onclick="return publishAccessControlAuditPolicy()">${state.publishing ? 'Publishing…' : 'Publish Audit Snapshot'}</button></div></section></div>`;
+            const permissionTotal = Number(page.permissionTotal || permissions.length);
+            const subjectTotal = Number(page.subjectTotal || subjects.length);
+            const columnWindowHtml = permissionTotal > pageSize ? `<div class="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Permission column window"><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.columnOffset <= 0 ? 'disabled' : ''} onclick="return setAccessControlColumnWindow(-1)">Previous Columns</button><div class="text-center text-[10px] font-black uppercase text-slate-500">Permissions ${state.columnOffset + 1}-${Math.min(permissionTotal, state.columnOffset + permissions.length)} of ${permissionTotal}</div><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.columnOffset + pageSize >= permissionTotal ? 'disabled' : ''} onclick="return setAccessControlColumnWindow(1)">Next Columns</button></div>` : '';
+            const subjectWindowHtml = subjectTotal > state.subjectPageSize ? `<div class="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.subjectOffset <= 0 ? 'disabled' : ''} onclick="return setAccessControlSubjectWindow(-1)">Previous Users</button><div class="text-[10px] font-black uppercase text-slate-500">${state.subjectOffset + 1}-${Math.min(subjectTotal, state.subjectOffset + subjects.length)} of ${subjectTotal}</div><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.subjectOffset + state.subjectPageSize >= subjectTotal ? 'disabled' : ''} onclick="return setAccessControlSubjectWindow(1)">Next Users</button></div>` : '';
+            const editHelp = canManageAccessControl() ? 'Tap a cell to edit the audit draft.' : 'Read-only manager view. Dylan, Megan, and JD can edit the audit draft.';
+            const publishHtml = canManageAccessControl() ? `<section class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Publish Reviewed Audit Snapshot</div><div class="mt-1 text-sm font-bold text-indigo-950">This records an immutable reviewed version and starts the next draft. It does not enable centralized enforcement.</div><div class="mt-3 flex flex-col gap-2 md:flex-row"><input type="text" maxlength="500" class="min-h-[48px] min-w-0 flex-1 rounded-xl border border-indigo-200 bg-white px-3 text-sm font-bold text-slate-900" value="${escapeHtml(state.publishReason || '')}" placeholder="Required review reason" oninput="return updateAccessControlPublishReason(this.value)"><button type="button" class="min-h-[48px] rounded-xl bg-indigo-700 px-5 text-[10px] font-black uppercase tracking-[0.12em] text-white disabled:opacity-50" ${publishDisabled ? 'disabled' : ''} onclick="return publishAccessControlAuditPolicy()">${state.publishing ? 'Publishing…' : 'Publish Audit Snapshot'}</button></div></section>` : '';
+            return `<div class="space-y-5">${auditBanner}${errorHtml}<section class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Managers · Access Control</div><div class="mt-1 text-xl font-black text-slate-900">Policy v${escapeHtml(String(data.policy.version || 0))} · Revision ${escapeHtml(String(data.policy.revision || 0))}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Y/N shows effective access. Role supplies the default; a user override takes precedence. ${escapeHtml(editHelp)}</div></div><div class="flex flex-wrap gap-2"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase text-emerald-800" onclick="return refreshAccessControlMatrix()"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button><button type="button" class="min-h-[44px] rounded-xl border border-blue-200 bg-blue-50 px-4 text-[10px] font-black uppercase text-blue-800" onclick="return exportAccessControlCsv()"><i class="ph-bold ph-download-simple mr-1"></i>CSV</button></div></div><div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">${statusCards}</div></section>${renderAccessControlEditor()}<section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="grid gap-3 md:grid-cols-4"><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">View<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlViewMode(this.value)"><option value="users" ${state.viewMode === 'users' ? 'selected' : ''}>Users</option><option value="roles" ${state.viewMode === 'roles' ? 'selected' : ''}>Role Defaults</option></select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Module<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlModuleFilter(this.value)"><option value="all">All Modules</option>${modules.map((moduleKey) => `<option value="${escapeHtml(moduleKey)}" ${state.selectedModule === moduleKey ? 'selected' : ''}>${escapeHtml(moduleKey)}</option>`).join('')}</select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Role Filter<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlRoleFilter(this.value)" ${state.viewMode === 'roles' ? 'disabled' : ''}><option value="all">All Roles</option>${roles.map((roleKey) => `<option value="${escapeHtml(roleKey)}" ${state.selectedRole === roleKey ? 'selected' : ''}>${escapeHtml(roleKey)}</option>`).join('')}</select></label><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Shown</div><div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(String(subjects.length))} × ${escapeHtml(String(permissions.length))}</div></div></div></section>${columnWindowHtml}${renderAccessControlMatrixTable(subjects, permissions)}${publishHtml}</div>`;
         }
 
         function canManageAccessControl(userOverride = '') {
+            if (!userOverride && accessControlAdminState.capabilities) return accessControlAdminState.capabilities.canEdit === true;
             return [userOverride, currentUser, currentUserDisplay]
                 .filter((value) => String(value || '').trim())
                 .map((value) => normalizeMovesUserKey(value))
                 .some((value) => PRIVILEGED_MANAGER_USER_KEYS.includes(value));
+        }
+
+        function canViewAccessControl() {
+            if (accessControlAdminState.capabilities) return accessControlAdminState.capabilities.canView === true;
+            const role = normalizeRoleAccessToken(firstNonEmptyValue(safeRole, currentRole, ''));
+            return role === 'ADMIN' || role === 'MANAGER';
         }
 
         function getManagersToolAccess() {
@@ -125197,7 +125514,7 @@ C.14.043 C.15.000
                 canViewHistoricalReport: canViewManagerHistoricalReport(),
                 canViewShortageCancel: canViewManagerShortageCancel(),
                 canViewBlockClearing: canViewManagerBlockClearing(),
-                canManageAccessControl: canManageAccessControl(),
+                canManageAccessControl: canViewAccessControl(),
                 canViewLaborHours: canAccessView('hours')
             };
         }
@@ -125378,6 +125695,14 @@ C.14.043 C.15.000
                 scheduleManagersRender(true);
                 return false;
             }
+            if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW) {
+                accessControlAdminState.subjectOffset = 0;
+                scheduleSearchRender('manager-access-control-search', () => {
+                    if (scheduledTerm !== managersSearchTerm) return;
+                    loadAccessControlMatrix(true).catch(() => {});
+                }, scheduledTerm, { force:true, debounceDelay:220, typingDelay:30, allowWhileTyping:true, interactiveCritical:true, maxDeferMs:500 });
+                return false;
+            }
             const assignedItemsSearch = activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
             scheduleSearchRender('managers-search', () => {
                 if (scheduledTerm !== managersSearchTerm) return;
@@ -125413,6 +125738,10 @@ C.14.043 C.15.000
             if (activeHomeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) {
                 managerTransactionsKeyedState.search = '';
                 loadTransactionsKeyedDashboard(true).catch(() => {});
+            }
+            if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW) {
+                accessControlAdminState.subjectOffset = 0;
+                loadAccessControlMatrix(true).catch(() => {});
             }
             syncManagersHeaderChrome();
             scheduleSearchRender('managers-search', () => {

@@ -33,64 +33,23 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
     && typeof (window as any).goToQtyStep === 'function');
 
   const setup = await page.evaluate(() => window.eval(`(() => {
-    const fixture = {
-      UNIQUE_ID: 'HOSTED-REQUEST-CANARY-ROW',
-      DOM_ID: 'hosted-request-canary-row',
-      ITEMCODE: 'CANARY.ITEM.001',
-      COMMONNAME: 'Synthetic Canary Plant',
-      CONTSIZE: '#1 TEST',
-      LOCATIONCODE: 'T.00.000',
-      LOTCODE: '99.F1',
-      SOURCE: 'TEST',
-      PTRAVAILABLE: '25',
-      PTRONHAND: '25',
-      PTRREVIEWED: '0',
-      PLANTGROUPCODE: 'TEST_GROUP'
-    };
+    const fixture = installMutationBlockedRequestCanaryFixture();
+    if (!fixture) throw new Error('REQUEST_CANARY_FIXTURE_UNAVAILABLE');
     document.body.classList.add('ops-precision-pilot');
-    currentUser = 'hosted_request_canary';
-    currentUserDisplay = 'Hosted Request Canary';
-    currentRole = 'Manager';
-    fullInventory = [fixture];
-    requestsInventory = [];
-    customerRepMapRows = [{
-      SALESREPNAME: 'Hosted Canary Rep',
-      CUSTOMERNAME: 'Synthetic Canary Customer',
-      CONSIGNEENAME: 'Synthetic Canary Dock'
-    }];
-    invalidateInventoryDomIdLookup();
-    requestModalCustomerOptionsLoading = false;
-    requestModalCustomerOptionsReady = true;
-    requestModalCustomerOptionsError = '';
-    areRequestModalCustomerDatasetsReady = () => true;
-    buildRequestModalCustomerOptionsCache = () => [];
-    ensureRequestModalCustomerOptionsReady = () => Promise.resolve(true);
-    canUseRequestMappedFoldersForCurrentUser = () => true;
-    getExistingRequestFolderRepRows = () => [];
-    resolveCanonicalRequestRepName = (name) => String(name || 'Hosted Canary Rep');
-    resolveRequestRepSelectionForCurrentUser = (name) => String(name || 'Hosted Canary Rep');
-    doesRequestRepMatchValue = () => true;
-    isRequestRepPickerLockedForCurrentUser = () => false;
-    isCsrRequestAssistantUser = () => false;
-    getDefaultRequestRepName = () => '';
-    window.__REQUEST_CANARY_DIAGNOSTICS__ = [];
-    reportSemanticHealthEvent = (eventName, area, code, context) => window.__REQUEST_CANARY_DIAGNOSTICS__.push({ eventName, area, code, context });
     showRequestModalBase();
-    detailRequestSourceDomIds = [fixture.DOM_ID];
-    requestExistingFolderGroupsCacheKey = '';
-    requestExistingFolderGroupsCache = [];
+    const canaryGroups = buildExistingRequestFolderCustomerGroups('Hosted Canary Rep');
     selectRepForRequest('Hosted Canary Rep');
     return {
       release: String(window.__APP_SHELL_VERSION__ || ''),
       customerStepVisible: !document.getElementById('step-1.5-folder').classList.contains('hidden'),
-      diagnosticCount: window.__REQUEST_CANARY_DIAGNOSTICS__.length
+      groupLabels: canaryGroups.map((group) => group.label)
     };
   })()`));
   collectPageErrors = true;
 
   expect(setup.release).toBe(expectedRelease);
   expect(setup.customerStepVisible).toBe(true);
-  expect(setup.diagnosticCount).toBe(0);
+  expect(setup.groupLabels).toContain('Synthetic Canary Customer');
   const modal = page.locator('#request-rep-modal');
   const picker = page.locator('#existing-folder-container');
   await expect(modal).toBeVisible();
@@ -177,13 +136,20 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     currentRole = 'Manager';
     canViewManagerEvalReports2 = () => true;
     isEvalWorkManagerUser = () => true;
+    const loginView = document.getElementById('view-login');
+    if (loginView) {
+      loginView.classList.add('hidden');
+      loginView.style.setProperty('display', 'none', 'important');
+      loginView.style.setProperty('pointer-events', 'none', 'important');
+    }
     activeHomeTab = 'eval-reports-2';
     processAndLoadData({ data: [
       { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
       { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'megan_kelly' },
+      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly' }
     ], _fromCache: true });
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -194,10 +160,11 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     invalidateManagerEvalReport2Cache();
     setManagerEvalReport2Mode('reports');
     setManagerEvalReport2('no-pri');
-    setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
+    managerEvalReport2AssignedToFilter = 'all';
+    managerEvalReport2AssignedToFilters = new Set();
     const host = document.createElement('main');
     host.id = 'hosted-eval2-canary';
-    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:390px;overflow:auto;background:#fff;';
+    host.style.cssText = 'position:fixed;inset:0;z-index:9000;width:390px;overflow:auto;background:#fff;';
     host.innerHTML = renderManagerEvalReports2Panel();
     document.body.appendChild(host);
     return { release: String(window.__APP_SHELL_VERSION__ || '') };
@@ -208,6 +175,16 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   const host = page.locator('#hosted-eval2-canary');
   await expect(host).toContainText('Eval Reports #2');
   await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
+  await host.getByRole('button', { name: /All Users/i }).click();
+  const initialUserSheet = page.locator('#manager-eval-user-picker');
+  await initialUserSheet.getByRole('checkbox', { name: /dylan_collyge/i }).click();
+  await initialUserSheet.getByRole('checkbox', { name: /megan_kelly/i }).click();
+  await initialUserSheet.getByRole('button', { name: /Apply 2 Users/i }).click();
+  await page.evaluate(() => {
+    const target = document.getElementById('hosted-eval2-canary')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+  });
+  await expect(host.getByRole('button', { name: /2 Users/i })).toBeEnabled();
   await expect(host).toContainText('Alpha Eval Canary');
   await host.locator('button.drill-item', { hasText: 'Alpha Eval Canary' }).click();
   await page.evaluate(() => {
@@ -250,19 +227,26 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await expect(beta).toHaveAttribute('aria-pressed', 'true');
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('2 ITEMCODEs');
   await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
-  await expect(host.locator('#manager-eval-report-2-assigned-select')).toBeDisabled();
   await expect(host.locator('#manager-eval-report-2-select-shown')).toContainText('Deselect Shown');
+
+  await host.getByRole('button', { name: /2 Users/i }).click();
+  const userSheet = page.locator('#manager-eval-user-picker');
+  await expect(userSheet).toBeVisible();
+  await userSheet.getByRole('checkbox', { name: /dylan_collyge/i }).click();
+  await userSheet.getByRole('button', { name: /Apply 1 User/i }).click();
 
   const state = await page.evaluate(() => (window as any).eval(`(() => ({
     selected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode).sort(),
     report: getManagerEvalReport2SelectedItems()[0]?.reportId || '',
-    assignedTo: getManagerEvalReport2SelectedItems()[0]?.assignedTo || '',
+    assignedToUsers: getManagerEvalReport2SelectedItems()[0]?.assignedToUsers || [],
+    activeUsers: getManagerEvalAssignedUsers('eval2'),
     hasLegacySelectMode: document.getElementById('hosted-eval2-canary').textContent.includes('Select Items')
   }))()`));
   expect(state).toEqual({
     selected: ['CANARY.EVAL.A', 'CANARY.EVAL.B'],
     report: 'no-pri',
-    assignedTo: 'dylan_collyge',
+    assignedToUsers: ['dylan_collyge', 'megan_kelly'],
+    activeUsers: ['megan_kelly'],
     hasLegacySelectMode: false,
   });
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
@@ -333,7 +317,7 @@ test('live PO Management uses authenticated PostgREST and never the retired data
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
 });
 
-test('live access snapshot uses app-access-v1 without policy mutations', async ({ page }) => {
+test('live access snapshot and read-only manager matrix remain mutation-blocked', async ({ page }) => {
   const blockedMutations: string[] = [];
   const accessRequests: string[] = [];
   const forbiddenPolicyMutations: string[] = [];
@@ -365,6 +349,32 @@ test('live access snapshot uses app-access-v1 without policy mutations', async (
       });
       return;
     }
+    if (method === 'POST' && pathname.endsWith('/rest/v1/rpc/get_access_control_matrix_v2')) {
+      accessRequests.push(pathname);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          contractVersion: 'app-access-view-v2',
+          enforcementMode: 'audit',
+          policy: { id: 1, version: 1, revision: 1, status: 'draft' },
+          capabilities: { canView: true, canEdit: false },
+          filters: { modules: ['managers'], roles: ['MANAGER'] },
+          page: { subjectType: 'users', subjectOffset: 0, subjectLimit: 100, subjectTotal: 1, permissionOffset: 0, permissionLimit: 8, permissionTotal: 1 },
+          summary: { userCount: 1, permissionCount: 1, mismatchCount: 0, baselineMissingCount: 0 },
+          permissions: [{ permissionKey: 'module.managers.view', kind: 'module', moduleKey: 'managers', label: 'Managers', scopeOptions: [], sortOrder: 1 }],
+          users: [{
+            username: 'hosted_access_canary',
+            displayName: 'Hosted Access Canary',
+            role: 'MANAGER',
+            roleKey: 'MANAGER',
+            decisions: { 'module.managers.view': { allowed: true, scope: null, source: 'role' } }
+          }],
+          roles: []
+        })
+      });
+      return;
+    }
     if (pathname.endsWith('/rest/v1/rpc/save_access_control_draft_v1')
       || pathname.endsWith('/rest/v1/rpc/publish_access_control_policy_v1')) {
       forbiddenPolicyMutations.push(`${method}:${pathname}`);
@@ -388,18 +398,18 @@ test('live access snapshot uses app-access-v1 without policy mutations', async (
     && typeof (window as any).getAuditedAppPermission === 'function');
 
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
-    currentUser = 'hosted_access_canary';
-    currentUserDisplay = 'Hosted Access Canary';
-    currentRole = 'MANAGER';
-    appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
-    getNativeAuthRequestHeaders = async () => ({
-      apikey: 'synthetic-canary-key',
-      Authorization: 'Bearer synthetic-canary-token',
-      'Content-Type': 'application/json'
-    });
+    if (!installMutationBlockedAccessCanaryIdentity()) throw new Error('ACCESS_CANARY_IDENTITY_UNAVAILABLE');
+    scheduleManagersRender = () => {};
     const snapshot = await initializeAppAccessSnapshot({ force: true, reason: 'post-deploy-canary' });
     const managers = getAuditedAppPermission('module.managers.view');
     const accessControl = getAuditedAppPermission('access_control.manage');
+    await loadAccessControlMatrix(true);
+    const host = document.createElement('main');
+    host.id = 'hosted-access-control-canary';
+    host.innerHTML = renderAccessControlPanel();
+    document.body.appendChild(host);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const accessCanaryState = getMutationBlockedAccessCanaryState();
     return {
       release: String(window.__APP_SHELL_VERSION__ || ''),
       contractVersion: snapshot && snapshot.contractVersion,
@@ -408,10 +418,17 @@ test('live access snapshot uses app-access-v1 without policy mutations', async (
       managersAllowed: managers && managers.allowed,
       managersSource: managers && managers.source,
       accessControlAllowed: accessControl && accessControl.allowed,
-      accessControlSource: accessControl && accessControl.source
+      accessControlSource: accessControl && accessControl.source,
+      matrixContract: accessCanaryState && accessCanaryState.matrixContract,
+      canViewMatrix: accessCanaryState && accessCanaryState.canViewMatrix,
+      canEditMatrix: accessCanaryState && accessCanaryState.canEditMatrix
     };
   })()`));
 
+  expect(accessRequests).toEqual([
+    '/rest/v1/rpc/get_my_app_permissions_v1',
+    '/rest/v1/rpc/get_access_control_matrix_v2'
+  ]);
   expect(result).toEqual({
     release: expectedRelease,
     contractVersion: 'app-access-v1',
@@ -420,9 +437,18 @@ test('live access snapshot uses app-access-v1 without policy mutations', async (
     managersAllowed: true,
     managersSource: 'role',
     accessControlAllowed: false,
-    accessControlSource: 'default-deny'
+    accessControlSource: 'default-deny',
+    matrixContract: 'app-access-view-v2',
+    canViewMatrix: true,
+    canEditMatrix: false
   });
-  expect(accessRequests).toEqual(['/rest/v1/rpc/get_my_app_permissions_v1']);
+  const matrix = page.locator('#hosted-access-control-canary');
+  await expect(matrix).toContainText('Hosted Access Canary');
+  await expect(matrix).toContainText(/read-only manager view/i);
+  await expect(matrix.getByRole('button', { name: /Publish Audit Snapshot/i })).toHaveCount(0);
+  const decisionCells = matrix.locator('button.access-control-cell');
+  await expect(decisionCells).toHaveCount(2);
+  expect(await decisionCells.evaluateAll((buttons) => buttons.every((button) => (button as HTMLButtonElement).disabled))).toBe(true);
   expect(forbiddenPolicyMutations).toEqual([]);
   expect(blockedMutations, `unexpected mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);

@@ -664,6 +664,11 @@ async function handleEvalWorkAction(
         const item = rawItem && typeof rawItem === "object" ? rawItem as Record<string, unknown> : {};
         const sourceInput = item.source && typeof item.source === "object" ? item.source as Record<string, unknown> : {};
         const contextInput = item.reportContext && typeof item.reportContext === "object" ? item.reportContext as Record<string, unknown> : {};
+        const assignedToUsers = Array.from(new Set(
+          (Array.isArray(contextInput.assignedToUsers) ? contextInput.assignedToUsers : [])
+            .map((value) => String(value || "").trim())
+            .filter(Boolean),
+        )).slice(0, 100);
         const source = {
           unique_id: String(sourceInput.unique_id || "").trim(),
           source_table: "ph_master_inventory",
@@ -680,6 +685,7 @@ async function handleEvalWorkAction(
             reportId: String(contextInput.reportId || "").trim().slice(0, 100),
             reportLabel: String(contextInput.reportLabel || "").trim().slice(0, 200),
             assignedTo: String(contextInput.assignedTo || "").trim().slice(0, 200),
+            assignedToUsers,
             browseMode: String(contextInput.browseMode || "").trim().slice(0, 40),
           },
         };

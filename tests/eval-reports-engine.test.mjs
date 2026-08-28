@@ -262,6 +262,22 @@ test('builds the assignee selector from the complete assignment table', () => {
   assert.equal(model.rows[0].ASSIGNEDTO, '');
 });
 
+test('preserves multiple authoritative users on one physical inventory row', () => {
+  const inventory = [row('MULTI-001', 'F1', 27, { UNIQUE_ID: 'physical-1', GENUSNAME: 'Rosa' })];
+  const assignments = [
+    { ITEMCODE: 'MULTI-001', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+    { ITEMCODE: 'MULTI-001', GENUSNAME: 'Rosa', ASSIGNEDTO: 'megan_kelly' },
+    { ITEMCODE: 'MULTI-001', GENUSNAME: 'Rosa', ASSIGNEDTO: 'Dylan_Collyge' }
+  ];
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments);
+
+  assert.equal(model.rows.length, 1);
+  assert.equal(model.rows[0].ASSIGNEDTO, 'dylan_collyge');
+  assert.deepEqual(model.rows[0].ASSIGNEDTO_USERS, ['dylan_collyge', 'megan_kelly']);
+  assert.equal(model.matchedCount, 1);
+  assert.equal(model.unassignedCount, 0);
+});
+
 test('script-compatible classifier preserves the pasted Apps Script predicates and boundaries', () => {
   const rows = [
     row('A', 'F1', 27, { TEST_ID: 'a-f1', ASSIGNEDTO: 'dylan_collyge', PRIORITY: '1', S_LTS: 100, HOLDSTOPCODE: 'H', HOLDSTOPBEGINDATE: '8/14/2026', LOCATIONNOTEDATE: '8/9/2026' }),
@@ -480,6 +496,20 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /const allRows = getManagerEvalReport2AllCurrentItemRows\(entry\.itemCode\)/);
   assert.doesNotMatch(html.slice(html.indexOf('function setManagerEvalReport2RowEditValue'), html.indexOf('function isNamedManagerEvalReport2AssignedTo')), /supabase(Update|Insert|Delete|Rpc)|fetch\(/i);
   assert.match(html, /Eval Reports #2 is available only to Dylan, Megan, and JD/);
+});
+
+test('Eval Reports #1 and #2 share multi-user OR filtering without locking AssignedTo', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /managerEvalReportAssignedToFilters=new Set\(\)/);
+  assert.match(html, /managerEvalReport2AssignedToFilters=new Set\(\)/);
+  assert.match(html, /function managerEvalAssignedUserMatches\(/);
+  assert.match(html, /function openManagerEvalUserPicker\(/);
+  assert.match(html, /Select Visible/);
+  assert.match(html, /All Users/);
+  assert.match(html, /\(Unassigned\)/);
+  assert.match(html, /assignedToUsers/);
+  assert.doesNotMatch(html, /One AssignedTo Per Email/);
+  assert.doesNotMatch(html, /Select one named AssignedTo user before selecting Item Inquiry ITEMCODEs/);
 });
 
 test('detail teardown and BlockAlpha drilldowns keep navigation state explicit', () => {

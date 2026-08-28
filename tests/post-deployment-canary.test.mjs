@@ -40,10 +40,14 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
   assert.match(canary, /live Eval Reports #2 drill and multi-select remain actionable without mutations/);
   assert.match(canary, /data-role="manager-eval2-selection-toggle"/);
   assert.match(canary, /getManagerEvalReport2SelectedItems\(\)\[0\]\?\.reportId/);
+  assert.match(canary, /getByRole\('button', \{ name: \/Apply 2 Users\/i \}\)/);
+  assert.match(canary, /getManagerEvalAssignedUsers\('eval2'\)/);
   assert.match(canary, /live PO Management uses authenticated PostgREST and never the retired database proxy/);
   assert.match(canary, /\/rest\/v1\/ph_view_po_27f1_hl/);
-  assert.match(canary, /live access snapshot uses app-access-v1 without policy mutations/);
+  assert.match(canary, /live access snapshot and read-only manager matrix remain mutation-blocked/);
   assert.match(canary, /\/rest\/v1\/rpc\/get_my_app_permissions_v1/);
+  assert.match(canary, /\/rest\/v1\/rpc\/get_access_control_matrix_v2/);
+  assert.match(canary, /canEditMatrix: false/);
 });
 
 test('scheduled production health checks exact live parity without racing the push deployment', () => {

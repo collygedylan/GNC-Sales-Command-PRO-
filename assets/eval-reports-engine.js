@@ -117,7 +117,9 @@
             const key = buildAuthoritativeAssignmentKey(row);
             if (!key) return;
             const assignedTo = getAssignedTo(row);
-            assignmentByKey.set(key, assignedTo);
+            if (!assignmentByKey.has(key)) assignmentByKey.set(key, new Map());
+            const normalizedAssignment = assignedTo ? assignedTo.toLowerCase() : '__unassigned__';
+            if (!assignmentByKey.get(key).has(normalizedAssignment)) assignmentByKey.get(key).set(normalizedAssignment, assignedTo);
             if (!assignedTo) {
                 hasUnassigned = true;
                 return;
@@ -127,15 +129,23 @@
         });
 
         let matchedCount = 0;
+        let unassignedCount = 0;
         const rows = sourceInventory.map((row) => {
             const key = buildAuthoritativeAssignmentKey(row);
             const matched = !!key && assignmentByKey.has(key);
-            const assignedTo = matched ? String(assignmentByKey.get(key) || '').trim() : '';
             if (matched) matchedCount += 1;
-            if (!assignedTo) hasUnassigned = true;
+            const assignments = matched ? Array.from(assignmentByKey.get(key).values()) : [''];
+            const assignedToUsers = assignments.map((value) => String(value || '').trim());
+            const assignedTo = assignedToUsers.find(Boolean) || '';
+            if (!assignedTo) {
+                hasUnassigned = true;
+                unassignedCount += 1;
+            }
             return Object.assign({}, row, {
                 ASSIGNEDTO: assignedTo,
-                assignedto: assignedTo
+                assignedto: assignedTo,
+                ASSIGNEDTO_USERS: assignedToUsers,
+                assignedto_users: assignedToUsers
             });
         });
 
@@ -146,7 +156,7 @@
             assignedToOptions,
             assignmentCount: assignmentByKey.size,
             matchedCount,
-            unassignedCount: rows.length - rows.filter((row) => getAssignedTo(row)).length
+            unassignedCount
         };
     }
 

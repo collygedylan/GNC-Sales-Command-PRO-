@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const migration = fs.readFileSync(new URL('../supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql', import.meta.url), 'utf8');
+const managerReadMigration = fs.readFileSync(new URL('../supabase/migrations/20260828070741_access_control_manager_read_v2.sql', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const health = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
 const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
@@ -66,7 +67,7 @@ test('Manager Access Control renders the effective matrix and saves only the dra
   assert.match(html, /const APP_ACCESS_CONTRACT_VERSION = 'app-access-v1'/);
   assert.match(html, /const MANAGER_ACCESS_CONTROL_VIEW = 'access-control'/);
   assert.match(html, /function renderAccessControlPanel\(/);
-  assert.match(html, /get_access_control_matrix_v1/);
+  assert.match(html, /get_access_control_matrix_v2/);
   assert.match(html, /save_access_control_draft_v1/);
   assert.match(html, /publish_access_control_policy_v1/);
   assert.match(html, /Live authorization remains unchanged/);
@@ -74,13 +75,27 @@ test('Manager Access Control renders the effective matrix and saves only the dra
   assert.match(html, /PRIVILEGED_MANAGER_USER_KEYS\.includes/);
 });
 
+test('active managers can read bounded V2 pages while only maintainers can edit', () => {
+  assert.match(managerReadMigration, /private\.can_view_access_control_v2\(\)/);
+  assert.match(managerReadMigration, /in \('ADMIN', 'MANAGER'\)/);
+  assert.match(managerReadMigration, /public\.get_access_control_matrix_v2\(p_query jsonb/);
+  assert.match(managerReadMigration, /subjectLimit/);
+  assert.match(managerReadMigration, /permissionLimit/);
+  assert.match(managerReadMigration, /'canEdit', private\.is_access_control_maintainer\(\)/);
+  assert.match(managerReadMigration, /revoke all on function public\.get_access_control_matrix_v2\(jsonb\) from public, anon, authenticated/);
+  assert.match(managerReadMigration, /grant execute on function public\.get_access_control_matrix_v2\(jsonb\) to authenticated/);
+  assert.match(html, /function canViewAccessControl\(/);
+  assert.match(html, /if \(!canManageAccessControl\(\)\) return false/);
+});
+
 test('hosted health and exact-live canary cover the audit contract without policy mutation', () => {
   assert.match(health, /get_access_control_health_snapshot_v1/);
   assert.match(health, /production_access_control_audit_contract_unhealthy/);
   assert.match(health, /unknown_permission_count/);
   assert.match(health, /legacy_mismatch_count/);
-  assert.match(canary, /live access snapshot uses app-access-v1 without policy mutations/);
+  assert.match(canary, /live access snapshot and read-only manager matrix remain mutation-blocked/);
   assert.match(canary, /\/rest\/v1\/rpc\/get_my_app_permissions_v1/);
+  assert.match(canary, /\/rest\/v1\/rpc\/get_access_control_matrix_v2/);
   assert.match(canary, /save_access_control_draft_v1/);
   assert.match(canary, /publish_access_control_policy_v1/);
 });
