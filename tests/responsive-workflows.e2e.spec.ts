@@ -354,7 +354,12 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     lockedAssignedTo: getManagerEvalReport2SelectedItems()[0]?.assignedTo || '',
     compactHeader: document.getElementById('eval2-multiselect-host').textContent.includes('Eval Reports #2'),
     hasMore: !!document.querySelector('#eval2-multiselect-host #manager-eval-report-2-more-menu'),
-    noLegacySelectMode: !document.getElementById('eval2-multiselect-host').textContent.includes('Select Items')
+    noLegacySelectMode: !document.getElementById('eval2-multiselect-host').textContent.includes('Select Items'),
+    driveControls: !!document.querySelector('#eval2-multiselect-host .manager-eval2-drive-controls'),
+    driveTabs: Array.from(document.querySelectorAll('#eval2-multiselect-host .manager-eval2-drive-tabs .task-tab')).map((node) => node.textContent.trim()),
+    driveCrumb: !!document.querySelector('#eval2-multiselect-host .manager-eval2-drive-crumb'),
+    driveCards: document.querySelectorAll('#eval2-multiselect-host .manager-eval2-item-card').length,
+    noRedundantOpenFooter: !document.getElementById('eval2-multiselect-host').textContent.includes('Open ITEMCODE Details')
   }))()`));
   expect(state).toEqual({
     selected: ['CLICK.A', 'CLICK.B'],
@@ -363,7 +368,21 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     compactHeader: true,
     hasMore: true,
     noLegacySelectMode: true,
+    driveControls: true,
+    driveTabs: ['Common Name', 'Location'],
+    driveCrumb: true,
+    driveCards: 1,
+    noRedundantOpenFooter: true,
   });
+  const managerShell = await page.evaluate(() => (window as any).eval(`(() => {
+    setHomeTab('eval-reports-2');
+    syncManagersHeaderChrome();
+    return {
+      driveShell: document.getElementById('view-managers').classList.contains('manager-eval2-drive-shell'),
+      duplicateModuleBannerHidden: document.querySelector('#view-managers .manager-module-freeze').classList.contains('hidden')
+    };
+  })()`));
+  expect(managerShell).toEqual({ driveShell: true, duplicateModuleBannerHidden: true });
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 

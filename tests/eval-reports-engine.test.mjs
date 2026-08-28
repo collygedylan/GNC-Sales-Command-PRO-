@@ -427,8 +427,8 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /invalidateManagerEvalReport2Cache\(\)/);
   assert.match(html, /function getManagerEvalReport2LocationOptions\(rows = null\)/);
   assert.match(html, /managerEvalReport2LocationFilter !== 'all'/);
-  assert.match(html, /\? '3\. Common Name' : '4\. Container Size'/);
-  assert.match(html, /\? '3\. Block Alpha' : '4\. Block Number'/);
+  assert.match(html, /\? 'Select Common Name' : `Select Container Size/);
+  assert.match(html, /\? 'Select Block Alpha' : `Select Block Number/);
   assert.match(html, /Choose Report/);
   assert.match(html, /function getManagerEvalReport2DrillGroups\(rows = null\)/);
   assert.match(html, /function openManagerEvalReport2CommonName\(commonName = ''\)/);
@@ -464,6 +464,15 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /managerEvalReport2LockedAssignedTo/);
   assert.match(html, /managerEvalReport2LockedReportId/);
   assert.match(html, /id="manager-eval-report-2-more-menu"/);
+  assert.match(html, /manager-eval2-drive-shell/);
+  assert.match(html, /manager-eval2-drive-controls/);
+  assert.match(html, /manager-eval2-drive-filter-grid/);
+  assert.match(html, /manager-eval2-drive-group-card/);
+  assert.match(html, /manager-eval2-drive-crumb/);
+  assert.match(html, /browseButton\('plant', 'Common Name', 'ph-plant'\)/);
+  assert.match(html, /browseButton\('location', 'Location', 'ph-map-pin'\)/);
+  assert.match(html, /moduleFreeze\.classList\.toggle\('hidden', driveAroundLayout\)/);
+  assert.match(html, /const accessibleTitle = '<h2 class="sr-only">Eval Reports #2<\/h2>'/);
   assert.match(html, /managerEvalReport2Cache\.rowsByItemCode = new Map\(\)/);
   assert.match(html, /function getManagerEvalReport2SelectedRows\(\)/);
   assert.match(html, /function buildManagerEvalReport2SelectableGridHtml\(itemGroups = \[\]\)/);
