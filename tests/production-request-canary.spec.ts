@@ -332,3 +332,98 @@ test('live PO Management uses authenticated PostgREST and never the retired data
   expect(blockedMutations, `retired proxy or mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
 });
+
+test('live access snapshot uses app-access-v1 without policy mutations', async ({ page }) => {
+  const blockedMutations: string[] = [];
+  const accessRequests: string[] = [];
+  const forbiddenPolicyMutations: string[] = [];
+  const pageErrors: string[] = [];
+
+  await page.route('**/*', async (route) => {
+    const request = route.request();
+    const method = request.method().toUpperCase();
+    let parsedUrl: URL | null = null;
+    try { parsedUrl = new URL(request.url()); } catch {}
+    const pathname = parsedUrl?.pathname || '';
+    if (method === 'POST' && pathname.endsWith('/rest/v1/rpc/get_my_app_permissions_v1')) {
+      accessRequests.push(pathname);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          contractVersion: 'app-access-v1',
+          enforcementMode: 'audit',
+          policyVersion: 1,
+          policyRevision: 1,
+          username: 'hosted_access_canary',
+          role: 'MANAGER',
+          permissions: [
+            { permissionKey: 'module.managers.view', kind: 'module', moduleKey: 'managers', label: 'Managers', allowed: true, scope: null, source: 'role' },
+            { permissionKey: 'access_control.manage', kind: 'action', moduleKey: 'access-control', label: 'Access Control', allowed: false, scope: null, source: 'default-deny' }
+          ]
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith('/rest/v1/rpc/save_access_control_draft_v1')
+      || pathname.endsWith('/rest/v1/rpc/publish_access_control_policy_v1')) {
+      forbiddenPolicyMutations.push(`${method}:${pathname}`);
+      await route.abort('blockedbyclient');
+      return;
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      blockedMutations.push(`${method}:${pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120) || 'unknown'}`);
+      await route.abort('blockedbyclient');
+      return;
+    }
+    await route.continue();
+  });
+  page.on('pageerror', (error) => {
+    pageErrors.push(String(error?.message || 'PAGE_ERROR').replace(/[^a-z0-9 _.-]+/gi, '_').slice(0, 160));
+  });
+
+  const nonce = `${Date.now()}-${expectedCommit.slice(0, 7) || 'local'}`;
+  await page.goto(`/?post_deploy_access_canary=${encodeURIComponent(nonce)}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).initializeAppAccessSnapshot === 'function'
+    && typeof (window as any).getAuditedAppPermission === 'function');
+
+  const result = await page.evaluate(() => (window as any).eval(`(async () => {
+    currentUser = 'hosted_access_canary';
+    currentUserDisplay = 'Hosted Access Canary';
+    currentRole = 'MANAGER';
+    appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
+    getNativeAuthRequestHeaders = async () => ({
+      apikey: 'synthetic-canary-key',
+      Authorization: 'Bearer synthetic-canary-token',
+      'Content-Type': 'application/json'
+    });
+    const snapshot = await initializeAppAccessSnapshot({ force: true, reason: 'post-deploy-canary' });
+    const managers = getAuditedAppPermission('module.managers.view');
+    const accessControl = getAuditedAppPermission('access_control.manage');
+    return {
+      release: String(window.__APP_SHELL_VERSION__ || ''),
+      contractVersion: snapshot && snapshot.contractVersion,
+      enforcementMode: snapshot && snapshot.enforcementMode,
+      username: snapshot && snapshot.username,
+      managersAllowed: managers && managers.allowed,
+      managersSource: managers && managers.source,
+      accessControlAllowed: accessControl && accessControl.allowed,
+      accessControlSource: accessControl && accessControl.source
+    };
+  })()`));
+
+  expect(result).toEqual({
+    release: expectedRelease,
+    contractVersion: 'app-access-v1',
+    enforcementMode: 'audit',
+    username: 'hosted_access_canary',
+    managersAllowed: true,
+    managersSource: 'role',
+    accessControlAllowed: false,
+    accessControlSource: 'default-deny'
+  });
+  expect(accessRequests).toEqual(['/rest/v1/rpc/get_my_app_permissions_v1']);
+  expect(forbiddenPolicyMutations).toEqual([]);
+  expect(blockedMutations, `unexpected mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
+  expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
+});

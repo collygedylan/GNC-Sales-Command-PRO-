@@ -83,6 +83,7 @@ const checks = [];
 let deliveryWorkerResult = null;
 let requestIntegrityHealth = null;
 let poManagementHealth = null;
+let accessControlHealth = null;
 let recentSemanticFailures = [];
 let appsScriptHealth = null;
 
@@ -238,6 +239,35 @@ if (serviceRoleKey) {
     ageMinutes: Math.max(0, Math.round(poAgeMs / 60000))
   });
 
+  const accessControlHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_access_control_health_snapshot_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const accessControlHealthText = await accessControlHealthResponse.text();
+  try { accessControlHealth = accessControlHealthText ? JSON.parse(accessControlHealthText) : null; } catch {}
+  if (!accessControlHealthResponse.ok || !accessControlHealth || typeof accessControlHealth !== 'object') {
+    throw new Error(`production_access_control_health_unavailable_HTTP_${accessControlHealthResponse.status}`);
+  }
+  const accessControlContractHealthy = accessControlHealth.contract_version === 'app-access-v1'
+    && accessControlHealth.enforcement_mode === 'audit'
+    && Number(accessControlHealth.permission_count) >= 50
+    && Number(accessControlHealth.maintainer_count) === 3
+    && Number(accessControlHealth.baseline_missing_count) === 0
+    && Number(accessControlHealth.unknown_permission_count) === 0
+    && Number(accessControlHealth.unmapped_legacy_check_count) === 0;
+  if (!accessControlContractHealthy) throw new Error('production_access_control_audit_contract_unhealthy');
+  checks.push({
+    name: 'access_control',
+    status: accessControlHealthResponse.status,
+    contractVersion: accessControlHealth.contract_version,
+    enforcementMode: accessControlHealth.enforcement_mode,
+    permissionCount: Math.max(0, Number(accessControlHealth.permission_count) || 0),
+    legacyCheckCount: Math.max(0, Number(accessControlHealth.legacy_check_count) || 0),
+    legacyMismatchCount: Math.max(0, Number(accessControlHealth.legacy_mismatch_count) || 0),
+    unknownRoleCount: Math.max(0, Number(accessControlHealth.unknown_role_count) || 0)
+  });
+
   // Read only non-PII health fields. The current scheduled audit was evaluated
   // above, so older audit rows are excluded from semantic client failures.
   const recentSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -293,6 +323,14 @@ const result = {
     rowCount: Math.max(0, Number(poManagementHealth.row_count) || 0),
     latestBuiltAt: String(poManagementHealth.latest_built_at || '')
   } : null,
+  accessControl: accessControlHealth ? {
+    contractVersion: String(accessControlHealth.contract_version || ''),
+    enforcementMode: String(accessControlHealth.enforcement_mode || ''),
+    permissionCount: Math.max(0, Number(accessControlHealth.permission_count) || 0),
+    legacyCheckCount: Math.max(0, Number(accessControlHealth.legacy_check_count) || 0),
+    legacyMismatchCount: Math.max(0, Number(accessControlHealth.legacy_mismatch_count) || 0),
+    unknownRoleCount: Math.max(0, Number(accessControlHealth.unknown_role_count) || 0)
+  } : null,
   appsScript: appsScriptHealth,
   recentSemanticFailureCount: recentSemanticFailures.length
 };
@@ -302,6 +340,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }

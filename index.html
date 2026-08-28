@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.27.09">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.28.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.27.09';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.28.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1858,6 +1858,25 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         .manager-module-card{display:flex;align-items:center;gap:.8rem;width:100%;min-height:92px;border-radius:18px;border:1px solid #d1fae5;background:#fff;padding:1rem;text-align:left;box-shadow:0 8px 20px rgba(15,23,42,.05);touch-action:manipulation}
         .manager-module-card:active{transform:scale(.99)}
         .manager-module-icon{display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border-radius:14px;background:#ecfdf5;color:#007a4d;border:1px solid #a7f3d0;font-size:22px}
+        .access-control-table-shell{max-width:100%;overflow:auto;border:1px solid #d1fae5;border-radius:18px;background:#fff;box-shadow:0 8px 20px rgba(15,23,42,.05)}
+        .access-control-table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0}
+        .access-control-table th,.access-control-table td{border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:.55rem .65rem;vertical-align:middle}
+        .access-control-table thead th{position:sticky;top:0;z-index:3;background:#ecfdf5;color:#065f46;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+        .access-control-table .access-control-identity{position:sticky;left:0;z-index:2;min-width:12rem;max-width:16rem;background:#fff}
+        .access-control-table thead .access-control-identity{z-index:5;background:#d1fae5}
+        .access-control-cell{display:inline-flex;min-width:44px;min-height:44px;align-items:center;justify-content:center;border-radius:12px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11px;font-weight:900;touch-action:manipulation}
+        .access-control-cell.is-allowed{border-color:#6ee7b7;background:#d1fae5;color:#065f46}
+        .access-control-cell.is-denied{border-color:#fecaca;background:#fff1f2;color:#be123c}
+        .access-control-cell.is-mismatch{box-shadow:0 0 0 3px rgba(245,158,11,.3)}
+        .access-control-source{display:block;margin-top:2px;font-size:8px;letter-spacing:.06em;text-transform:uppercase;opacity:.75}
+        .access-control-mobile-card{border:1px solid #d1fae5;border-radius:18px;background:#fff;padding:1rem;box-shadow:0 6px 16px rgba(15,23,42,.05)}
+        body.dark-mode .access-control-table-shell,body.dark-mode .access-control-mobile-card{border-color:#166534;background:#071b13;color:#f8fafc}
+        body.dark-mode .access-control-table .access-control-identity{background:#071b13;color:#f8fafc}
+        body.dark-mode .access-control-table thead th,body.dark-mode .access-control-table thead .access-control-identity{background:#0d3b2a;color:#a7f3d0}
+        body.dark-mode .access-control-table th,body.dark-mode .access-control-table td{border-color:#1f4d3b}
+        body.dark-mode .access-control-cell{background:#0b2419;color:#e2e8f0;border-color:#35604d}
+        body.dark-mode .access-control-cell.is-allowed{background:#14532d;color:#d1fae5;border-color:#34d399}
+        body.dark-mode .access-control-cell.is-denied{background:#3f121b;color:#fecdd3;border-color:#fb7185}
         #home-dashboard-modules{margin-top:-.1rem}
         #home-dashboard-modules h2,
         #home-rep-dashboard-modules h2{margin-bottom:.46rem!important;font-size:.58rem!important;letter-spacing:.12em!important}
@@ -6700,7 +6719,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card[data-selected="true"]{border-color:#007a4d;background:#ecfdf5;box-shadow:0 0 0 4px rgba(16,185,129,.36)}
         .manager-eval2-item-card:active{transform:scale(.992)}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.27.09">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.28.01">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6871,8 +6890,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.27.09"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.27.09"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.28.01"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.28.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7625,7 +7644,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.27.09').trim() || 'V2026.08.27.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.28.01').trim() || 'V2026.08.28.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9112,7 +9131,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.27.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.28.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -27127,6 +27146,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             currentAppSessionExpiresAt = 0;
             requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
             requestCapabilityLoadPromise = null;
+            appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
+            appAccessSnapshotLoadPromise = null;
+            accessControlAdminState = { data:null, loading:false, loaded:false, saving:false, publishing:false, error:'', selectedModule:'all', selectedRole:'all', viewMode:'users', editor:null, publishReason:'', requestToken:0 };
         }
 
         const APP_SESSION_RECORD_STORAGE_KEY = 'gnc_app_session_v1';
@@ -29046,6 +29068,10 @@ let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUs
         const REQUEST_CAPABILITY_CACHE_PREFIX = 'gnc_request_capabilities_v2:';
         let requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
         let requestCapabilityLoadPromise = null;
+        const APP_ACCESS_CONTRACT_VERSION = 'app-access-v1';
+        const APP_ACCESS_CACHE_PREFIX = 'gnc_app_access_v1:';
+        let appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
+        let appAccessSnapshotLoadPromise = null;
         let lastHomeEmptyDiagnosticAt = 0;
 let selectedItemSources=new Map();
 let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[]; let bloomCropUpdateReserveRowsLoading=false; let bloomCropUpdateReserveRowsError=''; let bloomCropUpdateReserveFetchToken=0;
@@ -29064,6 +29090,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
 let activeManagerEvalReport='s1-with-pri'; let activeManagerEvalReportView='name'; let managerEvalReportSelectedCommonName=''; let managerEvalReportSelectedBlock=''; let managerEvalReportSelectedLocation=''; let managerEvalReportSeasonFilter='all'; let managerEvalReportContSizeFilter='all'; let managerEvalReportAssignedToFilter='all'; let managerEvalReportPriorityFilter='all'; let managerEvalReportSettings={lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10,updatedBy:'',updatedAt:''}; let managerEvalReportSettingsState={loaded:false,loading:false,fallback:false,error:'',promise:null,saving:false}; let managerEvalReportCacheKey=''; let managerEvalReportCache=null;
 let managerHistoricalReportState={level:'names',commonNames:[],containerSizes:[],rows:[],selectedCommonName:'',selectedContSize:'',selectedColumns:['report_date','itemcode','locationcode','lotcode','ptravailable','holdstopcode','holdstopreason'],loadedColumns:[],dateStart:'',dateEnd:'',displayMode:'cards',loading:false,loadingMore:false,error:'',hasMore:false,nextCursor:null,dirty:false,requestToken:0,lastSearch:''};
 let managerTransactionsKeyedState={summary:{},availableDates:[],dateMetrics:[],allDates:[],files:[],selectedDate:'',search:'',loading:false,loadingMoreDates:false,loadingMoreFiles:false,loaded:false,error:'',allDatesHasMore:false,filesHasMore:false,allDatesTotal:0,filesTotal:0,requestToken:0};
+let accessControlAdminState={data:null,loading:false,loaded:false,saving:false,publishing:false,error:'',selectedModule:'all',selectedRole:'all',viewMode:'users',editor:null,publishReason:'',requestToken:0,columnOffset:0,columnPageSize:12};
 let managerEvalReportDisplayMode='cards';
 let activeManagerEvalReport2=''; let managerEvalReport2Mode='reports'; let managerEvalReport2DisplayMode='cards'; let managerEvalReport2SeasonFilter='all'; let managerEvalReport2ContSizeFilter='all'; let managerEvalReport2AssignedToFilter='all'; let managerEvalReport2LocationFilter='all'; let managerEvalReport2PriorityFilter='all'; let managerEvalReport2BrowseMode='plant'; let managerEvalReport2DrillLevel=0; let managerEvalReport2SelectedCommonName=''; let managerEvalReport2SelectedContSize=''; let managerEvalReport2SelectedBlockAlpha=''; let managerEvalReport2SelectedBlockNumber=''; let managerEvalReport2DrillScrollByKey=new Map(); let managerEvalReport2InquiryAssignedTo=''; let managerEvalReport2InquiryLocationCode=''; let managerEvalReport2InquiryCommonName=''; let managerEvalReport2InquiryContSize=''; let managerEvalReport2CacheKey=''; let managerEvalReport2Cache=null; let managerEvalReport2LoadState={loading:false,error:'',promise:null,lastLoadedAt:'',lastSourceUpdatedAt:''}; let managerEvalReport2SelectedItemsByKey=new Map(); let managerEvalReport2EditsByRowKey=new Map(); let managerEvalReport2LockedReportId=''; let managerEvalReport2LockedAssignedTo=''; let managerEvalReport2SelectionRevision=0; let managerEvalReport2EditRevision=0; let managerEvalReport2EmailSending=false; let managerEvalReport2DetailItemKey=''; let managerEvalReport2DetailReturnScrollTop=0; let managerEvalReport2BatchSetupState={completionRecipients:[]};
 
@@ -29538,6 +29565,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MANAGER_HISTORICAL_REPORT_VIEW = 'historical-report';
         const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
         const MANAGER_BLOCK_CLEARING_VIEW = 'block-clearing';
+        const MANAGER_ACCESS_CONTROL_VIEW = 'access-control';
         const MANAGER_BLOCK_CLEARING_LONG_PRESS_MS = 360;
         const MANAGER_EVAL_REPORT2_EDITABLE_FIELDS = Object.freeze([
             { key: 'HOLDSTOPCODE', label: 'HOLDSTOPCODE', type: 'hold' },
@@ -30597,7 +30625,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.27.09').trim() || 'V2026.08.27.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.28.01').trim() || 'V2026.08.28.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40007,6 +40035,112 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return REQUEST_CAPABILITY_CACHE_PREFIX + getRequestCapabilityUsernameKey(username);
         }
 
+        function getAppAccessCacheKey(username = currentUser) {
+            return APP_ACCESS_CACHE_PREFIX + getRequestCapabilityUsernameKey(username);
+        }
+
+        function normalizeAppAccessSnapshot(value = null, expectedUsername = currentUser) {
+            const source = Array.isArray(value) ? value.find((entry) => entry && typeof entry === 'object') : value;
+            if (!source || typeof source !== 'object') return null;
+            const username = getRequestCapabilityUsernameKey(firstNonEmptyValue(source.username, expectedUsername, ''));
+            const expectedKey = getRequestCapabilityUsernameKey(expectedUsername);
+            const contractVersion = String(firstNonEmptyValue(source.contractVersion, source.contract_version, '') || '').trim();
+            const enforcementMode = String(firstNonEmptyValue(source.enforcementMode, source.enforcement_mode, '') || '').trim().toLowerCase();
+            if (contractVersion !== APP_ACCESS_CONTRACT_VERSION || !username || (expectedKey && username !== expectedKey)) return null;
+            if (!['audit', 'enforced'].includes(enforcementMode)) return null;
+            const permissions = (Array.isArray(source.permissions) ? source.permissions : []).map((entry) => ({
+                permissionKey: String(firstNonEmptyValue(entry && entry.permissionKey, entry && entry.permission_key, '') || '').trim().toLowerCase(),
+                kind: String(firstNonEmptyValue(entry && entry.kind, entry && entry.permission_kind, '') || '').trim().toLowerCase(),
+                moduleKey: String(firstNonEmptyValue(entry && entry.moduleKey, entry && entry.module_key, '') || '').trim().toLowerCase(),
+                label: String(entry && entry.label || '').trim(),
+                allowed: entry && entry.allowed === true,
+                scope: String(entry && entry.scope || '').trim().toLowerCase(),
+                source: String(entry && entry.source || 'default-deny').trim().toLowerCase()
+            })).filter((entry) => entry.permissionKey);
+            const permissionMap = Object.freeze(Object.fromEntries(permissions.map((entry) => [entry.permissionKey, Object.freeze(entry)])));
+            return Object.freeze({
+                contractVersion,
+                enforcementMode,
+                policyVersion: Number(firstNonEmptyValue(source.policyVersion, source.policy_version, 0)) || 0,
+                policyRevision: Number(firstNonEmptyValue(source.policyRevision, source.policy_revision, 0)) || 0,
+                username,
+                role: String(source.role || '').trim(),
+                permissions: Object.freeze(permissions),
+                permissionMap
+            });
+        }
+
+        function readCachedAppAccessSnapshot(username = currentUser) {
+            const usernameKey = getRequestCapabilityUsernameKey(username);
+            if (!usernameKey) return null;
+            try {
+                const cached = JSON.parse(localStorage.getItem(getAppAccessCacheKey(usernameKey)) || 'null');
+                const snapshot = normalizeAppAccessSnapshot(cached && cached.snapshot, usernameKey);
+                return snapshot ? { snapshot, loadedAt: Number(cached.loadedAt || 0) || 0 } : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function persistAppAccessSnapshot(snapshot = null, loadedAt = Date.now()) {
+            if (!snapshot || !snapshot.username) return;
+            try {
+                localStorage.setItem(getAppAccessCacheKey(snapshot.username), JSON.stringify({ snapshot, loadedAt }));
+            } catch (error) {}
+        }
+
+        function getAppAccessSnapshot() {
+            const usernameKey = getRequestCapabilityUsernameKey(currentUser);
+            if (!usernameKey || appAccessSnapshotState.username !== usernameKey) return null;
+            return appAccessSnapshotState.snapshot || null;
+        }
+
+        function getAuditedAppPermission(permissionKey = '') {
+            const snapshot = getAppAccessSnapshot();
+            const key = String(permissionKey || '').trim().toLowerCase();
+            return snapshot && snapshot.permissionMap ? snapshot.permissionMap[key] || null : null;
+        }
+
+        async function initializeAppAccessSnapshot(options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const force = safeOptions.force === true;
+            const usernameKey = getRequestCapabilityUsernameKey(currentUser);
+            if (!usernameKey) return null;
+            if (appAccessSnapshotLoadPromise && !force) return appAccessSnapshotLoadPromise;
+            if (!force && appAccessSnapshotState.username === usernameKey && appAccessSnapshotState.snapshot && appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale) {
+                return appAccessSnapshotState.snapshot;
+            }
+            const cached = readCachedAppAccessSnapshot(usernameKey);
+            appAccessSnapshotState = {
+                status: 'loading', snapshot: cached ? cached.snapshot : null, stale: !!cached,
+                errorCode: '', loadedAt: cached ? cached.loadedAt : 0, username: usernameKey
+            };
+            appAccessSnapshotLoadPromise = (async () => {
+                if (navigator.onLine === false) throw new Error('APP_ACCESS_OFFLINE');
+                const result = await supabaseRpc('get_my_app_permissions_v1', {}, { timeoutMs: 10000 });
+                const snapshot = normalizeAppAccessSnapshot(result, usernameKey);
+                if (!snapshot) throw new Error('APP_ACCESS_RESPONSE_INVALID');
+                const loadedAt = Date.now();
+                appAccessSnapshotState = { status: 'ready', snapshot, stale: false, errorCode: '', loadedAt, username: usernameKey };
+                persistAppAccessSnapshot(snapshot, loadedAt);
+                return snapshot;
+            })().catch((error) => {
+                const errorCode = String(error && error.message || 'APP_ACCESS_LOAD_FAILED').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
+                appAccessSnapshotState = {
+                    status: cached ? 'ready' : 'error', snapshot: cached ? cached.snapshot : null,
+                    stale: !!cached, errorCode, loadedAt: cached ? cached.loadedAt : 0, username: usernameKey
+                };
+                reportSemanticHealthEvent('app_access_snapshot_load_failed', 'access_control', 'APP_ACCESS_LOAD_FAILED', {
+                    reason: String(safeOptions.reason || '').slice(0, 60)
+                });
+                return appAccessSnapshotState.snapshot;
+            }).finally(() => {
+                appAccessSnapshotLoadPromise = null;
+                if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW && typeof scheduleManagersRender === 'function') scheduleManagersRender(true);
+            });
+            return appAccessSnapshotLoadPromise;
+        }
+
         function normalizeRequestCapabilities(value = null, expectedUsername = currentUser) {
             const source = Array.isArray(value) ? value.find((entry) => entry && typeof entry === 'object') : value;
             if (!source || typeof source !== 'object') return null;
@@ -40164,6 +40298,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         window.addEventListener('online', () => {
             if (!currentUser || (!requestCapabilityState.stale && requestCapabilityState.status !== 'error')) return;
             initializeRequestCapabilities({ force: true, render: true, reason: 'network-restored' }).catch(() => {});
+        });
+        window.addEventListener('online', () => {
+            if (!currentUser || (!appAccessSnapshotState.stale && appAccessSnapshotState.status !== 'error')) return;
+            initializeAppAccessSnapshot({ force: true, reason: 'network-restored' }).catch(() => {});
         });
 
         function canUseRequestRepScopedAccess() {
@@ -52664,6 +52802,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             setLoginProgress(Math.max(currentProgress, 22), 'Checking Request access...');
             await initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
+            initializeAppAccessSnapshot({ reason: isRestoredSession ? 'restored-login' : 'login' }).catch(() => {});
             await loadEvalWorkAssignments(false);
             const roleAccess = getRoleAccessState();
             applyCurrentUserMasterInventoryScope();
@@ -124639,6 +124778,404 @@ C.14.043 C.15.000
             </div>`;
         }
 
+        function normalizeAccessControlMatrix(value = null) {
+            const source = Array.isArray(value) ? value.find((entry) => entry && typeof entry === 'object') : value;
+            if (!source || typeof source !== 'object') return null;
+            if (String(firstNonEmptyValue(source.contractVersion, source.contract_version, '') || '').trim() !== APP_ACCESS_CONTRACT_VERSION) return null;
+            const policySource = source.policy && typeof source.policy === 'object' ? source.policy : {};
+            const permissions = (Array.isArray(source.permissions) ? source.permissions : []).map((permission) => ({
+                permissionKey: String(firstNonEmptyValue(permission && permission.permissionKey, permission && permission.permission_key, '') || '').trim().toLowerCase(),
+                kind: String(firstNonEmptyValue(permission && permission.kind, permission && permission.permission_kind, '') || '').trim().toLowerCase(),
+                moduleKey: String(firstNonEmptyValue(permission && permission.moduleKey, permission && permission.module_key, '') || '').trim().toLowerCase(),
+                label: String(permission && permission.label || '').trim(),
+                description: String(permission && permission.description || '').trim(),
+                scopeOptions: (Array.isArray(permission && permission.scopeOptions) ? permission.scopeOptions : []).map((scope) => String(scope || '').trim().toLowerCase()).filter(Boolean),
+                sortOrder: Number(firstNonEmptyValue(permission && permission.sortOrder, permission && permission.sort_order, 0)) || 0
+            })).filter((permission) => permission.permissionKey);
+            const normalizeSubject = (subject = null, targetType = 'user') => {
+                if (!subject || typeof subject !== 'object') return null;
+                const key = targetType === 'role'
+                    ? String(firstNonEmptyValue(subject.roleKey, subject.role_key, '') || '').trim().toUpperCase()
+                    : getRequestCapabilityUsernameKey(subject.username || '');
+                if (!key) return null;
+                return {
+                    username: targetType === 'user' ? key : '',
+                    displayName: targetType === 'user' ? String(firstNonEmptyValue(subject.displayName, subject.display_name, key) || key) : '',
+                    role: targetType === 'user' ? String(subject.role || '').trim() : key,
+                    roleKey: String(firstNonEmptyValue(subject.roleKey, subject.role_key, subject.role, '') || '').trim().toUpperCase(),
+                    decisions: subject.decisions && typeof subject.decisions === 'object' ? subject.decisions : {}
+                };
+            };
+            return {
+                contractVersion: APP_ACCESS_CONTRACT_VERSION,
+                enforcementMode: String(firstNonEmptyValue(source.enforcementMode, source.enforcement_mode, 'audit') || 'audit').trim().toLowerCase(),
+                policy: {
+                    id: Number(policySource.id || 0) || 0,
+                    version: Number(policySource.version || 0) || 0,
+                    revision: Number(policySource.revision || 0) || 0,
+                    status: String(policySource.status || '').trim().toLowerCase(),
+                    reviewedAt: String(firstNonEmptyValue(policySource.reviewedAt, policySource.reviewed_at, '') || '').trim(),
+                    reviewedBy: String(firstNonEmptyValue(policySource.reviewedBy, policySource.reviewed_by, '') || '').trim()
+                },
+                permissions,
+                users: (Array.isArray(source.users) ? source.users : []).map((subject) => normalizeSubject(subject, 'user')).filter(Boolean),
+                roles: (Array.isArray(source.roles) ? source.roles : []).map((subject) => normalizeSubject(subject, 'role')).filter(Boolean),
+                summary: {
+                    userCount: Number(firstNonEmptyValue(source.summary && source.summary.userCount, source.summary && source.summary.user_count, 0)) || 0,
+                    permissionCount: Number(firstNonEmptyValue(source.summary && source.summary.permissionCount, source.summary && source.summary.permission_count, 0)) || 0,
+                    mismatchCount: Number(firstNonEmptyValue(source.summary && source.summary.mismatchCount, source.summary && source.summary.mismatch_count, 0)) || 0,
+                    baselineMissingCount: Number(firstNonEmptyValue(source.summary && source.summary.baselineMissingCount, source.summary && source.summary.baseline_missing_count, 0)) || 0
+                }
+            };
+        }
+
+        function getAccessControlErrorMessage(error = null) {
+            const message = String(error && error.message || '');
+            if (/VERSION_CONFLICT|40001/i.test(message)) return 'The policy changed in another session. Refresh before saving again.';
+            if (/FORBIDDEN|42501|permission/i.test(message)) return 'This login is not authorized to manage Access Control.';
+            if (/timeout/i.test(message)) return 'Access Control took too long to respond. Retry safely.';
+            if (navigator.onLine === false || /network|fetch/i.test(message)) return 'Access Control needs a network connection. Your live permissions were not changed.';
+            return 'Access Control could not load or save. No live permissions were changed.';
+        }
+
+        async function loadAccessControlMatrix(force = false) {
+            if (!canManageAccessControl()) return false;
+            const state = accessControlAdminState;
+            if (state.loading && !force) return false;
+            if (state.loaded && !force) return false;
+            const requestToken = Number(state.requestToken || 0) + 1;
+            state.requestToken = requestToken;
+            state.loading = true;
+            state.error = '';
+            scheduleManagersRender(true);
+            try {
+                const result = await supabaseRpc('get_access_control_matrix_v1', { p_policy_version_id: null }, { timeoutMs: 20000 });
+                if (requestToken !== state.requestToken) return false;
+                const normalized = normalizeAccessControlMatrix(result);
+                if (!normalized) throw new Error('ACCESS_CONTROL_RESPONSE_INVALID');
+                state.data = normalized;
+                state.loaded = true;
+                state.error = '';
+                return true;
+            } catch (error) {
+                if (requestToken !== state.requestToken) return false;
+                state.error = getAccessControlErrorMessage(error);
+                return false;
+            } finally {
+                if (requestToken === state.requestToken) state.loading = false;
+                scheduleManagersRender(true);
+            }
+        }
+
+        function refreshAccessControlMatrix() {
+            accessControlAdminState.editor = null;
+            loadAccessControlMatrix(true);
+            return false;
+        }
+
+        function setAccessControlModuleFilter(value = 'all') {
+            accessControlAdminState.selectedModule = String(value || 'all').trim().toLowerCase() || 'all';
+            accessControlAdminState.columnOffset = 0;
+            accessControlAdminState.editor = null;
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function setAccessControlRoleFilter(value = 'all') {
+            accessControlAdminState.selectedRole = String(value || 'all').trim().toUpperCase() || 'all';
+            accessControlAdminState.editor = null;
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function setAccessControlViewMode(value = 'users') {
+            accessControlAdminState.viewMode = value === 'roles' ? 'roles' : 'users';
+            accessControlAdminState.editor = null;
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function setAccessControlColumnWindow(delta = 0) {
+            const allPermissions = getFilteredAccessControlPermissions();
+            const pageSize = Math.max(1, Number(accessControlAdminState.columnPageSize) || 12);
+            const maxOffset = Math.max(0, Math.floor(Math.max(0, allPermissions.length - 1) / pageSize) * pageSize);
+            accessControlAdminState.columnOffset = Math.max(0, Math.min(maxOffset, Number(accessControlAdminState.columnOffset || 0) + Number(delta || 0) * pageSize));
+            accessControlAdminState.editor = null;
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function getAccessControlPermission(permissionKey = '') {
+            const data = accessControlAdminState.data;
+            const key = String(permissionKey || '').trim().toLowerCase();
+            return data && Array.isArray(data.permissions) ? data.permissions.find((permission) => permission.permissionKey === key) || null : null;
+        }
+
+        function getAccessControlSubject(targetType = 'user', targetKey = '') {
+            const data = accessControlAdminState.data;
+            if (!data) return null;
+            const safeType = targetType === 'role' ? 'role' : 'user';
+            const key = safeType === 'role' ? String(targetKey || '').trim().toUpperCase() : getRequestCapabilityUsernameKey(targetKey);
+            const list = safeType === 'role' ? data.roles : data.users;
+            return (Array.isArray(list) ? list : []).find((subject) => (safeType === 'role' ? subject.roleKey : subject.username) === key) || null;
+        }
+
+        function openAccessControlEditor(targetType = 'user', targetKey = '', permissionKey = '') {
+            if (!canManageAccessControl() || accessControlAdminState.saving || accessControlAdminState.publishing) return false;
+            const safeType = targetType === 'role' ? 'role' : 'user';
+            const subject = getAccessControlSubject(safeType, targetKey);
+            const permission = getAccessControlPermission(permissionKey);
+            if (!subject || !permission) return false;
+            const current = subject.decisions && subject.decisions[permission.permissionKey] || {};
+            const decision = safeType === 'user'
+                ? (String(current.source || '') === 'user' ? (current.allowed === true ? 'allow' : 'deny') : 'inherit')
+                : (String(current.source || '') === 'role' ? (current.allowed === true ? 'allow' : 'deny') : 'inherit');
+            accessControlAdminState.editor = {
+                targetType: safeType,
+                targetKey: safeType === 'role' ? subject.roleKey : subject.username,
+                targetLabel: safeType === 'role' ? subject.roleKey : (subject.displayName || subject.username),
+                permissionKey: permission.permissionKey,
+                permissionLabel: permission.label || permission.permissionKey,
+                decision,
+                scope: String(current.scope || ''),
+                reason: ''
+            };
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function updateAccessControlEditorField(field = '', value = '') {
+            const editor = accessControlAdminState.editor;
+            if (!editor || !['decision', 'scope', 'reason'].includes(field)) return false;
+            editor[field] = String(value == null ? '' : value);
+            if (field === 'decision' && editor.decision !== 'allow') editor.scope = '';
+            return false;
+        }
+
+        function cancelAccessControlEditor() {
+            accessControlAdminState.editor = null;
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        async function saveAccessControlEditor() {
+            const state = accessControlAdminState;
+            const editor = state.editor;
+            const data = state.data;
+            if (!editor || !data || state.saving) return false;
+            const reason = String(editor.reason || '').trim();
+            if (reason.length < 4) {
+                showToast('Reason Required', 'Enter a short reason before saving the audit policy.', true);
+                return false;
+            }
+            const permission = getAccessControlPermission(editor.permissionKey);
+            if (editor.decision === 'allow' && permission && Array.isArray(permission.scopeOptions) && permission.scopeOptions.length && !String(editor.scope || '').trim()) {
+                showToast('Scope Required', 'Choose the ownership scope for this allowed action.', true);
+                return false;
+            }
+            state.saving = true;
+            state.error = '';
+            scheduleManagersRender(true);
+            try {
+                await supabaseRpc('save_access_control_draft_v1', {
+                    p_expected_revision: Number(data.policy && data.policy.revision || 0),
+                    p_changes: [{
+                        targetType: editor.targetType,
+                        targetKey: editor.targetKey,
+                        permissionKey: editor.permissionKey,
+                        decision: editor.decision,
+                        scope: editor.decision === 'inherit' ? '' : String(editor.scope || '')
+                    }],
+                    p_reason: reason
+                }, { timeoutMs: 20000 });
+                state.editor = null;
+                state.loaded = false;
+                await loadAccessControlMatrix(true);
+                showToast('Audit Draft Saved', 'The reviewed draft changed. Live authorization is still unchanged.');
+            } catch (error) {
+                state.error = getAccessControlErrorMessage(error);
+                if (/VERSION_CONFLICT|40001/i.test(String(error && error.message || ''))) state.loaded = false;
+            } finally {
+                state.saving = false;
+                scheduleManagersRender(true);
+            }
+            return false;
+        }
+
+        function updateAccessControlPublishReason(value = '') {
+            accessControlAdminState.publishReason = String(value == null ? '' : value);
+            return false;
+        }
+
+        async function publishAccessControlAuditPolicy() {
+            const state = accessControlAdminState;
+            const data = state.data;
+            const reason = String(state.publishReason || '').trim();
+            if (!data || state.publishing) return false;
+            if (reason.length < 4) {
+                showToast('Reason Required', 'Enter a review reason before publishing the audit snapshot.', true);
+                return false;
+            }
+            state.publishing = true;
+            state.error = '';
+            scheduleManagersRender(true);
+            try {
+                await supabaseRpc('publish_access_control_policy_v1', {
+                    p_expected_revision: Number(data.policy && data.policy.revision || 0),
+                    p_reason: reason
+                }, { timeoutMs: 25000 });
+                state.publishReason = '';
+                state.editor = null;
+                state.loaded = false;
+                await loadAccessControlMatrix(true);
+                initializeAppAccessSnapshot({ force: true, reason: 'audit-policy-reviewed' }).catch(() => {});
+                showToast('Audit Policy Reviewed', 'The snapshot was recorded for review. Live authorization remains unchanged.');
+            } catch (error) {
+                state.error = getAccessControlErrorMessage(error);
+            } finally {
+                state.publishing = false;
+                scheduleManagersRender(true);
+            }
+            return false;
+        }
+
+        function getFilteredAccessControlPermissions() {
+            const data = accessControlAdminState.data;
+            if (!data) return [];
+            const selectedModule = String(accessControlAdminState.selectedModule || 'all');
+            const permissions = (Array.isArray(data.permissions) ? data.permissions : [])
+                .filter((permission) => selectedModule === 'all' || permission.moduleKey === selectedModule)
+                .sort((a, b) => a.moduleKey.localeCompare(b.moduleKey, undefined, { numeric: true }) || a.sortOrder - b.sortOrder || a.permissionKey.localeCompare(b.permissionKey));
+            const term = normalizeSearchValue(managersSearchTerm || '');
+            if (!term) return permissions;
+            const matching = permissions.filter((permission) => doesProgressiveSearchFieldsMatch([permission.label, permission.permissionKey, permission.moduleKey, permission.description], term));
+            const userMatches = (data.users || []).some((user) => doesProgressiveSearchFieldsMatch([user.username, user.displayName, user.role, user.roleKey], term));
+            return matching.length && !userMatches ? matching : permissions;
+        }
+
+        function getFilteredAccessControlSubjects() {
+            const state = accessControlAdminState;
+            const data = state.data;
+            if (!data) return [];
+            const term = normalizeSearchValue(managersSearchTerm || '');
+            const roleFilter = String(state.selectedRole || 'all').toUpperCase();
+            const list = state.viewMode === 'roles' ? data.roles : data.users;
+            return (Array.isArray(list) ? list : []).filter((subject) => {
+                if (state.viewMode === 'users' && roleFilter !== 'ALL' && subject.roleKey !== roleFilter) return false;
+                if (!term) return true;
+                const subjectMatch = doesProgressiveSearchFieldsMatch([subject.username, subject.displayName, subject.role, subject.roleKey], term);
+                const permissionMatch = (data.permissions || []).some((permission) => doesProgressiveSearchFieldsMatch([permission.label, permission.permissionKey, permission.moduleKey], term));
+                return subjectMatch || permissionMatch;
+            });
+        }
+
+        function renderAccessControlDecisionButton(subject = null, permission = null, targetType = 'user') {
+            const decision = subject && subject.decisions && subject.decisions[permission.permissionKey] || {};
+            const allowed = decision.allowed === true;
+            const source = String(decision.source || 'default-deny');
+            const mismatch = decision.mismatch === true;
+            const targetKey = targetType === 'role' ? subject.roleKey : subject.username;
+            const label = `${permission.label}: ${allowed ? 'Yes' : 'No'} from ${source}${decision.scope ? `, ${decision.scope}` : ''}`;
+            return `<button type="button" class="access-control-cell ${allowed ? 'is-allowed' : 'is-denied'} ${mismatch ? 'is-mismatch' : ''}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" onclick="return openAccessControlEditor('${escapeHtml(targetType)}','${escJsAttrValue(targetKey)}','${escJsAttrValue(permission.permissionKey)}')"><span>${allowed ? 'Y' : 'N'}<span class="access-control-source">${escapeHtml(source === 'default-deny' ? 'default' : source)}${decision.scope ? ` · ${escapeHtml(decision.scope)}` : ''}</span></span></button>`;
+        }
+
+        function renderAccessControlEditor() {
+            const editor = accessControlAdminState.editor;
+            if (!editor) return '';
+            const permission = getAccessControlPermission(editor.permissionKey);
+            const scopeOptions = permission && Array.isArray(permission.scopeOptions) ? permission.scopeOptions : [];
+            const affectedUsers = editor.targetType === 'role'
+                ? (accessControlAdminState.data && Array.isArray(accessControlAdminState.data.users) ? accessControlAdminState.data.users.filter((user) => user.roleKey === editor.targetKey).length : 0)
+                : 1;
+            const scopeHtml = scopeOptions.length ? `<label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Scope<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return updateAccessControlEditorField('scope', this.value)" ${editor.decision !== 'allow' ? 'disabled' : ''}><option value="">Choose scope</option>${scopeOptions.map((scope) => `<option value="${escapeHtml(scope)}" ${editor.scope === scope ? 'selected' : ''}>${escapeHtml(scope)}</option>`).join('')}</select></label>` : '';
+            return `<section class="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm" aria-label="Edit audit access decision"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Audit Draft Edit</div><div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(editor.targetLabel)} · ${escapeHtml(editor.permissionLabel)}</div><div class="mt-1 text-[11px] font-bold text-amber-800">Affected-user preview: ${escapeHtml(String(affectedUsers))}. This edit does not change live authorization.</div></div><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase text-slate-600" onclick="return cancelAccessControlEditor()">Cancel</button></div><div class="mt-4 grid gap-3 md:grid-cols-3"><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Decision<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return updateAccessControlEditorField('decision', this.value)"><option value="inherit" ${editor.decision === 'inherit' ? 'selected' : ''}>Inherit</option><option value="allow" ${editor.decision === 'allow' ? 'selected' : ''}>Y · Allow</option><option value="deny" ${editor.decision === 'deny' ? 'selected' : ''}>N · Deny</option></select></label>${scopeHtml}<label class="${scopeOptions.length ? '' : 'md:col-span-2'} text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Required Reason<input type="text" maxlength="500" class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-bold text-slate-900" value="${escapeHtml(editor.reason || '')}" placeholder="Why is this access changing?" oninput="return updateAccessControlEditorField('reason', this.value)"></label></div><button type="button" class="mt-4 min-h-[48px] w-full rounded-xl bg-[#007a4d] px-4 text-[11px] font-black uppercase tracking-[0.14em] text-white disabled:opacity-50" ${accessControlAdminState.saving ? 'disabled' : ''} onclick="return saveAccessControlEditor()">${accessControlAdminState.saving ? 'Saving Audit Draft…' : 'Save Audit Draft'}</button></section>`;
+        }
+
+        function renderAccessControlMatrixTable(subjects = [], permissions = []) {
+            if (!subjects.length) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No users or roles match the current filters.</div>';
+            if (!permissions.length) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No permissions match the current module or search.</div>';
+            const targetType = accessControlAdminState.viewMode === 'roles' ? 'role' : 'user';
+            const groups = [];
+            permissions.forEach((permission) => {
+                const last = groups[groups.length - 1];
+                if (last && last.moduleKey === permission.moduleKey) last.count += 1;
+                else groups.push({ moduleKey: permission.moduleKey, count: 1 });
+            });
+            const groupHeaders = groups.map((group) => `<th colspan="${group.count}">${escapeHtml(group.moduleKey)}</th>`).join('');
+            const permissionHeaders = permissions.map((permission) => `<th title="${escapeHtml(permission.permissionKey)}"><span class="block max-w-[9rem] whitespace-normal leading-tight">${escapeHtml(permission.label || permission.permissionKey)}</span></th>`).join('');
+            const rows = subjects.map((subject) => {
+                const identity = targetType === 'role' ? subject.roleKey : (subject.displayName || subject.username);
+                const secondary = targetType === 'role' ? 'Role Default' : `${subject.username} · ${subject.role || '-'}`;
+                return `<tr><th scope="row" class="access-control-identity text-left"><div class="truncate text-sm font-black text-slate-900">${escapeHtml(identity)}</div><div class="mt-1 truncate text-[9px] font-black uppercase tracking-[0.08em] text-slate-400">${escapeHtml(secondary)}</div></th><td class="whitespace-nowrap text-[10px] font-black uppercase text-slate-500">${escapeHtml(subject.roleKey || '-')}</td>${permissions.map((permission) => `<td class="text-center">${renderAccessControlDecisionButton(subject, permission, targetType)}</td>`).join('')}</tr>`;
+            }).join('');
+            const mobileCards = subjects.map((subject) => {
+                const identity = targetType === 'role' ? subject.roleKey : (subject.displayName || subject.username);
+                return `<article class="access-control-mobile-card"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="truncate text-base font-black text-slate-900">${escapeHtml(identity)}</div><div class="mt-1 truncate text-[9px] font-black uppercase tracking-[0.08em] text-slate-400">${escapeHtml(targetType === 'role' ? 'Role Default' : `${subject.username} · ${subject.role || '-'}`)}</div></div><span class="rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase text-emerald-800">${escapeHtml(subject.roleKey || '-')}</span></div><div class="mt-3 grid grid-cols-2 gap-2">${permissions.map((permission) => `<div class="rounded-xl border border-slate-100 bg-slate-50 p-2"><div class="mb-2 min-h-[2rem] text-[9px] font-black uppercase leading-tight text-slate-500">${escapeHtml(permission.label)}</div>${renderAccessControlDecisionButton(subject, permission, targetType)}</div>`).join('')}</div></article>`;
+            }).join('');
+            return `<div class="space-y-3 md:hidden">${mobileCards}</div><div class="access-control-table-shell hidden md:block"><table class="access-control-table"><thead><tr><th rowspan="2" class="access-control-identity">${targetType === 'role' ? 'Role' : 'Username / Name'}</th><th rowspan="2">Role</th>${groupHeaders}</tr><tr>${permissionHeaders}</tr></thead><tbody>${rows}</tbody></table></div>`;
+        }
+
+        function exportAccessControlCsv() {
+            const data = accessControlAdminState.data;
+            if (!data) return false;
+            const permissions = Array.isArray(data.permissions) ? data.permissions : [];
+            const quote = (value) => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`;
+            const headers = ['Username', 'Display Name', 'Role', ...permissions.map((permission) => permission.permissionKey)];
+            const lines = [headers.map(quote).join(',')];
+            (data.users || []).forEach((user) => {
+                const values = [user.username, user.displayName, user.role, ...permissions.map((permission) => user.decisions && user.decisions[permission.permissionKey] && user.decisions[permission.permissionKey].allowed === true ? 'Y' : 'N')];
+                lines.push(values.map(quote).join(','));
+            });
+            const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = `GNC_Access_Control_Audit_v${Number(data.policy && data.policy.version || 0)}.csv`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            return false;
+        }
+
+        function renderAccessControlPanel() {
+            if (!canManageAccessControl()) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Access Control is available only to Dylan, Megan, and JD.</div>';
+            const state = accessControlAdminState;
+            if (!state.loaded && !state.loading) setTimeout(() => loadAccessControlMatrix(false), 0);
+            const data = state.data;
+            if (!data && state.loading) return '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">Loading the access audit matrix…</div>';
+            const errorHtml = state.error ? `<div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"><div>${escapeHtml(state.error)}</div><button type="button" class="mt-3 min-h-[44px] rounded-xl border border-red-200 bg-white px-4 text-[10px] font-black uppercase text-red-700" onclick="return refreshAccessControlMatrix()">Retry</button></div>` : '';
+            if (!data) return `${errorHtml}<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">The access audit matrix is unavailable.</div>`;
+            const allFilteredPermissions = getFilteredAccessControlPermissions();
+            const pageSize = Math.max(1, Number(state.columnPageSize) || 12);
+            const maxOffset = Math.max(0, Math.floor(Math.max(0, allFilteredPermissions.length - 1) / pageSize) * pageSize);
+            state.columnOffset = Math.max(0, Math.min(maxOffset, Number(state.columnOffset || 0)));
+            const permissions = allFilteredPermissions.slice(state.columnOffset, state.columnOffset + pageSize);
+            const subjects = getFilteredAccessControlSubjects();
+            const modules = Array.from(new Set((data.permissions || []).map((permission) => permission.moduleKey))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const roles = Array.from(new Set((data.users || []).map((user) => user.roleKey).filter(Boolean))).sort();
+            const summary = data.summary || {};
+            const statusCards = [
+                ['Active Users', summary.userCount, 'ph-users-three'],
+                ['Permissions', summary.permissionCount, 'ph-key'],
+                ['Draft Differences', summary.mismatchCount, 'ph-git-diff'],
+                ['Missing Baselines', summary.baselineMissingCount, 'ph-warning-circle']
+            ].map(([label, value, icon]) => `<div class="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm"><div class="flex items-center justify-between gap-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(label)}</div><i class="ph-bold ${icon} text-emerald-500"></i></div><div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(String(value || 0))}</div></div>`).join('');
+            const auditBanner = data.enforcementMode === 'audit'
+                ? '<div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Audit Mode · No Live Access Changes</div><div class="mt-1">Edits build a reviewed policy for comparison. Existing production authorization remains authoritative.</div></div>'
+                : '<div class="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm font-black text-red-800">Centralized enforcement is active.</div>';
+            const publishDisabled = state.publishing || String(state.publishReason || '').trim().length < 4;
+            const columnWindowHtml = allFilteredPermissions.length > pageSize ? `<div class="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Permission column window"><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.columnOffset <= 0 ? 'disabled' : ''} onclick="return setAccessControlColumnWindow(-1)">Previous Columns</button><div class="text-center text-[10px] font-black uppercase text-slate-500">Permissions ${state.columnOffset + 1}-${Math.min(allFilteredPermissions.length, state.columnOffset + permissions.length)} of ${allFilteredPermissions.length}</div><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 px-4 text-[10px] font-black uppercase text-slate-600 disabled:opacity-40" ${state.columnOffset + pageSize >= allFilteredPermissions.length ? 'disabled' : ''} onclick="return setAccessControlColumnWindow(1)">Next Columns</button></div>` : '';
+            return `<div class="space-y-5">${auditBanner}${errorHtml}<section class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Managers · Access Control</div><div class="mt-1 text-xl font-black text-slate-900">Policy v${escapeHtml(String(data.policy.version || 0))} · Revision ${escapeHtml(String(data.policy.revision || 0))}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Y/N shows effective access. Role supplies the default; a user override takes precedence. Click a cell to edit the audit draft.</div></div><div class="flex flex-wrap gap-2"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase text-emerald-800" onclick="return refreshAccessControlMatrix()"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button><button type="button" class="min-h-[44px] rounded-xl border border-blue-200 bg-blue-50 px-4 text-[10px] font-black uppercase text-blue-800" onclick="return exportAccessControlCsv()"><i class="ph-bold ph-download-simple mr-1"></i>CSV</button></div></div><div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">${statusCards}</div></section>${renderAccessControlEditor()}<section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="grid gap-3 md:grid-cols-4"><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">View<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlViewMode(this.value)"><option value="users" ${state.viewMode === 'users' ? 'selected' : ''}>Users</option><option value="roles" ${state.viewMode === 'roles' ? 'selected' : ''}>Role Defaults</option></select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Module<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlModuleFilter(this.value)"><option value="all">All Modules</option>${modules.map((moduleKey) => `<option value="${escapeHtml(moduleKey)}" ${state.selectedModule === moduleKey ? 'selected' : ''}>${escapeHtml(moduleKey)}</option>`).join('')}</select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Role Filter<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlRoleFilter(this.value)" ${state.viewMode === 'roles' ? 'disabled' : ''}><option value="all">All Roles</option>${roles.map((roleKey) => `<option value="${escapeHtml(roleKey)}" ${state.selectedRole === roleKey ? 'selected' : ''}>${escapeHtml(roleKey)}</option>`).join('')}</select></label><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Shown</div><div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(String(subjects.length))} × ${escapeHtml(String(permissions.length))}</div></div></div></section>${columnWindowHtml}${renderAccessControlMatrixTable(subjects, permissions)}<section class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Publish Reviewed Audit Snapshot</div><div class="mt-1 text-sm font-bold text-indigo-950">This records an immutable reviewed version and starts the next draft. It does not enable centralized enforcement.</div><div class="mt-3 flex flex-col gap-2 md:flex-row"><input type="text" maxlength="500" class="min-h-[48px] min-w-0 flex-1 rounded-xl border border-indigo-200 bg-white px-3 text-sm font-bold text-slate-900" value="${escapeHtml(state.publishReason || '')}" placeholder="Required review reason" oninput="return updateAccessControlPublishReason(this.value)"><button type="button" class="min-h-[48px] rounded-xl bg-indigo-700 px-5 text-[10px] font-black uppercase tracking-[0.12em] text-white disabled:opacity-50" ${publishDisabled ? 'disabled' : ''} onclick="return publishAccessControlAuditPolicy()">${state.publishing ? 'Publishing…' : 'Publish Audit Snapshot'}</button></div></section></div>`;
+        }
+
+        function canManageAccessControl(userOverride = '') {
+            return [userOverride, currentUser, currentUserDisplay]
+                .filter((value) => String(value || '').trim())
+                .map((value) => normalizeMovesUserKey(value))
+                .some((value) => PRIVILEGED_MANAGER_USER_KEYS.includes(value));
+        }
+
         function getManagersToolAccess() {
             const canViewShearApprovals = canUseInventoryChecksApprovalView();
             const canViewNcrApprovals = canUseNcrApprovalTaskView();
@@ -124660,6 +125197,7 @@ C.14.043 C.15.000
                 canViewHistoricalReport: canViewManagerHistoricalReport(),
                 canViewShortageCancel: canViewManagerShortageCancel(),
                 canViewBlockClearing: canViewManagerBlockClearing(),
+                canManageAccessControl: canManageAccessControl(),
                 canViewLaborHours: canAccessView('hours')
             };
         }
@@ -124679,6 +125217,7 @@ C.14.043 C.15.000
             if (access.canViewHistoricalReport) return MANAGER_HISTORICAL_REPORT_VIEW;
             if (access.canViewShortageCancel) return MANAGER_SHORTAGE_CANCEL_VIEW;
             if (access.canViewBlockClearing) return MANAGER_BLOCK_CLEARING_VIEW;
+            if (access.canManageAccessControl) return MANAGER_ACCESS_CONTROL_VIEW;
             if (access.canViewProductivity) return 'productivity';
             return '';
         }
@@ -124698,6 +125237,7 @@ C.14.043 C.15.000
             if (access.canViewHistoricalReport) tabs.push({ id: MANAGER_HISTORICAL_REPORT_VIEW, label: 'Historical Report' });
             if (access.canViewShortageCancel) tabs.push({ id: MANAGER_SHORTAGE_CANCEL_VIEW, label: 'Shortage/Cancel' });
             if (access.canViewBlockClearing) tabs.push({ id: MANAGER_BLOCK_CLEARING_VIEW, label: 'Block Clearing' });
+            if (access.canManageAccessControl) tabs.push({ id: MANAGER_ACCESS_CONTROL_VIEW, label: 'Access Control' });
             if (access.canViewLaborHours) tabs.push({ id: 'hours', label: 'Labor Hours' });
             return tabs;
         }
@@ -124735,6 +125275,7 @@ C.14.043 C.15.000
             if (safeTab === MANAGER_HISTORICAL_REPORT_VIEW) return { label: 'Historical Report', description: 'Search Common Name and ContSize history with selectable columns.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === MANAGER_SHORTAGE_CANCEL_VIEW) return { label: 'Shortage/Cancel', description: 'Review SOC rows where ordered and shipped quantities do not match.', icon: 'ph-warning-circle' };
             if (safeTab === MANAGER_BLOCK_CLEARING_VIEW) return { label: 'Block Clearing', description: 'Email grouped clearing instructions from Drive Mode rows.', icon: 'ph-broom' };
+            if (safeTab === MANAGER_ACCESS_CONTROL_VIEW) return { label: 'Access Control', description: 'Audit module and business-action access by role and user.', icon: 'ph-shield-checkered' };
             if (safeTab === 'hours') return { label: 'Labor Hours', description: 'Open the labor-hours entry form.', icon: 'ph-clock' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
@@ -124757,6 +125298,7 @@ C.14.043 C.15.000
             const tab = String(activeHomeTab || '').trim().toLowerCase();
             if (tab === 'dashboard') return 'Search manager modules...';
             if (tab === MANAGER_TRANSACTIONS_KEYED_VIEW) return 'Search Created By names...';
+            if (tab === MANAGER_ACCESS_CONTROL_VIEW) return 'Search usernames, names, roles, or permissions...';
             if (tab === MANAGER_HISTORICAL_REPORT_VIEW) {
                 if (managerHistoricalReportState.level === 'names') return 'Search historical Common Names...';
                 if (managerHistoricalReportState.level === 'sizes') return 'Search container sizes...';
@@ -126951,6 +127493,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === MANAGER_HISTORICAL_REPORT_VIEW) html += renderManagerHistoricalReportPanel();
             else if (activeHomeTab === MANAGER_SHORTAGE_CANCEL_VIEW) html += renderManagerShortageCancelPanel();
             else if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW) html += renderManagerBlockClearingPanel();
+            else if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW) html += renderAccessControlPanel();
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;
