@@ -845,28 +845,33 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
 
 test('Eval Reports #2 manager search refreshes while the search field remains active', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.29.02', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => typeof (window as any).handleManagersSearch === 'function');
+  await page.goto('/?e2e=eval2-manager-search', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
 
   const result = await page.evaluate(() => window.eval(`(async () => {
     const originalRender = renderManagers;
-    const originalTab = activeHomeTab;
-    const originalTerm = managersSearchTerm;
+    const originalCanView = canViewManagerEvalReports2;
+    const originalLoad = loadManagerEvalReports2;
+    const originalHomeRender = renderHomeOrManagersNow;
     const input = document.getElementById('managers-search');
     let renderCalls = 0;
     try {
-      activeHomeTab = MANAGER_EVAL_REPORTS_2_VIEW;
+      canViewManagerEvalReports2 = () => true;
+      loadManagerEvalReports2 = () => Promise.resolve();
+      renderHomeOrManagersNow = () => false;
+      setHomeTab('eval-reports-2');
       renderManagers = () => { renderCalls += 1; };
       input.value = 'Karl';
       input.focus();
       handleManagersSearch();
       await new Promise((resolve) => setTimeout(resolve, 450));
-      return { term: managersSearchTerm, renderCalls };
+      return { term: input.value, renderCalls };
     } finally {
       renderManagers = originalRender;
-      activeHomeTab = originalTab;
-      managersSearchTerm = originalTerm;
-      input.value = originalTerm;
+      canViewManagerEvalReports2 = originalCanView;
+      loadManagerEvalReports2 = originalLoad;
+      renderHomeOrManagersNow = originalHomeRender;
+      input.value = '';
     }
   })()`));
 
