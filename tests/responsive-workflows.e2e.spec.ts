@@ -744,7 +744,6 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ], warehouseAssignedItemsData: [
         { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'megan_kelly' },
         { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ], _fromCache: true });
       fullInventory = [
@@ -754,7 +753,6 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       ];
       warehouseAssignedItemsInventory = [
         { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'megan_kelly' },
         { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ];
       const masterState = getDatasetState('master');
@@ -840,6 +838,64 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
     assignee: 'chance_alldredge',
     recipients: ['megan_kelly@greenleafnursery.com'],
     clearedAfterAcceptance: true,
+  });
+});
+
+test('Eval Reports #2 verifies a named user against current assignments before showing cards', async ({ page }) => {
+  await page.goto('/?e2e=eval2-authoritative-user-filter', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).applyManagerEvalReport2UserFilter === 'function');
+  const result = await page.evaluate(() => (window as any).eval(`(async () => {
+    const originalEnsureDatasetLoaded = ensureDatasetLoaded;
+    let forceSeen = false;
+    try {
+      currentUser = 'dylan_collyge';
+      currentRole = 'Manager';
+      canViewManagerEvalReports2 = () => true;
+      fullInventory = [
+        { UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', COMMONNAME:'Stale Alpha', CONTSIZE:'#3', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'A.01.001' },
+        { UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', COMMONNAME:'Current Beta', CONTSIZE:'#5', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'B.01.001' }
+      ];
+      warehouseAssignedItemsInventory = [
+        { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+        { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
+      ];
+      const masterState = getDatasetState('master');
+      const assignmentState = getDatasetState('warehouseAssignedItems');
+      masterState.initialLoaded = masterState.fullLoaded = true;
+      assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+      invalidateManagerEvalReport2Cache();
+      setManagerEvalReport2('culls');
+      managerEvalReport2AssignedToFilters = new Set(['dylan_collyge']);
+      managerEvalReport2AssignedToFilter = 'dylan_collyge';
+      const before = getManagerEvalReport2VisibleItemGroups().map((group) => group.itemCode);
+      ensureDatasetLoaded = async (key, mode, options = {}) => {
+        forceSeen = key === 'warehouseAssignedItems' && mode === 'full' && options.force === true;
+        warehouseAssignedItemsInventory = [
+          { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
+          { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
+        ];
+        assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+        assignmentState.lastLoadedAt = new Date().toISOString();
+        invalidateManagerEvalReport2Cache();
+        return true;
+      };
+      const applyPromise = applyManagerEvalReport2UserFilter(new Set(['dylan_collyge']));
+      const blockedWhileRefreshing = managerEvalReport2AssignmentFilterRefreshing
+        && getManagerEvalReport2VisibleItemGroups().length === 0;
+      await applyPromise;
+      const after = getManagerEvalReport2VisibleItemGroups().map((group) => group.itemCode);
+      return { before, after, forceSeen, blockedWhileRefreshing, pendingAfter:managerEvalReport2AssignmentFilterRefreshing };
+    } finally {
+      ensureDatasetLoaded = originalEnsureDatasetLoaded;
+    }
+  })()`));
+
+  expect(result).toEqual({
+    before: ['STALE.A'],
+    after: ['CURRENT.B'],
+    forceSeen: true,
+    blockedWhileRefreshing: true,
+    pendingAfter: false,
   });
 });
 

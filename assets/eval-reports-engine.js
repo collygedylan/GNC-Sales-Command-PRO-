@@ -119,9 +119,10 @@
     }
 
     function getAuthoritativeAssignmentLookupKeys(row) {
-        const exactKey = buildAuthoritativeAssignmentExactKey(row);
-        const legacyKey = buildAuthoritativeAssignmentKey(row);
-        return [exactKey, legacyKey].filter(Boolean);
+        // ph_warehouse_assigned_items is uniquely authoritative at
+        // ITEMCODE + GENUSNAME. Its container and location columns are sample
+        // display values populated with max(...), not assignment boundaries.
+        return [buildAuthoritativeAssignmentKey(row)].filter(Boolean);
     }
 
     function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows) {
@@ -132,13 +133,9 @@
         let hasUnassigned = false;
 
         sourceAssignments.forEach((row) => {
-            // Current assignment rows identify one ITEMCODE/container/location.
-            // Index those rows only by that assignment identity so one assigned
-            // location cannot label every row sharing the ITEMCODE/genus. The
-            // assignment feed's Source is its import source, not inventory Source.
-            // Older cached assignment payloads lack that identity, so retain the
-            // ITEMCODE/genus fallback only for those legacy rows.
-            const key = buildAuthoritativeAssignmentExactKey(row) || buildAuthoritativeAssignmentKey(row);
+            // The database assignment contract is ITEMCODE + GENUSNAME. Do not
+            // reinterpret the row's sample CONTSIZE/LOCATIONCODE as ownership.
+            const key = buildAuthoritativeAssignmentKey(row);
             if (!key) return;
             const assignedTo = getAssignedTo(row);
             if (!assignmentByKey.has(key)) assignmentByKey.set(key, new Map());

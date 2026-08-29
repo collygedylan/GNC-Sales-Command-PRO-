@@ -278,22 +278,22 @@ test('preserves multiple authoritative users on one physical inventory row', () 
   assert.equal(model.unassignedCount, 0);
 });
 
-test('matches current assignment rows to the exact ITEMCODE, container, and location identity', () => {
+test('treats assignment container and location as samples, not ownership boundaries', () => {
   const inventory = [
     row('SHARED-001', 'F1', 27, { UNIQUE_ID: 'physical-a', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD' }),
     row('SHARED-001', 'F1', 27, { UNIQUE_ID: 'physical-b', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'B.02.002', SOURCE: 'LD' })
   ];
   const assignments = [
-    { ITEMCODE: 'SHARED-001', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-    { ITEMCODE: 'SHARED-001', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'B.02.002', SOURCE: 'LD', ASSIGNEDTO: 'megan_kelly' }
+    { ITEMCODE: 'SHARED-001', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'supabase_drive_reconcile', ASSIGNEDTO: 'dylan_collyge' }
   ];
 
   const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments);
 
   assert.equal(model.rows[0].ASSIGNEDTO, 'dylan_collyge');
   assert.deepEqual(model.rows[0].ASSIGNEDTO_USERS, ['dylan_collyge']);
-  assert.equal(model.rows[1].ASSIGNEDTO, 'megan_kelly');
-  assert.deepEqual(model.rows[1].ASSIGNEDTO_USERS, ['megan_kelly']);
+  assert.equal(model.rows[1].ASSIGNEDTO, 'dylan_collyge');
+  assert.deepEqual(model.rows[1].ASSIGNEDTO_USERS, ['dylan_collyge']);
+  assert.equal(model.matchedCount, 2);
   assert.equal(engine.buildAuthoritativeAssignmentExactKey(inventory[0]), 'SHARED-001|#3|A.01.001');
 });
 
@@ -444,6 +444,9 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /model\.options\.assignedTo = getManagerEvalReport2AssignedToOptions\(\)/);
   assert.match(html, /getDatasetLoadSignature\('warehouseAssignedItems'\)/);
   assert.match(html, /invalidateManagerEvalReport2Cache\(\)/);
+  assert.match(html, /await ensureDatasetLoaded\('warehouseAssignedItems', 'full', \{ force:true, preserveRequestedMode:true \}\)/);
+  assert.match(html, /if \(managerEvalReport2AssignmentFilterRefreshing\) return \[\]/);
+  assert.match(html, /Verifying current AssignedTo ownership before showing results/);
   assert.match(html, /function getManagerEvalReport2LocationOptions\(rows = null\)/);
   assert.match(html, /managerEvalReport2LocationFilter !== 'all'/);
   assert.match(html, /\? 'Select Common Name' : `Select Container Size/);
