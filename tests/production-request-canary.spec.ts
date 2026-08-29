@@ -250,7 +250,9 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   const userSheet = page.locator('#manager-eval-user-picker');
   await expect(userSheet).toBeVisible();
   await userSheet.getByRole('checkbox', { name: /dylan_collyge/i }).click();
+  await page.evaluate(() => { (window as any).__eval2CanaryAssignmentVerified = false; });
   await userSheet.getByRole('button', { name: /Apply 1 User/i }).click();
+  await page.waitForFunction(() => (window as any).__eval2CanaryAssignmentVerified === true);
 
   const state = await page.evaluate(() => (window as any).eval(`(() => ({
     selected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode).sort(),
