@@ -864,8 +864,7 @@ test('Eval Reports #2 verifies a named user against current assignments before s
       masterState.initialLoaded = masterState.fullLoaded = true;
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
-      managerEvalReport2AssignedToFilters = new Set(['dylan_collyge']);
-      managerEvalReport2AssignedToFilter = 'dylan_collyge';
+      setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
       const initialAssignmentModel = GncEvalReports.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
       const before = getManagerEvalReport2RowsBeforeCommonName(initialAssignmentModel.rows).map((row) => getManagerEvalReport2ItemCode(row));
       ensureDatasetLoaded = async (key, mode, options = {}) => {
