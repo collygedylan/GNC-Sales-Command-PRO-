@@ -106,6 +106,24 @@
         return `${itemCode}|${normalizeAssignmentGenus(row)}`;
     }
 
+    function normalizeAssignmentIdentityValue(row, keys) {
+        return textValue(row, keys).toUpperCase().replace(/\s+/g, ' ');
+    }
+
+    function buildAuthoritativeAssignmentExactKey(row) {
+        const itemCode = normalizeItemCode(row);
+        const contSize = normalizeAssignmentIdentityValue(row, ['CONTSIZE', 'contsize']);
+        const locationCode = normalizeAssignmentIdentityValue(row, ['LOCATIONCODE', 'locationcode']);
+        if (!itemCode || !contSize || !locationCode) return '';
+        return `${itemCode}|${contSize}|${locationCode}`;
+    }
+
+    function getAuthoritativeAssignmentLookupKeys(row) {
+        const exactKey = buildAuthoritativeAssignmentExactKey(row);
+        const legacyKey = buildAuthoritativeAssignmentKey(row);
+        return [exactKey, legacyKey].filter(Boolean);
+    }
+
     function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows) {
         const sourceInventory = Array.isArray(inventoryRows) ? inventoryRows.filter(Boolean) : [];
         const sourceAssignments = Array.isArray(assignmentRows) ? assignmentRows.filter(Boolean) : [];
@@ -114,7 +132,13 @@
         let hasUnassigned = false;
 
         sourceAssignments.forEach((row) => {
-            const key = buildAuthoritativeAssignmentKey(row);
+            // Current assignment rows identify one ITEMCODE/container/location.
+            // Index those rows only by that assignment identity so one assigned
+            // location cannot label every row sharing the ITEMCODE/genus. The
+            // assignment feed's Source is its import source, not inventory Source.
+            // Older cached assignment payloads lack that identity, so retain the
+            // ITEMCODE/genus fallback only for those legacy rows.
+            const key = buildAuthoritativeAssignmentExactKey(row) || buildAuthoritativeAssignmentKey(row);
             if (!key) return;
             const assignedTo = getAssignedTo(row);
             if (!assignmentByKey.has(key)) assignmentByKey.set(key, new Map());
@@ -131,8 +155,8 @@
         let matchedCount = 0;
         let unassignedCount = 0;
         const rows = sourceInventory.map((row) => {
-            const key = buildAuthoritativeAssignmentKey(row);
-            const matched = !!key && assignmentByKey.has(key);
+            const key = getAuthoritativeAssignmentLookupKeys(row).find((candidate) => assignmentByKey.has(candidate)) || '';
+            const matched = !!key;
             if (matched) matchedCount += 1;
             const assignments = matched ? Array.from(assignmentByKey.get(key).values()) : [''];
             const assignedToUsers = assignments.map((value) => String(value || '').trim());
@@ -681,6 +705,7 @@
         classifyRows,
         classifyScriptCompatibleRows,
         buildAuthoritativeAssignmentKey,
+        buildAuthoritativeAssignmentExactKey,
         buildAuthoritativeAssignmentModel,
         buildItemInquiryModel
     });

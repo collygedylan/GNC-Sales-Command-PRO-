@@ -710,7 +710,8 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       userOptions: getAssignableAppUserOptions,
       recipientPicker: openGroupedBloomNcrRecipientModal,
       confirm: showAppConfirm,
-      api: evalWorkApi
+      api: evalWorkApi,
+      loadEvalWork: loadEvalWorkAssignments
     };
     let captured = null;
     try {
@@ -720,26 +721,41 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       isEvalWorkManagerUser = () => true;
       ensureAssignableAppUsers = async () => [];
       getAssignableAppUserOptions = () => [{ username: 'chance_alldredge', display: 'Chance Alldredge', email: 'chance_alldredge@greenleafnursery.com' }];
-      openGroupedBloomNcrRecipientModal = async () => ['megan_kelly@greenleafnursery.com'];
+      openGroupedBloomNcrRecipientModal = async (_rows, _selected, options = {}) => options.singleSelect
+        ? ['chance_alldredge@greenleafnursery.com']
+        : ['megan_kelly@greenleafnursery.com'];
       showAppConfirm = async () => true;
       evalWorkApi = async (operation, payload, options) => {
         captured = { operation, payload, options };
         return { data: payload.items.map((item, index) => ({ id: 'eval-batch-' + index, itemcode: item.source.itemcode, assignment_delivery_status: 'queued' })) };
       };
+      loadEvalWorkAssignments = async () => {
+        evalWorkRows = captured.payload.items.map((item, index) => ({
+          id: 'eval-batch-' + index,
+          itemcode: item.itemcode,
+          origin_rows: item.origins.map((origin) => ({ origin_unique_id: origin.unique_id, locationcode: origin.locationcode, lotcode: origin.lotcode }))
+        }));
+        evalWorkLoaded = true;
+        return evalWorkRows;
+      };
       processAndLoadData({ data: [
         { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
+        { UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 15, ASSIGNEDTO: 'stale', LOCATIONCODE: 'C.03.001', BLOCKALPHA: 'C', BLOCKNUMBER: '03', LOTCODE: '27.X2', SOURCE: 'LD' },
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ], warehouseAssignedItemsData: [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'megan_kelly' },
+        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ], _fromCache: true });
       fullInventory = [
         { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
+        { UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 15, ASSIGNEDTO: 'stale', LOCATIONCODE: 'C.03.001', BLOCKALPHA: 'C', BLOCKNUMBER: '03', LOTCODE: '27.X2', SOURCE: 'LD' },
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { UNIQUE_ID: 'assign-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'megan_kelly' },
+        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -756,12 +772,13 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       openManagerEvalReport2DrillValue('contsize', encodeURIComponent('#3'));
       const batchIndex = getManagerEvalReport2Index();
       const visibleGroups = getManagerEvalReport2VisibleItemGroups();
+      const exactUserRowsOnly = visibleGroups.flatMap((group) => group.rows).every((row) => row.ASSIGNEDTO_USERS.length === 1 && row.ASSIGNEDTO_USERS[0] === 'dylan_collyge');
       visibleGroups.forEach((group) => toggleManagerEvalReport2ItemSelection(encodeURIComponent(group.key), true));
       await openManagerEvalReport2BatchSetup();
       const modal = document.getElementById('manager-eval2-batch-modal');
-      const assignee = document.getElementById('manager-eval2-batch-assignee');
-      if (!modal || !assignee) throw new Error('Batch setup unavailable: ' + JSON.stringify({ canSend: canSendManagerEvalReport2Selection(), selected: getManagerEvalReport2SelectedEntries().length, fullInventory: fullInventory.length, indexedItems: batchIndex && batchIndex.rowsByItemCode instanceof Map ? batchIndex.rowsByItemCode.size : -1, loadedMaster: isDatasetLoaded('master', 'full'), loadedAssignments: isDatasetLoaded('warehouseAssignedItems', 'full'), loading: managerEvalReport2LoadState.loading, loadError: managerEvalReport2LoadState.error, currentUser }));
-      assignee.value = 'chance_alldredge';
+      const assigneeButton = document.getElementById('manager-eval2-batch-assignee-button');
+      if (!modal || !assigneeButton) throw new Error('Batch setup unavailable: ' + JSON.stringify({ canSend: canSendManagerEvalReport2Selection(), selected: getManagerEvalReport2SelectedEntries().length, fullInventory: fullInventory.length, indexedItems: batchIndex && batchIndex.rowsByItemCode instanceof Map ? batchIndex.rowsByItemCode.size : -1, loadedMaster: isDatasetLoaded('master', 'full'), loadedAssignments: isDatasetLoaded('warehouseAssignedItems', 'full'), loading: managerEvalReport2LoadState.loading, loadError: managerEvalReport2LoadState.error, currentUser }));
+      await chooseManagerEvalReport2BatchAssignee();
       await chooseManagerEvalReport2BatchRecipients();
       syncManagerEvalReport2BatchSetup();
       const setupCopy = modal.textContent || '';
@@ -774,15 +791,17 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       return {
         modalFits,
         noLotSelectionControls,
+        exactUserRowsOnly,
         originCount: submittedOrigins.length,
-        everyOriginResolved: submittedOrigins.length === 2 && submittedOrigins.every((origin) => origin.unique_id && origin.itemcode),
+        everyOriginResolved: submittedOrigins.length === 3 && submittedOrigins.every((origin) => origin.unique_id && origin.itemcode),
         requiredManagersVisible: setupCopy.includes('Dylan') && setupCopy.includes('Megan'),
         createEnabled: !createButton.disabled,
         operation: captured && captured.operation,
         itemCount: captured && captured.payload.items.length,
         onePerItemcode: captured && new Set(captured.payload.items.map((item) => item.source.itemcode)).size,
-        fullRowOverlays: captured && captured.payload.items.every((item) => item.inquiry.rowOverlays.length === 1),
-        multiOriginContract: captured && captured.payload.items.every((item) => Array.isArray(item.origins) && item.origins.length === 1),
+        fullRowOverlays: captured && captured.payload.items.every((item) => item.inquiry.rowOverlays.length === item.origins.length),
+        multiOriginContract: captured && captured.payload.items.find((item) => item.itemcode === 'A').origins.length === 2,
+        queueOriginCount: evalWorkRows.flatMap((work) => work.origin_rows || []).length,
         assignedUserScope: captured && captured.payload.items.every((item) => Array.isArray(item.reportContext.assignedToUsers) && item.reportContext.assignedToUsers.includes('dylan_collyge')),
         pdfOutboxOnly: captured && captured.operation === 'create_batch' && !('shiftReportAttachment' in captured.payload),
         assignee: captured && captured.payload.assigneeUsername,
@@ -797,6 +816,7 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       openGroupedBloomNcrRecipientModal = originals.recipientPicker;
       showAppConfirm = originals.confirm;
       evalWorkApi = originals.api;
+      loadEvalWorkAssignments = originals.loadEvalWork;
       const modal = document.getElementById('manager-eval2-batch-modal');
       if (modal) modal.remove();
     }
@@ -804,7 +824,8 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
   expect(result).toEqual({
     modalFits: true,
     noLotSelectionControls: true,
-    originCount: 2,
+    exactUserRowsOnly: true,
+    originCount: 3,
     everyOriginResolved: true,
     requiredManagersVisible: true,
     createEnabled: true,
@@ -813,12 +834,44 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
     onePerItemcode: 2,
     fullRowOverlays: true,
     multiOriginContract: true,
+    queueOriginCount: 3,
     assignedUserScope: true,
     pdfOutboxOnly: true,
     assignee: 'chance_alldredge',
     recipients: ['megan_kelly@greenleafnursery.com'],
     clearedAfterAcceptance: true,
   });
+});
+
+test('Eval Reports #2 manager search refreshes while the search field remains active', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.29.02', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).handleManagersSearch === 'function');
+
+  const result = await page.evaluate(() => window.eval(`(async () => {
+    const originalRender = renderManagers;
+    const originalTab = activeHomeTab;
+    const originalTerm = managersSearchTerm;
+    const input = document.getElementById('managers-search');
+    let renderCalls = 0;
+    try {
+      activeHomeTab = MANAGER_EVAL_REPORTS_2_VIEW;
+      renderManagers = () => { renderCalls += 1; };
+      input.value = 'Karl';
+      input.focus();
+      handleManagersSearch();
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      return { term: managersSearchTerm, renderCalls };
+    } finally {
+      renderManagers = originalRender;
+      activeHomeTab = originalTab;
+      managersSearchTerm = originalTerm;
+      input.value = originalTerm;
+    }
+  })()`));
+
+  expect(result.term).toBe('Karl');
+  expect(result.renderCalls).toBeGreaterThan(0);
 });
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {

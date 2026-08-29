@@ -278,6 +278,25 @@ test('preserves multiple authoritative users on one physical inventory row', () 
   assert.equal(model.unassignedCount, 0);
 });
 
+test('matches current assignment rows to the exact ITEMCODE, container, and location identity', () => {
+  const inventory = [
+    row('SHARED-001', 'F1', 27, { UNIQUE_ID: 'physical-a', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD' }),
+    row('SHARED-001', 'F1', 27, { UNIQUE_ID: 'physical-b', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'B.02.002', SOURCE: 'LD' })
+  ];
+  const assignments = [
+    { ITEMCODE: 'SHARED-001', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+    { ITEMCODE: 'SHARED-001', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'B.02.002', SOURCE: 'LD', ASSIGNEDTO: 'megan_kelly' }
+  ];
+
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments);
+
+  assert.equal(model.rows[0].ASSIGNEDTO, 'dylan_collyge');
+  assert.deepEqual(model.rows[0].ASSIGNEDTO_USERS, ['dylan_collyge']);
+  assert.equal(model.rows[1].ASSIGNEDTO, 'megan_kelly');
+  assert.deepEqual(model.rows[1].ASSIGNEDTO_USERS, ['megan_kelly']);
+  assert.equal(engine.buildAuthoritativeAssignmentExactKey(inventory[0]), 'SHARED-001|#3|A.01.001');
+});
+
 test('script-compatible classifier preserves the pasted Apps Script predicates and boundaries', () => {
   const rows = [
     row('A', 'F1', 27, { TEST_ID: 'a-f1', ASSIGNEDTO: 'dylan_collyge', PRIORITY: '1', S_LTS: 100, HOLDSTOPCODE: 'H', HOLDSTOPBEGINDATE: '8/14/2026', LOCATIONNOTEDATE: '8/9/2026' }),

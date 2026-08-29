@@ -158,3 +158,10 @@ test('Eval Reports #2 uses PDF Eval Work delivery and preserves temporary report
   assert.match(appsScript, /Temporary Report Edits/);
   assert.match(appsScript, /allowEmptyActions: true/);
 });
+
+test('Eval Reports #2 uses the shared searchable evaluator picker and refreshes complete Queue origins', () => {
+  assert.match(html, /id="manager-eval2-batch-assignee-button"[\s\S]*chooseManagerEvalReport2BatchAssignee\(\)/);
+  assert.match(html, /async function chooseManagerEvalReport2BatchAssignee\(\)[\s\S]*singleSelect:\s*true[\s\S]*appUsersOnly:\s*true/);
+  assert.doesNotMatch(html, /id="manager-eval2-batch-assignee"\s+list=/);
+  assert.match(html, /evalWorkApi\('create_batch'[\s\S]*await loadEvalWorkAssignments\(true\)[\s\S]*Eval Work Queued/);
+});
