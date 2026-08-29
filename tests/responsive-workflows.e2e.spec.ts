@@ -880,11 +880,13 @@ test('Eval Reports #2 verifies a named user against current assignments before s
         return true;
       };
       const applyPromise = applyManagerEvalReport2UserFilter(new Set(['dylan_collyge']));
-      const blockedWhileRefreshing = managerEvalReport2AssignmentFilterRefreshing
-        && getManagerEvalReport2VisibleItemGroups().length === 0;
+      const refreshingHtml = renderManagerEvalReports2Panel();
+      const blockedWhileRefreshing = getManagerEvalReport2VisibleItemGroups().length === 0
+        && refreshingHtml.includes('Verifying current AssignedTo ownership before showing results...');
       await applyPromise;
       const after = getManagerEvalReport2VisibleItemGroups().map((group) => group.itemCode);
-      return { before, after, forceSeen, blockedWhileRefreshing, pendingAfter:managerEvalReport2AssignmentFilterRefreshing };
+      const settledHtml = renderManagerEvalReports2Panel();
+      return { before, after, forceSeen, blockedWhileRefreshing, pendingAfter:settledHtml.includes('Verifying current AssignedTo ownership before showing results...') };
     } finally {
       ensureDatasetLoaded = originalEnsureDatasetLoaded;
     }
