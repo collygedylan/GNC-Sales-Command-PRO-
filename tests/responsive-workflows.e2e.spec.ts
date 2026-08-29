@@ -864,10 +864,10 @@ test('Eval Reports #2 verifies a named user against current assignments before s
       masterState.initialLoaded = masterState.fullLoaded = true;
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
-      setManagerEvalReport2('culls');
       managerEvalReport2AssignedToFilters = new Set(['dylan_collyge']);
       managerEvalReport2AssignedToFilter = 'dylan_collyge';
-      const before = getManagerEvalReport2VisibleItemGroups().map((group) => group.itemCode);
+      const initialAssignmentModel = GncEvalReports.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
+      const before = getManagerEvalReport2RowsBeforeCommonName(initialAssignmentModel.rows).map((row) => getManagerEvalReport2ItemCode(row));
       ensureDatasetLoaded = async (key, mode, options = {}) => {
         forceSeen = key === 'warehouseAssignedItems' && mode === 'full' && options.force === true;
         warehouseAssignedItemsInventory = [
@@ -881,10 +881,11 @@ test('Eval Reports #2 verifies a named user against current assignments before s
       };
       const applyPromise = applyManagerEvalReport2UserFilter(new Set(['dylan_collyge']));
       const refreshingHtml = renderManagerEvalReports2Panel();
-      const blockedWhileRefreshing = getManagerEvalReport2VisibleItemGroups().length === 0
+      const blockedWhileRefreshing = getManagerEvalReport2RowsBeforeCommonName(initialAssignmentModel.rows).length === 0
         && refreshingHtml.includes('Verifying current AssignedTo ownership before showing results...');
       await applyPromise;
-      const after = getManagerEvalReport2VisibleItemGroups().map((group) => group.itemCode);
+      const currentAssignmentModel = GncEvalReports.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
+      const after = getManagerEvalReport2RowsBeforeCommonName(currentAssignmentModel.rows).map((row) => getManagerEvalReport2ItemCode(row));
       const settledHtml = renderManagerEvalReports2Panel();
       return { before, after, forceSeen, blockedWhileRefreshing, pendingAfter:settledHtml.includes('Verifying current AssignedTo ownership before showing results...') };
     } finally {
