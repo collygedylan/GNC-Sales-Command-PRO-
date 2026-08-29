@@ -143,26 +143,37 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
       loginView.style.setProperty('pointer-events', 'none', 'important');
     }
     activeHomeTab = 'eval-reports-2';
+    const canaryAssignmentRows = [
+      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'megan_kelly' },
+      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly' }
+    ];
     processAndLoadData({ data: [
       { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'HOSTED-EVAL2-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 12, LOCATIONCODE: 'U.02.001', PTRAVAILABLE: 12 },
       { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
-    ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'megan_kelly' },
-      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly' }
-    ], _fromCache: true });
+    ], warehouseAssignedItemsData: canaryAssignmentRows, _fromCache: true });
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
+    const originalEnsureDatasetLoaded = ensureDatasetLoaded;
+    window.__eval2CanaryAssignmentVerified = false;
+    ensureDatasetLoaded = async (key, mode, options = {}) => {
+      if (key !== 'warehouseAssignedItems') return originalEnsureDatasetLoaded(key, mode, options);
+      warehouseAssignedItemsInventory = canaryAssignmentRows.map((row) => ({ ...row }));
+      assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+      assignmentState.lastLoadedAt = new Date().toISOString();
+      window.__eval2CanaryAssignmentVerified = options.force === true;
+      invalidateManagerEvalReport2Cache();
+      return true;
+    };
     invalidateManagerEvalReport2Cache();
     setManagerEvalReport2Mode('reports');
     setManagerEvalReport2('no-pri');
-    managerEvalReport2AssignedToFilter = 'all';
-    managerEvalReport2AssignedToFilters = new Set();
+    setManagerEvalReport2Filter('assignedto', 'all');
     const host = document.createElement('main');
     host.id = 'hosted-eval2-canary';
     host.style.cssText = 'position:fixed;inset:0;z-index:9000;width:390px;overflow:auto;background:#fff;';
@@ -184,6 +195,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await initialUserSheet.getByRole('checkbox', { name: /dylan_collyge/i }).click();
   await initialUserSheet.getByRole('checkbox', { name: /megan_kelly/i }).click();
   await initialUserSheet.getByRole('button', { name: /Apply 2 Users/i }).click();
+  await page.waitForFunction(() => (window as any).__eval2CanaryAssignmentVerified === true);
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
