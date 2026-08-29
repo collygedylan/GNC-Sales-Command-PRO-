@@ -764,16 +764,18 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       assignee.value = 'chance_alldredge';
       await chooseManagerEvalReport2BatchRecipients();
       syncManagerEvalReport2BatchSetup();
-      const originButtons = Array.from(modal.querySelectorAll('#manager-eval2-batch-origins button[aria-pressed]'));
-      const selectedOriginButtons = originButtons.filter((button) => button.getAttribute('aria-pressed') === 'true');
       const setupCopy = modal.textContent || '';
+      const noLotSelectionControls = modal.querySelectorAll('#manager-eval2-batch-origins, [data-eval-origin], [data-eval-lot]').length === 0
+        && !/Select All Lots|Select All Shown|Clear Lots/i.test(setupCopy);
       const createButton = document.getElementById('manager-eval2-batch-create');
       const modalFits = modal.scrollWidth <= 391;
       await createManagerEvalReport2Batch(createButton);
+      const submittedOrigins = captured ? captured.payload.items.flatMap((item) => item.origins || []) : [];
       return {
         modalFits,
-        originCount: originButtons.length,
-        everyOriginResolved: originButtons.length === 2 && selectedOriginButtons.length === 2,
+        noLotSelectionControls,
+        originCount: submittedOrigins.length,
+        everyOriginResolved: submittedOrigins.length === 2 && submittedOrigins.every((origin) => origin.unique_id && origin.itemcode),
         requiredManagersVisible: setupCopy.includes('Dylan') && setupCopy.includes('Megan'),
         createEnabled: !createButton.disabled,
         operation: captured && captured.operation,
@@ -801,6 +803,7 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
   })()`));
   expect(result).toEqual({
     modalFits: true,
+    noLotSelectionControls: true,
     originCount: 2,
     everyOriginResolved: true,
     requiredManagersVisible: true,
