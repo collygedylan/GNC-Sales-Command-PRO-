@@ -502,12 +502,11 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /isManagerEvalReport2ExportCellEdited\(entry, column\)/);
   assert.match(html, /rgb="FFFFF2CC"/);
   assert.match(html, /overlay\.temporaryChangedFields = Object\.keys\(temporaryValues\)/);
-  assert.match(html, /const rows = getManagerEvalReport2ExpandedItemRows\(entry\.key\)/);
-  assert.match(html, /const originRows = getManagerEvalReport2ExpandedItemRows\(entry\.key\)\.filter/);
-  assert.doesNotMatch(
-    html.slice(html.indexOf('function renderManagerEvalReport2OriginSelectors'), html.indexOf('async function createManagerEvalReport2Batch')),
-    /getManagerEvalReport2AllCurrentItemRows/,
-  );
+  assert.match(html, /const rows = getManagerEvalReport2AllCurrentItemRows\(entry\.itemCode\)/);
+  assert.match(html, /itemcodeWideScope.*itemcode-all-rows-v1/);
+  const batchSetupSlice = html.slice(html.indexOf('function renderManagerEvalReport2ItemcodeScopeSummary'), html.indexOf('async function createManagerEvalReport2Batch'));
+  assert.match(batchSetupSlice, /Every current row for a selected ITEMCODE is included/);
+  assert.doesNotMatch(batchSetupSlice, /Select All Lots|Select All Shown|Clear Lots|Block Alpha|Block Number|Location\/Lot/);
   assert.doesNotMatch(html.slice(html.indexOf('function setManagerEvalReport2RowEditValue'), html.indexOf('function isNamedManagerEvalReport2AssignedTo')), /supabase(Update|Insert|Delete|Rpc)|fetch\(/i);
   assert.match(html, /Eval Reports #2 is available only to Dylan, Megan, and JD/);
 });

@@ -143,7 +143,8 @@ test('Eval Reports #2 batch creation is service-only, atomic, complete-row, and 
   assert.doesNotMatch(batchMigration, /update public\.ph_master_inventory|delete from public\./i);
   assert.match(appApi, /operation === "create_batch"/);
   assert.match(appApi, /normalizeEvalWorkBatchInquiry/);
-  assert.match(appApi, /create_eval_work_batch_v2" : "create_eval_work_batch_v1/);
+  assert.match(appApi, /supabase\.rpc\("create_eval_work_batch_v2"/);
+  assert.doesNotMatch(appApi, /useMultiOriginV2/);
 });
 
 test('Eval Reports #2 uses PDF Eval Work delivery and preserves temporary report overlays', () => {

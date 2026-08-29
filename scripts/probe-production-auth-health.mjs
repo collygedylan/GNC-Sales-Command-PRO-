@@ -85,6 +85,7 @@ let requestIntegrityHealth = null;
 let poManagementHealth = null;
 let accessControlHealth = null;
 let evalRequestDeliveryHealth = null;
+let evalItemcodeWorkHealth = null;
 let recentSemanticFailures = [];
 let appsScriptHealth = null;
 
@@ -293,6 +294,32 @@ if (serviceRoleKey) {
     requiredManagerRecipientCount: Number(evalRequestDeliveryHealth.required_manager_recipient_count)
   });
 
+  const evalItemcodeHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_itemcode_work_health_snapshot_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const evalItemcodeHealthText = await evalItemcodeHealthResponse.text();
+  try { evalItemcodeWorkHealth = evalItemcodeHealthText ? JSON.parse(evalItemcodeHealthText) : null; } catch {}
+  if (!evalItemcodeHealthResponse.ok || !evalItemcodeWorkHealth || typeof evalItemcodeWorkHealth !== 'object') {
+    throw new Error(`production_eval_itemcode_health_unavailable_HTTP_${evalItemcodeHealthResponse.status}`);
+  }
+  const evalItemcodeContractHealthy = evalItemcodeWorkHealth.contract_version === 'eval-itemcode-work-health-v1'
+    && evalItemcodeWorkHealth.scope_contract === 'itemcode-all-rows-v1'
+    && Number(evalItemcodeWorkHealth.stored_membership_mismatch_count) === 0
+    && Number(evalItemcodeWorkHealth.pdf_origin_mismatch_count) === 0
+    && Number(evalItemcodeWorkHealth.excel_attachment_violation_count) === 0
+    && Number(evalItemcodeWorkHealth.over_limit_assignment_count) === 0
+    && Number(evalItemcodeWorkHealth.largest_origin_count) <= 100;
+  if (!evalItemcodeContractHealthy) throw new Error('production_eval_itemcode_work_contract_unhealthy');
+  checks.push({
+    name: 'eval_itemcode_work_v1',
+    status: evalItemcodeHealthResponse.status,
+    contractVersion: evalItemcodeWorkHealth.contract_version,
+    scopedAssignments: Math.max(0, Number(evalItemcodeWorkHealth.scoped_assignment_count) || 0),
+    largestOriginCount: Math.max(0, Number(evalItemcodeWorkHealth.largest_origin_count) || 0)
+  });
+
   // Read only non-PII health fields. The current scheduled audit was evaluated
   // above, so older audit rows are excluded from semantic client failures.
   const recentSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -364,6 +391,15 @@ const result = {
     evalOriginScopeMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) || 0),
     evalRequiredRecipientViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) || 0)
   } : null,
+  evalItemcodeWork: evalItemcodeWorkHealth ? {
+    contractVersion: String(evalItemcodeWorkHealth.contract_version || ''),
+    scopeContract: String(evalItemcodeWorkHealth.scope_contract || ''),
+    scopedAssignmentCount: Math.max(0, Number(evalItemcodeWorkHealth.scoped_assignment_count) || 0),
+    storedMembershipMismatchCount: Math.max(0, Number(evalItemcodeWorkHealth.stored_membership_mismatch_count) || 0),
+    pdfOriginMismatchCount: Math.max(0, Number(evalItemcodeWorkHealth.pdf_origin_mismatch_count) || 0),
+    excelAttachmentViolationCount: Math.max(0, Number(evalItemcodeWorkHealth.excel_attachment_violation_count) || 0),
+    largestOriginCount: Math.max(0, Number(evalItemcodeWorkHealth.largest_origin_count) || 0)
+  } : null,
   appsScript: appsScriptHealth,
   recentSemanticFailureCount: recentSemanticFailures.length
 };
@@ -373,6 +409,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- ITEMCODE-wide Eval Work: ${result.evalItemcodeWork ? `${result.evalItemcodeWork.contractVersion}, ${result.evalItemcodeWork.scopedAssignmentCount} scoped assignments, largest ${result.evalItemcodeWork.largestOriginCount} rows` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }

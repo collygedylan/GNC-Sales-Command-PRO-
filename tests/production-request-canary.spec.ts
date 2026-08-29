@@ -250,7 +250,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   expect(state).toEqual({
     selected: ['CANARY.EVAL.A', 'CANARY.EVAL.B'],
     report: 'no-pri',
-    assignedToUsers: ['dylan_collyge', 'megan_kelly'],
+    assignedToUsers: ['megan_kelly'],
     activeUsers: ['megan_kelly'],
     hasLegacySelectMode: false,
   });
@@ -265,16 +265,16 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     ensureAssignableAppUsers = async () => assignableAppUsers;
     await openManagerEvalReport2BatchSetup();
   })()`));
-  const lotSheet = page.locator('#manager-eval2-batch-modal');
-  await expect(lotSheet).toBeVisible();
-  await expect(lotSheet).toContainText('Dylan');
-  await expect(lotSheet).toContainText('Megan');
-  await expect(lotSheet).toContainText('Block Alpha T');
-  await expect(lotSheet).toContainText('Block Alpha U');
-  const selectAllLots = lotSheet.getByRole('button', { name: 'Select All Lots' }).first();
-  await selectAllLots.click();
-  await expect(lotSheet).toContainText('2 of 2 lots selected');
-  await expect(lotSheet.locator('#manager-eval2-batch-summary')).toContainText('Selected lots3');
+  const setupSheet = page.locator('#manager-eval2-batch-modal');
+  await expect(setupSheet).toBeVisible();
+  await expect(setupSheet).toContainText('Dylan');
+  await expect(setupSheet).toContainText('Megan');
+  await expect(setupSheet).toContainText('ITEMCODE-wide review');
+  await expect(setupSheet).toContainText('Every current row for a selected ITEMCODE is included');
+  await expect(setupSheet).not.toContainText('Select All Lots');
+  await expect(setupSheet).not.toContainText('Block Alpha');
+  await expect(setupSheet).not.toContainText('Location/Lot');
+  await expect(setupSheet.locator('#manager-eval2-batch-summary')).toContainText('Current rows3');
   await page.evaluate(() => (window as any).closeManagerEvalReport2BatchSetup());
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
   expect(blockedMutations, `production mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);

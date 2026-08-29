@@ -14437,14 +14437,33 @@ function buildEvalWorkReportModel_(eventPayload) {
   } catch (error) {
     throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_CHANGED');
   }
+  const allCurrentItemRows = fetchReclassInquiryItemRows_(sourceRow);
+  if (String(payload.scopeContract || '') === 'itemcode-all-rows-v1') {
+    const expectedCount = Math.max(0, Number(payload.membershipCount) || 0);
+    const selectedIds = selectedOrigins.map(function(originInput) {
+      return normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(originInput.unique_id, originInput.uniqueId));
+    }).filter(Boolean).sort();
+    const currentIds = allCurrentItemRows.map(function(row) {
+      return getInventoryTransactionRowUid_(row);
+    }).filter(Boolean).sort();
+    if (!expectedCount || selectedIds.length !== expectedCount || currentIds.length !== expectedCount
+       || selectedIds.join('|') !== currentIds.join('|')) {
+      throw new Error('EVAL_WORK_CONFLICT:ITEMCODE_MEMBERSHIP_CHANGED');
+    }
+  }
   const authoritativeRows = selectedOrigins.length ? selectedOrigins.map(function(originInput) {
     const uid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(originInput.unique_id, originInput.uniqueId));
     const current = uid ? fetchEmailApprovalMasterRow_(uid) : null;
     if (!current) throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_MISSING');
     try { validateInventoryTransactionSourceIdentity_(current, originInput); }
     catch (error) { throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_CHANGED'); }
+    if (String(payload.scopeContract || '') === 'itemcode-all-rows-v1') {
+      const expectedOh = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(originInput.ptronhand, originInput.PTRONHAND));
+      const currentOh = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(current.ptronhand, current.PTRONHAND));
+      if (expectedOh !== currentOh) throw new Error('EVAL_WORK_CONFLICT:ORIGIN_OH_CHANGED');
+    }
     return current;
-  }) : fetchReclassInquiryItemRows_(sourceRow);
+  }) : allCurrentItemRows;
   const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
   const requestActions = Array.isArray(transaction.requestActions)
     ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
@@ -14580,6 +14599,18 @@ function handleSignedEvalWorkDelivery_(delivery) {
   }
   const eventType = String(delivery && delivery.eventType || '').trim();
   const eventPayload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
+  if (String(eventPayload.scopeContract || '') === 'itemcode-all-rows-v1') {
+    const preflight = callSupabaseRpc_('validate_eval_work_delivery_v1', {
+      p_work_id: String(eventPayload.evalWorkId || ''),
+      p_event_type: eventType,
+      p_membership_signature: String(eventPayload.membershipSignature || '')
+    });
+    const preflightValue = Array.isArray(preflight) ? preflight[0] : preflight;
+    if (!preflightValue || preflightValue.ok !== true
+       || Number(preflightValue.originCount) !== Number(eventPayload.membershipCount)) {
+      throw new Error('EVAL_WORK_CONFLICT:DELIVERY_PREFLIGHT_FAILED');
+    }
+  }
   const kind = eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ ? 'assignment' : 'completion';
   const recipients = kind === 'assignment'
     ? dedupeEmailAddresses_([eventPayload.assignmentRecipients || eventPayload.assigneeEmail])

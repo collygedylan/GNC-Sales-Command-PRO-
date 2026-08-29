@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
+const itemcodeMigration = read('../supabase/migrations/20260829042809_itemcode_wide_eval_work.sql');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const worker = read('../supabase/functions/request-delivery-worker/index.ts');
 const html = read('../index.html');
@@ -21,19 +22,28 @@ test('multi-origin Eval Work storage is append-only, service-owned, and V1 compa
   assert.match(migration, /first_origin\.unique_id[\s\S]*origin_count/);
 });
 
-test('batch selection is user-scoped, complete, retry-safe, and one assignment per ITEMCODE', () => {
-  assert.match(migration, /create or replace function public\.create_eval_work_batch_v2/);
-  assert.match(migration, /Validate the complete batch before creating anything/);
-  assert.match(migration, /eval_work_assert_assignment_scope_v2\(item->>'itemcode', selected_users\)/);
-  assert.match(migration, /eval_work_multi_origin_identity_conflict/);
-  assert.match(migration, /eval_work_selected_origin_overlay_set_required/);
-  assert.match(migration, /where create_token = create_token_value/);
-  assert.match(migration, /return next work;[\s\S]*continue;/);
-  assert.match(html, /Select All Lots/);
-  assert.match(html, /Select All Shown/);
-  assert.match(html, /Block Alpha[\s\S]*Block Number/);
-  assert.match(html, /getManagerEvalReport2ExpandedItemRows\(entry\.key\)\.filter/);
-  assert.match(html, /assignedToUsers: Array\.from\(new Set/);
+test('ITEMCODE batch creation derives all rows, expands cached hints, and is retry-safe', () => {
+  assert.match(itemcodeMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(itemcodeMigration, /create or replace function public\.create_eval_work_batch_v2/);
+  assert.match(itemcodeMigration, /private\.eval_work_itemcode_context_rows_v1\(item->>'itemcode'\)/);
+  assert.match(itemcodeMigration, /jsonb_array_length\(context_rows\) > 100/);
+  assert.match(itemcodeMigration, /private\.eval_work_expand_inquiry_rows_v1/);
+  assert.match(itemcodeMigration, /'scopeContract', 'itemcode-all-rows-v1'/);
+  assert.match(itemcodeMigration, /'membershipSignature', membership_signature/);
+  assert.match(itemcodeMigration, /matchedAssignedToUsers/);
+  assert.match(itemcodeMigration, /where create_token = create_token_value/);
+  assert.match(itemcodeMigration, /return next work;[\s\S]*continue;/);
+  assert.match(itemcodeMigration, /create or replace function public\.get_eval_itemcode_work_health_snapshot_v1/);
+  assert.match(itemcodeMigration, /stored_membership_mismatch_count/);
+  assert.match(itemcodeMigration, /pdf_origin_mismatch_count/);
+  assert.match(itemcodeMigration, /excel_attachment_violation_count/);
+  assert.match(itemcodeMigration, /grant execute on function public\.get_eval_itemcode_work_health_snapshot_v1\(\) to service_role/);
+  const setup = html.slice(html.indexOf('function ensureManagerEvalReport2BatchSetupModal'), html.indexOf('function closeManagerEvalReport2BatchSetup'));
+  assert.doesNotMatch(setup, /Select All Lots|Clear Lots|Select All Shown|Block Alpha|Block Number|Location\/Lot/);
+  assert.match(setup, /Users filter ITEMCODEs\. Every current row for a selected ITEMCODE is included/);
+  assert.match(html, /getManagerEvalReport2AllCurrentItemRows\(entry\.itemCode\)/);
+  assert.match(html, /selectedUserFilters/);
+  assert.match(html, /matchedAssignedToUsers/);
 });
 
 test('assignment and completion delivery visibly includes required managers and PDF-only selected origins', () => {
@@ -46,6 +56,8 @@ test('assignment and completion delivery visibly includes required managers and 
   assert.match(appsScript, /eventPayload\.assignmentRecipients \|\| eventPayload\.assigneeEmail/);
   assert.match(appsScript, /selectedOrigins[\s\S]*authoritativeRows = selectedOrigins\.length \? selectedOrigins\.map/);
   assert.match(appsScript, /model\.evaluationResultsRows = selectedOrigins\.map/);
+  assert.match(appsScript, /validate_eval_work_delivery_v1/);
+  assert.match(appsScript, /ITEMCODE_MEMBERSHIP_CHANGED/);
   assert.doesNotMatch(appsScript.slice(appsScript.indexOf('function handleSignedEvalWorkDelivery_'), appsScript.indexOf('function handleSignedRequestDeliveryEvent_')), /Excel|xlsx/i);
 });
 
@@ -62,7 +74,7 @@ test('every origin has isolated evidence and exact-row photo scope', () => {
   assert.doesNotMatch(exactUpdate, /priority\s*=|holdstopcode\s*=|holdstopreason\s*=|ptronhand\s*=|season\s*=/i);
   assert.match(appApi, /p_evidence_by_origin: evidence/);
   assert.match(appApi, /requiredPrefix = isV2 \? `eval\/\$\{workId\}\/\$\{originUid\}\//);
-  assert.match(html, /Complete the required evidence for every selected lot/);
+  assert.match(html, /Complete the required evidence for every \$\{itemcodeWideScope \? 'current ITEMCODE row' : 'selected lot'\}/);
   assert.match(html, /requiredEvidence\.forEach/);
 });
 

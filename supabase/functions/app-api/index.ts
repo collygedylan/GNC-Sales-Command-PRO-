@@ -704,13 +704,22 @@ async function handleEvalWorkAction(
       const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
       const rawItems = Array.isArray(payload.items) ? payload.items : [];
       if (rawItems.length < 1 || rawItems.length > 50) return errorResponse("Choose from 1 through 50 ITEMCODEs.", 400, { code: "eval_work_batch_size_invalid" });
-      let useMultiOriginV2 = true;
       const items = rawItems.map((rawItem) => {
         const item = rawItem && typeof rawItem === "object" ? rawItem as Record<string, unknown> : {};
         const sourceInput = item.source && typeof item.source === "object" ? item.source as Record<string, unknown> : {};
         const contextInput = item.reportContext && typeof item.reportContext === "object" ? item.reportContext as Record<string, unknown> : {};
         const assignedToUsers = Array.from(new Set(
           (Array.isArray(contextInput.assignedToUsers) ? contextInput.assignedToUsers : [])
+            .map((value) => String(value || "").trim())
+            .filter(Boolean),
+        )).slice(0, 100);
+        const selectedUserFilters = Array.from(new Set(
+          (Array.isArray(contextInput.selectedUserFilters) ? contextInput.selectedUserFilters : assignedToUsers)
+            .map((value) => String(value || "").trim())
+            .filter(Boolean),
+        )).slice(0, 100);
+        const matchedAssignedToUsers = Array.from(new Set(
+          (Array.isArray(contextInput.matchedAssignedToUsers) ? contextInput.matchedAssignedToUsers : assignedToUsers)
             .map((value) => String(value || "").trim())
             .filter(Boolean),
         )).slice(0, 100);
@@ -722,7 +731,6 @@ async function handleEvalWorkAction(
           lotcode: String(sourceInput.lotcode || "").trim(),
         };
         const rawOrigins = Array.isArray(item.origins) ? item.origins : [];
-        if (!rawOrigins.length) useMultiOriginV2 = false;
         const origins = rawOrigins.map((value) => {
           const origin = value && typeof value === "object" ? value as Record<string, unknown> : {};
           return {
@@ -733,11 +741,13 @@ async function handleEvalWorkAction(
             source: String(origin.source || "").trim(),
           };
         });
-        if ((!source.unique_id || !source.itemcode) && !origins.length) throw new Error("eval_work_batch_origin_invalid");
+        const itemcode = String(item.itemcode || source.itemcode || origins[0]?.itemcode || "").trim();
+        if (!itemcode) throw new Error("eval_work_batch_itemcode_invalid");
         return {
           createToken: String(item.createToken || "").trim(),
+          scopeContract: "itemcode-all-rows-v1",
           source,
-          itemcode: String(item.itemcode || source.itemcode || origins[0]?.itemcode || "").trim(),
+          itemcode,
           origins,
           inquiry: normalizeEvalWorkBatchInquiry(item.inquiry),
           reportContext: {
@@ -745,6 +755,8 @@ async function handleEvalWorkAction(
             reportLabel: String(contextInput.reportLabel || "").trim().slice(0, 200),
             assignedTo: String(contextInput.assignedTo || "").trim().slice(0, 200),
             assignedToUsers,
+            selectedUserFilters,
+            matchedAssignedToUsers,
             browseMode: String(contextInput.browseMode || "").trim().slice(0, 40),
           },
         };
@@ -760,7 +772,7 @@ async function handleEvalWorkAction(
         settingsSignature: String(payload.settingsSignature || "").trim().slice(0, 1024),
         items,
       };
-      const { data, error } = await supabase.rpc(useMultiOriginV2 ? "create_eval_work_batch_v2" : "create_eval_work_batch_v1", { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc("create_eval_work_batch_v2", { p_payload: rpcPayload });
       if (error) throw error;
       const withDelivery = await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]);
       return jsonResponse({ ok: true, data: await withEvalWorkOrigins(withDelivery), manager: true });
