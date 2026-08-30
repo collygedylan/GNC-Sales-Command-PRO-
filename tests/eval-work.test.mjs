@@ -144,6 +144,8 @@ test('Eval Reports #2 batch creation is service-only, atomic, complete-row, and 
   assert.match(appApi, /operation === "create_batch"/);
   assert.match(appApi, /normalizeEvalWorkBatchInquiry/);
   assert.match(appApi, /supabase\.rpc\("create_eval_work_batch_v2"/);
+  assert.match(appApi, /Access-Control-Allow-Headers": "[^"]*idempotency-key[^"]*"/);
+  assert.match(html, /evalWorkApi\('create_batch'[\s\S]*idempotencyKey:\s*managerEvalReport2BatchSetupState\.batchToken/);
   assert.doesNotMatch(appApi, /useMultiOriginV2/);
 });
 

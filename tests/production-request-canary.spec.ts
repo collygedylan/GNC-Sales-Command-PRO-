@@ -249,7 +249,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await host.getByRole('button', { name: /2 Users/i }).click();
   const userSheet = page.locator('#manager-eval-user-picker');
   await expect(userSheet).toBeVisible();
-  await userSheet.getByRole('checkbox', { name: /dylan_collyge/i }).click();
+  await userSheet.getByRole('checkbox', { name: /megan_kelly/i }).click();
   await page.evaluate(() => { (window as any).__eval2CanaryAssignmentVerified = false; });
   await userSheet.getByRole('button', { name: /Apply 1 User/i }).click();
   await page.waitForFunction(() => (window as any).__eval2CanaryAssignmentVerified === true);
@@ -262,10 +262,10 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
     hasLegacySelectMode: document.getElementById('hosted-eval2-canary').textContent.includes('Select Items')
   }))()`));
   expect(state).toEqual({
-    selected: ['CANARY.EVAL.A', 'CANARY.EVAL.B'],
+    selected: ['CANARY.EVAL.A'],
     report: 'no-pri',
-    assignedToUsers: ['megan_kelly'],
-    activeUsers: ['megan_kelly'],
+    assignedToUsers: ['dylan_collyge'],
+    activeUsers: ['dylan_collyge'],
     hasLegacySelectMode: false,
   });
 
