@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.29.04">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.29.05">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.29.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.29.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1877,6 +1877,39 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         body.dark-mode .access-control-cell{background:#0b2419;color:#e2e8f0;border-color:#35604d}
         body.dark-mode .access-control-cell.is-allowed{background:#14532d;color:#d1fae5;border-color:#34d399}
         body.dark-mode .access-control-cell.is-denied{background:#3f121b;color:#fecdd3;border-color:#fb7185}
+        .codex-ops-hero,.codex-ops-panel,.codex-ops-task-card,.codex-ops-message,.codex-ops-empty,.codex-ops-error{border-radius:18px;border:1px solid #d1fae5;background:#fff;box-shadow:0 8px 20px rgba(15,23,42,.05)}
+        .codex-ops-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem;background:linear-gradient(135deg,#052e23,#007a4d);color:#fff;border-color:#34d399}
+        .codex-ops-panel{padding:1rem}
+        .codex-ops-task-card{display:flex;width:100%;min-height:76px;align-items:center;justify-content:space-between;gap:.8rem;padding:1rem;text-align:left;touch-action:manipulation}
+        .codex-ops-task-card:active{transform:scale(.99)}
+        .codex-ops-kicker,.codex-ops-label{display:block;font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#047857}
+        .codex-ops-hero .codex-ops-kicker{color:#a7f3d0}
+        .codex-ops-textarea{display:block;width:100%;min-height:52px;margin-top:.55rem;border:1px solid #a7f3d0;border-radius:14px;background:#f8fffb;padding:.8rem;color:#0f172a;font-size:14px;font-weight:650;resize:vertical}
+        .codex-ops-primary-btn,.codex-ops-secondary-btn,.codex-ops-approve-btn,.codex-ops-danger-btn,.codex-ops-new-btn,.codex-ops-back{display:inline-flex;min-height:44px;align-items:center;justify-content:center;gap:.42rem;border-radius:13px;padding:.7rem 1rem;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;touch-action:manipulation}
+        .codex-ops-primary-btn,.codex-ops-new-btn{background:#007a4d;color:#fff;border:1px solid #34d399}
+        .codex-ops-new-btn{background:#fff;color:#065f46;white-space:nowrap}
+        .codex-ops-secondary-btn,.codex-ops-back{border:1px solid #a7f3d0;background:#ecfdf5;color:#065f46}
+        .codex-ops-approve-btn{border:1px solid #6ee7b7;background:#065f46;color:#fff}
+        .codex-ops-danger-btn{border:1px solid #fecaca;background:#fff1f2;color:#be123c}
+        .codex-ops-primary-btn:disabled,.codex-ops-approve-btn:disabled{opacity:.5}
+        .codex-ops-file-chip,.codex-ops-status{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;border:1px solid #a7f3d0;background:#ecfdf5;padding:.38rem .65rem;color:#065f46;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.07em}
+        .codex-ops-status--needs_input,.codex-ops-status--ready_for_approval{border-color:#fcd34d;background:#fffbeb;color:#92400e}
+        .codex-ops-status--failed,.codex-ops-status--blocked{border-color:#fecaca;background:#fff1f2;color:#be123c}
+        .codex-ops-status--live{border-color:#6ee7b7;background:#d1fae5;color:#065f46}
+        .codex-ops-status--reverted,.codex-ops-status--cancelled{border-color:#cbd5e1;background:#f1f5f9;color:#475569}
+        .codex-ops-message{padding:1rem;color:#334155}
+        .codex-ops-message--user{margin-left:1.5rem;border-color:#93c5fd;background:#eff6ff;color:#1e3a8a}
+        .codex-ops-message--agent{margin-right:1.5rem;border-color:#a7f3d0;background:#ecfdf5;color:#064e3b}
+        .codex-ops-empty,.codex-ops-error{padding:1.5rem;text-align:center;font-size:13px;font-weight:800;color:#64748b;border-style:dashed}
+        .codex-ops-error{border-color:#fecaca;background:#fff1f2;color:#be123c}
+        .codex-ops-review-list{margin-top:.4rem;padding-left:1.2rem;color:#475569;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;line-height:1.65;overflow-wrap:anywhere}
+        body.dark-mode .codex-ops-panel,body.dark-mode .codex-ops-task-card,body.dark-mode .codex-ops-message,body.dark-mode .codex-ops-empty{border-color:#1f6b4b;background:#071b13;color:#e2e8f0}
+        body.dark-mode .codex-ops-panel :is(.text-slate-900,.text-slate-700),body.dark-mode .codex-ops-task-card .text-slate-900{color:#f8fafc!important}
+        body.dark-mode .codex-ops-panel :is(.text-slate-500,.text-slate-400),body.dark-mode .codex-ops-task-card .text-slate-500{color:#b8d7c8!important}
+        body.dark-mode .codex-ops-textarea{border-color:#2f7d5a;background:#0b2419;color:#f8fafc}
+        body.dark-mode .codex-ops-message--user{border-color:#1d4ed8;background:#0f2748;color:#dbeafe}
+        body.dark-mode .codex-ops-message--agent{border-color:#2f7d5a;background:#0b2419;color:#d1fae5}
+        @media(max-width:480px){.codex-ops-hero{align-items:stretch;flex-direction:column}.codex-ops-new-btn{width:100%}.codex-ops-message--user{margin-left:.65rem}.codex-ops-message--agent{margin-right:.65rem}}
         #manager-eval-user-picker section{padding-bottom:env(safe-area-inset-bottom);color-scheme:light dark}
         body.dark-mode #manager-eval-user-picker section,body.dark-mode #manager-eval-user-picker section>div{background:#071b13;border-color:#1f6b4b;color:#f8fafc}
         body.dark-mode #manager-eval-user-picker button,body.dark-mode #manager-eval-user-picker input{background:#0b2419;border-color:#2f7d5a;color:#f8fafc}
@@ -6744,7 +6777,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.29.04">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.29.05">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6916,8 +6949,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.29.04"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.29.04"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.29.05"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.29.05"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7670,7 +7703,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.29.04').trim() || 'V2026.08.29.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.29.05').trim() || 'V2026.08.29.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9110,6 +9143,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
         const APP_API_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/app-api`;
         const LEAF_ASSISTANT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/inventory-assistant`;
+        const CODEX_OPS_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/codex-ops-api`;
         const APP_API_DB_WRITE_PROXY_ENABLED = true;
         const APP_API_DB_WRITE_PROXY_DIRECT_FALLBACK_ENABLED = false;
         const APP_API_DB_WRITE_PROXY_COOLDOWN_MS = 120000;
@@ -9157,7 +9191,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.29.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.29.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9347,6 +9381,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
             appAccessSnapshotLoadPromise = null;
             accessControlAdminState = { data:null, loading:false, loaded:false, saving:false, publishing:false, error:'', selectedModule:'all', selectedRole:'all', viewMode:'users', editor:null, publishReason:'', requestToken:0, columnOffset:0, columnPageSize:8, subjectOffset:0, subjectPageSize:100, capabilities:null };
+            stopCodexOpsPoll();
+            codexOpsState = { capabilities:null, capabilitiesLoading:false, capabilitiesLoaded:false, tasks:[], tasksLoading:false, tasksLoaded:false, activeTaskId:'', activeTask:null, taskLoading:false, error:'', composeOpen:false, draft:'', attachments:[], sending:false, messageDraft:'', pollTimer:null, requestToken:0 };
             assignableAppUsersLoaded = false;
             assignableAppUsersPromise = null;
             flyerAssignableUsersPromise = null;
@@ -29288,6 +29324,7 @@ let activeManagerEvalReport='s1-with-pri'; let activeManagerEvalReportView='name
 let managerHistoricalReportState={level:'names',commonNames:[],containerSizes:[],rows:[],selectedCommonName:'',selectedContSize:'',selectedColumns:['report_date','itemcode','locationcode','lotcode','ptravailable','holdstopcode','holdstopreason'],loadedColumns:[],dateStart:'',dateEnd:'',displayMode:'cards',loading:false,loadingMore:false,error:'',hasMore:false,nextCursor:null,dirty:false,requestToken:0,lastSearch:''};
 let managerTransactionsKeyedState={summary:{},availableDates:[],dateMetrics:[],allDates:[],files:[],selectedDate:'',search:'',loading:false,loadingMoreDates:false,loadingMoreFiles:false,loaded:false,error:'',allDatesHasMore:false,filesHasMore:false,allDatesTotal:0,filesTotal:0,requestToken:0};
 let accessControlAdminState={data:null,loading:false,loaded:false,saving:false,publishing:false,error:'',selectedModule:'all',selectedRole:'all',viewMode:'users',editor:null,publishReason:'',requestToken:0,columnOffset:0,columnPageSize:8,subjectOffset:0,subjectPageSize:100,capabilities:null};
+let codexOpsState={capabilities:null,capabilitiesLoading:false,capabilitiesLoaded:false,tasks:[],tasksLoading:false,tasksLoaded:false,activeTaskId:'',activeTask:null,taskLoading:false,error:'',composeOpen:false,draft:'',attachments:[],sending:false,messageDraft:'',pollTimer:null,requestToken:0};
 let managerEvalReportDisplayMode='cards';
 let activeManagerEvalReport2=''; let managerEvalReport2Mode='reports'; let managerEvalReport2DisplayMode='cards'; let managerEvalReport2SeasonFilter='all'; let managerEvalReport2ContSizeFilter='all'; let managerEvalReport2AssignedToFilter='all'; let managerEvalReport2LocationFilter='all'; let managerEvalReport2PriorityFilter='all'; let managerEvalReport2BrowseMode='plant'; let managerEvalReport2DrillLevel=0; let managerEvalReport2SelectedCommonName=''; let managerEvalReport2SelectedContSize=''; let managerEvalReport2SelectedBlockAlpha=''; let managerEvalReport2SelectedBlockNumber=''; let managerEvalReport2DrillScrollByKey=new Map(); let managerEvalReport2InquiryAssignedTo=''; let managerEvalReport2InquiryLocationCode=''; let managerEvalReport2InquiryCommonName=''; let managerEvalReport2InquiryContSize=''; let managerEvalReport2CacheKey=''; let managerEvalReport2Cache=null; let managerEvalReport2LoadState={loading:false,error:'',promise:null,lastLoadedAt:'',lastSourceUpdatedAt:''}; let managerEvalReport2AssignmentFilterRefreshing=false; let managerEvalReport2AssignmentFilterRequestToken=0; let managerEvalReport2SelectedItemsByKey=new Map(); let managerEvalReport2EditsByRowKey=new Map(); let managerEvalReport2LockedReportId=''; let managerEvalReport2LockedAssignedTo=''; let managerEvalReport2SelectionRevision=0; let managerEvalReport2EditRevision=0; let managerEvalReport2EmailSending=false; let managerEvalReport2DetailItemKey=''; let managerEvalReport2DetailReturnScrollTop=0; let managerEvalReport2BatchSetupState={assigneeUsername:'',assigneeEmail:'',completionRecipients:[]};
 let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2AssignedToFilters=new Set(); let managerEvalUserPickerState={target:'',options:[],draft:new Set(),search:''};
@@ -29764,6 +29801,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
         const MANAGER_BLOCK_CLEARING_VIEW = 'block-clearing';
         const MANAGER_ACCESS_CONTROL_VIEW = 'access-control';
+        const MANAGER_CODEX_OPERATIONS_VIEW = 'codex-operations';
         const MANAGER_BLOCK_CLEARING_LONG_PRESS_MS = 360;
         const MANAGER_EVAL_REPORT2_EDITABLE_FIELDS = Object.freeze([
             { key: 'HOLDSTOPCODE', label: 'HOLDSTOPCODE', type: 'hold' },
@@ -30823,7 +30861,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.29.04').trim() || 'V2026.08.29.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.29.05').trim() || 'V2026.08.29.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -118603,6 +118641,7 @@ C.14.043 C.15.000
             else if (requestedTab === MANAGER_SHORTAGE_CANCEL_VIEW && canViewManagerShortageCancel()) nextTab = MANAGER_SHORTAGE_CANCEL_VIEW;
             else if (requestedTab === MANAGER_BLOCK_CLEARING_VIEW && canViewManagerBlockClearing()) nextTab = MANAGER_BLOCK_CLEARING_VIEW;
             else if (requestedTab === MANAGER_ACCESS_CONTROL_VIEW && canViewAccessControl()) nextTab = MANAGER_ACCESS_CONTROL_VIEW;
+            else if (requestedTab === MANAGER_CODEX_OPERATIONS_VIEW && canViewCodexOperations()) nextTab = MANAGER_CODEX_OPERATIONS_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
             activeHomeTab = nextTab;
             if (nextTab !== SHEAR_APPROVAL_VIEW) activeShearApprovalDetailId = '';
@@ -118663,6 +118702,12 @@ C.14.043 C.15.000
             }
             if (nextTab === MANAGER_ACCESS_CONTROL_VIEW) {
                 loadAccessControlMatrix(false).catch(() => {});
+            }
+            if (nextTab === MANAGER_CODEX_OPERATIONS_VIEW) {
+                loadCodexOpsTasks(false).catch(() => {});
+                scheduleCodexOpsPoll();
+            } else {
+                stopCodexOpsPoll();
             }
             renderHomeOrManagersNow(true);
             if (typeof syncHomeDashboardBodyMode === 'function') syncHomeDashboardBodyMode();
@@ -126092,6 +126137,404 @@ C.14.043 C.15.000
             return `<div class="space-y-5">${auditBanner}${errorHtml}<section class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Managers · Access Control</div><div class="mt-1 text-xl font-black text-slate-900">Policy v${escapeHtml(String(data.policy.version || 0))} · Revision ${escapeHtml(String(data.policy.revision || 0))}</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Y/N shows effective access. Role supplies the default; a user override takes precedence. ${escapeHtml(editHelp)}</div></div><div class="flex flex-wrap gap-2"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase text-emerald-800" onclick="return refreshAccessControlMatrix()"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button><button type="button" class="min-h-[44px] rounded-xl border border-blue-200 bg-blue-50 px-4 text-[10px] font-black uppercase text-blue-800" onclick="return exportAccessControlCsv()"><i class="ph-bold ph-download-simple mr-1"></i>CSV</button></div></div><div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">${statusCards}</div></section>${renderAccessControlEditor()}<section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="grid gap-3 md:grid-cols-4"><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">View<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlViewMode(this.value)"><option value="users" ${state.viewMode === 'users' ? 'selected' : ''}>Users</option><option value="roles" ${state.viewMode === 'roles' ? 'selected' : ''}>Role Defaults</option></select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Module<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlModuleFilter(this.value)"><option value="all">All Modules</option>${modules.map((moduleKey) => `<option value="${escapeHtml(moduleKey)}" ${state.selectedModule === moduleKey ? 'selected' : ''}>${escapeHtml(moduleKey)}</option>`).join('')}</select></label><label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Role Filter<select class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-black text-slate-900" onchange="return setAccessControlRoleFilter(this.value)" ${state.viewMode === 'roles' ? 'disabled' : ''}><option value="all">All Roles</option>${roles.map((roleKey) => `<option value="${escapeHtml(roleKey)}" ${state.selectedRole === roleKey ? 'selected' : ''}>${escapeHtml(roleKey)}</option>`).join('')}</select></label><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Shown</div><div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(String(subjects.length))} × ${escapeHtml(String(permissions.length))}</div></div></div></section>${columnWindowHtml}${renderAccessControlMatrixTable(subjects, permissions)}${publishHtml}</div>`;
         }
 
+        function createCodexOpsUuid() {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+            const bytes = new Uint8Array(16);
+            window.crypto.getRandomValues(bytes);
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        }
+
+        async function invokeCodexOpsApi(action = '', payload = {}, timeoutMs = 45000) {
+            const headers = await getNativeAuthRequestHeaders().catch(() => null);
+            if (!headers || !headers.Authorization) throw new Error('Authenticated Supabase session required.');
+            const response = await fetchWithTimeout(CODEX_OPS_FUNCTION_URL, {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify(Object.assign({ action }, payload || {}))
+            }, Math.max(5000, Number(timeoutMs) || 45000), `Codex Operations ${action}`);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const error = new Error(String(data && data.error || `CODEX_OPS_${response.status}`));
+                error.status = response.status;
+                throw error;
+            }
+            return data;
+        }
+
+        async function loadCodexOpsCapabilities(force = false) {
+            if (getCodexOpsCurrentUserKey() !== 'dylan_collyge') {
+                codexOpsState.capabilities = null;
+                codexOpsState.capabilitiesLoaded = true;
+                return null;
+            }
+            if (codexOpsState.capabilitiesLoading) return null;
+            if (codexOpsState.capabilitiesLoaded && !force) return codexOpsState.capabilities;
+            codexOpsState.capabilitiesLoading = true;
+            try {
+                codexOpsState.capabilities = await invokeCodexOpsApi('capabilities', {}, 20000);
+                codexOpsState.capabilitiesLoaded = true;
+                codexOpsState.error = '';
+                return codexOpsState.capabilities;
+            } catch (error) {
+                codexOpsState.capabilities = null;
+                codexOpsState.capabilitiesLoaded = true;
+                codexOpsState.error = String(error && error.message || 'CODEX_OPS_CAPABILITIES_FAILED');
+                return null;
+            } finally {
+                codexOpsState.capabilitiesLoading = false;
+                if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
+            }
+        }
+
+        async function loadCodexOpsTasks(force = false) {
+            if (codexOpsState.tasksLoading) return codexOpsState.tasks;
+            if (codexOpsState.tasksLoaded && !force) return codexOpsState.tasks;
+            codexOpsState.tasksLoading = true;
+            const token = ++codexOpsState.requestToken;
+            try {
+                const rows = await invokeCodexOpsApi('list', { limit: 50 }, 25000);
+                if (token !== codexOpsState.requestToken) return codexOpsState.tasks;
+                codexOpsState.tasks = Array.isArray(rows) ? rows : [];
+                codexOpsState.tasksLoaded = true;
+                codexOpsState.error = '';
+                if (codexOpsState.activeTaskId) await loadCodexOpsTask(codexOpsState.activeTaskId, true);
+            } catch (error) {
+                if (token === codexOpsState.requestToken) codexOpsState.error = String(error && error.message || 'CODEX_OPS_LIST_FAILED');
+            } finally {
+                codexOpsState.tasksLoading = false;
+                if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_CODEX_OPERATIONS_VIEW) scheduleManagersRender(true);
+            }
+            return codexOpsState.tasks;
+        }
+
+        async function loadCodexOpsTask(taskId = '', force = false) {
+            const safeId = String(taskId || '').trim();
+            if (!safeId) return null;
+            if (codexOpsState.taskLoading && !force) return codexOpsState.activeTask;
+            codexOpsState.taskLoading = true;
+            try {
+                const data = await invokeCodexOpsApi('get', { taskId: safeId, eventLimit: 200 }, 25000);
+                if (codexOpsState.activeTaskId === safeId) {
+                    codexOpsState.activeTask = data;
+                    codexOpsState.error = '';
+                }
+                return data;
+            } catch (error) {
+                codexOpsState.error = String(error && error.message || 'CODEX_OPS_TASK_FAILED');
+                return null;
+            } finally {
+                codexOpsState.taskLoading = false;
+                if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_CODEX_OPERATIONS_VIEW) scheduleManagersRender(true);
+            }
+        }
+
+        function scheduleCodexOpsPoll() {
+            stopCodexOpsPoll();
+            if (activeHomeTab !== MANAGER_CODEX_OPERATIONS_VIEW || document.hidden) return false;
+            codexOpsState.pollTimer = setTimeout(async () => {
+                codexOpsState.pollTimer = null;
+                await loadCodexOpsTasks(true).catch(() => {});
+                scheduleCodexOpsPoll();
+            }, 15000);
+            return false;
+        }
+
+        function stopCodexOpsPoll() {
+            if (codexOpsState.pollTimer) clearTimeout(codexOpsState.pollTimer);
+            codexOpsState.pollTimer = null;
+        }
+
+        function toggleCodexOpsComposer(open = null) {
+            codexOpsState.composeOpen = open == null ? !codexOpsState.composeOpen : !!open;
+            if (!codexOpsState.composeOpen) {
+                codexOpsState.draft = '';
+                codexOpsState.attachments = [];
+            }
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function updateCodexOpsDraft(value = '') {
+            codexOpsState.draft = String(value || '').slice(0, 12000);
+            return false;
+        }
+
+        function updateCodexOpsMessageDraft(value = '') {
+            codexOpsState.messageDraft = String(value || '').slice(0, 12000);
+            return false;
+        }
+
+        function selectCodexOpsAttachments(input = null) {
+            const files = Array.from(input && input.files || []);
+            const images = files.filter((file) => String(file.type || '').toLowerCase().startsWith('image/'));
+            const videos = files.filter((file) => String(file.type || '').toLowerCase().startsWith('video/'));
+            const invalid = files.find((file) => {
+                const type = String(file.type || '').toLowerCase();
+                if (type.startsWith('image/')) return file.size > 15 * 1024 * 1024;
+                if (type.startsWith('video/')) return file.size > 150 * 1024 * 1024;
+                return true;
+            });
+            if (images.length > 10 || videos.length > 2 || invalid) {
+                showToast('Evidence Not Added', 'Use up to 10 images at 15 MB each and two MP4, WebM, or MOV videos at 150 MB each.', true);
+                if (input) input.value = '';
+                return false;
+            }
+            codexOpsState.attachments = files;
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        async function uploadCodexOpsEvidence(taskId = '', revision = 0, file = null) {
+            const begin = await invokeCodexOpsApi('begin-upload', {
+                taskId,
+                revision,
+                idempotencyKey: createCodexOpsUuid(),
+                name: file && file.name || 'evidence',
+                mime: file && file.type || 'application/octet-stream'
+            }, 25000);
+            const client = getSupabaseBrowserClient();
+            if (!client || !client.storage) throw new Error('Secure evidence upload is unavailable.');
+            const upload = await client.storage.from('codex-ops-evidence-v1').uploadToSignedUrl(begin.path, begin.token, file, {
+                contentType: file.type,
+                upsert: false
+            });
+            if (upload.error) throw new Error('CODEX_OPS_UPLOAD_FAILED');
+            return await invokeCodexOpsApi('finalize-upload', {
+                taskId,
+                revision,
+                attachmentId: begin.attachmentId,
+                path: begin.path
+            }, 45000);
+        }
+
+        async function dispatchCodexOpsTask(taskId = '', revision = 0, dispatchAction = 'diagnose') {
+            return await invokeCodexOpsApi('dispatch', {
+                taskId,
+                revision,
+                dispatchAction,
+                idempotencyKey: createCodexOpsUuid()
+            }, 30000);
+        }
+
+        async function submitCodexOpsTask() {
+            if (codexOpsState.sending) return false;
+            const description = String(codexOpsState.draft || '').trim();
+            if (description.length < 4) {
+                showToast('Describe the Issue', 'Add what happened, what you expected, and where you saw it.', true);
+                return false;
+            }
+            codexOpsState.sending = true;
+            codexOpsState.error = '';
+            scheduleManagersRender(true);
+            try {
+                const created = await invokeCodexOpsApi('create', { description, idempotencyKey: createCodexOpsUuid() }, 30000);
+                const taskId = String(created.id || '');
+                const revision = Number(created.revision || 1);
+                for (const file of codexOpsState.attachments) await uploadCodexOpsEvidence(taskId, revision, file);
+                await dispatchCodexOpsTask(taskId, revision, 'diagnose');
+                codexOpsState.composeOpen = false;
+                codexOpsState.draft = '';
+                codexOpsState.attachments = [];
+                codexOpsState.activeTaskId = taskId;
+                await loadCodexOpsTasks(true);
+                await loadCodexOpsTask(taskId, true);
+                showToast('Task Queued', 'Luna will diagnose it on a guarded GitHub runner.');
+            } catch (error) {
+                codexOpsState.error = String(error && error.message || 'CODEX_OPS_SUBMIT_FAILED');
+                showToast('Task Not Started', codexOpsErrorMessage(codexOpsState.error), true);
+                await loadCodexOpsTasks(true).catch(() => {});
+            } finally {
+                codexOpsState.sending = false;
+                scheduleManagersRender(true);
+            }
+            return false;
+        }
+
+        function openCodexOpsTask(taskId = '') {
+            codexOpsState.activeTaskId = String(taskId || '').trim();
+            codexOpsState.activeTask = null;
+            codexOpsState.messageDraft = '';
+            loadCodexOpsTask(codexOpsState.activeTaskId, true).catch(() => {});
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function closeCodexOpsTask() {
+            codexOpsState.activeTaskId = '';
+            codexOpsState.activeTask = null;
+            codexOpsState.messageDraft = '';
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        async function sendCodexOpsFollowUp() {
+            if (codexOpsState.sending) return false;
+            const detail = codexOpsState.activeTask && codexOpsState.activeTask.task;
+            const message = String(codexOpsState.messageDraft || '').trim();
+            if (!detail || !message) return false;
+            codexOpsState.sending = true;
+            try {
+                const result = await invokeCodexOpsApi('message', {
+                    taskId: detail.id,
+                    revision: detail.revision,
+                    message,
+                    idempotencyKey: createCodexOpsUuid()
+                });
+                codexOpsState.messageDraft = '';
+                if (['queued', 'needs_input', 'blocked', 'failed', 'needs_escalation', 'ready_for_approval'].includes(String(detail.status || ''))) {
+                    await dispatchCodexOpsTask(detail.id, Number(result.revision), 'diagnose');
+                }
+                await loadCodexOpsTasks(true);
+                await loadCodexOpsTask(detail.id, true);
+            } catch (error) {
+                codexOpsState.error = String(error && error.message || 'CODEX_OPS_MESSAGE_FAILED');
+                showToast('Message Not Sent', codexOpsErrorMessage(codexOpsState.error), true);
+            } finally {
+                codexOpsState.sending = false;
+                scheduleManagersRender(true);
+            }
+            return false;
+        }
+
+        async function cancelCodexOpsTask() {
+            const detail = codexOpsState.activeTask && codexOpsState.activeTask.task;
+            if (!detail || !confirm('Cancel this Codex task? Running work will stop at the next safe boundary.')) return false;
+            try {
+                await invokeCodexOpsApi('cancel', { taskId: detail.id, revision: detail.revision, idempotencyKey: createCodexOpsUuid() });
+                await loadCodexOpsTasks(true);
+                await loadCodexOpsTask(detail.id, true);
+            } catch (error) {
+                showToast('Could Not Cancel', codexOpsErrorMessage(error && error.message), true);
+            }
+            return false;
+        }
+
+        async function escalateCodexOpsTask() {
+            const detail = codexOpsState.activeTask && codexOpsState.activeTask.task;
+            if (!detail || detail.status !== 'needs_escalation') return false;
+            try {
+                const result = await invokeCodexOpsApi('escalate', {
+                    taskId: detail.id,
+                    revision: detail.revision,
+                    reason: 'Request one read-only Sol review.',
+                    idempotencyKey: createCodexOpsUuid()
+                });
+                await dispatchCodexOpsTask(detail.id, Number(result.revision), 'sol_review');
+                await loadCodexOpsTask(detail.id, true);
+            } catch (error) {
+                showToast('Review Not Started', codexOpsErrorMessage(error && error.message), true);
+            }
+            return false;
+        }
+
+        async function approveCodexOpsDeployment() {
+            if (codexOpsState.sending) return false;
+            const detail = codexOpsState.activeTask && codexOpsState.activeTask.task;
+            const capabilities = codexOpsState.capabilities || {};
+            if (!detail || detail.status !== 'ready_for_approval' || !capabilities.canApprove || !detail.pathPolicyPassed || !detail.requiredChecksPassed) return false;
+            const sha = String(detail.headSha || '').toLowerCase();
+            if (!/^[0-9a-f]{40}$/.test(sha)) return false;
+            if (!confirm(`Approve and deploy commit ${sha.slice(0, 12)}? This also authorizes one deterministic rollback of this exact release.`)) return false;
+            codexOpsState.sending = true;
+            scheduleManagersRender(true);
+            try {
+                await invokeCodexOpsApi('approve', {
+                    taskId: detail.id,
+                    revision: detail.revision,
+                    headSha: sha,
+                    idempotencyKey: createCodexOpsUuid()
+                }, 60000);
+                await loadCodexOpsTask(detail.id, true);
+                showToast('Deployment Started', 'The GitHub App verified and merged the exact approved commit.');
+            } catch (error) {
+                showToast('Approval Stopped', codexOpsErrorMessage(error && error.message), true);
+            } finally {
+                codexOpsState.sending = false;
+                scheduleManagersRender(true);
+            }
+            return false;
+        }
+
+        function codexOpsErrorMessage(code = '') {
+            const safe = String(code || '').toUpperCase();
+            if (safe.includes('REVISION_CONFLICT') || safe.includes('HEAD_CHANGED')) return 'The task changed. Refresh and review the current revision.';
+            if (safe.includes('CHECKS_INCOMPLETE')) return 'Required GitHub checks are not all successful yet.';
+            if (safe.includes('SUBMISSION_DISABLED')) return 'Mobile Codex submission is not enabled yet.';
+            if (safe.includes('DEPLOYMENT_DISABLED')) return 'Phone deployment approval is still disabled.';
+            if (safe.includes('ATTACHMENT')) return 'One evidence file could not be securely verified.';
+            if (safe.includes('GITHUB_APP_NOT_CONFIGURED')) return 'The deployment GitHub App is not configured yet.';
+            return 'The guarded operation could not be completed. Refresh and try again.';
+        }
+
+        function codexOpsStatusLabel(status = '') {
+            const labels = { queued:'Queued', diagnosing:'Diagnosing', needs_input:'Needs Input', fixing:'Fixing', testing:'Testing', ready_for_approval:'Ready for Approval', deploying:'Deploying', live:'Live', blocked:'Blocked', failed:'Failed', reverted:'Reverted', cancelled:'Cancelled', needs_escalation:'Needs Escalation' };
+            return labels[String(status || '')] || 'Queued';
+        }
+
+        function renderCodexOpsStatus(status = '') {
+            const safe = String(status || 'queued');
+            return `<span class="codex-ops-status codex-ops-status--${escapeHtml(safe.replace(/[^a-z_]+/g, ''))}">${escapeHtml(codexOpsStatusLabel(safe))}</span>`;
+        }
+
+        function formatCodexOpsTimestamp(value = '') {
+            const parsed = new Date(value || '');
+            if (Number.isNaN(parsed.getTime())) return 'Just now';
+            return parsed.toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+        }
+
+        function formatCodexOpsFileSize(value = 0) {
+            const bytes = Math.max(0, Number(value) || 0);
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function renderCodexOpsTaskList() {
+            const term = normalizeSearchValue(managersSearchTerm || '');
+            const tasks = (Array.isArray(codexOpsState.tasks) ? codexOpsState.tasks : []).filter((task) => !term || doesProgressiveSearchFieldsMatch([task.title, task.description, task.status, task.branch, task.fingerprint], term));
+            const cards = tasks.map((task) => `<button type="button" class="codex-ops-task-card" onclick="return openCodexOpsTask('${escJsAttrValue(task.id)}')"><span class="min-w-0"><span class="block truncate text-left text-[15px] font-black text-slate-900">${escapeHtml(task.title || task.description || 'Codex task')}</span><span class="mt-1 block text-left text-[11px] font-bold text-slate-500">${escapeHtml(formatCodexOpsTimestamp(task.updatedAt || task.createdAt))} · Revision ${escapeHtml(String(task.revision || 1))}</span></span>${renderCodexOpsStatus(task.status)}</button>`).join('');
+            return cards || `<div class="codex-ops-empty">${codexOpsState.tasksLoading ? 'Loading tasks…' : 'No Codex tasks match this search.'}</div>`;
+        }
+
+        function renderCodexOpsComposer() {
+            if (!codexOpsState.composeOpen) return '';
+            const files = codexOpsState.attachments.map((file) => `<span class="codex-ops-file-chip"><i class="ph-bold ${String(file.type || '').startsWith('video/') ? 'ph-video-camera' : 'ph-image'}"></i>${escapeHtml(file.name)} · ${escapeHtml(formatCodexOpsFileSize(file.size))}</span>`).join('');
+            return `<section class="codex-ops-panel"><div class="codex-ops-kicker">New Guarded Task</div><label class="codex-ops-label" for="codex-ops-description">What is wrong, what should happen, and where did you see it?</label><textarea id="codex-ops-description" class="codex-ops-textarea" maxlength="12000" rows="6" placeholder="Describe the defect and steps to reproduce it…" oninput="return updateCodexOpsDraft(this.value)">${escapeHtml(codexOpsState.draft || '')}</textarea><div class="mt-3 flex flex-wrap gap-2">${files}</div><div class="mt-4 grid grid-cols-2 gap-3"><label class="codex-ops-secondary-btn cursor-pointer"><i class="ph-bold ph-paperclip"></i>Evidence<input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,video/mp4,video/webm,video/quicktime" multiple onchange="return selectCodexOpsAttachments(this)"></label><button type="button" class="codex-ops-primary-btn" ${codexOpsState.sending ? 'disabled' : ''} onclick="return submitCodexOpsTask()"><i class="ph-bold ph-paper-plane-tilt"></i>${codexOpsState.sending ? 'Sending…' : 'Send to Codex'}</button></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Evidence stays private. Luna diagnoses read-only; Terra runs only for a demonstrated permitted defect.</div></section>`;
+        }
+
+        function renderCodexOpsTaskDetail() {
+            const data = codexOpsState.activeTask;
+            const task = data && data.task;
+            if (!task) return `<div class="codex-ops-empty">${codexOpsState.taskLoading ? 'Loading conversation…' : 'Task is unavailable.'}</div>`;
+            const messages = (Array.isArray(data.messages) ? data.messages : []).map((message) => `<article class="codex-ops-message codex-ops-message--${escapeHtml(message.actorType || 'system')}"><div class="flex items-center justify-between gap-3"><span class="text-[10px] font-black uppercase tracking-[0.14em]">${escapeHtml(message.actorType === 'user' ? 'Dylan' : (message.model || message.actorType || 'System'))}</span><time class="text-[10px] font-bold opacity-60">${escapeHtml(formatCodexOpsTimestamp(message.createdAt))}</time></div><div class="mt-2 whitespace-pre-wrap text-[13px] font-semibold leading-5">${escapeHtml(message.body || '')}</div></article>`).join('');
+            const changedFiles = (Array.isArray(task.changedFiles) ? task.changedFiles : []).map((file) => `<li>${escapeHtml(file)}</li>`).join('');
+            const tests = (Array.isArray(task.tests) ? task.tests : []).map((test) => `<li>${escapeHtml(typeof test === 'string' ? test : JSON.stringify(test))}</li>`).join('');
+            const pr = task.pullRequestUrl ? `<a class="codex-ops-secondary-btn" href="${escapeHtml(task.pullRequestUrl)}" target="_blank" rel="noopener noreferrer"><i class="ph-bold ph-git-pull-request"></i>Open PR #${escapeHtml(String(task.pullRequestNumber || ''))}</a>` : '';
+            const canApprove = task.status === 'ready_for_approval' && codexOpsState.capabilities && codexOpsState.capabilities.canApprove === true && task.pathPolicyPassed === true && task.requiredChecksPassed === true;
+            const status = String(task.status || '');
+            const terminal = ['deploying','live','reverted','cancelled'].includes(status);
+            return `<div class="space-y-4"><button type="button" class="codex-ops-back" onclick="return closeCodexOpsTask()"><i class="ph-bold ph-arrow-left"></i>Tasks</button><section class="codex-ops-panel"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="codex-ops-kicker">Task · Revision ${escapeHtml(String(task.revision || 1))}</div><h3 class="mt-1 text-xl font-black text-slate-900">${escapeHtml(task.title || task.description || 'Codex task')}</h3></div>${renderCodexOpsStatus(task.status)}</div>${task.headSha ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] font-bold text-slate-700">Commit ${escapeHtml(task.headSha)}</div>` : ''}<div class="mt-3 flex flex-wrap gap-2">${pr}${task.status === 'needs_escalation' ? '<button type="button" class="codex-ops-secondary-btn" onclick="return escalateCodexOpsTask()"><i class="ph-bold ph-magnifying-glass"></i>Request Sol Review</button>' : ''}${canApprove ? `<button type="button" class="codex-ops-approve-btn" ${codexOpsState.sending ? 'disabled' : ''} onclick="return approveCodexOpsDeployment()"><i class="ph-bold ph-rocket-launch"></i>Approve and Deploy</button>` : ''}${!terminal ? '<button type="button" class="codex-ops-danger-btn" onclick="return cancelCodexOpsTask()">Cancel</button>' : ''}</div></section>${changedFiles || tests ? `<section class="codex-ops-panel"><div class="codex-ops-kicker">Reviewed Change</div>${changedFiles ? `<div class="mt-3 text-[11px] font-black uppercase text-slate-500">Files</div><ul class="codex-ops-review-list">${changedFiles}</ul>` : ''}${tests ? `<div class="mt-3 text-[11px] font-black uppercase text-slate-500">Tests</div><ul class="codex-ops-review-list">${tests}</ul>` : ''}</section>` : ''}<section class="space-y-3" aria-label="Codex conversation">${messages || '<div class="codex-ops-empty">No messages yet.</div>'}</section>${!terminal ? `<section class="codex-ops-panel"><label class="codex-ops-label" for="codex-ops-reply">Reply to Codex</label><textarea id="codex-ops-reply" class="codex-ops-textarea" rows="3" maxlength="12000" oninput="return updateCodexOpsMessageDraft(this.value)">${escapeHtml(codexOpsState.messageDraft || '')}</textarea><button type="button" class="codex-ops-primary-btn mt-3 w-full" ${codexOpsState.sending ? 'disabled' : ''} onclick="return sendCodexOpsFollowUp()"><i class="ph-bold ph-paper-plane-tilt"></i>Send</button></section>` : ''}</div>`;
+        }
+
+        function renderCodexOperationsPanel() {
+            const capabilities = codexOpsState.capabilities;
+            if (!capabilities) return `<div class="codex-ops-empty">${codexOpsState.capabilitiesLoading ? 'Checking protected access…' : 'Codex Operations is unavailable.'}</div>`;
+            if (codexOpsState.activeTaskId) return renderCodexOpsTaskDetail();
+            const error = codexOpsState.error ? `<div class="codex-ops-error" role="alert">${escapeHtml(codexOpsErrorMessage(codexOpsState.error))}</div>` : '';
+            return `<div class="space-y-4">${error}<section class="codex-ops-hero"><div><div class="codex-ops-kicker">Dylan Only · Mobile Operations</div><h2 class="mt-1 text-2xl font-black">Report, review, approve</h2><p class="mt-2 text-[13px] font-semibold opacity-80">Codex can prepare a safe repair and PR. Nothing reaches production until you approve the exact checked commit.</p></div><button type="button" class="codex-ops-new-btn" onclick="return toggleCodexOpsComposer()"><i class="ph-bold ph-plus"></i>New Task</button></section>${renderCodexOpsComposer()}<section class="space-y-3">${renderCodexOpsTaskList()}</section></div>`;
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) stopCodexOpsPoll();
+            else if (activeHomeTab === MANAGER_CODEX_OPERATIONS_VIEW) {
+                loadCodexOpsTasks(true).catch(() => {});
+                scheduleCodexOpsPoll();
+            }
+        });
+
         function canManageAccessControl(userOverride = '') {
             if (!userOverride && accessControlAdminState.capabilities) return accessControlAdminState.capabilities.canEdit === true;
             return [userOverride, currentUser, currentUserDisplay]
@@ -126104,6 +126547,17 @@ C.14.043 C.15.000
             if (accessControlAdminState.capabilities) return accessControlAdminState.capabilities.canView === true;
             const role = normalizeRoleAccessToken(firstNonEmptyValue(safeRole, currentRole, ''));
             return role === 'ADMIN' || role === 'MANAGER';
+        }
+
+        function getCodexOpsCurrentUserKey() {
+            return normalizeMovesUserKey(firstNonEmptyValue(currentUser, currentUserDisplay, ''));
+        }
+
+        function canViewCodexOperations() {
+            if (getCodexOpsCurrentUserKey() !== 'dylan_collyge') return false;
+            if (!codexOpsState.capabilitiesLoaded && !codexOpsState.capabilitiesLoading) loadCodexOpsCapabilities(false).catch(() => {});
+            const capabilities = codexOpsState.capabilities;
+            return !!(capabilities && capabilities.canView === true && capabilities.submissionEnabled === true);
         }
 
         function getManagersToolAccess() {
@@ -126128,6 +126582,7 @@ C.14.043 C.15.000
                 canViewShortageCancel: canViewManagerShortageCancel(),
                 canViewBlockClearing: canViewManagerBlockClearing(),
                 canManageAccessControl: canViewAccessControl(),
+                canViewCodexOperations: canViewCodexOperations(),
                 canViewLaborHours: canAccessView('hours')
             };
         }
@@ -126148,6 +126603,7 @@ C.14.043 C.15.000
             if (access.canViewShortageCancel) return MANAGER_SHORTAGE_CANCEL_VIEW;
             if (access.canViewBlockClearing) return MANAGER_BLOCK_CLEARING_VIEW;
             if (access.canManageAccessControl) return MANAGER_ACCESS_CONTROL_VIEW;
+            if (access.canViewCodexOperations) return MANAGER_CODEX_OPERATIONS_VIEW;
             if (access.canViewProductivity) return 'productivity';
             return '';
         }
@@ -126168,6 +126624,7 @@ C.14.043 C.15.000
             if (access.canViewShortageCancel) tabs.push({ id: MANAGER_SHORTAGE_CANCEL_VIEW, label: 'Shortage/Cancel' });
             if (access.canViewBlockClearing) tabs.push({ id: MANAGER_BLOCK_CLEARING_VIEW, label: 'Block Clearing' });
             if (access.canManageAccessControl) tabs.push({ id: MANAGER_ACCESS_CONTROL_VIEW, label: 'Access Control' });
+            if (access.canViewCodexOperations) tabs.push({ id: MANAGER_CODEX_OPERATIONS_VIEW, label: 'Codex Operations' });
             if (access.canViewLaborHours) tabs.push({ id: 'hours', label: 'Labor Hours' });
             return tabs;
         }
@@ -126206,6 +126663,7 @@ C.14.043 C.15.000
             if (safeTab === MANAGER_SHORTAGE_CANCEL_VIEW) return { label: 'Shortage/Cancel', description: 'Review SOC rows where ordered and shipped quantities do not match.', icon: 'ph-warning-circle' };
             if (safeTab === MANAGER_BLOCK_CLEARING_VIEW) return { label: 'Block Clearing', description: 'Email grouped clearing instructions from Drive Mode rows.', icon: 'ph-broom' };
             if (safeTab === MANAGER_ACCESS_CONTROL_VIEW) return { label: 'Access Control', description: 'Audit module and business-action access by role and user.', icon: 'ph-shield-checkered' };
+            if (safeTab === MANAGER_CODEX_OPERATIONS_VIEW) return { label: 'Codex Operations', description: 'Report a defect, review the repair, and approve one exact commit.', icon: 'ph-terminal-window' };
             if (safeTab === 'hours') return { label: 'Labor Hours', description: 'Open the labor-hours entry form.', icon: 'ph-clock' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
@@ -126229,6 +126687,7 @@ C.14.043 C.15.000
             if (tab === 'dashboard') return 'Search manager modules...';
             if (tab === MANAGER_TRANSACTIONS_KEYED_VIEW) return 'Search Created By names...';
             if (tab === MANAGER_ACCESS_CONTROL_VIEW) return 'Search usernames, names, roles, or permissions...';
+            if (tab === MANAGER_CODEX_OPERATIONS_VIEW) return 'Search Codex tasks and statuses...';
             if (tab === MANAGER_HISTORICAL_REPORT_VIEW) {
                 if (managerHistoricalReportState.level === 'names') return 'Search historical Common Names...';
                 if (managerHistoricalReportState.level === 'sizes') return 'Search container sizes...';
@@ -126324,6 +126783,10 @@ C.14.043 C.15.000
                 }, scheduledTerm, { force:true, debounceDelay:220, typingDelay:30, allowWhileTyping:true, interactiveCritical:true, maxDeferMs:500 });
                 return false;
             }
+            if (activeHomeTab === MANAGER_CODEX_OPERATIONS_VIEW) {
+                scheduleManagersRender(true);
+                return false;
+            }
             if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) {
                 scheduleSearchRender('manager-eval-report-2-search', () => {
                     if (scheduledTerm !== managersSearchTerm || activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW) return;
@@ -126390,6 +126853,10 @@ C.14.043 C.15.000
             if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW) {
                 accessControlAdminState.subjectOffset = 0;
                 loadAccessControlMatrix(true).catch(() => {});
+            }
+            if (activeHomeTab === MANAGER_CODEX_OPERATIONS_VIEW) {
+                scheduleManagersRender(true);
+                return false;
             }
             if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) {
                 renderManagers();
@@ -128475,6 +128942,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === MANAGER_SHORTAGE_CANCEL_VIEW) html += renderManagerShortageCancelPanel();
             else if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW) html += renderManagerBlockClearingPanel();
             else if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW) html += renderAccessControlPanel();
+            else if (activeHomeTab === MANAGER_CODEX_OPERATIONS_VIEW) html += renderCodexOperationsPanel();
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;

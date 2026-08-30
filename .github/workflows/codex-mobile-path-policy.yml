@@ -1,0 +1,25 @@
+name: Codex mobile path policy
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  codex-mobile-path-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate mobile-publisher paths and workflow safety
+        if: ${{ startsWith(github.head_ref, 'codex-mobile/task-') || startsWith(github.head_ref, 'codex-mobile/rollback-') }}
+        run: node scripts/validate-codex-mobile-patch.mjs --base=origin/${{ github.base_ref }} --head=HEAD
+      - name: Confirm ordinary PR is outside the mobile publisher
+        if: ${{ !startsWith(github.head_ref, 'codex-mobile/task-') && !startsWith(github.head_ref, 'codex-mobile/rollback-') }}
+        run: echo "Not a mobile-publisher branch."

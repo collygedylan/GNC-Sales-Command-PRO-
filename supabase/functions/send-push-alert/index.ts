@@ -75,6 +75,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
+  if (eventType.startsWith("codex_ops_")) return ["dylan_collyge"];
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
   if (eventType === "eval_assignment_unassigned" || eventType === "eval_assignment_summary") {
     const direct = normalizePayloadUserList(payload.managerUsernames || payload.manager_usernames || payload.targetUsers);
@@ -109,6 +110,25 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
   const assignedTo = String(payload.assignedTo || repName || "Unassigned").trim();
   const createdBy = String(payload.createdBy || payload.sentBy || "Someone").trim();
   const itemsCount = Math.max(0, Number(payload.itemsCount) || 0);
+  if (eventType.startsWith("codex_ops_")) {
+    const taskId = String(payload.taskId || "").trim();
+    const states: Record<string, { title: string; body: string }> = {
+      codex_ops_needs_input: { title: "Codex Needs Input", body: "A mobile repair task is waiting for your reply." },
+      codex_ops_ready: { title: "Codex Repair Ready", body: "Tests passed. Review the exact commit before deployment." },
+      codex_ops_live: { title: "Codex Repair Live", body: "The approved commit and production health were verified." },
+      codex_ops_failed: { title: "Codex Repair Stopped", body: "The task failed or was blocked without an unsafe change." },
+      codex_ops_reverted: { title: "Codex Repair Reverted", body: "The deterministic rollback is live and healthy." },
+    };
+    const state = states[eventType] || { title: "Codex Operations", body: "A task status changed." };
+    return {
+      ...state,
+      tag: `codex-ops-${taskId || Date.now()}-${eventType}`,
+      viewId: "managers",
+      homeTab: "codex-operations",
+      taskId,
+      url: "./"
+    };
+  }
   if (eventType === "eval_assignment_unassigned") {
     const itemcode = String(payload.itemcode || "New ItemCode").trim();
     return {
@@ -276,7 +296,8 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary") {
+  const codexEventTypes = new Set(["codex_ops_needs_input", "codex_ops_ready", "codex_ops_live", "codex_ops_failed", "codex_ops_reverted"]);
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary" && !codexEventTypes.has(eventType)) {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
 

@@ -86,6 +86,7 @@ let poManagementHealth = null;
 let accessControlHealth = null;
 let evalRequestDeliveryHealth = null;
 let evalItemcodeWorkHealth = null;
+let codexOpsHealth = null;
 let recentSemanticFailures = [];
 let appsScriptHealth = null;
 
@@ -320,6 +321,31 @@ if (serviceRoleKey) {
     largestOriginCount: Math.max(0, Number(evalItemcodeWorkHealth.largest_origin_count) || 0)
   });
 
+  const codexOpsHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_codex_ops_health_snapshot_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const codexOpsHealthText = await codexOpsHealthResponse.text();
+  try { codexOpsHealth = codexOpsHealthText ? JSON.parse(codexOpsHealthText) : null; } catch {}
+  if (!codexOpsHealthResponse.ok || !codexOpsHealth || typeof codexOpsHealth !== 'object') {
+    throw new Error(`production_codex_ops_health_unavailable_HTTP_${codexOpsHealthResponse.status}`);
+  }
+  const codexOpsContractHealthy = codexOpsHealth.contract_version === 'mobile-codex-ops-v1'
+    && Number(codexOpsHealth.private_table_count) === 7
+    && codexOpsHealth.anonymous_table_access_denied === true
+    && codexOpsHealth.authenticated_table_access_denied === true
+    && Number(codexOpsHealth.active_task_count) <= 1;
+  if (!codexOpsContractHealthy) throw new Error('production_codex_ops_contract_unhealthy');
+  checks.push({
+    name: 'codex_ops_v1',
+    status: codexOpsHealthResponse.status,
+    contractVersion: codexOpsHealth.contract_version,
+    submissionEnabled: codexOpsHealth.submission_enabled === true,
+    deploymentEnabled: codexOpsHealth.deployment_enabled === true,
+    activeTaskCount: Math.max(0, Number(codexOpsHealth.active_task_count) || 0)
+  });
+
   // Read only non-PII health fields. The current scheduled audit was evaluated
   // above, so older audit rows are excluded from semantic client failures.
   const recentSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -399,6 +425,13 @@ const result = {
     pdfOriginMismatchCount: Math.max(0, Number(evalItemcodeWorkHealth.pdf_origin_mismatch_count) || 0),
     excelAttachmentViolationCount: Math.max(0, Number(evalItemcodeWorkHealth.excel_attachment_violation_count) || 0),
     largestOriginCount: Math.max(0, Number(evalItemcodeWorkHealth.largest_origin_count) || 0)
+  } : null,
+  codexOps: codexOpsHealth ? {
+    contractVersion: String(codexOpsHealth.contract_version || ''),
+    submissionEnabled: codexOpsHealth.submission_enabled === true,
+    deploymentEnabled: codexOpsHealth.deployment_enabled === true,
+    activeTaskCount: Math.max(0, Number(codexOpsHealth.active_task_count) || 0),
+    pendingAttachmentCount: Math.max(0, Number(codexOpsHealth.pending_attachment_count) || 0)
   } : null,
   appsScript: appsScriptHealth,
   recentSemanticFailureCount: recentSemanticFailures.length

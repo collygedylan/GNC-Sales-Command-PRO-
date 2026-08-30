@@ -115,7 +115,7 @@ port = 54324
 [storage]
 enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
-file_size_limit = "50MiB"
+file_size_limit = "150MiB"
 
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
@@ -391,6 +391,19 @@ entrypoint = "./functions/auth-admin/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/request-delivery-worker/index.ts"
+
+[functions.codex-ops-api]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/codex-ops-api/index.ts"
+
+[functions.codex-ops-runner]
+enabled = true
+# GitHub-hosted runners do not hold a Supabase user JWT. This endpoint validates
+# GitHub OIDC issuer, audience, repository, workflow, ref, environment, runner,
+# and commit claims before returning any task context.
+verify_jwt = false
+entrypoint = "./functions/codex-ops-runner/index.ts"
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"

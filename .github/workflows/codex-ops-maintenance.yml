@@ -1,0 +1,27 @@
+name: Codex operations evidence retention
+
+on:
+  schedule:
+    - cron: '41 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    environment: codex-ops
+    timeout-minutes: 10
+    env:
+      CODEX_OPS_OIDC_AUDIENCE: ${{ vars.CODEX_OPS_OIDC_AUDIENCE || 'gnc-codex-ops-v1' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/codex-ops-runner-client.mjs cleanup
