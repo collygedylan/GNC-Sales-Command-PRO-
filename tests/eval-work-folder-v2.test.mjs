@@ -78,14 +78,14 @@ test('every origin has isolated evidence and exact-row photo scope', () => {
   assert.match(html, /requiredEvidence\.forEach/);
 });
 
-test('Queue drills by block while multi-block assignments count once', () => {
+test('Queue shows every origin as a Request-style row card while opening one shared assignment', () => {
   assert.match(html, /function getEvalWorkOriginEntries/);
-  assert.match(html, /Choose Block Alpha/);
-  assert.match(html, /Block Number/);
-  assert.match(html, /works: new Set\(\)/);
-  assert.match(html, /group\.works\.size/);
-  assert.match(html, /getEvalWorkOriginEntries\(row\)\.filter/);
-  assert.match(html, /openEvalWorkDetail\([\s\S]*focus\.origin_unique_id/);
+  assert.match(html, /function buildEvalWorkQueueOriginDisplayItem/);
+  assert.match(html, /rows\.flatMap\(\(row\) => getEvalWorkOriginEntries\(row\)\.map/);
+  assert.match(html, /sourceView === 'eval-work'/);
+  assert.match(html, /data-eval-work-origin-row="true"/);
+  assert.match(html, /app-request-card-surface/);
+  assert.match(html, /openEvalWorkDetail\('\$\{safeWorkId\}','\$\{safeOriginUid\}'\)/);
   assert.match(html, /evalWorkActiveOriginUid/);
   assert.match(html, /evidenceByOrigin/);
 });

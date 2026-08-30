@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('assigned Eval Work is a phone-safe single-column editor with every AV Note reachable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -71,7 +71,7 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -113,55 +113,55 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
   expect(result.pickerZ).toBeGreaterThan(result.setupZ);
 });
 
-test('Queue Eval Work renders every stored Drive Mode origin instead of retaining the prior queue', async ({ page }) => {
+test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.02', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.03', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
-    currentUser = 'dylan_collyge';
-    currentUserDisplay = 'Dylan Collyge';
-    evalWorkManager = true;
-    evalWorkLoaded = true;
-    evalWorkLoading = false;
-    evalWorkError = '';
-    evalWorkStatusFilter = 'all';
-    evalWorkAssigneeFilter = 'all';
-    evalWorkBlockAlphaFilter = '';
-    evalWorkBlockNumberFilter = '';
-    evalWorkRows = [{
+    const fixtureRows = [{
       id: 'eval-work-drive-rows', status: 'open', version: 1, itemcode: '007541.051.1',
       commonname: 'Blue Bayou Pampas Grass', contsize: '#3', assignee_username: 'dylan_collyge',
       assignee_display: 'Dylan Collyge', updated_at: '2026-08-30T15:47:10.528Z',
       contract_version: 'eval-work-v2-multi-origin',
       origins: [
-        { origin_unique_id: 'drive-origin-1', locationcode: 'F.08.000', lotcode: '26.X', block_alpha: 'F', block_number: '08', origin_snapshot: {} },
-        { origin_unique_id: 'drive-origin-2', locationcode: 'F.16.000', lotcode: '27.S1', block_alpha: 'F', block_number: '16', origin_snapshot: {} },
-        { origin_unique_id: 'drive-origin-3', locationcode: 'E.07.000', lotcode: '26.U2', origin_snapshot: { BLOCKALPHA: 'E', BLOCKNUMBER: '07' } }
+        { origin_unique_id: 'drive-origin-1', locationcode: 'F.08.000', lotcode: '26.X', block_alpha: 'F', block_number: '08', origin_snapshot: { PTRONHAND: 12 } },
+        { origin_unique_id: 'drive-origin-2', locationcode: 'F.16.000', lotcode: '27.S1', block_alpha: 'F', block_number: '16', origin_snapshot: { PTRONHAND: 7 } },
+        { origin_unique_id: 'drive-origin-3', locationcode: 'E.07.000', lotcode: '26.U2', origin_snapshot: { BLOCKALPHA: 'E', BLOCKNUMBER: '07', PTRONHAND: 4 } }
       ]
+    }, {
+      id: 'eval-work-other-user', status: 'open', version: 1, itemcode: 'OTHER.001',
+      commonname: 'Other Evaluator Item', contsize: '#5', assignee_username: 'megan_kelly',
+      assignee_display: 'Megan Kelly', updated_at: '2026-08-30T15:48:10.528Z',
+      contract_version: 'eval-work-v2-multi-origin',
+      origins: [{ origin_unique_id: 'other-origin', locationcode: 'A.01.000', lotcode: '26.Z', block_alpha: 'A', block_number: '01', origin_snapshot: {} }]
     }];
     const previousMarkup = '<div id="previous-queue-card">Suspend Tag</div>';
     const host = document.createElement('main');
     host.id = 'eval-work-queue-regression-host';
     host.innerHTML = previousMarkup;
     document.body.appendChild(host);
-    const html = renderEvalWorkQueue();
+    const html = renderEvalWorkQueue({ rows: fixtureRows, manager: true, statusFilter: 'all', assigneeFilter: 'dylan_collyge' });
     host.innerHTML = html;
-    const originEntries = getEvalWorkOriginEntries(evalWorkRows[0]);
+    const cards = Array.from(host.querySelectorAll('[data-eval-work-origin-row="true"]'));
     return {
       replacedPriorQueue: !host.querySelector('#previous-queue-card'),
-      blockAlphaF: originEntries.some((origin) => origin.block_alpha === 'F' && ['08', '16'].includes(origin.block_number)),
-      blockAlphaE: originEntries.some((origin) => origin.block_alpha === 'E' && origin.block_number === '07'),
-      everyOriginGrouped: originEntries.length === 3 && originEntries.every((origin) => origin.block_alpha && origin.block_number),
-      queueHtml: html.length > 0
+      requestStyleCards: cards.length === 3 && cards.every((card) => card.classList.contains('app-request-card-surface')),
+      everyLocationVisible: ['F.08.000', 'F.16.000', 'E.07.000'].every((location) => host.textContent.includes(location)),
+      everyLotVisible: ['26.X', '27.S1', '26.U2'].every((lot) => host.textContent.includes(lot)),
+      noBlockDrillCards: !host.querySelector('.eval-work-drill-card'),
+      sharedAssignment: cards.every((card) => card.getAttribute('data-eval-work-id') === 'eval-work-drive-rows'),
+      otherEvaluatorHidden: !host.textContent.includes('Other Evaluator Item')
     };
   })()`));
 
   expect(result).toEqual({
     replacedPriorQueue: true,
-    blockAlphaF: true,
-    blockAlphaE: true,
-    everyOriginGrouped: true,
-    queueHtml: true
+    requestStyleCards: true,
+    everyLocationVisible: true,
+    everyLotVisible: true,
+    noBlockDrillCards: true,
+    sharedAssignment: true,
+    otherEvaluatorHidden: true
   });
 });
