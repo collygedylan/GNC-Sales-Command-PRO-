@@ -361,6 +361,7 @@ test('live PO Management uses authenticated PostgREST and never the retired data
 test('live authorized Admin opens Access Control from the manager module card without mutation', async ({ page }) => {
   const blockedMutations: string[] = [];
   const accessRequests: string[] = [];
+  const codexReadRequests: string[] = [];
   const forbiddenPolicyMutations: string[] = [];
   const pageErrors: string[] = [];
 
@@ -416,6 +417,27 @@ test('live authorized Admin opens Access Control from the manager module card wi
       });
       return;
     }
+    if (method === 'POST' && pathname.endsWith('/functions/v1/codex-ops-api')) {
+      let payload: Record<string, unknown> = {};
+      try { payload = request.postDataJSON() as Record<string, unknown>; } catch {}
+      if (payload.action === 'capabilities') {
+        codexReadRequests.push('capabilities');
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            contractVersion: 'mobile-codex-ops-v1',
+            username: 'dylan_collyge',
+            canView: true,
+            canSubmit: false,
+            canApprove: false,
+            submissionEnabled: false,
+            deploymentEnabled: false
+          })
+        });
+        return;
+      }
+    }
     if (pathname.endsWith('/rest/v1/rpc/save_access_control_draft_v1')
       || pathname.endsWith('/rest/v1/rpc/publish_access_control_policy_v1')) {
       forbiddenPolicyMutations.push(`${method}:${pathname}`);
@@ -469,6 +491,9 @@ test('live authorized Admin opens Access Control from the manager module card wi
       matrixContract: accessCanaryState && accessCanaryState.matrixContract,
       canViewMatrix: accessCanaryState && accessCanaryState.canViewMatrix,
       canEditMatrix: accessCanaryState && accessCanaryState.canEditMatrix,
+      codexContract: codexOpsState && codexOpsState.capabilities && codexOpsState.capabilities.contractVersion,
+      codexSubmissionEnabled: codexOpsState && codexOpsState.capabilities && codexOpsState.capabilities.submissionEnabled,
+      codexDeploymentEnabled: codexOpsState && codexOpsState.capabilities && codexOpsState.capabilities.deploymentEnabled,
       managerSearchPlaceholder: getManagersSearchPlaceholder()
     };
   })()`));
@@ -477,6 +502,7 @@ test('live authorized Admin opens Access Control from the manager module card wi
     '/rest/v1/rpc/get_my_app_permissions_v1',
     '/rest/v1/rpc/get_access_control_matrix_v2'
   ]);
+  expect(codexReadRequests).toEqual(['capabilities']);
   expect(result).toEqual({
     release: expectedRelease,
     contractVersion: 'app-access-v1',
@@ -489,6 +515,9 @@ test('live authorized Admin opens Access Control from the manager module card wi
     matrixContract: 'app-access-view-v2',
     canViewMatrix: true,
     canEditMatrix: true,
+    codexContract: 'mobile-codex-ops-v1',
+    codexSubmissionEnabled: false,
+    codexDeploymentEnabled: false,
     managerSearchPlaceholder: 'Search usernames, names, roles, or permissions...'
   });
   expect(forbiddenPolicyMutations).toEqual([]);

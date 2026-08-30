@@ -15,6 +15,7 @@ const maintenance = read('../.github/workflows/codex-ops-maintenance.yml');
 const pathWorkflow = read('../.github/workflows/codex-mobile-path-policy.yml');
 const html = read('../index.html');
 const healthProbe = read('../scripts/probe-production-auth-health.mjs');
+const productionCanary = read('./production-request-canary.spec.ts');
 
 test('private Codex control-plane tables are RLS protected and clients get RPCs only', () => {
   for (const table of ['tasks', 'messages', 'events', 'attachments', 'approvals', 'dispatches', 'audit_events']) {
@@ -103,6 +104,10 @@ test('guarded monitoring exposes only a sanitized contract snapshot', () => {
   assert.match(migration, /anonymous_table_access_denied/);
   assert.match(migration, /authenticated_table_access_denied/);
   assert.doesNotMatch(healthProbe, /codex_ops_tasks\?select/);
+  assert.match(productionCanary, /codexReadRequests/);
+  assert.match(productionCanary, /codexContract: 'mobile-codex-ops-v1'/);
+  assert.match(productionCanary, /codexSubmissionEnabled: false/);
+  assert.match(productionCanary, /codexDeploymentEnabled: false/);
 });
 
 test('PWA module is Dylan-only, mobile-first, and exact-commit approval aware', () => {
