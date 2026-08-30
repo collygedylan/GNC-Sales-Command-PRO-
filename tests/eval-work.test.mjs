@@ -93,9 +93,11 @@ test('Queue exposes only authorized Eval Work and supports offline-safe editing'
   assert.match(html, /Offline draft recovery is active\. Retry before submitting/);
   assert.match(html, /persistEvalWorkLocalDraft/);
   assert.match(html, /eval_work_version_conflict|code\.includes\('conflict'\)/);
-  assert.match(html, /class="eval-work-action-tray"/);
-  assert.match(html, /Save Draft/);
-  assert.match(html, /Submit/);
+  const detailBlock = html.slice(html.indexOf('function renderEvalWorkDetail'), html.indexOf('function getEvalWorkOriginEntries'));
+  assert.doesNotMatch(detailBlock, /eval-work-action-tray|Save Draft|> Submit</);
+  assert.match(html, /function scheduleEvalWorkServerDraftSync\(delay = 900\)/);
+  assert.match(html, /function syncEvalWorkDraftAutomatically\(\)/);
+  assert.match(html, /Draft saved automatically/);
   assert.doesNotMatch(html, /getManagerEvalReport2OriginBlock/);
   assert.match(html, /function getEvalWorkOriginEntries\(work = null\)[\s\S]*snapshot\.BLOCKALPHA[\s\S]*locationParts\[1\]/);
 });
@@ -141,9 +143,14 @@ test('Item Inquiry requires every Eval Work row to be Mark Done or No Action', (
   assert.match(html, /rowResolutions: new Map\(\)/);
   assert.match(html, /resolution: getEvalWorkInquiryRowResolution\(uid\)/);
   assert.match(html, /function validateEvalWorkInquiryRowResolutions\(work = null, inquiry = null\)/);
-  assert.match(html, /Every Item Inquiry row must be Mark Done or No Action before submitting/);
+  assert.match(html, /Every Item Inquiry row must be Mark Done or No Action before sending/);
   assert.match(html, /validateEvalWorkInquiryRowResolutions\(work, inquiry\)/);
-  assert.match(html, /email the changes to Dylan and Megan/);
+  assert.match(html, /function completeEvalWorkAfterFinalRowDecision\(\)/);
+  assert.match(html, /function queueEvalWorkAutomaticCompletion\(\)/);
+  assert.match(html, /progress\.remaining === 0[\s\S]*queueEvalWorkAutomaticCompletion/);
+  assert.match(html, /submitEvalWork\(null, \{ automatic: true \}\)/);
+  assert.match(html, /final row decision sends the completed Item Inquiry PDF to Dylan and Megan for review/);
+  assert.match(html, /Item Inquiry Sent[\s\S]*completed Item Inquiry PDF are sending to Dylan and Megan for review/);
 });
 
 test('assigned sales reps can use only the ownership-checked Eval photo scope', () => {

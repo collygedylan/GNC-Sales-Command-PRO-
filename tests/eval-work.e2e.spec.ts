@@ -2,12 +2,13 @@ import { expect, test } from '@playwright/test';
 
 test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.07&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
-  const result = await page.evaluate(() => window.eval(`(() => {
+  const result = await page.evaluate(() => window.eval(`(async () => {
     currentUser = 'assigned_evaluator';
     currentUserDisplay = 'Assigned Evaluator';
+    installMutationBlockedAccessCanaryIdentity('assigned_evaluator', 'Assigned Evaluator', 'User');
     evalWorkManager = false;
     processAndLoadData({ avNotesData: Array.from({ length: 80 }, (_, index) => ({ AV_NOTE: 'Evaluation option ' + String(index + 1).padStart(2, '0') })), _fromCache: true });
     const origin = {
@@ -28,11 +29,26 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
       ],
       context_rows: context, inquiry_draft: { rowOverlays: [], transaction: { requestActions: [], holdStopProposals: [] } },
       evidence_draft: {
-        'eval-origin-1': { photos: [], spec: '', caliper: '', locMatchPercent: '', avNote: '', pickNote: '', comments: '' },
-        'eval-origin-2': { photos: [], spec: '', caliper: '', locMatchPercent: '', avNote: '', pickNote: '', comments: '' }
+        'eval-origin-1': { photos: [{ filePath: 'eval/fixture/one.jpg', name: 'one.jpg' }], spec: '24 inch', caliper: '', locMatchPercent: '100', avNote: 'Verified', pickNote: '', comments: '' },
+        'eval-origin-2': { photos: [{ filePath: 'eval/fixture/two.jpg', name: 'two.jpg' }], spec: '30 inch', caliper: '', locMatchPercent: '95', avNote: 'Verified', pickNote: '', comments: '' }
       },
       delivery: { assignment: { status: 'delivered' } }
     };
+    let capturedSubmit = null;
+    let confirmationCount = 0;
+    const toastLog = [];
+    showToast = (title, message) => { toastLog.push([String(title || ''), String(message || '')]); };
+    showAppConfirm = async () => { confirmationCount += 1; return true; };
+    evalWorkApi = async (operation, payload) => {
+      if (operation === 'submit') {
+        capturedSubmit = payload;
+        return { ok: true, data: { ...work, status: 'submitted', version: 2, delivery: { completion: { status: 'queued' } } } };
+      }
+      if (operation === 'list') return { ok: true, data: [work], manager: false };
+      if (operation === 'save') return { ok: true, data: { ...work, version: Number(work.version || 1) + 1 } };
+      return { ok: true, data: {} };
+    };
+    await loadEvalWorkAssignments(true);
     openEvalWorkDetail(work.id, encodeURIComponent('eval-origin-2'));
     const host = document.createElement('main');
     host.id = 'eval-work-browser-host';
@@ -43,8 +59,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     const fields = ids.map((id) => document.getElementById(id));
     const photoInput = host.querySelector('input[type="file"][capture="environment"]');
     const tray = host.querySelector('.eval-work-action-tray');
-    const trayPosition = tray ? getComputedStyle(tray).position : '';
-    const saveAndSubmit = !!tray && /Save Draft/.test(tray.textContent || '') && /Submit/.test(tray.textContent || '');
+    const noManualActionTray = !tray && !/Save Draft|Submit/.test(host.textContent || '');
     openEvalWorkAvNoteSheet();
     const choices = Array.from(document.querySelectorAll('#eval-work-av-note-choices button'));
     const lastChoice = choices[choices.length - 1];
@@ -71,6 +86,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     rowCards[0].querySelector('[data-eval-row-resolution-action="done"]')?.click();
     const reviewedInquiry = collectEvalWorkInquiryPayload(work);
     const resolutionSummary = validateEvalWorkInquiryRowResolutions(work, reviewedInquiry);
+    await queueEvalWorkAutomaticCompletion();
     const inquiryResult = {
       present: !!host.querySelector('.eval-work-inquiry'),
       rowSections: host.querySelectorAll('.argos-reclass-row-card').length,
@@ -79,6 +95,9 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
       rowResolutions: Array.from(host.querySelectorAll('[data-reclass-row-card]')).map((card) => card.getAttribute('data-eval-row-resolution')),
       payloadResolutions: reviewedInquiry.rowOverlays.map((overlay) => overlay.resolution),
       resolutionSummary,
+      automaticSubmit: !!capturedSubmit && capturedSubmit.workId === work.id && capturedSubmit.inquiry.rowOverlays.every((overlay) => ['done', 'no_action'].includes(overlay.resolution)),
+      confirmationCount,
+      sentToast: toastLog.some(([title]) => title === 'Item Inquiry Sent'),
       evaluationHidden: !host.querySelector('.eval-work-evidence'),
       locSalesNoteHidden: !host.querySelector('.eval-work-loc-sales-note')
     };
@@ -86,8 +105,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
       evaluationResult,
       inquiryResult,
       photoCapture: !!photoInput,
-      trayPosition,
-      saveAndSubmit,
+      noManualActionTray,
       avChoices: choices.length,
       lastAvChoice: lastChoice ? lastChoice.textContent : '',
       noHorizontalOverflow: host.scrollWidth <= 391,
@@ -104,20 +122,22 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     currentNote: expect.stringContaining('Second location note'),
     editableNote: true
   });
-  expect(result.inquiryResult).toMatchObject({
+  expect(result.inquiryResult, JSON.stringify(result.inquiryResult)).toMatchObject({
     present: true,
     rowSections: 2,
     resolutionButtons: 4,
     rowResolutions: ['done', 'no_action'],
     payloadResolutions: ['done', 'no_action'],
-    resolutionSummary: { total: 2, done: 1, noAction: 1 }
+    resolutionSummary: { total: 2, done: 1, noAction: 1 },
+    automaticSubmit: true,
+    confirmationCount: 0,
+    sentToast: true
   });
   expect(result.inquiryResult.actionButtons).toBeGreaterThanOrEqual(8);
   expect(result.inquiryResult.evaluationHidden).toBe(true);
   expect(result.inquiryResult.locSalesNoteHidden).toBe(true);
   expect(result.photoCapture).toBe(true);
-  expect(['sticky', 'fixed']).toContain(result.trayPosition);
-  expect(result.saveAndSubmit).toBe(true);
+  expect(result.noManualActionTray).toBe(true);
   expect(result.avChoices).toBe(80);
   expect(result.lastAvChoice).toContain('80');
   expect(result.noHorizontalOverflow).toBe(true);
@@ -126,7 +146,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -170,7 +190,7 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
 
 test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
