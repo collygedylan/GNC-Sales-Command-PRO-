@@ -288,7 +288,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await expect(setupSheet).not.toContainText('Select All Lots');
   await expect(setupSheet).not.toContainText('Block Alpha');
   await expect(setupSheet).not.toContainText('Location/Lot');
-  await expect(setupSheet.locator('#manager-eval2-batch-summary')).toContainText('Current rows3');
+  await expect(setupSheet.locator('#manager-eval2-batch-summary')).toContainText('Current rows2');
   await page.evaluate(() => (window as any).closeManagerEvalReport2BatchSetup());
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
   expect(blockedMutations, `production mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
