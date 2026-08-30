@@ -843,6 +843,39 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
   });
 });
 
+test('Eval Work batch confirmation stays above the phone setup sheet and accepts the create action', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=eval-work-confirm-layer', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).showAppConfirm === 'function'
+    && typeof (window as any).ensureManagerEvalReport2BatchSetupModal === 'function');
+
+  await page.evaluate(() => (window as any).eval(`(() => {
+    const setup = ensureManagerEvalReport2BatchSetupModal();
+    setup.classList.remove('hidden');
+    window.__evalWorkConfirmResult = 'pending';
+    showAppConfirm('Create one Eval Work assignment?', {
+      title: 'Confirm Eval Work Batch',
+      confirmLabel: 'Create Batch'
+    }).then((confirmed) => { window.__evalWorkConfirmResult = confirmed; });
+  })()`));
+
+  const setup = page.locator('#manager-eval2-batch-modal');
+  const prompt = page.locator('#app-prompt-dialog');
+  await expect(setup).toBeVisible();
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toContainText('Confirm Eval Work Batch');
+
+  const layers = await page.evaluate(() => ({
+    setup: Number(getComputedStyle(document.getElementById('manager-eval2-batch-modal')!).zIndex || 0),
+    prompt: Number(getComputedStyle(document.getElementById('app-prompt-dialog')!).zIndex || 0),
+  }));
+  expect(layers.prompt).toBeGreaterThan(layers.setup);
+
+  await prompt.getByRole('button', { name: 'Create Batch' }).click();
+  await page.waitForFunction(() => (window as any).__evalWorkConfirmResult === true);
+  await expect(prompt).toBeHidden();
+});
+
 test('Eval Reports #2 verifies a named user against current assignments before showing cards', async ({ page }) => {
   await page.goto('/?e2e=eval2-authoritative-user-filter', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyManagerEvalReport2UserFilter === 'function');

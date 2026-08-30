@@ -295,6 +295,23 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await expect(setupSheet).not.toContainText('Block Alpha');
   await expect(setupSheet).not.toContainText('Location/Lot');
   await expect(setupSheet.locator('#manager-eval2-batch-summary')).toContainText('Current rows2');
+  await page.evaluate(() => (window as any).eval(`(() => {
+    window.__evalWorkCanaryConfirmResult = 'pending';
+    showAppConfirm('Confirm the hosted Eval Work prompt layer.', {
+      title: 'Confirm Eval Work Batch',
+      confirmLabel: 'Create Batch'
+    }).then((confirmed) => { window.__evalWorkCanaryConfirmResult = confirmed; });
+  })()`));
+  const appPrompt = page.locator('#app-prompt-dialog');
+  await expect(appPrompt).toBeVisible();
+  const modalLayers = await page.evaluate(() => ({
+    setup: Number(getComputedStyle(document.getElementById('manager-eval2-batch-modal')!).zIndex || 0),
+    prompt: Number(getComputedStyle(document.getElementById('app-prompt-dialog')!).zIndex || 0),
+  }));
+  expect(modalLayers.prompt).toBeGreaterThan(modalLayers.setup);
+  await appPrompt.getByRole('button', { name: 'Cancel' }).click();
+  await page.waitForFunction(() => (window as any).__evalWorkCanaryConfirmResult === false);
+  await expect(appPrompt).toBeHidden();
   await page.evaluate(() => (window as any).closeManagerEvalReport2BatchSetup());
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
   expect(blockedMutations, `production mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
