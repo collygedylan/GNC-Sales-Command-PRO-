@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.30.05">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.08.30.06">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.30.05';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.30.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -882,6 +882,19 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .argos-reclass-action-panel{grid-column:1/-1;display:grid;gap:.55rem;border:1px solid #bbf7d0;border-radius:.8rem;background:#f8fffb;padding:.62rem}
 .argos-reclass-action-panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;color:#065f46;font-size:.69rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
 .argos-reclass-action-panel-title small{color:#64748b;font-size:.62rem;letter-spacing:0;text-align:right;text-transform:none}
+.eval-work-row-resolution{grid-column:1/-1;display:grid;gap:.55rem;border:2px solid #cbd5e1;border-radius:.8rem;background:#f8fafc;padding:.62rem}
+.eval-work-row-resolution>div:first-child{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem}
+.eval-work-row-resolution strong{color:#0f172a;font-size:.72rem;font-weight:950;letter-spacing:.05em;text-transform:uppercase}
+.eval-work-row-resolution small{color:#64748b;font-size:.64rem;font-weight:750;text-align:right}
+.eval-work-row-resolution-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.eval-work-row-resolution-btn{min-height:44px;border:2px solid #94a3b8;border-radius:.72rem;background:#fff;color:#334155;font-size:.72rem;font-weight:950}
+.eval-work-row-resolution-btn[aria-pressed="true"]{border-color:#007a4d;background:#dcfce7;color:#065f46;box-shadow:0 0 0 2px rgba(0,122,77,.1)}
+.eval-work-row-resolution-btn[data-eval-row-resolution-action="no_action"][aria-pressed="true"]{border-color:#64748b;background:#e2e8f0;color:#0f172a}
+.argos-reclass-row-card[data-eval-row-resolution="done"]{border-color:#10b981;box-shadow:0 0 0 2px rgba(16,185,129,.12)}
+.argos-reclass-row-card[data-eval-row-resolution="no_action"]{border-color:#64748b;box-shadow:0 0 0 2px rgba(100,116,139,.12)}
+.eval-work-row-resolution-badge{display:inline-flex;min-height:24px;align-items:center;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;padding:2px 7px;color:#64748b;font-size:.58rem;font-style:normal;font-weight:950;letter-spacing:.04em;text-transform:uppercase}
+.eval-work-row-resolution-badge[data-resolution="done"]{border-color:#6ee7b7;background:#dcfce7;color:#065f46}
+.eval-work-row-resolution-badge[data-resolution="no_action"]{border-color:#94a3b8;background:#e2e8f0;color:#334155}
 .argos-reclass-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.42rem}
 .argos-reclass-action-btn{min-height:2.75rem;border:1.5px solid #a7f3d0;border-radius:.7rem;background:#fff;padding:.48rem .55rem;color:#065f46;font-size:.68rem;font-weight:900;line-height:1.2;text-align:left;touch-action:manipulation}
 .argos-reclass-action-btn[aria-pressed="true"]{border-color:#059669;background:#d1fae5;box-shadow:0 0 0 2px rgba(5,150,105,.16)}
@@ -6777,7 +6790,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.30.05">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.08.30.06">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6837,6 +6850,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .eval-work-action-tray{position:sticky;bottom:calc(var(--footer-nav-reserve,0px) + env(safe-area-inset-bottom) + 6px);z-index:56;display:grid;grid-template-columns:1fr 1fr;gap:10px;border:1px solid rgba(16,185,129,.55);border-radius:18px;background:rgba(248,255,251,.96);padding:8px;box-shadow:0 14px 34px rgba(2,44,29,.24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}.eval-work-action-tray button{min-height:52px;border:1px solid #6ee7b7;border-radius:13px;background:#fff;color:#065f46;font-size:12px;font-weight:950;text-transform:uppercase}.eval-work-action-tray button.primary{border-color:#65a30d;background:#65a30d;color:#fff}.eval-work-readonly{border:1px solid #cbd5e1;border-radius:15px;background:#f8fafc;padding:14px;text-align:center;color:#475569;font-weight:900}
         .eval-work-setup-modal{position:fixed;inset:0;z-index:60040;display:flex;align-items:center;justify-content:center;padding:12px}.eval-work-setup-modal.hidden{display:none!important}.eval-work-setup-backdrop{position:absolute;inset:0;background:rgba(2,20,14,.64);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}.eval-work-setup-panel{position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:min(100%,620px);max-height:min(92dvh,820px);overflow:hidden;border:2px solid #10b981;border-radius:24px;background:#f8fffb;box-shadow:0 28px 80px rgba(2,20,14,.42)}.eval-work-setup-panel>header{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #a7f3d0;background:#ecfdf5;padding:15px 17px}.eval-work-setup-panel>header span{color:#047857;font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.eval-work-setup-panel>header h2{color:#0f172a;font-size:22px;font-weight:950}.eval-work-setup-panel>header button{display:flex;width:46px;height:46px;align-items:center;justify-content:center;border:1px solid #6ee7b7;border-radius:50%;background:#fff;color:#065f46}.eval-work-setup-body{min-height:0;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}.eval-work-setup-body>label{display:grid;gap:6px;margin-top:13px}.eval-work-setup-body>label>span{color:#475569;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.eval-work-setup-body em{color:#b45309;font-style:normal}.eval-work-setup-body :is(input,textarea){min-height:50px;border:2px solid #a7f3d0;border-radius:14px;background:#fff;padding:11px 13px;color:#0f172a;font-size:16px;font-weight:800;outline:none}.eval-work-setup-body textarea{min-height:96px;resize:vertical}.eval-work-setup-identity{display:grid;gap:3px;border:1px solid #a7f3d0;border-radius:16px;background:#fff;padding:13px}.eval-work-setup-identity strong{color:#064e3b;font-size:18px}.eval-work-setup-identity span{color:#64748b;font-size:12px;font-weight:800}.eval-work-recipient-button{display:flex;width:100%;min-height:58px;align-items:center;gap:12px;margin-top:13px;border:2px solid #a7f3d0;border-radius:16px;background:#fff;padding:11px 13px;text-align:left;color:#065f46}.eval-work-recipient-button>span{display:grid;flex:1}.eval-work-recipient-button strong{font-size:13px}.eval-work-recipient-button small{color:#64748b;font-size:11px}.eval-work-setup-confirmation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}.eval-work-setup-confirmation>div{min-width:0;border:1px solid #d1fae5;border-radius:13px;background:#fff;padding:10px}.eval-work-setup-confirmation span{display:block;color:#64748b;font-size:8px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}.eval-work-setup-confirmation strong{display:block;margin-top:3px;overflow-wrap:anywhere;color:#0f172a;font-size:12px}.eval-work-setup-panel>footer{display:grid;grid-template-columns:1fr 1fr;gap:10px;border-top:1px solid #d1fae5;background:#fff;padding:12px}.eval-work-setup-panel>footer button{min-height:52px;border:1px solid #cbd5e1;border-radius:14px;background:#fff;color:#475569;font-size:12px;font-weight:950;text-transform:uppercase}.eval-work-setup-panel>footer button.primary{border-color:#65a30d;background:#65a30d;color:#fff}.eval-work-setup-panel>footer button:disabled{cursor:not-allowed;opacity:.45}
         [data-ops-theme="dark"] :is(.eval-work-card,.eval-work-summary,.eval-work-evidence,.eval-work-inquiry,.eval-work-loc-sales-note,.eval-work-detail>.back-btn,.eval-work-setup-panel,.eval-work-setup-body :is(input,textarea),.eval-work-setup-identity,.eval-work-recipient-button,.eval-work-setup-confirmation>div,.eval-work-origin-tab,.eval-work-drill-card,.eval-work-drill-header button,.eval-work-detail-tabs,.eval-work-current-note,.eval-work-loc-sales-note textarea){border-color:#178b64;background:#071b13;color:#e7fff4}[data-ops-theme="dark"] :is(.eval-work-card h3,.eval-work-summary h2,.eval-work-evidence h3,.eval-work-inquiry h3,.eval-work-loc-sales-note h3,.eval-work-field-list :is(input,textarea),.eval-work-setup-panel>header h2,.eval-work-setup-body :is(input,textarea),.eval-work-setup-confirmation strong){color:#f8fffb}[data-ops-theme="dark"] :is(.eval-work-card p,.eval-work-summary p,.eval-work-inquiry>p,.eval-work-loc-sales-note>p,.eval-work-field-list label>span,.eval-work-setup-identity span,.eval-work-recipient-button small,.eval-work-origin-tab small,.eval-work-drill-card small){color:#b6d2c5}[data-ops-theme="dark"] .eval-work-origin-tab[aria-pressed="true"],[data-ops-theme="dark"] .eval-work-detail-tab[aria-selected="true"]{border-color:#34d399;background:#0b3b2a}[data-ops-theme="dark"] .eval-work-field-list :is(input,textarea){border-color:#178b64;background:#03140e}[data-ops-theme="dark"] .eval-work-setup-panel>header{border-color:#178b64;background:#0b2c20}[data-ops-theme="dark"] .eval-work-setup-panel>footer{border-color:#178b64;background:#071b13}
+        [data-ops-theme="dark"] .eval-work-row-resolution{border-color:#178b64;background:#071b13}[data-ops-theme="dark"] .eval-work-row-resolution strong{color:#f8fffb}[data-ops-theme="dark"] .eval-work-row-resolution small{color:#b6d2c5}[data-ops-theme="dark"] .eval-work-row-resolution-btn{border-color:#178b64;background:#03140e;color:#e7fff4}[data-ops-theme="dark"] .eval-work-row-resolution-btn[aria-pressed="true"]{border-color:#34d399;background:#0b3b2a;color:#e7fff4}
         @media(min-width:721px){.eval-work-field-list{grid-template-columns:1fr}.eval-work-summary{grid-template-columns:minmax(0,1fr) minmax(260px,.6fr);align-items:start}.eval-work-action-tray{position:relative;bottom:auto;width:min(100%,620px);justify-self:end}.eval-work-av-note-sheet{align-items:center}.eval-work-av-note-sheet>section{max-height:min(82dvh,760px)}}
         @media(max-width:640px){.eval-work-card-list,.eval-work-detail{padding:2px 0 calc(var(--footer-nav-reserve,8.75rem) + 6.5rem)}.eval-work-summary,.eval-work-evidence,.eval-work-inquiry,.eval-work-loc-sales-note{border-radius:18px;padding:13px}.eval-work-summary h2{font-size:21px}.eval-work-detail-tabs{gap:5px;padding:5px}.eval-work-detail-tab{min-height:52px;padding:7px 5px;font-size:10px}.eval-work-action-tray{position:fixed;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));width:auto}.eval-work-setup-modal{align-items:flex-end;padding:6px max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}.eval-work-setup-panel{max-height:calc(var(--mobile-visible-height,var(--visual-height,100dvh)) - 12px);border-radius:22px}.eval-work-setup-confirmation{grid-template-columns:1fr}}
     </style>
@@ -6950,8 +6964,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.08.30.05"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.08.30.05"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.08.30.06"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.08.30.06"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7704,7 +7718,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.30.05').trim() || 'V2026.08.30.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.30.06').trim() || 'V2026.08.30.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9189,7 +9203,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.30.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.30.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -30861,7 +30875,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.30.05').trim() || 'V2026.08.30.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.30.06').trim() || 'V2026.08.30.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33815,6 +33829,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     unique_id: uid,
                     expected: { itemcode: getItemInquiryItemCode(entry.sourceRow), lotcode: String(entry.values && entry.values.lotcode || ''), locationcode: String(entry.values && entry.values.locationcode || ''), ptronhand: String(entry.values && entry.values.ptronhand == null ? '' : entry.values.ptronhand) },
                     proposals,
+                    ...(getEvalWorkInquiryRowResolution(uid) ? { resolution: getEvalWorkInquiryRowResolution(uid) } : {}),
                     ...(temporary.temporaryValues && Object.keys(temporary.temporaryValues).length ? { temporaryValues: { ...temporary.temporaryValues } } : {}),
                     ...(Array.isArray(temporary.temporaryChangedFields) && temporary.temporaryChangedFields.length ? { temporaryChangedFields: temporary.temporaryChangedFields.slice() } : {})
                 };
@@ -33892,6 +33907,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     } else if (action) rowMap[action] = { ...proposal };
                 });
                 if (Object.keys(rowMap).length) argosReclassMultiActionState.rowProposals.set(uid, rowMap);
+                const resolution = String(overlay && overlay.resolution || '').trim().toLowerCase();
+                if (['done', 'no_action'].includes(resolution)) argosReclassMultiActionState.rowResolutions.set(uid, resolution);
                 const temporaryValues = overlay && overlay.temporaryValues && typeof overlay.temporaryValues === 'object' && !Array.isArray(overlay.temporaryValues)
                     ? { ...overlay.temporaryValues } : {};
                 const temporaryChangedFields = Array.isArray(overlay && overlay.temporaryChangedFields)
@@ -33937,6 +33954,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const temporary = evalWorkTemporaryRowOverlays.get(uid) || {};
                 return {
                     ...overlay,
+                    ...(getEvalWorkInquiryRowResolution(uid) ? { resolution: getEvalWorkInquiryRowResolution(uid) } : {}),
                     ...(temporary.temporaryValues && Object.keys(temporary.temporaryValues).length ? { temporaryValues: { ...temporary.temporaryValues } } : {}),
                     ...(Array.isArray(temporary.temporaryChangedFields) && temporary.temporaryChangedFields.length ? { temporaryChangedFields: temporary.temporaryChangedFields.slice() } : {})
                 };
@@ -33971,6 +33989,39 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 avNote: read('eval-work-av-note', 'avNote', 'av_note'),
                 pickNote: read('eval-work-pick-note', 'pickNote', 'pick_note'), comments: read('eval-work-comments', 'comments')
             };
+        }
+
+        function validateEvalWorkInquiryRowResolutions(work = null, inquiry = null) {
+            const safeWork = work && typeof work === 'object' ? work : {};
+            const safeInquiry = inquiry && typeof inquiry === 'object' ? inquiry : {};
+            const modelRows = argosInventoryTransactionState && argosInventoryTransactionState.inquiryModel
+                && Array.isArray(argosInventoryTransactionState.inquiryModel.locationRows)
+                ? argosInventoryTransactionState.inquiryModel.locationRows : [];
+            const expectedUids = Array.from(new Set(modelRows.map((entry) => String(entry && entry.unique_id || '').trim()).filter(Boolean)));
+            const fallbackUids = getEvalWorkOriginEntries(safeWork).map((entry) => String(entry && entry.origin_unique_id || '').trim()).filter(Boolean);
+            const requiredUids = expectedUids.length ? expectedUids : fallbackUids;
+            const overlays = Array.isArray(safeInquiry.rowOverlays) ? safeInquiry.rowOverlays : [];
+            const overlayByUid = new Map();
+            overlays.forEach((overlay) => {
+                const uid = String(overlay && overlay.unique_id || '').trim();
+                if (!uid || overlayByUid.has(uid)) throw new Error('Item Inquiry row identities changed. Refresh before submitting.');
+                overlayByUid.set(uid, overlay);
+            });
+            if (!requiredUids.length || overlays.length !== requiredUids.length || requiredUids.some((uid) => !overlayByUid.has(uid))) {
+                throw new Error('Every Item Inquiry row must be reviewed before submitting.');
+            }
+            let done = 0;
+            let noAction = 0;
+            requiredUids.forEach((uid) => {
+                const overlay = overlayByUid.get(uid) || {};
+                const resolution = String(overlay.resolution || '').trim().toLowerCase();
+                if (!['done', 'no_action'].includes(resolution)) throw new Error('Every Item Inquiry row must be Mark Done or No Action before submitting.');
+                const proposals = Array.isArray(overlay.proposals) ? overlay.proposals : [];
+                if (resolution === 'no_action' && proposals.length) throw new Error('A No Action row cannot also contain Item Inquiry actions.');
+                if (resolution === 'done') done += 1;
+                else noAction += 1;
+            });
+            return { total: requiredUids.length, done, noAction };
         }
 
         function syncEvalWorkActiveOriginEvidence(work = null) {
@@ -34123,7 +34174,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 </div>
                 <div class="eval-work-loc-sales-note"><h4>Loc Sales Note</h4><p>Review the current note and enter an update only when this lot needs one.</p><div class="eval-work-current-note"><strong>Current Loc Sales Note</strong><br>${escapeHtml(currentLocSalesNote || 'No current Loc Sales Note.')}</div><label><span>Updated Loc Sales Note</span><textarea id="eval-work-comments" oninput="return captureEvalWorkLocalDraftSoon()" placeholder="Optional — leave blank to preserve the current note." ${readOnly ? 'disabled' : ''}>${escapeHtml(evidence.comments || '')}</textarea></label></div>
             </section>` : '';
-            const inquiryPanel = detailView === 'item-inquiry' ? `<section class="eval-work-inquiry"><h3>Item Inquiry</h3><p>${itemcodeWideScope ? 'Every current ITEMCODE row is included.' : 'Only the assignment rows are included.'} Reclass choices remain email-only proposals.</p>${renderArgosReclassInquiryEditor(hydrated.inquiryModel, evalWorkActiveOriginUid || safeWork.origin_unique_id)}</section>` : '';
+            const inquiryPanel = detailView === 'item-inquiry' ? `<section class="eval-work-inquiry"><h3>Item Inquiry</h3><p>${itemcodeWideScope ? 'Every current ITEMCODE row is included.' : 'Only the assignment rows are included.'} Mark every row Done after choosing its action, or choose No Action. Submission stays locked until every row is resolved; completed changes are emailed to Dylan and Megan.</p>${renderArgosReclassInquiryEditor(hydrated.inquiryModel, evalWorkActiveOriginUid || safeWork.origin_unique_id)}</section>` : '';
             return `<div class="eval-work-detail">
                 <button type="button" class="back-btn" onclick="return closeEvalWorkDetail()"><i class="ph-bold ph-arrow-left"></i> Back to Eval Work</button>
                 <section class="eval-work-summary"><div><span>${escapeHtml(String(safeWork.status || 'open').replace('_', ' '))}</span><h2>${escapeHtml(safeWork.commonname || 'Eval Work')}</h2><p>${escapeHtml(safeWork.itemcode || '')} &middot; ${escapeHtml(safeWork.contsize || '')} &middot; ${origins.length || 1} ${itemcodeWideScope ? 'current row' : 'selected lot'}${origins.length === 1 ? '' : 's'}</p></div><div><strong>Assigned to ${escapeHtml(safeWork.assignee_display || safeWork.assignee_username || '')}</strong><p>${escapeHtml(safeWork.instructions || 'No additional instructions.')}</p><p class="eval-work-delivery-state">Email delivery: ${escapeHtml(deliveryStatus)}</p></div>${managerActions}</section>
@@ -34387,6 +34438,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 inquiry = collectEvalWorkInquiryPayload(work);
                 evidence = collectEvalWorkEvidence(work);
                 evidenceByOrigin = collectEvalWorkEvidenceByOrigin(work);
+                const resolutionSummary = validateEvalWorkInquiryRowResolutions(work, inquiry);
                 const requiredEvidence = evidenceByOrigin ? getEvalWorkOriginEntries(work).map((origin, index) => ({ origin, index, evidence: evidenceByOrigin[origin.origin_unique_id] || {} })) : [{ origin: { locationcode: work.origin_locationcode, lotcode: work.origin_lotcode }, index: 0, evidence }];
                 requiredEvidence.forEach(({ origin, index, evidence: rowEvidence }) => {
                     const label = `Lot ${index + 1} (${origin.locationcode || ''} / ${origin.lotcode || ''})`;
@@ -34396,7 +34448,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     if (match === '' || Number(match) < 0 || Number(match) > 100) throw new Error(`${label}: Loc Match % must be from 0 through 100.`);
                     if (!String(firstNonEmptyValue(rowEvidence.avNote, rowEvidence.av_note, '')).trim()) throw new Error(`${label}: AV Note is required.`);
                 });
-                const confirmed = await showAppConfirm('Submit this Eval Work and email the selected completion recipients?', { title: 'Submit Eval Work', confirmLabel: 'Submit' });
+                const confirmed = await showAppConfirm(`Submit all ${resolutionSummary.total} reviewed Item Inquiry rows (${resolutionSummary.done} Done, ${resolutionSummary.noAction} No Action) and email the changes to Dylan and Megan?`, { title: 'Submit Eval Work', confirmLabel: 'Submit' });
                 if (!confirmed) return false;
                 if (button) button.disabled = true;
                 persistEvalWorkLocalDraft(work.id, inquiry, evidenceByOrigin || evidence, work.version);
@@ -34406,7 +34458,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (evidenceByOrigin) Object.entries(evidenceByOrigin).forEach(([uid, rowEvidence]) => applyEvalWorkEvidenceLocally(work, rowEvidence, uid));
                 else applyEvalWorkEvidenceLocally(work, evidence);
                 clearEvalWorkLocalDraft(work.id);
-                showToast('Eval Work Submitted', 'Evidence was saved to the exact origin row. The completion PDF is sending in the background.');
+                showToast('Eval Work Submitted', 'Evidence was saved to the exact origin row. The completion PDF and Item Inquiry changes are sending to Dylan and Megan.');
                 activeEvalWorkDetailId = '';
                 await loadEvalWorkAssignments(true);
             } catch (error) {
@@ -42452,7 +42504,7 @@ let avTopControlsRenderToken = 0;
 
         let argosInventoryTransactionState = null;
         let argosReclassRowEditorEntries = new Map();
-        let argosReclassMultiActionState = { holdStopProposals: {}, rowProposals: new Map() };
+        let argosReclassMultiActionState = { holdStopProposals: {}, rowProposals: new Map(), rowResolutions: new Map() };
         const RECLASS_DELIVERY_STORAGE_KEY = 'gnc_reclass_delivery_jobs_v1';
         const RECLASS_DELIVERY_JOB_TTL_MS = 24 * 60 * 60 * 1000;
         let reclassDeliveryPollTimer = null;
@@ -42922,7 +42974,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function resetArgosReclassMultiActionState() {
-            argosReclassMultiActionState = { holdStopProposals: {}, rowProposals: new Map() };
+            argosReclassMultiActionState = { holdStopProposals: {}, rowProposals: new Map(), rowResolutions: new Map() };
             return argosReclassMultiActionState;
         }
 
@@ -42983,6 +43035,43 @@ let avTopControlsRenderToken = 0;
             return proposals;
         }
 
+        function getEvalWorkInquiryRowResolution(uid = '') {
+            const safeUid = String(uid || '').trim();
+            const resolutions = argosReclassMultiActionState && argosReclassMultiActionState.rowResolutions instanceof Map
+                ? argosReclassMultiActionState.rowResolutions : null;
+            const value = safeUid && resolutions ? String(resolutions.get(safeUid) || '').trim().toLowerCase() : '';
+            return ['done', 'no_action'].includes(value) ? value : '';
+        }
+
+        function setEvalWorkInquiryRowResolution(button = null, resolution = '') {
+            if (!argosInventoryTransactionState || argosInventoryTransactionState.sourceView !== 'eval-work') return false;
+            const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
+            const uid = String(card && card.getAttribute('data-reclass-row-card') || '').trim();
+            const normalized = String(resolution || '').trim().toLowerCase();
+            const entry = getArgosReclassRowEditorEntry(uid);
+            if (!entry || !['done', 'no_action'].includes(normalized)) return false;
+            if (!(argosReclassMultiActionState.rowResolutions instanceof Map)) argosReclassMultiActionState.rowResolutions = new Map();
+            const actionCount = getArgosReclassV3ActionCountForEntry(entry);
+            if (normalized === 'done' && actionCount < 1) {
+                showToast('Choose an Item Inquiry Action', 'Select at least one action for this row, or choose No Action.', true);
+                return false;
+            }
+            if (normalized === 'no_action') {
+                const scopeActions = getArgosReclassV3ScopeActionsForEntry(entry);
+                if (scopeActions.length) {
+                    showToast('Row Has a Scoped Action', 'Remove the Item Inquiry Hold/Stop action before marking this row No Action.', true);
+                    return false;
+                }
+                const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
+                if (Object.keys(rowMap).length && !window.confirm('Mark this row No Action and discard its selected Item Inquiry actions?')) return false;
+                argosReclassMultiActionState.rowProposals.delete(uid);
+            }
+            argosReclassMultiActionState.rowResolutions.set(uid, normalized);
+            refreshArgosReclassMultiActionUi();
+            captureEvalWorkLocalDraftSoon(0);
+            return false;
+        }
+
         function getArgosReclassV3Proposal(uid = '', action = '') {
             const normalized = String(action || '').trim().toLowerCase();
             if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized)) {
@@ -43024,10 +43113,17 @@ let avTopControlsRenderToken = 0;
                 if (body && body.getAttribute('data-reclass-row-hydrated') === 'true') body.innerHTML = buildArgosReclassActionFieldsHtml(entry);
                 card.setAttribute('data-reclass-scope-actions', getArgosReclassV3ScopeActionsForEntry(entry).join(','));
                 const count = getArgosReclassV3ActionCountForEntry(entry);
+                const resolution = getEvalWorkInquiryRowResolution(entry.unique_id);
+                card.setAttribute('data-eval-row-resolution', resolution);
                 const counter = card.querySelector('[data-reclass-row-edit-count]');
                 if (counter) {
                     counter.hidden = count === 0;
                     counter.textContent = `${count} Action${count === 1 ? '' : 's'}`;
+                }
+                const resolutionBadge = card.querySelector('[data-eval-row-resolution-badge]');
+                if (resolutionBadge) {
+                    resolutionBadge.setAttribute('data-resolution', resolution);
+                    resolutionBadge.textContent = resolution === 'done' ? 'Done' : (resolution === 'no_action' ? 'No Action' : 'Needs Review');
                 }
                 card.setAttribute('data-reclass-row-edit-count', String(count));
             });
@@ -43055,6 +43151,7 @@ let avTopControlsRenderToken = 0;
                     if (!Object.keys(rowMap).length) argosReclassMultiActionState.rowProposals.delete(uid);
                 }
             } else {
+                if (argosReclassMultiActionState.rowResolutions instanceof Map) argosReclassMultiActionState.rowResolutions.delete(uid);
                 const values = entry.values && typeof entry.values === 'object' ? entry.values : {};
                 const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
                 if (rule.kind === 'move' && (!Number.isFinite(originalOh) || originalOh < 1)) {
@@ -43174,7 +43271,11 @@ let avTopControlsRenderToken = 0;
             const scopeHtml = scopeActions.length ? `<div class="argos-reclass-action-scope">Automatically included: ${scopeActions.map((action) => escapeHtml(getReclassActionWorkflowV2Config(action).label)).join(', ')}</div>` : '';
             const settings = getArgosReclassScopeSettings();
             const scopeCopy = settings.season && settings.salesYear != null ? `${settings.season} / sales year <= ${String(settings.salesYear).slice(-2)}` : 'settings unavailable';
-            return `${currentHoldHtml}<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span><small>One Hold/Stop action may be combined with Priority, Move Up, Move Down, and Re-Count. Hold/Stop scope: ${escapeHtml(scopeCopy)}.</small></div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>`;
+            const resolution = getEvalWorkInquiryRowResolution(uid);
+            const resolutionHtml = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
+                ? `<section class="eval-work-row-resolution"><div><strong>Finish this row</strong><small>Use Mark Done after choosing its action, or No Action when nothing needs to change.</small></div><div class="eval-work-row-resolution-actions"><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="done" aria-pressed="${resolution === 'done' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'done')"><i class="ph-bold ph-check-circle"></i> Mark Done</button><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="no_action" aria-pressed="${resolution === 'no_action' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'no_action')"><i class="ph-bold ph-minus-circle"></i> No Action</button></div></section>`
+                : '';
+            return `${currentHoldHtml}<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span><small>One Hold/Stop action may be combined with Priority, Move Up, Move Down, and Re-Count. Hold/Stop scope: ${escapeHtml(scopeCopy)}.</small></div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${resolutionHtml}`;
         }
 
         function buildArgosReclassRowFieldsHtml(entry = null) {
@@ -43257,9 +43358,14 @@ let avTopControlsRenderToken = 0;
                 ].map(([label, value]) => `<span>${escapeHtml(label)} ${escapeHtml(String(value == null || value === '' ? '—' : value))}</span>`).join('');
                 const scopeActions = getArgosReclassV3ScopeActionsForEntry(entry);
                 const actionCount = getArgosReclassV3ActionCountForEntry(entry);
-                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-scope-actions="${escapeHtml(scopeActions.join(','))}" data-reclass-row-edit-count="${actionCount}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${rowBodyId}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}<span class="argos-reclass-row-edit-count" data-reclass-row-edit-count ${actionCount ? '' : 'hidden'}>${actionCount} Action${actionCount === 1 ? '' : 's'}</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${rowBodyId}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
+                const resolution = getEvalWorkInquiryRowResolution(uid);
+                const resolutionBadge = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
+                    ? `<em class="eval-work-row-resolution-badge" data-eval-row-resolution-badge data-resolution="${escapeHtml(resolution)}">${resolution === 'done' ? 'Done' : (resolution === 'no_action' ? 'No Action' : 'Needs Review')}</em>` : '';
+                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-scope-actions="${escapeHtml(scopeActions.join(','))}" data-reclass-row-edit-count="${actionCount}" data-eval-row-resolution="${escapeHtml(resolution)}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${rowBodyId}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}${resolutionBadge}<span class="argos-reclass-row-edit-count" data-reclass-row-edit-count ${actionCount ? '' : 'hidden'}>${actionCount} Action${actionCount === 1 ? '' : 's'}</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${rowBodyId}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
             }).join('') || '<div class="p-4 text-sm font-bold text-slate-600">No current rows were found for this ItemCode.</div>';
-            return `<div class="argos-reclass-inquiry-heading"><span>Choose row actions</span><span>${safeModel.locationRows.length} row${safeModel.locationRows.length === 1 ? '' : 's'} · Open a Location/Lot and combine the actions needed</span></div><div class="argos-reclass-row-list">${rowsHtml}</div>`;
+            const evalWorkCopy = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
+                ? ' · Every row must be Mark Done or No Action before Submit' : ' · Open a Location/Lot and combine the actions needed';
+            return `<div class="argos-reclass-inquiry-heading"><span>Choose row actions</span><span>${safeModel.locationRows.length} row${safeModel.locationRows.length === 1 ? '' : 's'}${evalWorkCopy}</span></div><div class="argos-reclass-row-list">${rowsHtml}</div>`;
         }
 
         function handleArgosReclassLocationNoteInput(input = null) {
@@ -43341,11 +43447,13 @@ let avTopControlsRenderToken = 0;
                         locationcode: String(values.locationcode || ''),
                         ptronhand: String(values.ptronhand == null ? '' : values.ptronhand)
                     },
-                    proposals
+                    proposals,
+                    ...(argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work' && getEvalWorkInquiryRowResolution(uid)
+                        ? { resolution: getEvalWorkInquiryRowResolution(uid) } : {})
                 };
             });
             const orderedActions = RECLASS_ACTION_WORKFLOW_V3_ORDER.filter((action) => requestActions.has(action));
-            if (!orderedActions.length) throw new Error('Choose at least one Reclass action inside a Location/Lot row.');
+            if (!orderedActions.length && (!argosInventoryTransactionState || argosInventoryTransactionState.sourceView !== 'eval-work')) throw new Error('Choose at least one Reclass action inside a Location/Lot row.');
             return { requestActions: orderedActions, holdStopProposals, rowOverlays, scope };
         }
 
@@ -122334,6 +122442,11 @@ C.14.043 C.15.000
                     managerEvalReport2AssignmentFilterRefreshing = false;
                     scheduleManagersRender(true);
                 }
+            }
+            if (argosReclassMultiActionState.rowResolutions instanceof Map
+                && getEvalWorkInquiryRowResolution(uid) === 'done'
+                && getArgosReclassV3ActionCountForEntry(entry) < 1) {
+                argosReclassMultiActionState.rowResolutions.delete(uid);
             }
         }
 

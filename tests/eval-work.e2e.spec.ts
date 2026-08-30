@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -64,10 +64,21 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     };
     setEvalWorkDetailView('item-inquiry', work);
     host.innerHTML = renderEvalWorkDetail(work);
+    const rowCards = Array.from(host.querySelectorAll('[data-reclass-row-card]'));
+    rowCards[1].querySelector('[data-eval-row-resolution-action="no_action"]')?.click();
+    rowCards[0].querySelector('.argos-reclass-row-toggle')?.click();
+    rowCards[0].querySelector('[data-reclass-v3-action="recount"]')?.click();
+    rowCards[0].querySelector('[data-eval-row-resolution-action="done"]')?.click();
+    const reviewedInquiry = collectEvalWorkInquiryPayload(work);
+    const resolutionSummary = validateEvalWorkInquiryRowResolutions(work, reviewedInquiry);
     const inquiryResult = {
       present: !!host.querySelector('.eval-work-inquiry'),
       rowSections: host.querySelectorAll('.argos-reclass-row-card').length,
       actionButtons: host.querySelectorAll('.argos-reclass-action-btn').length,
+      resolutionButtons: host.querySelectorAll('.eval-work-row-resolution-btn').length,
+      rowResolutions: Array.from(host.querySelectorAll('[data-reclass-row-card]')).map((card) => card.getAttribute('data-eval-row-resolution')),
+      payloadResolutions: reviewedInquiry.rowOverlays.map((overlay) => overlay.resolution),
+      resolutionSummary,
       evaluationHidden: !host.querySelector('.eval-work-evidence'),
       locSalesNoteHidden: !host.querySelector('.eval-work-loc-sales-note')
     };
@@ -93,7 +104,14 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     currentNote: expect.stringContaining('Second location note'),
     editableNote: true
   });
-  expect(result.inquiryResult).toMatchObject({ present: true, rowSections: 2 });
+  expect(result.inquiryResult).toMatchObject({
+    present: true,
+    rowSections: 2,
+    resolutionButtons: 4,
+    rowResolutions: ['done', 'no_action'],
+    payloadResolutions: ['done', 'no_action'],
+    resolutionSummary: { total: 2, done: 1, noAction: 1 }
+  });
   expect(result.inquiryResult.actionButtons).toBeGreaterThanOrEqual(8);
   expect(result.inquiryResult.evaluationHidden).toBe(true);
   expect(result.inquiryResult.locSalesNoteHidden).toBe(true);
@@ -108,7 +126,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -152,7 +170,7 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
 
 test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {

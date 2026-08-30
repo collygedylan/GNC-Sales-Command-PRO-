@@ -134,6 +134,18 @@ test('Eval Work opens the selected Queue row with exactly two top-level work tab
   assert.match(html, /function collectEvalWorkEvidence\(work = null\)[\s\S]*if \(element\) return String\(element\.value/);
 });
 
+test('Item Inquiry requires every Eval Work row to be Mark Done or No Action', () => {
+  assert.match(html, /function setEvalWorkInquiryRowResolution\(button = null, resolution = ''\)/);
+  assert.match(html, /data-eval-row-resolution-action="done"[\s\S]*Mark Done/);
+  assert.match(html, /data-eval-row-resolution-action="no_action"[\s\S]*No Action/);
+  assert.match(html, /rowResolutions: new Map\(\)/);
+  assert.match(html, /resolution: getEvalWorkInquiryRowResolution\(uid\)/);
+  assert.match(html, /function validateEvalWorkInquiryRowResolutions\(work = null, inquiry = null\)/);
+  assert.match(html, /Every Item Inquiry row must be Mark Done or No Action before submitting/);
+  assert.match(html, /validateEvalWorkInquiryRowResolutions\(work, inquiry\)/);
+  assert.match(html, /email the changes to Dylan and Megan/);
+});
+
 test('assigned sales reps can use only the ownership-checked Eval photo scope', () => {
   assert.match(appApi, /REP_ALLOWED_PHOTO_PREFIXES = new Set\(\["req-", "credit-", "eval-"\]\)/);
   assert.match(appApi, /prefix === "eval-"[\s\S]*loadAuthorizedEvalWork\(session, evalWorkId\)/);

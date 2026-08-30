@@ -5,6 +5,7 @@ import test from 'node:test';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
 const itemcodeMigration = read('../supabase/migrations/20260829042809_itemcode_wide_eval_work.sql');
+const resolutionMigration = read('../supabase/migrations/20260830213039_eval_work_item_inquiry_row_resolution_v3.sql');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const worker = read('../supabase/functions/request-delivery-worker/index.ts');
 const html = read('../index.html');
@@ -90,6 +91,21 @@ test('Queue shows every origin as a Request-style row card while opening one sha
   assert.match(html, /openEvalWorkDetail\('\$\{safeWorkId\}','\$\{safeOriginUid\}'\)/);
   assert.match(html, /evalWorkActiveOriginUid/);
   assert.match(html, /evidenceByOrigin/);
+});
+
+test('submission requires one explicit Item Inquiry resolution per origin and locks manager recipients', () => {
+  assert.match(resolutionMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(resolutionMigration, /create or replace function private\.enforce_eval_work_row_resolution_v3\(\)/);
+  assert.match(resolutionMigration, /jsonb_array_length\(overlays\) <> new\.origin_count/);
+  assert.match(resolutionMigration, /overlay_matches <> 1/);
+  assert.match(resolutionMigration, /resolution_value not in \('done', 'no_action'\)/);
+  assert.match(resolutionMigration, /eval_work_all_rows_resolution_required/);
+  assert.match(resolutionMigration, /eval_work_no_action_has_proposals/);
+  assert.match(resolutionMigration, /required_recipients := private\.eval_work_required_manager_emails_v2\(\)/);
+  assert.match(resolutionMigration, /into new\.completion_recipients/);
+  assert.match(resolutionMigration, /before update of status on public\.ph_eval_work/);
+  assert.match(resolutionMigration, /revoke all on function private\.enforce_eval_work_row_resolution_v3\(\)[\s\S]*from public, anon, authenticated/);
+  assert.doesNotMatch(resolutionMigration, /delete from|update public\.ph_master_inventory/i);
 });
 
 test('folder completion V2 waits for creation, revalidates membership, and sends one full-folder event', () => {
