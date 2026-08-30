@@ -66,6 +66,7 @@ jobs:
           cp supabase/migrations/20260828070741_access_control_manager_read_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260830021512_mobile_codex_operations_v1.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260830022003_codex_ops_terra_escalation_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260830023800_codex_ops_access_audit_baseline_v1.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/codex_ops_rls_test.sql "$ci_root/supabase/tests/"

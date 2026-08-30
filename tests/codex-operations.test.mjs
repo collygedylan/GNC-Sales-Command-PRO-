@@ -6,6 +6,7 @@ import { validateChangedFiles } from '../scripts/validate-codex-mobile-patch.mjs
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260830021512_mobile_codex_operations_v1.sql');
 const escalationMigration = read('../supabase/migrations/20260830022003_codex_ops_terra_escalation_v2.sql');
+const baselineMigration = read('../supabase/migrations/20260830023800_codex_ops_access_audit_baseline_v1.sql');
 const api = read('../supabase/functions/codex-ops-api/index.ts');
 const runner = read('../supabase/functions/codex-ops-runner/index.ts');
 const githubApp = read('../supabase/functions/_shared/github-app.ts');
@@ -30,6 +31,10 @@ test('private Codex control-plane tables are RLS protected and clients get RPCs 
   assert.match(migration, /get_codex_ops_health_snapshot_v1/);
   assert.match(escalationMigration, /CODEX_OPS_FINGERPRINT_REPAIR_LIMIT/);
   assert.match(escalationMigration, /status = 'needs_escalation'/);
+  assert.match(baselineMigration, /private\.app_access_user_overrides/);
+  assert.match(baselineMigration, /private\.app_access_legacy_baseline/);
+  assert.match(baselineMigration, /lower\(btrim\(p\.username\)\) = 'dylan_collyge'/);
+  assert.match(baselineMigration, /on conflict \(profile_id, permission_key\) do nothing/);
   assert.match(runner, /apply_codex_ops_repair_result_service_v2/);
   assert.match(migration, /CODEX_OPS_TASK_BUSY_OR_TERMINAL/);
 });
