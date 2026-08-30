@@ -253,6 +253,12 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await page.evaluate(() => { (window as any).__eval2CanaryAssignmentVerified = false; });
   await userSheet.getByRole('button', { name: /Apply 1 User/i }).click();
   await page.waitForFunction(() => (window as any).__eval2CanaryAssignmentVerified === true);
+  await page.evaluate(() => {
+    const target = document.getElementById('hosted-eval2-canary')!;
+    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+  });
+  await expect(host).toContainText('Alpha Eval Canary');
+  await expect(host).not.toContainText('Beta Eval Canary');
 
   const state = await page.evaluate(() => (window as any).eval(`(() => ({
     selected: getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode).sort(),

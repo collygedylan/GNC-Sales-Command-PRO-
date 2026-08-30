@@ -869,6 +869,9 @@ test('Eval Reports #2 verifies a named user against current assignments before s
       setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
       const initialAssignmentModel = GncEvalReports.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
       const before = getManagerEvalReport2RowsBeforeCommonName(initialAssignmentModel.rows).map((row) => getManagerEvalReport2ItemCode(row));
+      managerEvalReport2BrowseMode = 'plant';
+      resetManagerEvalReport2Drill();
+      const beforeCommonNames = getManagerEvalReport2DrillGroups(initialAssignmentModel.rows).map((group) => group.label);
       ensureDatasetLoaded = async (key, mode, options = {}) => {
         forceSeen = key === 'warehouseAssignedItems' && mode === 'full' && options.force === true;
         warehouseAssignedItemsInventory = [
@@ -887,8 +890,10 @@ test('Eval Reports #2 verifies a named user against current assignments before s
       await applyPromise;
       const currentAssignmentModel = GncEvalReports.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
       const after = getManagerEvalReport2RowsBeforeCommonName(currentAssignmentModel.rows).map((row) => getManagerEvalReport2ItemCode(row));
+      resetManagerEvalReport2Drill();
+      const afterCommonNames = getManagerEvalReport2DrillGroups(currentAssignmentModel.rows).map((group) => group.label);
       const settledHtml = renderManagerEvalReports2Panel();
-      return { before, after, forceSeen, blockedWhileRefreshing, pendingAfter:settledHtml.includes('Verifying current AssignedTo ownership before showing results...') };
+      return { before, after, beforeCommonNames, afterCommonNames, forceSeen, blockedWhileRefreshing, pendingAfter:settledHtml.includes('Verifying current AssignedTo ownership before showing results...') };
     } finally {
       ensureDatasetLoaded = originalEnsureDatasetLoaded;
     }
@@ -897,6 +902,8 @@ test('Eval Reports #2 verifies a named user against current assignments before s
   expect(result).toEqual({
     before: ['STALE.A'],
     after: ['CURRENT.B'],
+    beforeCommonNames: ['Stale Alpha'],
+    afterCommonNames: ['Current Beta'],
     forceSeen: true,
     blockedWhileRefreshing: true,
     pendingAfter: false,
