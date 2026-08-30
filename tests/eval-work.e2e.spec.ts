@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('assigned Eval Work is a phone-safe single-column editor with every AV Note reachable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -71,7 +71,7 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -115,7 +115,7 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
 
 test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -124,6 +124,7 @@ test('Queue Eval Work renders every stored Drive Mode origin as a Request-style 
       commonname: 'Blue Bayou Pampas Grass', contsize: '#3', assignee_username: 'dylan_collyge',
       assignee_display: 'Dylan Collyge', updated_at: '2026-08-30T15:47:10.528Z',
       contract_version: 'eval-work-v2-multi-origin',
+      source_context: { report: { reportId: 's1-with-pri', reportLabel: 'S1WithPRI' } },
       origins: [
         { origin_unique_id: 'drive-origin-1', locationcode: 'F.08.000', lotcode: '26.X', block_alpha: 'F', block_number: '08', origin_snapshot: { PTRONHAND: 12 } },
         { origin_unique_id: 'drive-origin-2', locationcode: 'F.16.000', lotcode: '27.S1', block_alpha: 'F', block_number: '16', origin_snapshot: { PTRONHAND: 7 } },
@@ -151,6 +152,7 @@ test('Queue Eval Work renders every stored Drive Mode origin as a Request-style 
       everyLotVisible: ['26.X', '27.S1', '26.U2'].every((lot) => host.textContent.includes(lot)),
       noBlockDrillCards: !host.querySelector('.eval-work-drill-card'),
       sharedAssignment: cards.every((card) => card.getAttribute('data-eval-work-id') === 'eval-work-drive-rows'),
+      sourceReportVisible: cards.every((card) => card.querySelector('.app-card-subline-source')?.textContent?.trim() === 'S1WithPRI'),
       otherEvaluatorHidden: !host.textContent.includes('Other Evaluator Item')
     };
   })()`));
@@ -162,6 +164,7 @@ test('Queue Eval Work renders every stored Drive Mode origin as a Request-style 
     everyLotVisible: true,
     noBlockDrillCards: true,
     sharedAssignment: true,
+    sourceReportVisible: true,
     otherEvaluatorHidden: true
   });
 });
