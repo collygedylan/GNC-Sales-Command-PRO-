@@ -96,6 +96,8 @@ test('Queue exposes only authorized Eval Work and supports offline-safe editing'
   assert.match(html, /class="eval-work-action-tray"/);
   assert.match(html, /Save Draft/);
   assert.match(html, /Submit/);
+  assert.doesNotMatch(html, /getManagerEvalReport2OriginBlock/);
+  assert.match(html, /function getEvalWorkOriginEntries\(work = null\)[\s\S]*snapshot\.BLOCKALPHA[\s\S]*locationParts\[1\]/);
 });
 
 test('assigned sales reps can use only the ownership-checked Eval photo scope', () => {

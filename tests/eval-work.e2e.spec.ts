@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('assigned Eval Work is a phone-safe single-column editor with every AV Note reachable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -71,7 +71,7 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -111,4 +111,57 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
   })`));
   expect(result.assignee).toBe('kayla_knepp');
   expect(result.pickerZ).toBeGreaterThan(result.setupZ);
+});
+
+test('Queue Eval Work renders every stored Drive Mode origin instead of retaining the prior queue', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.30.02', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
+
+  const result = await page.evaluate(() => window.eval(`(() => {
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    evalWorkManager = true;
+    evalWorkLoaded = true;
+    evalWorkLoading = false;
+    evalWorkError = '';
+    evalWorkStatusFilter = 'all';
+    evalWorkAssigneeFilter = 'all';
+    evalWorkBlockAlphaFilter = '';
+    evalWorkBlockNumberFilter = '';
+    evalWorkRows = [{
+      id: 'eval-work-drive-rows', status: 'open', version: 1, itemcode: '007541.051.1',
+      commonname: 'Blue Bayou Pampas Grass', contsize: '#3', assignee_username: 'dylan_collyge',
+      assignee_display: 'Dylan Collyge', updated_at: '2026-08-30T15:47:10.528Z',
+      contract_version: 'eval-work-v2-multi-origin',
+      origins: [
+        { origin_unique_id: 'drive-origin-1', locationcode: 'F.08.000', lotcode: '26.X', block_alpha: 'F', block_number: '08', origin_snapshot: {} },
+        { origin_unique_id: 'drive-origin-2', locationcode: 'F.16.000', lotcode: '27.S1', block_alpha: 'F', block_number: '16', origin_snapshot: {} },
+        { origin_unique_id: 'drive-origin-3', locationcode: 'E.07.000', lotcode: '26.U2', origin_snapshot: { BLOCKALPHA: 'E', BLOCKNUMBER: '07' } }
+      ]
+    }];
+    const previousMarkup = '<div id="previous-queue-card">Suspend Tag</div>';
+    const host = document.createElement('main');
+    host.id = 'eval-work-queue-regression-host';
+    host.innerHTML = previousMarkup;
+    document.body.appendChild(host);
+    const html = renderEvalWorkQueue();
+    host.innerHTML = html;
+    const originEntries = getEvalWorkOriginEntries(evalWorkRows[0]);
+    return {
+      replacedPriorQueue: !host.querySelector('#previous-queue-card'),
+      blockAlphaF: originEntries.some((origin) => origin.block_alpha === 'F' && ['08', '16'].includes(origin.block_number)),
+      blockAlphaE: originEntries.some((origin) => origin.block_alpha === 'E' && origin.block_number === '07'),
+      everyOriginGrouped: originEntries.length === 3 && originEntries.every((origin) => origin.block_alpha && origin.block_number),
+      queueHtml: html.length > 0
+    };
+  })()`));
+
+  expect(result).toEqual({
+    replacedPriorQueue: true,
+    blockAlphaF: true,
+    blockAlphaE: true,
+    everyOriginGrouped: true,
+    queueHtml: true
+  });
 });
