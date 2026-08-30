@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('assigned Eval Work is a phone-safe single-column editor with every AV Note reachable', async ({ page }) => {
+test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -13,28 +13,38 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
     const origin = {
       UNIQUE_ID: 'eval-origin-1', ITEMCODE: 'TEST.001', COMMONNAME: 'Synthetic Test Item', CONTSIZE: '#3',
       LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', SEASON: 'F1', SALEYEAR: '27', SOURCE: 'LD',
-      PTRONHAND: 125, PTRAVAILABLE: 120, PRIORITY: '1', HOLDSTOPCODE: '', HOLDSTOPREASON: ''
+      PTRONHAND: 125, PTRAVAILABLE: 120, PRIORITY: '1', HOLDSTOPCODE: '', HOLDSTOPREASON: '', SALESNOTE: 'First location note'
     };
-    const context = [origin, { ...origin, UNIQUE_ID: 'eval-context-2', LOCATIONCODE: 'B.02.001', LOTCODE: '27.S1', SEASON: 'S1', PTRONHAND: 40 }];
+    const secondOrigin = { ...origin, UNIQUE_ID: 'eval-origin-2', LOCATIONCODE: 'B.02.001', LOTCODE: '27.S1', SEASON: 'S1', PTRONHAND: 40, SALESNOTE: 'Second location note' };
+    const context = [origin, secondOrigin];
     const work = {
       id: 'eval-work-browser-fixture', status: 'open', version: 1, itemcode: 'TEST.001', commonname: 'Synthetic Test Item', contsize: '#3',
       origin_unique_id: 'eval-origin-1', origin_locationcode: 'A.01.001', origin_lotcode: '27.F1', origin_snapshot: origin,
       assignee_username: 'assigned_evaluator', assignee_display: 'Assigned Evaluator', instructions: 'Inspect the exact origin row.',
+      contract_version: 'eval-work-v2-multi-origin', source_context: { scopeContract: 'itemcode-all-rows-v1' },
+      origins: [
+        { origin_unique_id: 'eval-origin-1', locationcode: 'A.01.001', lotcode: '27.F1', origin_snapshot: origin, evidence_draft: {} },
+        { origin_unique_id: 'eval-origin-2', locationcode: 'B.02.001', lotcode: '27.S1', origin_snapshot: secondOrigin, evidence_draft: {} }
+      ],
       context_rows: context, inquiry_draft: { rowOverlays: [], transaction: { requestActions: [], holdStopProposals: [] } },
-      evidence_draft: { photos: [], spec: '', caliper: '', locMatchPercent: '', avNote: '', pickNote: '', comments: '' },
+      evidence_draft: {
+        'eval-origin-1': { photos: [], spec: '', caliper: '', locMatchPercent: '', avNote: '', pickNote: '', comments: '' },
+        'eval-origin-2': { photos: [], spec: '', caliper: '', locMatchPercent: '', avNote: '', pickNote: '', comments: '' }
+      },
       delivery: { assignment: { status: 'delivered' } }
     };
-    evalWorkRows = [work];
-    activeEvalWorkDetailId = work.id;
+    openEvalWorkDetail(work.id, encodeURIComponent('eval-origin-2'));
     const host = document.createElement('main');
     host.id = 'eval-work-browser-host';
     host.style.width = '390px';
     host.innerHTML = renderEvalWorkDetail(work);
     document.body.appendChild(host);
-    const ids = ['eval-work-spec', 'eval-work-caliper', 'eval-work-loc-match', 'eval-work-av-note', 'eval-work-pick-note', 'eval-work-comments'];
+    const ids = ['eval-work-spec', 'eval-work-caliper', 'eval-work-loc-match', 'eval-work-av-note', 'eval-work-pick-note'];
     const fields = ids.map((id) => document.getElementById(id));
     const photoInput = host.querySelector('input[type="file"][capture="environment"]');
     const tray = host.querySelector('.eval-work-action-tray');
+    const trayPosition = tray ? getComputedStyle(tray).position : '';
+    const saveAndSubmit = !!tray && /Save Draft/.test(tray.textContent || '') && /Submit/.test(tray.textContent || '');
     openEvalWorkAvNoteSheet();
     const choices = Array.from(document.querySelectorAll('#eval-work-av-note-choices button'));
     const lastChoice = choices[choices.length - 1];
@@ -43,13 +53,30 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
       const box = element.getBoundingClientRect();
       return { left: box.left, right: box.right, width: box.width };
     });
-    return {
+    const evaluationResult = {
       fieldsPresent: fields.every(Boolean),
-      photoCapture: !!photoInput,
+      openedCardHeading: host.querySelector('.eval-work-evidence h3')?.textContent || '',
+      noLotSelector: !host.querySelector('.eval-work-origin-tabs'),
+      itemInquiryHidden: !host.querySelector('.eval-work-inquiry'),
+      topTabs: Array.from(host.querySelectorAll('.eval-work-detail-tab')).map((tab) => (tab.textContent || '').trim()),
+      currentNote: host.querySelector('.eval-work-current-note')?.textContent || '',
+      editableNote: !!host.querySelector('#eval-work-comments')
+    };
+    setEvalWorkDetailView('item-inquiry', work);
+    host.innerHTML = renderEvalWorkDetail(work);
+    const inquiryResult = {
+      present: !!host.querySelector('.eval-work-inquiry'),
       rowSections: host.querySelectorAll('.argos-reclass-row-card').length,
       actionButtons: host.querySelectorAll('.argos-reclass-action-btn').length,
-      trayPosition: tray ? getComputedStyle(tray).position : '',
-      saveAndSubmit: !!tray && /Save Draft/.test(tray.textContent || '') && /Submit/.test(tray.textContent || ''),
+      evaluationHidden: !host.querySelector('.eval-work-evidence'),
+      locSalesNoteHidden: !host.querySelector('.eval-work-loc-sales-note')
+    };
+    return {
+      evaluationResult,
+      inquiryResult,
+      photoCapture: !!photoInput,
+      trayPosition,
+      saveAndSubmit,
       avChoices: choices.length,
       lastAvChoice: lastChoice ? lastChoice.textContent : '',
       noHorizontalOverflow: host.scrollWidth <= 391,
@@ -57,10 +84,20 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
     };
   })()`));
 
-  expect(result.fieldsPresent).toBe(true);
+  expect(result.evaluationResult).toEqual({
+    fieldsPresent: true,
+    openedCardHeading: 'Pictures & Specs: B.02.001 / 27.S1',
+    noLotSelector: true,
+    itemInquiryHidden: true,
+    topTabs: ['Pictures & Specs', 'Item Inquiry'],
+    currentNote: expect.stringContaining('Second location note'),
+    editableNote: true
+  });
+  expect(result.inquiryResult).toMatchObject({ present: true, rowSections: 2 });
+  expect(result.inquiryResult.actionButtons).toBeGreaterThanOrEqual(8);
+  expect(result.inquiryResult.evaluationHidden).toBe(true);
+  expect(result.inquiryResult.locSalesNoteHidden).toBe(true);
   expect(result.photoCapture).toBe(true);
-  expect(result.rowSections).toBe(2);
-  expect(result.actionButtons).toBeGreaterThanOrEqual(8);
   expect(['sticky', 'fixed']).toContain(result.trayPosition);
   expect(result.saveAndSubmit).toBe(true);
   expect(result.avChoices).toBe(80);
@@ -71,7 +108,7 @@ test('assigned Eval Work is a phone-safe single-column editor with every AV Note
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -115,7 +152,7 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
 
 test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {

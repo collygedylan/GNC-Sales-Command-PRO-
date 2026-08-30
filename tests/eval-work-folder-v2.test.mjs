@@ -74,7 +74,9 @@ test('every origin has isolated evidence and exact-row photo scope', () => {
   assert.doesNotMatch(exactUpdate, /priority\s*=|holdstopcode\s*=|holdstopreason\s*=|ptronhand\s*=|season\s*=/i);
   assert.match(appApi, /p_evidence_by_origin: evidence/);
   assert.match(appApi, /requiredPrefix = isV2 \? `eval\/\$\{workId\}\/\$\{originUid\}\//);
-  assert.match(html, /Complete the required evidence for every \$\{itemcodeWideScope \? 'current ITEMCODE row' : 'selected lot'\}/);
+  assert.match(html, /Update the photos and evaluation fields for the Queue card you opened\. Open each remaining Queue row to complete its evidence\./);
+  assert.match(html, /class="eval-work-detail-tabs"[\s\S]*Pictures &amp; Specs[\s\S]*Item Inquiry/);
+  assert.doesNotMatch(html.slice(html.indexOf('const detailTabs ='), html.indexOf('const evaluationPanel =', html.indexOf('const detailTabs ='))), /Loc Sales Note/);
   assert.match(html, /requiredEvidence\.forEach/);
 });
 

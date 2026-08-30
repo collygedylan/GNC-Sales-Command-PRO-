@@ -100,6 +100,40 @@ test('Queue exposes only authorized Eval Work and supports offline-safe editing'
   assert.match(html, /function getEvalWorkOriginEntries\(work = null\)[\s\S]*snapshot\.BLOCKALPHA[\s\S]*locationParts\[1\]/);
 });
 
+test('Queue navigation is focused while Sales Reps and Delivery Recovery live in Managers', () => {
+  assert.match(html, /const REQUEST_TAB_LABELS = Object\.freeze\(\{[\s\S]*pending: 'Request'[\s\S]*'suspend-tag': 'Suspend'[\s\S]*moves: 'Location Moves'[\s\S]*recount: 'Recount'[\s\S]*'shear-list': 'Shear List'[\s\S]*'eval-work': 'Eval Work'/);
+  const labelsStart = html.indexOf('const REQUEST_TAB_LABELS = Object.freeze');
+  const labelsEnd = html.indexOf('function getRequestTabQueueCounts', labelsStart);
+  const labelsBlock = html.slice(labelsStart, labelsEnd);
+  assert.doesNotMatch(labelsBlock, /Sales Reps|AV Check/);
+  const categoriesStart = html.indexOf('function getAuthorizedRequestCategories');
+  const categoriesEnd = html.indexOf('function renderRequestCategoryToolbar', categoriesStart);
+  const categoriesBlock = html.slice(categoriesStart, categoriesEnd);
+  assert.doesNotMatch(categoriesBlock, /categories\.push\('reps'\)|categories\.push\('av-check'\)/);
+  assert.doesNotMatch(html, /id="tab-req-reps"|id="tab-req-av-check"|id="request-delivery-recovery-panel"/);
+  assert.match(html, /const MANAGER_SALES_REPS_VIEW = 'sales-reps'/);
+  assert.match(html, /const MANAGER_DELIVERY_RECOVERY_VIEW = 'delivery-recovery'/);
+  assert.match(html, /if \(access\.canViewSalesReps\) tabs\.push\(\{ id: MANAGER_SALES_REPS_VIEW, label: 'Sales Reps' \}\)/);
+  assert.match(html, /if \(access\.canManageDeliveryRecovery\) tabs\.push\(\{ id: MANAGER_DELIVERY_RECOVERY_VIEW, label: 'Delivery Recovery' \}\)/);
+  assert.match(html, /activeHomeTab === MANAGER_DELIVERY_RECOVERY_VIEW\) html \+= renderManagerDeliveryRecoveryPanel\(\)/);
+  assert.match(html, /function openManagerSalesRepsModule\(\)[\s\S]*switchView\('request', \{ managerSalesReps: true, force: true \}\)/);
+  assert.match(html, /const sendToEvalHtml = ''/);
+});
+
+test('Eval Work opens the selected Queue row with exactly two top-level work tabs', () => {
+  assert.match(html, /function openEvalWorkDetail\(workId = '', encodedOriginUid = ''\)[\s\S]*evalWorkActiveOriginUid = decodeURIComponent[\s\S]*evalWorkDetailView = 'pictures-specs'/);
+  assert.match(html, /class="eval-work-detail-tabs"[\s\S]*Pictures &amp; Specs[\s\S]*Item Inquiry/);
+  const tabsBlock = html.slice(html.indexOf('const detailTabs ='), html.indexOf('const evaluationPanel =', html.indexOf('const detailTabs =')));
+  assert.equal((tabsBlock.match(/class="eval-work-detail-tab"/g) || []).length, 2);
+  assert.doesNotMatch(tabsBlock, /Lot Evaluation|Loc Sales Note/);
+  assert.match(html, /detailView === 'pictures-specs' \? `<section class="eval-work-evidence"/);
+  assert.match(html, /detailView === 'item-inquiry' \? `<section class="eval-work-inquiry"/);
+  assert.match(html, /Update the photos and evaluation fields for the Queue card you opened/);
+  assert.doesNotMatch(html.slice(html.indexOf('function renderEvalWorkDetail'), html.indexOf('function getEvalWorkOriginEntries')), /eval-work-origin-tabs/);
+  assert.match(html, /Current Loc Sales Note/);
+  assert.match(html, /function collectEvalWorkEvidence\(work = null\)[\s\S]*if \(element\) return String\(element\.value/);
+});
+
 test('assigned sales reps can use only the ownership-checked Eval photo scope', () => {
   assert.match(appApi, /REP_ALLOWED_PHOTO_PREFIXES = new Set\(\["req-", "credit-", "eval-"\]\)/);
   assert.match(appApi, /prefix === "eval-"[\s\S]*loadAuthorizedEvalWork\(session, evalWorkId\)/);
