@@ -401,16 +401,10 @@ insert into public.ph_request_delivery_outbox (
   'ci:delivery-lease', 'delivery_canary', '{}'::jsonb, 'pending', now()
 );
 -- Updating request-created rows above can reconcile a folder completion event
--- after the update target set is fixed. Defer every non-canary event once more
--- so this lease test has exactly one eligible row.
-update public.ph_request_delivery_outbox
-set status = 'pending',
-    next_attempt_at = now() + interval '1 day',
-    lease_token = null,
-    lease_owner = null,
-    lease_expires_at = null
-where event_key <> 'ci:delivery-lease'
-  and status in ('pending', 'processing', 'failed');
+-- after the update target set is fixed. This transaction rolls back, so remove
+-- all unrelated fixture events and leave exactly one row for the lease test.
+delete from public.ph_request_delivery_outbox
+where event_key <> 'ci:delivery-lease';
 
 select is(
   (select count(*)::integer from public.claim_request_delivery_events(1, 'ci-worker-a')),
