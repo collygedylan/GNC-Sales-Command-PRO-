@@ -118,7 +118,9 @@ test('HL PO failures retain files and expose sanitized parse reason codes', () =
   }
   assert.match(appsScriptBackend, /failedFiles\.push\(\{ name: fileName, error: errorMessage, errorCode: errorCode \}\)/);
   assert.match(appsScriptBackend, /Keeping \$\{fileName\} in source folder for correction\/retry/);
-  assert.match(appsScriptBackend, /status\.errorCode = String\(failedFileErrors\[0\]/);
+  assert.match(appsScriptBackend, /status\.errorCode = sanitizeManualSyncErrorCode_\(failedFileErrors\[0\]/);
+  assert.match(appsScriptBackend, /failedFileErrors\.map\(function\(entry\)[\s\S]*return \{ errorCode: sanitizeManualSyncErrorCode_/);
+  assert.doesNotMatch(appsScriptBackend, /status\.error = buildManualSyncStageFailureMessage_[\s\S]*failedFileErrors\[0\]\.error/);
 });
 
 test('Queue and Drive render from the smallest canonical dataset needed for the active view', () => {

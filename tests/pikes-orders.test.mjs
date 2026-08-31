@@ -11,6 +11,7 @@ const html = read('index.html');
 const migration = read('supabase/migrations/20260831165043_pikes_orders_manager_history.sql');
 const repairMigration = read('supabase/migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql');
 const repairAuditHardening = read('supabase/migrations/20260831230825_harden_pikes_assignment_repair_audit.sql');
+const serviceRpcHardening = read('supabase/migrations/20260831232439_harden_pikes_service_rpc_execution.sql');
 const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
 const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
 
@@ -130,6 +131,9 @@ test('Pikes snapshots use authoritative assignments and historical repair is ser
   assert.match(repairMigration, /revoke all on function public\.repair_pikes_order_batch_assignments_v1\(uuid, boolean, text\) from public, anon, authenticated/);
   assert.match(repairMigration, /grant execute on function public\.repair_pikes_order_batch_assignments_v1\(uuid, boolean, text\) to service_role/);
   assert.match(repairAuditHardening, /as restrictive[\s\S]*to anon, authenticated[\s\S]*using \(false\)[\s\S]*with check \(false\)/);
+  assert.match(serviceRpcHardening, /alter function public\.repair_pikes_order_batch_assignments_v1\(uuid, boolean, text\)[\s\S]*security definer/);
+  assert.match(serviceRpcHardening, /alter function public\.get_pikes_order_assignment_health_v1\(\)[\s\S]*security definer/);
+  assert.match(serviceRpcHardening, /revoke all on function public\.get_pikes_order_assignment_health_v1\(\)[\s\S]*from public, anon, authenticated/);
 });
 
 test('assignment reconciliation is incremental, indexed, and overlap-safe', () => {
