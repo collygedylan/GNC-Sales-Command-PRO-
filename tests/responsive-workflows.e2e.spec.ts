@@ -73,6 +73,8 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
     'mitch_kaiser',
     'dylan_collyge',
     'megan_kelly',
+    'kayla_knepp',
+    'jd_jones',
   ]);
   expect(result.labels).toEqual(result.values.map((value) => value || 'Unassigned'));
   expect(result.key).toBe('001668.030.1|buddleia');
@@ -714,15 +716,19 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       loadEvalWork: loadEvalWorkAssignments
     };
     let captured = null;
+    let loadedEvalWorkRows = [];
     try {
       currentUser = 'dylan_collyge';
       currentUserDisplay = 'Dylan Collyge';
       canViewManagerEvalReports2 = () => true;
       isEvalWorkManagerUser = () => true;
       ensureAssignableAppUsers = async () => [];
-      getAssignableAppUserOptions = () => [{ username: 'chance_alldredge', display: 'Chance Alldredge', email: 'chance_alldredge@greenleafnursery.com' }];
-      openGroupedBloomNcrRecipientModal = async (_rows, _selected, options = {}) => options.singleSelect
-        ? ['chance_alldredge@greenleafnursery.com']
+      getAssignableAppUserOptions = () => [
+        { username: 'dylan_collyge', display: 'Dylan Collyge', email: 'dylan_collyge@greenleafnursery.com' },
+        { username: 'kayla_knepp', display: 'Kayla Knepp', email: 'kayla_knepp@greenleafnursery.com' }
+      ];
+      openGroupedBloomNcrRecipientModal = async (_rows, _selected, options = {}) => options.selectionNoun === 'evaluator'
+        ? ['dylan_collyge@greenleafnursery.com', 'kayla_knepp@greenleafnursery.com']
         : ['megan_kelly@greenleafnursery.com'];
       showAppConfirm = async () => true;
       evalWorkApi = async (operation, payload, options) => {
@@ -730,13 +736,12 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         return { data: payload.items.map((item, index) => ({ id: 'eval-batch-' + index, itemcode: item.source.itemcode, assignment_delivery_status: 'queued' })) };
       };
       loadEvalWorkAssignments = async () => {
-        evalWorkRows = captured.payload.items.map((item, index) => ({
+        loadedEvalWorkRows = captured.payload.items.map((item, index) => ({
           id: 'eval-batch-' + index,
           itemcode: item.itemcode,
           origin_rows: item.origins.map((origin) => ({ origin_unique_id: origin.unique_id, locationcode: origin.locationcode, lotcode: origin.lotcode }))
         }));
-        evalWorkLoaded = true;
-        return evalWorkRows;
+        return loadedEvalWorkRows;
       };
       processAndLoadData({ data: [
         { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
@@ -799,11 +804,11 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         onePerItemcode: captured && new Set(captured.payload.items.map((item) => item.source.itemcode)).size,
         fullRowOverlays: captured && captured.payload.items.every((item) => item.inquiry.rowOverlays.length === item.origins.length),
         multiOriginContract: captured && captured.payload.items.find((item) => item.itemcode === 'A').origins.length === 2,
-        queueOriginCount: evalWorkRows.flatMap((work) => work.origin_rows || []).length,
+        queueOriginCount: loadedEvalWorkRows.flatMap((work) => work.origin_rows || []).length,
         assignedUserScope: captured && captured.payload.items.every((item) => Array.isArray(item.reportContext.assignedToUsers) && item.reportContext.assignedToUsers.includes('dylan_collyge')),
         idempotencyHeaderReady: captured && captured.options.idempotencyKey === captured.payload.batchToken,
         pdfOutboxOnly: captured && captured.operation === 'create_batch' && !('shiftReportAttachment' in captured.payload),
-        assignee: captured && captured.payload.assigneeUsername,
+        assignees: captured && captured.payload.assigneeUsernames,
         recipients: captured && captured.payload.completionRecipients,
         clearedAfterAcceptance: getManagerEvalReport2SelectedItems().length === 0
       };
@@ -837,7 +842,7 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
     assignedUserScope: true,
     idempotencyHeaderReady: true,
     pdfOutboxOnly: true,
-    assignee: 'chance_alldredge',
+    assignees: ['dylan_collyge', 'kayla_knepp'],
     recipients: ['megan_kelly@greenleafnursery.com'],
     clearedAfterAcceptance: true,
   });

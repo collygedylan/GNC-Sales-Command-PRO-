@@ -194,7 +194,7 @@ test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on 
     pickerZ: Number.parseInt(getComputedStyle(document.getElementById('grouped-bloom-ncr-recipient-modal')).zIndex || '0', 10),
     setupZ: Number.parseInt(getComputedStyle(document.getElementById('eval-work-setup-modal')).zIndex || '0', 10)
   })`));
-  expect(result.assignees).toEqual(['kayla_knepp', 'jd_jones']);
+  expect([...result.assignees].sort()).toEqual(['jd_jones', 'kayla_knepp']);
   expect(result.pickerZ).toBeGreaterThan(result.setupZ);
 });
 
