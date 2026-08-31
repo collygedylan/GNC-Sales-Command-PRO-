@@ -9,6 +9,8 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 const code = read('Code.gs');
 const html = read('index.html');
 const migration = read('supabase/migrations/20260831165043_pikes_orders_manager_history.sql');
+const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
+const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
 
 function loadPikesParser() {
   const start = code.indexOf('const PIKES_ORDER_COLUMNS');
@@ -111,6 +113,11 @@ test('Orders data is manager-read-only and service-write-only', () => {
   assert.match(migration, /'manager\.orders\.view'/);
   assert.match(migration, /limit safe_limit \+ 1/);
   assert.match(migration, /limit 200/);
+  assert.match(performanceWorkflow, /20260831165043_pikes_orders_manager_history\.sql/);
+  assert.match(performanceWorkflow, /pikes_orders_rls_test\.sql/);
+  assert.match(rlsTest, /active Admin can view Orders/);
+  assert.match(rlsTest, /locked Manager cannot view Orders/);
+  assert.match(rlsTest, /every matching Drive row is frozen once/);
 });
 
 test('Managers Orders UI provides Pikes history, multi-assignee filters, warnings, and Drive cards', () => {

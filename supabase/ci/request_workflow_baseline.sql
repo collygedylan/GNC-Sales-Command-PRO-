@@ -10,6 +10,8 @@ create table if not exists public.ph_master_inventory (
   contsize text,
   locationcode text,
   lotcode text,
+  ptronhand text,
+  ptrreviewed text,
   ptravailable text,
   season_supply text,
   priority text,
@@ -29,8 +31,16 @@ create table if not exists public.ph_master_inventory (
   photo_name text,
   s_lts text,
   season text,
+  blockalpha text,
+  blocknumber text,
+  fieldtagcolor text,
+  desigitem text,
+  desigloc text,
   holdstopcode text,
   holdstopreason text,
+  itemspec text,
+  locationnote text,
+  locationnotedate text,
   app_tab_assignment text
 );
 
