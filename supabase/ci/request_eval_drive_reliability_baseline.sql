@@ -5,6 +5,13 @@ begin;
 -- required to compile and test the later canonical Drive save contract.
 create schema if not exists private;
 
+alter table public.ph_master_inventory
+  add column if not exists source text,
+  add column if not exists saleyear text,
+  add column if not exists initial_ptr text,
+  add column if not exists end_cap_folder text,
+  add column if not exists date_completed timestamptz;
+
 create table if not exists private.drive_evidence_idempotency (
   profile_id uuid not null references public.profiles(id) on delete restrict,
   idempotency_key text not null,
