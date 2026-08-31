@@ -117,6 +117,7 @@
   let monitoringLoadPromise = null;
   let longTaskCount = 0;
   let premiumDecorateFrame = 0;
+  const premiumDecorationRoots = new Set();
   let layoutHealthTimer = 0;
   let viewportResizeObserver = null;
   const healthDedupe = new Map();
@@ -348,27 +349,48 @@
     element.replaceWith(svg);
   }
 
-  function decoratePremiumComponents() {
-    premiumDecorateFrame = 0;
-    const root = document.getElementById('app-wrapper') || document;
-    root.querySelectorAll(PREMIUM_ICON_SELECTOR).forEach(replacePremiumIcon);
-    root.querySelectorAll(':is(input:not([type="checkbox"]):not([type="radio"]), select, textarea)').forEach((element) => element.classList.add('ui-field'));
-    root.querySelectorAll(':is(.freeze-panel, .sticky-search, .fixed-filter-rail, .task-controls-sticky, .drive-controls-sticky)').forEach((element) => element.classList.add('ui-panel'));
-    root.querySelectorAll(':is(.inv-card, .drill-item, .item-row, .task-card, .request-card, .dock-card, .manager-module-card, .communication-hub-card, .app-card-shell, .app-smart-card)').forEach((element) => element.classList.add('ui-card'));
-    root.querySelectorAll(':is(.task-tab, .detail-tab, [role="tab"])').forEach((element) => element.classList.add('ui-tab'));
-    root.querySelectorAll(':is(.animate-pulse, [data-loading="true"], [aria-busy="true"] .skeleton)').forEach((element) => element.classList.add('ui-skeleton'));
-    root.querySelectorAll(':is(button, [role="button"])').forEach((element) => {
+  function selectPremiumTargets(root, selector) {
+    if (!root || typeof root.querySelectorAll !== 'function') return [];
+    const targets = Array.from(root.querySelectorAll(selector));
+    if (root instanceof Element && root.matches(selector)) targets.unshift(root);
+    return targets;
+  }
+
+  function decoratePremiumComponents(root = document.getElementById('app-wrapper') || document) {
+    selectPremiumTargets(root, PREMIUM_ICON_SELECTOR).forEach(replacePremiumIcon);
+    selectPremiumTargets(root, ':is(input:not([type="checkbox"]):not([type="radio"]), select, textarea)').forEach((element) => element.classList.add('ui-field'));
+    selectPremiumTargets(root, ':is(.freeze-panel, .sticky-search, .fixed-filter-rail, .task-controls-sticky, .drive-controls-sticky)').forEach((element) => element.classList.add('ui-panel'));
+    selectPremiumTargets(root, ':is(.inv-card, .drill-item, .item-row, .task-card, .request-card, .dock-card, .manager-module-card, .communication-hub-card, .app-card-shell, .app-smart-card)').forEach((element) => element.classList.add('ui-card'));
+    selectPremiumTargets(root, ':is(.task-tab, .detail-tab, [role="tab"])').forEach((element) => element.classList.add('ui-tab'));
+    selectPremiumTargets(root, ':is(.animate-pulse, [data-loading="true"], [aria-busy="true"] .skeleton)').forEach((element) => element.classList.add('ui-skeleton'));
+    selectPremiumTargets(root, ':is(button, [role="button"])').forEach((element) => {
       if (element.closest('#bottom-nav') || element.classList.contains('footer-nav-btn')) return;
       element.classList.add('ui-action');
     });
-    root.querySelectorAll('.rounded-full').forEach((element) => {
+    selectPremiumTargets(root, '.rounded-full').forEach((element) => {
       if (!element.matches('input, textarea') && !element.classList.contains('android-icon-btn')) element.classList.add('ui-pill');
     });
   }
 
-  function schedulePremiumDecorations() {
-    if (premiumDecorateFrame) cancelAnimationFrame(premiumDecorateFrame);
-    premiumDecorateFrame = requestAnimationFrame(decoratePremiumComponents);
+  function schedulePremiumDecorations(root = null) {
+    const fullRoot = document.getElementById('app-wrapper') || document;
+    if (!root || root === fullRoot || root === document) {
+      premiumDecorationRoots.clear();
+      premiumDecorationRoots.add(fullRoot);
+    } else if (!premiumDecorationRoots.has(fullRoot)) {
+      premiumDecorationRoots.add(root);
+    }
+    if (premiumDecorateFrame) return;
+    premiumDecorateFrame = requestAnimationFrame(() => {
+      premiumDecorateFrame = 0;
+      const roots = Array.from(premiumDecorationRoots).filter((candidate) => candidate && (candidate === document || candidate.isConnected !== false));
+      premiumDecorationRoots.clear();
+      if (roots.length > 24) {
+        decoratePremiumComponents(fullRoot);
+        return;
+      }
+      roots.forEach(decoratePremiumComponents);
+    });
   }
 
   function isRecordNode(element) {
@@ -403,16 +425,26 @@
   }
 
   function scheduleDecorateRecordCollections() {
-    if (decorateFrame) cancelAnimationFrame(decorateFrame);
-    decorateFrame = requestAnimationFrame(decorateRecordCollections);
+    if (decorateFrame) return;
+    if (typeof window.requestIdleCallback === 'function') {
+      decorateFrame = window.requestIdleCallback(decorateRecordCollections, { timeout: 220 });
+      return;
+    }
+    decorateFrame = window.setTimeout(decorateRecordCollections, 48);
   }
 
   function installMutationObserver() {
     if (mutationObserver || !window.MutationObserver) return;
     const wrapper = document.getElementById('view-wrapper');
     if (!wrapper) return;
-    mutationObserver = new MutationObserver(() => {
-      schedulePremiumDecorations();
+    mutationObserver = new MutationObserver((records) => {
+      records.forEach((record) => {
+        Array.from(record.addedNodes || []).forEach((node) => {
+          if (node && (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE)) {
+            schedulePremiumDecorations(node);
+          }
+        });
+      });
       scheduleDecorateRecordCollections();
       scheduleLayoutHealthCheck('mutation');
     });
