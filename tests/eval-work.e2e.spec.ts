@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.07&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.08&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(async () => {
@@ -10,7 +10,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     currentUserDisplay = 'Assigned Evaluator';
     installMutationBlockedAccessCanaryIdentity('assigned_evaluator', 'Assigned Evaluator', 'User');
     evalWorkManager = false;
-    processAndLoadData({ avNotesData: Array.from({ length: 80 }, (_, index) => ({ AV_NOTE: 'Evaluation option ' + String(index + 1).padStart(2, '0') })), _fromCache: true });
+    processAndLoadData({ avNotesData: Array.from({ length: 80 }, (_, index) => ({ COMMONNAME: 'Synthetic Test Item', AV_NOTE: 'Evaluation option ' + String(index + 1).padStart(2, '0') })), _fromCache: true });
     const origin = {
       UNIQUE_ID: 'eval-origin-1', ITEMCODE: 'TEST.001', COMMONNAME: 'Synthetic Test Item', CONTSIZE: '#3',
       LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', SEASON: 'F1', SALEYEAR: '27', SOURCE: 'LD',
@@ -29,8 +29,8 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
       ],
       context_rows: context, inquiry_draft: { rowOverlays: [], transaction: { requestActions: [], holdStopProposals: [] } },
       evidence_draft: {
-        'eval-origin-1': { photos: [{ filePath: 'eval/fixture/one.jpg', name: 'one.jpg' }], spec: '24 inch', caliper: '', locMatchPercent: '100', avNote: 'Verified', pickNote: '', comments: '' },
-        'eval-origin-2': { photos: [{ filePath: 'eval/fixture/two.jpg', name: 'two.jpg' }], spec: '30 inch', caliper: '', locMatchPercent: '95', avNote: 'Verified', pickNote: '', comments: '' }
+        'eval-origin-1': { photos: [{ filePath: 'eval/fixture/one.jpg', name: 'one.jpg' }], spec: '24 inch', caliper: '', locMatchPercent: '100', avNote: 'Verified', pickNote: '', comments: 'First location note', picturesSpecsResolution: 'done' },
+        'eval-origin-2': { photos: [{ filePath: 'eval/fixture/two.jpg', name: 'two.jpg' }], spec: '30 inch', caliper: '', locMatchPercent: '95', avNote: 'Verified', pickNote: '', comments: 'Second location note', picturesSpecsResolution: 'done' }
       },
       delivery: { assignment: { status: 'delivered' } }
     };
@@ -60,8 +60,8 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     const photoInput = host.querySelector('input[type="file"][capture="environment"]');
     const tray = host.querySelector('.eval-work-action-tray');
     const noManualActionTray = !tray && !/Save Draft|Submit/.test(host.textContent || '');
-    openEvalWorkAvNoteSheet();
-    const choices = Array.from(document.querySelectorAll('#eval-work-av-note-choices button'));
+    filterEvalWorkAvNotes('');
+    const choices = Array.from(document.querySelectorAll('#eval-work-av-dropdown-list button'));
     const lastChoice = choices[choices.length - 1];
     if (lastChoice) lastChoice.scrollIntoView({ block: 'nearest' });
     const controls = Array.from(host.querySelectorAll('input:not([type="hidden"]), textarea, button, label.eval-work-photo-add')).map((element) => {
@@ -74,8 +74,10 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
       noLotSelector: !host.querySelector('.eval-work-origin-tabs'),
       itemInquiryHidden: !host.querySelector('.eval-work-inquiry'),
       topTabs: Array.from(host.querySelectorAll('.eval-work-detail-tab')).map((tab) => (tab.textContent || '').trim()),
-      currentNote: host.querySelector('.eval-work-current-note')?.textContent || '',
-      editableNote: !!host.querySelector('#eval-work-comments')
+      commentsValue: host.querySelector('#eval-work-comments')?.value || '',
+      editableNote: !!host.querySelector('#eval-work-comments'),
+      picturesMarkDone: !!host.querySelector('.eval-work-pictures-done'),
+      standardAvInput: host.querySelector('#eval-work-av-note')?.type === 'text'
     };
     setEvalWorkDetailView('item-inquiry', work);
     host.innerHTML = renderEvalWorkDetail(work);
@@ -119,8 +121,10 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     noLotSelector: true,
     itemInquiryHidden: true,
     topTabs: ['Pictures & Specs', 'Item Inquiry'],
-    currentNote: expect.stringContaining('Second location note'),
-    editableNote: true
+    commentsValue: 'Second location note',
+    editableNote: true,
+    picturesMarkDone: true,
+    standardAvInput: true
   });
   expect(result.inquiryResult, JSON.stringify(result.inquiryResult)).toMatchObject({
     present: true,
@@ -146,7 +150,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
 
 test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.08', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -190,7 +194,7 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
 
 test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.07', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.08', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {

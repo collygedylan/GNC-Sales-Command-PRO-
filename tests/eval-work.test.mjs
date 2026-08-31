@@ -130,9 +130,15 @@ test('Eval Work opens the selected Queue row with exactly two top-level work tab
   assert.doesNotMatch(tabsBlock, /Lot Evaluation|Loc Sales Note/);
   assert.match(html, /detailView === 'pictures-specs' \? `<section class="eval-work-evidence"/);
   assert.match(html, /detailView === 'item-inquiry' \? `<section class="eval-work-inquiry"/);
-  assert.match(html, /Update the photos and evaluation fields for the Queue card you opened/);
+  assert.match(html, /same exact-row Pictures &amp; Specs work used by Request and Drive Mode/);
   assert.doesNotMatch(html.slice(html.indexOf('function renderEvalWorkDetail'), html.indexOf('function getEvalWorkOriginEntries')), /eval-work-origin-tabs/);
-  assert.match(html, /Current Loc Sales Note/);
+  assert.doesNotMatch(html, /Current Loc Sales Note/);
+  assert.match(html, /Spec \(Size\/Dims\)/);
+  assert.match(html, /function buildEvalWorkRequestDriveBaselineEvidence/);
+  assert.match(html, /function filterEvalWorkAvNotes/);
+  assert.match(html, /function calculateEvalWorkMatchQty/);
+  assert.match(html, /function markEvalWorkPicturesSpecsDone/);
+  assert.match(html, /class="eval-work-pictures-done"/);
   assert.match(html, /function collectEvalWorkEvidence\(work = null\)[\s\S]*if \(element\) return String\(element\.value/);
 });
 

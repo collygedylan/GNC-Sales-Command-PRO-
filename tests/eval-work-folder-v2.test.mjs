@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
 const itemcodeMigration = read('../supabase/migrations/20260829042809_itemcode_wide_eval_work.sql');
 const resolutionMigration = read('../supabase/migrations/20260830213039_eval_work_item_inquiry_row_resolution_v3.sql');
+const parityMigration = read('../supabase/migrations/20260831004047_eval_work_request_drive_parity.sql');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const worker = read('../supabase/functions/request-delivery-worker/index.ts');
 const html = read('../index.html');
@@ -75,10 +76,31 @@ test('every origin has isolated evidence and exact-row photo scope', () => {
   assert.doesNotMatch(exactUpdate, /priority\s*=|holdstopcode\s*=|holdstopreason\s*=|ptronhand\s*=|season\s*=/i);
   assert.match(appApi, /p_evidence_by_origin: evidence/);
   assert.match(appApi, /requiredPrefix = isV2 \? `eval\/\$\{workId\}\/\$\{originUid\}\//);
-  assert.match(html, /Update the photos and evaluation fields for the Queue card you opened\. Open each remaining Queue row to complete its evidence\./);
+  assert.match(html, /same exact-row Pictures &amp; Specs work used by Request and Drive Mode/);
   assert.match(html, /class="eval-work-detail-tabs"[\s\S]*Pictures &amp; Specs[\s\S]*Item Inquiry/);
   assert.doesNotMatch(html.slice(html.indexOf('const detailTabs ='), html.indexOf('const evaluationPanel =', html.indexOf('const detailTabs ='))), /Loc Sales Note/);
   assert.match(html, /requiredEvidence\.forEach/);
+  assert.match(html, /picturesSpecsResolution/);
+  assert.match(html, /markEvalWorkPicturesSpecsDone/);
+});
+
+test('Eval Work completion uses the Request and Drive Mode row contract transactionally', () => {
+  assert.match(parityMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(parityMigration, /create or replace function private\.eval_work_apply_request_drive_parity_v1/);
+  assert.match(parityMigration, /eval_work_all_pictures_specs_mark_done_required/);
+  assert.match(parityMigration, /date_completed = completed_at/);
+  assert.match(parityMigration, /av_rule_bundle_updated_at = completed_at/);
+  assert.match(parityMigration, /av_rule_priority_snapshot = m\.priority/);
+  assert.match(parityMigration, /create or replace function private\.eval_work_safe_numeric_v1/);
+  assert.match(parityMigration, /create or replace function private\.eval_work_normalized_sales_year_v1/);
+  assert.match(parityMigration, /app_tab_assignment = case[\s\S]*then 'endcap'[\s\S]*when m\.unique_id = winner_id then 'season'[\s\S]*else 'location'/);
+  assert.match(parityMigration, /not like 'ncr\\_%' escape '\\'/);
+  assert.match(parityMigration, /not_on_inventory_dylan/);
+  assert.match(parityMigration, /insert into public\.ph_sales_office/);
+  assert.match(parityMigration, /on conflict \(unique_id\) do update/);
+  assert.match(parityMigration, /perform private\.eval_work_apply_request_drive_parity_v1/);
+  assert.match(parityMigration, /revoke all on function private\.eval_work_apply_request_drive_parity_v1[\s\S]*from public, anon, authenticated/);
+  assert.match(parityMigration, /grant execute on function public\.submit_eval_work_v2[\s\S]*to service_role/);
 });
 
 test('Queue shows every origin as a Request-style row card while opening one shared assignment', () => {
