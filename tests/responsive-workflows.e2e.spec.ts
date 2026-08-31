@@ -7,6 +7,8 @@ test('Request AV sheet preserves swipe intent before selecting a later option', 
   await page.goto('/?e2e=V2026.08.31.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
   await page.evaluate(() => window.eval(`(() => {
+    canEditRowDetails = () => true;
+    saveData = () => Promise.resolve({ ok: true });
     const input = document.getElementById('req-av-note');
     const list = document.getElementById('req-av-dropdown-list');
     input.value = '';
