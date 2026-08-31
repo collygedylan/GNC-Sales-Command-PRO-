@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.30.09';
+  const release = 'V2026.08.30.10';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.30.09');
+  assert.equal(packageJson.version, '2026.08.30.10');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -135,6 +135,15 @@ test('Queue and Drive render from the smallest canonical dataset needed for the 
   assert.match(forcedRefresh, /refreshActiveRequestQueueSideData\(reason \|\| 'request-force-refresh'/);
   assert.match(html, /safeKey === 'master' && visibleView === 'drive'/);
   assert.match(html, /canRenderMasterPreview[\s\S]*state\.firstPagePreviewLoaded/);
+});
+
+test('Dock cards list deduplicated states and PLANSTARTDATE values', () => {
+  assert.match(html, /const DOCK_CARD_PLANSTART_ALIASES = Object\.freeze\(\[[\s\S]*'PLANSTARTDATE'/);
+  assert.match(html, /entry = \{ dockNum, count: 0, hasCoUt: false, states: new Set\(\), planStartDates: new Set\(\) \}/);
+  assert.match(html, /if \(state\) entry\.states\.add\(state\)/);
+  assert.match(html, /if \(planStartDate\) entry\.planStartDates\.add\(planStartDate\)/);
+  assert.match(html, />States:<\/span> \$\{escapeHtml\(statesLabel\)\}/);
+  assert.match(html, />Plan Start:<\/span> \$\{escapeHtml\(planStartLabel\)\}/);
 });
 
 test('hosted performance monitoring covers real data readiness and row saves always release their coordinator', () => {

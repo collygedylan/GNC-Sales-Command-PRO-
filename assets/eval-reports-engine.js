@@ -3,6 +3,9 @@
 
     const REPORT_IDS = Object.freeze([
         's1-with-pri',
+        'u1',
+        'u2',
+        'u3',
         'od-loc-note-date',
         'hs-plus-5-days',
         'get-off-hold',
@@ -13,6 +16,9 @@
     ]);
     const REPORT_META = Object.freeze({
         's1-with-pri': Object.freeze({ label: 'S1WithPRI', description: 'Priority rows in the configured current season.' }),
+        'u1': Object.freeze({ label: 'U1', description: 'Rows whose Season is U1.' }),
+        'u2': Object.freeze({ label: 'U2', description: 'Rows whose Season is U2.' }),
+        'u3': Object.freeze({ label: 'U3', description: 'Rows whose Season is U3.' }),
         'od-loc-note-date': Object.freeze({ label: 'ODLocNoteDate', description: 'Rows whose location-note date is older than the configured limit.' }),
         'hs-plus-5-days': Object.freeze({ label: 'HS+5days', description: 'Rows whose hold-start date is older than the configured limit.' }),
         'get-off-hold': Object.freeze({ label: 'GEToffHold', description: 'ItemCodes with an old hold-start and rows that have no hold/stop code.' }),
@@ -423,6 +429,9 @@
             const isNextTarget = season === nextSeason && salesYear === nextSalesYear;
 
             if (metadata.priority && season === currentSeason) reports['s1-with-pri'].push(row);
+            if (season === 'U1') reports.u1.push(row);
+            if (season === 'U2') reports.u2.push(row);
+            if (season === 'U3') reports.u3.push(row);
             if (metadata.oldLocationNote) reports['od-loc-note-date'].push(row);
             if (metadata.oldHold) reports['hs-plus-5-days'].push(row);
             if (aggregate.hasOldHold && !metadata.holdStopCode) reports['get-off-hold'].push(row);
@@ -541,6 +550,9 @@
             const isNextTarget = metadata.season === nextSeason && metadata.salesYear === nextSalesYear;
 
             if (metadata.priority && metadata.season !== 'F1') reports['s1-with-pri'].push(row);
+            if (metadata.season === 'U1') reports.u1.push(row);
+            if (metadata.season === 'U2') reports.u2.push(row);
+            if (metadata.season === 'U3') reports.u3.push(row);
             if (metadata.oldLocationNote) reports['od-loc-note-date'].push(row);
             if (metadata.oldHold) reports['hs-plus-5-days'].push(row);
             if (aggregate.hasOldHold && !metadata.holdStopCode) reports['get-off-hold'].push(row);

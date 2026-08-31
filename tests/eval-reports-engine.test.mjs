@@ -66,7 +66,7 @@ function independentScriptCompatibleReference(rows, options = {}) {
     const parsed = dateDay(value);
     return parsed != null && todayDay - parsed > days;
   };
-  const reportIds = ['s1-with-pri', 'od-loc-note-date', 'hs-plus-5-days', 'get-off-hold', 'low-stock', 'no-pri', 'culls', 'not-in-f1'];
+  const reportIds = ['s1-with-pri', 'u1', 'u2', 'u3', 'od-loc-note-date', 'hs-plus-5-days', 'get-off-hold', 'low-stock', 'no-pri', 'culls', 'not-in-f1'];
   const output = Object.fromEntries(reportIds.map((id) => [id, []]));
   for (const candidate of rows) {
     const itemCode = String(candidate.ITEMCODE || '').trim().toUpperCase();
@@ -87,6 +87,9 @@ function independentScriptCompatibleReference(rows, options = {}) {
         && recordYear != null && recordYear <= currentSalesYear && Number(record.S_LTS) < lowStockMax;
     });
     if (String(candidate.PRIORITY || '').trim() && season !== 'F1') output['s1-with-pri'].push(candidate.TEST_ID);
+    if (season === 'U1') output.u1.push(candidate.TEST_ID);
+    if (season === 'U2') output.u2.push(candidate.TEST_ID);
+    if (season === 'U3') output.u3.push(candidate.TEST_ID);
     if (olderThan(candidate.LOCATIONNOTEDATE, locationNoteAgeDays)) output['od-loc-note-date'].push(candidate.TEST_ID);
     if (olderThan(candidate.HOLDSTOPBEGINDATE, holdAgeDays)) output['hs-plus-5-days'].push(candidate.TEST_ID);
     if (hasOldHold && !String(candidate.HOLDSTOPCODE || '').trim()) output['get-off-hold'].push(candidate.TEST_ID);
@@ -136,7 +139,7 @@ test('HS+5days accepts serialized Apps Script dates, requires H/S, and keeps the
   assert.equal(result.diagnostics.invalidHoldStartDateCount, 1);
 });
 
-test('classifies the eight F1/27 reports with strict date and low-stock boundaries', () => {
+test('classifies the F1/27 reports with strict season, date, and low-stock boundaries', () => {
   const rows = [
     row('A', 'F1', '27', { TEST_ID: 'a-f1', ASSIGNEDTO: 'josh_vann', PRIORITY: '1', S_LTS: 100, HOLDSTOPCODE: 'H', HOLDSTOPBEGINDATE: '8/14/2026', LOCATIONNOTEDATE: '8/9/2026' }),
     row('A', 'U1', 27, { TEST_ID: 'a-u1', ASSIGNEDTO: 'josh_vann' }),
@@ -157,6 +160,9 @@ test('classifies the eight F1/27 reports with strict date and low-stock boundari
   });
 
   assert.deepEqual(ids(result.reports['s1-with-pri']), ['d-boundary', 'a-f1']);
+  assert.deepEqual(ids(result.reports.u1), ['a-u1']);
+  assert.deepEqual(ids(result.reports.u2), ['b-u2']);
+  assert.deepEqual(ids(result.reports.u3), []);
   assert.deepEqual(ids(result.reports['od-loc-note-date']), ['a-f1']);
   assert.deepEqual(ids(result.reports['hs-plus-5-days']), ['a-f1']);
   assert.deepEqual(ids(result.reports['get-off-hold']), ['a-s1', 'a-u1', 'a-x']);
@@ -314,6 +320,9 @@ test('script-compatible classifier preserves the pasted Apps Script predicates a
   });
 
   assert.deepEqual(ids(result.reports['s1-with-pri']), ['a-s1', 'a-x', 'e-u3-pri']);
+  assert.deepEqual(ids(result.reports.u1), ['a-u1']);
+  assert.deepEqual(ids(result.reports.u2), ['b-u2']);
+  assert.deepEqual(ids(result.reports.u3), ['e-u3-pri']);
   assert.deepEqual(ids(result.reports['od-loc-note-date']), ['a-f1']);
   assert.deepEqual(ids(result.reports['hs-plus-5-days']), ['a-f1']);
   assert.deepEqual(ids(result.reports['get-off-hold']), ['a-s1', 'a-u1', 'a-x']);
@@ -341,6 +350,25 @@ test('script-compatible fixtures match an independent Apps Script reference impl
   for (const reportId of engine.REPORT_IDS) {
     assert.deepEqual(ids(actual.reports[reportId]).sort(), expected[reportId], reportId);
   }
+});
+
+test('U1, U2, and U3 reports use exact normalized Season membership', () => {
+  const rows = [
+    row('A', 'u1', 27, { TEST_ID: 'u1-lower' }),
+    row('B', ' U2 ', 27, { TEST_ID: 'u2-spaced' }),
+    row('C', 'U3', 28, { TEST_ID: 'u3-future-year' }),
+    row('D', 'U10', 27, { TEST_ID: 'u10-not-u1' }),
+    row('E', 'S1', 27, { TEST_ID: 's1-not-u1' })
+  ];
+  for (const classify of [engine.classifyRows, engine.classifyScriptCompatibleRows]) {
+    const result = classify(rows, { currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27, now });
+    assert.deepEqual(ids(result.reports.u1), ['u1-lower']);
+    assert.deepEqual(ids(result.reports.u2), ['u2-spaced']);
+    assert.deepEqual(ids(result.reports.u3), ['u3-future-year']);
+  }
+  assert.equal(engine.REPORT_META.u1.label, 'U1');
+  assert.equal(engine.REPORT_META.u2.label, 'U2');
+  assert.equal(engine.REPORT_META.u3.label, 'U3');
 });
 
 test('script-compatible sorting keeps valid years before future or invalid years', () => {
