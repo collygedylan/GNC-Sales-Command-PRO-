@@ -115,7 +115,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
 
   expect(result.access).toEqual({ dylan: true, megan: true, other: false });
   expect(result.reportIds).toEqual([
-    's1-with-pri', 'od-loc-note-date', 'hs-plus-5-days', 'get-off-hold',
+    's1-with-pri', 'u1', 'u2', 'u3', 'od-loc-note-date', 'hs-plus-5-days', 'get-off-hold',
     'low-stock', 'no-pri', 'culls', 'not-in-f1',
   ]);
   expect(result.counts['s1-with-pri']).toBe(1);
