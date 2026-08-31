@@ -5,6 +5,11 @@ begin;
 -- required to compile and test the later canonical Drive save contract.
 create schema if not exists private;
 
+create table if not exists public.ph_app_settings (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb
+);
+
 alter table public.ph_master_inventory
   add column if not exists source text,
   add column if not exists saleyear text,
