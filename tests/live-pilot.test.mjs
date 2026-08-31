@@ -743,7 +743,7 @@ test('V14 exposes one global semantic component layer without changing workflow 
   assert.match(premiumCascade, /\.ui-surface,[\s\S]*\.ui-panel,[\s\S]*\.ui-card/);
   assert.match(premiumCascade, /\.ui-field,[\s\S]*input:not\(\[type="checkbox"\]\)/);
   assert.match(premiumCascade, /\.ui-tab:is\(\.active, \[aria-selected="true"\]\)/);
-  assert.match(client, /function decoratePremiumComponents\(\)/);
+  assert.match(client, /function decoratePremiumComponents\(root = document\.getElementById\('app-wrapper'\) \|\| document\)/);
   assert.match(client, /classList\.add\('ui-field'\)/);
   assert.match(client, /classList\.add\('ui-panel'\)/);
   assert.match(client, /classList\.add\('ui-card'\)/);
