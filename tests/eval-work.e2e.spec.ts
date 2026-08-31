@@ -11,6 +11,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     installMutationBlockedAccessCanaryIdentity('assigned_evaluator', 'Assigned Evaluator', 'User');
     evalWorkManager = false;
     processAndLoadData({ avNotesData: Array.from({ length: 80 }, (_, index) => ({ COMMONNAME: 'Synthetic Test Item', SALESNOTE: 'Evaluation option ' + String(index + 1).padStart(2, '0') })), _fromCache: true });
+    getDatasetState('avNotes').initialLoaded = true;
     const origin = {
       UNIQUE_ID: 'eval-origin-1', ITEMCODE: 'TEST.001', COMMONNAME: 'Synthetic Test Item', CONTSIZE: '#3',
       LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', SEASON: 'F1', SALEYEAR: '27', SOURCE: 'LD',
