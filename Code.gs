@@ -175,6 +175,12 @@ const TRANSACTIONS_KEYED_PROCESSED_FOLDER_ID = '1glpzw3zr1Q2YyNj2OtD_O5fBBFpPe78
 const TRANSACTIONS_KEYED_TIMEZONE = 'America/Chicago';
 const TRANSACTIONS_KEYED_MAX_FILES_PER_RUN = 3;
 const TRANSACTIONS_KEYED_MAX_RUN_MS = 240000;
+const PIKES_ORDER_BATCHES_TABLE = 'ph_pikes_order_batches';
+const PIKES_ORDER_SOURCE_ROWS_TABLE = 'ph_pikes_order_source_rows';
+const PIKES_ORDERS_PENDING_FOLDER_ID = '178W6cp2r9ZKfcKRg-4c06SRnwG9LgqmL';
+const PIKES_ORDERS_PROCESSED_FOLDER_ID = '1zbwb0U31IOhOoLyNDXea3P_fqEB5EsWE';
+const PIKES_ORDERS_MAX_FILES_PER_RUN = 3;
+const PIKES_ORDERS_MAX_RUN_MS = 240000;
 
 const FOLDERS = {
   MASTER_DROP: '1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48',
@@ -191,7 +197,9 @@ const FOLDERS = {
   HL_PO_PARSED_DROP: HL_PO_PARSED_SOURCE_FOLDER_ID,
   HL_PO_PARSED_PROCESSED: HL_PO_PARSED_PROCESSED_FOLDER_ID,
   TRANSACTIONS_KEYED_DROP: TRANSACTIONS_KEYED_PENDING_FOLDER_ID,
-  TRANSACTIONS_KEYED_PROCESSED: TRANSACTIONS_KEYED_PROCESSED_FOLDER_ID
+  TRANSACTIONS_KEYED_PROCESSED: TRANSACTIONS_KEYED_PROCESSED_FOLDER_ID,
+  PIKES_ORDERS_DROP: PIKES_ORDERS_PENDING_FOLDER_ID,
+  PIKES_ORDERS_PROCESSED: PIKES_ORDERS_PROCESSED_FOLDER_ID
 };
 
 const CUSTOMER_REP_MAP_TABLE = 'ph_customer_consignee_sales_reps';
@@ -253,6 +261,7 @@ function runRetiredDiseaseManualSyncStage_() {
 function runDiseaseDriveToSupabaseSyncOnly() { return runRetiredDiseaseManualSyncStage_(); }
 function runHlPoParsedOnly() { return syncHlPoParsedFolder_(FOLDERS.HL_PO_PARSED_DROP, FOLDERS.HL_PO_PARSED_PROCESSED, HL_PO_PARSED_TABLE); }
 function runTransactionsKeyedOnly() { return syncTransactionsKeyedFolder_(FOLDERS.TRANSACTIONS_KEYED_DROP, FOLDERS.TRANSACTIONS_KEYED_PROCESSED); }
+function runPikesOrdersOnly() { return syncPikesOrdersFolder_(FOLDERS.PIKES_ORDERS_DROP, FOLDERS.PIKES_ORDERS_PROCESSED); }
 
 const SITE_SPLIT_SITE_CODES_ = Object.freeze(['PH', 'TX', 'NC', 'HL']);
 const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
@@ -378,7 +387,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'transactions_keyed', 'hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'pikes_orders', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'transactions_keyed', 'hl_po_parsed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -602,7 +611,8 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   lab: { label: 'Lab Assets (Retired)', run: runRetiredDiseaseManualSyncStage_ },
   lab_reports: { label: 'Lab Reports (Retired)', run: runRetiredDiseaseManualSyncStage_ },
   hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly },
-  transactions_keyed: { label: 'Transactions Keyed', run: runTransactionsKeyedOnly }
+  transactions_keyed: { label: 'Transactions Keyed', run: runTransactionsKeyedOnly },
+  pikes_orders: { label: 'Pikes Orders', run: runPikesOrdersOnly }
 });
 
 function runDriveSocReservesSequence() {
@@ -727,6 +737,7 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'disease' || normalized === 'lab' || normalized === 'lab_reports') return [normalized];
   if (normalized === 'hl_po_parsed' || normalized === 'hlpo_parsed' || normalized === 'hl_po_import' || normalized === 'hl_po_upload') return ['hl_po_parsed'];
   if (normalized === 'transactions_keyed' || normalized === 'transaction_keyed' || normalized === 'transactions') return ['transactions_keyed'];
+  if (normalized === 'pikes_orders' || normalized === 'pikes_order' || normalized === 'pikes') return ['pikes_orders'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
 }
 
@@ -5705,6 +5716,395 @@ function syncTransactionsKeyedFolder_(sourceFolderId, processedFolderId) {
     failedFiles: failedFiles.length,
     failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
     failedFileErrors: failedFiles,
+    upsertCount: upsertCount,
+    deleteCount: 0,
+    totalRows: totalRows,
+    runId: runId
+  };
+}
+
+const PIKES_ORDER_COLUMNS = Object.freeze([
+  { header: 'Item', key: 'itemcode' },
+  { header: 'Order TOT', key: 'order_tot' },
+  { header: 'Pick Notes', key: 'pick_notes' }
+]);
+
+function normalizePikesOrderHeader_(value) {
+  return String(value == null ? '' : value)
+    .replace(/\u00a0/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+const PIKES_ORDER_COLUMN_BY_HEADER = Object.freeze(PIKES_ORDER_COLUMNS.reduce(function(map, column) {
+  map[normalizePikesOrderHeader_(column.header)] = column;
+  return map;
+}, {}));
+
+function inspectPikesOrderHeaderRow_(row) {
+  const cells = Array.isArray(row) ? row : [];
+  const indexByKey = {};
+  const duplicateHeaders = [];
+  let recognizedCount = 0;
+  cells.forEach(function(cell, index) {
+    const column = PIKES_ORDER_COLUMN_BY_HEADER[normalizePikesOrderHeader_(cell)];
+    if (!column) return;
+    recognizedCount++;
+    if (indexByKey[column.key] != null) duplicateHeaders.push(column.header);
+    else indexByKey[column.key] = index;
+  });
+  const missingHeaders = PIKES_ORDER_COLUMNS.filter(function(column) {
+    return indexByKey[column.key] == null;
+  }).map(function(column) { return column.header; });
+  return {
+    candidate: recognizedCount > 0,
+    valid: recognizedCount > 0 && !missingHeaders.length && !duplicateHeaders.length,
+    indexByKey: indexByKey,
+    missingHeaders: missingHeaders,
+    duplicateHeaders: duplicateHeaders
+  };
+}
+
+function isPikesOrderFileSupported_(file) {
+  const fileName = String(file && file.getName ? file.getName() : '').toLowerCase();
+  const mime = String(file && file.getMimeType ? file.getMimeType() : '').toLowerCase();
+  return mime === String(MimeType.CSV || '').toLowerCase()
+    || mime === GOOGLE_SHEETS_MIME_TYPE
+    || fileName.endsWith('.csv')
+    || ((fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) && isExcelLikeFile_(mime, fileName));
+}
+
+function formatPikesOrderHeaderError_(sheetName, headerRowNumber, inspection) {
+  const parts = [];
+  if (inspection.missingHeaders.length) parts.push('missing: ' + inspection.missingHeaders.join(', '));
+  if (inspection.duplicateHeaders.length) parts.push('duplicated: ' + inspection.duplicateHeaders.join(', '));
+  return `Invalid Pikes order headers on ${sheetName} row ${headerRowNumber} (${parts.join('; ')}).`;
+}
+
+function extractPikesOrderSheet_(file, folderId) {
+  const fileName = String(file.getName() || '').trim();
+  const normalizedFileName = fileName.toLowerCase();
+  const mime = String(file.getMimeType() || '').toLowerCase();
+  let tempSheetId = '';
+  try {
+    if (mime === String(MimeType.CSV || '').toLowerCase() || normalizedFileName.endsWith('.csv')) {
+      const values = Utilities.parseCsv(file.getBlob().getDataAsString());
+      const scanLimit = Math.min(75, values.length);
+      for (let rowIndex = 0; rowIndex < scanLimit; rowIndex++) {
+        const inspection = inspectPikesOrderHeaderRow_(values[rowIndex]);
+        if (!inspection.candidate) continue;
+        if (!inspection.valid) throw new Error(formatPikesOrderHeaderError_('CSV', rowIndex + 1, inspection));
+        return {
+          values: values,
+          displayValues: values,
+          sourceSheetName: 'CSV',
+          headerRowIndex: rowIndex,
+          indexByKey: inspection.indexByKey
+        };
+      }
+      throw new Error(`No Pikes order header row found in ${fileName}.`);
+    }
+
+    let spreadsheetId = file.getId();
+    if (isExcelLikeFile_(mime, normalizedFileName)) {
+      tempSheetId = createTempGoogleSheetFromExcel_(file, folderId);
+      spreadsheetId = tempSheetId;
+    }
+    const spreadsheet = tempSheetId
+      ? openSpreadsheetWithRetry_(spreadsheetId, fileName)
+      : SpreadsheetApp.openById(spreadsheetId);
+    const validMatches = [];
+    const invalidCandidates = [];
+    spreadsheet.getSheets().forEach(function(sheet) {
+      const range = sheet.getDataRange();
+      const values = range.getValues();
+      const displayValues = range.getDisplayValues();
+      const scanLimit = Math.min(75, displayValues.length);
+      for (let rowIndex = 0; rowIndex < scanLimit; rowIndex++) {
+        const inspection = inspectPikesOrderHeaderRow_(displayValues[rowIndex]);
+        if (!inspection.candidate) continue;
+        if (inspection.valid) {
+          validMatches.push({
+            values: values,
+            displayValues: displayValues,
+            sourceSheetName: sheet.getName(),
+            headerRowIndex: rowIndex,
+            indexByKey: inspection.indexByKey
+          });
+        } else {
+          invalidCandidates.push(formatPikesOrderHeaderError_(sheet.getName(), rowIndex + 1, inspection));
+        }
+        break;
+      }
+    });
+    if (validMatches.length > 1) throw new Error(`Multiple sheets in ${fileName} contain the Pikes order headers.`);
+    if (!validMatches.length) {
+      if (invalidCandidates.length) throw new Error(invalidCandidates[0]);
+      throw new Error(`No sheet in ${fileName} contains Item, Order TOT, and Pick Notes headers.`);
+    }
+    return validMatches[0];
+  } finally {
+    cleanupTempGoogleSheet_(tempSheetId, fileName);
+  }
+}
+
+function getPikesOrderFileHash_(file) {
+  return bytesToSha256Hex_(file.getBlob().getBytes());
+}
+
+function normalizePikesOrderText_(value) {
+  if (value == null) return null;
+  const text = String(value).replace(/\u00a0/g, ' ').trim();
+  return text === '' ? null : text;
+}
+
+function buildPikesOrderSourceRows_(sheetData, batchId, fileName) {
+  const rows = [];
+  for (let rowIndex = sheetData.headerRowIndex + 1; rowIndex < sheetData.values.length; rowIndex++) {
+    const row = sheetData.values[rowIndex] || [];
+    const displayRow = (sheetData.displayValues && sheetData.displayValues[rowIndex]) || row;
+    const sourceRowNumber = rowIndex + 1;
+    const itemcode = normalizePikesOrderText_(displayRow[sheetData.indexByKey.itemcode]);
+    const orderTot = normalizePikesOrderText_(displayRow[sheetData.indexByKey.order_tot]);
+    const pickNotes = normalizePikesOrderText_(displayRow[sheetData.indexByKey.pick_notes]);
+    if (!itemcode && !orderTot && !pickNotes) continue;
+    if (!itemcode) throw new Error(`Item is required at row ${sourceRowNumber} in ${fileName}.`);
+    rows.push({
+      batch_id: batchId,
+      source_row_number: sourceRowNumber,
+      itemcode: itemcode,
+      itemcode_normalized: itemcode.toUpperCase(),
+      order_tot: orderTot,
+      pick_notes: pickNotes,
+      matched: false
+    });
+  }
+  return rows;
+}
+
+function upsertPikesOrderSourceRows_(rows) {
+  const payloadRows = Array.isArray(rows) ? rows : [];
+  if (!payloadRows.length) return 0;
+  const requests = [];
+  for (let index = 0; index < payloadRows.length; index += 200) {
+    requests.push({
+      url: `${SUPABASE_URL}/rest/v1/${PIKES_ORDER_SOURCE_ROWS_TABLE}?on_conflict=batch_id,source_row_number`,
+      method: 'post',
+      headers: getSupabaseHeaders_({
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      }),
+      payload: JSON.stringify(payloadRows.slice(index, index + 200)),
+      muteHttpExceptions: true
+    });
+  }
+  const responses = executeFetchAllBatches(requests, 1);
+  responses.forEach(function(response) {
+    const code = response.getResponseCode();
+    if (code !== 200 && code !== 201 && code !== 204) {
+      throw new Error(`Pikes order source row upload failed (${code}).`);
+    }
+  });
+  return payloadRows.length;
+}
+
+function callPikesOrderRpcWithRetry_(rpcName, payload) {
+  return withRetry_(`Pikes Orders RPC ${rpcName}`, 3, 1000, function() {
+    return callSupabaseRpc_(rpcName, payload || {});
+  }, shouldRetrySupabaseRead_);
+}
+
+function getPikesOrderErrorCode_(error) {
+  const message = String(error && error.message ? error.message : error || '').toLowerCase();
+  if (message.indexOf('header') >= 0) return 'PIKES_HEADER_SCHEMA_INVALID';
+  if (message.indexOf('multiple sheets') >= 0) return 'PIKES_WORKBOOK_SHEET_AMBIGUOUS';
+  if (message.indexOf('item is required') >= 0) return 'PIKES_ITEM_REQUIRED';
+  if (message.indexOf('no importable') >= 0) return 'PIKES_NO_IMPORTABLE_ROWS';
+  if (message.indexOf('row count') >= 0) return 'PIKES_ROW_COUNT_MISMATCH';
+  if (message.indexOf('move file') >= 0) return 'PIKES_ARCHIVE_MOVE_FAILED';
+  if (message.indexOf('convert excel') >= 0 || message.indexOf('converted sheet') >= 0) return 'PIKES_EXCEL_CONVERSION_FAILED';
+  if (message.indexOf('supabase') >= 0 || message.indexOf('upload') >= 0) return 'PIKES_SUPABASE_IMPORT_FAILED';
+  return 'PIKES_IMPORT_FAILED';
+}
+
+function isDriveFileInFolder_(file, folderId) {
+  const safeFolderId = String(folderId || '').trim();
+  const parents = file.getParents();
+  while (parents.hasNext()) {
+    if (String(parents.next().getId() || '').trim() === safeFolderId) return true;
+  }
+  return false;
+}
+
+function reconcilePikesOrderArchives_(processedFolderId) {
+  const url = `${SUPABASE_URL}/rest/v1/${PIKES_ORDER_BATCHES_TABLE}?select=drive_file_id,content_sha256&status=eq.archive_pending&limit=50`;
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: getSupabaseHeaders_(),
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code !== 200 && code !== 206) throw new Error(`Pikes order archive reconciliation failed (${code}).`);
+  const pending = JSON.parse(response.getContentText() || '[]');
+  let reconciled = 0;
+  pending.forEach(function(entry) {
+    try {
+      const file = withDriveRetry_('Read Pikes archived file', function() {
+        return DriveApp.getFileById(String(entry.drive_file_id || '').trim());
+      });
+      if (!isDriveFileInFolder_(file, processedFolderId)) return;
+      callPikesOrderRpcWithRetry_('mark_pikes_order_file_archived', {
+        p_drive_file_id: entry.drive_file_id,
+        p_content_sha256: entry.content_sha256
+      });
+      reconciled++;
+    } catch (error) {
+      console.warn('[PIKES ORDERS] An archive-pending batch could not be reconciled yet.');
+    }
+  });
+  return reconciled;
+}
+
+function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
+  if (String(sourceFolderId || '').trim() === String(processedFolderId || '').trim()) {
+    throw new Error('Pikes Orders source and processed folders must be different.');
+  }
+  const startedAtMs = Date.now();
+  const sourceFolder = getDriveFolderByIdWithRetry_(sourceFolderId, 'Pikes Orders source folder');
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'Pikes Orders processed folder');
+  const iterator = listDriveFilesWithRetry_(sourceFolder, 'Pikes Orders source folder');
+  const pendingFiles = [];
+  const failedFiles = [];
+  let unsupportedFiles = 0;
+  let tempFilesRemoved = 0;
+  let filesProcessed = 0;
+  let upsertCount = 0;
+  let totalRows = 0;
+  let reconciledArchives = 0;
+  const runId = Utilities.getUuid();
+
+  try {
+    reconciledArchives = reconcilePikesOrderArchives_(processedFolderId);
+  } catch (error) {
+    console.warn('[PIKES ORDERS] Archive reconciliation will retry on the next run.');
+  }
+
+  while (iterator.hasNext()) {
+    const file = iterator.next();
+    const fileName = String(file.getName() || '').trim();
+    if (fileName.startsWith('TEMP_')) {
+      tempFilesRemoved++;
+      trashDriveFileWithRetry_(file, `Pikes Orders temp file ${fileName}`);
+      continue;
+    }
+    if (!isPikesOrderFileSupported_(file)) {
+      unsupportedFiles++;
+      continue;
+    }
+    pendingFiles.push(file);
+  }
+
+  pendingFiles.sort(function(a, b) {
+    const createdDiff = a.getDateCreated().getTime() - b.getDateCreated().getTime();
+    return createdDiff || String(a.getName() || '').localeCompare(String(b.getName() || ''), undefined, { numeric: true });
+  });
+
+  const filesToProcess = pendingFiles.slice(0, PIKES_ORDERS_MAX_FILES_PER_RUN);
+  for (let fileIndex = 0; fileIndex < filesToProcess.length; fileIndex++) {
+    if (Date.now() - startedAtMs >= PIKES_ORDERS_MAX_RUN_MS) break;
+    const file = filesToProcess[fileIndex];
+    const fileName = String(file.getName() || '').trim();
+    const fileId = String(file.getId() || '').trim();
+    let contentHash = '';
+    try {
+      contentHash = getPikesOrderFileHash_(file);
+      const prepared = callPikesOrderRpcWithRetry_('prepare_pikes_order_import', {
+        p_drive_file_id: fileId,
+        p_file_name: fileName,
+        p_content_sha256: contentHash,
+        p_content_bytes: Number(file.getSize() || 0),
+        p_batch_id: Utilities.getUuid()
+      }) || {};
+      const preparedStatus = String(prepared.status || '').toLowerCase();
+      if (preparedStatus === 'archive_pending' || preparedStatus === 'processed') {
+        moveDriveFileToFolderWithRetry_(file, processedFolder, `Pikes Orders finalized file ${fileName}`);
+        callPikesOrderRpcWithRetry_('mark_pikes_order_file_archived', {
+          p_drive_file_id: fileId,
+          p_content_sha256: contentHash
+        });
+        filesProcessed++;
+        totalRows += Number(prepared.rowCount || 0);
+        continue;
+      }
+      if (preparedStatus !== 'importing' || !prepared.batchId) {
+        throw new Error('Supabase returned an invalid Pikes Orders import state.');
+      }
+
+      const sheetData = extractPikesOrderSheet_(file, sourceFolderId);
+      const rows = buildPikesOrderSourceRows_(sheetData, prepared.batchId, fileName);
+      if (!rows.length) throw new Error(`No importable Pikes order rows found in ${fileName}.`);
+      const uploaded = upsertPikesOrderSourceRows_(rows);
+      const finalized = callPikesOrderRpcWithRetry_('finalize_pikes_order_import', {
+        p_drive_file_id: fileId,
+        p_content_sha256: contentHash,
+        p_source_sheet_name: sheetData.sourceSheetName,
+        p_source_header_row: sheetData.headerRowIndex + 1,
+        p_expected_row_count: rows.length
+      }) || {};
+      if (String(finalized.status || '').toLowerCase() !== 'archive_pending') {
+        throw new Error('Supabase did not finalize the Pikes Orders import.');
+      }
+
+      moveDriveFileToFolderWithRetry_(file, processedFolder, `Pikes Orders processed file ${fileName}`);
+      callPikesOrderRpcWithRetry_('mark_pikes_order_file_archived', {
+        p_drive_file_id: fileId,
+        p_content_sha256: contentHash
+      });
+      filesProcessed++;
+      upsertCount += uploaded;
+      totalRows += rows.length;
+    } catch (err) {
+      const errorCode = getPikesOrderErrorCode_(err);
+      failedFiles.push({ name: fileName, errorCode: errorCode });
+      console.error(`[PIKES ORDERS] ${fileName} failed with ${errorCode}. The file remains pending.`);
+      if (contentHash) {
+        try {
+          callPikesOrderRpcWithRetry_('record_pikes_order_import_failure', {
+            p_drive_file_id: fileId,
+            p_content_sha256: contentHash,
+            p_sanitized_error_code: errorCode
+          });
+        } catch (recordError) {
+          console.warn('[PIKES ORDERS] Could not record the sanitized failure state.');
+        }
+      }
+    }
+  }
+
+  if (filesProcessed > 0 || reconciledArchives > 0) {
+    emitTableSyncLiveEvent_(PIKES_ORDER_BATCHES_TABLE, {
+      filesProcessed: filesProcessed,
+      tempFilesRemoved: tempFilesRemoved,
+      upsertCount: upsertCount,
+      deleteCount: 0,
+      totalRows: totalRows,
+      runId: runId
+    });
+  }
+
+  return {
+    tableName: PIKES_ORDER_BATCHES_TABLE,
+    filesProcessed: filesProcessed,
+    reconciledArchives: reconciledArchives,
+    remainingFiles: Math.max(0, pendingFiles.length - filesProcessed),
+    tempFilesRemoved: tempFilesRemoved,
+    unsupportedFiles: unsupportedFiles,
+    failedFiles: failedFiles.length,
+    failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles.map(function(entry) {
+      return { name: entry.name, errorCode: entry.errorCode };
+    }),
     upsertCount: upsertCount,
     deleteCount: 0,
     totalRows: totalRows,
