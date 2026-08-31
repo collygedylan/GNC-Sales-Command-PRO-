@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(33);
 
 select has_table('public', 'ph_pikes_order_batches', 'Pikes batch ledger exists');
 select has_table('public', 'ph_pikes_order_source_rows', 'approved Pikes source rows exist');
@@ -24,6 +24,15 @@ select ok(has_function_privilege('authenticated', 'public.get_manager_order_batc
 select ok(not has_function_privilege('authenticated', 'public.prepare_pikes_order_import(text,text,text,bigint,uuid)', 'execute'), 'authenticated cannot call import RPC');
 select ok(has_function_privilege('service_role', 'public.prepare_pikes_order_import(text,text,text,bigint,uuid)', 'execute'), 'service role can call import RPC');
 select is((select count(*)::integer from private.app_access_permissions where permission_key = 'manager.orders.view' and active), 1, 'Orders permission is cataloged');
+select is((
+  select count(*)::integer
+  from public.profiles p
+  left join private.app_access_legacy_baseline b
+    on b.profile_id = p.id
+   and b.permission_key = 'manager.orders.view'
+  where p.disabled_at is null
+    and b.permission_key is null
+), 0, 'Orders permission has an audit baseline for every existing active profile');
 select has_index('public', 'ph_master_inventory', 'idx_ph_master_inventory_itemcode_normalized', 'normalized ItemCode lookup is indexed');
 
 insert into auth.users (
