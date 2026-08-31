@@ -579,7 +579,16 @@ function evalWorkError(error: unknown) {
   const status = code === "42501" || /forbidden|not_authorized/.test(safeCode)
     ? 403
     : (code === "40001" || /conflict/.test(safeCode) ? 409 : 400);
-  return errorResponse("Eval Work request could not be completed.", status, { code: safeCode });
+  const safeMessage = safeCode === "eval_work_assignment_scope_conflict"
+    ? "The current AssignedTo value no longer matches the selected user filter. Refresh the report and select the row again."
+    : safeCode === "eval_work_assignee_email_invalid"
+    ? "One selected evaluator does not have a valid email address."
+    : safeCode === "eval_work_batch_create_forbidden"
+    ? "Only an authorized Eval Work manager can create this batch."
+    : safeCode === "eval_work_itemcode_membership_empty"
+    ? "No current inventory rows remain for this ITEMCODE. Refresh the report."
+    : "Eval Work request could not be completed.";
+  return errorResponse(safeMessage, status, { code: safeCode });
 }
 
 async function loadAuthorizedEvalWork(
@@ -805,8 +814,19 @@ async function handleEvalWorkAction(
       };
       const { data, error } = await supabase.rpc("create_eval_work_batch_multi_v2", { p_payload: rpcPayload });
       if (error) throw error;
-      const withDelivery = await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]);
-      return jsonResponse({ ok: true, data: await withEvalWorkOrigins(withDelivery), manager: true });
+      const rows = (data || []) as Record<string, unknown>[];
+      const assignmentRefreshed = rows.some((row) => {
+        const context = row.source_context && typeof row.source_context === "object"
+          ? row.source_context as Record<string, unknown> : {};
+        return context.assignmentRefreshed === true;
+      });
+      const withDelivery = await withEvalWorkDeliveryStatuses(rows);
+      return jsonResponse({
+        ok: true,
+        data: await withEvalWorkOrigins(withDelivery),
+        manager: true,
+        assignmentRefreshed,
+      });
     }
     if (operation === "save" || operation === "submit") {
       const workId = String(payload.workId || "").trim();

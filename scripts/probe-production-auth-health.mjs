@@ -86,6 +86,7 @@ let poManagementHealth = null;
 let accessControlHealth = null;
 let evalRequestDeliveryHealth = null;
 let evalItemcodeWorkHealth = null;
+let requestDriveEvidenceHealth = null;
 let codexOpsHealth = null;
 let recentSemanticFailures = [];
 let appsScriptHealth = null;
@@ -285,6 +286,7 @@ if (serviceRoleKey) {
     && Number(evalRequestDeliveryHealth.required_manager_recipient_count) === 2
     && Number(evalRequestDeliveryHealth.creation_order_violation_count) === 0
     && Number(evalRequestDeliveryHealth.completion_membership_mismatch_count) === 0
+    && Number(evalRequestDeliveryHealth.missing_completion_event_count) === 0
     && Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) === 0
     && Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) === 0;
   if (!evalRequestContractHealthy) throw new Error('production_eval_request_delivery_contract_unhealthy');
@@ -292,7 +294,28 @@ if (serviceRoleKey) {
     name: 'eval_request_delivery_v2',
     status: evalRequestHealthResponse.status,
     contractVersion: evalRequestDeliveryHealth.contract_version,
-    requiredManagerRecipientCount: Number(evalRequestDeliveryHealth.required_manager_recipient_count)
+    requiredManagerRecipientCount: Number(evalRequestDeliveryHealth.required_manager_recipient_count),
+    missingCompletionEventCount: Number(evalRequestDeliveryHealth.missing_completion_event_count)
+  });
+
+  const requestDriveHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_request_drive_evidence_health_snapshot_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const requestDriveHealthText = await requestDriveHealthResponse.text();
+  try { requestDriveEvidenceHealth = requestDriveHealthText ? JSON.parse(requestDriveHealthText) : null; } catch {}
+  if (!requestDriveHealthResponse.ok || !requestDriveEvidenceHealth || typeof requestDriveEvidenceHealth !== 'object') {
+    throw new Error(`production_request_drive_evidence_health_unavailable_HTTP_${requestDriveHealthResponse.status}`);
+  }
+  const requestDriveContractHealthy = requestDriveEvidenceHealth.contract_version === 'request-drive-evidence-health-v1'
+    && Number(requestDriveEvidenceHealth.evidence_mismatch_count) === 0;
+  if (!requestDriveContractHealthy) throw new Error('production_request_drive_evidence_contract_unhealthy');
+  checks.push({
+    name: 'request_drive_evidence_v1',
+    status: requestDriveHealthResponse.status,
+    contractVersion: requestDriveEvidenceHealth.contract_version,
+    recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0)
   });
 
   const evalItemcodeHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_itemcode_work_health_snapshot_v1`, {
@@ -414,8 +437,14 @@ const result = {
     requiredManagerRecipientCount: Math.max(0, Number(evalRequestDeliveryHealth.required_manager_recipient_count) || 0),
     creationOrderViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.creation_order_violation_count) || 0),
     completionMembershipMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.completion_membership_mismatch_count) || 0),
+    missingCompletionEventCount: Math.max(0, Number(evalRequestDeliveryHealth.missing_completion_event_count) || 0),
     evalOriginScopeMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) || 0),
     evalRequiredRecipientViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) || 0)
+  } : null,
+  requestDriveEvidence: requestDriveEvidenceHealth ? {
+    contractVersion: String(requestDriveEvidenceHealth.contract_version || ''),
+    recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0),
+    evidenceMismatchCount: Math.max(0, Number(requestDriveEvidenceHealth.evidence_mismatch_count) || 0)
   } : null,
   evalItemcodeWork: evalItemcodeWorkHealth ? {
     contractVersion: String(evalItemcodeWorkHealth.contract_version || ''),

@@ -55,19 +55,20 @@ test('Pikes parser accepts harmless header differences and retains only approved
   assert.equal(rows[0].pick_notes, 'keep upright');
 });
 
-test('Pikes parser rejects partial schemas, duplicate approved headers, and nonblank rows without Item', () => {
+test('Pikes parser rejects invalid headers and ignores footer rows without Item', () => {
   const parser = loadPikesParser();
   assert.equal(parser.inspectPikesOrderHeaderRow_(['Item', 'Order TOT']).valid, false);
   assert.deepEqual(
     JSON.parse(JSON.stringify(parser.inspectPikesOrderHeaderRow_(['Item', 'ITEM', 'Order TOT', 'Pick Notes']).duplicateHeaders)),
     ['Item']
   );
-  assert.throws(() => parser.buildPikesOrderSourceRows_({
+  const rows = parser.buildPikesOrderSourceRows_({
     headerRowIndex: 0,
     indexByKey: { itemcode: 0, order_tot: 1, pick_notes: 2 },
     values: [['Item', 'Order TOT', 'Pick Notes'], ['', '5', 'note']],
     displayValues: [['Item', 'Order TOT', 'Pick Notes'], ['', '5', 'note']]
-  }, 'batch-1', 'orders.csv'), /Item is required at row 2/);
+  }, 'batch-1', 'orders.csv');
+  assert.equal(rows.length, 0);
 });
 
 test('five-minute Pikes importer is bounded, file-id idempotent, and archives only after database finalization', () => {

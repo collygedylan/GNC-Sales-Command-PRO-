@@ -2,6 +2,41 @@ import { expect, test } from '@playwright/test';
 
 const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
+test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.31.04', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
+  await page.evaluate(() => window.eval(`(() => {
+    const input = document.getElementById('req-av-note');
+    const list = document.getElementById('req-av-dropdown-list');
+    input.value = '';
+    list.innerHTML = Array.from({ length: 40 }, (_, index) =>
+      '<button type="button" class="av-note-dropdown-option" data-av-note-option="OPTION ' + index + '" data-av-note-prefix="req-" onclick="return selectAvNote(this.dataset.avNoteOption, this.dataset.avNotePrefix, event)">OPTION ' + index + '</button>'
+    ).join('');
+    list.style.height = '240px';
+    openRequestAvNoteSheet(list);
+  })()`));
+
+  const sheet = page.locator('#request-av-note-sheet');
+  const list = page.locator('#req-av-dropdown-list');
+  const first = page.locator('#req-av-dropdown-list .av-note-dropdown-option').first();
+  await expect(sheet).toBeVisible();
+  await first.dispatchEvent('pointerdown', { pointerType: 'touch', clientX: 100, clientY: 650 });
+  await first.dispatchEvent('pointermove', { pointerType: 'touch', clientX: 100, clientY: 500 });
+  await first.dispatchEvent('pointerup', { pointerType: 'touch', clientX: 100, clientY: 500 });
+  await expect(sheet).toBeVisible();
+  await expect(page.locator('#req-av-note')).toHaveValue('');
+
+  const scrollTop = await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
+  });
+  expect(scrollTop).toBeGreaterThan(0);
+  const last = page.locator('#req-av-dropdown-list .av-note-dropdown-option').last();
+  await last.click();
+  await expect(page.locator('#req-av-note')).toHaveValue('OPTION 39');
+});
+
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'load' });

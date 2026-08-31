@@ -70,6 +70,9 @@ test('scheduled production health checks exact live parity without racing the pu
   assert.match(probe, /production_access_control_audit_contract_unhealthy/);
   assert.match(probe, /get_eval_request_delivery_health_snapshot_v2/);
   assert.match(probe, /production_eval_request_delivery_contract_unhealthy/);
+  assert.match(probe, /missing_completion_event_count/);
+  assert.match(probe, /get_request_drive_evidence_health_snapshot_v1/);
+  assert.match(probe, /production_request_drive_evidence_contract_unhealthy/);
   assert.match(probe, /get_eval_itemcode_work_health_snapshot_v1/);
   assert.match(probe, /production_eval_itemcode_work_contract_unhealthy/);
   assert.match(probe, /get_codex_ops_health_snapshot_v1/);

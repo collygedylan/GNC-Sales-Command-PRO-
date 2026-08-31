@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.31.03&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.31.04&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(async () => {
@@ -151,7 +151,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
 
 test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.31.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.31.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
@@ -200,7 +200,7 @@ test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on 
 
 test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.31.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.31.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {

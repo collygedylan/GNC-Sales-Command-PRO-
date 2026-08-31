@@ -2734,7 +2734,14 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
   if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
 
-  const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
+  // The export must remain available even when the bounded integrity worker is
+  // temporarily busy. The dedicated scheduled worker owns retries.
+  let maintenance = {};
+  try {
+    maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {}) || {};
+  } catch (maintenanceError) {
+    console.warn('[WAREHOUSE ASSIGNED ITEMS] Request maintenance deferred to its scheduled worker.');
+  }
   const rows = Object.values(fetchAllSupabaseData(
     safeTableName,
     'unique_id,itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
@@ -5868,8 +5875,9 @@ function buildPikesOrderSourceRows_(sheetData, batchId, fileName) {
     const itemcode = normalizePikesOrderText_(displayRow[sheetData.indexByKey.itemcode]);
     const orderTot = normalizePikesOrderText_(displayRow[sheetData.indexByKey.order_tot]);
     const pickNotes = normalizePikesOrderText_(displayRow[sheetData.indexByKey.pick_notes]);
-    if (!itemcode && !orderTot && !pickNotes) continue;
-    if (!itemcode) throw new Error(`Item is required at row ${sourceRowNumber} in ${fileName}.`);
+    // Spreadsheets commonly contain totals, footer notes, and formatting rows
+    // below the order table. Only rows with an Item can become order records.
+    if (!itemcode) continue;
     rows.push({
       batch_id: batchId,
       source_row_number: sourceRowNumber,

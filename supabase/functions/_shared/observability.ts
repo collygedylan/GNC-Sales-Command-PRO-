@@ -2,7 +2,13 @@ const MAX_LOG_BYTES = 2048;
 const SUCCESS_SAMPLE_RATE = 0.01;
 
 function normalizeErrorCode(value: unknown) {
-  const text = String(value instanceof Error ? value.name : value || "unknown_error")
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const message = String(source.message || (value instanceof Error ? value.message : ""));
+  const messageToken = message.match(/\b(?:eval_work|request|drive|pikes)_[a-z0-9_]+\b/i)?.[0] || "";
+  const candidate = value instanceof Error
+    ? (messageToken || value.name)
+    : (source.code || messageToken || "unknown_error");
+  const text = String(candidate || "unknown_error")
     .trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_");
   return text.slice(0, 64) || "unknown_error";
 }
