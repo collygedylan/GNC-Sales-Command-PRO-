@@ -545,7 +545,8 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function openManagerEvalReport2BatchSetup\(\)/);
   assert.match(html, /function createManagerEvalReport2Batch\(button = null\)/);
   assert.match(html, /id="manager-eval-report-2-done-button"/);
-  assert.match(html, /managerEvalReport2LoadState\.loading \|\| managerEvalReport2LoadState\.error/);
+  assert.match(html, /if \(managerEvalReport2LoadState\.loading\) return managerEvalReport2Cache/);
+  assert.match(html, /if \(managerEvalReport2LoadState\.error && managerEvalReport2Cache\) return managerEvalReport2Cache/);
   assert.match(html, /evalWorkApi\('create_batch'/);
   assert.match(html, /PDF assignment/);
   assert.doesNotMatch(html, /eval_reports_2_item_inquiry_excel/);
