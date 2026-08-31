@@ -750,12 +750,15 @@ test('Reclass client guards recipient selection and retains background drafts un
   const status = html.slice(statusStart, statusEnd);
   assert.ok(submit.indexOf('argosInventoryTransactionState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
   assert.match(submit, /rememberQueuedReclassDelivery/);
-  assert.match(submit, /Sending in Background/);
+  assert.doesNotMatch(submit, /Sending in Background/);
   assert.match(status, /RECLASS_DELIVERY_STORAGE_KEY/);
   assert.match(status, /reclass_inquiry_status/);
   assert.match(status, /reclass_inquiry_retry/);
   assert.match(status, /update\.payload = null/);
   assert.match(status, /reopenReclassDeliveryJob/);
+  assert.match(status, /\['delivered', 'failed', 'conflict'\]\.includes/);
+  assert.doesNotMatch(status, /reclass-delivery-spinner/);
+  assert.doesNotMatch(status, /Retry Queued/);
 });
 
 test('live Reclass payload uses the V3 policy and independent action proposal arrays', () => {

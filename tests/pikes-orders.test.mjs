@@ -9,6 +9,8 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 const code = read('Code.gs');
 const html = read('index.html');
 const migration = read('supabase/migrations/20260831165043_pikes_orders_manager_history.sql');
+const repairMigration = read('supabase/migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql');
+const repairAuditHardening = read('supabase/migrations/20260831230825_harden_pikes_assignment_repair_audit.sql');
 const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
 const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
 
@@ -86,6 +88,19 @@ test('five-minute Pikes importer is bounded, file-id idempotent, and archives on
   assert.doesNotMatch(pikesSync, /failedFiles\.push\([^\n]*errorMessage/);
 });
 
+test('manual sync client status is run-scoped and never exposes raw stage errors', () => {
+  const statusBlock = code.slice(
+    code.indexOf('function getManualSyncStatusForClient_'),
+    code.indexOf('// =========================================================================\n// HIGH-PERFORMANCE DELTA SYNC ENGINE')
+  );
+  assert.match(statusBlock, /sanitizeManualSyncStatusForClient_/);
+  assert.match(statusBlock, /next\.runId = String\(next\.runId/);
+  assert.match(statusBlock, /Error code: \$\{safeCode\}/);
+  assert.match(statusBlock, /failedFileErrors: failedFileErrors\.map/);
+  assert.doesNotMatch(statusBlock, /firstError/);
+  assert.doesNotMatch(statusBlock, /Could not start the manual sync trigger: \$\{status\.error\}/);
+});
+
 test('database freezes one inventory card per master row while retaining every source order row', () => {
   assert.match(migration, /create table if not exists public\.ph_pikes_order_batches/);
   assert.match(migration, /create table if not exists public\.ph_pikes_order_source_rows/);
@@ -99,6 +114,33 @@ test('database freezes one inventory card per master row while retaining every s
   assert.match(migration, /unique \(source_key, batch_date, daily_sequence\)/);
   assert.match(migration, /where b\.drive_file_id = p_drive_file_id/);
   assert.doesNotMatch(migration, /unique\s*\(content_sha256\)/);
+});
+
+test('Pikes snapshots use authoritative assignments and historical repair is service-only', () => {
+  assert.match(repairMigration, /assignment_authority_key text/);
+  assert.match(repairMigration, /left join public\.ph_warehouse_assigned_items a/);
+  assert.match(repairMigration, /a\.assignment_key = private\.normalize_eval_assignment_key\(m\.itemcode, m\.genusname\)/);
+  assert.doesNotMatch(repairMigration, /m\.lotcode, m\.assignedto/);
+  assert.match(repairMigration, /repair_pikes_order_batch_assignments_v1/);
+  assert.match(repairMigration, /p_dry_run boolean/);
+  assert.match(repairMigration, /nullif\(btrim\(coalesce\(i\.assignedto, ''\)\), ''\) is null/);
+  assert.match(repairMigration, /a\.assigned_at <= t\.imported_at/);
+  assert.match(repairMigration, /itemcode_unique_assignee/);
+  assert.match(repairMigration, /ph_pikes_order_assignment_repair_audit/);
+  assert.match(repairMigration, /revoke all on function public\.repair_pikes_order_batch_assignments_v1\(uuid, boolean, text\) from public, anon, authenticated/);
+  assert.match(repairMigration, /grant execute on function public\.repair_pikes_order_batch_assignments_v1\(uuid, boolean, text\) to service_role/);
+  assert.match(repairAuditHardening, /as restrictive[\s\S]*to anon, authenticated[\s\S]*using \(false\)[\s\S]*with check \(false\)/);
+});
+
+test('assignment reconciliation is incremental, indexed, and overlap-safe', () => {
+  assert.match(repairMigration, /pg_try_advisory_xact_lock/);
+  assert.match(repairMigration, /MAINTENANCE_DEFERRED/);
+  assert.match(repairMigration, /on conflict \(assignment_key\)[\s\S]*do update set[\s\S]*where public\.ph_warehouse_assigned_items/);
+  assert.match(repairMigration, /not exists \([\s\S]*private\.normalize_eval_assignment_key\(m\.itemcode, m\.genusname\) = a\.assignment_key/);
+  assert.doesNotMatch(repairMigration, /set present_in_drive = false, updated_at = now\(\)\s*where assignment_key is not null/);
+  assert.match(performanceWorkflow, /20260831224251_repair_pikes_assignments_and_maintenance\.sql/);
+  assert.match(performanceWorkflow, /20260831230825_harden_pikes_assignment_repair_audit\.sql/);
+  assert.match(performanceWorkflow, /REQUIRE_BOUNDED_MAINTENANCE: '1'/);
 });
 
 test('Orders data is manager-read-only and service-write-only', () => {

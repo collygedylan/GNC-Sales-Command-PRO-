@@ -4,7 +4,7 @@ const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
 test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.31.04', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
   await page.evaluate(() => window.eval(`(() => {
     canEditRowDetails = () => true;
@@ -2225,7 +2225,7 @@ test('Phone Reclass send opens the searchable in-app recipient selector', async 
   expect(payload.emailRecipients).toEqual(['jd_jones@greenleafnursery.com']);
 });
 
-test('Phone Reclass background status survives reload without covering navigation', async ({ page }) => {
+test('Phone Reclass hides intermediate delivery state and persists only the terminal result', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
@@ -2243,15 +2243,15 @@ test('Phone Reclass background status survives reload without covering navigatio
     (window as any).renderReclassDeliveryStatusTray(null, 'dylan_collyge');
   });
   const tray = page.locator('#reclass-delivery-status-tray');
-  await expect(tray).toBeVisible();
-  await expect(tray).toContainText('Sending in background');
-  let layout = await tray.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    return { left: rect.left, right: rect.right, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight };
+  await expect(tray).toBeHidden();
+  await page.evaluate(() => {
+    const jobs = JSON.parse(localStorage.getItem('gnc_reclass_delivery_jobs_v1') || '[]');
+    jobs[0].status = 'delivered';
+    jobs[0].payload = null;
+    jobs[0].recipientEmails = [];
+    jobs[0].updatedAt = new Date().toISOString();
+    localStorage.setItem('gnc_reclass_delivery_jobs_v1', JSON.stringify(jobs));
   });
-  expect(layout.left).toBeGreaterThanOrEqual(0);
-  expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
-  expect(layout.bottom).toBeLessThan(layout.viewportHeight - 64);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
@@ -2259,7 +2259,17 @@ test('Phone Reclass background status survives reload without covering navigatio
   await page.evaluate(() => {
     (window as any).renderReclassDeliveryStatusTray(null, 'dylan_collyge');
   });
-  await expect(page.locator('#reclass-delivery-status-tray')).toContainText('Sending in background');
+  await expect(page.locator('#reclass-delivery-status-tray')).toContainText('Email Sent');
+  await expect(page.locator('#reclass-delivery-status-tray')).not.toContainText('Sending');
+  const layout = await tray.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight };
+  });
+  expect(layout.left).toBeGreaterThanOrEqual(0);
+  expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.bottom).toBeLessThan(layout.viewportHeight - 64);
+
+  await expect(page.locator('#reclass-delivery-status-tray button')).toHaveText('Dismiss');
 });
 
 test('Drive Grid is a readable spreadsheet and every control stays on one rail', async ({ page }) => {

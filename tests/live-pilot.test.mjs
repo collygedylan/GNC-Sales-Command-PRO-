@@ -62,12 +62,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.31.04';
+  const release = 'V2026.08.31.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.31.04');
+  assert.equal(packageJson.version, '2026.08.31.05');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -604,7 +604,8 @@ test('Reclass is an email-only Item Inquiry while legacy quantity and transfer l
   assert.match(inquiryHandler, /ph_request_delivery_outbox/);
   assert.match(inquiryHandler, /sendGmailApiMessage_/);
   assert.doesNotMatch(inquiryHandler, /GmailApp\.sendEmail|LockService\.getScriptLock/);
-  assert.match(html, /Sending in Background/);
+  assert.doesNotMatch(html, /Sending in Background/);
+  assert.match(html, /Email Failed — inventory changed/);
   assert.match(html, /reclass_inquiry_status/);
   assert.match(html, /if \(safeAction === 'qty'\) return 'QTY'/);
   assert.match(html, /if \(safeAction === 'transfer'\) return 'TRANSFER'/);
@@ -1497,7 +1498,13 @@ test('Warehouse assignments are Supabase-authoritative and the Sheet is export-o
     appsScriptBackend.indexOf('function exportWarehouseAssignedItemsToSheet_'),
     appsScriptBackend.indexOf('function getPayloadSelectColumns_')
   );
-  assert.match(assignmentExport, /run_request_integrity_maintenance/);
+  assert.doesNotMatch(assignmentExport, /callSupabaseRpc_\('run_request_integrity_maintenance'/);
+  assert.match(assignmentExport, /owned_by_scheduled_worker/);
+  const scheduledWorker = appsScriptBackend.slice(
+    appsScriptBackend.indexOf('function runRequestIntegrityScheduledWorker_'),
+    appsScriptBackend.indexOf('// RETIRED DISEASE')
+  );
+  assert.match(scheduledWorker, /callSupabaseRpc_\('run_request_integrity_maintenance'/);
   assert.match(assignmentExport, /direction: 'supabase_to_sheet'/);
 });
 

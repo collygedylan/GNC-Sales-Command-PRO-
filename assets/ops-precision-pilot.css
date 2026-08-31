@@ -2528,7 +2528,7 @@ body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-load
 
 .reclass-delivery-job > div { min-width: 0; display: grid; gap: .1rem; }
 .reclass-delivery-job strong { font-size: .8rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-.reclass-delivery-job span:not(.reclass-delivery-spinner) { overflow: hidden; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.reclass-delivery-job span { overflow: hidden; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .reclass-delivery-job button {
   min-width: 4.5rem;
   min-height: 2.75rem;
@@ -2544,18 +2544,6 @@ body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-load
 .reclass-delivery-job--failed,
 .reclass-delivery-job--conflict { border-color: #dc5b43; background: #fff5f2; color: #7f1d1d; }
 .reclass-delivery-job--delivered { border-color: #4cae4f; background: #efffeb; }
-.reclass-delivery-spinner {
-  width: 1.5rem;
-  height: 1.5rem;
-  flex: 0 0 auto;
-  border: 3px solid rgba(7, 95, 66, .22);
-  border-top-color: #075f42;
-  border-radius: 999px;
-  animation: reclass-delivery-spin .8s linear infinite;
-}
-
-@keyframes reclass-delivery-spin { to { transform: rotate(360deg); } }
-
 body.dark-mode .reclass-delivery-job,
 html.dark .reclass-delivery-job {
   border-color: #36dda0;

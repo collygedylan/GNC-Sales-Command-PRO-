@@ -58,9 +58,12 @@ function removeDropFolderAutoSyncTrigger() {
 
 function runAutoDropFolderSync_() {
   try {
-    runRequestIntegrityScheduledWorker_();
+    const workerResult = runRequestIntegrityScheduledWorker_();
+    if (workerResult && workerResult.status === 'deferred') {
+      console.warn('[REQUEST INTEGRITY] MAINTENANCE_DEFERRED');
+    }
   } catch (workerError) {
-    console.error('[REQUEST INTEGRITY] Scheduled worker failed: ' + (workerError && workerError.message ? workerError.message : workerError));
+    console.error('[REQUEST INTEGRITY] Scheduled worker failed with REQUEST_INTEGRITY_WORKER_FAILED.');
   }
   const requestedBy = Session.getEffectiveUser().getEmail() || 'Apps Script Auto Sync';
   return queueManualSyncRequest_({
@@ -704,9 +707,9 @@ function getManualSyncStatusForClient_() {
   if (!status) return null;
   if (isManualSyncStatusStale_(status)) {
     const stageLabel = String(status.currentStageLabel || status.currentStage || 'manual sync');
-    return markManualSyncStatusStale_(status, `${stageLabel} did not update before the safety timeout.`);
+    return sanitizeManualSyncStatusForClient_(markManualSyncStatusStale_(status, `${stageLabel} did not update before the safety timeout.`));
   }
-  return status;
+  return sanitizeManualSyncStatusForClient_(status);
 }
 
 function removeManualSyncStageTriggers_() {
@@ -759,21 +762,51 @@ function normalizeManualSyncFailedFileEntries_(stageResult) {
   }).filter(function(entry) { return entry.name || entry.error; });
 }
 
-function buildManualSyncStageFailureMessage_(stageDef, stageResult) {
+function sanitizeManualSyncErrorCode_(value, fallback) {
+  const normalized = String(value || fallback || 'MANUAL_SYNC_STAGE_FAILED')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 100);
+  return normalized || 'MANUAL_SYNC_STAGE_FAILED';
+}
+
+function sanitizeManualSyncStatusForClient_(status) {
+  if (!status || typeof status !== 'object') return status || null;
+  const next = JSON.parse(JSON.stringify(status));
+  next.runId = String(next.runId || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 40);
+  next.stageResults = (Array.isArray(next.stageResults) ? next.stageResults : []).map(function(result) {
+    return {
+      key: String(result && result.key || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 64),
+      label: String(result && result.label || '').replace(/[^a-z0-9 &()-]+/gi, '').slice(0, 80),
+      filesProcessed: Math.max(0, Number(result && result.filesProcessed || 0)),
+      tempFilesRemoved: Math.max(0, Number(result && result.tempFilesRemoved || 0)),
+      failedFiles: Math.max(0, Number(result && result.failedFiles || 0)),
+      errorCode: result && result.errorCode
+        ? sanitizeManualSyncErrorCode_(result.errorCode, 'MANUAL_SYNC_STAGE_FAILED')
+        : '',
+      completedAt: String(result && result.completedAt || '')
+    };
+  });
+  if (next.error || next.errorCode) {
+    const safeCode = sanitizeManualSyncErrorCode_(next.errorCode, 'MANUAL_SYNC_STAGE_FAILED');
+    const stageLabel = String(next.currentStageLabel || next.currentStage || 'Data update').replace(/[^a-z0-9 &()-]+/gi, '').slice(0, 80) || 'Data update';
+    next.errorCode = safeCode;
+    next.error = `${stageLabel} did not finish. Error code: ${safeCode}.`;
+    next.message = `${next.error} The source file remains available for retry.`;
+  }
+  return next;
+}
+
+function buildManualSyncStageFailureMessage_(stageDef, stageResult, errorCode) {
   const safeResult = stageResult || {};
   const label = String(stageDef && stageDef.label || safeResult.tableName || 'manual sync stage').trim();
   const failedFiles = Number(safeResult.failedFiles || 0);
   const failedEntries = normalizeManualSyncFailedFileEntries_(safeResult);
-  const fileNames = failedEntries.map(function(entry) { return entry.name; }).filter(Boolean);
-  const firstError = String(
-    (failedEntries[0] && failedEntries[0].error) ||
-    safeResult.error ||
-    'The file was left in the drop folder for retry.'
-  ).trim();
-  const fileText = fileNames.length
-    ? fileNames.slice(0, 4).join(', ') + (fileNames.length > 4 ? `, +${fileNames.length - 4} more` : '')
-    : `${failedFiles || 1} file${failedFiles === 1 ? '' : 's'}`;
-  return `${label} failed for ${fileText}. ${firstError}`;
+  const failureCount = Math.max(failedFiles, failedEntries.length, 1);
+  const safeCode = sanitizeManualSyncErrorCode_(errorCode, 'MANUAL_SYNC_STAGE_FAILED');
+  return `${label} did not finish for ${failureCount} file${failureCount === 1 ? '' : 's'}. Error code: ${safeCode}. The file remains available for retry.`;
 }
 
 function queueManualSyncRequest_(options) {
@@ -800,7 +833,7 @@ function queueManualSyncRequest_(options) {
     }
     if (existing && existing.active) {
       console.warn(`[MANUAL SYNC][${existing.runId || 'active'}] A manual sync is already running.`);
-      return Object.assign({}, existing, {
+      return sanitizeManualSyncStatusForClient_(Object.assign({}, existing, {
         ok: true,
         status: 'busy',
         active: true,
@@ -816,7 +849,7 @@ function queueManualSyncRequest_(options) {
         finishedAt: existing.finishedAt || existing.finished_at || '',
         message: existing.message || 'A manual sync is already running.',
         error: existing.error || ''
-      });
+      }));
     }
 
     const stageOrder = getManualSyncStageOrder_(options && options.job);
@@ -857,11 +890,12 @@ function queueManualSyncRequest_(options) {
         status.currentStageLabel = 'Trigger Failed';
         status.updatedAt = new Date().toISOString();
         status.finishedAt = status.updatedAt;
-        status.error = triggerError && triggerError.message ? triggerError.message : String(triggerError);
-        status.message = `Could not start the manual sync trigger: ${status.error}`;
+        status.errorCode = 'MANUAL_SYNC_TRIGGER_FAILED';
+        status.error = 'The scheduled sync could not start.';
+        status.message = 'The scheduled sync could not start. Error code: MANUAL_SYNC_TRIGGER_FAILED.';
         saveManualSyncStatus_(status);
         removeManualSyncStageTriggers_();
-        throw triggerError;
+        throw new Error('MANUAL_SYNC_TRIGGER_FAILED');
       }
     }
     console.log(`[MANUAL SYNC][${runId}] Queued ${stageLabels.join(' -> ')} from ${status.source} by ${status.requestedBy}.`);
@@ -948,16 +982,20 @@ function runQueuedManualSyncStage_(options) {
         tempFilesRemoved: tempFilesRemoved,
         failedFiles: failedFiles,
         failedFileNames: failedFileNames,
-        failedFileErrors: failedFileErrors,
-        error: String(stageResult.error || '').trim(),
+        failedFileErrors: failedFileErrors.map(function(entry) {
+          return { errorCode: sanitizeManualSyncErrorCode_(entry && entry.errorCode, 'MANUAL_SYNC_STAGE_FAILED') };
+        }),
+        errorCode: (failedFiles > 0 || failedFileErrors.length || stageResult.error)
+          ? sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code, 'MANUAL_SYNC_STAGE_FAILED')
+          : '',
         completedAt: completedAt
       });
 
       if (failedFiles > 0 || failedFileErrors.length || stageResult.error) {
         status.updatedAt = completedAt;
-        status.errorCode = String(failedFileErrors[0] && failedFileErrors[0].errorCode || stageResult.errorCode || stageResult.error_code || 'MANUAL_SYNC_STAGE_FAILED').trim().toUpperCase();
-        status.error = buildManualSyncStageFailureMessage_(stageDef, stageResult);
-        status.message = `Failed during ${stageDef.label}: ${status.error}`;
+        status.errorCode = sanitizeManualSyncErrorCode_(failedFileErrors[0] && failedFileErrors[0].errorCode || stageResult.errorCode || stageResult.error_code, 'MANUAL_SYNC_STAGE_FAILED');
+        status.error = buildManualSyncStageFailureMessage_(stageDef, stageResult, status.errorCode);
+        status.message = status.error;
         saveManualSyncStatus_(status);
         throw new Error(status.error);
       }
@@ -1007,14 +1045,15 @@ function runQueuedManualSyncStage_(options) {
       status.active = false;
       status.updatedAt = new Date().toISOString();
       status.finishedAt = status.updatedAt;
-      status.error = err && err.message ? err.message : String(err);
       const stageLabel = status.currentStageLabel || status.currentStage || 'manual sync';
-      status.message = `Failed during ${stageLabel}: ${status.error}`;
+      status.errorCode = sanitizeManualSyncErrorCode_(status.errorCode, 'MANUAL_SYNC_STAGE_FAILED');
+      status.error = `${stageLabel} did not finish. Error code: ${status.errorCode}.`;
+      status.message = status.error;
       saveManualSyncStatus_(status);
     }
     removeManualSyncStageTriggers_();
-    console.error(`[MANUAL SYNC][${status && status.runId ? status.runId : 'unknown'}] ${err && err.stack ? err.stack : err}`);
-    throw err;
+    console.error(`[MANUAL SYNC][${status && status.runId ? status.runId : 'unknown'}] ${status && status.errorCode ? status.errorCode : 'MANUAL_SYNC_STAGE_FAILED'}`);
+    throw new Error(status && status.error ? status.error : 'Manual sync stage failed.');
   } finally {
     lock.releaseLock();
   }
@@ -2734,14 +2773,9 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
   if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
 
-  // The export must remain available even when the bounded integrity worker is
-  // temporarily busy. The dedicated scheduled worker owns retries.
-  let maintenance = {};
-  try {
-    maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {}) || {};
-  } catch (maintenanceError) {
-    console.warn('[WAREHOUSE ASSIGNED ITEMS] Request maintenance deferred to its scheduled worker.');
-  }
+  // Reconciliation belongs to the one scheduled maintenance worker. Exporting
+  // this sheet must never launch another full-table maintenance pass.
+  const maintenance = { status: 'owned_by_scheduled_worker' };
   const rows = Object.values(fetchAllSupabaseData(
     safeTableName,
     'unique_id,itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
@@ -15249,6 +15283,8 @@ function processRequestDeliveryOutbox_(limit) {
 function runRequestIntegrityScheduledWorker_() {
   const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
   return {
+    status: String(maintenance && maintenance.status || 'completed'),
+    errorCode: String(maintenance && maintenance.errorCode || ''),
     maintenance: maintenance || {},
     delivery: { delegated: true, worker: 'supabase_edge_request_delivery' }
   };
