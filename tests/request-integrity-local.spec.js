@@ -119,7 +119,7 @@ test.describe('Drive-canonical request transactions', () => {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
     });
     expect(legacyOutbox.body).toEqual(expect.arrayContaining([
-      expect.objectContaining({ status: 'pending', event_type: 'request_completed' })
+      expect.objectContaining({ status: 'suppressed', event_type: 'request_completed' })
     ]));
 
     const repToken = await signIn(rep);
