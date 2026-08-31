@@ -204,8 +204,8 @@ select is((select match from public.ph_master_inventory where unique_id = 'MASTE
 select is((select last_event from public.ph_request_history where unique_id = 'REQ-CSR-1'), 'completed', 'completion froze final History');
 select is(
   (public.save_request_work('REQ-CSR-1', 1, '{}'::jsonb, false)->>'delivery_state'),
-  'pending',
-  'completed request retry returns the committed delivery state without another write'
+  'suppressed',
+  'completed request retry reports the legacy event superseded by folder completion without another write'
 );
 select is(
   (select row_version from public.ph_active_request where unique_id = 'REQ-CSR-1'),
@@ -389,8 +389,12 @@ select is(
   'request email thread state has row-level security enabled'
 );
 update public.ph_request_delivery_outbox
-set next_attempt_at = now() + interval '1 day'
-where status = 'pending';
+set status = 'pending',
+    next_attempt_at = now() + interval '1 day',
+    lease_token = null,
+    lease_owner = null,
+    lease_expires_at = null
+where status in ('pending', 'processing', 'failed');
 insert into public.ph_request_delivery_outbox (
   event_key, event_type, payload, status, next_attempt_at
 ) values (
