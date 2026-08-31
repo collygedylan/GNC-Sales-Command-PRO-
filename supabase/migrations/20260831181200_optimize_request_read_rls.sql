@@ -60,6 +60,10 @@ revoke all on function private.can_read_all_request_rows_v1()
   from public, anon, authenticated, service_role;
 revoke all on function private.current_restricted_request_identity_v1()
   from public, anon, authenticated, service_role;
+grant execute on function private.can_read_all_request_rows_v1()
+  to authenticated;
+grant execute on function private.current_restricted_request_identity_v1()
+  to authenticated;
 
 drop policy if exists ph_active_request_authenticated_read on public.ph_active_request;
 create policy ph_active_request_authenticated_read
