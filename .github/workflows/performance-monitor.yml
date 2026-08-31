@@ -70,6 +70,7 @@ jobs:
           cp supabase/migrations/20260831141127_native_auth_profile_link_repair.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260831165043_pikes_orders_manager_history.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260831175530_pikes_orders_access_audit_baseline.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831181200_optimize_request_read_rls.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/codex_ops_rls_test.sql "$ci_root/supabase/tests/"

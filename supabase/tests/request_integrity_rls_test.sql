@@ -1,6 +1,14 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(75);
+select plan(78);
+
+select has_function('private', 'can_read_all_request_rows_v1', array[]::text[], 'Request queue has a statement-cached global-read helper');
+select has_function('private', 'current_restricted_request_identity_v1', array[]::text[], 'Request queue has a statement-cached restricted identity helper');
+select ok(
+  not has_function_privilege('authenticated', 'private.can_read_all_request_rows_v1()', 'execute')
+  and not has_function_privilege('authenticated', 'private.current_restricted_request_identity_v1()', 'execute'),
+  'Request RLS actor helpers cannot be invoked directly by browser clients'
+);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
