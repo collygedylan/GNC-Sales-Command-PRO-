@@ -21,6 +21,7 @@ test('folder completion recovery binds the unnested request id and is service-on
   assert.match(migration, /missing_completion_event_count/);
   assert.match(performanceWorkflow, /20260831210000_request_eval_drive_reliability_repair\.sql/);
   assert.match(performanceWorkflow, /request_eval_drive_reliability_test\.sql/);
+  assert.match(performanceWorkflow, /request_eval_drive_reliability_baseline\.sql/);
   assert.match(sqlTest, /pg_advisory_xact_lock/);
   assert.doesNotMatch(migration, /delete from public\.ph_active_request|delete from public\.ph_request_history/i);
 });
