@@ -27,6 +27,7 @@ const authMigration = read('supabase/migrations/20260816172822_native_auth_profi
 const compactionMigration = read('supabase/migrations/20260816172825_database_compaction_shadow.sql');
 const authMigrationTool = read('scripts/migrate-custom-users-to-supabase-auth.mjs');
 const authAdmin = read('supabase/functions/auth-admin/index.ts');
+const authProfileLinkRepairMigration = read('supabase/migrations/20260831141127_native_auth_profile_link_repair.sql');
 const passkeyRolloutMigration = read('supabase/migrations/20260817020000_enable_passkeys_for_active_profiles.sql');
 const appearanceRolloutMigration = read('supabase/migrations/20260817021230_enable_appearance_preferences_for_all_users.sql');
 const appsScriptBackend = read('Code.gs');
@@ -1169,6 +1170,14 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.match(authAdmin, /admin\.auth\.admin\.createUser/);
   assert.match(authAdmin, /@greenleafnursery\.com/);
   assert.match(authAdmin, /admin\.auth\.admin\.updateUserById/);
+  assert.match(authAdmin, /admin\.rpc\("provision_native_auth_app_user"/);
+  assert.match(authAdmin, /admin\.auth\.admin\.deleteUser\(data\.user\.id\)/);
+  assert.doesNotMatch(authAdmin, /admin\.from\("profiles"\)\.insert/);
+  assert.match(authProfileLinkRepairMigration, /function public\.provision_native_auth_app_user\(/);
+  assert.match(authProfileLinkRepairMigration, /language plpgsql\s+security invoker/);
+  assert.match(authProfileLinkRepairMigration, /insert into public\.ph_app_users[\s\S]*insert into public\.profiles/);
+  assert.match(authProfileLinkRepairMigration, /revoke all on function public\.provision_native_auth_app_user[\s\S]*from public, anon, authenticated/);
+  assert.match(authProfileLinkRepairMigration, /grant execute on function public\.provision_native_auth_app_user[\s\S]*to service_role/);
   assert.doesNotMatch(authAdmin, /readSupabaseOrAppSessionFromRequest/);
 });
 
@@ -1348,6 +1357,9 @@ test('plant request submitted and completed emails always include the required t
 test('V12 synchronizes password changes and exposes user-initiated passkeys to every eligible account', () => {
   assert.match(edge, /newPassword\.length < 6/);
   assert.match(edge, /supabase\.auth\.admin\.updateUserById\(String\(profile\.id\)/);
+  assert.match(edge, /if \(!Number\.isInteger\(legacyUserId\) \|\| legacyUserId <= 0\)[\s\S]*supabase\.rpc\("provision_native_auth_app_user"/);
+  assert.match(edge, /AUTH_PROFILE_LINK_REPAIR_REQUIRED/);
+  assert.doesNotMatch(edge, /profileLookupError \|\| !profile\?\.id \|\| !profile\.legacy_user_id/);
   assert.match(edge, /\.from\("ph_app_users"\)[\s\S]*must_change_password: false/);
   assert.match(edge, /\.from\("profiles"\)[\s\S]*must_change_password: false/);
   assert.match(html, /includeSession: !nativeAuthSessionActive/);

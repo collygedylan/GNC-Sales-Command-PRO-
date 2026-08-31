@@ -1307,10 +1307,10 @@ async function handlePasswordChange(
   const username = normalizeUsername(session.username || session.displayName || "");
   const { data: profile, error: profileLookupError } = await supabase
     .from("profiles")
-    .select("id,legacy_user_id,username")
+    .select("id,legacy_user_id,username,display_name,role,division,language")
     .eq("username", username)
     .maybeSingle();
-  if (profileLookupError || !profile?.id || !profile.legacy_user_id) {
+  if (profileLookupError || !profile?.id) {
     return errorResponse("The linked account profile could not be verified.", 409, { code: "AUTH_PROFILE_NOT_LINKED" });
   }
   if (session.authUserId && String(session.authUserId) !== String(profile.id)) {
@@ -1325,22 +1325,47 @@ async function handlePasswordChange(
   }
 
   const nowIso = new Date().toISOString();
-  const { error: legacyPasswordError } = await supabase
-    .from("ph_app_users")
-    .update({
-      password: newPassword,
-      password_hash: null,
-      password_salt: null,
-      password_changed_at: nowIso,
-      must_change_password: false,
-      failed_login_count: 0,
-      locked_until: null,
-    })
-    .eq("id", profile.legacy_user_id);
-  if (legacyPasswordError) {
-    return errorResponse("Password synchronization requires reconciliation.", 502, {
-      code: "LEGACY_PASSWORD_SYNC_REQUIRED",
+  let legacyUserId = Number(profile.legacy_user_id || 0);
+  if (!Number.isInteger(legacyUserId) || legacyUserId <= 0) {
+    const { data: provisionedRows, error: provisionError } = await supabase.rpc("provision_native_auth_app_user", {
+      p_auth_user_id: String(profile.id),
+      p_username: String(profile.username || username),
+      p_password: newPassword,
+      p_display_name: String(profile.display_name || session.displayName || profile.username || username),
+      p_role: String(profile.role || session.role || "User"),
+      p_division: String(profile.division || "10"),
+      p_language: String(profile.language || "English"),
+      p_must_change_password: false,
     });
+    const provisioned = Array.isArray(provisionedRows)
+      ? provisionedRows[0] as Record<string, unknown> | undefined
+      : undefined;
+    legacyUserId = Number(provisioned?.legacy_user_id || 0);
+    if (provisionError || !Number.isInteger(legacyUserId) || legacyUserId <= 0) {
+      return errorResponse("Account linking requires reconciliation.", 502, {
+        code: "AUTH_PROFILE_LINK_REPAIR_REQUIRED",
+      });
+    }
+  } else {
+    const { data: legacyUser, error: legacyPasswordError } = await supabase
+      .from("ph_app_users")
+      .update({
+        password: newPassword,
+        password_hash: null,
+        password_salt: null,
+        password_changed_at: nowIso,
+        must_change_password: false,
+        failed_login_count: 0,
+        locked_until: null,
+      })
+      .eq("id", legacyUserId)
+      .select("id")
+      .maybeSingle();
+    if (legacyPasswordError || !legacyUser?.id) {
+      return errorResponse("Password synchronization requires reconciliation.", 502, {
+        code: "LEGACY_PASSWORD_SYNC_REQUIRED",
+      });
+    }
   }
 
   const { error: profileUpdateError } = await supabase

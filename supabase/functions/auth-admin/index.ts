@@ -67,6 +67,10 @@ async function handle(req: Request) {
     const { data: existing } = await admin.from("profiles").select("id").eq("username", username).maybeSingle();
     if (existing?.id) return json({ error: "user_exists" }, 409);
     const role = String(payload?.role || "User").trim() || "User";
+    const division = String(payload?.division || "10").trim() || "10";
+    const language = String(payload?.language || "English").trim() || "English";
+    const displayName = String(payload?.displayName || username).trim() || username;
+    const mustChangePassword = payload?.mustChangePassword !== false;
     const { data, error } = await admin.auth.admin.createUser({
       email: authAlias(username),
       password,
@@ -75,16 +79,24 @@ async function handle(req: Request) {
       user_metadata: { username },
     });
     if (error || !data?.user?.id) return json({ error: "auth_create_failed" }, 400);
-    const { error: profileError } = await admin.from("profiles").insert({
-      id: data.user.id,
-      username,
-      display_name: String(payload?.displayName || username).trim() || username,
-      role,
-      division: String(payload?.division || "10").trim() || "10",
-      language: String(payload?.language || "English").trim() || "English",
-      must_change_password: payload?.mustChangePassword !== false,
+    const { data: provisionedRows, error: profileError } = await admin.rpc("provision_native_auth_app_user", {
+      p_auth_user_id: data.user.id,
+      p_username: username,
+      p_password: password,
+      p_display_name: displayName,
+      p_role: role,
+      p_division: division,
+      p_language: language,
+      p_must_change_password: mustChangePassword,
     });
-    if (profileError) return json({ error: "profile_create_failed", reconciliationRequired: true }, 409);
+    const legacyUserId = Number(Array.isArray(provisionedRows) ? provisionedRows[0]?.legacy_user_id : 0);
+    if (profileError || !Number.isInteger(legacyUserId) || legacyUserId <= 0) {
+      const { error: rollbackError } = await admin.auth.admin.deleteUser(data.user.id);
+      return json({
+        error: "profile_create_failed",
+        reconciliationRequired: Boolean(rollbackError),
+      }, 409);
+    }
     return json({ ok: true, created: true }, 201);
   }
 
