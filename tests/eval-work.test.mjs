@@ -5,6 +5,7 @@ import test from 'node:test';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20260827005258_eval_work_v1.sql', import.meta.url), 'utf8');
 const batchMigration = readFileSync(new URL('../supabase/migrations/20260827161513_eval_work_create_batch_v1.sql', import.meta.url), 'utf8');
+const multiAssigneeMigration = readFileSync(new URL('../supabase/migrations/20260831030457_eval_work_multi_assignee_v1.sql', import.meta.url), 'utf8');
 const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../supabase/functions/request-delivery-worker/index.ts', import.meta.url), 'utf8');
 const appsScript = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
@@ -24,14 +25,18 @@ test('Eval Work schema is append-only, durable, scoped, and not directly writabl
   assert.doesNotMatch(migration, /delete from public\.(?:ph_master_inventory|ph_active_request|ph_request_history)/i);
 });
 
-test('creation and management are Dylan/Megan-only while assigned users alone save and submit', () => {
+test('creation and management are Dylan/Megan-only while every selected evaluator can work', () => {
   assert.match(migration, /lower\(actor\.username\) not in \('dylan_collyge', 'megan_kelly'\)[\s\S]*eval_work_create_forbidden/);
   assert.match(migration, /lower\(work\.assignee_username\) <> lower\(actor\.username\)[\s\S]*eval_work_edit_forbidden/);
   assert.match(migration, /lower\(work\.assignee_username\) <> lower\(actor\.username\)[\s\S]*eval_work_submit_forbidden/);
   assert.match(appApi, /const EVAL_WORK_MANAGER_USERS = new Set\(\["dylan_collyge", "megan_kelly"\]\)/);
-  assert.match(appApi, /Only the assigned evaluator can update this work/);
-  assert.match(appApi, /resolveEvalWorkAssignee\(payload\.assigneeUsername\)/);
+  assert.match(appApi, /Only an assigned evaluator can update this work/);
+  assert.match(appApi, /resolveEvalWorkAssignees\(payload\.assigneeUsernames \|\| payload\.assigneeUsername\)/);
+  assert.match(appApi, /query = query\.contains\("assignee_usernames", \[actor\]\)/);
+  assert.match(appApi, /isEvalWorkAssignedTo\(row, actor\)/);
   assert.match(appApi, /supabase\.auth\.admin\.getUserById/);
+  assert.match(multiAssigneeMigration, /assignee_usernames text\[\] not null/);
+  assert.match(multiAssigneeMigration, /lower\(\(private\.current_active_profile\(\)\)\.username\) = any\(assignee_usernames\)/);
 });
 
 test('create and submit tokens make assignment and completion idempotent', () => {
@@ -68,7 +73,8 @@ test('assignment and completion recipient paths remain strictly separated', () =
   assert.match(migration, /'eval_work_assignment'[\s\S]*'assigneeEmail', new_work\.assignee_email/);
   assert.match(migration, /'eval_work_completion'[\s\S]*'completionRecipients', to_jsonb\(work\.completion_recipients\)/);
   assert.match(appsScript, /kind === 'assignment'[\s\S]*eventPayload\.assignmentRecipients \|\| eventPayload\.assigneeEmail[\s\S]*eventPayload\.completionRecipients/);
-  assert.match(html, /Only .* is receiving the assignment email\. Completion recipients will be emailed after submission/);
+  assert.match(html, /evaluator.*will receive the assignment email\. Completion recipients will be emailed after submission/);
+  assert.match(multiAssigneeMigration, /'assignmentRecipients', to_jsonb\(assignment_recipients\)/);
   assert.doesNotMatch(appsScript.slice(appsScript.indexOf('function handleSignedEvalWorkDelivery_'), appsScript.indexOf('function handleSignedRequestDeliveryEvent_')), /requiredRecipient|requiredRecipients|hiddenRecipient/i);
 });
 
@@ -162,7 +168,7 @@ test('Item Inquiry requires every Eval Work row to be Mark Done or No Action', (
 test('assigned sales reps can use only the ownership-checked Eval photo scope', () => {
   assert.match(appApi, /REP_ALLOWED_PHOTO_PREFIXES = new Set\(\["req-", "credit-", "eval-"\]\)/);
   assert.match(appApi, /prefix === "eval-"[\s\S]*loadAuthorizedEvalWork\(session, evalWorkId\)/);
-  assert.match(appApi, /normalizeUsername\(row\.assignee_username\) !== actor/);
+  assert.match(appApi, /!isEvalWorkAssignedTo\(row, actor\)/);
   assert.match(appApi, /originAllowed = row[\s\S]*row\.origins[\s\S]*origin_unique_id/);
   assert.match(appApi, /evalMultiOrigin \? `eval\/\$\{evalWorkId\}\/\$\{String\(evalOriginUid\)\}\/\$\{fileName\}` : `eval\/\$\{evalWorkId\}\/\$\{fileName\}`/);
 });
@@ -172,8 +178,9 @@ test('Review setup is manager-only, searchable, explicit, and supports blank inq
   assert.match(html, /Send as Review/);
   assert.match(html, /isEvalWorkManagerUser/);
   assert.match(html, /id="eval-work-setup-assignee-button"[\s\S]*chooseEvalWorkAssignee/);
-  assert.match(html, /function chooseEvalWorkAssignee\(\)[\s\S]*openGroupedBloomNcrRecipientModal[\s\S]*singleSelect: true[\s\S]*appUsersOnly: true/);
-  assert.match(html, /getAssignableAppUserByEmail/);
+  assert.match(html, /function chooseEvalWorkAssignee\(\)[\s\S]*openGroupedBloomNcrRecipientModal[\s\S]*appUsersOnly: true[\s\S]*allowedUsernames: EVAL_ASSIGNMENT_ROSTER_USERS/);
+  assert.doesNotMatch(html.slice(html.indexOf('async function chooseEvalWorkAssignee'), html.indexOf('async function chooseEvalWorkCompletionRecipients')), /singleSelect: true/);
+  assert.match(html, /getEvalWorkAssigneesByEmails/);
   assert.match(html, /chooseEvalWorkCompletionRecipients/);
   assert.match(html, /completionRecipients: recipients/);
   assert.match(html, /proposalCount/);
@@ -204,7 +211,7 @@ test('Eval Reports #2 batch creation is service-only, atomic, complete-row, and 
   assert.doesNotMatch(batchMigration, /update public\.ph_master_inventory|delete from public\./i);
   assert.match(appApi, /operation === "create_batch"/);
   assert.match(appApi, /normalizeEvalWorkBatchInquiry/);
-  assert.match(appApi, /supabase\.rpc\("create_eval_work_batch_v2"/);
+  assert.match(appApi, /supabase\.rpc\("create_eval_work_batch_multi_v2"/);
   assert.match(appApi, /Access-Control-Allow-Headers": "[^"]*idempotency-key[^"]*"/);
   assert.match(html, /evalWorkApi\('create_batch'[\s\S]*idempotencyKey:\s*managerEvalReport2BatchSetupState\.batchToken/);
   assert.doesNotMatch(appApi, /useMultiOriginV2/);
@@ -224,7 +231,19 @@ test('Eval Reports #2 uses PDF Eval Work delivery and preserves temporary report
 
 test('Eval Reports #2 uses the shared searchable evaluator picker and refreshes complete Queue origins', () => {
   assert.match(html, /id="manager-eval2-batch-assignee-button"[\s\S]*chooseManagerEvalReport2BatchAssignee\(\)/);
-  assert.match(html, /async function chooseManagerEvalReport2BatchAssignee\(\)[\s\S]*singleSelect:\s*true[\s\S]*appUsersOnly:\s*true/);
+  assert.match(html, /async function chooseManagerEvalReport2BatchAssignee\(\)[\s\S]*appUsersOnly:\s*true[\s\S]*allowedUsernames:\s*EVAL_ASSIGNMENT_ROSTER_USERS/);
+  assert.match(html, /assigneeUsernames:\s*assignees\.map/);
   assert.doesNotMatch(html, /id="manager-eval2-batch-assignee"\s+list=/);
   assert.match(html, /evalWorkApi\('create_batch'[\s\S]*await loadEvalWorkAssignments\(true\)[\s\S]*Eval Work Queued/);
+});
+
+test('Eval picker supports multiple roster users and labels Kayla and JD as honorary evaluators', () => {
+  assert.match(html, /const EVAL_ASSIGNMENT_HONORARY_USERS = Object\.freeze\(\['kayla_knepp', 'jd_jones'\]\)/);
+  assert.match(html, /role: honorary\.has[\s\S]*'Honorary Eval User'/);
+  assert.match(html, /title: 'Reassign Eval Work'[\s\S]*allowedUsernames: EVAL_ASSIGNMENT_ROSTER_USERS/);
+  assert.match(appApi, /"kayla_knepp", "jd_jones"/);
+  assert.match(multiAssigneeMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(multiAssigneeMigration, /create or replace function public\.reassign_eval_work_v2\(p_payload jsonb\)/);
+  assert.match(multiAssigneeMigration, /revoke all on function public\.reassign_eval_work_v2\(jsonb\) from public, anon, authenticated/);
+  assert.match(multiAssigneeMigration, /grant execute on function public\.reassign_eval_work_v2\(jsonb\) to service_role/);
 });

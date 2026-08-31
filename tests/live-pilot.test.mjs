@@ -61,12 +61,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.08.30.08';
+  const release = 'V2026.08.30.09';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.08.30.08');
+  assert.equal(packageJson.version, '2026.08.30.09');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1481,7 +1481,8 @@ test('Warehouse assignments are Supabase-authoritative and the Sheet is export-o
 });
 
 test('Eval assignment management uses the requested roster and ItemCode + GenusName identity', () => {
-  assert.match(html, /const EVAL_ASSIGNMENT_ROSTER_USERS = Object\.freeze\(\['josh_vann', 'jorge_colunga', 'abigail_vazquez', 'bobby_adair', 'charley_robertson', 'ellen_ward', 'zoe_green', 'mitch_kaiser', 'dylan_collyge', 'megan_kelly'\]\)/);
+  assert.match(html, /const EVAL_ASSIGNMENT_HONORARY_USERS = Object\.freeze\(\['kayla_knepp', 'jd_jones'\]\)/);
+  assert.match(html, /const EVAL_ASSIGNMENT_ROSTER_USERS = Object\.freeze\(\['josh_vann', 'jorge_colunga', 'abigail_vazquez', 'bobby_adair', 'charley_robertson', 'ellen_ward', 'zoe_green', 'mitch_kaiser', 'dylan_collyge', 'megan_kelly', \.\.\.EVAL_ASSIGNMENT_HONORARY_USERS\]\)/);
   assert.match(html, /charey_robertson: 'charley_robertson'/);
   assert.match(html, /boby: 'bobby_adair'/);
   assert.match(html, /function getEvalAssignableUserLabel\(value = ''\) \{[\s\S]*return normalized;/);

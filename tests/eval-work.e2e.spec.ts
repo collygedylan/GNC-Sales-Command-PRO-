@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.08&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.09&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
 
   const result = await page.evaluate(() => window.eval(`(async () => {
@@ -149,16 +149,16 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
   expect(result.controlsFit).toBe(true);
 });
 
-test('Reclass Send as Review uses the shared searchable single-evaluator sheet on phones', async ({ page }) => {
+test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.08', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.09', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
 
   await page.evaluate(() => window.eval(`(() => {
     currentUser = 'dylan_collyge';
     currentUserDisplay = 'Dylan Collyge';
     assignableAppUsersLoaded = true;
-    evalWorkSetupState = { assigneeUsername: '', assigneeEmail: '', instructions: '', completionRecipients: [] };
+    evalWorkSetupState = { assigneeUsernames: [], instructions: '', completionRecipients: [] };
     argosInventoryTransactionState = {
       snapshot: { commonName: 'Synthetic Review Item', itemCode: 'TEST.001', contSize: '#3', uniqueId: 'review-origin', locationCode: 'A.01.001', lotCode: '27.F1' },
       item: { UNIQUE_ID: 'review-origin', ITEMCODE: 'TEST.001', COMMONNAME: 'Synthetic Review Item', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1' }
@@ -172,30 +172,35 @@ test('Reclass Send as Review uses the shared searchable single-evaluator sheet o
   const picker = page.locator('#grouped-bloom-ncr-recipient-modal');
   await expect(picker).toBeVisible();
   await expect(page.locator('#grouped-bloom-ncr-recipient-title')).toHaveText('Select Evaluator');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-send-btn')).toHaveText('Use Evaluator');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-bulk-actions')).toBeHidden();
+  await expect(page.locator('#grouped-bloom-ncr-recipient-send-btn')).toHaveText('Use Evaluators');
+  await expect(page.locator('#grouped-bloom-ncr-recipient-bulk-actions')).toBeVisible();
 
   await page.locator('#grouped-bloom-ncr-recipient-search').fill('Kayla');
   const evaluator = page.locator('#grouped-bloom-ncr-recipient-list button', { hasText: 'kayla_knepp' });
   await expect(evaluator).toBeVisible();
   await evaluator.click();
   await expect(evaluator).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#grouped-bloom-ncr-recipient-search').fill('JD Jones');
+  const honoraryEvaluator = page.locator('#grouped-bloom-ncr-recipient-list button', { hasText: 'jd_jones' });
+  await expect(honoraryEvaluator).toBeVisible();
+  await honoraryEvaluator.click();
+  await expect(honoraryEvaluator).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#grouped-bloom-ncr-recipient-send-btn').click();
 
   await expect(picker).toBeHidden();
   await expect(page.locator('#eval-work-setup-assignee-copy')).toContainText('kayla_knepp');
   const result = await page.evaluate(() => window.eval(`({
-    assignee: getEvalWorkSetupAssignee() && getEvalWorkSetupAssignee().username,
+    assignees: getEvalWorkSetupAssignees().map((entry) => entry.username),
     pickerZ: Number.parseInt(getComputedStyle(document.getElementById('grouped-bloom-ncr-recipient-modal')).zIndex || '0', 10),
     setupZ: Number.parseInt(getComputedStyle(document.getElementById('eval-work-setup-modal')).zIndex || '0', 10)
   })`));
-  expect(result.assignee).toBe('kayla_knepp');
+  expect(result.assignees).toEqual(['kayla_knepp', 'jd_jones']);
   expect(result.pickerZ).toBeGreaterThan(result.setupZ);
 });
 
 test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.08.30.08', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.08.30.09', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');
 
   const result = await page.evaluate(() => window.eval(`(() => {

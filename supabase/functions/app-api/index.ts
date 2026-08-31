@@ -452,6 +452,11 @@ function getSessionUserKey(session: Awaited<ReturnType<typeof readAppSessionFrom
 }
 
 const EVAL_WORK_MANAGER_USERS = new Set(["dylan_collyge", "megan_kelly"]);
+const EVAL_WORK_ASSIGNABLE_USERS = new Set([
+  "josh_vann", "jorge_colunga", "abigail_vazquez", "bobby_adair", "charley_robertson",
+  "ellen_ward", "zoe_green", "mitch_kaiser", "dylan_collyge", "megan_kelly",
+  "kayla_knepp", "jd_jones",
+]);
 
 function isEvalWorkManager(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>) {
   return EVAL_WORK_MANAGER_USERS.has(normalizeUsername(session?.username || session?.displayName || ""));
@@ -459,7 +464,7 @@ function isEvalWorkManager(session: Awaited<ReturnType<typeof readSupabaseOrAppS
 
 async function resolveEvalWorkAssignee(usernameValue: unknown) {
   const username = normalizeUsername(usernameValue);
-  if (!username) throw new Error("eval_work_assignee_not_active");
+  if (!username || !EVAL_WORK_ASSIGNABLE_USERS.has(username)) throw new Error("eval_work_assignee_not_allowed");
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("id,username,display_name,disabled_at,locked_until")
@@ -479,6 +484,28 @@ async function resolveEvalWorkAssignee(usernameValue: unknown) {
     display: String(profile.display_name || profile.username || username).trim(),
     email,
   };
+}
+
+async function resolveEvalWorkAssignees(usernameValues: unknown) {
+  const raw = Array.isArray(usernameValues) ? usernameValues : [usernameValues];
+  const usernames = Array.from(new Set(raw.map(normalizeUsername).filter(Boolean)));
+  if (usernames.length < 1 || usernames.length > 20) throw new Error("eval_work_assignees_invalid");
+  const assignees = [];
+  for (const username of usernames) assignees.push(await resolveEvalWorkAssignee(username));
+  return assignees;
+}
+
+function getEvalWorkAssigneeUsernames(row: Record<string, unknown> | null | undefined) {
+  const stored = Array.isArray(row?.assignee_usernames) ? row?.assignee_usernames as unknown[] : [];
+  return Array.from(new Set([
+    ...stored.map(normalizeUsername),
+    normalizeUsername(row?.assignee_username),
+  ].filter(Boolean)));
+}
+
+function isEvalWorkAssignedTo(row: Record<string, unknown> | null | undefined, username: string) {
+  const actor = normalizeUsername(username);
+  return !!actor && getEvalWorkAssigneeUsernames(row).includes(actor);
 }
 
 function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown, originUid = "") {
@@ -565,7 +592,7 @@ async function loadAuthorizedEvalWork(
   const { data, error } = await query;
   if (error) throw error;
   if (!data) return null;
-  if (!isEvalWorkManager(session) && normalizeUsername(data.assignee_username) !== actor) return null;
+  if (!isEvalWorkManager(session) && !isEvalWorkAssignedTo(data as Record<string, unknown>, actor)) return null;
   return data as Record<string, unknown>;
 }
 
@@ -667,7 +694,7 @@ async function handleEvalWorkAction(
   try {
     if (operation === "list") {
       let query = supabase.from("ph_eval_work").select("*").order("updated_at", { ascending: false }).limit(500);
-      if (!isEvalWorkManager(session)) query = query.eq("assignee_username", actor);
+      if (!isEvalWorkManager(session)) query = query.contains("assignee_usernames", [actor]);
       const status = String(payload.status || "").trim().toLowerCase();
       if (["open", "in_progress", "submitted", "cancelled"].includes(status)) query = query.eq("status", status);
       const { data, error } = await query;
@@ -683,25 +710,28 @@ async function handleEvalWorkAction(
     }
     if (operation === "create") {
       if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_create_forbidden" });
-      const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
+      const assignees = await resolveEvalWorkAssignees(payload.assigneeUsernames || payload.assigneeUsername);
+      const assignee = assignees[0];
       const source = payload.source && typeof payload.source === "object" ? payload.source as Record<string, unknown> : {};
       const rpcPayload = {
         actorUsername: actor,
         createToken: String(payload.createToken || "").trim(),
         assigneeUsername: assignee.username,
         assigneeEmail: assignee.email,
+        assignees,
         instructions: String(payload.instructions || "").trim(),
         completionRecipients: Array.isArray(payload.completionRecipients) ? payload.completionRecipients : [],
         source,
         inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
       };
-      const { data, error } = await supabase.rpc("create_eval_work_v1", { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc("create_eval_work_multi_v1", { p_payload: rpcPayload });
       if (error) throw error;
       return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
     }
     if (operation === "create_batch") {
       if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_batch_create_forbidden" });
-      const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
+      const assignees = await resolveEvalWorkAssignees(payload.assigneeUsernames || payload.assigneeUsername);
+      const assignee = assignees[0];
       const rawItems = Array.isArray(payload.items) ? payload.items : [];
       if (rawItems.length < 1 || rawItems.length > 50) return errorResponse("Choose from 1 through 50 ITEMCODEs.", 400, { code: "eval_work_batch_size_invalid" });
       const items = rawItems.map((rawItem) => {
@@ -766,13 +796,14 @@ async function handleEvalWorkAction(
         batchToken: String(payload.batchToken || "").trim(),
         assigneeUsername: assignee.username,
         assigneeEmail: assignee.email,
+        assignees,
         instructions: String(payload.instructions || "").trim().slice(0, 4000),
         completionRecipients: Array.isArray(payload.completionRecipients) ? payload.completionRecipients : [],
         inventorySignature: String(payload.inventorySignature || "").trim().slice(0, 512),
         settingsSignature: String(payload.settingsSignature || "").trim().slice(0, 1024),
         items,
       };
-      const { data, error } = await supabase.rpc("create_eval_work_batch_v2", { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc("create_eval_work_batch_multi_v2", { p_payload: rpcPayload });
       if (error) throw error;
       const withDelivery = await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]);
       return jsonResponse({ ok: true, data: await withEvalWorkOrigins(withDelivery), manager: true });
@@ -781,8 +812,8 @@ async function handleEvalWorkAction(
       const workId = String(payload.workId || "").trim();
       const rawRow = await loadAuthorizedEvalWork(session, workId);
       const row = rawRow ? (await withEvalWorkOrigins([rawRow]))[0] : null;
-      if (!row || normalizeUsername(row.assignee_username) !== actor) {
-        return errorResponse("Only the assigned evaluator can update this work.", 403, { code: "eval_work_edit_forbidden" });
+      if (!row || !isEvalWorkAssignedTo(row, actor)) {
+        return errorResponse("Only an assigned evaluator can update this work.", 403, { code: "eval_work_edit_forbidden" });
       }
       const isV2 = String(row.contract_version || "") === "eval-work-v2-multi-origin";
       const rpcName = isV2
@@ -801,7 +832,7 @@ async function handleEvalWorkAction(
       }
       const { data, error } = await supabase.rpc(rpcName, {
         p_work_id: workId,
-        p_actor_username: actor,
+        p_actor_username: normalizeUsername(row.assignee_username),
         p_expected_version: Number(payload.expectedVersion),
         p_inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft,
         ...(isV2 ? { p_evidence_by_origin: evidence } : { p_evidence: evidence }),
@@ -813,14 +844,13 @@ async function handleEvalWorkAction(
     }
     if (operation === "reassign") {
       if (!isEvalWorkManager(session)) return errorResponse("Forbidden", 403, { code: "eval_work_manage_forbidden" });
-      const assignee = await resolveEvalWorkAssignee(payload.assigneeUsername);
-      const { data, error } = await supabase.rpc("reassign_eval_work_v1", {
-        p_work_id: String(payload.workId || "").trim(),
-        p_actor_username: actor,
-        p_expected_version: Number(payload.expectedVersion),
-        p_assignee_username: assignee.username,
-        p_assignee_email: assignee.email,
-      });
+      const assignees = await resolveEvalWorkAssignees(payload.assigneeUsernames || payload.assigneeUsername);
+      const { data, error } = await supabase.rpc("reassign_eval_work_v2", { p_payload: {
+        workId: String(payload.workId || "").trim(),
+        actorUsername: actor,
+        expectedVersion: Number(payload.expectedVersion),
+        assignees,
+      } });
       if (error) throw error;
       return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
     }
@@ -838,8 +868,8 @@ async function handleEvalWorkAction(
       const workId = String(payload.workId || "").trim();
       const rawRow = await loadAuthorizedEvalWork(session, workId);
       const row = rawRow ? (await withEvalWorkOrigins([rawRow]))[0] : null;
-      if (!row || normalizeUsername(row.assignee_username) !== actor || !["open", "in_progress"].includes(String(row.status || ""))) {
-        return errorResponse("Only the assigned evaluator can remove an open Eval photo.", 403, { code: "eval_work_photo_forbidden" });
+      if (!row || !isEvalWorkAssignedTo(row, actor) || !["open", "in_progress"].includes(String(row.status || ""))) {
+        return errorResponse("Only an assigned evaluator can remove an open Eval photo.", 403, { code: "eval_work_photo_forbidden" });
       }
       const filePath = String(payload.filePath || "").replace(/^\/+/, "");
       const originUid = String(payload.originUid || row.origin_unique_id || "").trim();
@@ -1421,7 +1451,7 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
         .some((origin) => String(origin.origin_unique_id || "") === originUid))
       : String(row && row.origin_unique_id || "") === originUid;
     evalMultiOrigin = !!row && String(row.contract_version || "") === "eval-work-v2-multi-origin";
-    if (!row || normalizeUsername(row.assignee_username) !== actor
+    if (!row || !isEvalWorkAssignedTo(row, actor)
       || !["open", "in_progress"].includes(String(row.status || ""))
       || !originAllowed) {
       return errorResponse("Eval photo upload is not authorized for this assignment and row.", 403, { code: "eval_work_photo_forbidden" });
