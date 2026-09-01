@@ -290,7 +290,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await expect(setupSheet).toContainText('Dylan');
   await expect(setupSheet).toContainText('Megan');
   await expect(setupSheet).toContainText('ITEMCODE-wide review');
-  await expect(setupSheet).toContainText('Every current row for a selected ITEMCODE is included');
+  await expect(setupSheet).toContainText('Every current row for each selected ITEMCODE is included');
   await expect(setupSheet).not.toContainText('Select All Lots');
   await expect(setupSheet).not.toContainText('Block Alpha');
   await expect(setupSheet).not.toContainText('Location/Lot');
