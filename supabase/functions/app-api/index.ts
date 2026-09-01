@@ -120,7 +120,6 @@ const READABLE_TABLES = new Set([
   "ph_reserves",
   "ph_soc_master",
   "ph_sales_office",
-  "ph_shear_list",
   "ph_take_back_queue",
   "ph_cav_import",
   "ph_av_notes",
@@ -181,7 +180,6 @@ const WRITABLE_TABLES = new Set([
   "ph_sales_credit_requests",
   "ph_request_email_threads",
   "ph_sales_office",
-  "ph_shear_list",
   "ph_take_back_queue",
   "ph_dock_team_status",
   "ph_dock_item_status",
@@ -271,7 +269,6 @@ const REP_WRITE_TABLES = new Set([
   "ph_sales_credit_requests",
   "ph_request_email_threads",
   "ph_sales_office",
-  "ph_shear_list",
   "ph_inventory_edit_requests",
   "ph_inventory_edit_request_events",
 ]);
@@ -420,7 +417,7 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   // Request creation, Eval assignments, and push identity are now enforced by
   // authenticated RPCs. Never let this legacy service-role proxy bypass those
   // database authorization boundaries.
-  if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions") return false;
+  if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
   if (table === "ph_active_request" && access.isRep) return false;
   if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
@@ -451,7 +448,7 @@ function getSessionUserKey(session: Awaited<ReturnType<typeof readAppSessionFrom
   return normalizeUsername(session.username || session.displayName || "");
 }
 
-const EVAL_WORK_MANAGER_USERS = new Set(["dylan_collyge", "megan_kelly"]);
+const EVAL_WORK_MANAGER_USERS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
 const EVAL_WORK_ASSIGNABLE_USERS = new Set([
   "josh_vann", "jorge_colunga", "abigail_vazquez", "bobby_adair", "charley_robertson",
   "ellen_ward", "zoe_green", "mitch_kaiser", "dylan_collyge", "megan_kelly",
@@ -460,6 +457,226 @@ const EVAL_WORK_ASSIGNABLE_USERS = new Set([
 
 function isEvalWorkManager(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>) {
   return EVAL_WORK_MANAGER_USERS.has(normalizeUsername(session?.username || session?.displayName || ""));
+}
+
+async function resolveActiveSessionProfile(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+) {
+  const username = normalizeUsername(session?.username || session?.displayName || "");
+  if (!username) throw new Error("profile_identity_required");
+  let query = supabase
+    .from("profiles")
+    .select("id,username,display_name,role,disabled_at,locked_until,must_change_password");
+  query = session?.authUserId
+    ? query.eq("id", String(session.authUserId))
+    : query.eq("username", username);
+  const { data: profile, error } = await query.maybeSingle();
+  if (error) throw error;
+  const lockedUntil = Date.parse(String(profile?.locked_until || ""));
+  if (!profile?.id || profile.disabled_at || profile.must_change_password
+    || (Number.isFinite(lockedUntil) && lockedUntil > Date.now())) {
+    throw new Error("profile_not_active");
+  }
+  return profile as Record<string, unknown>;
+}
+
+const SHEAR_LOCATION_CREATOR = "dylan_collyge";
+const SHEAR_LOCATION_TYPES = new Set(["shape_shear", "saleable_shear", "hard_shear", "corrective_shear"]);
+
+function normalizeShearType(value: unknown) {
+  return String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+async function listActiveEmailProfiles() {
+  const { data: profiles, error: profileError } = await supabase
+    .from("profiles")
+    .select("id,username,display_name,disabled_at,locked_until,must_change_password")
+    .is("disabled_at", null)
+    .order("display_name", { ascending: true })
+    .limit(500);
+  if (profileError) throw profileError;
+  const { data: authPage, error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (authError) throw authError;
+  const emailById = new Map((authPage?.users || []).map((user) => [String(user.id || ""), String(user.email || "").trim().toLowerCase()]));
+  const now = Date.now();
+  return (profiles || []).flatMap((profile) => {
+    const lockedUntil = Date.parse(String(profile.locked_until || ""));
+    const email = emailById.get(String(profile.id || "")) || "";
+    if (profile.must_change_password || (Number.isFinite(lockedUntil) && lockedUntil > now)
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return [];
+    return [{
+      profileId: String(profile.id || ""),
+      username: normalizeUsername(profile.username),
+      display: String(profile.display_name || profile.username || "").trim(),
+      email,
+    }];
+  });
+}
+
+async function resolveShearRecipients(values: unknown) {
+  const profileIds = Array.from(new Set((Array.isArray(values) ? values : [values])
+    .map((value) => String(value || "").trim()).filter(Boolean)));
+  if (profileIds.length < 1 || profileIds.length > 50) throw new Error("shear_recipient_count_invalid");
+  const directory = await listActiveEmailProfiles();
+  const byProfileId = new Map(directory.map((entry) => [entry.profileId, entry]));
+  const recipients = profileIds.map((profileId) => byProfileId.get(profileId)).filter(Boolean) as Array<Record<string, unknown>>;
+  if (recipients.length !== profileIds.length) throw new Error("shear_recipient_invalid");
+  return recipients;
+}
+
+function shearLocationError(error: unknown) {
+  const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const raw = String(source.message || error || "shear_request_failed");
+  const code = (raw.match(/shear_[a-z0-9_]+/i) || [String(source.code || "shear_request_failed")])[0].toLowerCase();
+  const status = String(source.code || "") === "42501" || /forbidden|not_active/.test(code)
+    ? 403 : (/conflict|already_active|refresh_required/.test(code) ? 409 : 400);
+  const message = code === "shear_location_already_active"
+    ? "That location already has active Shear work. Complete or cancel it before creating another inquiry."
+    : code === "shear_selection_refresh_required"
+    ? "One selected Drive row changed or is no longer current. Refresh Drive Mode and select it again."
+    : code === "shear_revision_conflict"
+    ? "This Shear inquiry changed. Refresh it before trying again."
+    : code === "shear_recipient_invalid" || code === "shear_recipient_count_invalid"
+    ? "Choose at least one active app user with a verified email address."
+    : code === "shear_create_forbidden"
+    ? "Only Dylan can create Shear location inquiries."
+    : "The Shear location inquiry could not be completed.";
+  return errorResponse(message, status, { code });
+}
+
+async function loadShearLocationInquiries(status = "active", inquiryId = "", includeDetails = false) {
+  let query = supabase.from("ph_shear_location_inquiries").select([
+    "id", "submission_id", "locationcode", "status", "revision", "item_count", "row_count",
+    "total_on_hand", "total_to_shear", "recipient_usernames", "delivery_event_id",
+    "created_by_username", "created_by_display", "created_at", "updated_at",
+    "completed_by_username", "completed_at", "cancelled_by_username", "cancelled_at",
+  ].join(","))
+    .order("updated_at", { ascending: false }).limit(inquiryId ? 1 : 100);
+  if (inquiryId) query = query.eq("id", inquiryId);
+  else if (status === "active") query = query.in("status", ["open", "in_progress"]);
+  else if (["open", "in_progress", "complete", "cancelled"].includes(status)) query = query.eq("status", status);
+  const { data: inquiries, error } = await query;
+  if (error) throw error;
+  const ids = (inquiries || []).map((row) => String(row.id || "")).filter(Boolean);
+  if (!ids.length) return [];
+  let items: Record<string, unknown>[] = [];
+  let rows: Record<string, unknown>[] = [];
+  if (includeDetails) {
+    const [{ data: itemData, error: itemError }, { data: rowData, error: rowError }] = await Promise.all([
+      supabase.from("ph_shear_location_items").select("*").in("inquiry_id", ids).order("ordinal", { ascending: true }),
+      supabase.from("ph_shear_location_rows").select("*").in("inquiry_id", ids).order("ordinal", { ascending: true }),
+    ]);
+    if (itemError) throw itemError;
+    if (rowError) throw rowError;
+    items = (itemData || []) as Record<string, unknown>[];
+    rows = (rowData || []) as Record<string, unknown>[];
+  }
+  const eventIds = (inquiries || []).map((row) => String(row.delivery_event_id || "")).filter(Boolean);
+  const deliveryById = new Map<string, Record<string, unknown>>();
+  if (eventIds.length) {
+    const { data: deliveries, error: deliveryError } = await supabase.from("ph_request_delivery_outbox")
+      .select("event_id,status,attempt_count,sanitized_error_code,delivered_at,updated_at")
+      .in("event_id", eventIds);
+    if (deliveryError) throw deliveryError;
+    for (const delivery of deliveries || []) deliveryById.set(String(delivery.event_id || ""), delivery as Record<string, unknown>);
+  }
+  const rowsByItem = new Map<string, Record<string, unknown>[]>();
+  for (const row of rows) {
+    const key = String(row.item_id || "");
+    const list = rowsByItem.get(key) || [];
+    list.push(row as Record<string, unknown>);
+    rowsByItem.set(key, list);
+  }
+  const itemsByInquiry = new Map<string, Record<string, unknown>[]>();
+  for (const item of items) {
+    const key = String(item.inquiry_id || "");
+    const list = itemsByInquiry.get(key) || [];
+    list.push({ ...item, rows: rowsByItem.get(String(item.id || "")) || [] } as Record<string, unknown>);
+    itemsByInquiry.set(key, list);
+  }
+  return (inquiries || []).map((inquiry) => ({
+    ...inquiry,
+    items: itemsByInquiry.get(String(inquiry.id || "")) || [],
+    delivery: deliveryById.get(String(inquiry.delivery_event_id || "")) || null,
+  }));
+}
+
+async function handleShearLocationAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401);
+  const actorProfile = await resolveActiveSessionProfile(session).catch(() => null);
+  if (!actorProfile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "profile_not_active" });
+  const actor = normalizeUsername(actorProfile.username);
+  const operation = String(payload.operation || "list").trim().toLowerCase();
+  try {
+    if (operation === "recipient_options") {
+      if (actor !== SHEAR_LOCATION_CREATOR) return errorResponse("Only Dylan can create Shear work.", 403, { code: "shear_create_forbidden" });
+      const directory = await listActiveEmailProfiles();
+      return jsonResponse({ ok: true, data: directory.map(({ profileId, username, display }) => ({ profileId, username, display })) });
+    }
+    if (operation === "list") {
+      return jsonResponse({ ok: true, data: await loadShearLocationInquiries(String(payload.status || "active").trim().toLowerCase()) });
+    }
+    if (operation === "get") {
+      const inquiryId = String(payload.inquiryId || "").trim();
+      if (!inquiryId) throw new Error("shear_inquiry_not_found");
+      const rows = await loadShearLocationInquiries("", inquiryId, true);
+      if (!rows.length) return errorResponse("That Shear inquiry was not found.", 404, { code: "shear_inquiry_not_found" });
+      return jsonResponse({ ok: true, data: rows[0] });
+    }
+    if (operation === "create") {
+      if (actor !== SHEAR_LOCATION_CREATOR) return errorResponse("Only Dylan can create Shear work.", 403, { code: "shear_create_forbidden" });
+      const rawSelections = Array.isArray(payload.selections) ? payload.selections : [];
+      if (rawSelections.length < 1 || rawSelections.length > 100) throw new Error("shear_selection_count_invalid");
+      const selections = rawSelections.map((value) => {
+        const selection = value && typeof value === "object" ? value as Record<string, unknown> : {};
+        const percent = Number(selection.percent);
+        const shearType = normalizeShearType(selection.shearType);
+        if (!String(selection.sourceUniqueId || "").trim() || !Number.isFinite(percent) || percent <= 0 || percent > 100
+          || !SHEAR_LOCATION_TYPES.has(shearType)) throw new Error("shear_selection_invalid");
+        return {
+          sourceUniqueId: String(selection.sourceUniqueId || "").trim(),
+          percent,
+          shearType,
+          instructions: String(selection.instructions || "").trim().slice(0, 4000),
+        };
+      });
+      const recipients = await resolveShearRecipients(payload.recipientProfileIds);
+      const { data, error } = await supabase.rpc("create_shear_location_inquiries_v1", {
+        p_payload: {
+          actorUsername: actor,
+          idempotencyKey: String(payload.idempotencyKey || "").trim(),
+          selections,
+          recipients,
+        },
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    }
+    if (["complete", "cancel", "retry"].includes(operation)) {
+      const inquiryId = String(payload.inquiryId || "").trim();
+      const expectedRevision = Number(payload.expectedRevision);
+      if (!inquiryId || !Number.isInteger(expectedRevision) || expectedRevision < 1) throw new Error("shear_revision_invalid");
+      if ((operation === "cancel" || operation === "retry") && actor !== SHEAR_LOCATION_CREATOR) {
+        return errorResponse("Only Dylan can change or retry this Shear inquiry.", 403, { code: `shear_${operation}_forbidden` });
+      }
+      const rpcName = operation === "complete" ? "complete_shear_location_inquiry_v1"
+        : operation === "cancel" ? "cancel_shear_location_inquiry_v1"
+        : "retry_shear_location_delivery_v1";
+      const { data, error } = await supabase.rpc(rpcName, {
+        p_inquiry_id: inquiryId,
+        p_actor_username: actor,
+        p_expected_revision: expectedRevision,
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    }
+    return errorResponse("Unsupported Shear operation.", 400, { code: "shear_operation_invalid" });
+  } catch (error) {
+    return shearLocationError(error);
+  }
 }
 
 async function resolveEvalWorkAssignee(usernameValue: unknown) {
@@ -699,6 +916,8 @@ async function handleEvalWorkAction(
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
   const actor = normalizeUsername(session.username || session.displayName || "");
   if (!actor) return errorResponse("Authenticated user identity is required.", 403);
+  const activeProfile = await resolveActiveSessionProfile(session).catch(() => null);
+  if (!activeProfile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "PROFILE_NOT_ACTIVE" });
   const operation = String(payload.operation || "list").trim().toLowerCase();
   try {
     if (operation === "list") {
@@ -1582,6 +1801,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
     return await handleSetUserPreferences(session, payload);
   }
   if (action === "eval_work") return await handleEvalWorkAction(session, payload);
+  if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
   if (action === "db") {
     if (session && session.ver >= 2) {
       return errorResponse("Native Auth sessions must use PostgREST with RLS for database access.", 410, {
