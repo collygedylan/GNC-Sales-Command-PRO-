@@ -10685,6 +10685,7 @@ const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
   { key: 'ptronhand', label: 'OH', width: '1.25in' },
   { key: 'ptrreviewed', label: 'PTRREVIEWED', width: '.85in' },
   { key: 'locationnotedate', label: 'Loc Note Date', width: '.90in' },
+  { key: 'locationptn1', label: 'LOCATIONPTN1', width: '1.15in' },
   { key: 'locationnote', label: 'Location Note' }
 ];
 
@@ -10722,12 +10723,12 @@ const RECLASS_INQUIRY_TEMPORARY_FIELDS_V3_ = Object.freeze({
   holdstopbegindate: Object.freeze({ label: 'Hold/Stop Begin Date', maxLength: 180 }),
   locationnote: Object.freeze({ label: 'Location Note', maxLength: 4000, renderKey: 'locationnote' }),
   locationnotedate: Object.freeze({ label: 'Location Note Date', maxLength: 180, renderKey: 'locationnotedate' }),
-  locationptn1: Object.freeze({ label: 'Location PTN 1', maxLength: 2000 }),
+  locationptn1: Object.freeze({ label: 'Location PTN 1', maxLength: 2000, renderKey: 'locationptn1' }),
   suspendto: Object.freeze({ label: 'Suspend To', maxLength: 1000 }),
   specialpuller: Object.freeze({ label: 'Special Puller', maxLength: 1000 })
 });
 
-function applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields) {
+function applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields, now) {
   const hasValues = Object.prototype.hasOwnProperty.call(overlay, 'temporaryValues');
   const hasFields = Object.prototype.hasOwnProperty.call(overlay, 'temporaryChangedFields');
   if (!hasValues && !hasFields) return [];
@@ -10740,6 +10741,7 @@ function applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields) 
   if (rawValueKeys.some(function(key, index) { return key !== valueKeys[index]; }) || new Set(valueKeys).size !== valueKeys.length || new Set(declaredKeys).size !== declaredKeys.length || valueKeys.slice().sort().join('|') !== declaredKeys.slice().sort().join('|')) {
     throw new Error('Temporary Eval Work row fields do not match their declared changes.');
   }
+  const originalLocationNote = String(values.locationnote == null ? '' : values.locationnote);
   const changes = [];
   valueKeys.forEach(function(key) {
     const rule = RECLASS_INQUIRY_TEMPORARY_FIELDS_V3_[key];
@@ -10754,6 +10756,16 @@ function applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields) 
       changes.push({ key: key, label: rule.label, value: requested });
     }
   });
+  const locationNoteChanged = changes.some(function(change) { return change && change.key === 'locationnote'; })
+    && String(values.locationnote == null ? '' : values.locationnote) !== originalLocationNote;
+  if (locationNoteChanged) {
+    const stamped = Utilities.formatDate(now instanceof Date ? now : new Date(), 'America/Chicago', 'M/d/yyyy, h:mm:ss a');
+    values.locationnotedate = stamped;
+    changedFields.push('locationnotedate');
+    const existing = changes.find(function(change) { return change && change.key === 'locationnotedate'; });
+    if (existing) existing.value = stamped;
+    else changes.push({ key: 'locationnotedate', label: RECLASS_INQUIRY_TEMPORARY_FIELDS_V3_.locationnotedate.label, value: stamped });
+  }
   return changes;
 }
 function getReclassInquiryActionLabel_(value) {
@@ -11251,6 +11263,7 @@ function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authorit
 function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overlays, authoritativeScope, options) {
   const safeOptions = options && typeof options === 'object' ? options : {};
   const allowEmptyActions = safeOptions.allowEmptyActions === true;
+  const now = safeOptions.now instanceof Date ? safeOptions.now : new Date();
   const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope'], 'The Reclass transaction');
   const safeRows = Array.isArray(authoritativeRows) ? authoritativeRows : [];
   const safeOverlays = Array.isArray(overlays) ? overlays : [];
@@ -11408,7 +11421,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
         assertReclassInquiryObjectKeysV2_(baseProposal, ['action'], 'A Re-Count proposal');
       }
     });
-    const temporaryChanges = applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields);
+    const temporaryChanges = applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields, now);
     const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
     if (combinedMoveQuantity && (!Number.isFinite(originalOh) || combinedMoveQuantity > originalOh)) throw new Error('Combined Move Up and Move Down quantities cannot exceed original OH.');
     const orderedRowActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return rowActions.indexOf(action) !== -1; });
@@ -11419,7 +11432,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
       changedFields: Array.from(new Set(changedFields)),
       temporaryChanges: temporaryChanges,
       actions: orderedRowActions,
-      included: orderedRowActions.length > 0
+      included: orderedRowActions.length > 0 || temporaryChanges.length > 0
     });
   }
   if (overlayByUid.size !== safeRows.length) return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
@@ -11442,6 +11455,21 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
       affectedCount: holdAffectedCount
     } : {}
   };
+}
+
+function hasReclassInquiryLocationDetailProposalV3_(overlays) {
+  return (Array.isArray(overlays) ? overlays : []).some(function(overlay) {
+    const fields = Array.isArray(overlay && overlay.temporaryChangedFields) ? overlay.temporaryChangedFields : [];
+    return fields.some(function(field) { return ['locationptn1', 'locationnote'].indexOf(String(field || '').trim().toLowerCase()) !== -1; });
+  });
+}
+
+function hasReclassInquiryLocationDetailChangeV3_(rows) {
+  return (Array.isArray(rows) ? rows : []).some(function(row) {
+    return Array.isArray(row && row.temporaryChanges) && row.temporaryChanges.some(function(change) {
+      return ['locationptn1', 'locationnote'].indexOf(String(change && change.key || '').trim().toLowerCase()) !== -1;
+    });
+  });
 }
 
 function hasReclassInquiryHoldProposalV3_(transaction, overlays) {
@@ -11510,6 +11538,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     ? RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return transaction.requestActions.indexOf(action) !== -1; })
     : (requestAction ? [requestAction] : []);
   const editedRows = normalizedReportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
+  const hasLocationDetailChanges = hasReclassInquiryLocationDetailChangeV3_(normalizedReportRows);
   return {
     identity: identity,
     identityChangedFields: identityChangedFields,
@@ -11519,9 +11548,11 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     transaction: transaction,
     requestAction: requestAction,
     requestActions: requestActions,
-    requestActionLabel: requestActions.length > 1 || (!requestAction && requestActions.length)
-      ? getReclassInquiryActionsLabelV3_(requestActions)
-      : getReclassInquiryActionLabel_(requestAction),
+    requestActionLabel: hasLocationDetailChanges && !requestActions.length
+      ? 'Location Detail Update'
+      : (requestActions.length > 1 || (!requestAction && requestActions.length)
+        ? getReclassInquiryActionsLabelV3_(requestActions)
+        : getReclassInquiryActionLabel_(requestAction)),
     actorDisplay: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, 'Unknown User')),
     submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a'),
     editSummary: {
@@ -11966,15 +11997,19 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader) {
     const authoritativeScope = isV3 && hasReclassInquiryHoldProposalV3_(transaction, safePayload.rowOverlays)
       ? fetchReclassInquiryScopeSettingsV3_()
       : null;
+    const allowLocationDetailOnly = isV3 && hasReclassInquiryLocationDetailProposalV3_(safePayload.rowOverlays);
     let overlayResult;
     try {
       overlayResult = isV3
-        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope)
+        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now })
         : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
     } catch (validationError) {
       throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
     }
     if (!overlayResult.ok) throw new Error('RECLASS_CONFLICT:' + String(overlayResult.message || 'ROW_IDENTITY_CHANGED'));
+    if (isV3 && !overlayResult.requestActions.length && !hasReclassInquiryLocationDetailChangeV3_(overlayResult.rows)) {
+      throw new Error('RECLASS_VALIDATION:LOCATION_DETAIL_CHANGE_REQUIRED');
+    }
     const reportPayload = isV3 ? Object.assign({}, safePayload, {
       transaction: Object.assign({}, transaction, {
         requestActions: overlayResult.requestActions,

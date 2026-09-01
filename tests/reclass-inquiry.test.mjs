@@ -83,7 +83,7 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
@@ -349,7 +349,7 @@ test('Reclass workflow V3 row actions are live while V2 remains available for co
 test('action-specific compact PDFs use exact columns, natural ordering, preserved OH, and yellow proposals', () => {
   const server = loadServerModel();
   const actions = ['priority_change', 'recount', 'move_up', 'move_down', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'];
-  const fixedHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'Location Note'];
+  const fixedHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note'];
   const outputs = {};
   for (const action of actions) {
     const model = server.buildReclassInquiryCompactPilotModel_(action, new Date('2026-08-22T14:15:00Z'));
@@ -388,7 +388,7 @@ test('Reclass identity is exactly nine balanced fields and the detail table stay
     ['itemspec', 'Item Spec'], ['pullerresponsibility', 'Puller Resp.'], ['holdstopcode', 'HOLDSTOPCODE'],
   ]);
   assert.deepEqual(Array.from(server.getReclassInquiryCompactFields_('', ['move_down', 'move_up']), (field) => field.label), [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'Location Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
   ]);
   const htmlOutput = server.buildReclassInquiryCompactReportHtml_({ identity: {}, rows: [] }, true);
   assert.match(htmlOutput, /\.identity\{display:grid;grid-template-columns:repeat\(3,1fr\)/);
@@ -463,7 +463,7 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
   const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
   assert.deepEqual(headers, [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'Location Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
   ]);
   assert.match(output, /PROPOSED[\s\S]*?<strong>1<\/strong>/);
   assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?PROPOSED[\s\S]*?UP 150 TO F1/);
@@ -475,6 +475,63 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   assert.doesNotMatch(output, /Hold\/Stop Proposals|<th>Actions<\/th>/);
   assert.ok(output.indexOf('A.01.000') < output.indexOf('C.16.000'));
   assert.equal((output.match(/<tr>/g) || []).length, rows.length + 1);
+});
+
+test('workflow V3 accepts LOCATIONPTN1 and Location Note alone and stamps the note date server-side', () => {
+  const server = loadServerModel();
+  const row = {
+    unique_id: 'u1', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1',
+    locationptn1: 'Existing PTN', locationnote: 'Existing note', locationnotedate: '8/1/2026, 8:00:00 AM', ptronhand: '10',
+  };
+  const overlay = {
+    unique_id: 'u1',
+    expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' },
+    proposals: [],
+    temporaryValues: { locationptn1: 'New PTN', locationnote: 'New location note' },
+    temporaryChangedFields: ['locationptn1', 'locationnote'],
+  };
+  const result = server.buildReclassInquiryActionRowsV3_(
+    { requestActions: [], holdStopProposals: [], scope: {} },
+    [row],
+    [overlay],
+    null,
+    { allowEmptyActions: true, now: new Date('2026-09-01T16:00:00Z') },
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(Array.from(result.requestActions), []);
+  assert.equal(result.rows[0].included, true);
+  assert.equal(result.rows[0].values.locationptn1, 'New PTN');
+  assert.equal(result.rows[0].values.locationnote, 'New location note');
+  assert.equal(result.rows[0].values.locationnotedate, '8/22/2026, 9:15:00 AM');
+  assert.deepEqual(Array.from(result.rows[0].changedFields), ['locationptn1', 'locationnote', 'locationnotedate']);
+  assert.deepEqual(Array.from(result.rows[0].temporaryChanges, (change) => change.key), ['locationptn1', 'locationnote', 'locationnotedate']);
+  assert.equal(server.hasReclassInquiryLocationDetailProposalV3_([overlay]), true);
+  assert.equal(server.hasReclassInquiryLocationDetailChangeV3_(result.rows), true);
+
+  const model = server.buildReclassInquiryReportModel_(row, [row], result.rows, {
+    transaction: { requestActions: [], holdStopProposals: [], scope: {} }, actor: { display: 'Tester' },
+  }, new Date('2026-09-01T16:00:00Z'));
+  assert.equal(model.requestActionLabel, 'Location Detail Update');
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(output, /LOCATIONPTN1/);
+  assert.match(output, /PROPOSED[\s\S]*New PTN/);
+  assert.match(output, /PROPOSED[\s\S]*New location note/);
+  assert.equal(row.locationptn1, 'Existing PTN', 'the authoritative source row must remain unchanged');
+});
+
+test('standalone location detail submission still rejects a declared field that did not actually change', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', locationptn1: 'Same', ptronhand: '10' };
+  const overlay = {
+    unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' }, proposals: [],
+    temporaryValues: { locationptn1: 'Same' }, temporaryChangedFields: ['locationptn1'],
+  };
+  const result = server.buildReclassInquiryActionRowsV3_(
+    { requestActions: [], holdStopProposals: [], scope: {} }, [row], [overlay], null, { allowEmptyActions: true },
+  );
+  assert.equal(server.hasReclassInquiryLocationDetailProposalV3_([overlay]), true);
+  assert.equal(server.hasReclassInquiryLocationDetailChangeV3_(result.rows), false);
+  assert.equal(result.rows[0].included, false);
 });
 
 test('Hold/Stop scope honors season, two/four digit years, future rows, and mixed H/S eligibility', () => {
@@ -596,6 +653,10 @@ test('workflow V3 accepts every pair with at most one Hold/Stop proposal and rej
         unique_id: row.unique_id,
         expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode },
         proposals: proposalsByUid[row.unique_id],
+        ...(row.unique_id === 'n2' ? {
+          temporaryValues: { locationptn1: `PTN for ${pair.join(' + ')}` },
+          temporaryChangedFields: ['locationptn1'],
+        } : {}),
       }));
       const holdAction = holdActions[0] || '';
       const transaction = {
@@ -606,6 +667,7 @@ test('workflow V3 accepts every pair with at most one Hold/Stop proposal and rej
       const result = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, holdAction ? { season: 'F1', salesYear: 2027 } : null);
       assert.equal(result.ok, true, `${pair.join(' + ')} should validate independently`);
       assert.deepEqual(Array.from(result.requestActions), pair);
+      assert.equal(result.rows.find((row) => row.unique_id === 'n2').values.locationptn1, `PTN for ${pair.join(' + ')}`, `${pair.join(' + ')} should retain the row LOCATIONPTN1 proposal`);
     }
   }
   assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['hold', 'stop_ship'], holdStopProposals: [{ action: 'hold', reason: 'one' }, { action: 'stop_ship', reason: 'two' }], scope: { season: 'F1', salesYear: 2027 } }, rows, rows.map((row) => ({ unique_id: row.unique_id, expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode }, proposals: [] })), { season: 'F1', salesYear: 2027 }), /only one Hold\/Stop action/);
@@ -624,6 +686,10 @@ test('approved pilot sender is removed and the live Reclass handler accepts V3 b
   assert.match(handler, /buildReclassInquiryCompactReportHtml_\(model, true\)/);
   assert.match(handler, /workflowPolicyVersion/);
   assert.match(handler, /hasReclassInquiryHoldProposalV3_/);
+  assert.match(handler, /hasReclassInquiryLocationDetailProposalV3_/);
+  assert.match(handler, /hasReclassInquiryLocationDetailChangeV3_/);
+  assert.match(handler, /allowEmptyActions: allowLocationDetailOnly/);
+  assert.match(handler, /LOCATION_DETAIL_CHANGE_REQUIRED/);
   assert.match(handler, /fetchReclassInquiryScopeSettingsV3_/);
   assert.match(handler, /scope: overlayResult\.scope/);
   assert.match(handler, /GNC PH Reclass - ' \+ model\.requestActionLabel/);
@@ -666,6 +732,10 @@ test('every live Reclass row shows current Hold/Stop fields and direct touch act
   assert.match(builder, /data-reclass-v3-action/);
   assert.match(builder, /toggleArgosReclassV3Action/);
   assert.match(builder, /RECLASS_ACTION_WORKFLOW_V3_ORDER\.map/);
+  assert.match(builder, /Location details \(optional\)/);
+  assert.match(builder, /data-reclass-temporary-field="locationptn1"/);
+  assert.match(builder, /data-reclass-temporary-field="locationnote"/);
+  assert.match(builder, /send either field by itself/);
   assert.doesNotMatch(builder, /data-reclass-action-included/);
   assert.match(html, /\.argos-reclass-action-btn\{min-height:2\.75rem/);
 });
