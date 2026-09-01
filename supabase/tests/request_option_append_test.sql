@@ -155,12 +155,15 @@ select is(
   1,
   'same-batch retries cannot duplicate the Request option'
 );
+set local role postgres;
 select is(
   (select count(*)::integer from public.ph_request_delivery_outbox
    where event_key = 'request-options-appended:91000000-0000-0000-0000-000000000011'),
   1,
   'same-batch retries cannot duplicate the internal append event'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001', true);
 select is(
   (public.append_request_options_v1(
     '91000000-0000-0000-0000-000000000012',
@@ -169,12 +172,15 @@ select is(
   'already_in_request',
   'a new batch reports an option already present instead of duplicating it'
 );
+set local role postgres;
 select is(
   (select count(*)::integer from public.ph_request_delivery_outbox
    where event_key = 'request-options-appended:91000000-0000-0000-0000-000000000012'),
   0,
   'an all-duplicate append does not create a membership or delivery event'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001', true);
 select throws_ok(
   $q$select public.append_request_options_v1(
     '91000000-0000-0000-0000-000000000013',
