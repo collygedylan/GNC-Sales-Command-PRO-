@@ -42,7 +42,7 @@ test('ITEMCODE batch creation derives all rows, expands cached hints, and is ret
   assert.match(itemcodeMigration, /grant execute on function public\.get_eval_itemcode_work_health_snapshot_v1\(\) to service_role/);
   const setup = html.slice(html.indexOf('function ensureManagerEvalReport2BatchSetupModal'), html.indexOf('function closeManagerEvalReport2BatchSetup'));
   assert.doesNotMatch(setup, /Select All Lots|Clear Lots|Select All Shown|Block Alpha|Block Number|Location\/Lot/);
-  assert.match(setup, /Users filter ITEMCODEs\. Every current row for a selected ITEMCODE is included/);
+  assert.match(setup, /Every current row for each selected ITEMCODE is included in Eval Work and the PDF/);
   assert.match(html, /getManagerEvalReport2AllCurrentItemRows\(entry\.itemCode\)/);
   assert.match(html, /selectedUserFilters/);
   assert.match(html, /matchedAssignedToUsers/);

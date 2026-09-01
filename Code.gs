@@ -101,6 +101,7 @@ const RECLASS_BACKGROUND_DELIVERY_ENABLED_ = true;
 const RECLASS_DELIVERY_EVENT_TYPE_ = 'reclass_inquiry';
 const EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ = 'eval_work_assignment';
 const EVAL_WORK_COMPLETION_EVENT_TYPE_ = 'eval_work_completion';
+const SHEAR_LOCATION_INQUIRY_EVENT_TYPE_ = 'shear_location_inquiry';
 
 function getSupabaseHeadersForKey_(key, extraHeaders) {
   const headers = Object.assign({}, extraHeaders || {});
@@ -15087,6 +15088,143 @@ function handleSignedEvalWorkDelivery_(delivery) {
   }
 }
 
+function getShearLocationTypeLabel_(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return ({
+    shape_shear: 'Shape Shear',
+    saleable_shear: 'Saleable Shear',
+    hard_shear: 'Hard Shear',
+    corrective_shear: 'Corrective Shear'
+  })[key] || 'Shear';
+}
+
+function buildShearLocationInquiryText_(payload) {
+  const items = Array.isArray(payload && payload.items) ? payload.items : [];
+  const lines = [
+    'SHEAR LOCATION INQUIRY',
+    '',
+    'LocationCode: ' + String(payload.locationcode || ''),
+    'ITEMCODEs included: ' + String(payload.itemCount || items.length || 0),
+    'Selected plants On Hand: ' + String(payload.totalOnHand || 0),
+    'Calculated plants to shear: ' + String(payload.totalToShear || 0),
+    'Created by: ' + String(payload.createdByUsername || ''),
+    ''
+  ];
+  items.forEach(function(item) {
+    lines.push(String(item.itemcode || '') + ' — ' + String(item.commonname || ''));
+    lines.push('On Hand: ' + String(item.onHandTotal || 0));
+    lines.push('Percent to Shear: ' + String(item.percentToShear || 0) + '%');
+    lines.push('Quantity to Shear: ' + String(item.calculatedQuantity || 0));
+    lines.push('Type: ' + getShearLocationTypeLabel_(item.shearType));
+    if (item.instructions) lines.push('Instructions: ' + String(item.instructions));
+    (Array.isArray(item.rows) ? item.rows : []).forEach(function(row) {
+      lines.push('Lot ' + String(row.lotcode || '-') + ' | Season ' + String(row.season || '-')
+        + ' | On Hand ' + String(row.ptronhand || 0) + ' | Review ' + String(row.ptrreviewed || 0)
+        + ' | Available ' + String(row.ptravailable || 0));
+    });
+    lines.push('');
+  });
+  lines.push('LOCATION SUMMARY');
+  items.forEach(function(item) {
+    lines.push(String(item.itemcode || '') + ' | ' + getShearLocationTypeLabel_(item.shearType)
+      + ' | ' + String(item.percentToShear || 0) + '% | ' + String(item.calculatedQuantity || 0)
+      + ' of ' + String(item.onHandTotal || 0));
+  });
+  lines.push('Total On Hand: ' + String(payload.totalOnHand || 0));
+  lines.push('Total to Shear: ' + String(payload.totalToShear || 0));
+  return lines.join('\n');
+}
+
+function buildShearLocationInquiryHtml_(payload) {
+  const items = Array.isArray(payload && payload.items) ? payload.items : [];
+  const sections = items.map(function(item) {
+    const rowHtml = (Array.isArray(item.rows) ? item.rows : []).map(function(row) {
+      return '<tr><td>' + escapeEmailHtml_(row.lotcode || '-') + '</td><td>' + escapeEmailHtml_(row.season || '-')
+        + '</td><td>' + escapeEmailHtml_(row.ptronhand || 0) + '</td><td>' + escapeEmailHtml_(row.ptrreviewed || 0)
+        + '</td><td>' + escapeEmailHtml_(row.ptravailable || 0) + '</td></tr>';
+    }).join('');
+    return '<section style="margin:18px 0;padding:16px;border:1px solid #6ee7b7;border-radius:12px;page-break-inside:avoid;">'
+      + '<h3 style="margin:0 0 8px;color:#007a4d;">' + escapeEmailHtml_(item.itemcode || '') + ' — ' + escapeEmailHtml_(item.commonname || '') + '</h3>'
+      + '<p style="margin:0 0 10px;"><strong>On Hand:</strong> ' + escapeEmailHtml_(item.onHandTotal || 0)
+      + ' &nbsp; <strong>Percent:</strong> ' + escapeEmailHtml_(item.percentToShear || 0) + '%'
+      + ' &nbsp; <strong>Quantity:</strong> ' + escapeEmailHtml_(item.calculatedQuantity || 0)
+      + '<br><strong>Type:</strong> ' + escapeEmailHtml_(getShearLocationTypeLabel_(item.shearType))
+      + (item.instructions ? '<br><strong>Instructions:</strong> ' + escapeEmailHtml_(item.instructions) : '') + '</p>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#ecfdf5;">'
+      + '<th style="padding:6px;text-align:left;">Lot</th><th style="padding:6px;text-align:left;">Season</th>'
+      + '<th style="padding:6px;text-align:right;">On Hand</th><th style="padding:6px;text-align:right;">Review</th>'
+      + '<th style="padding:6px;text-align:right;">Available</th></tr></thead><tbody>' + rowHtml + '</tbody></table></section>';
+  }).join('');
+  const summaryRows = items.map(function(item) {
+    return '<tr><td>' + escapeEmailHtml_(item.itemcode || '') + '</td><td>'
+      + escapeEmailHtml_(getShearLocationTypeLabel_(item.shearType)) + '</td><td style="text-align:right;">'
+      + escapeEmailHtml_(item.percentToShear || 0) + '%</td><td style="text-align:right;">'
+      + escapeEmailHtml_(item.calculatedQuantity || 0) + ' of ' + escapeEmailHtml_(item.onHandTotal || 0) + '</td></tr>';
+  }).join('');
+  return buildPhoneSizedEmailHtml_('<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;">'
+    + '<h2 style="margin:0 0 14px;color:#007a4d;">Shear Location Inquiry</h2>'
+    + '<p><strong>LocationCode:</strong> ' + escapeEmailHtml_(payload.locationcode || '')
+    + '<br><strong>ITEMCODEs:</strong> ' + escapeEmailHtml_(payload.itemCount || items.length || 0)
+    + '<br><strong>Total On Hand:</strong> ' + escapeEmailHtml_(payload.totalOnHand || 0)
+    + '<br><strong>Total to Shear:</strong> ' + escapeEmailHtml_(payload.totalToShear || 0)
+    + '<br><strong>Created by:</strong> ' + escapeEmailHtml_(payload.createdByUsername || '') + '</p>'
+    + sections
+    + '<h3 style="margin:22px 0 8px;color:#007a4d;">Location Summary</h3>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#ecfdf5;">'
+    + '<th style="padding:6px;text-align:left;">ITEMCODE</th><th style="padding:6px;text-align:left;">Type</th>'
+    + '<th style="padding:6px;text-align:right;">Percent</th><th style="padding:6px;text-align:right;">Quantity</th>'
+    + '</tr></thead><tbody>' + summaryRows + '</tbody><tfoot><tr><td colspan="2" style="padding:8px 6px;font-weight:bold;">Location Total</td>'
+    + '<td colspan="2" style="padding:8px 6px;text-align:right;font-weight:bold;">'
+    + escapeEmailHtml_(payload.totalToShear || 0) + ' of ' + escapeEmailHtml_(payload.totalOnHand || 0)
+    + '</td></tr></tfoot></table></div>');
+}
+
+function handleSignedShearLocationDelivery_(delivery) {
+  const messageIdHeader = String(delivery && delivery.messageIdHeader || '').trim();
+  if (!messageIdHeader) throw new Error('REQUEST_DELIVERY_MESSAGE_ID_REQUIRED');
+  const savedReceipt = getRequestDeliveryReceipt_(messageIdHeader);
+  if (savedReceipt) return buildRecoveredDeliveryResult_(messageIdHeader, savedReceipt, 'apps_script_receipt_recovery');
+  const alreadySent = findSentRequestDeliveryByMessageId_(messageIdHeader);
+  if (alreadySent) {
+    const recovered = buildRecoveredDeliveryResult_(messageIdHeader, alreadySent, 'gmail_api_idempotent_recovery');
+    saveRequestDeliveryReceipt_(messageIdHeader, recovered);
+    return recovered;
+  }
+  const payload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
+  if (String(payload.contractVersion || '') !== 'shear-location-inquiry-v1'
+      || !String(payload.inquiryId || '').trim() || !String(payload.locationcode || '').trim()
+      || !Array.isArray(payload.items) || !payload.items.length) {
+    throw new Error('SHEAR_VALIDATION:PAYLOAD_INVALID');
+  }
+  const recipients = dedupeEmailAddresses_([payload.recipientEmails]);
+  if (!recipients.length) throw new Error('SHEAR_VALIDATION:RECIPIENT_REQUIRED');
+  const subject = '[External] GNC PH Shear Location Inquiry - ' + String(payload.locationcode || '').replace(/\s+/g, ' ').trim();
+  let pdfBlob;
+  try {
+    pdfBlob = HtmlService.createHtmlOutput(buildShearLocationInquiryHtml_(payload)).getBlob().getAs(MimeType.PDF);
+    const locationName = String(payload.locationcode || 'Location').replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
+    pdfBlob.setName('GNC_PH_Shear_Location_Inquiry_' + locationName + '.pdf');
+  } catch (error) {
+    throw new Error('SHEAR_VALIDATION:PDF_BUILD_FAILED');
+  }
+  if (!isGmailAdvancedServiceAvailable_()) throw new Error('SHEAR_EMAIL_GMAIL_SERVICE_UNAVAILABLE');
+  try {
+    const result = sendGmailApiMessage_({
+      toList: recipients.join(','), toArray: recipients, subject: subject,
+      textBody: buildShearLocationInquiryText_(payload), htmlBody: buildShearLocationInquiryHtml_(payload),
+      attachments: [pdfBlob], fromName: 'GNC PH Shear Work', fromAddress: resolveAutomatedEmailSenderAddress_(),
+      messageIdHeader: messageIdHeader
+    });
+    result.subject = subject;
+    result.messageIdHeader = messageIdHeader;
+    saveRequestDeliveryReceipt_(messageIdHeader, result);
+    return result;
+  } catch (error) {
+    if (/^SHEAR_/.test(String(error && error.message || ''))) throw error;
+    throw new Error('SHEAR_EMAIL_SEND_FAILED');
+  }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
@@ -15095,6 +15233,9 @@ function handleSignedRequestDeliveryEvent_(payload) {
   }
   if (eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ || eventType === EVAL_WORK_COMPLETION_EVENT_TYPE_) {
     return handleSignedEvalWorkDelivery_(delivery);
+  }
+  if (eventType === SHEAR_LOCATION_INQUIRY_EVENT_TYPE_) {
+    return handleSignedShearLocationDelivery_(delivery);
   }
   if (eventType !== 'request_created' && eventType !== 'request_completed') {
     throw new Error('REQUEST_DELIVERY_EVENT_TYPE_INVALID');

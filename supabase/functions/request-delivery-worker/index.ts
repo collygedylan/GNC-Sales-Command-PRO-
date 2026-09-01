@@ -27,6 +27,8 @@ function sanitizeCode(error: unknown) {
   const raw = String(error instanceof Error ? error.message : error || "DELIVERY_WORKER_FAILED").toUpperCase();
   if (/RECLASS_CONFLICT/.test(raw)) return "RECLASS_CONFLICT";
   if (/RECLASS_VALIDATION/.test(raw)) return "RECLASS_VALIDATION";
+  if (/SHEAR.*CONFLICT/.test(raw)) return "SHEAR_CONFLICT";
+  if (/SHEAR.*VALIDATION/.test(raw)) return "SHEAR_VALIDATION";
   if (/SNAPSHOT/.test(raw)) return "REQUEST_SNAPSHOT_MISSING";
   if (/APPS_SCRIPT|EMAIL|GMAIL/.test(raw)) return "EMAIL_SEND_FAILED";
   if (/PUSH/.test(raw)) return "PUSH_SEND_FAILED";
@@ -307,7 +309,7 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
-        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion"].includes(eventType)) {
+        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"].includes(eventType)) {
           if (!event.email_delivered_at) {
             const emailResult = await callAppsScript(event, [], null);
             channelResults.email = {
@@ -383,8 +385,8 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
       } catch (error) {
         failed += 1;
         const code = sanitizeCode(error);
-        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion"].includes(String(event.event_type || ""))
-          && ["RECLASS_CONFLICT", "RECLASS_VALIDATION", "EVAL_WORK_CONFLICT", "EVAL_WORK_VALIDATION"].includes(code)) {
+        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"].includes(String(event.event_type || ""))
+          && ["RECLASS_CONFLICT", "RECLASS_VALIDATION", "EVAL_WORK_CONFLICT", "EVAL_WORK_VALIDATION", "SHEAR_CONFLICT", "SHEAR_VALIDATION"].includes(code)) {
           await failEventPermanent(eventId, leaseToken, error, event.attempt_count);
         } else {
           await failEvent(eventId, leaseToken, error);

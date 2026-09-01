@@ -25,11 +25,11 @@ test('Eval Work schema is append-only, durable, scoped, and not directly writabl
   assert.doesNotMatch(migration, /delete from public\.(?:ph_master_inventory|ph_active_request|ph_request_history)/i);
 });
 
-test('creation and management are Dylan/Megan-only while every selected evaluator can work', () => {
+test('legacy creation remains Dylan/Megan while V2 management adds JD and every selected evaluator can work', () => {
   assert.match(migration, /lower\(actor\.username\) not in \('dylan_collyge', 'megan_kelly'\)[\s\S]*eval_work_create_forbidden/);
   assert.match(migration, /lower\(work\.assignee_username\) <> lower\(actor\.username\)[\s\S]*eval_work_edit_forbidden/);
   assert.match(migration, /lower\(work\.assignee_username\) <> lower\(actor\.username\)[\s\S]*eval_work_submit_forbidden/);
-  assert.match(appApi, /const EVAL_WORK_MANAGER_USERS = new Set\(\["dylan_collyge", "megan_kelly"\]\)/);
+  assert.match(appApi, /const EVAL_WORK_MANAGER_USERS = new Set\(\["dylan_collyge", "megan_kelly", "jd_jones"\]\)/);
   assert.match(appApi, /Only an assigned evaluator can update this work/);
   assert.match(appApi, /resolveEvalWorkAssignees\(payload\.assigneeUsernames \|\| payload\.assigneeUsername\)/);
   assert.match(appApi, /query = query\.contains\("assignee_usernames", \[actor\]\)/);
@@ -79,8 +79,8 @@ test('assignment and completion recipient paths remain strictly separated', () =
 });
 
 test('delivery worker sends Eval Work through Apps Script without request rows or push', () => {
-  assert.match(worker, /\["reclass_inquiry", "eval_work_assignment", "eval_work_completion"\]\.includes\(eventType\)/);
-  const routeStart = worker.indexOf('if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion"]');
+  assert.match(worker, /\["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"\]\.includes\(eventType\)/);
+  const routeStart = worker.indexOf('if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"]');
   const routeEnd = worker.indexOf('const rows = await loadRequestRows', routeStart);
   const route = worker.slice(routeStart, routeEnd);
   assert.match(route, /callAppsScript\(event, \[\], null\)/);
