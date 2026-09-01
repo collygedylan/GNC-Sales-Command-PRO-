@@ -418,6 +418,7 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   // authenticated RPCs. Never let this legacy service-role proxy bypass those
   // database authorization boundaries.
   if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
+  if (table === "ph_dock_team_status") return false;
   if (table === "ph_active_request" && access.isRep) return false;
   if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
@@ -676,6 +677,322 @@ async function handleShearLocationAction(
     return errorResponse("Unsupported Shear operation.", 400, { code: "shear_operation_invalid" });
   } catch (error) {
     return shearLocationError(error);
+  }
+}
+
+const LOCATION_WORK_CREATOR = "dylan_collyge";
+const LOCATION_WORK_ACTIONS = new Set(["ta", "move", "grade", "save"]);
+
+function locationWorkError(error: unknown) {
+  const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const raw = String(source.message || error || "location_work_request_failed");
+  const code = (raw.match(/location_work_[a-z0-9_]+/i)
+    || [String(source.code || "location_work_request_failed")])[0].toLowerCase();
+  const status = String(source.code || "") === "42501" || /forbidden|not_active/.test(code)
+    ? 403 : (/conflict|already_resolved|refresh_required/.test(code) ? 409 : 400);
+  const messages: Record<string, string> = {
+    location_work_create_forbidden: "Only Dylan can create Location Work.",
+    location_work_cancel_forbidden: "Only Dylan can cancel Location Work.",
+    location_work_edit_forbidden: "Only Dylan can edit Location Work.",
+    location_work_edit_after_start_forbidden: "Job details cannot be edited after a worker resolves a line.",
+    location_work_retry_forbidden: "Only Dylan can retry Location Work email delivery.",
+    location_work_complete_forbidden: "This Location Work job is not assigned to you.",
+    location_work_source_refresh_required: "A selected Bloom Picker row changed or is no longer current. Refresh Drive Mode and select it again.",
+    location_work_destination_refresh_required: "A destination is no longer eligible for that item and sales year. Refresh the destination list.",
+    location_work_revision_conflict: "This Location Work job changed. Refresh it before trying again.",
+    location_work_line_already_resolved: "That worksheet line was already resolved.",
+    location_work_quantity_invalid: "Action Qty must be a positive whole number no greater than the selected row's On Hand.",
+    location_work_actual_qty_invalid: "Enter a valid Actual Qty and confirm any amount above the planned quantity.",
+    location_work_reason_required: "Enter a reason when work was not completed.",
+    location_work_recipient_invalid: "Choose at least one active app user with a verified email address.",
+    location_work_delivery_not_retryable: "That email is not currently eligible for retry.",
+    location_work_job_not_found: "That Location Work job was not found.",
+  };
+  return errorResponse(messages[code] || "The Location Work request could not be completed.", status, { code });
+}
+
+async function resolveLocationWorkRecipients(values: unknown) {
+  const profileIds = Array.from(new Set((Array.isArray(values) ? values : [values])
+    .map((value) => String(value || "").trim()).filter(Boolean)));
+  if (profileIds.length < 1 || profileIds.length > 50) throw new Error("location_work_recipient_invalid");
+  const directory = await listActiveEmailProfiles();
+  const byId = new Map(directory.map((entry) => [entry.profileId, entry]));
+  const recipients = profileIds.map((id) => byId.get(id)).filter(Boolean) as Array<Record<string, unknown>>;
+  if (recipients.length !== profileIds.length) throw new Error("location_work_recipient_invalid");
+  return recipients;
+}
+
+async function loadLocationWorkJobs(actor: string, status = "active", jobId = "", includeDetails = false) {
+  let query = supabase.from("ph_location_work_jobs").select([
+    "id", "title", "general_instructions", "status", "revision", "line_count", "resolved_line_count",
+    "assigned_usernames", "assignment_event_id", "completion_event_id", "created_by_username",
+    "created_by_display", "created_at", "updated_at", "completed_by_username", "completed_at",
+    "cancelled_by_username", "cancelled_at",
+  ].join(",")).order("updated_at", { ascending: false }).limit(jobId ? 1 : 100);
+  if (jobId) query = query.eq("id", jobId);
+  else if (status === "active") query = query.in("status", ["open", "in_progress"]);
+  else if (["open", "in_progress", "complete", "cancelled"].includes(status)) query = query.eq("status", status);
+  if (actor !== LOCATION_WORK_CREATOR) query = query.contains("assigned_usernames", [actor]);
+  const { data: jobs, error } = await query;
+  if (error) throw error;
+  const ids = (jobs || []).map((job) => String(job.id || "")).filter(Boolean);
+  if (!ids.length) return [];
+
+  const eventIds = (jobs || []).flatMap((job) => [job.assignment_event_id, job.completion_event_id]
+    .map((value) => String(value || "")).filter(Boolean));
+  const deliveryById = new Map<string, Record<string, unknown>>();
+  if (eventIds.length) {
+    const { data: deliveries, error: deliveryError } = await supabase.from("ph_request_delivery_outbox")
+      .select("event_id,status,attempt_count,sanitized_error_code,delivered_at,updated_at")
+      .in("event_id", eventIds);
+    if (deliveryError) throw deliveryError;
+    for (const delivery of deliveries || []) {
+      deliveryById.set(String(delivery.event_id || ""), delivery as Record<string, unknown>);
+    }
+  }
+
+  let linesByJob = new Map<string, Record<string, unknown>[]>();
+  let assignmentsByJob = new Map<string, Record<string, unknown>[]>();
+  if (includeDetails) {
+    const [{ data: lines, error: linesError }, { data: assignments, error: assignmentsError }] = await Promise.all([
+      supabase.from("ph_location_work_lines").select("*").in("job_id", ids).order("ordinal", { ascending: true }),
+      supabase.from("ph_location_work_assignments")
+        .select("job_id,profile_id,username,display_name").in("job_id", ids).order("display_name", { ascending: true }),
+    ]);
+    if (linesError) throw linesError;
+    if (assignmentsError) throw assignmentsError;
+    linesByJob = new Map();
+    assignmentsByJob = new Map();
+    for (const line of lines || []) {
+      const key = String(line.job_id || "");
+      const group = linesByJob.get(key) || [];
+      group.push(line as Record<string, unknown>);
+      linesByJob.set(key, group);
+    }
+    for (const assignment of assignments || []) {
+      const key = String(assignment.job_id || "");
+      const group = assignmentsByJob.get(key) || [];
+      group.push(assignment as Record<string, unknown>);
+      assignmentsByJob.set(key, group);
+    }
+  }
+  return (jobs || []).map((job) => ({
+    ...job,
+    lines: linesByJob.get(String(job.id || "")) || [],
+    assignments: assignmentsByJob.get(String(job.id || "")) || [],
+    assignmentDelivery: deliveryById.get(String(job.assignment_event_id || "")) || null,
+    completionDelivery: deliveryById.get(String(job.completion_event_id || "")) || null,
+  }));
+}
+
+async function handleLocationWorkAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401);
+  const actorProfile = await resolveActiveSessionProfile(session).catch(() => null);
+  if (!actorProfile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "profile_not_active" });
+  const actor = normalizeUsername(actorProfile.username);
+  const operation = String(payload.operation || "list").trim().toLowerCase();
+  try {
+    if (operation === "recipient_options") {
+      if (actor !== LOCATION_WORK_CREATOR) throw new Error("location_work_create_forbidden");
+      const directory = await listActiveEmailProfiles();
+      return jsonResponse({ ok: true, data: directory.map(({ profileId, username, display }) => ({ profileId, username, display })) });
+    }
+    if (operation === "list") {
+      return jsonResponse({ ok: true, data: await loadLocationWorkJobs(actor, String(payload.status || "active").toLowerCase()) });
+    }
+    if (operation === "get") {
+      const jobId = String(payload.jobId || "").trim();
+      if (!jobId) throw new Error("location_work_job_not_found");
+      const rows = await loadLocationWorkJobs(actor, "", jobId, true);
+      if (!rows.length) return errorResponse("That Location Work job was not found.", 404, { code: "location_work_job_not_found" });
+      return jsonResponse({ ok: true, data: rows[0] });
+    }
+    if (operation === "create") {
+      if (actor !== LOCATION_WORK_CREATOR) throw new Error("location_work_create_forbidden");
+      const rawLines = Array.isArray(payload.lines) ? payload.lines : [];
+      if (rawLines.length < 1 || rawLines.length > 500) throw new Error("location_work_payload_invalid");
+      const lines = rawLines.map((value) => {
+        const line = value && typeof value === "object" ? value as Record<string, unknown> : {};
+        const actionType = String(line.actionType || "").trim().toLowerCase();
+        const plannedQty = Number(line.plannedQty);
+        const destinationLocationcode = String(line.destinationLocationcode || "").trim();
+        if (!String(line.sourceUniqueId || "").trim() || !LOCATION_WORK_ACTIONS.has(actionType)
+          || !Number.isInteger(plannedQty) || plannedQty < 1
+          || (actionType === "move" && !destinationLocationcode)
+          || (actionType === "ta" && destinationLocationcode)) throw new Error("location_work_line_invalid");
+        return {
+          sourceUniqueId: String(line.sourceUniqueId || "").trim(),
+          actionType,
+          plannedQty,
+          destinationLocationcode,
+          instructions: String(line.instructions || "").trim().slice(0, 4000),
+        };
+      });
+      const recipients = await resolveLocationWorkRecipients(payload.recipientProfileIds);
+      const directory = await listActiveEmailProfiles();
+      const completionRecipient = directory.find((entry) => entry.username === LOCATION_WORK_CREATOR);
+      if (!completionRecipient) throw new Error("location_work_completion_recipient_invalid");
+      const { data, error } = await supabase.rpc("create_location_work_job_v1", {
+        p_payload: {
+          actorUsername: actor,
+          idempotencyKey: String(payload.idempotencyKey || "").trim(),
+          title: String(payload.title || "").trim(),
+          generalInstructions: String(payload.generalInstructions || "").trim(),
+          lines,
+          recipients,
+          completionRecipient,
+        },
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    }
+    if (operation === "resolve_line") {
+      const jobId = String(payload.jobId || "").trim();
+      const lineId = String(payload.lineId || "").trim();
+      const expectedRevision = Number(payload.expectedRevision);
+      const resolutionStatus = String(payload.resolutionStatus || "").trim().toLowerCase();
+      const actualQty = payload.actualQty === null || payload.actualQty === undefined || payload.actualQty === ""
+        ? null : Number(payload.actualQty);
+      if (!jobId || !lineId || !Number.isInteger(expectedRevision) || expectedRevision < 1
+        || !["done", "not_completed"].includes(resolutionStatus)
+        || (actualQty !== null && (!Number.isInteger(actualQty) || actualQty < 0))) {
+        throw new Error("location_work_resolution_invalid");
+      }
+      const { data, error } = await supabase.rpc("resolve_location_work_line_v1", {
+        p_job_id: jobId,
+        p_line_id: lineId,
+        p_actor_username: actor,
+        p_expected_revision: expectedRevision,
+        p_resolution_status: resolutionStatus,
+        p_actual_qty: actualQty,
+        p_not_completed_reason: String(payload.notCompletedReason || "").trim(),
+        p_variance_confirmed: payload.varianceConfirmed === true,
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    }
+    if (operation === "edit") {
+      if (actor !== LOCATION_WORK_CREATOR) throw new Error("location_work_edit_forbidden");
+      const jobId = String(payload.jobId || "").trim();
+      const expectedRevision = Number(payload.expectedRevision);
+      const title = String(payload.title || "").trim();
+      const generalInstructions = String(payload.generalInstructions || "").trim();
+      if (!jobId || !Number.isInteger(expectedRevision) || expectedRevision < 1
+        || !title || title.length > 240 || !generalInstructions || generalInstructions.length > 8000) {
+        throw new Error("location_work_payload_invalid");
+      }
+      const { data, error } = await supabase.rpc("update_location_work_job_v1", {
+        p_job_id: jobId,
+        p_actor_username: actor,
+        p_expected_revision: expectedRevision,
+        p_title: title,
+        p_general_instructions: generalInstructions,
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    }
+    if (["cancel", "retry"].includes(operation)) {
+      if (actor !== LOCATION_WORK_CREATOR) throw new Error(`location_work_${operation}_forbidden`);
+      const jobId = String(payload.jobId || "").trim();
+      const expectedRevision = Number(payload.expectedRevision);
+      if (!jobId || !Number.isInteger(expectedRevision) || expectedRevision < 1) throw new Error("location_work_revision_conflict");
+      const rpcName = operation === "cancel" ? "cancel_location_work_job_v1" : "retry_location_work_delivery_v1";
+      const args: Record<string, unknown> = {
+        p_job_id: jobId,
+        p_actor_username: actor,
+        p_expected_revision: expectedRevision,
+      };
+      if (operation === "retry") args.p_delivery_kind = String(payload.deliveryKind || "assignment").trim().toLowerCase();
+      const { data, error } = await supabase.rpc(rpcName, args);
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    }
+    return errorResponse("Unsupported Location Work operation.", 400, { code: "location_work_operation_invalid" });
+  } catch (error) {
+    return locationWorkError(error);
+  }
+}
+
+const DOCK_TRIP_STATUS_VALUES = new Set(["Loading", "Missing > 10", "Missing < 5", "Palletize", "Complete"]);
+
+function dockTripStatusError(error: unknown) {
+  const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const raw = String(source.message || error || "dock_trip_request_failed");
+  const code = (raw.match(/dock_trip_[a-z0-9_]+/i) || ["dock_trip_request_failed"])[0].toLowerCase();
+  const status = code === "dock_trip_revision_conflict" ? 409
+    : (/forbidden|not_active/.test(code) ? 403 : 400);
+  const message = code === "dock_trip_revision_conflict"
+    ? "This trip assignment changed. Refresh Docks before saving again."
+    : code === "dock_trip_edit_forbidden"
+    ? "Only an active Admin or QC Supervisor can update dock teams."
+    : code === "dock_trip_view_forbidden"
+    ? "Your profile does not have Docks access."
+    : "The shared trip assignment could not be updated.";
+  return errorResponse(message, status, { code });
+}
+
+async function handleDockTripStatusAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401);
+  try {
+    const actorProfile = await resolveActiveSessionProfile(session);
+    const role = String(actorProfile.role || session.role || "").trim();
+    const actor = normalizeUsername(actorProfile.username || session.username || session.displayName || "");
+    const normalizedRole = String(role || "").toUpperCase().replace(/\s+/g, "");
+    const canView = FULL_ACCESS_USER_KEYS.has(actor)
+      || normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER")
+      || normalizedRole === "REP" || normalizedRole === "SALES" || normalizedRole.includes("SALESREP")
+      || normalizedRole.includes("CSR") || normalizedRole.startsWith("QC") || normalizedRole.includes("EVAL");
+    if (!canView) throw new Error("dock_trip_view_forbidden");
+    const operation = String(payload.operation || "list").trim().toLowerCase();
+    if (operation === "list") {
+      const { data, error } = await supabase
+        .from("ph_dock_trip_status")
+        .select("tripnumber,dock_num,checker,inspector,mistake,status,revision,updated_by_username,updated_at")
+        .order("tripnumber", { ascending: true })
+        .limit(5000);
+      if (error) throw error;
+      return jsonResponse({ ok: true, data: data || [] });
+    }
+    if (operation !== "upsert") return errorResponse("Unsupported Dock trip operation.", 400, { code: "dock_trip_operation_invalid" });
+    const canEdit = FULL_ACCESS_USER_KEYS.has(actor)
+      || normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER")
+      || normalizedRole.includes("QCSUPERVISOR") || normalizedRole.includes("QCSUP");
+    if (!canEdit) throw new Error("dock_trip_edit_forbidden");
+    const tripnumber = String(payload.tripnumber || "").trim();
+    const dockNum = String(payload.dockNum || "").trim();
+    const checker = String(payload.checker || "").trim();
+    const inspector = String(payload.inspector || "").trim();
+    const mistake = String(payload.mistake || "").trim();
+    const dockStatus = String(payload.status || "").trim();
+    const expectedRevisionRaw = payload.expectedRevision;
+    const expectedRevision = expectedRevisionRaw === null || expectedRevisionRaw === undefined || expectedRevisionRaw === ""
+      ? null : Number(expectedRevisionRaw);
+    if (!tripnumber || tripnumber.length > 80 || dockNum.length > 80
+      || checker.length > 120 || inspector.length > 120 || mistake.length > 120
+      || !DOCK_TRIP_STATUS_VALUES.has(dockStatus)
+      || (expectedRevision !== null && (!Number.isInteger(expectedRevision) || expectedRevision < 0))) {
+      throw new Error("dock_trip_payload_invalid");
+    }
+    const { data, error } = await supabase.rpc("save_dock_trip_status_v1", {
+      p_tripnumber: tripnumber,
+      p_dock_num: dockNum || null,
+      p_checker: checker || null,
+      p_inspector: inspector || null,
+      p_mistake: mistake || null,
+      p_status: dockStatus,
+      p_actor_username: actor,
+      p_expected_revision: expectedRevision,
+    });
+    if (error) throw error;
+    return jsonResponse({ ok: true, data });
+  } catch (error) {
+    return dockTripStatusError(error);
   }
 }
 
@@ -1802,6 +2119,8 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   }
   if (action === "eval_work") return await handleEvalWorkAction(session, payload);
   if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
+  if (action === "location_work") return await handleLocationWorkAction(session, payload);
+  if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
   if (action === "db") {
     if (session && session.ver >= 2) {
       return errorResponse("Native Auth sessions must use PostgREST with RLS for database access.", 410, {

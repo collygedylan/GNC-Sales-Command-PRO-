@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.01.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.01.04">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.01.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.01.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6790,7 +6790,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.01.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.01.04">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6965,8 +6965,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.01.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.01.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.01.04"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.01.04"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7181,8 +7181,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     </div>
     <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
-            <h3 class="font-black text-2xl mb-2 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
-            <p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Set Dock Team & Status</p>
+            <h3 class="font-black text-2xl mb-1 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
+            <p class="text-[11px] text-slate-700 font-black mb-1 uppercase tracking-wider">Trip <span id="modal-dock-trip"></span></p>
+            <p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Shared Team & Status</p>
             <div class="text-left mb-3">
                 <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label>
                 <select id="dock-checker" class="input-field border-green-200 focus:border-[#007a4d] !mb-0 bg-white"></select>
@@ -7206,7 +7207,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
             <div class="flex gap-2">
                 <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button>
-                <button class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="saveDockInfoModal()">SAVE & CONTINUE</button>
+                <button id="dock-info-save-button" class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="saveDockInfoModal(this)">SAVE & CONTINUE</button>
             </div>
         </div>
     </div>
@@ -7719,7 +7720,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.01.01').trim() || 'V2026.09.01.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.01.04').trim() || 'V2026.09.01.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9075,7 +9076,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <button id="batch-btn-ncr" onclick="initiateBatchAction('ncr')" class="flex-1 min-w-[60px] bg-amber-100 text-amber-700 p-2 rounded-lg text-[10px] font-bold hover:bg-amber-200 shadow-sm hidden"><i class="ph-bold ph-seal-check block text-lg mb-1"></i> NCR</button>
                     <button id="batch-btn-bloom-order" onclick="initiateBatchAction('bloom_order')" class="flex-1 min-w-[72px] bg-[#007a4d] text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-package block text-lg mb-1"></i> Submit Order</button>
                     <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 min-w-[60px] bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
-                    <button id="batch-btn-move" onclick="initiateBatchAction('move')" class="flex-1 min-w-[86px] bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200 shadow-sm hidden"><i class="ph-bold ph-map-pin-line block text-lg mb-1"></i> Location Move</button>
+                    <button id="batch-btn-move" onclick="initiateBatchAction('move')" class="flex-1 min-w-[86px] bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200 shadow-sm hidden"><i class="ph-bold ph-clipboard-text block text-lg mb-1"></i> Location Work</button>
                     <button id="batch-btn-flyer" onclick="initiateBatchAction('flyer')" class="flex-1 min-w-[60px] bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] font-bold hover:bg-indigo-200 hidden"><i class="ph-bold ph-megaphone block text-lg mb-1"></i> Flyer</button>
                     <button id="batch-btn-take-back" onclick="initiateBatchAction('take_back')" class="flex-1 min-w-[74px] bg-emerald-100 text-emerald-700 p-2 rounded-lg text-[10px] font-bold hover:bg-emerald-200 hidden"><i class="ph-bold ph-arrow-u-up-left block text-lg mb-1"></i> Take Back</button>
                     <button id="batch-btn-endcap" onclick="initiateBatchAction('endcap')" class="flex-1 min-w-[70px] bg-yellow-100 text-yellow-700 p-2 rounded-lg text-[10px] font-bold hover:bg-yellow-200 shadow-sm hidden"><i class="ph-bold ph-storefront block text-lg mb-1"></i> End Cap</button>
@@ -9087,19 +9088,25 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <div class="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-2xl bg-white p-5 text-left shadow-2xl">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Location Move</div>
-                            <div class="mt-1 text-2xl font-black leading-tight text-slate-900">Choose Destination Row</div>
-                            <div id="move-selected-summary" class="mt-1 text-[12px] font-bold text-slate-500">Select the same itemcode/salesyear row the plants are moving to.</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Bloom Picker</div>
+                            <div class="mt-1 text-2xl font-black leading-tight text-slate-900">Create Location Work</div>
+                            <div id="move-selected-summary" class="mt-1 text-[12px] font-bold text-slate-500">Build one historical worksheet from the selected physical rows.</div>
                         </div>
                         <button type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return closeSelectedMoveModal()">Close</button>
                     </div>
-                    <div class="mt-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
-                        <div class="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Location Move Rows</div>
-                        <div id="move-selected-list" class="max-h-[38vh] space-y-2 overflow-y-auto pr-1 overscroll-contain"></div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <label class="block"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Job Title Required</span><input id="location-work-title" class="input-field !mb-0" maxlength="240" placeholder="e.g. 8F Carryover Cleanup"></label>
+                        <label class="block"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Assigned Users Required</span><button id="location-work-recipient-button" type="button" class="input-field !mb-0 flex min-h-[48px] items-center justify-between text-left" onclick="return toggleLocationWorkRecipients()"><span id="location-work-recipient-label">Choose users</span><i class="ph-bold ph-users-three"></i></button></label>
+                    </div>
+                    <div id="location-work-recipient-options" class="mt-2 hidden max-h-40 overflow-y-auto rounded-xl border border-emerald-200 bg-white p-2 shadow-lg"></div>
+                    <label class="mt-3 block"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">General Instructions Required</span><textarea id="location-work-instructions" class="input-field !mb-0 min-h-[92px] resize-y" maxlength="8000" placeholder="Work instructions, timing, areas, and turn-in requirements"></textarea></label>
+                    <div class="mt-4 min-h-0 flex-1 rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
+                        <div class="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Worksheet Lines</div>
+                        <div id="move-selected-list" class="max-h-[46vh] space-y-3 overflow-y-auto pr-1 overscroll-contain"></div>
                     </div>
                     <div class="mt-4 grid grid-cols-2 gap-3">
                         <button type="button" class="min-h-[52px] rounded-xl border border-slate-200 bg-white px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm" onclick="return closeSelectedMoveModal()">Cancel</button>
-                        <button id="move-selected-save-btn" type="button" class="min-h-[52px] rounded-xl bg-[#007a4d] px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[.99]" onclick="return submitSelectedRowsMoveQueue(this)">Submit</button>
+                        <button id="move-selected-save-btn" type="button" class="min-h-[52px] rounded-xl bg-[#007a4d] px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[.99]" onclick="return submitSelectedRowsMoveQueue(this)">Create &amp; Email</button>
                     </div>
                 </div>
             </div>
@@ -9204,7 +9211,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.01.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.01.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9720,7 +9727,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             'take-back': { realtimeTables: ['ph_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             reserves: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            docks: { realtimeTables: ['ph_dock_team_status', 'ph_dock_item_status', 'ph_dock_issue_status', 'ph_dock_issue_allocations'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            docks: { realtimeTables: ['ph_dock_item_status', 'ph_dock_issue_status', 'ph_dock_issue_allocations'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             reports: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'po-management': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             advertisement: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -12012,7 +12019,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (safeTable === 'ph_customer_consignee_sales_reps') return 'customer-rep-map';
             if (safeTable === 'ph_soc_master') return 'docks';
             if (safeTable === 'ph_cav_import' || safeTable === 'ph_view_av_hot_price_keys' || safeTable === 'ph_av_notes') return 'av';
-            if (safeTable === 'ph_dock_team_status' || safeTable === 'ph_dock_item_status' || safeTable === 'ph_dock_issue_status' || safeTable === 'ph_dock_issue_allocations') return 'docks';
+            if (safeTable === 'ph_dock_trip_status' || safeTable === 'ph_dock_team_status' || safeTable === 'ph_dock_item_status' || safeTable === 'ph_dock_issue_status' || safeTable === 'ph_dock_issue_allocations') return 'docks';
             if (safeTable === CHAT_CONVERSATIONS_TABLE || safeTable === CHAT_PARTICIPANTS_TABLE || safeTable === CHAT_MESSAGES_TABLE) return '';
             if (safeTable === 'ph_labor_hours') return 'hours';
             return '';
@@ -20683,6 +20690,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!entry || !entry.sourceTable) return false;
             const sourceTable = String(entry.sourceTable || '').trim();
             if (sourceTable === 'ph_active_request') return applyRequestAppLiveEventRefresh(entry);
+            if (sourceTable === 'ph_dock_trip_status') {
+                await ensureDockTeamStatusLoaded(true);
+                markViewDirty('docks');
+                scheduleDocksRender(24);
+                touchSyncTimestamp();
+                return true;
+            }
             const rowIds = normalizeAppLiveEventRowIds(Array.from(entry.rowIds || []));
             const methods = Array.from(entry.methods || []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
             const isDelete = methods.includes('DELETE');
@@ -20754,20 +20768,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return false;
             }
 
-            if (tableName === 'ph_dock_team_status') {
+            if (tableName === 'ph_dock_trip_status') {
                 const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
-                const dockKey = normalizeDockTeamDockKey(rawRow.dock_num || rawRow.DOCK_NUM || rawRow.dock || rawRow.DOCK);
-                if (!dockKey) return false;
+                const tripKey = normalizeDockTeamTripKey(rawRow.tripnumber || rawRow.TRIPNUMBER);
+                if (!tripKey) return false;
                 if (eventType === 'DELETE') {
-                    dockTeamStatusByDock.delete(dockKey);
-                    try { localStorage.removeItem('gnc_dock_team_' + dockKey); } catch (e) {}
+                    dockTeamStatusByTrip.delete(tripKey);
                 } else {
-                    cacheDockTeamInfo(dockKey, rawRow);
+                    cacheDockTeamInfo(tripKey, rawRow);
                 }
                 dockTeamStatusLoaded = true;
                 markViewDirty('docks');
                 scheduleDocksRender(72);
-                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'dock-team');
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'dock-trip');
                 return true;
             }
 
@@ -29322,7 +29335,7 @@ let bloomShiftReportFormat='report'; let bloomShiftReportColumnMode='custom'; le
 let appAdminRecipientUsers=[]; let appAdminRecipientUsersPromise=null; let appAdminRecipientUsersLoaded=false; let appAdminRecipientUsersSignature=''; let appAdminRecipientEmailByToken=new Map(); let appEvalRecipientUsersSignature=''; let appEmailRecipientUsers=[]; let appEmailRecipientUsersPromise=null; let appEmailRecipientUsersLoaded=false; let appEmailRecipientUsersSignature=''; let appEmailRecipientEmailByToken=new Map();
 let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertisement: '', request: '' }; let emailRecipientSearchByContext={ bloom: '', av: '', drive: '', advertisement: '', request: '' };
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
-        let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false; let dockTeamStatusRenderVersion=0;
+        let dockTeamStatusByTrip=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false; let dockTeamStatusRenderVersion=0;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssuePhotoSchemaReady=null; let dockIssuePhotoSchemaPromise=null; let dockIssueMeasurementSchemaReady=null; let dockIssueMeasurementSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockIssuePhotoSchemaWarningShown=false; let dockIssueMeasurementSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let selectedDockIssueAllocationId=''; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map(); let dockMistakeSelectionUids=new Set(); let dockMistakeCandidateRows=[]; let dockMistakeModalSourceUid=''; let dockMistakeModalStep='details'; let dockMistakeIssuePhotoLink=''; let dockMistakeIssuePhotoName=''; let dockMistakeIssuePhotoPreviewUrl=''; let dockMistakeIssuePhotoPromise=null; let dockMistakeIssuePhotoUploading=false; let dockMistakeDetailPhotoIssueUid='';
         let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set(); let takeBackDoneConfirmResolve=null; let markDoneConfirmResolve=null;
@@ -29596,6 +29609,8 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         let managerMovePlannerLevel=0; let managerMoveSelectedBlock=null; let managerMoveSelectedLocation=null; let managerMoveDestinationStage='select'; let managerMoveSelectedSourceIds=new Set(); let managerMoveDestinationBySourceId=new Map(); let managerMoveItemDestinationByItemKey=new Map(); let managerMoveReviewerUsers=new Set(); let managerMoveReviewerSearchTerm=''; let managerMoveManualLocationBySourceId=new Map(); let managerMoveDestinationExpandedBySourceId=new Set(); let managerMoveInstructionText=''; let managerMoveSubmitting=false; let managerMovePlannerCacheKey=''; let managerMovePlannerCache=null; let managerMoveCardSearchTerm=''; let managerMoveCardSelectedCommonName=''; let managerMoveCardSelectedContSize=''; let managerMoveCardSelectedSalesYear='';
         let managerBlockClearingLevel=0; let managerBlockClearingSelectedBlock=null; let managerBlockClearingSelectedLocation=null; let managerBlockClearingSelectionMode=false; let managerBlockClearingInstructionMode=false; let managerBlockClearingSelectedIds=new Set(); let managerBlockClearingInstructionsByItemcode=new Map(); let managerBlockClearingReportTitle=''; let managerBlockClearingLongPressTimer=null; let managerBlockClearingLongPressUid=''; let managerBlockClearingSuppressClickUid=''; let managerBlockClearingEmailSending=false; let managerBlockClearingCacheKey=''; let managerBlockClearingCache=null;
         let selectedLocationMoveItems=[]; let selectedLocationMoveDestinationBySourceId=new Map();
+        let locationWorkLineDrafts=new Map(); let locationWorkRecipientOptions=[]; let locationWorkSelectedRecipientIds=new Set(); let locationWorkCreateToken='';
+        let locationWorkRows=[]; let locationWorkLoaded=false; let locationWorkLoading=false; let locationWorkError=''; let activeLocationWorkJobId='';
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
         const MOVES_TA_STORAGE_PREFIX = 'gnc_moves_ta_v1';
@@ -29679,7 +29694,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsig
             requestDylanPendingEntriesCache = [];
             lastRequestHeaderSearchMode = '';
         }
-let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let selectedDockReps=new Set(); let dockRepSearchTerm=""; let dockRepFilterOpen=false; let selectedDockCustomers=new Set(); let dockCustomerSearchTerm=""; let dockCustomerFilterOpen=false; let dockColumnFilters={}; let dockColumnFilterDrafts={}; let dockColumnFilterSelectedHeaders=new Set(); let dockColumnFilterDropdownOpen=false; let dockColumnFilterStep='select'; let dockColumnFilterFieldKey=''; let dockColumnFilterMode='values'; let dockColumnFilterValueSearchTerm=''; let dockColumnFilterFieldSearchTerm=''; let dockColumnFilterHeaderFieldsCache=[]; let dockFilterItemsCache=[]; let dockFilterStateCacheKey=""; let dockFilterStateCache=null; let lastDockFilterRenderSignature=""; let docksSearchRestoreState=null; let lastSyncTime=new Date().toISOString();
+let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let pendingDockTrip=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let selectedDockReps=new Set(); let dockRepSearchTerm=""; let dockRepFilterOpen=false; let selectedDockCustomers=new Set(); let dockCustomerSearchTerm=""; let dockCustomerFilterOpen=false; let dockColumnFilters={}; let dockColumnFilterDrafts={}; let dockColumnFilterSelectedHeaders=new Set(); let dockColumnFilterDropdownOpen=false; let dockColumnFilterStep='select'; let dockColumnFilterFieldKey=''; let dockColumnFilterMode='values'; let dockColumnFilterValueSearchTerm=''; let dockColumnFilterFieldSearchTerm=''; let dockColumnFilterHeaderFieldsCache=[]; let dockFilterItemsCache=[]; let dockFilterStateCacheKey=""; let dockFilterStateCache=null; let lastDockFilterRenderSignature=""; let docksSearchRestoreState=null; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
@@ -30878,7 +30893,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.01.01').trim() || 'V2026.09.01.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.01.04').trim() || 'V2026.09.01.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -34968,7 +34983,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function canSeeMovesRequestTab(access = getRoleAccessState()) {
-            return !!(access && (access.isAdmin || canUseMovesModule() || isMoveRequestCompleterUser() || hasAssignedApprovedMoveRequestsForCurrentUser()));
+            return !!(access && currentUser);
         }
 
         function canSeeRecountRequestTab(access = getRoleAccessState()) {
@@ -45326,6 +45341,10 @@ let avTopControlsRenderToken = 0;
             return normalizePushUsername(userOverride || currentUser || currentUserDisplay || '') === 'dylan_collyge';
         }
 
+        function canCreateLocationWorkJob(userOverride = '') {
+            return normalizePushUsername(userOverride || currentUser || currentUserDisplay || '') === 'dylan_collyge';
+        }
+
         let inventoryMultiActionEmailContext = null;
         let inventoryMultiActionEmailSending = false;
 
@@ -54114,7 +54133,7 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
 
-                const previousDockTeamSnapshot = JSON.stringify(Array.from(dockTeamStatusByDock.entries()));
+                const previousDockTeamSnapshot = JSON.stringify(Array.from(dockTeamStatusByTrip.entries()));
                 const previousDockItemSnapshot = JSON.stringify(Array.from(dockItemProgressByUid.entries()));
                 const previousDockIssueSnapshot = JSON.stringify(Array.from(dockIssueStatusByUid.entries()));
                 const previousDockAllocationSnapshot = JSON.stringify(Array.from(dockIssueAllocationsById.entries()));
@@ -54123,7 +54142,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ensureDockItemStatusLoaded(true),
                     ensureDockIssueDataLoaded(true)
                 ]);
-                const dockWorkflowChanged = previousDockTeamSnapshot !== JSON.stringify(Array.from(dockTeamStatusByDock.entries()))
+                const dockWorkflowChanged = previousDockTeamSnapshot !== JSON.stringify(Array.from(dockTeamStatusByTrip.entries()))
                     || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()))
                     || previousDockIssueSnapshot !== JSON.stringify(Array.from(dockIssueStatusByUid.entries()))
                     || previousDockAllocationSnapshot !== JSON.stringify(Array.from(dockIssueAllocationsById.entries()));
@@ -54838,11 +54857,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDefaultDockTeamInfo() {
-            return { checker: '', inspector: '', mistake: '', status: 'Loading' };
+            return { checker: '', inspector: '', mistake: '', status: 'Loading', tripnumber: '', dockNum: '', revision: 0, updatedAt: '' };
         }
 
-        function normalizeDockTeamDockKey(dockNum = '') {
-            return String(dockNum || '').trim();
+        function normalizeDockTeamTripKey(tripNumber = '') {
+            return String(tripNumber || '').trim().toUpperCase();
         }
 
         function normalizeDockViewDockKey(dockNum = '') {
@@ -54868,44 +54887,52 @@ function toggleDriveQuickRequestItem(domId) {
                 checker: String(raw.checker || raw.CHECKER || '').trim(),
                 inspector: String(raw.inspector || raw.INSPECTOR || '').trim(),
                 mistake: String(raw.mistake || raw.MISTAKE || '').trim(),
-                status: String(raw.status || raw.STATUS || base.status).trim() || base.status
+                status: String(raw.status || raw.STATUS || base.status).trim() || base.status,
+                tripnumber: String(firstNonEmptyValue(raw.tripnumber, raw.TRIPNUMBER, '') || '').trim(),
+                dockNum: String(firstNonEmptyValue(raw.dock_num, raw.DOCK_NUM, raw.dockNum, '') || '').trim(),
+                revision: Math.max(0, Number(firstNonEmptyValue(raw.revision, raw.REVISION, 0)) || 0),
+                updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, raw.updatedAt, '') || '').trim()
             };
         }
 
-        function readLegacyDockTeamInfo(dockNum = '') {
-            const dockKey = normalizeDockTeamDockKey(dockNum);
-            if (!dockKey) return getDefaultDockTeamInfo();
-            try {
-                return normalizeDockTeamInfo(JSON.parse(localStorage.getItem('gnc_dock_team_' + dockKey) || '{}'));
-            } catch (error) {
-                return getDefaultDockTeamInfo();
-            }
-        }
-
-        function cacheDockTeamInfo(dockNum = '', info = null) {
-            const dockKey = normalizeDockTeamDockKey(dockNum);
-            if (!dockKey) return getDefaultDockTeamInfo();
+        function cacheDockTeamInfo(tripNumber = '', info = null) {
+            const tripKey = normalizeDockTeamTripKey(firstNonEmptyValue(tripNumber, info && info.tripnumber, info && info.TRIPNUMBER, ''));
+            if (!tripKey) return getDefaultDockTeamInfo();
             const normalized = normalizeDockTeamInfo(info);
-            dockTeamStatusByDock.set(dockKey, normalized);
+            normalized.tripnumber = normalized.tripnumber || String(tripNumber || '').trim();
+            dockTeamStatusByTrip.set(tripKey, normalized);
             dockTeamStatusRenderVersion += 1;
-            localStorage.setItem('gnc_dock_team_' + dockKey, JSON.stringify(normalized));
             invalidateDockWorkflowResolvedState();
             return normalized;
         }
 
-        function getDockTeamInfo(dockNum = '') {
-            const dockKey = normalizeDockTeamDockKey(dockNum);
-            if (!dockKey) return getDefaultDockTeamInfo();
-            if (dockTeamStatusByDock.has(dockKey)) return normalizeDockTeamInfo(dockTeamStatusByDock.get(dockKey));
-            const legacy = readLegacyDockTeamInfo(dockKey);
-            dockTeamStatusByDock.set(dockKey, legacy);
-            return legacy;
+        function getDockTeamInfo(tripNumber = '') {
+            const tripKey = normalizeDockTeamTripKey(tripNumber);
+            if (!tripKey) return getDefaultDockTeamInfo();
+            return dockTeamStatusByTrip.has(tripKey)
+                ? normalizeDockTeamInfo(dockTeamStatusByTrip.get(tripKey))
+                : { ...getDefaultDockTeamInfo(), tripnumber: String(tripNumber || '').trim() };
         }
 
         function maybeWarnDockTeamSchemaMissing() {
             if (dockTeamSchemaWarningShown || !currentUser) return;
             dockTeamSchemaWarningShown = true;
-            showToast('Schema Required', 'Run dock_team_status_migration.sql in Supabase to share dock team assignments across users.', true);
+            showToast('Shared Dock Status Unavailable', 'Trip assignments could not be loaded from the shared server. Refresh after the current release finishes deploying.', true);
+        }
+
+        async function runDockTripStatusRequest(operation = 'list', payload = {}) {
+            const ready = await ensureAppApiWriteProxySession();
+            if (!ready) throw new Error('App session unavailable for shared Dock status.');
+            const result = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'dock_trip_status',
+                operation: String(operation || 'list').trim().toLowerCase(),
+                ...(payload && typeof payload === 'object' ? payload : {})
+            }, {
+                timeoutMs: SUPABASE_WRITE_TIMEOUT_MS,
+                label: `Dock trip status ${String(operation || 'list')}`
+            });
+            if (!result || result.ok !== true) throw new Error(String(result && (result.error || result.message) || 'Shared Dock status request failed.'));
+            return result;
         }
 
         async function ensureDockTeamSchemaReady(force = false) {
@@ -54915,30 +54942,9 @@ function toggleDriveQuickRequestItem(domId) {
             dockTeamSchemaPromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/ph_dock_team_status?select=dock_num,checker&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Team Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('ph_dock_team_status') || normalizedError.includes('dock_num') || normalizedError.includes('checker') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                            dockTeamSchemaReady = false;
-                            maybeWarnDockTeamSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
                     dockTeamSchemaReady = true;
                     return true;
                 } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('ph_dock_team_status') || normalizedError.includes('dock_num') || normalizedError.includes('checker') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                        dockTeamSchemaReady = false;
-                        maybeWarnDockTeamSchemaMissing();
-                        return false;
-                    }
                     return false;
                 } finally {
                     dockTeamSchemaPromise = null;
@@ -54948,33 +54954,40 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureDockTeamStatusLoaded(forceRefresh = false) {
-            if (!forceRefresh && dockTeamStatusLoaded) return dockTeamStatusByDock;
+            if (!forceRefresh && dockTeamStatusLoaded) return dockTeamStatusByTrip;
             if (!forceRefresh && dockTeamStatusPromise) return dockTeamStatusPromise;
             dockTeamStatusPromise = (async () => {
                 const schemaReady = await ensureDockTeamSchemaReady(forceRefresh);
                 if (!schemaReady) {
                     dockTeamStatusLoaded = false;
-                    return dockTeamStatusByDock;
+                    return dockTeamStatusByTrip;
                 }
-                const rows = await supabaseFetch('ph_dock_team_status', 'GET', null, 'select=*');
+                const response = await runDockTripStatusRequest('list');
+                const rows = Array.isArray(response.data) ? response.data : [];
                 const nextMap = new Map();
                 (rows || []).forEach((row) => {
-                    const dockKey = normalizeDockTeamDockKey(row.dock_num || row.DOCK_NUM || row.dock || row.DOCK);
-                    if (!dockKey) return;
-                    nextMap.set(dockKey, normalizeDockTeamInfo(row));
+                    const tripKey = normalizeDockTeamTripKey(row.tripnumber || row.TRIPNUMBER);
+                    if (!tripKey) return;
+                    nextMap.set(tripKey, normalizeDockTeamInfo(row));
                 });
-                dockTeamStatusByDock = nextMap;
+                dockTeamStatusByTrip = nextMap;
                 dockTeamStatusRenderVersion += 1;
                 dockTeamStatusLoaded = true;
-                return dockTeamStatusByDock;
-            })().catch(() => dockTeamStatusByDock).finally(() => {
+                dockTeamSchemaReady = true;
+                return dockTeamStatusByTrip;
+            })().catch((error) => {
+                dockTeamStatusLoaded = false;
+                dockTeamSchemaReady = false;
+                maybeWarnDockTeamSchemaMissing();
+                return dockTeamStatusByTrip;
+            }).finally(() => {
                 dockTeamStatusPromise = null;
             });
             return dockTeamStatusPromise;
         }
 
-        function isDockTeamAssignedToCurrentUser(dockNum = '') {
-            const info = getDockTeamInfo(dockNum);
+        function isDockTeamAssignedToCurrentUser(tripNumber = '') {
+            const info = getDockTeamInfo(tripNumber);
             return [info.checker, info.inspector, info.mistake].some(value => isAssignedToCurrentUser(value));
         }
 
@@ -58101,7 +58114,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getDockRowQueueOwner(item = null) {
             if (!item) return '';
-            const teamInfo = getDockTeamInfo(item.DOCK_NUM);
+            const teamInfo = getDockTeamInfo(item.TRIPNUMBER);
             const queueStage = getDockRowQueueStage(item);
             if (queueStage === 'checker') return firstNonEmptyValue(teamInfo.checker, item.ASSIGNEDTO, '');
             if (queueStage === 'inspector') return firstNonEmptyValue(teamInfo.inspector, teamInfo.checker, item.ASSIGNEDTO, '');
@@ -58503,7 +58516,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getScopedDocksItems(items = socInventory, cacheScopeKey = '') {
             const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
-            let nextItems = Array.isArray(items) ? [...items] : [];
+            let nextItems = (Array.isArray(items) ? items : []).filter(isDockRowWithinPlanStartWindow);
             const scopeKey = String(firstNonEmptyValue(cacheScopeKey, items === socInventory ? getDatasetLoadSignature('soc') : '', '')).trim();
             const canUseCache = !!scopeKey;
             const cacheKey = canUseCache ? [
@@ -58523,8 +58536,6 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (isRep) {
                 nextItems = nextItems.filter(item => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')));
-            } else if (isQc && !isAdmin && !isQcSupervisor) {
-                nextItems = nextItems.filter(item => !isDockRowComplete(item) && isDockRowQueuedForCurrentUser(item));
             }
             if (canUseCache) {
                 docksScopedItemsCacheKey = cacheKey;
@@ -76101,6 +76112,7 @@ function toggleDriveQuickRequestItem(domId) {
             const scheduled = runDirectTrackedNavigation('request', `request-tab:${nextTab}`, () => {
                 activeReqTab = nextTab;
                 activeLocationMoveQueDetailUid = '';
+                activeLocationWorkJobId = '';
                 activeShearQueDetailId = '';
                 activeAvOptionEvalDetailId = '';
                 if (nextTab !== 'eval-work') activeEvalWorkDetailId = '';
@@ -83335,71 +83347,88 @@ function toggleDriveQuickRequestItem(domId) {
             }, { delay: 0, typingDelay: 180 });
         }
 
-        function openDockInfoModal(dockNum) {
+        function openDockInfoModal(dockNum, tripNumber) {
             if (!canEditDockWorkflow()) {
                 showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
                 return;
             }
-            pendingDockNum = dockNum; document.getElementById('modal-dock-num').innerText = dockNum;
-            let savedInfo = getDockTeamInfo(dockNum);
+            const tripKey = normalizeDockTeamTripKey(tripNumber);
+            if (!tripKey) {
+                showToast('Trip Number Required', 'This dock row does not have a TRIPNUMBER, so a shared team cannot be assigned.', true);
+                return;
+            }
+            pendingDockNum = normalizeDockViewDockKey(dockNum);
+            pendingDockTrip = String(tripNumber || '').trim();
+            document.getElementById('modal-dock-num').innerText = pendingDockNum;
+            document.getElementById('modal-dock-trip').innerText = pendingDockTrip;
+            let savedInfo = getDockTeamInfo(pendingDockTrip);
             updateDockAssignableTeamOptions(savedInfo);
             document.getElementById('dock-status').value = savedInfo.status || "Loading";
             document.getElementById('dock-info-modal').classList.remove('hidden');
-            ensureDockAssignableUsers().then(() => updateDockAssignableTeamOptions(getDockTeamInfo(dockNum))).catch(() => {});
+            ensureDockAssignableUsers().then(() => updateDockAssignableTeamOptions(getDockTeamInfo(pendingDockTrip))).catch(() => {});
             ensureDockTeamStatusLoaded().then(() => {
-                const refreshedInfo = getDockTeamInfo(dockNum);
+                const refreshedInfo = getDockTeamInfo(pendingDockTrip);
                 updateDockAssignableTeamOptions(refreshedInfo);
                 document.getElementById('dock-status').value = refreshedInfo.status || 'Loading';
             }).catch(() => {});
         }
 
-        function saveDockInfoModal() {
+        async function saveDockInfoModal(button = null) {
             if (!canEditDockWorkflow()) {
                 showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
                 return;
             }
-            if(!pendingDockNum) return;
-            const dockNum = normalizeDockTeamDockKey(pendingDockNum);
-            let info = normalizeDockTeamInfo({ checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value });
-            let appliedLocalDockInfo = false;
-            const applyLocalDockInfo = () => {
-                if (appliedLocalDockInfo) return;
-                appliedLocalDockInfo = true;
-                cacheDockTeamInfo(dockNum, info);
-                scheduleDocksRender(0, 0, true);
-            };
-            document.getElementById('dock-info-modal').classList.add('hidden');
+            if (!pendingDockNum || !pendingDockTrip) return;
+            const dockNum = normalizeDockViewDockKey(pendingDockNum);
+            const tripNumber = String(pendingDockTrip || '').trim();
+            const currentInfo = getDockTeamInfo(tripNumber);
+            const info = normalizeDockTeamInfo({
+                tripnumber: tripNumber,
+                dock_num: dockNum,
+                checker: document.getElementById('dock-checker').value,
+                inspector: document.getElementById('dock-inspector').value,
+                mistake: document.getElementById('dock-mistake').value,
+                status: document.getElementById('dock-status').value,
+                revision: currentInfo.revision
+            });
             if (navigator.onLine === false) {
-                applyLocalDockInfo();
-                showToast("Saved", "Dock updated on this device. Reconnect to sync the shared dock assignment.");
+                showToast('Not Saved', 'Reconnect before saving. Dock teams are shared and are never stored only on this device.', true);
                 return;
             }
-            ensureDockTeamSchemaReady().then((schemaReady) => {
-                if (!schemaReady) {
-                    dockTeamStatusLoaded = false;
-                    scheduleDocksRender(0, 0, true);
-                    showToast('Schema Required', 'Run dock_team_status_migration.sql in Supabase to share dock team assignments across users.', true);
-                    return false;
-                }
-                applyLocalDockInfo();
-                return supabaseFetch('ph_dock_team_status', 'POST', [{
-                    dock_num: dockNum,
-                    checker: info.checker || null,
-                    inspector: info.inspector || null,
-                    mistake: info.mistake || null,
+            const saveButton = button || document.getElementById('dock-info-save-button');
+            const originalLabel = saveButton ? saveButton.innerHTML : '';
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.classList.add('opacity-60', 'pointer-events-none');
+                saveButton.innerHTML = 'SAVING';
+            }
+            try {
+                const result = await runDockTripStatusRequest('upsert', {
+                    tripnumber: tripNumber,
+                    dockNum,
+                    checker: info.checker,
+                    inspector: info.inspector,
+                    mistake: info.mistake,
                     status: info.status || 'Loading',
-                    updated_by: currentUserDisplay || currentUser || null,
-                    updated_at: new Date().toISOString()
-                }]);
-            }).then((result) => {
-                if (result === false) return;
+                    expectedRevision: Number(currentInfo.revision || 0)
+                });
+                const savedInfo = cacheDockTeamInfo(tripNumber, result.data || info);
                 dockTeamStatusLoaded = true;
-                showToast("Saved", "Dock updated.");
+                dockTeamSchemaReady = true;
+                document.getElementById('dock-info-modal').classList.add('hidden');
+                queueAppLiveEventForWrite('ph_dock_trip_status', 'POST', [{ unique_id: tripNumber, tripnumber: tripNumber }], '');
+                showToast('Saved for Everyone', `Trip ${savedInfo.tripnumber || tripNumber} team and status are now shared with every Docks user.`);
                 scheduleDocksRender(0, 0, true);
-            }).catch(() => {
-                applyLocalDockInfo();
-                showToast("Error", "Dock team saved on this device, but the shared dock assignment update failed.", true);
-            });
+            } catch (error) {
+                const message = String(error && error.message || '').trim();
+                showToast('Not Saved', message.includes('changed') ? message : 'The shared Trip assignment was not saved. Refresh Docks and retry.', true);
+            } finally {
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.classList.remove('opacity-60', 'pointer-events-none');
+                    saveButton.innerHTML = originalLabel || 'SAVE & CONTINUE';
+                }
+            }
         }
 
         function clearDockMistakeIssuePhotoPreviewUrl() {
@@ -84819,6 +84848,7 @@ function toggleDriveQuickRequestItem(domId) {
             'PLANSTARTDATE', 'planstartdate', 'PLAN_START_DATE', 'plan_start_date',
             'PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart'
         ]);
+        const DOCK_PLANSTART_MIN_EPOCH_DAY = Math.floor(Date.UTC(2026, 0, 1) / 86400000);
 
         function getDockCardStateValue(item = null) {
             return String(firstNonEmptyValue(
@@ -84840,20 +84870,54 @@ function toggleDriveQuickRequestItem(domId) {
             return '';
         }
 
-        function formatDockCardPlanStartValue(value = '') {
+        function parseDockCardPlanStartEpochDay(value = '') {
             if (value instanceof Date && !Number.isNaN(value.getTime())) {
-                return `${value.getMonth() + 1}/${value.getDate()}/${value.getFullYear()}`;
+                return Math.floor(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()) / 86400000);
             }
             const text = String(value === null || value === undefined ? '' : value).trim();
-            if (!text) return '';
-            const isoMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\b|T|\s|$)/);
-            if (isoMatch) return `${Number(isoMatch[2])}/${Number(isoMatch[3])}/${isoMatch[1]}`;
-            const localMatch = text.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})(?:\b|T|\s|$)/);
-            if (localMatch) {
-                const year = localMatch[3].length === 2 ? `20${localMatch[3]}` : localMatch[3];
-                return `${Number(localMatch[1])}/${Number(localMatch[2])}/${year}`;
+            if (!text) return null;
+            let year = 0;
+            let month = 0;
+            let day = 0;
+            let match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\b|T|\s|$)/);
+            if (match) {
+                year = Number(match[1]); month = Number(match[2]); day = Number(match[3]);
+            } else {
+                match = text.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})(?:\b|T|\s|$)/);
+                if (match) {
+                    month = Number(match[1]); day = Number(match[2]); year = Number(match[3]);
+                    if (year < 100) year += 2000;
+                } else if (/\b\d{4}\b/.test(text)) {
+                    const parsed = new Date(text);
+                    if (!Number.isNaN(parsed.getTime())) {
+                        year = parsed.getFullYear(); month = parsed.getMonth() + 1; day = parsed.getDate();
+                    }
+                }
             }
-            return text;
+            if (!year || !month || !day) return null;
+            const stamp = Date.UTC(year, month - 1, day);
+            const check = new Date(stamp);
+            if (check.getUTCFullYear() !== year || check.getUTCMonth() + 1 !== month || check.getUTCDate() !== day) return null;
+            return Math.floor(stamp / 86400000);
+        }
+
+        function isDockRowWithinPlanStartWindow(item = null) {
+            const epochDay = parseDockCardPlanStartEpochDay(getDockCardPlanStartValue(item));
+            return epochDay !== null && epochDay >= DOCK_PLANSTART_MIN_EPOCH_DAY;
+        }
+
+        function formatDockCardPlanStartValue(value = '') {
+            const epochDay = parseDockCardPlanStartEpochDay(value);
+            if (epochDay === null) return '';
+            const date = new Date(epochDay * 86400000);
+            return `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`;
+        }
+
+        function compareDockPlanStartLabels(left = '', right = '') {
+            const leftDay = parseDockCardPlanStartEpochDay(left);
+            const rightDay = parseDockCardPlanStartEpochDay(right);
+            if (leftDay !== null && rightDay !== null && leftDay !== rightDay) return leftDay - rightDay;
+            return String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
         }
 
         function renderDocks() {
@@ -84863,7 +84927,8 @@ function toggleDriveQuickRequestItem(domId) {
             const access = getRoleAccessState();
             const canEditDockConfig = canEditDockWorkflow();
             updateDockModeToggleUi();
-            const waitingForDockAssignments = access.isQc && !access.isAdmin && !access.isQcSupervisor && (((!dockTeamStatusLoaded) && dockTeamSchemaReady !== false) || ((!dockItemProgressLoaded) && dockItemSchemaReady !== false));
+            const waitingForDockAssignments = ((!dockTeamStatusLoaded) && dockTeamSchemaReady !== false)
+                || (access.isQc && !access.isAdmin && !access.isQcSupervisor && ((!dockItemProgressLoaded) && dockItemSchemaReady !== false));
             const waitingForDockIssues = (!dockIssueDataLoaded) && dockIssueStatusSchemaReady !== false && dockIssueAllocationSchemaReady !== false;
             if (waitingForDockAssignments || waitingForDockIssues) {
                 if (!dockTeamStatusPromise) ensureDockTeamStatusLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
@@ -84900,11 +84965,11 @@ function toggleDriveQuickRequestItem(domId) {
             items = applyDockStructuredFilters(items);
             if(term) items = filterBySearch(items, term, 'docks');
             if (items.length === 0) {
-                if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (dockTeamSchemaReady === false || dockItemSchemaReady === false)) {
+                if (dockTeamSchemaReady === false || (access.isQc && !access.isAdmin && !access.isQcSupervisor && dockItemSchemaReady === false)) {
                     const missingParts = [];
-                    if (dockTeamSchemaReady === false) missingParts.push('dock_team_status_migration.sql');
+                    if (dockTeamSchemaReady === false) missingParts.push('shared Trip status');
                     if (dockItemSchemaReady === false) missingParts.push('dock_item_status_migration.sql');
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">Run ${missingParts.join(' and ')} in Supabase to share dock assignments and checker/inspector progress with QC users.</div>`;
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">${missingParts.join(' and ')} ${missingParts.length === 1 ? 'is' : 'are'} unavailable. Refresh after the current release finishes deploying.</div>`;
                     crumb.innerText = 'Dock Setup Required';
                     return;
                 }
@@ -84934,10 +84999,12 @@ function toggleDriveQuickRequestItem(domId) {
                     const dockNum = normalizeDockViewDockKey(item && item.DOCK_NUM);
                     let entry = dockGroups.get(dockNum);
                     if (!entry) {
-                        entry = { dockNum, count: 0, hasCoUt: false, states: new Set(), planStartDates: new Set() };
+                        entry = { dockNum, count: 0, hasCoUt: false, states: new Set(), planStartDates: new Set(), tripCounts: new Map() };
                         dockGroups.set(dockNum, entry);
                     }
                     entry.count += 1;
+                    const tripNumber = String(firstNonEmptyValue(item && item.TRIPNUMBER, '') || '').trim();
+                    if (tripNumber) entry.tripCounts.set(tripNumber, (entry.tripCounts.get(tripNumber) || 0) + 1);
                     const state = getDockCardStateValue(item);
                     const planStartDate = formatDockCardPlanStartValue(getDockCardPlanStartValue(item));
                     if (state) entry.states.add(state);
@@ -84949,18 +85016,24 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 const dockCards = [...dockGroups.values()].sort((a, b) => sortStops(a.dockNum, b.dockNum)).map((entry) => {
                     const dockNum = entry.dockNum;
-                    const savedInfo = getDockTeamInfo(dockNum);
-                    let statusColor = 'text-blue-600 bg-blue-50';
-                    if (savedInfo.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
-                    else if (savedInfo.status === 'Palletize') statusColor = 'text-purple-600 bg-purple-50';
-                    else if (savedInfo.status === 'Complete') statusColor = 'text-green-600 bg-green-50';
-                    return { dockNum, dockLabel: formatDockViewDockLabel(dockNum), count: entry.count, states: Array.from(entry.states).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), planStartDates: Array.from(entry.planStartDates).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), savedInfo, dockTeamRenderVersion: dockTeamStatusRenderVersion, dockTeamChecker: savedInfo.checker || '', dockTeamInspector: savedInfo.inspector || '', dockTeamMistake: savedInfo.mistake || '', dockTeamStatus: savedInfo.status || '', statusColor, borderCls: entry.hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: entry.hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: entry.hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
+                    const trips = Array.from(entry.tripCounts.entries())
+                        .sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }))
+                        .map(([tripNumber, rowCount]) => ({ tripNumber, rowCount, savedInfo: getDockTeamInfo(tripNumber) }));
+                    return { dockNum, dockLabel: formatDockViewDockLabel(dockNum), count: entry.count, states: Array.from(entry.states).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), planStartDates: Array.from(entry.planStartDates).sort(compareDockPlanStartLabels), trips, dockTeamRenderVersion: dockTeamStatusRenderVersion, borderCls: entry.hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: entry.hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: entry.hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
                 });
                 renderMarkupChunkedByKey('docks-main', container, crumb, dockCards, 'Select a Dock', (dockCard) => {
-                    const editDockButton = canEditDockConfig ? `<button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(dockCard.dockNum)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>` : '';
                     const statesLabel = dockCard.states.length ? dockCard.states.join(', ') : '-';
                     const planStartLabel = dockCard.planStartDates.length ? dockCard.planStartDates.join(', ') : '-';
-                    return `<div class="bg-white border-2 ${dockCard.borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 cursor-pointer active:${dockCard.bgCls} transition-colors" ${buildFastInvokeAttrs('selectDock', [dockCard.dockNum], `Open ${dockCard.dockLabel}`)}><div class="flex justify-between items-center"><div class="flex items-center gap-3"><div class="${dockCard.bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${dockCard.textCls}"></i></div><div><div class="font-black text-lg ${dockCard.textCls} leading-tight">${dockCard.dockLabel}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${dockCard.count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="mt-3 grid grid-cols-1 gap-2 text-[10px] font-bold uppercase tracking-wider sm:grid-cols-2"><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-map-pin mr-1 text-[#007a4d]"></i><span class="text-gray-400">States:</span> ${escapeHtml(statesLabel)}</div><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-calendar-blank mr-1 text-[#007a4d]"></i><span class="text-gray-400">Plan Start:</span> ${escapeHtml(planStartLabel)}</div></div></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${dockCard.statusColor}">${dockCard.savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${dockCard.savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${dockCard.savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${dockCard.savedInfo.mistake || '-'}</div></div></div>${editDockButton}</div></div>`;
+                    const tripHtml = dockCard.trips.length ? dockCard.trips.map((trip) => {
+                        const info = trip.savedInfo;
+                        let statusColor = 'text-blue-600 bg-blue-50';
+                        if (info.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
+                        else if (info.status === 'Palletize') statusColor = 'text-purple-600 bg-purple-50';
+                        else if (info.status === 'Complete') statusColor = 'text-green-600 bg-green-50';
+                        const editButton = canEditDockConfig ? `<button class="mt-3 w-full rounded-lg border border-gray-200 bg-white py-2 text-xs font-bold text-gray-600 shadow-sm transition-colors hover:border-[#007a4d] hover:text-[#007a4d]" ${buildFastInvokeAttrs('openDockInfoModal', [dockCard.dockNum, trip.tripNumber], `Edit Trip ${trip.tripNumber}`)}><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Trip Team & Status</button>` : '';
+                        return `<section class="rounded-xl border border-gray-200 bg-gray-50 p-3"><div class="mb-2 flex items-center justify-between gap-2"><div><span class="text-[9px] font-black uppercase tracking-wider text-gray-400">Trip</span><div class="text-sm font-black text-gray-800">${escapeHtml(trip.tripNumber)}</div></div><div class="text-right"><span class="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${statusColor}">${escapeHtml(info.status)}</span><div class="mt-1 text-[8px] font-bold uppercase tracking-wider text-gray-400">${trip.rowCount} rows</div></div></div><div class="grid grid-cols-3 gap-2"><div class="rounded border border-gray-200 bg-white p-2 text-center"><div class="mb-0.5 text-[8px] font-bold uppercase text-gray-400">Checker</div><div class="truncate text-xs font-bold text-gray-700">${escapeHtml(info.checker || '-')}</div></div><div class="rounded border border-gray-200 bg-white p-2 text-center"><div class="mb-0.5 text-[8px] font-bold uppercase text-gray-400">Inspector</div><div class="truncate text-xs font-bold text-gray-700">${escapeHtml(info.inspector || '-')}</div></div><div class="rounded border border-gray-200 bg-white p-2 text-center"><div class="mb-0.5 text-[8px] font-bold uppercase text-gray-400">Mistake Guy</div><div class="truncate text-xs font-bold text-gray-700">${escapeHtml(info.mistake || '-')}</div></div></div>${editButton}</section>`;
+                    }).join('') : '<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-bold text-amber-800">No TRIPNUMBER is available for these rows.</div>';
+                    return `<div class="bg-white border-2 ${dockCard.borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 cursor-pointer active:${dockCard.bgCls} transition-colors" ${buildFastInvokeAttrs('selectDock', [dockCard.dockNum], `Open ${dockCard.dockLabel}`)}><div class="flex justify-between items-center"><div class="flex items-center gap-3"><div class="${dockCard.bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${dockCard.textCls}"></i></div><div><div class="font-black text-lg ${dockCard.textCls} leading-tight">${dockCard.dockLabel}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${dockCard.count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="mt-3 grid grid-cols-1 gap-2 text-[10px] font-bold uppercase tracking-wider sm:grid-cols-2"><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-map-pin mr-1 text-[#007a4d]"></i><span class="text-gray-400">States:</span> ${escapeHtml(statesLabel)}</div><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-calendar-blank mr-1 text-[#007a4d]"></i><span class="text-gray-400">Plan Start:</span> ${escapeHtml(planStartLabel)}</div></div></div><div class="space-y-3 border-t border-gray-100 bg-gray-50 p-3">${tripHtml}</div></div>`;
                 }, { approxCardHeight: 260, emptyHtml: `<div class="p-8 text-center text-gray-400">No dock items found.</div>` });
                 return;
             }
@@ -88292,7 +88365,7 @@ function toggleDriveQuickRequestItem(domId) {
             }));
             const canUseFlyerFromBloom = (canUseDriveQuickRequest() || canUseFullDriveActions) && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             const canUseEvalTaskAction = canUseEvalTaskAssignment() && getEvalTaskSelectionItems(items).length > 0;
-            const canUseMoveQueue = canUseInventoryActions && !!currentUser;
+            const canUseMoveQueue = canUseInventoryActions && canCreateLocationWorkJob();
             const canUseGroupedNcrAction = canUseInventoryActions && (access.isAdmin || canUseGroupedBloomNcr());
             if (access.isForeman) {
                 const canUseForemanTakeBack = canUseInventoryActions && items.every((item) => hasPriorityColumnData(item));
@@ -88304,7 +88377,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showEvalTask: false,
                     showNcr: false,
                     showRequest: false,
-                    showMove: canUseMoveQueue,
+                    showMove: false,
                     showFlyer: false,
                     showTakeBack: canUseForemanTakeBack,
                     showEndCap: false,
@@ -88323,7 +88396,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showEvalTask: false,
                     showNcr: false,
                     showRequest: canUseFullDriveActions ? canUseInventoryActions : (hasRepBloomOnlySelection ? false : canUseInventoryActions),
-                    showMove: canUseFullDriveActions ? canUseMoveQueue : (hasRepBloomOnlySelection ? false : canUseMoveQueue),
+                    showMove: false,
                     showFlyer: canUseFullDriveActions ? canUseFlyerFromBloom : (hasRepBloomOnlySelection ? false : canUseFlyerFromBloom),
                     showTakeBack: canUseFullDriveActions && canUseInventoryActions,
                     showEndCap: canUseFullDriveActions && canUseInventoryActions,
@@ -105956,6 +106029,182 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
+        async function loadLocationWorkJobs(force = false) {
+            if (locationWorkLoading) return locationWorkRows;
+            if (locationWorkLoaded && !force) return locationWorkRows;
+            locationWorkLoading = true;
+            locationWorkError = '';
+            try {
+                const result = await locationWorkApi('list', { status: 'all' }, { timeoutMs: 20000 });
+                locationWorkRows = Array.isArray(result.data) ? result.data : [];
+                locationWorkLoaded = true;
+                return locationWorkRows;
+            } catch (error) {
+                locationWorkError = String(error && error.message || 'Location Work could not be loaded.');
+                throw error;
+            } finally {
+                locationWorkLoading = false;
+                if (isViewVisible('request') && activeReqTab === 'moves') scheduleRequestRender(0, 44, true);
+            }
+        }
+
+        function getLocationWorkJobById(jobId = '') {
+            const id = String(jobId || '').trim();
+            return locationWorkRows.find((job) => String(job && job.id || '') === id) || null;
+        }
+
+        async function openLocationWorkJob(jobId = '') {
+            const id = String(jobId || '').trim();
+            if (!id) return false;
+            activeLocationWorkJobId = id;
+            try {
+                const result = await locationWorkApi('get', { jobId: id }, { timeoutMs: 20000 });
+                const detail = result.data && typeof result.data === 'object' ? result.data : null;
+                if (!detail) throw new Error('Location Work job not found.');
+                const index = locationWorkRows.findIndex((job) => String(job && job.id || '') === id);
+                if (index >= 0) locationWorkRows[index] = detail;
+                else locationWorkRows.unshift(detail);
+                scheduleRequestRender(0, 44, true);
+            } catch (error) {
+                activeLocationWorkJobId = '';
+                showToast('Could Not Open', String(error && error.message || 'Location Work could not be opened.'), true);
+            }
+            return false;
+        }
+
+        function closeLocationWorkJob() {
+            activeLocationWorkJobId = '';
+            scheduleRequestRender(0, 44, true);
+            return false;
+        }
+
+        function renderLocationWorkDeliveryState(job = null, kind = 'assignment') {
+            const delivery = kind === 'completion' ? job && job.completionDelivery : job && job.assignmentDelivery;
+            const status = String(delivery && delivery.status || '').toLowerCase();
+            if (status === 'delivered') return `<span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700"><i class="ph-bold ph-check-circle"></i>Email Sent</span>`;
+            if (['failed','unknown'].includes(status)) {
+                const canRetry = canCreateLocationWorkJob();
+                return `<span class="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-red-700"><i class="ph-bold ph-warning-circle"></i>Email Failed${canRetry ? ` <button type="button" class="underline" onclick="event.stopPropagation();return retryLocationWorkEmail('${escJsAttrValue(job.id)}','${escJsAttrValue(kind)}',${Number(job.revision || 1)})">Retry</button>` : ''}</span>`;
+            }
+            return '';
+        }
+
+        function renderLocationWorkQueueCard(job = null) {
+            const status = String(job && job.status || 'open').replace(/_/g, ' ');
+            const assignees = Array.isArray(job && job.assigned_usernames) ? job.assigned_usernames : [];
+            return `<button type="button" class="mb-3 block w-full rounded-2xl border border-blue-200 bg-white p-4 text-left shadow-sm active:scale-[.995]" onclick="return openLocationWorkJob('${escJsAttrValue(job && job.id || '')}')"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Location Work · ${esc(status)}</div><div class="mt-1 text-lg font-black text-slate-900">${esc(String(job && job.title || 'Location Work'))}</div><div class="mt-2 text-xs font-bold text-slate-500">${Number(job && job.resolved_line_count || 0)} of ${Number(job && job.line_count || 0)} lines resolved · ${esc(assignees.join(', ') || 'Unassigned')}</div></div><i class="ph-bold ph-caret-right text-xl text-blue-600"></i></div><div class="mt-3 flex flex-wrap gap-2">${renderLocationWorkDeliveryState(job, 'assignment')}${renderLocationWorkDeliveryState(job, 'completion')}</div></button>`;
+        }
+
+        function renderLocationWorkQueue() {
+            if (locationWorkLoading && !locationWorkLoaded) return '<div class="mb-3 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold text-blue-700">Loading Location Work…</div>';
+            if (locationWorkError) return `<div class="mb-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">${esc(locationWorkError)}</div>`;
+            return locationWorkRows.map((job) => renderLocationWorkQueueCard(job)).join('');
+        }
+
+        function renderLocationWorkLine(job = null, line = null) {
+            const pending = String(line && line.resolution_status || 'pending') === 'pending';
+            const lineId = String(line && line.id || '');
+            const destination = String(line && line.destination_locationcode || '').trim();
+            const resolution = String(line && line.resolution_status || 'pending').replace(/_/g, ' ');
+            return `<article class="rounded-2xl border ${pending ? 'border-blue-200 bg-white' : 'border-emerald-200 bg-emerald-50/40'} p-3"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-sm font-black text-slate-900">${esc(String(line && line.commonname || 'Inventory Row'))} <span class="text-slate-500">${esc(String(line && line.contsize || ''))}</span></div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">${esc(String(line && line.action_type || '').toUpperCase())} · ${esc(String(line && line.itemcode || ''))} · SY ${esc(String(line && line.salesyear || ''))}</div></div><span class="rounded-full border border-slate-200 bg-white px-2 py-1 text-[9px] font-black uppercase text-slate-600">${esc(resolution)}</span></div><div class="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700 sm:grid-cols-4"><div><span class="block text-[8px] uppercase text-slate-400">Planned</span>${Number(line && line.planned_qty || 0)}</div><div><span class="block text-[8px] uppercase text-slate-400">From</span>${esc(String(line && line.source_locationcode || '-'))}</div><div><span class="block text-[8px] uppercase text-slate-400">To</span>${esc(destination || '—')}</div><div><span class="block text-[8px] uppercase text-slate-400">On Hand</span>${Number(line && line.snapshotted_on_hand || 0)}</div></div>${line && line.instructions ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">${esc(String(line.instructions))}</div>` : ''}${pending ? `<div class="mt-3 grid gap-3 border-t border-blue-100 pt-3 sm:grid-cols-2"><div><label class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Actual Qty</label><input id="location-work-actual-${esc(lineId)}" class="input-field !mb-2" inputmode="numeric" pattern="[0-9]*" placeholder="Required for Done"><button type="button" class="w-full rounded-xl bg-[#007a4d] px-3 py-3 text-xs font-black uppercase tracking-[0.12em] text-white" onclick="return resolveLocationWorkLine('${escJsAttrValue(job.id)}','${escJsAttrValue(lineId)}','done')">Done</button></div><div><label class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Reason</label><input id="location-work-reason-${esc(lineId)}" class="input-field !mb-2" maxlength="2000" placeholder="Required when not completed"><button type="button" class="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-black uppercase tracking-[0.12em] text-red-700" onclick="return resolveLocationWorkLine('${escJsAttrValue(job.id)}','${escJsAttrValue(lineId)}','not_completed')">Not Completed</button></div></div>` : `<div class="mt-3 text-xs font-bold text-emerald-800">${line.resolution_status === 'done' ? `Actual Qty: ${Number(line.actual_qty || 0)}` : `Not Completed: ${esc(String(line.not_completed_reason || ''))}`}</div>`}</article>`;
+        }
+
+        function renderLocationWorkDetail(job = null) {
+            const lines = Array.isArray(job && job.lines) ? job.lines : [];
+            const groups = new Map();
+            lines.forEach((line) => {
+                const key = String(line && line.source_locationcode || 'No Location');
+                const group = groups.get(key) || [];
+                group.push(line);
+                groups.set(key, group);
+            });
+            const sections = Array.from(groups.entries()).map(([location, group]) => `<section class="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div class="mb-3 text-sm font-black uppercase tracking-[0.12em] text-slate-700">Source ${esc(location)} · ${group.length} line${group.length === 1 ? '' : 's'}</div><div class="space-y-3">${group.map((line) => renderLocationWorkLine(job, line)).join('')}</div></section>`).join('');
+            const canManage = canCreateLocationWorkJob() && ['open','in_progress'].includes(String(job && job.status || ''));
+            return `<div class="space-y-4"><button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-600" onclick="return closeLocationWorkJob()"><i class="ph-bold ph-arrow-left"></i>Location Work</button><section class="rounded-2xl border border-blue-200 bg-white p-4"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">${esc(String(job.status || '').replace(/_/g, ' '))}</div><h2 class="mt-1 text-2xl font-black text-slate-900">${esc(String(job.title || 'Location Work'))}</h2><div class="mt-2 text-sm font-semibold text-slate-600 whitespace-pre-wrap">${esc(String(job.general_instructions || ''))}</div><div class="mt-3 text-xs font-bold text-slate-500">Assigned: ${esc((Array.isArray(job.assigned_usernames) ? job.assigned_usernames : []).join(', '))}</div></div><div class="flex flex-wrap gap-2">${renderLocationWorkDeliveryState(job, 'assignment')}${renderLocationWorkDeliveryState(job, 'completion')}</div></div>${canManage ? `<div class="mt-4 flex flex-wrap gap-2">${Number(job.resolved_line_count || 0) === 0 ? `<button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-blue-700" onclick="return editLocationWorkJob('${escJsAttrValue(job.id)}')">Edit Job Details</button>` : ''}<button type="button" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-red-700" onclick="return cancelLocationWorkJob('${escJsAttrValue(job.id)}',${Number(job.revision || 1)})">Cancel Work</button></div>` : ''}</section>${sections || '<div class="p-8 text-center text-sm font-bold text-slate-400">No worksheet lines.</div>'}</div>`;
+        }
+
+        async function editLocationWorkJob(jobId = '') {
+            const job = getLocationWorkJobById(jobId);
+            if (!job || !canCreateLocationWorkJob()) return false;
+            const title = window.prompt('Job title', String(job.title || ''));
+            if (title == null) return false;
+            const generalInstructions = window.prompt('General instructions', String(job.general_instructions || ''));
+            if (generalInstructions == null) return false;
+            if (!String(title).trim() || !String(generalInstructions).trim()) {
+                showToast('Required Fields', 'Job title and general instructions are required.', true);
+                return false;
+            }
+            try {
+                await locationWorkApi('edit', { jobId, expectedRevision: Number(job.revision || 1), title: String(title).trim(), generalInstructions: String(generalInstructions).trim() }, { timeoutMs: 30000 });
+                const result = await locationWorkApi('get', { jobId }, { timeoutMs: 20000 });
+                const index = locationWorkRows.findIndex((entry) => String(entry && entry.id || '') === String(jobId));
+                if (index >= 0) locationWorkRows[index] = result.data;
+                scheduleRequestRender(0, 44, true);
+            } catch (error) {
+                showToast('Could Not Edit', String(error && error.message || 'Location Work was not updated.'), true);
+            }
+            return false;
+        }
+
+        async function resolveLocationWorkLine(jobId = '', lineId = '', status = '') {
+            const job = getLocationWorkJobById(jobId);
+            const line = job && Array.isArray(job.lines) ? job.lines.find((entry) => String(entry && entry.id || '') === String(lineId || '')) : null;
+            if (!job || !line) return false;
+            const actualField = document.getElementById(`location-work-actual-${lineId}`);
+            const reasonField = document.getElementById(`location-work-reason-${lineId}`);
+            const actualQty = status === 'done' ? Number(actualField && actualField.value) : null;
+            const reason = status === 'not_completed' ? String(reasonField && reasonField.value || '').trim() : '';
+            if (status === 'done' && (!Number.isInteger(actualQty) || actualQty < 0)) {
+                showToast('Actual Qty Required', 'Enter a whole-number Actual Qty.', true);
+                return false;
+            }
+            if (status === 'not_completed' && !reason) {
+                showToast('Reason Required', 'Explain why this line was not completed.', true);
+                return false;
+            }
+            let varianceConfirmed = false;
+            if (status === 'done' && actualQty > Number(line.planned_qty || 0)) {
+                varianceConfirmed = window.confirm(`Actual Qty ${actualQty} is above planned Qty ${Number(line.planned_qty || 0)}. Record this variance?`);
+                if (!varianceConfirmed) return false;
+            }
+            try {
+                await locationWorkApi('resolve_line', { jobId, lineId, expectedRevision: Number(job.revision || 1), resolutionStatus: status, actualQty, notCompletedReason: reason, varianceConfirmed }, { timeoutMs: 30000 });
+                const result = await locationWorkApi('get', { jobId }, { timeoutMs: 20000 });
+                const index = locationWorkRows.findIndex((entry) => String(entry && entry.id || '') === String(jobId));
+                if (index >= 0) locationWorkRows[index] = result.data;
+                scheduleRequestRender(0, 44, true);
+            } catch (error) {
+                showToast('Could Not Save', String(error && error.message || 'The worksheet line was not saved.'), true);
+            }
+            return false;
+        }
+
+        async function cancelLocationWorkJob(jobId = '', expectedRevision = 0) {
+            if (!window.confirm('Cancel this Location Work job? Its historical worksheet will remain available.')) return false;
+            try {
+                await locationWorkApi('cancel', { jobId, expectedRevision }, { timeoutMs: 20000 });
+                activeLocationWorkJobId = '';
+                locationWorkLoaded = false;
+                await loadLocationWorkJobs(true);
+            } catch (error) {
+                showToast('Could Not Cancel', String(error && error.message || 'Location Work was not cancelled.'), true);
+            }
+            return false;
+        }
+
+        async function retryLocationWorkEmail(jobId = '', deliveryKind = 'assignment', expectedRevision = 0) {
+            try {
+                await locationWorkApi('retry', { jobId, deliveryKind, expectedRevision }, { timeoutMs: 20000 });
+                const result = await locationWorkApi('get', { jobId }, { timeoutMs: 20000 });
+                const index = locationWorkRows.findIndex((entry) => String(entry && entry.id || '') === String(jobId));
+                if (index >= 0) locationWorkRows[index] = result.data;
+                scheduleRequestRender(0, 44, true);
+            } catch (error) {
+                showToast('Retry Failed', String(error && error.message || 'Email could not be retried.'), true);
+            }
+            return false;
+        }
+
         function renderRequest() {
             updateFooterRequestBadge();
             updateFooterChatBadge();
@@ -106058,7 +106307,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
 
             if (activeReqTab === 'moves') {
-                const crumbText = 'Location Move Que';
+                const crumbText = 'Location Work';
+                if (!locationWorkLoaded && !locationWorkLoading) loadLocationWorkJobs(false).catch(() => {});
+                const activeLocationWorkJob = activeLocationWorkJobId ? getLocationWorkJobById(activeLocationWorkJobId) : null;
+                if (activeLocationWorkJobId && activeLocationWorkJob && Array.isArray(activeLocationWorkJob.lines)) {
+                    applyRequestRenderMarkup(container, crumb, 'Location Work Detail', renderLocationWorkDetail(activeLocationWorkJob), `request:location-work:detail:${activeLocationWorkJob.id}:${activeLocationWorkJob.revision}:${activeLocationWorkJob.updated_at || ''}`);
+                    return;
+                }
                 const moveItems = getApprovedMoveRequestRowsForCurrentUser(items);
                 const activeMoveDetailUid = String(activeLocationMoveQueDetailUid || '').trim();
                 if (activeMoveDetailUid) {
@@ -106075,14 +106330,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     }
                     activeLocationMoveQueDetailUid = '';
                 }
-                if (!moveItems.length) {
-                    applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No location move queue rows.</div>`, 'request:moves:empty');
+                if (!moveItems.length && locationWorkLoaded && !locationWorkRows.length) {
+                    applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No Location Work jobs.</div>`, 'request:moves:empty');
                     return;
                 }
-                renderMarkupChunkedByKey('request-main', container, crumb, moveItems, crumbText, (item) => renderApprovedMoveRequestCard(item), getRequestChunkRenderOptions({
-                    renderSignature: buildRequestChunkRenderKey('request:moves', crumbText, moveItems),
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No location move queue rows.</div>`
-                }));
+                const locationWorkHtml = renderLocationWorkQueue();
+                const legacyHtml = moveItems.length ? `<section class="mt-5"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Historical Location Move Rows</div>${moveItems.map((item) => renderApprovedMoveRequestCard(item)).join('')}</section>` : '';
+                const signature = `request:moves:${locationWorkLoading ? 'loading' : 'ready'}:${locationWorkError}:${locationWorkRows.map((job) => `${job.id}:${job.revision}:${job.status}`).join('|')}:${buildRequestChunkRenderKey('legacy', crumbText, moveItems)}`;
+                applyRequestRenderMarkup(container, crumb, crumbText, `${locationWorkHtml}${legacyHtml}`, signature);
                 return;
             }
 
@@ -131434,75 +131689,188 @@ C.14.043 C.15.000
             return record;
         }
 
+        async function locationWorkApi(operation = 'list', payload = {}, options = {}) {
+            const result = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                ...(payload && typeof payload === 'object' ? payload : {}),
+                action: 'location_work',
+                operation: String(operation || '').trim().toLowerCase()
+            }, {
+                timeoutMs: Math.max(3000, Number(options && options.timeoutMs) || 30000),
+                label: `Location Work ${operation}`,
+                idempotencyKey: String(options && options.idempotencyKey || '').trim()
+            });
+            if (!result || result.ok !== true) {
+                const error = new Error(String(result && (result.error || result.message) || 'Location Work request failed.'));
+                error.payload = result && typeof result === 'object' ? result : null;
+                throw error;
+            }
+            return result;
+        }
+
+        function getLocationWorkOnHand(row = null) {
+            const value = Number(firstNonEmptyValue(row && row.PTRONHAND, row && row.ptronhand, 0));
+            return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+        }
+
+        function getLocationWorkDestinationGroups(sourceRow = null) {
+            const groups = new Map();
+            getLocationMoveDestinationRowsForSource(sourceRow).forEach((row) => {
+                const locationcode = getSelectedMoveLocation(row);
+                if (!locationcode) return;
+                const key = locationcode.toUpperCase();
+                const current = groups.get(key) || { locationcode, onHand: 0, matchingRows: 0 };
+                current.onHand += getLocationWorkOnHand(row);
+                current.matchingRows += 1;
+                groups.set(key, current);
+            });
+            return Array.from(groups.values()).sort((a, b) => a.locationcode.localeCompare(b.locationcode, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getLocationWorkLineDraft(item = null) {
+            const sourceUid = getSelectedMoveSourceUid(item);
+            if (!locationWorkLineDrafts.has(sourceUid)) {
+                locationWorkLineDrafts.set(sourceUid, {
+                    sourceUniqueId: sourceUid,
+                    actionType: 'move',
+                    plannedQty: getLocationWorkOnHand(item),
+                    destinationLocationcode: '',
+                    instructions: ''
+                });
+            }
+            return locationWorkLineDrafts.get(sourceUid);
+        }
+
+        function setLocationWorkLineField(sourceUid = '', field = '', value = '') {
+            const item = selectedLocationMoveItems.find((row) => getSelectedMoveSourceUid(row) === String(sourceUid || '').trim());
+            if (!item) return false;
+            const draft = getLocationWorkLineDraft(item);
+            if (field === 'actionType') {
+                draft.actionType = String(value || '').trim().toLowerCase();
+                if (draft.actionType === 'ta') draft.destinationLocationcode = '';
+            } else if (field === 'plannedQty') draft.plannedQty = String(value || '').replace(/[^0-9]/g, '');
+            else if (field === 'instructions') draft.instructions = String(value || '').slice(0, 4000);
+            else if (field === 'destinationLocationcode') draft.destinationLocationcode = normalizeMoveQueueDestinationInput(value);
+            locationWorkLineDrafts.set(draft.sourceUniqueId, draft);
+            if (field === 'actionType' || field === 'destinationLocationcode') renderSelectedMoveModalRows(selectedLocationMoveItems);
+            return false;
+        }
+
+        function toggleLocationWorkRecipients() {
+            const panel = document.getElementById('location-work-recipient-options');
+            if (panel) panel.classList.toggle('hidden');
+            return false;
+        }
+
+        function toggleLocationWorkRecipient(profileId = '') {
+            const id = String(profileId || '').trim();
+            if (!id) return false;
+            if (locationWorkSelectedRecipientIds.has(id)) locationWorkSelectedRecipientIds.delete(id);
+            else locationWorkSelectedRecipientIds.add(id);
+            renderLocationWorkRecipients();
+            return false;
+        }
+
+        function renderLocationWorkRecipients() {
+            const panel = document.getElementById('location-work-recipient-options');
+            const label = document.getElementById('location-work-recipient-label');
+            const selected = locationWorkRecipientOptions.filter((entry) => locationWorkSelectedRecipientIds.has(String(entry.profileId || '')));
+            if (label) label.textContent = selected.length ? `${selected.length} user${selected.length === 1 ? '' : 's'} selected` : 'Choose users';
+            if (!panel) return;
+            panel.innerHTML = locationWorkRecipientOptions.length ? locationWorkRecipientOptions.map((entry) => {
+                const id = String(entry.profileId || '');
+                const checked = locationWorkSelectedRecipientIds.has(id);
+                return `<button type="button" class="mb-1 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left text-sm font-black ${checked ? 'border-emerald-400 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-700'}" onclick="return toggleLocationWorkRecipient('${escJsAttrValue(id)}')"><span>${esc(String(entry.display || entry.username || 'User'))}</span><i class="ph-bold ${checked ? 'ph-check-circle' : 'ph-circle'}"></i></button>`;
+            }).join('') : '<div class="p-3 text-center text-xs font-bold text-slate-400">No active users with verified email addresses.</div>';
+        }
+
         function renderSelectedMoveModalRows(items = getCartSelectedItems()) {
             const container = document.getElementById('move-selected-list');
             const summary = document.getElementById('move-selected-summary');
-            const list = (Array.isArray(items) ? items : []).filter((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
-            if (summary) summary.innerText = `${list.length} selected row${list.length === 1 ? '' : 's'} will go to Managers > Location Move. Select the destination row for each itemcode.`;
+            const seen = new Set();
+            const list = (Array.isArray(items) ? items : []).filter((item) => {
+                if (!item || isRequestLikeItem(item) || isDockLikeItem(item) || isSalesOfficeLikeItem(item)) return false;
+                const uid = getSelectedMoveSourceUid(item);
+                if (!uid || seen.has(uid)) return false;
+                seen.add(uid);
+                return true;
+            });
+            if (summary) summary.innerText = `${list.length} physical row${list.length === 1 ? '' : 's'} will become one Queue job and one assignment PDF.`;
             if (!container) return;
             if (!list.length) {
                 container.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-[12px] font-bold text-slate-400">No inventory rows selected.</div>';
                 return;
             }
             container.innerHTML = list.map((item) => {
-                const common = String(firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Move Row') || 'Move Row').trim();
-                const size = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '-') || '-').trim();
-                const loc = getSelectedMoveLocation(item) || '-';
-                const lot = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '-') || '-').trim();
-                const itemcode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-') || '-').trim();
-                const qty = getSelectedMoveAvailableQty(item);
-                const moveQty = getSelectedMovePlannedQty(item);
-                const salesYear = getLocationMoveSalesYear(item);
                 const sourceUid = getSelectedMoveSourceUid(item);
-                const showMoveQty = String(moveQty || '').trim() && String(moveQty || '').trim() !== String(qty || '').trim();
-                const candidates = getLocationMoveDestinationRowsForSource(item);
-                const destinationHtml = candidates.length
-                    ? candidates.map((row) => renderLocationMoveDestinationChoice(item, row)).join('')
-                    : `<div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-6 text-center text-[12px] font-bold text-amber-800">No other ${esc(itemcode)} row was found in salesyear ${esc(String(salesYear || '-'))}. This row cannot be submitted as a Location Move until a destination row exists.</div>`;
-                return `<div class="rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm" data-location-move-source="${esc(sourceUid)}">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <div class="text-sm font-black leading-tight text-slate-900">${esc(common)} <span class="text-slate-500">${esc(size)}</span></div>
-                            <div class="mt-1 flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-[0.1em]">
-                                <span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-blue-700">From ${esc(loc)}</span>
-                                <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">Item ${esc(itemcode)}</span>
-                                <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">Lot ${esc(lot)}</span>
-                                <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">SY ${esc(String(salesYear || '-'))}</span>
-                            </div>
-                        </div>
-                        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-right">
-                            <div class="text-[8px] font-black uppercase tracking-[0.12em] text-emerald-700">Available</div>
-                            <div class="text-base font-black text-emerald-900">${esc(qty || '0')}</div>
-                            ${showMoveQty ? `<div class="mt-1 rounded-md border border-emerald-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-700">Move Up ${esc(moveQty)}</div>` : ''}
-                        </div>
-                    </div>
-                    <div class="mt-3 border-t border-emerald-100 pt-3">
-                        <div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Select Destination Row</div>
-                        <div class="grid grid-cols-1 gap-3">${destinationHtml}</div>
-                    </div>
-                </div>`;
+                const draft = getLocationWorkLineDraft(item);
+                const itemcode = getSelectedMoveItemCode(item) || '-';
+                const common = String(firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Inventory Row') || 'Inventory Row').trim();
+                const size = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '-') || '-').trim();
+                const location = getSelectedMoveLocation(item) || '-';
+                const salesYear = getLocationMoveSalesYear(item);
+                const onHand = getLocationWorkOnHand(item);
+                const groups = getLocationWorkDestinationGroups(item);
+                const action = String(draft.actionType || 'move');
+                const destinationEnabled = action !== 'ta';
+                const destinationRequired = action === 'move';
+                const destinationHtml = destinationEnabled ? `<div class="mt-3 border-t border-blue-100 pt-3"><div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Destination ${destinationRequired ? 'Required' : 'Optional'} — same ITEMCODE and sales year</div>${groups.length ? `<div class="grid gap-2 sm:grid-cols-2">${groups.map((group) => {
+                    const selected = String(draft.destinationLocationcode || '').toUpperCase() === String(group.locationcode || '').toUpperCase();
+                    return `<button type="button" class="rounded-xl border px-3 py-3 text-left ${selected ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200 bg-white'}" onclick="return setLocationWorkLineField('${escJsAttrValue(sourceUid)}','destinationLocationcode','${escJsAttrValue(selected ? '' : group.locationcode)}')"><div class="text-sm font-black text-slate-900">${selected ? '✓ ' : ''}${esc(group.locationcode)}</div><div class="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">On Hand ${esc(String(group.onHand))} · ${esc(String(group.matchingRows))} matching row${group.matchingRows === 1 ? '' : 's'}</div></button>`;
+                }).join('')}</div>` : `<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">No eligible destination exists for ${esc(itemcode)} sales year ${esc(String(salesYear || '-'))}. Choose TA, or use Grade/Save without a destination.</div>`}</div>` : '';
+                return `<section class="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm" data-location-work-source="${esc(sourceUid)}">
+                    <div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-sm font-black text-slate-900">${esc(common)} <span class="text-slate-500">${esc(size)}</span></div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">${esc(itemcode)} · From ${esc(location)} · Sales Year ${esc(String(salesYear || '-'))}</div></div><div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-right"><div class="text-[8px] font-black uppercase text-emerald-700">On Hand</div><div class="text-lg font-black text-emerald-900">${esc(String(onHand))}</div></div></div>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2"><label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Action</span><select class="input-field !mb-0" onchange="return setLocationWorkLineField('${escJsAttrValue(sourceUid)}','actionType',this.value)">${[['ta','TA'],['move','Move'],['grade','Grade'],['save','Save']].map(([value,label]) => `<option value="${value}" ${action === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Action Qty</span><input class="input-field !mb-0" inputmode="numeric" pattern="[0-9]*" value="${esc(String(draft.plannedQty || ''))}" max="${onHand}" oninput="setLocationWorkLineField('${escJsAttrValue(sourceUid)}','plannedQty',this.value)" placeholder="1-${onHand}"></label></div>
+                    <label class="mt-3 block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Row Instructions Optional</span><textarea class="input-field !mb-0 min-h-[72px] resize-y" maxlength="4000" oninput="setLocationWorkLineField('${escJsAttrValue(sourceUid)}','instructions',this.value)" placeholder="Best plants, combining groups, timing, or special handling">${esc(String(draft.instructions || ''))}</textarea></label>
+                    ${destinationHtml}
+                </section>`;
             }).join('');
         }
 
-        function openSelectedRowsMoveModal(itemsOverride = null) {
-            const access = getRoleAccessState();
+        async function openSelectedRowsMoveModal(itemsOverride = null) {
+            if (!canCreateLocationWorkJob()) {
+                showToast('Restricted', 'Only Dylan can create Location Work.', true);
+                return false;
+            }
             const sourceItems = Array.isArray(itemsOverride) ? itemsOverride : getCartSelectedItems();
-            const items = sourceItems.filter((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
-            if (!currentUser && !(access.isAdmin || canUseMovesModule() || canUseInventoryEditDirectEmailActions() || canUseInventoryEditMock(items[0]))) {
-                showToast('Restricted', 'You cannot submit a Location Move for this row.', true);
-                return false;
-            }
+            const seen = new Set();
+            const items = sourceItems.filter((item) => {
+                if (!item || isRequestLikeItem(item) || isDockLikeItem(item) || isSalesOfficeLikeItem(item)) return false;
+                const uid = getSelectedMoveSourceUid(item);
+                if (!uid || seen.has(uid)) return false;
+                seen.add(uid);
+                return true;
+            });
             if (!items.length) {
-                showToast('No Rows', 'Select one or more inventory rows first.', true);
+                showToast('No Rows', 'Select one or more physical inventory rows first.', true);
                 return false;
             }
+            selectedLocationMoveItems = items;
+            selectedLocationMoveDestinationBySourceId = new Map();
+            locationWorkLineDrafts = new Map();
+            locationWorkRecipientOptions = [];
+            locationWorkSelectedRecipientIds = new Set();
+            locationWorkCreateToken = `location-work-${crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+            const title = document.getElementById('location-work-title');
+            const instructions = document.getElementById('location-work-instructions');
+            const recipientsPanel = document.getElementById('location-work-recipient-options');
+            if (title) title.value = '';
+            if (instructions) instructions.value = '';
+            if (recipientsPanel) recipientsPanel.classList.add('hidden');
             const modal = document.getElementById('move-selected-modal');
             const saveBtn = document.getElementById('move-selected-save-btn');
-            selectedLocationMoveItems = items.slice();
-            selectedLocationMoveDestinationBySourceId = new Map();
-            if (saveBtn) saveBtn.innerText = 'Submit';
+            if (saveBtn) saveBtn.innerHTML = 'Create &amp; Email';
             renderSelectedMoveModalRows(items);
+            renderLocationWorkRecipients();
             if (modal) modal.classList.remove('hidden');
+            try {
+                const result = await locationWorkApi('recipient_options', {}, { timeoutMs: 20000 });
+                locationWorkRecipientOptions = Array.isArray(result.data) ? result.data : [];
+                const dylan = locationWorkRecipientOptions.find((entry) => normalizePushUsername(entry.username || '') === 'dylan_collyge');
+                if (dylan && dylan.profileId) locationWorkSelectedRecipientIds.add(String(dylan.profileId));
+                renderLocationWorkRecipients();
+            } catch (error) {
+                showToast('Users Unavailable', String(error && error.message || 'Could not load assignment users.'), true);
+            }
             return false;
         }
 
@@ -131512,113 +131880,80 @@ C.14.043 C.15.000
             if (modal) modal.classList.add('hidden');
             selectedLocationMoveItems = [];
             selectedLocationMoveDestinationBySourceId = new Map();
+            locationWorkLineDrafts = new Map();
+            locationWorkRecipientOptions = [];
+            locationWorkSelectedRecipientIds = new Set();
+            locationWorkCreateToken = '';
             if (saveBtn) {
                 saveBtn.disabled = false;
                 saveBtn.classList.remove('opacity-70', 'pointer-events-none');
-                saveBtn.innerText = 'Submit';
+                saveBtn.innerHTML = 'Create &amp; Email';
             }
             return false;
         }
 
         async function submitSelectedRowsMoveQueue(button = null) {
-            const access = getRoleAccessState();
-            const sourceItems = selectedLocationMoveItems.length ? selectedLocationMoveItems : getCartSelectedItems();
-            const items = sourceItems.filter((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
-            if (!currentUser && !(access.isAdmin || canUseMovesModule() || canUseInventoryEditDirectEmailActions())) {
-                showToast('Restricted', 'You cannot submit Location Move rows.', true);
+            if (!canCreateLocationWorkJob()) {
+                showToast('Restricted', 'Only Dylan can create Location Work.', true);
                 return false;
             }
-            if (!items.length) {
-                showToast('No Rows', 'Select one or more inventory rows first.', true);
+            const title = String(document.getElementById('location-work-title') && document.getElementById('location-work-title').value || '').trim();
+            const generalInstructions = String(document.getElementById('location-work-instructions') && document.getElementById('location-work-instructions').value || '').trim();
+            if (!title || !generalInstructions) {
+                showToast('Required Fields', 'Enter a job title and general instructions.', true);
                 return false;
             }
-            const missingDestination = items.find((item) => !getLocationMoveDestinationForSource(item));
-            if (missingDestination) {
-                showToast('Destination Required', 'Select a destination row for every Location Move row.', true);
+            if (!locationWorkSelectedRecipientIds.size) {
+                showToast('Assigned Users Required', 'Choose at least one user to receive the Queue job and assignment PDF.', true);
                 return false;
             }
-            const toLocations = Array.from(new Set(items.map((item) => {
-                const destinationRow = getLocationMoveDestinationForSource(item);
-                return getSelectedMoveLocation(destinationRow);
-            }).filter(Boolean)));
-            const batchId = buildMovesBatchId(`location_move_${Date.now()}`, toLocations.join('_') || 'DEST');
-            const records = items.map((item) => {
-                const destinationRow = getLocationMoveDestinationForSource(item);
-                return buildDirectMoveRecordFromSelectedItem(item, getSelectedMoveLocation(destinationRow), batchId, destinationRow);
-            }).filter(Boolean);
-            if (!records.length) {
-                showToast('Could Not Create', 'No valid Location Move rows could be built from the selection.', true);
+            const lines = selectedLocationMoveItems.map((item) => {
+                const draft = getLocationWorkLineDraft(item);
+                return { ...draft, plannedQty: Number(draft.plannedQty) };
+            });
+            const invalid = lines.find((line, index) => {
+                const item = selectedLocationMoveItems[index];
+                const onHand = getLocationWorkOnHand(item);
+                const destinations = getLocationWorkDestinationGroups(item);
+                const eligible = !line.destinationLocationcode || destinations.some((entry) => entry.locationcode.toUpperCase() === String(line.destinationLocationcode).toUpperCase());
+                return !['ta','move','grade','save'].includes(line.actionType)
+                    || !Number.isInteger(line.plannedQty) || line.plannedQty < 1 || line.plannedQty > onHand
+                    || (line.actionType === 'move' && !line.destinationLocationcode)
+                    || (line.actionType === 'ta' && !!line.destinationLocationcode) || !eligible;
+            });
+            if (invalid) {
+                showToast('Check Worksheet', 'Each row needs a valid Action Qty. Move requires an eligible destination; TA cannot have one.', true);
                 return false;
             }
-            const duplicateCount = records.filter(hasActiveMoveRequestForMove).length;
-            const createdAt = new Date().toISOString();
-            const entries = records.filter((record) => !hasActiveMoveRequestForMove(record)).map((record) => {
-                const payload = buildMoveApprovalRequestPayload(record);
-                if (!payload) return null;
-                payload.request_folder = `Location Move ${new Date().toLocaleDateString()}`;
-                payload.req_customer = 'Location Move';
-                payload.req_comments = [
-                    record.move_instructions,
-                    `Move From: ${record.from_locationcode}`,
-                    `Move To: ${record.to_locationcode}`,
-                    record.to_source_unique_id ? `Destination Row: ${record.to_source_unique_id}` : '',
-                    record.move_destination_needs_row ? 'Destination location does not currently have this itemcode.' : ''
-                ].filter(Boolean).join('\n');
-                payload.assignedto = 'dylan_collyge';
-                payload.move_approval_stage = MOVE_APPROVAL_STAGE_DYLAN;
-                payload.move_status = MOVE_STATUS_PENDING_DYLAN;
-                payload.move_dylan_approved_at = null;
-                payload.move_jd_approved_at = null;
-                payload.updated_at = createdAt;
-                const clone = buildMoveApprovalRequestClone(record, payload);
-                return payload && clone ? { payload, clone, record } : null;
-            }).filter(Boolean);
-            if (!entries.length) {
-                showToast('Already Queued', duplicateCount ? 'Every selected row is already waiting in Location Move for that destination.' : 'No move rows were created.', true);
-                return false;
-            }
-            const requestIds = entries.map((entry) => entry.payload.unique_id).filter(Boolean);
             if (button) {
                 button.disabled = true;
                 button.classList.add('opacity-70', 'pointer-events-none');
-                button.innerText = 'Sending...';
+                button.textContent = 'Creating...';
             }
             try {
-                entries.forEach((entry) => requestsInventory.push(entry.clone));
-                rebuildRequestInventoryIndexes();
-                syncRealtimeRequestRows();
-                trackOptimisticRequestIds(requestIds);
-                refreshLocalRequestViewState('selected-physical-move-created', { renderHiddenRequest: true, renderVisible: true, forceRender: true });
-                for (const entry of entries) {
-                    await supabaseFetch('ph_active_request', 'POST', sanitizeMoveRequestWritePayload(entry.payload));
-                }
-                if (requestIds.length) {
-                    queueAppLiveEventForWrite('ph_active_request', 'POST', requestIds.map((id) => ({ unique_id: id })), '');
-                    flushQueuedAppLiveEvents().catch(() => {});
-                }
-                movesRecordsCacheKey = '';
-                managerMovePlannerCacheKey = '';
+                const idempotencyKey = locationWorkCreateToken || `location-work-${crypto.randomUUID()}`;
+                await locationWorkApi('create', {
+                    idempotencyKey,
+                    title,
+                    generalInstructions,
+                    recipientProfileIds: Array.from(locationWorkSelectedRecipientIds),
+                    lines
+                }, { timeoutMs: 45000, idempotencyKey });
+                locationWorkLoaded = false;
                 clearSelection();
                 closeSelectedMoveModal();
                 markViewDirty('request');
-                markViewDirty('moves');
-                markViewDirty('managers');
-                markViewDirty('sales-office');
-                if (isViewVisible('managers')) scheduleManagersRender(true);
-                if (isViewVisible('moves')) scheduleMovesRender(true);
-                if (isViewVisible('request')) scheduleRequestRender(0, 44, true);
-                if (isViewVisible('drive')) scheduleDriveRender(0, 0, true);
-                const duplicateNote = duplicateCount ? ` ${duplicateCount} duplicate row${duplicateCount === 1 ? '' : 's'} skipped.` : '';
-                showToast('Location Move Sent', `${entries.length} row${entries.length === 1 ? '' : 's'} sent to Managers > Location Move.${duplicateNote}`);
+                showToast('Location Work Created', 'The Queue job and assignment email were created. Queue shows Email Sent or Email Failed when delivery finishes.');
+                activeReqTab = 'moves';
+                switchView('request');
             } catch (error) {
-                console.error('Location move queue failed', error);
-                rollbackOptimisticRequestIds(requestIds);
-                showToast('Could Not Submit', 'The selected Location Move row was not saved.', true);
+                const message = String(error && error.message || 'The Location Work job could not be created.');
+                showToast('Could Not Create', message.slice(0, 220), true);
             } finally {
                 if (button) {
                     button.disabled = false;
                     button.classList.remove('opacity-70', 'pointer-events-none');
-                    button.innerText = 'Submit';
+                    button.innerHTML = 'Create &amp; Email';
                 }
             }
             return false;
@@ -133202,8 +133537,8 @@ C.14.043 C.15.000
             const access = getRoleAccessState();
             const canUseFullDriveActions = canUseFullDriveBloomPickerActions(items);
             const canUseNcrFromBloom = access.isAdmin || canUseGroupedBloomNcr();
-            if (access.isForeman && action !== 'take_back' && action !== 'move' && !(action === 'ncr' && canUseNcrFromBloom)) {
-                showToast('Restricted', 'Foreman users can only send Bloom Picker rows to Take Back or Location Move.', true);
+            if (access.isForeman && action !== 'take_back' && !(action === 'ncr' && canUseNcrFromBloom)) {
+                showToast('Restricted', 'Foreman users can only send Bloom Picker rows to Take Back.', true);
                 return;
             }
             if (access.isRepLike && action === 'take_back' && !canUseFullDriveActions) {
@@ -133212,7 +133547,7 @@ C.14.043 C.15.000
             }
             const canUseFlyerFromBloom = (canUseDriveQuickRequest() || canUseFullDriveActions) && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             if (access.isRepLike && (action === 'assign' || action === 'eval_work' || (action === 'ncr' && !canUseNcrFromBloom) || (action === 'endcap' && !canUseFullDriveActions) || action === 'shear' || (action === 'flyer' && !canUseFlyerFromBloom))) {
-                showToast('Restricted', 'REP and CSR users can only Copy, Email, Text, Request, Location Move, and Submit Order from Bloom Picker.', true);
+                showToast('Restricted', 'REP and CSR users can only Copy, Email, Text, Request, and Submit Order from Bloom Picker.', true);
                 return;
             }
             if (action === 'assign' && !access.isAdmin) {
@@ -133231,8 +133566,8 @@ C.14.043 C.15.000
                 showToast('Restricted', 'Only Dylan can create Shear location inquiries.', true);
                 return;
             }
-            if (action === 'move' && !currentUser) {
-                showToast('Restricted', 'Sign in before submitting a Location Move.', true);
+            if (action === 'move' && !canCreateLocationWorkJob()) {
+                showToast('Restricted', 'Only Dylan can create Location Work.', true);
                 return;
             }
             const requestOnly = items.every((item) => isRequestLikeItem(item));
