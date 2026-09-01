@@ -161,8 +161,8 @@ test('Item Inquiry requires every Eval Work row to be Mark Done or No Action', (
   assert.match(html, /function queueEvalWorkAutomaticCompletion\(\)/);
   assert.match(html, /progress\.remaining === 0[\s\S]*queueEvalWorkAutomaticCompletion/);
   assert.match(html, /submitEvalWork\(null, \{ automatic: true \}\)/);
-  assert.match(html, /final row decision sends the completed Item Inquiry PDF to Dylan and Megan for review/);
-  assert.match(html, /Item Inquiry Sent[\s\S]*completed Item Inquiry PDF are sending to Dylan and Megan for review/);
+  assert.match(html, /final row decision sends the completed Item Inquiry PDF to \$\{escapeHtml\(getEvalWorkCompletionRecipientCopy\(safeWork\)\)\} for review/);
+  assert.match(html, /Item Inquiry Sent[\s\S]*completed Item Inquiry PDF were queued for \$\{getEvalWorkCompletionRecipientCopy\(work\)\}/);
 });
 
 test('assigned sales reps can use only the ownership-checked Eval photo scope', () => {

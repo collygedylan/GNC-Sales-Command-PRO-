@@ -668,7 +668,7 @@ async function handleShearLocationAction(
         : "retry_shear_location_delivery_v1";
       const { data, error } = await supabase.rpc(rpcName, {
         p_inquiry_id: inquiryId,
-        p_actor_username: actor,
+        p_actor_username: operation === "submit" ? actor : normalizeUsername(row.assignee_username),
         p_expected_revision: expectedRevision,
       });
       if (error) throw error;
@@ -1330,6 +1330,7 @@ async function handleEvalWorkAction(
           reportContext: {
             reportId: String(contextInput.reportId || "").trim().slice(0, 100),
             reportLabel: String(contextInput.reportLabel || "").trim().slice(0, 200),
+            sourceMode: String(contextInput.sourceMode || "").trim().toLowerCase().slice(0, 40),
             assignedTo: String(contextInput.assignedTo || "").trim().slice(0, 200),
             assignedToUsers,
             selectedUserFilters,
@@ -1390,7 +1391,7 @@ async function handleEvalWorkAction(
       }
       const { data, error } = await supabase.rpc(rpcName, {
         p_work_id: workId,
-        p_actor_username: normalizeUsername(row.assignee_username),
+        p_actor_username: actor,
         p_expected_version: Number(payload.expectedVersion),
         p_inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft,
         ...(isV2 ? { p_evidence_by_origin: evidence } : { p_evidence: evidence }),
