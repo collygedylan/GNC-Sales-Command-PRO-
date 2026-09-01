@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(39);
+select plan(44);
 
 select has_table('public', 'ph_shear_location_submissions', 'Shear submission ledger exists');
 select has_table('public', 'ph_shear_location_inquiries', 'Location inquiry headers exist');
@@ -13,6 +13,12 @@ select ok((select relrowsecurity from pg_class where oid = 'public.ph_shear_loca
 select ok((select relrowsecurity from pg_class where oid = 'public.ph_shear_location_items'::regclass), 'ITEMCODE decisions have RLS');
 select ok((select relrowsecurity from pg_class where oid = 'public.ph_shear_location_rows'::regclass), 'Frozen rows have RLS');
 select ok((select relrowsecurity from pg_class where oid = 'public.ph_shear_location_events'::regclass), 'Audit events have RLS');
+
+select is((select count(*)::integer from pg_policies where schemaname = 'public' and tablename = 'ph_shear_location_submissions' and policyname = 'ph_shear_location_submissions_browser_deny'), 1, 'Submission browser-deny policy exists');
+select is((select count(*)::integer from pg_policies where schemaname = 'public' and tablename = 'ph_shear_location_inquiries' and policyname = 'ph_shear_location_inquiries_browser_deny'), 1, 'Inquiry browser-deny policy exists');
+select is((select count(*)::integer from pg_policies where schemaname = 'public' and tablename = 'ph_shear_location_items' and policyname = 'ph_shear_location_items_browser_deny'), 1, 'ITEMCODE browser-deny policy exists');
+select is((select count(*)::integer from pg_policies where schemaname = 'public' and tablename = 'ph_shear_location_rows' and policyname = 'ph_shear_location_rows_browser_deny'), 1, 'Frozen-row browser-deny policy exists');
+select is((select count(*)::integer from pg_policies where schemaname = 'public' and tablename = 'ph_shear_location_events' and policyname = 'ph_shear_location_events_browser_deny'), 1, 'Audit browser-deny policy exists');
 
 select ok(not has_table_privilege('anon', 'public.ph_shear_location_inquiries', 'select'), 'anonymous callers cannot read inquiry headers');
 select ok(not has_table_privilege('authenticated', 'public.ph_shear_location_inquiries', 'select'), 'browser sessions cannot read inquiry headers directly');
