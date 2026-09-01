@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.09.01.06",
+  "version": "2026.09.01.08",
   "type": "module",
   "scripts": {
     "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
@@ -20,7 +20,7 @@
     "build:storybook:v2": "storybook build -c v2/.storybook -o v2/storybook-static",
     "lighthouse:v2": "lhci autorun --config=v2/lighthouserc.json",
     "check:inline": "node scripts/check-inline-scripts.mjs",
-    "test:pilot": "node --test tests/live-pilot.test.mjs tests/scroll-performance.test.mjs tests/eval-reports-engine.test.mjs tests/reclass-inquiry.test.mjs tests/eval-work.test.mjs tests/eval-work-folder-v2.test.mjs tests/request-eval-drive-reliability.test.mjs tests/shear-location-inquiry.test.mjs tests/location-work.test.mjs tests/dock-trip-status.test.mjs tests/apps-script-sync.test.mjs tests/apps-script-lifecycle.test.mjs tests/request-ios-swipe.test.mjs tests/transactions-keyed.test.mjs tests/pikes-orders.test.mjs tests/post-deployment-canary.test.mjs tests/po-management-native-auth.test.mjs tests/access-control-audit.test.mjs tests/kayla-admin-drive-flyer.test.mjs tests/codex-operations.test.mjs",
+    "test:pilot": "node --test tests/live-pilot.test.mjs tests/scroll-performance.test.mjs tests/eval-reports-engine.test.mjs tests/reclass-inquiry.test.mjs tests/eval-work.test.mjs tests/eval-work-folder-v2.test.mjs tests/eval-report2-completion-routing.test.mjs tests/request-eval-drive-reliability.test.mjs tests/request-option-append.test.mjs tests/shear-location-inquiry.test.mjs tests/location-work.test.mjs tests/dock-trip-status.test.mjs tests/apps-script-sync.test.mjs tests/apps-script-lifecycle.test.mjs tests/request-ios-swipe.test.mjs tests/transactions-keyed.test.mjs tests/pikes-orders.test.mjs tests/post-deployment-canary.test.mjs tests/po-management-native-auth.test.mjs tests/access-control-audit.test.mjs tests/kayla-admin-drive-flyer.test.mjs tests/codex-operations.test.mjs",
     "migrate:auth-domain": "node scripts/migrate-native-auth-email-domain.mjs"
   },
   "dependencies": {
