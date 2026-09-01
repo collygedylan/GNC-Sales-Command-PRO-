@@ -280,6 +280,25 @@ const QC_WRITE_TABLES = new Set([
   "ph_dock_issue_allocations",
 ]);
 const MASTER_QC_WRITABLE_FIELDS = new Set(["dock_note"]);
+const USER_INVENTORY_PLANTGROUP_SCOPES = new Map<string, string>([
+  ["danny_fountain", "330_TREES"],
+]);
+const INVENTORY_PLANTGROUP_SCOPED_DB_TABLES = new Set([
+  "ph_master_inventory",
+  "ph_active_request",
+  "ph_active_request_live_rows",
+  "ph_request_queue_live_rows",
+  "ph_request_history",
+  "ph_soc_master",
+  "ph_sales_office",
+  "ph_reserves",
+  "ph_crop_roll_drive_rows",
+  "ph_shear_list",
+  "ph_inventory_edit_requests",
+  "ph_flyer_folder_rows",
+  "ph_flyer_folder_history",
+  "ph_production_workflow_rows",
+]);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -447,6 +466,47 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
 function getSessionUserKey(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>) {
   if (!session) return "";
   return normalizeUsername(session.username || session.displayName || "");
+}
+
+function getInventoryPlantGroupScope(username = "") {
+  return USER_INVENTORY_PLANTGROUP_SCOPES.get(normalizeUsername(username)) || "";
+}
+
+function normalizeInventoryPlantGroup(value: unknown) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function applyLegacyInventoryPlantGroupScope(
+  session: Awaited<ReturnType<typeof readAppSessionFromRequest>>,
+  table: string,
+  method: string,
+  query: string,
+  body: unknown,
+) {
+  const scope = getInventoryPlantGroupScope(session?.username || session?.displayName || "");
+  if (!scope || !INVENTORY_PLANTGROUP_SCOPED_DB_TABLES.has(table)) {
+    return { query, error: null as Response | null };
+  }
+
+  if (method === "POST" || method === "PATCH") {
+    const rows = Array.isArray(body) ? body : [body];
+    const allowed = rows.length > 0 && rows.every((row) => {
+      if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+      const source = row as Record<string, unknown>;
+      const hasPlantGroup = Object.hasOwn(source, "plantgroupcode") || Object.hasOwn(source, "PLANTGROUPCODE");
+      return method === "PATCH" && !hasPlantGroup
+        ? true
+        : normalizeInventoryPlantGroup(source.plantgroupcode || source.PLANTGROUPCODE) === scope;
+    });
+    return {
+      query,
+      error: allowed ? null : errorResponse("Plant-group scope denied.", 403, { code: "PLANTGROUP_SCOPE_DENIED" }),
+    };
+  }
+
+  const params = new URLSearchParams(query);
+  params.set("plantgroupcode", `eq.${scope}`);
+  return { query: params.toString(), error: null as Response | null };
 }
 
 const EVAL_WORK_MANAGER_USERS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
@@ -1975,6 +2035,10 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   } else if (!hasTableWriteAccess(session.role, table, method, body, session.username)) {
     return errorResponse("Forbidden", 403);
   }
+
+  const scopedRequest = applyLegacyInventoryPlantGroupScope(session, table, method, query, body);
+  if (scopedRequest.error) return scopedRequest.error;
+  query = scopedRequest.query;
 
   if (table === "ph_app_users" && method === "GET") {
     const access = getRoleAccessState(session.role);
