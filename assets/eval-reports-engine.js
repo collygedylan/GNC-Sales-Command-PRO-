@@ -191,6 +191,12 @@
         return textValue(row, ['SEASON', 'season']).toUpperCase().replace(/\s+/g, '');
     }
 
+    function isExcludedShiftSeasonRow(row) {
+        const season = normalizeSeason(row);
+        if (season !== 'Y' && season !== 'U3') return false;
+        return textValue(row, ['DESIGITEM', 'desigitem', 'DesigItem']).toUpperCase().includes('SHFT');
+    }
+
     function normalizeSalesYear(value) {
         const numeric = Number(String(value == null ? '' : value).replace(/,/g, '').trim());
         if (!Number.isFinite(numeric) || numeric <= 0) return null;
@@ -351,7 +357,7 @@
     }
 
     function classifyRows(rows, options) {
-        const sourceRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+        const sourceRows = Array.isArray(rows) ? rows.filter((row) => row && !isExcludedShiftSeasonRow(row)) : [];
         const config = options && typeof options === 'object' ? options : {};
         const settings = normalizeSettings(config.settings);
         const currentSeason = String(config.currentSeason || 'F1').trim().toUpperCase() || 'F1';
@@ -477,7 +483,7 @@
     }
 
     function classifyScriptCompatibleRows(rows, options) {
-        const sourceRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+        const sourceRows = Array.isArray(rows) ? rows.filter((row) => row && !isExcludedShiftSeasonRow(row)) : [];
         const config = options && typeof options === 'object' ? options : {};
         const settings = normalizeSettings(config.settings);
         const currentSeason = String(config.currentSeason || 'F1').trim().toUpperCase() || 'F1';
@@ -708,6 +714,7 @@
         UNASSIGNED_INQUIRY_LABEL,
         normalizeSalesYear,
         normalizeSettings,
+        isExcludedShiftSeasonRow,
         parseInventoryDateEpochDay,
         getCentralDateParts,
         compareRows,

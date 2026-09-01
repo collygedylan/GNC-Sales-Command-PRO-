@@ -79,8 +79,8 @@ test('assignment and completion recipient paths remain strictly separated', () =
 });
 
 test('delivery worker sends Eval Work through Apps Script without request rows or push', () => {
-  assert.match(worker, /\["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"\]\.includes\(eventType\)/);
-  const routeStart = worker.indexOf('if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"]');
+  assert.match(worker, /\["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"\]\.includes\(eventType\)/);
+  const routeStart = worker.indexOf('if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"]');
   const routeEnd = worker.indexOf('const rows = await loadRequestRows', routeStart);
   const route = worker.slice(routeStart, routeEnd);
   assert.match(route, /callAppsScript\(event, \[\], null\)/);

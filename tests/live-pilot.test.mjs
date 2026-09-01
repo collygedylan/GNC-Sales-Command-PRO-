@@ -62,12 +62,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.01.01';
+  const release = 'V2026.09.01.04';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.09.01.01');
+  assert.equal(packageJson.version, '2026.09.01.04');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -142,11 +142,13 @@ test('Queue and Drive render from the smallest canonical dataset needed for the 
 
 test('Dock cards list deduplicated states and PLANSTARTDATE values', () => {
   assert.match(html, /const DOCK_CARD_PLANSTART_ALIASES = Object\.freeze\(\[[\s\S]*'PLANSTARTDATE'/);
-  assert.match(html, /entry = \{ dockNum, count: 0, hasCoUt: false, states: new Set\(\), planStartDates: new Set\(\) \}/);
+  assert.match(html, /entry = \{ dockNum, count: 0, hasCoUt: false, states: new Set\(\), planStartDates: new Set\(\), tripCounts: new Map\(\) \}/);
   assert.match(html, /if \(state\) entry\.states\.add\(state\)/);
   assert.match(html, /if \(planStartDate\) entry\.planStartDates\.add\(planStartDate\)/);
   assert.match(html, />States:<\/span> \$\{escapeHtml\(statesLabel\)\}/);
   assert.match(html, />Plan Start:<\/span> \$\{escapeHtml\(planStartLabel\)\}/);
+  assert.match(html, /isDockRowWithinPlanStartWindow/);
+  assert.match(html, /formatDockCardPlanStartValue/);
 });
 
 test('hosted performance monitoring covers real data readiness and row saves always release their coordinator', () => {
@@ -1330,11 +1332,11 @@ test('request completion delivery is leased, idempotent, threaded, and independe
   assert.match(deliveryWorker, /REQUEST_DELIVERY_SIGNING_SECRET/);
   assert.match(deliveryWorker, /record_request_delivery_channel_result/);
   assert.match(deliveryWorker, /request_completed" \? "ph_request_history"/);
-  assert.match(deliveryWorker, /\["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"\]\.includes\(eventType\)/);
+  assert.match(deliveryWorker, /\["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"\]\.includes\(eventType\)/);
   assert.match(deliveryWorker, /payload: event\.payload/);
   assert.match(deliveryWorker, /failEventPermanent/);
   assert.match(deliveryWorker, /RECLASS_CONFLICT/);
-  const deliveryBranchStart = deliveryWorker.indexOf('if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry"].includes(eventType))');
+  const deliveryBranchStart = deliveryWorker.indexOf('if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType))');
   const reclassBranch = deliveryWorker.slice(deliveryBranchStart, deliveryWorker.indexOf('const rows = await loadRequestRows', deliveryBranchStart));
   assert.match(reclassBranch, /callAppsScript\(event, \[\], null\)/);
   assert.doesNotMatch(reclassBranch, /sendPush|loadRequestRows/);

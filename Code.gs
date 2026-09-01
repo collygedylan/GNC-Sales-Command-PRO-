@@ -102,6 +102,8 @@ const RECLASS_DELIVERY_EVENT_TYPE_ = 'reclass_inquiry';
 const EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ = 'eval_work_assignment';
 const EVAL_WORK_COMPLETION_EVENT_TYPE_ = 'eval_work_completion';
 const SHEAR_LOCATION_INQUIRY_EVENT_TYPE_ = 'shear_location_inquiry';
+const LOCATION_WORK_ASSIGNMENT_EVENT_TYPE_ = 'location_work_assignment';
+const LOCATION_WORK_COMPLETION_EVENT_TYPE_ = 'location_work_completion';
 
 function getSupabaseHeadersForKey_(key, extraHeaders) {
   const headers = Object.assign({}, extraHeaders || {});
@@ -15225,6 +15227,157 @@ function handleSignedShearLocationDelivery_(delivery) {
   }
 }
 
+function getLocationWorkActionLabel_(value) {
+  return ({ ta: 'TA', move: 'Move', grade: 'Grade', save: 'Save' })[String(value || '').trim().toLowerCase()] || 'Work';
+}
+
+function groupLocationWorkLines_(payload) {
+  const groups = {};
+  (Array.isArray(payload && payload.lines) ? payload.lines : []).forEach(function(line) {
+    const key = String(line && line.sourceLocationcode || 'No Location').trim() || 'No Location';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(line || {});
+  });
+  return Object.keys(groups).sort(function(left, right) {
+    return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+  }).map(function(location) { return { location: location, lines: groups[location] }; });
+}
+
+function buildLocationWorkWorksheetText_(payload) {
+  const completed = String(payload && payload.deliveryKind || '') === 'completion';
+  const lines = [
+    completed ? 'COMPLETED LOCATION WORK' : 'LOCATION WORK ASSIGNMENT',
+    '',
+    'Job: ' + String(payload && payload.title || ''),
+    'Created by: ' + String(payload && payload.createdByUsername || ''),
+    'Instructions: ' + String(payload && payload.generalInstructions || ''),
+    ''
+  ];
+  groupLocationWorkLines_(payload).forEach(function(group) {
+    lines.push('SOURCE LOCATION: ' + group.location);
+    group.lines.forEach(function(line) {
+      const base = [
+        getLocationWorkActionLabel_(line.actionType),
+        String(line.itemcode || ''),
+        String(line.commonname || ''),
+        String(line.contsize || ''),
+        'Planned ' + String(line.plannedQty || 0),
+        'From ' + String(line.sourceLocationcode || ''),
+        'To ' + String(line.destinationLocationcode || '—')
+      ].join(' | ');
+      lines.push(base);
+      if (line.instructions) lines.push('  Instructions: ' + String(line.instructions));
+      if (completed) {
+        lines.push(line.resolutionStatus === 'done'
+          ? '  Actual Qty: ' + String(line.actualQty == null ? '' : line.actualQty)
+          : '  Not Completed: ' + String(line.notCompletedReason || ''));
+      } else {
+        lines.push('  Actual Qty: ____________________');
+      }
+    });
+    lines.push('');
+  });
+  if (!completed) {
+    lines.push('Worker Initials: ____________________');
+    lines.push('Worker Signature: ________________________________');
+    lines.push('Completion Date: ____________________');
+  }
+  return lines.join('\n');
+}
+
+function buildLocationWorkWorksheetHtml_(payload) {
+  const completed = String(payload && payload.deliveryKind || '') === 'completion';
+  const sections = groupLocationWorkLines_(payload).map(function(group) {
+    const rows = group.lines.map(function(line) {
+      const resolutionHtml = completed
+        ? (String(line.resolutionStatus || '') === 'done'
+          ? escapeEmailHtml_(line.actualQty == null ? '' : line.actualQty)
+          : '<strong>Not Completed:</strong> ' + escapeEmailHtml_(line.notCompletedReason || ''))
+        : '<div style="min-width:84px;height:24px;border-bottom:1px solid #111;"></div>';
+      return '<tr style="page-break-inside:avoid;">'
+        + '<td>' + escapeEmailHtml_(getLocationWorkActionLabel_(line.actionType)) + '</td>'
+        + '<td>' + escapeEmailHtml_(line.itemcode || '') + '</td>'
+        + '<td>' + escapeEmailHtml_(line.commonname || '') + '</td>'
+        + '<td>' + escapeEmailHtml_(line.contsize || '') + '</td>'
+        + '<td style="text-align:right;">' + escapeEmailHtml_(line.plannedQty || 0) + '</td>'
+        + '<td>' + escapeEmailHtml_(line.sourceLocationcode || '') + '</td>'
+        + '<td>' + escapeEmailHtml_(line.destinationLocationcode || '—') + '</td>'
+        + '<td>' + escapeEmailHtml_(line.instructions || '') + '</td>'
+        + '<td>' + resolutionHtml + '</td></tr>';
+    }).join('');
+    return '<section style="margin:18px 0;page-break-inside:auto;">'
+      + '<h3 style="margin:0;padding:10px 12px;background:#ecfdf5;border:1px solid #6ee7b7;color:#006b43;">Source Location: '
+      + escapeEmailHtml_(group.location) + '</h3>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:10px;">'
+      + '<thead><tr><th>Action</th><th>ITEMCODE</th><th>Common Name</th><th>Size</th><th>Planned</th><th>From</th><th>To</th><th>Instructions</th><th>'
+      + (completed ? 'Result' : 'Actual Qty') + '</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
+  }).join('');
+  const signoff = completed ? '' : '<section style="margin-top:28px;page-break-inside:avoid;">'
+    + '<div style="display:flex;gap:28px;margin-bottom:24px;"><div style="flex:1;border-bottom:1px solid #111;padding-bottom:6px;">Worker Initials</div><div style="flex:1;border-bottom:1px solid #111;padding-bottom:6px;">Completion Date</div></div>'
+    + '<div style="border-bottom:1px solid #111;padding-bottom:8px;">Worker Signature</div></section>';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>'
+    + '@page{size:landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#17221d;font-size:11px}h1{color:#007a4d;margin:0 0 8px}p{white-space:pre-wrap;line-height:1.4}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}th{background:#f1f5f9;text-align:left;font-size:9px;text-transform:uppercase}tbody tr:nth-child(even){background:#f8fafc}</style></head><body>'
+    + '<h1>' + escapeEmailHtml_(completed ? 'Completed Location Work' : 'Location Work Assignment') + '</h1>'
+    + '<div><strong>Job:</strong> ' + escapeEmailHtml_(payload && payload.title || '')
+    + '<br><strong>Created by:</strong> ' + escapeEmailHtml_(payload && payload.createdByUsername || '')
+    + (completed ? '<br><strong>Completed:</strong> ' + escapeEmailHtml_(payload && payload.completedAt || '') : '') + '</div>'
+    + '<p><strong>General Instructions</strong><br>' + escapeEmailHtml_(payload && payload.generalInstructions || '') + '</p>'
+    + sections + signoff + '</body></html>';
+}
+
+function handleSignedLocationWorkDelivery_(delivery) {
+  const messageIdHeader = String(delivery && delivery.messageIdHeader || '').trim();
+  if (!messageIdHeader) throw new Error('REQUEST_DELIVERY_MESSAGE_ID_REQUIRED');
+  const savedReceipt = getRequestDeliveryReceipt_(messageIdHeader);
+  if (savedReceipt) return buildRecoveredDeliveryResult_(messageIdHeader, savedReceipt, 'apps_script_receipt_recovery');
+  const alreadySent = findSentRequestDeliveryByMessageId_(messageIdHeader);
+  if (alreadySent) {
+    const recovered = buildRecoveredDeliveryResult_(messageIdHeader, alreadySent, 'gmail_api_idempotent_recovery');
+    saveRequestDeliveryReceipt_(messageIdHeader, recovered);
+    return recovered;
+  }
+  const payload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
+  const kind = String(payload.deliveryKind || '').trim().toLowerCase();
+  if (String(payload.contractVersion || '') !== 'location-work-v1'
+      || !String(payload.jobId || '').trim() || !String(payload.title || '').trim()
+      || !Array.isArray(payload.lines) || !payload.lines.length
+      || ['assignment', 'completion'].indexOf(kind) < 0) {
+    throw new Error('LOCATION_WORK_VALIDATION:PAYLOAD_INVALID');
+  }
+  const recipients = dedupeEmailAddresses_([payload.recipientEmails]);
+  if (!recipients.length) throw new Error('LOCATION_WORK_VALIDATION:RECIPIENT_REQUIRED');
+  const title = String(payload.title || 'Location Work').replace(/\s+/g, ' ').trim();
+  const subject = '[External] GNC PH Location Work - ' + (kind === 'completion' ? 'Completed: ' : '') + title;
+  let pdfBlob;
+  try {
+    pdfBlob = HtmlService.createHtmlOutput(buildLocationWorkWorksheetHtml_(payload)).getBlob().getAs(MimeType.PDF);
+    const fileName = title.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 70) || 'Location_Work';
+    pdfBlob.setName('GNC_PH_Location_Work_' + (kind === 'completion' ? 'Completed_' : 'Assignment_') + fileName + '.pdf');
+  } catch (error) {
+    throw new Error('LOCATION_WORK_VALIDATION:PDF_BUILD_FAILED');
+  }
+  if (!isGmailAdvancedServiceAvailable_()) throw new Error('LOCATION_WORK_EMAIL_GMAIL_SERVICE_UNAVAILABLE');
+  try {
+    const emailHtml = buildPhoneSizedEmailHtml_('<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;"><h2 style="color:#007a4d;">'
+      + escapeEmailHtml_(kind === 'completion' ? 'Completed Location Work' : 'Location Work Assignment') + '</h2><p><strong>'
+      + escapeEmailHtml_(title) + '</strong></p><p>' + escapeEmailHtml_(payload.generalInstructions || '')
+      + '</p><p>The worksheet PDF is attached.</p></div>');
+    const result = sendGmailApiMessage_({
+      toList: recipients.join(','), toArray: recipients, subject: subject,
+      textBody: buildLocationWorkWorksheetText_(payload), htmlBody: emailHtml,
+      attachments: [pdfBlob], fromName: 'GNC PH Location Work', fromAddress: resolveAutomatedEmailSenderAddress_(),
+      messageIdHeader: messageIdHeader
+    });
+    result.subject = subject;
+    result.messageIdHeader = messageIdHeader;
+    saveRequestDeliveryReceipt_(messageIdHeader, result);
+    return result;
+  } catch (error) {
+    if (/^LOCATION_WORK_/.test(String(error && error.message || ''))) throw error;
+    throw new Error('LOCATION_WORK_EMAIL_SEND_FAILED');
+  }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
@@ -15236,6 +15389,9 @@ function handleSignedRequestDeliveryEvent_(payload) {
   }
   if (eventType === SHEAR_LOCATION_INQUIRY_EVENT_TYPE_) {
     return handleSignedShearLocationDelivery_(delivery);
+  }
+  if (eventType === LOCATION_WORK_ASSIGNMENT_EVENT_TYPE_ || eventType === LOCATION_WORK_COMPLETION_EVENT_TYPE_) {
+    return handleSignedLocationWorkDelivery_(delivery);
   }
   if (eventType !== 'request_created' && eventType !== 'request_completed') {
     throw new Error('REQUEST_DELIVERY_EVENT_TYPE_INVALID');
