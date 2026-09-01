@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const migration = fs.readFileSync(new URL('../supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql', import.meta.url), 'utf8');
 const managerReadMigration = fs.readFileSync(new URL('../supabase/migrations/20260828070741_access_control_manager_read_v2.sql', import.meta.url), 'utf8');
+const workBaselineMigration = fs.readFileSync(new URL('../supabase/migrations/20260901135456_drive_shear_location_access_audit_baseline_v1.sql', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const health = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
 const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
@@ -102,4 +103,19 @@ test('hosted health and exact-live canary cover the card-to-matrix audit route w
   assert.match(canary, /\/rest\/v1\/rpc\/get_access_control_matrix_v2/);
   assert.match(canary, /save_access_control_draft_v1/);
   assert.match(canary, /publish_access_control_policy_v1/);
+});
+
+test('new Drive Eval, Shear, and Location Work permissions extend the immutable audit baseline', () => {
+  assert.match(workBaselineMigration, /insert into private\.app_access_legacy_baseline/);
+  for (const permission of [
+    'eval_work.create.drive',
+    'shear_location.create',
+    'location_work.create',
+    'location_work.complete',
+  ]) {
+    assert.ok(workBaselineMigration.includes(`'${permission}'`));
+  }
+  assert.match(workBaselineMigration, /private\.get_effective_app_permissions_v1/);
+  assert.match(workBaselineMigration, /on conflict \(profile_id, permission_key\) do nothing/);
+  assert.doesNotMatch(workBaselineMigration, /enforcement_mode\s*=\s*'enforced'/i);
 });
