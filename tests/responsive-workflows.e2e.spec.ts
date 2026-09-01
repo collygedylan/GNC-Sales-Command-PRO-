@@ -880,7 +880,7 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
     idempotencyHeaderReady: true,
     pdfOutboxOnly: true,
     assignees: ['dylan_collyge', 'kayla_knepp'],
-    recipients: ['megan_kelly@greenleafnursery.com'],
+    recipients: [],
     clearedAfterAcceptance: true,
   });
 });
