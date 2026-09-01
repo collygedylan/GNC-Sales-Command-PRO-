@@ -41,6 +41,24 @@ test('the browser never reports a local-only Dock team save', () => {
   assert.match(html, /queueAppLiveEventForWrite\('ph_dock_trip_status'/);
 });
 
+test('Dock trip saves normalize the RPC composite response and rerender the canonical assignment immediately', () => {
+  assert.match(api, /const savedStatus = Array\.isArray\(data\) \? data\[0\] : data/);
+  assert.match(api, /jsonResponse\(\{ ok: true, data: savedStatus \}\)/);
+  assert.match(html, /function getDockTripStatusResponseRow[\s\S]*Array\.isArray\(data\) \? data\[0\] : data/);
+  assert.match(html, /const canonicalRow = getDockTripStatusResponseRow\(result\.data\)/);
+  assert.match(html, /markViewDirty\('docks'\)[\s\S]*scheduleDocksRender\(0, 0, true\)/);
+  assert.match(html, /renderSignature: buildRowsRenderSignature\('docks-main\|Select a Dock', dockCards, \['dockTeamRenderVersion'\]\)/);
+
+  const helperStart = html.indexOf('function getDockTripStatusResponseRow');
+  const helperEnd = html.indexOf('async function ensureDockTeamSchemaReady', helperStart);
+  assert.ok(helperStart > 0 && helperEnd > helperStart, 'Dock response normalizer should be present');
+  const context = vm.createContext({ Array, Object });
+  vm.runInContext(`${html.slice(helperStart, helperEnd)};this.normalizeDockResult=getDockTripStatusResponseRow;`, context);
+  assert.equal(context.normalizeDockResult([{ tripnumber: 'T1', checker: 'one' }]).checker, 'one');
+  assert.equal(context.normalizeDockResult({ tripnumber: 'T2', checker: 'two' }).checker, 'two');
+  assert.equal(context.normalizeDockResult([]), null);
+});
+
 test('Dock rows require PLANSTARTDATE on or after 01\/01\/2026 and display MM\/DD\/YYYY', () => {
   const start = html.indexOf('const DOCK_CARD_PLANSTART_ALIASES');
   const end = html.indexOf('function renderDocks()', start);

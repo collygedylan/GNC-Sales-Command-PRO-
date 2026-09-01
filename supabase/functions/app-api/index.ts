@@ -990,7 +990,9 @@ async function handleDockTripStatusAction(
       p_expected_revision: expectedRevision,
     });
     if (error) throw error;
-    return jsonResponse({ ok: true, data });
+    const savedStatus = Array.isArray(data) ? data[0] : data;
+    if (!savedStatus || typeof savedStatus !== "object") throw new Error("dock_trip_save_response_missing");
+    return jsonResponse({ ok: true, data: savedStatus });
   } catch (error) {
     return dockTripStatusError(error);
   }
