@@ -19,7 +19,17 @@ test('Drive Mode Eval Work uses ITEMCODE-wide V2 creation for Dylan, Megan, and 
   assert.match(html, /reportLabel: sourceMode === 'drive' \? 'Drive Mode'/);
   assert.match(html, /const selectedUserFilters = sourceMode === 'drive' \? \['all_users'\]/);
   assert.match(html, /if\(action==='eval_work'\)\{pendingActionOptions = null; openDriveEvalWorkBatch\(\);return\}/);
+  assert.match(html, /id="batch-btn-eval-task" onclick="initiateBatchAction\('eval_work'\)"/);
   assert.match(html, /Every current row for each selected ITEMCODE is included in Eval Work and the PDF/);
+});
+
+test('Drive cards route Eval Work and Shear through Bloom Picker without extra card buttons', () => {
+  assert.match(html, /id="batch-btn-eval-task" onclick="initiateBatchAction\('eval_work'\)"/);
+  assert.match(html, /id="batch-btn-shear" onclick="initiateBatchAction\('shear'\)"/);
+  assert.match(html, /if\(action==='shear'\)\{pendingActionOptions = null; openShearListModal\(\);return\}/);
+  assert.doesNotMatch(html, /function buildDriveWorkRailHtml/);
+  assert.doesNotMatch(html, /aria-label="Send ITEMCODE to Eval Work"/);
+  assert.doesNotMatch(html, /aria-label="Add ITEMCODE location to Shear List"/);
 });
 
 test('Shear V2 tables are append-only, private, and service-role-only', () => {
