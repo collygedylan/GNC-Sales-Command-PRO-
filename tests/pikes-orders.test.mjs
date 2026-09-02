@@ -13,6 +13,7 @@ const repairMigration = read('supabase/migrations/20260831224251_repair_pikes_as
 const repairAuditHardening = read('supabase/migrations/20260831230825_harden_pikes_assignment_repair_audit.sql');
 const serviceRpcHardening = read('supabase/migrations/20260831232439_harden_pikes_service_rpc_execution.sql');
 const pikesHealthRpcRepair = read('supabase/migrations/20260902141956_repair_pikes_assignment_health_rpc_privilege.sql');
+const boundedMaintenanceRepair = read('supabase/migrations/20260902151444_optimize_bounded_request_maintenance.sql');
 const sourceRowUploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
 const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
 const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
@@ -152,6 +153,16 @@ test('assignment reconciliation is incremental, indexed, and overlap-safe', () =
   assert.match(performanceWorkflow, /20260831224251_repair_pikes_assignments_and_maintenance\.sql/);
   assert.match(performanceWorkflow, /20260831230825_harden_pikes_assignment_repair_audit\.sql/);
   assert.match(performanceWorkflow, /20260902141956_repair_pikes_assignment_health_rpc_privilege\.sql/);
+  assert.match(boundedMaintenanceRepair, /pg_try_advisory_xact_lock/);
+  assert.match(boundedMaintenanceRepair, /MAINTENANCE_DEFERRED/);
+  assert.match(boundedMaintenanceRepair, /with normalized_drive as materialized/);
+  assert.match(boundedMaintenanceRepair, /itemcode_normalized \|\| '\|' \|\| genusname_normalized as assignment_key/);
+  assert.match(boundedMaintenanceRepair, /with drive_keys as materialized/);
+  assert.match(boundedMaintenanceRepair, /where d\.assignment_key = a\.assignment_key/);
+  assert.doesNotMatch(boundedMaintenanceRepair, /private\.normalize_eval_assignment_key/);
+  assert.match(boundedMaintenanceRepair, /revoke all on function public\.reconcile_eval_itemcodes\(\)[\s\S]*from public, anon, authenticated/);
+  assert.match(boundedMaintenanceRepair, /grant execute on function public\.reconcile_eval_itemcodes\(\)[\s\S]*to service_role/);
+  assert.match(performanceWorkflow, /20260902151444_optimize_bounded_request_maintenance\.sql/);
   assert.match(performanceWorkflow, /REQUIRE_BOUNDED_MAINTENANCE: '1'/);
 });
 
