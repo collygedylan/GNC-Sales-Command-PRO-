@@ -15109,6 +15109,89 @@ function buildEvalWorkEmailHtml_(model, kind) {
   ].join(''));
 }
 
+function getEvalWorkDeliveryPayloads_(eventType, eventPayload) {
+  const payload = eventPayload && typeof eventPayload === 'object' ? eventPayload : {};
+  if (eventType !== EVAL_WORK_ASSIGNMENT_EVENT_TYPE_
+      || String(payload.contractVersion || '') !== 'eval-work-assignment-batch-v1') {
+    return [payload];
+  }
+  const assignments = Array.isArray(payload.assignments) ? payload.assignments.filter(function(value) {
+    return value && typeof value === 'object';
+  }) : [];
+  const declaredCount = Number(payload.assignmentCount) || 0;
+  if (assignments.length < 2 || assignments.length > 50 || declaredCount !== assignments.length) {
+    throw new Error('EVAL_WORK_VALIDATION:ASSIGNMENT_BATCH_INVALID');
+  }
+  const seenWorkIds = {};
+  assignments.forEach(function(assignment) {
+    const workId = String(assignment.evalWorkId || '').trim().toLowerCase();
+    if (!workId || seenWorkIds[workId]) {
+      throw new Error('EVAL_WORK_VALIDATION:ASSIGNMENT_BATCH_DUPLICATE');
+    }
+    seenWorkIds[workId] = true;
+  });
+  return assignments;
+}
+
+function buildEvalWorkBatchAssignmentEmailText_(models) {
+  const safeModels = Array.isArray(models) ? models : [];
+  const lines = [
+    'GNC PH Eval Work Assignment',
+    String(safeModels.length) + ' ITEMCODEs are included in this assignment.',
+    'Each ITEMCODE has its own attached Item Inquiry PDF.',
+    ''
+  ];
+  safeModels.forEach(function(model, index) {
+    const identity = model && model.identity || {};
+    const evalWork = model && model.evalWork || {};
+    lines.push(String(index + 1) + '. ' + String(identity.itemcode || '') + ' — ' + String(identity.commonname || ''));
+    lines.push('   Container: ' + String(identity.contsize || ''));
+    lines.push('   Evaluator: ' + String(evalWork.assigneeDisplay || ''));
+    if (evalWork.instructions) lines.push('   Instructions: ' + String(evalWork.instructions));
+  });
+  lines.push('');
+  lines.push('Open Queue > Eval Work to complete the evidence and Item Inquiry for each ITEMCODE.');
+  return lines.join('\n');
+}
+
+function buildEvalWorkBatchAssignmentEmailHtml_(models) {
+  const safeModels = Array.isArray(models) ? models : [];
+  const itemRows = safeModels.map(function(model) {
+    const identity = model && model.identity || {};
+    const evalWork = model && model.evalWork || {};
+    return '<li style="margin:0 0 12px;"><strong>' + escapeEmailHtml_(identity.itemcode || '')
+      + ' — ' + escapeEmailHtml_(identity.commonname || '') + '</strong><br>Container: '
+      + escapeEmailHtml_(identity.contsize || '') + '<br>Evaluator: '
+      + escapeEmailHtml_(evalWork.assigneeDisplay || '')
+      + (evalWork.instructions ? '<br>Instructions: ' + escapeEmailHtml_(evalWork.instructions) : '') + '</li>';
+  }).join('');
+  return buildPhoneSizedEmailHtml_([
+    '<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;">',
+    '<h2 style="margin:0 0 14px;color:#007a4d;">Eval Work Assignment</h2>',
+    '<p><strong>' + escapeEmailHtml_(safeModels.length) + ' ITEMCODEs</strong> are included. Each ITEMCODE has its own attached Item Inquiry PDF.</p>',
+    '<ol style="padding-left:24px;">' + itemRows + '</ol>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;"><strong>PDFs attached:</strong> Open Queue &gt; Eval Work to complete each assignment.</p>',
+    '</div>'
+  ].join(''));
+}
+
+function buildEvalWorkPdfBlob_(model, kind) {
+  const identity = model && model.identity || {};
+  const commonName = String(identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
+  const itemcode = String(identity.itemcode || 'Item').replace(/\s+/g, ' ').trim();
+  let pdfBlob;
+  try {
+    pdfBlob = HtmlService.createHtmlOutput(buildReclassInquiryCompactReportHtml_(model, true)).getBlob().getAs(MimeType.PDF);
+    const safeItemcode = itemcode.replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'Item';
+    const safeName = commonName.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 50) || 'Inventory';
+    pdfBlob.setName('GNC_PH_Eval_Work_' + (kind === 'assignment' ? 'Assignment_' : 'Completed_')
+      + safeItemcode + '_' + safeName + '.pdf');
+    return pdfBlob;
+  } catch (error) {
+    throw new Error('EVAL_WORK_PDF_BUILD_FAILED');
+  }
+}
+
 function handleSignedEvalWorkDelivery_(delivery) {
   const messageIdHeader = String(delivery && delivery.messageIdHeader || '').trim();
   if (!messageIdHeader) throw new Error('REQUEST_DELIVERY_MESSAGE_ID_REQUIRED');
@@ -15122,40 +15205,45 @@ function handleSignedEvalWorkDelivery_(delivery) {
   }
   const eventType = String(delivery && delivery.eventType || '').trim();
   const eventPayload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
-  if (String(eventPayload.scopeContract || '') === 'itemcode-all-rows-v1') {
+  const kind = eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ ? 'assignment' : 'completion';
+  const deliveryPayloads = getEvalWorkDeliveryPayloads_(eventType, eventPayload);
+  deliveryPayloads.forEach(function(payload) {
+    if (String(payload.scopeContract || '') !== 'itemcode-all-rows-v1') return;
     const preflight = callSupabaseRpc_('validate_eval_work_delivery_v1', {
-      p_work_id: String(eventPayload.evalWorkId || ''),
+      p_work_id: String(payload.evalWorkId || ''),
       p_event_type: eventType,
-      p_membership_signature: String(eventPayload.membershipSignature || '')
+      p_membership_signature: String(payload.membershipSignature || '')
     });
     const preflightValue = Array.isArray(preflight) ? preflight[0] : preflight;
     if (!preflightValue || preflightValue.ok !== true
-       || Number(preflightValue.originCount) !== Number(eventPayload.membershipCount)) {
+       || Number(preflightValue.originCount) !== Number(payload.membershipCount)) {
       throw new Error('EVAL_WORK_CONFLICT:DELIVERY_PREFLIGHT_FAILED');
     }
-  }
-  const kind = eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ ? 'assignment' : 'completion';
+  });
   const recipients = kind === 'assignment'
     ? dedupeEmailAddresses_([eventPayload.assignmentRecipients || eventPayload.assigneeEmail])
     : dedupeEmailAddresses_([eventPayload.completionRecipients]);
   if (!recipients.length) throw new Error('EVAL_WORK_VALIDATION:RECIPIENT_REQUIRED');
-  const model = buildEvalWorkReportModel_(eventPayload);
-  const commonName = String(model.identity && model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
-  const subject = '[External] GNC PH Eval Work - ' + (kind === 'assignment' ? 'Assigned' : 'Completed') + ': ' + commonName;
-  let pdfBlob;
-  try {
-    pdfBlob = HtmlService.createHtmlOutput(buildReclassInquiryCompactReportHtml_(model, true)).getBlob().getAs(MimeType.PDF);
-    const safeName = commonName.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Item';
-    pdfBlob.setName('GNC_PH_Eval_Work_' + (kind === 'assignment' ? 'Assignment_' : 'Completed_') + safeName + '.pdf');
-  } catch (error) {
-    throw new Error('EVAL_WORK_PDF_BUILD_FAILED');
+  const models = deliveryPayloads.map(function(payload) { return buildEvalWorkReportModel_(payload); });
+  const isBatchAssignment = kind === 'assignment' && models.length > 1;
+  const commonName = String(models[0].identity && models[0].identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
+  const subject = isBatchAssignment
+    ? '[External] GNC PH Eval Work - Assigned: ' + String(models.length) + ' ITEMCODEs'
+    : '[External] GNC PH Eval Work - ' + (kind === 'assignment' ? 'Assigned' : 'Completed') + ': ' + commonName;
+  const pdfBlobs = models.map(function(model) { return buildEvalWorkPdfBlob_(model, kind); });
+  const totalAttachmentBytes = pdfBlobs.reduce(function(total, blob) {
+    return total + blob.getBytes().length;
+  }, 0);
+  if (totalAttachmentBytes > 18 * 1024 * 1024) {
+    throw new Error('EVAL_WORK_VALIDATION:BATCH_ATTACHMENTS_TOO_LARGE');
   }
   if (!isGmailAdvancedServiceAvailable_()) throw new Error('EVAL_WORK_GMAIL_SERVICE_UNAVAILABLE');
   try {
     const result = sendGmailApiMessage_({
       toList: recipients.join(','), toArray: recipients, subject: subject,
-      textBody: buildEvalWorkEmailText_(model, kind), htmlBody: buildEvalWorkEmailHtml_(model, kind),
-      attachments: [pdfBlob], fromName: 'GNC PH Eval Work', fromAddress: resolveAutomatedEmailSenderAddress_(),
+      textBody: isBatchAssignment ? buildEvalWorkBatchAssignmentEmailText_(models) : buildEvalWorkEmailText_(models[0], kind),
+      htmlBody: isBatchAssignment ? buildEvalWorkBatchAssignmentEmailHtml_(models) : buildEvalWorkEmailHtml_(models[0], kind),
+      attachments: pdfBlobs, fromName: 'GNC PH Eval Work', fromAddress: resolveAutomatedEmailSenderAddress_(),
       messageIdHeader: messageIdHeader
     });
     result.subject = subject;

@@ -87,6 +87,7 @@ let poManagementHealth = null;
 let accessControlHealth = null;
 let evalRequestDeliveryHealth = null;
 let evalWorkCreationHealth = null;
+let evalWorkAssignmentBatchHealth = null;
 let evalItemcodeWorkHealth = null;
 let requestDriveEvidenceHealth = null;
 let codexOpsHealth = null;
@@ -369,6 +370,29 @@ if (serviceRoleKey) {
     singleAssigneeInsertContractHealthy: evalWorkCreationHealth.single_assignee_insert_contract_healthy === true
   });
 
+  const evalWorkAssignmentBatchHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_work_assignment_batch_health_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const evalWorkAssignmentBatchHealthText = await evalWorkAssignmentBatchHealthResponse.text();
+  try { evalWorkAssignmentBatchHealth = evalWorkAssignmentBatchHealthText ? JSON.parse(evalWorkAssignmentBatchHealthText) : null; } catch {}
+  if (!evalWorkAssignmentBatchHealthResponse.ok || !evalWorkAssignmentBatchHealth || typeof evalWorkAssignmentBatchHealth !== 'object') {
+    throw new Error(`production_eval_work_assignment_batch_health_unavailable_HTTP_${evalWorkAssignmentBatchHealthResponse.status}`);
+  }
+  const evalWorkAssignmentBatchContractHealthy = evalWorkAssignmentBatchHealth.contractVersion === 'eval-work-assignment-batch-v1'
+    && evalWorkAssignmentBatchHealth.createGrouped === true
+    && evalWorkAssignmentBatchHealth.reassignGuarded === true
+    && evalWorkAssignmentBatchHealth.cancelGuarded === true
+    && Number(evalWorkAssignmentBatchHealth.envelopeViolationCount) === 0
+    && evalWorkAssignmentBatchHealth.healthy === true;
+  if (!evalWorkAssignmentBatchContractHealthy) throw new Error('production_eval_work_assignment_batch_contract_unhealthy');
+  checks.push({
+    name: 'eval_work_assignment_batch_v1',
+    status: evalWorkAssignmentBatchHealthResponse.status,
+    contractVersion: evalWorkAssignmentBatchHealth.contractVersion
+  });
+
   const requestDriveHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_request_drive_evidence_health_snapshot_v1`, {
     method: 'POST',
     headers: serviceHeaders,
@@ -528,6 +552,13 @@ const result = {
     batchAssigneeInsertContractHealthy: evalWorkCreationHealth.batch_assignee_insert_contract_healthy === true,
     singleAssigneeInsertContractHealthy: evalWorkCreationHealth.single_assignee_insert_contract_healthy === true
   } : null,
+  evalWorkAssignmentBatch: evalWorkAssignmentBatchHealth ? {
+    contractVersion: String(evalWorkAssignmentBatchHealth.contractVersion || ''),
+    createGrouped: evalWorkAssignmentBatchHealth.createGrouped === true,
+    reassignGuarded: evalWorkAssignmentBatchHealth.reassignGuarded === true,
+    cancelGuarded: evalWorkAssignmentBatchHealth.cancelGuarded === true,
+    envelopeViolationCount: Math.max(0, Number(evalWorkAssignmentBatchHealth.envelopeViolationCount) || 0)
+  } : null,
   requestDriveEvidence: requestDriveEvidenceHealth ? {
     contractVersion: String(requestDriveEvidenceHealth.contract_version || ''),
     recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0),
@@ -558,6 +589,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Bounded maintenance: ${result.boundedMaintenance?.status || 'not required'}\n- Pikes assignments: ${result.pikesAssignments ? `${result.pikesAssignments.inventoryRowCount} rows, ${result.pikesAssignments.falseUnassignedCount} false unassigned` : 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- ITEMCODE-wide Eval Work: ${result.evalItemcodeWork ? `${result.evalItemcodeWork.contractVersion}, ${result.evalItemcodeWork.scopedAssignmentCount} scoped assignments, largest ${result.evalItemcodeWork.largestOriginCount} rows` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Bounded maintenance: ${result.boundedMaintenance?.status || 'not required'}\n- Pikes assignments: ${result.pikesAssignments ? `${result.pikesAssignments.inventoryRowCount} rows, ${result.pikesAssignments.falseUnassignedCount} false unassigned` : 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- Eval Reports #2 assignment email: ${result.evalWorkAssignmentBatch ? `${result.evalWorkAssignmentBatch.contractVersion}, grouped ${result.evalWorkAssignmentBatch.createGrouped}` : 'secure check skipped'}\n- ITEMCODE-wide Eval Work: ${result.evalItemcodeWork ? `${result.evalItemcodeWork.contractVersion}, ${result.evalItemcodeWork.scopedAssignmentCount} scoped assignments, largest ${result.evalItemcodeWork.largestOriginCount} rows` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }

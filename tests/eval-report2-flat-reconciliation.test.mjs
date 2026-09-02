@@ -7,9 +7,11 @@ const migration = read('../supabase/migrations/20260902002912_flatten_eval_repor
 const creationRepair = read('../supabase/migrations/20260902032807_repair_eval_work_assignee_insert_contract.sql');
 const lookupOptimization = read('../supabase/migrations/20260902034335_optimize_eval_work_itemcode_lookup.sql');
 const fullLookupOptimization = read('../supabase/migrations/20260902034603_optimize_eval_work_master_lookup_full.sql');
+const assignmentBatchMigration = read('../supabase/migrations/20260902105411_group_eval_report2_assignment_email.sql');
 const multiAssigneeMigration = read('../supabase/migrations/20260831030457_eval_work_multi_assignee_v1.sql');
 const completionRouting = read('../supabase/migrations/20260901201209_eval_report2_completion_routing.sql');
 const productionProbe = read('../scripts/probe-production-auth-health.mjs');
+const deliveryWorker = read('../supabase/functions/request-delivery-worker/index.ts');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const codeGs = read('../Code.gs');
 const html = read('../index.html');
@@ -117,6 +119,34 @@ test('assignment and completion recipients remain separate for Eval Reports #2',
   assert.doesNotMatch(multiAssigneeMigration, /sharon_combs/);
   assert.match(completionRouting, /'sharon_combs'/);
   assert.match(completionRouting, /submitter_username = 'jd_jones'/);
+});
+
+test('one Eval Reports #2 multi-select sends one email with one PDF per ITEMCODE', () => {
+  assert.match(assignmentBatchMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(assignmentBatchMigration, /create or replace function private\.eval_report2_group_assignment_delivery_v1/);
+  assert.match(assignmentBatchMigration, /'contractVersion', 'eval-work-assignment-batch-v1'/);
+  assert.match(assignmentBatchMigration, /'assignments', assignment_payloads/);
+  assert.match(assignmentBatchMigration, /status = 'suppressed'[\s\S]*EVAL_WORK_ASSIGNMENT_GROUPED/);
+  assert.match(assignmentBatchMigration, /set assignment_event_id = envelope\.event_id/);
+  assert.match(assignmentBatchMigration, /outbox\.status = 'processing' or outbox\.email_delivered_at is not null or outbox\.status = 'delivered'/);
+  assert.match(assignmentBatchMigration, /private\.eval_report2_group_assignment_delivery_v1\([\s\S]*p_payload->>''batchToken''/);
+  assert.match(assignmentBatchMigration, /from public\.ph_eval_work sibling/);
+  assert.match(assignmentBatchMigration, /'envelopeViolationCount', envelope_violation_count/);
+  assert.match(assignmentBatchMigration, /envelope_violation_count = 0/);
+  assert.match(assignmentBatchMigration, /revoke all on function private\.eval_report2_group_assignment_delivery_v1\(jsonb, text\)[\s\S]*from public, anon, authenticated/);
+  assert.match(codeGs, /function getEvalWorkDeliveryPayloads_/);
+  assert.match(codeGs, /eval-work-assignment-batch-v1/);
+  assert.match(codeGs, /function buildEvalWorkPdfBlob_/);
+  assert.match(codeGs, /const pdfBlobs = models\.map/);
+  assert.match(codeGs, /attachments: pdfBlobs/);
+  assert.match(codeGs, /18 \* 1024 \* 1024/);
+  assert.match(codeGs, /Assigned: ' \+ String\(models\.length\) \+ ' ITEMCODEs/);
+  assert.match(deliveryWorker, /eval-work-assignment-batch-v1" \? 120000 : 45000/);
+  assert.match(deliveryWorker, /EVAL_WORK\.\*CONFLICT[\s\S]*return "EVAL_WORK_CONFLICT"/);
+  assert.match(deliveryWorker, /EVAL_WORK\.\*VALIDATION[\s\S]*return "EVAL_WORK_VALIDATION"/);
+  assert.match(productionProbe, /get_eval_work_assignment_batch_health_v1/);
+  assert.match(productionProbe, /envelopeViolationCount\) === 0/);
+  assert.match(productionProbe, /production_eval_work_assignment_batch_contract_unhealthy/);
 });
 
 test('new operations are service-only', () => {

@@ -27,6 +27,8 @@ function sanitizeCode(error: unknown) {
   const raw = String(error instanceof Error ? error.message : error || "DELIVERY_WORKER_FAILED").toUpperCase();
   if (/RECLASS_CONFLICT/.test(raw)) return "RECLASS_CONFLICT";
   if (/RECLASS_VALIDATION/.test(raw)) return "RECLASS_VALIDATION";
+  if (/EVAL_WORK.*CONFLICT/.test(raw)) return "EVAL_WORK_CONFLICT";
+  if (/EVAL_WORK.*VALIDATION/.test(raw)) return "EVAL_WORK_VALIDATION";
   if (/SHEAR.*CONFLICT/.test(raw)) return "SHEAR_CONFLICT";
   if (/SHEAR.*VALIDATION/.test(raw)) return "SHEAR_VALIDATION";
   if (/SNAPSHOT/.test(raw)) return "REQUEST_SNAPSHOT_MISSING";
@@ -140,7 +142,9 @@ async function callAppsScript(event: JsonRecord, rows: unknown[], thread: unknow
   const timestamp = new Date().toISOString();
   const signature = await hmacSignature(timestamp, signedBody);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45000);
+  const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
+  const timeoutMs = String(payload.contractVersion || "") === "eval-work-assignment-batch-v1" ? 120000 : 45000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
       method: "POST",
