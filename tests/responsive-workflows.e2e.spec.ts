@@ -203,23 +203,15 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     setManagerEvalReport2Mode('reports');
     setManagerEvalReport2('low-stock');
     setManagerEvalReport2Filter('assignedTo', 'dylan_collyge');
-    const commonNameGroups = getManagerEvalReport2CommonNameGroups();
-    openManagerEvalReport2CommonName('Alpha');
-    const locationOptions = getManagerEvalReport2LocationOptions();
-    setManagerEvalReport2Filter('locationCode', 'A.01.002');
-    const reportRows = getFilteredManagerEvalReport2Rows();
-    setManagerEvalReport2Mode('inquiry');
-    setManagerEvalReport2('low-stock');
-    setManagerEvalReport2InquiryFilter('assignedTo', 'dylan_collyge');
-    setManagerEvalReport2InquiryFilter('locationCode', 'A.01.002');
-    setManagerEvalReport2InquiryFilter('commonName', 'Alpha');
-    setManagerEvalReport2InquiryFilter('contSize', '#3');
-    const model = getManagerEvalReport2InquiryModel();
+    const visibleGroups = getManagerEvalReport2VisibleItemGroups();
+    const alphaGroup = visibleGroups.find((group) => group.itemCode === 'A');
     const host = document.createElement('div');
     host.id = 'eval-reports-2-test-host';
     host.style.width = '390px';
     host.innerHTML = renderManagerEvalReports2Panel();
     document.body.appendChild(host);
+    const records = host.querySelector('#manager-eval-report-2-records');
+    records.innerHTML = visibleGroups.map((group, groupIndex) => renderManagerEvalReport2SelectableCard(group, groupIndex)).join('');
     const controls = Array.from(host.querySelectorAll('select,button')).map((element) => {
       const box = element.getBoundingClientRect();
       return { left: box.left, right: box.right, width: box.width };
@@ -250,20 +242,14 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       assignedToOptions: initialAssignedToOptions,
       assignmentStats: index.assignmentStats,
       counts: index.counts,
-      drilldown: {
-        commonNameGroups: commonNameGroups.map((group) => ({ name: group.commonName, items: group.itemCount, rows: group.rowCount })),
-        locationOptions,
-        reportRows: reportRows.length
+      flatView: {
+        itemcodes: visibleGroups.map((group) => group.itemCode),
+        alphaRows: alphaGroup.rows.length,
+        alphaLocations: alphaGroup.locationCount,
+        hasRequiredColumns: ['Location', 'Lot', 'On Hand', 'Available'].every((label) => host.textContent.includes(label)),
+        hasDirectInquiryCard: !!host.querySelector('article[aria-label="Open Drive Mode Item Inquiry for A"][onclick*="openManagerEvalReport2DirectInquiry"]')
       },
-      inquiryRows: model.matchedRows.length,
-      sections: {
-        item: model.sections.item.length,
-        season: model.sections.season.length,
-        location: model.sections.location.length
-      },
-      hasReportsMode: host.textContent.includes('Reports'),
-      hasInquiryMode: host.textContent.includes('Item Inquiry'),
-      hasReset: host.textContent.includes('Reset'),
+      hasFlatInstructions: host.textContent.includes('Each card is one ITEMCODE'),
       controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
       hostOverflow: host.scrollWidth <= 391,
       immediateAssignmentRefresh: beforeAssignmentEdit !== afterAssignmentEdit && editedRows.length > 0 && editedRows.every((row) => row.ASSIGNEDTO === 'megan_kelly'),
@@ -279,21 +265,15 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.assignmentStats.matchedCount).toBe(4);
   expect(result.counts['low-stock']).toBe(2);
   expect(result.counts.culls).toBe(1);
-  expect(result.drilldown.commonNameGroups).toContainEqual({ name: 'Alpha', items: 1, rows: 1 });
-  expect(result.drilldown.locationOptions).toContain('A.01.002');
-  expect(result.drilldown.reportRows).toBe(1);
-  expect(result.inquiryRows).toBe(1);
-  expect(result.sections).toEqual({ item: 1, season: 1, location: 1 });
-  expect(result.hasReportsMode).toBe(true);
-  expect(result.hasInquiryMode).toBe(true);
-  expect(result.hasReset).toBe(true);
+  expect(result.flatView).toEqual({ itemcodes: ['A'], alphaRows: 2, alphaLocations: 2, hasRequiredColumns: true, hasDirectInquiryCard: true });
+  expect(result.hasFlatInstructions).toBe(true);
   expect(result.controlsFit).toBe(true);
   expect(result.hostOverflow).toBe(true);
   expect(result.immediateAssignmentRefresh).toBe(true);
   expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
 });
 
-test('Eval Reports #2 uses real checkbox clicks and preserves selection across drill groups', async ({ page }) => {
+test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-direct-multiselect', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -327,23 +307,14 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:390px;overflow:auto;background:#fff;';
     host.innerHTML = renderManagerEvalReports2Panel();
     document.body.appendChild(host);
+    const records = host.querySelector('#manager-eval-report-2-records');
+    records.innerHTML = getManagerEvalReport2VisibleItemGroups()
+      .map((group, index) => renderManagerEvalReport2SelectableCard(group, index)).join('');
   })()`));
 
   const host = page.locator('#eval2-multiselect-host');
   await expect(host).toContainText('Alpha Canary');
-  await host.locator('button.drill-item', { hasText: 'Alpha Canary' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('eval2-multiselect-host')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-  });
-  await host.locator('button.drill-item', { hasText: '#3' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('eval2-multiselect-host')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-    const records = target.querySelector('#manager-eval-report-2-records')!;
-    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
-      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
-  });
+  await expect(host).toContainText('Beta Canary');
 
   const alphaCheckbox = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CLICK.A"]');
   await expect(alphaCheckbox).toBeVisible();
@@ -352,26 +323,6 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
   await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
   await expect(host.locator("button[onclick*=\"openManagerEvalUserPicker('eval2')\"]")).toBeEnabled();
-
-  await page.evaluate(() => (window as any).eval(`(() => {
-    backManagerEvalReport2Drill();
-    backManagerEvalReport2Drill();
-    const target = document.getElementById('eval2-multiselect-host');
-    target.innerHTML = renderManagerEvalReports2Panel();
-  })()`));
-  await host.locator('button.drill-item', { hasText: 'Beta Canary' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('eval2-multiselect-host')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-  });
-  await host.locator('button.drill-item', { hasText: '#5' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('eval2-multiselect-host')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-    const records = target.querySelector('#manager-eval-report-2-records')!;
-    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
-      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
-  });
 
   const betaCheckbox = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CLICK.B"]');
   await betaCheckbox.focus();
@@ -382,7 +333,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
   const selectShown = host.locator('#manager-eval-report-2-select-shown');
   await expect(selectShown).toContainText('Deselect Shown');
   await selectShown.click();
-  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('0 ITEMCODEs');
   await expect(selectShown).toContainText('Select All Shown');
   await selectShown.click();
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('2 ITEMCODEs');
@@ -395,8 +346,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     hasMore: !!document.querySelector('#eval2-multiselect-host #manager-eval-report-2-more-menu'),
     noLegacySelectMode: !document.getElementById('eval2-multiselect-host').textContent.includes('Select Items'),
     driveControls: !!document.querySelector('#eval2-multiselect-host .manager-eval2-drive-controls'),
-    driveTabs: Array.from(document.querySelectorAll('#eval2-multiselect-host .manager-eval2-drive-tabs .task-tab')).map((node) => node.textContent.trim()),
-    driveCrumb: !!document.querySelector('#eval2-multiselect-host .manager-eval2-drive-crumb'),
+    hasFlatColumns: ['Location', 'Lot', 'On Hand', 'Available'].every((label) => document.getElementById('eval2-multiselect-host').textContent.includes(label)),
     driveCards: document.querySelectorAll('#eval2-multiselect-host .manager-eval2-item-card').length,
     noRedundantOpenFooter: !document.getElementById('eval2-multiselect-host').textContent.includes('Open ITEMCODE Details')
   }))()`));
@@ -408,9 +358,8 @@ test('Eval Reports #2 uses real checkbox clicks and preserves selection across d
     hasMore: true,
     noLegacySelectMode: true,
     driveControls: true,
-    driveTabs: ['Common Name', 'Location'],
-    driveCrumb: true,
-    driveCards: 1,
+    hasFlatColumns: true,
+    driveCards: 2,
     noRedundantOpenFooter: true,
   });
   const managerShell = await page.evaluate(() => (window as any).eval(`(() => {
