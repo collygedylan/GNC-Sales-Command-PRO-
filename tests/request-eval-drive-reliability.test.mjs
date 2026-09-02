@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260831210000_request_eval_drive_reliability_repair.sql');
@@ -81,4 +82,94 @@ test('AV choices wait for click and Request rendering gets a bounded settle retr
   assert.match(html, /verifyRequestDetailRendered\(reason = '', attempt = 0\)/);
   assert.match(html, /render-verify-retry/);
   assert.match(html, /requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => verifyRequestDetailRendered/);
+});
+
+test('Request reuse separates reusable evidence from auto-completion and requires an explicit choice', () => {
+  const reusableData = html.slice(
+    html.indexOf('function getEmptyRequestReusableData()'),
+    html.indexOf('function dismissSearchKeyboard(')
+  );
+  assert.match(reusableData, /hasReusableEvidence:\s*false/);
+  assert.match(reusableData, /readyForAutoComplete:\s*false/);
+  assert.match(reusableData, /const hasReusableSupportingData = !!\(avNote \|\| spec \|\| caliper \|\| pick \|\| match\)/);
+  assert.match(reusableData, /const sharedSpec = getMeasuredSpecInputValue\(item\)/);
+  assert.match(reusableData, /const hasReusableEvidence = !!photoLink && hasReusableSupportingData/);
+  assert.match(reusableData, /const readyForAutoComplete = isReadyRequestDataForAutoComplete/);
+  assert.match(reusableData, /if \(!reusable\.hasReusableEvidence\) return ''/);
+  assert.match(reusableData, /Choose how to start this request/);
+  assert.match(reusableData, /Use Saved Pictures &amp; Data/);
+  assert.match(reusableData, /Start Request Blank/);
+  assert.doesNotMatch(reusableData, /selectedValue = 'YES'/);
+
+  assert.match(html, /collect\('\.item-reuse-data-input', 'reuse'\)/);
+  assert.match(html, /if \(!requireCurrentRequestReuseDecision\(\)\) return true/);
+  assert.match(html, /const missingReuseEntry = requestSourceEntries\.find/);
+  assert.match(html, /const useExistingData=reuseChoice==='YES' && reusable\.hasReusableEvidence/);
+  assert.match(html, /const autoCompleteEligible = useExistingData && reusable\.readyForAutoComplete/);
+  assert.match(html, /reusableRequestData\.hasReusableEvidence/);
+  assert.doesNotMatch(html, /reusable(?:RequestData)?\.hasData/);
+});
+
+test('Request reuse behavior accepts photo plus N/A Spec while keeping a missing-AV-note row pending', () => {
+  const reusableDataSource = html.slice(
+    html.indexOf('function getEmptyRequestReusableData()'),
+    html.indexOf('function dismissSearchKeyboard(')
+  );
+  const context = {
+    firstNonEmptyValue: (...values) => values.find((value) => value !== undefined && value !== null && String(value) !== '') ?? '',
+    isRequestOwnedPhotoRow: () => false,
+    shouldHideSharedAppPayloadForInvalidAvRules: (item) => Boolean(item.INVALID),
+    getItemDisplayValue: (item, key) => item[key] ?? '',
+    getMeasuredSpecInputValue: (item) => String(item.SPEC || ''),
+    getSharedAppPhotoLinkCsv: (item) => item.EXPIRED ? '' : String(item.SAVED_PHOTO_LINK || ''),
+    getSharedAppPhotoName: (item) => String(item.SAVED_PHOTO_NAME || ''),
+    filterPhotoCsvByRetention: (csv, item) => item.EXPIRED ? '' : String(csv || ''),
+    mergePhotoCsvList: (values) => [...new Set((Array.isArray(values) ? values : [values]).filter(Boolean))].join(','),
+    getRequestPhotoLinkCsv: () => '',
+    getRequestResolvedPickNoteValue: () => '',
+    parseLocMatchPercent: (value) => {
+      const parsed = Number(String(value ?? '').trim());
+      return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : null;
+    },
+    requiresAvNoteForCompletion: () => true,
+    getMasterInventorySourceCode: (item) => item.SOURCE || '',
+    esc: (value) => String(value ?? ''),
+  };
+  vm.createContext(context);
+  vm.runInContext(reusableDataSource, context);
+
+  const row = {
+    SOURCE_TABLE: 'ph_master_inventory',
+    ITEMCODE: '007850.031.1',
+    LOCATIONCODE: 'A.06.000',
+    LOTCODE: '27.S1',
+    SOURCE: 'LD',
+    CONTSIZE: '3DP',
+    SAVED_PHOTO_LINK: 'https://example.test/photo.jpg',
+    SAVED_PHOTO_NAME: 'photo 9/2/26',
+    SPEC: 'N/A',
+    MATCH: '50',
+  };
+  const partial = context.getRequestReusableData(row);
+  assert.equal(partial.hasReusableEvidence, true);
+  assert.equal(partial.readyForAutoComplete, false);
+  assert.equal(partial.spec, 'N/A');
+  assert.equal(partial.match, '50');
+
+  const complete = context.getRequestReusableData({ ...row, AV_NOTE: 'Current valid row' });
+  assert.equal(complete.hasReusableEvidence, true);
+  assert.equal(complete.readyForAutoComplete, true);
+  assert.equal(context.getRequestReusableData({ ...row, SPEC: '', ITEMSPEC: 'CATALOG SPEC', MATCH: '' }).hasReusableEvidence, false);
+  assert.equal(context.getRequestReusableData({ ...row, EXPIRED: true }).hasReusableEvidence, false);
+  assert.equal(context.getRequestReusableData({ ...row, INVALID: true }).hasReusableEvidence, false);
+  assert.equal(context.isSameRequestReusableRow(row, { ...row }), true);
+  assert.equal(context.isSameRequestReusableRow(row, { ...row, LOTCODE: '27.F1' }), false);
+  assert.equal(context.isSameRequestReusableRow(row, { ...row, LOCATIONCODE: 'D.14.000' }), false);
+  assert.equal(context.isSameRequestReusableRow(row, { ...row, SOURCE: 'NC' }), false);
+  assert.equal(context.isSameRequestReusableRow(row, { ...row, CONTSIZE: '#1' }), false);
+
+  const prompt = context.buildRequestReusePromptHtml(row, 'row-id', '');
+  assert.match(prompt, /value="" selected disabled/);
+  assert.match(prompt, /Use Saved Pictures &amp; Data/);
+  assert.match(prompt, /Start Request Blank/);
 });
