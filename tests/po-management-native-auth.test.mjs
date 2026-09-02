@@ -13,6 +13,7 @@ const healthRepair = fs.readFileSync(
 );
 const healthProbe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
 const productionCanary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
+const performanceWorkflow = fs.readFileSync(new URL('../.github/workflows/performance-monitor.yml', import.meta.url), 'utf8');
 
 test('PO Management RLS permits only trusted active manager profiles', () => {
   assert.match(migration, /create or replace function private\.can_view_po_management\(\)/);
@@ -62,4 +63,6 @@ test('PO health reads the bounded latest source scope instead of rebuilding the 
   assert.doesNotMatch(healthRepair, /from public\.ph_view_po_27f1_hl/);
   assert.match(healthRepair, /security definer/);
   assert.match(healthRepair, /grant execute on function public\.get_po_management_health_snapshot\(\)[\s\S]*to service_role/);
+  assert.match(performanceWorkflow, /20260809011735_ph_27f1_hl_po\.sql/);
+  assert.match(performanceWorkflow, /20260902160400_optimize_po_management_health_snapshot\.sql/);
 });
