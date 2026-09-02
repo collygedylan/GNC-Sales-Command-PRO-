@@ -66,8 +66,10 @@ test('scheduled production health checks exact live parity without racing the pu
   const workflow = fs.readFileSync(new URL('../.github/workflows/production-auth-health.yml', import.meta.url), 'utf8');
   const probe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(workflow, /\n\s+push:/);
-  assert.match(workflow, /Verify the scheduled checkout is the exact live release/);
-  assert.match(workflow, /REQUIRE_LIVE_RELEASE_MATCH: '1'/);
+  assert.match(workflow, /workflow_run:[\s\S]*Deploy static app to Pages/);
+  assert.match(workflow, /Verify the completed Pages deployment is the exact live release/);
+  assert.match(workflow, /github\.event\.workflow_run\.head_sha/);
+  assert.match(workflow, /REQUIRE_LIVE_RELEASE_MATCH: \$\{\{ github\.event_name == 'workflow_run'/);
   assert.match(probe, /requireLiveReleaseMatch[\s\S]*production_live_release_mismatch/);
   assert.match(probe, /get_po_management_health_snapshot/);
   assert.match(probe, /production_po_management_auth_contract_unhealthy/);
