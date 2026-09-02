@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(62);
+select plan(67);
 
 select has_table('public', 'ph_pikes_order_batches', 'Pikes batch ledger exists');
 select has_table('public', 'ph_pikes_order_source_rows', 'approved Pikes source rows exist');
@@ -19,6 +19,7 @@ select ok(has_table_privilege('service_role', 'public.ph_pikes_order_inventory_r
 
 select has_function('public', 'prepare_pikes_order_import', array['text', 'text', 'text', 'bigint', 'uuid'], 'prepare RPC exists');
 select has_function('public', 'prepare_manager_order_import_v2', array['text', 'text', 'text', 'text', 'bigint', 'uuid'], 'generic manager-order prepare RPC exists');
+select has_function('public', 'append_manager_order_source_rows_v1', array['uuid', 'jsonb'], 'bounded source-row upload RPC exists');
 select has_function('public', 'finalize_pikes_order_import', array['text', 'text', 'text', 'integer', 'integer'], 'finalize RPC exists');
 select has_function('public', 'mark_pikes_order_file_archived', array['text', 'text'], 'archive RPC exists');
 select has_function('public', 'record_pikes_order_import_failure', array['text', 'text', 'text'], 'failure RPC exists');
@@ -32,6 +33,8 @@ select ok(not has_function_privilege('authenticated', 'public.prepare_pikes_orde
 select ok(has_function_privilege('service_role', 'public.prepare_pikes_order_import(text,text,text,bigint,uuid)', 'execute'), 'service role can call import RPC');
 select ok(not has_function_privilege('authenticated', 'public.prepare_manager_order_import_v2(text,text,text,text,bigint,uuid)', 'execute'), 'authenticated cannot call generic import RPC');
 select ok(has_function_privilege('service_role', 'public.prepare_manager_order_import_v2(text,text,text,text,bigint,uuid)', 'execute'), 'service role can call generic import RPC');
+select ok(not has_function_privilege('authenticated', 'public.append_manager_order_source_rows_v1(uuid,jsonb)', 'execute'), 'authenticated cannot upload manager-order source rows');
+select ok(has_function_privilege('service_role', 'public.append_manager_order_source_rows_v1(uuid,jsonb)', 'execute'), 'service role can upload manager-order source rows');
 select ok(not has_function_privilege('authenticated', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'authenticated cannot repair historical assignments');
 select ok(has_function_privilege('service_role', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'service role can repair historical assignments');
 select is((select count(*)::integer from private.app_access_permissions where permission_key = 'manager.orders.view' and active), 1, 'Orders permission is cataloged');
@@ -94,12 +97,13 @@ select lives_ok(
   'service import can prepare a Drive file manifest'
 );
 
-insert into public.ph_pikes_order_source_rows
-  (batch_id, source_row_number, itemcode, itemcode_normalized, order_tot, pick_notes)
-values
-  ('70000000-0000-4000-8000-000000000010', 2, 'PIKES-ITEM-1', 'PIKES-ITEM-1', '10', 'first row'),
-  ('70000000-0000-4000-8000-000000000010', 3, 'pikes-item-1', 'PIKES-ITEM-1', '20', 'repeated Item'),
-  ('70000000-0000-4000-8000-000000000010', 4, 'PIKES-MISSING', 'PIKES-MISSING', '30', 'unmatched');
+select lives_ok(
+  $q$select public.append_manager_order_source_rows_v1(
+    '70000000-0000-4000-8000-000000000010'::uuid,
+    '[{"sourceRowNumber":2,"itemcode":"PIKES-ITEM-1","itemcodeNormalized":"PIKES-ITEM-1","orderTot":"10","pickNotes":"first row"},{"sourceRowNumber":3,"itemcode":"pikes-item-1","itemcodeNormalized":"PIKES-ITEM-1","orderTot":"20","pickNotes":"repeated Item"},{"sourceRowNumber":4,"itemcode":"PIKES-MISSING","itemcodeNormalized":"PIKES-MISSING","orderTot":"30","pickNotes":"unmatched"}]'::jsonb
+  )$q$,
+  'bounded upload accepts Pikes source rows'
+);
 
 select lives_ok(
   $q$select public.finalize_pikes_order_import('pikes-ci-drive-file', repeat('b', 64), 'CSV', 1, 3)$q$,
@@ -162,10 +166,13 @@ select lives_ok(
   'service import can prepare a Stine Lumber Drive file manifest'
 );
 select is((select source_key from public.ph_pikes_order_batches where drive_file_id = 'stine-ci-drive-file'), 'stine_lumber', 'Stine batch retains its independent source key');
-insert into public.ph_pikes_order_source_rows
-  (batch_id, source_row_number, itemcode, itemcode_normalized, order_tot, pick_notes)
-values
-  ('70000000-0000-4000-8000-000000000020', 2, 'PIKES-ITEM-1', 'PIKES-ITEM-1', '12', 'Stine fixture');
+select lives_ok(
+  $q$select public.append_manager_order_source_rows_v1(
+    '70000000-0000-4000-8000-000000000020'::uuid,
+    '[{"sourceRowNumber":2,"itemcode":"PIKES-ITEM-1","itemcodeNormalized":"PIKES-ITEM-1","orderTot":"12","pickNotes":"Stine fixture"}]'::jsonb
+  )$q$,
+  'bounded upload accepts Stine source rows'
+);
 select lives_ok(
   $q$select public.finalize_pikes_order_import('stine-ci-drive-file', repeat('c', 64), 'Sheet1', 1, 1)$q$,
   'shared finalizer freezes Stine inventory without mixing sources'

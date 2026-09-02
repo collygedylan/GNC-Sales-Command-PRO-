@@ -5969,27 +5969,31 @@ function buildPikesOrderSourceRows_(sheetData, batchId, fileName) {
 function upsertPikesOrderSourceRows_(rows) {
   const payloadRows = Array.isArray(rows) ? rows : [];
   if (!payloadRows.length) return 0;
-  const requests = [];
+  let uploaded = 0;
   for (let index = 0; index < payloadRows.length; index += 200) {
-    requests.push({
-      url: `${SUPABASE_URL}/rest/v1/${PIKES_ORDER_SOURCE_ROWS_TABLE}?on_conflict=batch_id,source_row_number`,
-      method: 'post',
-      headers: getSupabaseHeaders_({
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      }),
-      payload: JSON.stringify(payloadRows.slice(index, index + 200)),
-      muteHttpExceptions: true
-    });
-  }
-  const responses = executeFetchAllBatches(requests, 1);
-  responses.forEach(function(response) {
-    const code = response.getResponseCode();
-    if (code !== 200 && code !== 201 && code !== 204) {
-      throw new Error(`Pikes order source row upload failed (${code}).`);
+    const chunk = payloadRows.slice(index, index + 200);
+    const batchId = String(chunk[0] && chunk[0].batch_id || '').trim();
+    if (!batchId || chunk.some(function(row) { return String(row && row.batch_id || '').trim() !== batchId; })) {
+      throw new Error('Pikes order source rows contain an invalid batch identity.');
     }
-  });
-  return payloadRows.length;
+    const result = callPikesOrderRpcWithRetry_('append_manager_order_source_rows_v1', {
+      p_batch_id: batchId,
+      p_rows: chunk.map(function(row) {
+        return {
+          sourceRowNumber: Number(row.source_row_number),
+          itemcode: row.itemcode,
+          itemcodeNormalized: row.itemcode_normalized,
+          orderTot: row.order_tot,
+          pickNotes: row.pick_notes
+        };
+      })
+    });
+    if (Number(result && result.acceptedCount) !== chunk.length) {
+      throw new Error('Pikes order source row upload count did not match.');
+    }
+    uploaded += chunk.length;
+  }
+  return uploaded;
 }
 
 function callPikesOrderRpcWithRetry_(rpcName, payload) {

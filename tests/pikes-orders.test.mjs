@@ -12,6 +12,7 @@ const migration = read('supabase/migrations/20260831165043_pikes_orders_manager_
 const repairMigration = read('supabase/migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql');
 const repairAuditHardening = read('supabase/migrations/20260831230825_harden_pikes_assignment_repair_audit.sql');
 const serviceRpcHardening = read('supabase/migrations/20260831232439_harden_pikes_service_rpc_execution.sql');
+const sourceRowUploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
 const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
 const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
 
@@ -82,11 +83,13 @@ test('five-minute Pikes importer is bounded, file-id idempotent, and archives on
   assert.match(code, /normalized === 'pikes_orders'[\s\S]*return \['pikes_orders'\]/);
   assert.match(code, /getPikesOrderFileHash_[\s\S]*getBlob\(\)\.getBytes\(\)/);
   assert.match(code, /prepare_manager_order_import_v2/);
+  assert.match(code, /append_manager_order_source_rows_v1/);
   assert.match(code, /finalize_pikes_order_import/);
   assert.match(code, /finalized\.status[\s\S]*archive_pending[\s\S]*moveDriveFileToFolderWithRetry_[\s\S]*mark_pikes_order_file_archived/);
   assert.match(code, /reconcilePikesOrderArchives_[\s\S]*status=eq\.archive_pending/);
   const pikesSync = code.slice(code.indexOf('function syncPikesOrdersFolder_'), code.indexOf('function syncNotesToSupabase'));
   assert.doesNotMatch(pikesSync, /failedFiles\.push\([^\n]*errorMessage/);
+  assert.match(sourceRowUploadMigration, /MANAGER_ORDER_SOURCE_ROWS_INVALID/);
 });
 
 test('manual sync client status is run-scoped and never exposes raw stage errors', () => {

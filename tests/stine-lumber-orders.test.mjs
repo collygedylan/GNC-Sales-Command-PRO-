@@ -9,6 +9,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 const code = read('Code.gs');
 const html = read('index.html');
 const migration = read('supabase/migrations/20260902131328_stine_orders_history.sql');
+const uploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
 const workflow = read('.github/workflows/performance-monitor.yml');
 
 function loadSharedOrderParser() {
@@ -82,6 +83,17 @@ test('database contract keeps sources independent and service-owned', () => {
   assert.match(migration, /safe_source_key not in \('pikes', 'stine_lumber'\)/);
   assert.match(migration, /get_pikes_order_assignment_health_v1[\s\S]*where b\.source_key = 'pikes'/);
   assert.match(workflow, /20260902131328_stine_orders_history\.sql/);
+});
+
+test('source rows use the bounded service-only upload operation', () => {
+  assert.match(code, /append_manager_order_source_rows_v1/);
+  assert.match(code, /p_rows: chunk\.map/);
+  assert.doesNotMatch(code, /rest\/v1\/\$\{PIKES_ORDER_SOURCE_ROWS_TABLE\}\?on_conflict/);
+  assert.match(uploadMigration, /jsonb_array_length\(p_rows\) > 200/);
+  assert.match(uploadMigration, /on conflict \(batch_id, source_row_number\) do update/);
+  assert.match(uploadMigration, /revoke all on function public\.append_manager_order_source_rows_v1\(uuid, jsonb\)[\s\S]*from public, anon, authenticated/);
+  assert.match(uploadMigration, /grant execute on function public\.append_manager_order_source_rows_v1\(uuid, jsonb\)[\s\S]*to service_role/);
+  assert.match(workflow, /20260902134004_manager_order_source_row_upload\.sql/);
 });
 
 test('Managers Orders UI labels Stine history and source rows dynamically', () => {
