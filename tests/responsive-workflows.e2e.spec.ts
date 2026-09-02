@@ -2496,6 +2496,112 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
   }
 });
 
+test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.09.02.04&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => (
+    typeof (window as any).getRequestReusableData === 'function'
+    && typeof (window as any).renderRequestQtyStepCurrentItem === 'function'
+  ));
+  await page.waitForLoadState('load');
+  await page.waitForTimeout(1000);
+
+  const eligibility = await page.evaluate(() => window.eval(`(() => {
+    const now = new Date().toISOString();
+    const row = {
+      DOM_ID: 'hosted-request-canary-row',
+      UNIQUE_ID: '007850_031_1-3DP-A_06_000-27_S1-LD----',
+      SOURCE_TABLE: 'ph_master_inventory',
+      ITEMCODE: '007850.031.1',
+      COMMONNAME: 'Invincibelle Wee White® Hydrangea',
+      CONTSIZE: '3DP',
+      LOCATIONCODE: 'A.06.000',
+      LOTCODE: '27.S1',
+      SOURCE: 'LD',
+      PTRONHAND: '332',
+      PTRAVAILABLE: '332',
+      SAVED_PHOTO_LINK: 'https://example.com/request-reuse-photo.jpg',
+      SAVED_PHOTO_NAME: 'photo ' + now,
+      SPEC: 'N/A',
+      MATCH: '50',
+      LOC_MATCH_QTY: '166',
+      AV_RULE_BUNDLE_UPDATED_AT: now,
+      AV_RULE_SPEC_UPDATED_AT: now,
+      AV_RULE_MATCH_UPDATED_AT: now,
+      AV_RULE_PHOTO_UPDATED_AT: now,
+      AV_RULE_PRIORITY_SNAPSHOT: '',
+      AV_RULE_HOLDSTOP_SNAPSHOT: ''
+    };
+    const reusable = getRequestReusableData(row);
+    const photoOnly = getRequestReusableData({ ...row, SPEC: '', MATCH: '', LOC_MATCH_QTY: '' });
+    const expiredAt = new Date(Date.now() - (11 * 24 * 60 * 60 * 1000)).toISOString();
+    const expired = getRequestReusableData({
+      ...row,
+      SAVED_PHOTO_NAME: 'photo ' + expiredAt,
+      AV_RULE_BUNDLE_UPDATED_AT: expiredAt,
+      AV_RULE_SPEC_UPDATED_AT: expiredAt,
+      AV_RULE_MATCH_UPDATED_AT: expiredAt,
+      AV_RULE_PHOTO_UPDATED_AT: expiredAt
+    });
+    const differentLot = isSameRequestReusableRow(row, { ...row, LOTCODE: '27.F1' });
+
+    const fixture = installMutationBlockedRequestCanaryFixture();
+    if (!fixture) throw new Error('REQUEST_CANARY_FIXTURE_UNAVAILABLE');
+    Object.assign(fixture, row);
+    invalidateInventoryDomIdLookup();
+    document.getElementById('view-login').classList.add('hidden');
+    showRequestModalBase();
+    goToQtyStep(null, 'Synthetic Canary Customer | Synthetic Canary Dock', 'step-2-cust', false);
+    return {
+      reusable: {
+        hasReusableEvidence: reusable.hasReusableEvidence,
+        readyForAutoComplete: reusable.readyForAutoComplete,
+        spec: reusable.spec,
+        match: reusable.match,
+        hasPhoto: !!reusable.photoLink
+      },
+      photoOnly: photoOnly.hasReusableEvidence,
+      expired: expired.hasReusableEvidence,
+      differentLot,
+      renderedPrompt: document.querySelectorAll('.item-reuse-data-input').length === 1,
+      renderedItem: !!findItemByDomId(row.DOM_ID)
+    };
+  })()`));
+
+  expect(eligibility).toEqual({
+    reusable: {
+      hasReusableEvidence: true,
+      readyForAutoComplete: false,
+      spec: 'N/A',
+      match: '50',
+      hasPhoto: true,
+    },
+    photoOnly: false,
+    expired: false,
+    differentLot: false,
+    renderedPrompt: true,
+    renderedItem: true,
+  });
+
+  const prompt = page.locator('.item-reuse-data-input');
+  const submit = page.locator('#request-submit-btn');
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toHaveValue('');
+  await expect(submit).toBeDisabled();
+  await expect(submit).toHaveText('CHOOSE PHOTO/DATA OPTION');
+
+  await prompt.selectOption('YES');
+  await expect(submit).toBeEnabled();
+  await page.evaluate(() => (window as any).renderRequestQtyStepCurrentItem());
+  await expect(prompt).toHaveValue('YES');
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toHaveValue('YES');
+
+  const storedChoice = await page.evaluate(() => (window as any).getCurrentRequestReuseDecisionState().choice);
+  expect(storedChoice).toBe('YES');
+});
+
 test('toast can be closed or swiped up without blocking the rest of the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
@@ -2606,7 +2712,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
 test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
   test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.02.03', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.02.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');
   await page.evaluate(() => window.eval(`(() => {
     isIOSDevice = () => true;
