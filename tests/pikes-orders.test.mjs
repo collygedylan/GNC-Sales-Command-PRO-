@@ -12,6 +12,7 @@ const migration = read('supabase/migrations/20260831165043_pikes_orders_manager_
 const repairMigration = read('supabase/migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql');
 const repairAuditHardening = read('supabase/migrations/20260831230825_harden_pikes_assignment_repair_audit.sql');
 const serviceRpcHardening = read('supabase/migrations/20260831232439_harden_pikes_service_rpc_execution.sql');
+const pikesHealthRpcRepair = read('supabase/migrations/20260902141956_repair_pikes_assignment_health_rpc_privilege.sql');
 const sourceRowUploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
 const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
 const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
@@ -137,6 +138,9 @@ test('Pikes snapshots use authoritative assignments and historical repair is ser
   assert.match(serviceRpcHardening, /alter function public\.repair_pikes_order_batch_assignments_v1\(uuid, boolean, text\)[\s\S]*security definer/);
   assert.match(serviceRpcHardening, /alter function public\.get_pikes_order_assignment_health_v1\(\)[\s\S]*security definer/);
   assert.match(serviceRpcHardening, /revoke all on function public\.get_pikes_order_assignment_health_v1\(\)[\s\S]*from public, anon, authenticated/);
+  assert.match(pikesHealthRpcRepair, /alter function public\.get_pikes_order_assignment_health_v1\(\)[\s\S]*security definer[\s\S]*set search_path = ''/);
+  assert.match(pikesHealthRpcRepair, /revoke all on function public\.get_pikes_order_assignment_health_v1\(\)[\s\S]*from public, anon, authenticated/);
+  assert.match(pikesHealthRpcRepair, /grant execute on function public\.get_pikes_order_assignment_health_v1\(\)[\s\S]*to service_role/);
 });
 
 test('assignment reconciliation is incremental, indexed, and overlap-safe', () => {
@@ -147,6 +151,7 @@ test('assignment reconciliation is incremental, indexed, and overlap-safe', () =
   assert.doesNotMatch(repairMigration, /set present_in_drive = false, updated_at = now\(\)\s*where assignment_key is not null/);
   assert.match(performanceWorkflow, /20260831224251_repair_pikes_assignments_and_maintenance\.sql/);
   assert.match(performanceWorkflow, /20260831230825_harden_pikes_assignment_repair_audit\.sql/);
+  assert.match(performanceWorkflow, /20260902141956_repair_pikes_assignment_health_rpc_privilege\.sql/);
   assert.match(performanceWorkflow, /REQUIRE_BOUNDED_MAINTENANCE: '1'/);
 });
 
