@@ -15,6 +15,7 @@ const serviceRpcHardening = read('supabase/migrations/20260831232439_harden_pike
 const pikesHealthRpcRepair = read('supabase/migrations/20260902141956_repair_pikes_assignment_health_rpc_privilege.sql');
 const boundedMaintenanceRepair = read('supabase/migrations/20260902151444_optimize_bounded_request_maintenance.sql');
 const boundedDeltaRepair = read('supabase/migrations/20260902152210_bound_eval_assignment_delta.sql');
+const separateHealthAudit = read('supabase/migrations/20260902152707_separate_request_health_audit.sql');
 const sourceRowUploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
 const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
 const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
@@ -171,6 +172,13 @@ test('assignment reconciliation is incremental, indexed, and overlap-safe', () =
   assert.match(boundedDeltaRepair, /removed_rows as \([\s\S]*from drive_codes d[\s\S]*d\.assignment_key = a\.assignment_key/);
   assert.doesNotMatch(boundedDeltaRepair, /private\.normalize_eval_assignment_key/);
   assert.match(performanceWorkflow, /20260902152210_bound_eval_assignment_delta\.sql/);
+  assert.match(separateHealthAudit, /assignment_result := public\.reconcile_eval_itemcodes\(\)/);
+  assert.match(separateHealthAudit, /expired_count := private\.expire_shared_av_results\(\)/);
+  assert.doesNotMatch(separateHealthAudit, /private\.record_request_health_audit\(\)/);
+  assert.match(separateHealthAudit, /'operation', 'get_hosted_health_snapshot'/);
+  assert.match(separateHealthAudit, /revoke all on function public\.run_request_integrity_maintenance\(\)[\s\S]*from public, anon, authenticated/);
+  assert.match(separateHealthAudit, /grant execute on function public\.run_request_integrity_maintenance\(\)[\s\S]*to service_role/);
+  assert.match(performanceWorkflow, /20260902152707_separate_request_health_audit\.sql/);
   assert.match(performanceWorkflow, /REQUIRE_BOUNDED_MAINTENANCE: '1'/);
 });
 
