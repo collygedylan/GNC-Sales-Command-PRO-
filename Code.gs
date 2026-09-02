@@ -185,6 +185,8 @@ const PIKES_ORDER_BATCHES_TABLE = 'ph_pikes_order_batches';
 const PIKES_ORDER_SOURCE_ROWS_TABLE = 'ph_pikes_order_source_rows';
 const PIKES_ORDERS_PENDING_FOLDER_ID = '178W6cp2r9ZKfcKRg-4c06SRnwG9LgqmL';
 const PIKES_ORDERS_PROCESSED_FOLDER_ID = '1zbwb0U31IOhOoLyNDXea3P_fqEB5EsWE';
+const STINE_LUMBER_ORDERS_PENDING_FOLDER_ID = '1R9NDclDdlLhyHDKlUyG-KuSwN2mrUNRt';
+const STINE_LUMBER_ORDERS_PROCESSED_FOLDER_ID = '1Ped8i4nyegI1Ikvv8O_BJUTLFGAq8AjN';
 const PIKES_ORDERS_MAX_FILES_PER_RUN = 3;
 const PIKES_ORDERS_MAX_RUN_MS = 240000;
 
@@ -205,7 +207,9 @@ const FOLDERS = {
   TRANSACTIONS_KEYED_DROP: TRANSACTIONS_KEYED_PENDING_FOLDER_ID,
   TRANSACTIONS_KEYED_PROCESSED: TRANSACTIONS_KEYED_PROCESSED_FOLDER_ID,
   PIKES_ORDERS_DROP: PIKES_ORDERS_PENDING_FOLDER_ID,
-  PIKES_ORDERS_PROCESSED: PIKES_ORDERS_PROCESSED_FOLDER_ID
+  PIKES_ORDERS_PROCESSED: PIKES_ORDERS_PROCESSED_FOLDER_ID,
+  STINE_LUMBER_ORDERS_DROP: STINE_LUMBER_ORDERS_PENDING_FOLDER_ID,
+  STINE_LUMBER_ORDERS_PROCESSED: STINE_LUMBER_ORDERS_PROCESSED_FOLDER_ID
 };
 
 const CUSTOMER_REP_MAP_TABLE = 'ph_customer_consignee_sales_reps';
@@ -267,7 +271,16 @@ function runRetiredDiseaseManualSyncStage_() {
 function runDiseaseDriveToSupabaseSyncOnly() { return runRetiredDiseaseManualSyncStage_(); }
 function runHlPoParsedOnly() { return syncHlPoParsedFolder_(FOLDERS.HL_PO_PARSED_DROP, FOLDERS.HL_PO_PARSED_PROCESSED, HL_PO_PARSED_TABLE); }
 function runTransactionsKeyedOnly() { return syncTransactionsKeyedFolder_(FOLDERS.TRANSACTIONS_KEYED_DROP, FOLDERS.TRANSACTIONS_KEYED_PROCESSED); }
-function runPikesOrdersOnly() { return syncPikesOrdersFolder_(FOLDERS.PIKES_ORDERS_DROP, FOLDERS.PIKES_ORDERS_PROCESSED); }
+function runPikesOrdersOnly() {
+  return syncPikesOrdersFolder_(FOLDERS.PIKES_ORDERS_DROP, FOLDERS.PIKES_ORDERS_PROCESSED, {
+    sourceKey: 'pikes', sourceLabel: 'Pikes'
+  });
+}
+function runStineLumberOrdersOnly() {
+  return syncPikesOrdersFolder_(FOLDERS.STINE_LUMBER_ORDERS_DROP, FOLDERS.STINE_LUMBER_ORDERS_PROCESSED, {
+    sourceKey: 'stine_lumber', sourceLabel: 'Stine Lumber'
+  });
+}
 
 const SITE_SPLIT_SITE_CODES_ = Object.freeze(['PH', 'TX', 'NC', 'HL']);
 const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
@@ -393,7 +406,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'pikes_orders', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'transactions_keyed', 'hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'pikes_orders', 'stine_lumber_orders', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'transactions_keyed', 'hl_po_parsed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -618,7 +631,8 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   lab_reports: { label: 'Lab Reports (Retired)', run: runRetiredDiseaseManualSyncStage_ },
   hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly },
   transactions_keyed: { label: 'Transactions Keyed', run: runTransactionsKeyedOnly },
-  pikes_orders: { label: 'Pikes Orders', run: runPikesOrdersOnly }
+  pikes_orders: { label: 'Pikes Orders', run: runPikesOrdersOnly },
+  stine_lumber_orders: { label: 'Stine Lumber Orders', run: runStineLumberOrdersOnly }
 });
 
 function runDriveSocReservesSequence() {
@@ -744,6 +758,7 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'hl_po_parsed' || normalized === 'hlpo_parsed' || normalized === 'hl_po_import' || normalized === 'hl_po_upload') return ['hl_po_parsed'];
   if (normalized === 'transactions_keyed' || normalized === 'transaction_keyed' || normalized === 'transactions') return ['transactions_keyed'];
   if (normalized === 'pikes_orders' || normalized === 'pikes_order' || normalized === 'pikes') return ['pikes_orders'];
+  if (normalized === 'stine_lumber_orders' || normalized === 'stine_orders' || normalized === 'stine_lumber' || normalized === 'stine') return ['stine_lumber_orders'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
 }
 
@@ -6005,20 +6020,24 @@ function isDriveFileInFolder_(file, folderId) {
   return false;
 }
 
-function reconcilePikesOrderArchives_(processedFolderId) {
-  const url = `${SUPABASE_URL}/rest/v1/${PIKES_ORDER_BATCHES_TABLE}?select=drive_file_id,content_sha256&status=eq.archive_pending&limit=50`;
+function reconcilePikesOrderArchives_(processedFolderId, options) {
+  const safeOptions = options || {};
+  const sourceKey = String(safeOptions.sourceKey || 'pikes').trim().toLowerCase();
+  const sourceLabel = String(safeOptions.sourceLabel || 'Pikes').trim() || 'Pikes';
+  const logPrefix = `[${sourceLabel.toUpperCase()} ORDERS]`;
+  const url = `${SUPABASE_URL}/rest/v1/${PIKES_ORDER_BATCHES_TABLE}?select=drive_file_id,content_sha256&source_key=eq.${encodeURIComponent(sourceKey)}&status=eq.archive_pending&limit=50`;
   const response = UrlFetchApp.fetch(url, {
     method: 'get',
     headers: getSupabaseHeaders_(),
     muteHttpExceptions: true
   });
   const code = response.getResponseCode();
-  if (code !== 200 && code !== 206) throw new Error(`Pikes order archive reconciliation failed (${code}).`);
+  if (code !== 200 && code !== 206) throw new Error(`${sourceLabel} order archive reconciliation failed (${code}).`);
   const pending = JSON.parse(response.getContentText() || '[]');
   let reconciled = 0;
   pending.forEach(function(entry) {
     try {
-      const file = withDriveRetry_('Read Pikes archived file', function() {
+      const file = withDriveRetry_(`Read ${sourceLabel} archived file`, function() {
         return DriveApp.getFileById(String(entry.drive_file_id || '').trim());
       });
       if (!isDriveFileInFolder_(file, processedFolderId)) return;
@@ -6028,20 +6047,24 @@ function reconcilePikesOrderArchives_(processedFolderId) {
       });
       reconciled++;
     } catch (error) {
-      console.warn('[PIKES ORDERS] An archive-pending batch could not be reconciled yet.');
+      console.warn(`${logPrefix} An archive-pending batch could not be reconciled yet.`);
     }
   });
   return reconciled;
 }
 
-function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
+function syncPikesOrdersFolder_(sourceFolderId, processedFolderId, options) {
+  const safeOptions = options || {};
+  const sourceKey = String(safeOptions.sourceKey || 'pikes').trim().toLowerCase();
+  const sourceLabel = String(safeOptions.sourceLabel || 'Pikes').trim() || 'Pikes';
+  const logPrefix = `[${sourceLabel.toUpperCase()} ORDERS]`;
   if (String(sourceFolderId || '').trim() === String(processedFolderId || '').trim()) {
-    throw new Error('Pikes Orders source and processed folders must be different.');
+    throw new Error(`${sourceLabel} Orders source and processed folders must be different.`);
   }
   const startedAtMs = Date.now();
-  const sourceFolder = getDriveFolderByIdWithRetry_(sourceFolderId, 'Pikes Orders source folder');
-  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'Pikes Orders processed folder');
-  const iterator = listDriveFilesWithRetry_(sourceFolder, 'Pikes Orders source folder');
+  const sourceFolder = getDriveFolderByIdWithRetry_(sourceFolderId, `${sourceLabel} Orders source folder`);
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${sourceLabel} Orders processed folder`);
+  const iterator = listDriveFilesWithRetry_(sourceFolder, `${sourceLabel} Orders source folder`);
   const pendingFiles = [];
   const failedFiles = [];
   let unsupportedFiles = 0;
@@ -6053,9 +6076,12 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
   const runId = Utilities.getUuid();
 
   try {
-    reconciledArchives = reconcilePikesOrderArchives_(processedFolderId);
+    reconciledArchives = reconcilePikesOrderArchives_(processedFolderId, {
+      sourceKey: sourceKey,
+      sourceLabel: sourceLabel
+    });
   } catch (error) {
-    console.warn('[PIKES ORDERS] Archive reconciliation will retry on the next run.');
+    console.warn(`${logPrefix} Archive reconciliation will retry on the next run.`);
   }
 
   while (iterator.hasNext()) {
@@ -6063,7 +6089,7 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
     const fileName = String(file.getName() || '').trim();
     if (fileName.startsWith('TEMP_')) {
       tempFilesRemoved++;
-      trashDriveFileWithRetry_(file, `Pikes Orders temp file ${fileName}`);
+      trashDriveFileWithRetry_(file, `${sourceLabel} Orders temp file ${fileName}`);
       continue;
     }
     if (!isPikesOrderFileSupported_(file)) {
@@ -6087,7 +6113,8 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
     let contentHash = '';
     try {
       contentHash = getPikesOrderFileHash_(file);
-      const prepared = callPikesOrderRpcWithRetry_('prepare_pikes_order_import', {
+      const prepared = callPikesOrderRpcWithRetry_('prepare_manager_order_import_v2', {
+        p_source_key: sourceKey,
         p_drive_file_id: fileId,
         p_file_name: fileName,
         p_content_sha256: contentHash,
@@ -6096,7 +6123,7 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
       }) || {};
       const preparedStatus = String(prepared.status || '').toLowerCase();
       if (preparedStatus === 'archive_pending' || preparedStatus === 'processed') {
-        moveDriveFileToFolderWithRetry_(file, processedFolder, `Pikes Orders finalized file ${fileName}`);
+        moveDriveFileToFolderWithRetry_(file, processedFolder, `${sourceLabel} Orders finalized file ${fileName}`);
         callPikesOrderRpcWithRetry_('mark_pikes_order_file_archived', {
           p_drive_file_id: fileId,
           p_content_sha256: contentHash
@@ -6106,12 +6133,12 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
         continue;
       }
       if (preparedStatus !== 'importing' || !prepared.batchId) {
-        throw new Error('Supabase returned an invalid Pikes Orders import state.');
+        throw new Error(`Supabase returned an invalid ${sourceLabel} Orders import state.`);
       }
 
       const sheetData = extractPikesOrderSheet_(file, sourceFolderId);
       const rows = buildPikesOrderSourceRows_(sheetData, prepared.batchId, fileName);
-      if (!rows.length) throw new Error(`No importable Pikes order rows found in ${fileName}.`);
+      if (!rows.length) throw new Error(`No importable ${sourceLabel} order rows found in ${fileName}.`);
       const uploaded = upsertPikesOrderSourceRows_(rows);
       const finalized = callPikesOrderRpcWithRetry_('finalize_pikes_order_import', {
         p_drive_file_id: fileId,
@@ -6121,10 +6148,10 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
         p_expected_row_count: rows.length
       }) || {};
       if (String(finalized.status || '').toLowerCase() !== 'archive_pending') {
-        throw new Error('Supabase did not finalize the Pikes Orders import.');
+        throw new Error(`Supabase did not finalize the ${sourceLabel} Orders import.`);
       }
 
-      moveDriveFileToFolderWithRetry_(file, processedFolder, `Pikes Orders processed file ${fileName}`);
+      moveDriveFileToFolderWithRetry_(file, processedFolder, `${sourceLabel} Orders processed file ${fileName}`);
       callPikesOrderRpcWithRetry_('mark_pikes_order_file_archived', {
         p_drive_file_id: fileId,
         p_content_sha256: contentHash
@@ -6135,7 +6162,7 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
     } catch (err) {
       const errorCode = getPikesOrderErrorCode_(err);
       failedFiles.push({ name: fileName, errorCode: errorCode });
-      console.error(`[PIKES ORDERS] ${fileName} failed with ${errorCode}. The file remains pending.`);
+      console.error(`${logPrefix} ${fileName} failed with ${errorCode}. The file remains pending.`);
       if (contentHash) {
         try {
           callPikesOrderRpcWithRetry_('record_pikes_order_import_failure', {
@@ -6144,7 +6171,7 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
             p_sanitized_error_code: errorCode
           });
         } catch (recordError) {
-          console.warn('[PIKES ORDERS] Could not record the sanitized failure state.');
+          console.warn(`${logPrefix} Could not record the sanitized failure state.`);
         }
       }
     }
@@ -6163,6 +6190,8 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId) {
 
   return {
     tableName: PIKES_ORDER_BATCHES_TABLE,
+    sourceKey: sourceKey,
+    sourceLabel: sourceLabel,
     filesProcessed: filesProcessed,
     reconciledArchives: reconciledArchives,
     remainingFiles: Math.max(0, pendingFiles.length - filesProcessed),

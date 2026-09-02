@@ -81,7 +81,7 @@ test('five-minute Pikes importer is bounded, file-id idempotent, and archives on
   assert.match(code, /MANUAL_SYNC_STAGE_ORDER_DEFAULT[^\n]*'pikes_orders'/);
   assert.match(code, /normalized === 'pikes_orders'[\s\S]*return \['pikes_orders'\]/);
   assert.match(code, /getPikesOrderFileHash_[\s\S]*getBlob\(\)\.getBytes\(\)/);
-  assert.match(code, /prepare_pikes_order_import/);
+  assert.match(code, /prepare_manager_order_import_v2/);
   assert.match(code, /finalize_pikes_order_import/);
   assert.match(code, /finalized\.status[\s\S]*archive_pending[\s\S]*moveDriveFileToFolderWithRetry_[\s\S]*mark_pikes_order_file_archived/);
   assert.match(code, /reconcilePikesOrderArchives_[\s\S]*status=eq\.archive_pending/);

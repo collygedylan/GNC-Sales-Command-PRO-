@@ -81,6 +81,7 @@ jobs:
           cp supabase/migrations/20260831210000_request_eval_drive_reliability_repair.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260831230825_harden_pikes_assignment_repair_audit.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902131328_stine_orders_history.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260901192727_repair_request_option_append.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260901201209_eval_report2_completion_routing.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"

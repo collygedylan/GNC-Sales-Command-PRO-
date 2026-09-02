@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(52);
+select plan(62);
 
 select has_table('public', 'ph_pikes_order_batches', 'Pikes batch ledger exists');
 select has_table('public', 'ph_pikes_order_source_rows', 'approved Pikes source rows exist');
@@ -18,6 +18,7 @@ select ok(not has_table_privilege('authenticated', 'public.ph_pikes_order_source
 select ok(has_table_privilege('service_role', 'public.ph_pikes_order_inventory_rows', 'insert'), 'service role can write snapshots');
 
 select has_function('public', 'prepare_pikes_order_import', array['text', 'text', 'text', 'bigint', 'uuid'], 'prepare RPC exists');
+select has_function('public', 'prepare_manager_order_import_v2', array['text', 'text', 'text', 'text', 'bigint', 'uuid'], 'generic manager-order prepare RPC exists');
 select has_function('public', 'finalize_pikes_order_import', array['text', 'text', 'text', 'integer', 'integer'], 'finalize RPC exists');
 select has_function('public', 'mark_pikes_order_file_archived', array['text', 'text'], 'archive RPC exists');
 select has_function('public', 'record_pikes_order_import_failure', array['text', 'text', 'text'], 'failure RPC exists');
@@ -29,6 +30,8 @@ select has_function('public', 'get_pikes_order_assignment_health_v1', array[]::t
 select ok(has_function_privilege('authenticated', 'public.get_manager_order_batches_v1(text,timestamp with time zone,uuid,integer)', 'execute'), 'authenticated may call guarded read RPC');
 select ok(not has_function_privilege('authenticated', 'public.prepare_pikes_order_import(text,text,text,bigint,uuid)', 'execute'), 'authenticated cannot call import RPC');
 select ok(has_function_privilege('service_role', 'public.prepare_pikes_order_import(text,text,text,bigint,uuid)', 'execute'), 'service role can call import RPC');
+select ok(not has_function_privilege('authenticated', 'public.prepare_manager_order_import_v2(text,text,text,text,bigint,uuid)', 'execute'), 'authenticated cannot call generic import RPC');
+select ok(has_function_privilege('service_role', 'public.prepare_manager_order_import_v2(text,text,text,text,bigint,uuid)', 'execute'), 'service role can call generic import RPC');
 select ok(not has_function_privilege('authenticated', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'authenticated cannot repair historical assignments');
 select ok(has_function_privilege('service_role', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'service role can repair historical assignments');
 select is((select count(*)::integer from private.app_access_permissions where permission_key = 'manager.orders.view' and active), 1, 'Orders permission is cataloged');
@@ -42,6 +45,7 @@ select is((
     and b.permission_key is null
 ), 0, 'Orders permission has an audit baseline for every existing active profile');
 select has_index('public', 'ph_master_inventory', 'idx_ph_master_inventory_itemcode_normalized', 'normalized ItemCode lookup is indexed');
+select is((select count(*)::integer from private.app_access_legacy_checks where check_key = 'apps_script.stine_lumber_orders'), 1, 'Stine Apps Script surface is registered in the access audit');
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -150,10 +154,30 @@ select is(
 select is((public.get_pikes_order_assignment_health_v1()->>'falseUnassignedCount')::integer, 0, 'hosted Pikes health finds no false unassigned snapshots after repair');
 select is((public.reconcile_eval_itemcodes()->>'status')::text, 'completed', 'incremental assignment reconciliation completes');
 
+select lives_ok(
+  $q$select public.prepare_manager_order_import_v2(
+    'stine_lumber', 'stine-ci-drive-file', 'stine-ci.xlsx', repeat('c', 64), 300,
+    '70000000-0000-4000-8000-000000000020'::uuid
+  )$q$,
+  'service import can prepare a Stine Lumber Drive file manifest'
+);
+select is((select source_key from public.ph_pikes_order_batches where drive_file_id = 'stine-ci-drive-file'), 'stine_lumber', 'Stine batch retains its independent source key');
+insert into public.ph_pikes_order_source_rows
+  (batch_id, source_row_number, itemcode, itemcode_normalized, order_tot, pick_notes)
+values
+  ('70000000-0000-4000-8000-000000000020', 2, 'PIKES-ITEM-1', 'PIKES-ITEM-1', '12', 'Stine fixture');
+select lives_ok(
+  $q$select public.finalize_pikes_order_import('stine-ci-drive-file', repeat('c', 64), 'Sheet1', 1, 1)$q$,
+  'shared finalizer freezes Stine inventory without mixing sources'
+);
+select matches((select display_name from public.ph_pikes_order_batches where drive_file_id = 'stine-ci-drive-file'), '^Stine Lumber [0-9]{2}-[0-9]{2}-[0-9]{4}$', 'Stine history receives its own dated label');
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '70000000-0000-0000-0000-000000000001', true);
 select ok(private.can_view_manager_orders(), 'active Admin can view Orders');
 select lives_ok($q$select public.get_manager_order_batch_v1('70000000-0000-4000-8000-000000000010', array['pikes_user'], null, null, 100)$q$, 'active Admin can use assignee-filtered history RPC');
+select ok(public.get_manager_order_sources_v1()->'sources' @> '[{"sourceKey":"stine_lumber","label":"Stine Lumber"}]'::jsonb, 'active Admin sees the Stine Lumber source');
+select is(public.get_manager_order_batches_v1('stine_lumber', null, null, 25)->>'sourceLabel', 'Stine Lumber', 'active Admin can browse independent Stine history');
 
 select set_config('request.jwt.claim.sub', '70000000-0000-0000-0000-000000000002', true);
 select ok(not private.can_view_manager_orders(), 'regular user cannot view Orders');
