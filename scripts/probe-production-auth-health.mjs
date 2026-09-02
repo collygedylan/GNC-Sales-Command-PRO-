@@ -86,6 +86,7 @@ let requestIntegrityHealth = null;
 let poManagementHealth = null;
 let accessControlHealth = null;
 let evalRequestDeliveryHealth = null;
+let evalWorkCreationHealth = null;
 let evalItemcodeWorkHealth = null;
 let requestDriveEvidenceHealth = null;
 let codexOpsHealth = null;
@@ -345,6 +346,29 @@ if (serviceRoleKey) {
     missingCompletionEventCount: Number(evalRequestDeliveryHealth.missing_completion_event_count)
   });
 
+  const evalWorkCreationHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_work_creation_health_snapshot_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const evalWorkCreationHealthText = await evalWorkCreationHealthResponse.text();
+  try { evalWorkCreationHealth = evalWorkCreationHealthText ? JSON.parse(evalWorkCreationHealthText) : null; } catch {}
+  if (!evalWorkCreationHealthResponse.ok || !evalWorkCreationHealth || typeof evalWorkCreationHealth !== 'object') {
+    throw new Error(`production_eval_work_creation_health_unavailable_HTTP_${evalWorkCreationHealthResponse.status}`);
+  }
+  const evalWorkCreationContractHealthy = evalWorkCreationHealth.contract_version === 'eval-work-creation-health-v1'
+    && evalWorkCreationHealth.batch_assignee_insert_contract_healthy === true
+    && evalWorkCreationHealth.single_assignee_insert_contract_healthy === true
+    && evalWorkCreationHealth.healthy === true;
+  if (!evalWorkCreationContractHealthy) throw new Error('production_eval_work_creation_contract_unhealthy');
+  checks.push({
+    name: 'eval_work_creation_v1',
+    status: evalWorkCreationHealthResponse.status,
+    contractVersion: evalWorkCreationHealth.contract_version,
+    batchAssigneeInsertContractHealthy: evalWorkCreationHealth.batch_assignee_insert_contract_healthy === true,
+    singleAssigneeInsertContractHealthy: evalWorkCreationHealth.single_assignee_insert_contract_healthy === true
+  });
+
   const requestDriveHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_request_drive_evidence_health_snapshot_v1`, {
     method: 'POST',
     headers: serviceHeaders,
@@ -498,6 +522,11 @@ const result = {
     missingCompletionEventCount: Math.max(0, Number(evalRequestDeliveryHealth.missing_completion_event_count) || 0),
     evalOriginScopeMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) || 0),
     evalRequiredRecipientViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) || 0)
+  } : null,
+  evalWorkCreation: evalWorkCreationHealth ? {
+    contractVersion: String(evalWorkCreationHealth.contract_version || ''),
+    batchAssigneeInsertContractHealthy: evalWorkCreationHealth.batch_assignee_insert_contract_healthy === true,
+    singleAssigneeInsertContractHealthy: evalWorkCreationHealth.single_assignee_insert_contract_healthy === true
   } : null,
   requestDriveEvidence: requestDriveEvidenceHealth ? {
     contractVersion: String(requestDriveEvidenceHealth.contract_version || ''),

@@ -4,6 +4,12 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql');
+const creationRepair = read('../supabase/migrations/20260902032807_repair_eval_work_assignee_insert_contract.sql');
+const lookupOptimization = read('../supabase/migrations/20260902034335_optimize_eval_work_itemcode_lookup.sql');
+const fullLookupOptimization = read('../supabase/migrations/20260902034603_optimize_eval_work_master_lookup_full.sql');
+const multiAssigneeMigration = read('../supabase/migrations/20260831030457_eval_work_multi_assignee_v1.sql');
+const completionRouting = read('../supabase/migrations/20260901201209_eval_report2_completion_routing.sql');
+const productionProbe = read('../scripts/probe-production-auth-health.mjs');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const codeGs = read('../Code.gs');
 const html = read('../index.html');
@@ -76,6 +82,41 @@ test('direct and assignment recipient contracts are server-owned', () => {
   assert.match(codeGs, /expectedCount = actorKey === 'jd_jones' \? 4 : 3/);
   assert.match(migration, /assignmentRecipients/);
   assert.match(migration, /array_append\(usernames, 'jd_jones'\)/);
+});
+
+test('Eval Work creation satisfies multi-assignee constraints before the base insert returns', () => {
+  assert.match(creationRepair, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(creationRepair, /normalized_assignees := private\.eval_work_normalize_assignees_v1/);
+  assert.match(creationRepair, /inquiry_draft, origin_count, assigned_to_users, assignee_usernames, assignee_profiles/);
+  assert.match(creationRepair, /cardinality\(origin_ids\), matched_users, normalized_usernames, normalized_profiles/);
+  assert.match(creationRepair, /inquiry_draft,[\s\S]*assignee_usernames, assignee_profiles/);
+  assert.match(creationRepair, /create or replace function public\.get_eval_work_creation_health_snapshot_v1/);
+  assert.match(creationRepair, /revoke all on function public\.get_eval_work_creation_health_snapshot_v1\(\) from public, anon, authenticated/);
+  assert.match(productionProbe, /production_eval_work_creation_contract_unhealthy/);
+});
+
+test('Eval Work ITEMCODE expansion uses the exact normalized lookup expressions', () => {
+  assert.match(lookupOptimization, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(lookupOptimization, /upper\(btrim\(coalesce\(itemcode, ''\)\)\)/);
+  assert.match(lookupOptimization, /upper\(btrim\(coalesce\(itemcode_normalized, itemcode, ''\)\)\)/);
+  assert.match(lookupOptimization, /where coalesce\(present_in_drive, true\)/);
+  assert.match(lookupOptimization, /analyze public\.ph_master_inventory/);
+  assert.match(fullLookupOptimization, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(fullLookupOptimization, /drop index if exists public\.idx_ph_master_inventory_eval_itemcode_lookup/);
+  assert.match(fullLookupOptimization, /create index idx_ph_master_inventory_eval_itemcode_lookup[\s\S]*upper\(btrim\(coalesce\(itemcode, ''\)\)\)/);
+  assert.doesNotMatch(fullLookupOptimization, /where nullif/);
+});
+
+test('assignment and completion recipients remain separate for Eval Reports #2', () => {
+  const reportCreateStart = migration.indexOf('create or replace function public.create_eval_report2_batch_v1');
+  const directRecipientsStart = migration.indexOf('create or replace function public.get_eval_report2_direct_inquiry_recipients_v1');
+  const reportCreate = migration.slice(reportCreateStart, directRecipientsStart);
+  assert.ok(reportCreateStart >= 0 && directRecipientsStart > reportCreateStart);
+  assert.doesNotMatch(reportCreate, /sharon_combs/);
+  assert.match(multiAssigneeMigration, /private\.eval_work_required_manager_emails_v2\(\) \|\| emails/);
+  assert.doesNotMatch(multiAssigneeMigration, /sharon_combs/);
+  assert.match(completionRouting, /'sharon_combs'/);
+  assert.match(completionRouting, /submitter_username = 'jd_jones'/);
 });
 
 test('new operations are service-only', () => {
