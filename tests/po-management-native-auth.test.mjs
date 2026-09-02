@@ -7,6 +7,10 @@ const migration = fs.readFileSync(
   new URL('../supabase/migrations/20260828014753_restore_po_management_native_auth_access.sql', import.meta.url),
   'utf8'
 );
+const healthRepair = fs.readFileSync(
+  new URL('../supabase/migrations/20260902160400_optimize_po_management_health_snapshot.sql', import.meta.url),
+  'utf8'
+);
 const healthProbe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
 const productionCanary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
 
@@ -48,4 +52,14 @@ test('hosted health and exact-live canary cover the PO authorization contract', 
   assert.match(productionCanary, /live PO Management uses authenticated PostgREST and never the retired database proxy/);
   assert.match(productionCanary, /\/rest\/v1\/ph_view_po_27f1_hl/);
   assert.match(productionCanary, /retired proxy or mutation attempted/);
+});
+
+test('PO health reads the bounded latest source scope instead of rebuilding the live view', () => {
+  assert.match(healthRepair, /ph_27f1_hl_po_latest_import_idx/);
+  assert.match(healthRepair, /ph_27f1_hl_po_scope_key_idx/);
+  assert.match(healthRepair, /with latest_scope as materialized/);
+  assert.match(healthRepair, /from public\.ph_27f1_hl_po p/);
+  assert.doesNotMatch(healthRepair, /from public\.ph_view_po_27f1_hl/);
+  assert.match(healthRepair, /security definer/);
+  assert.match(healthRepair, /grant execute on function public\.get_po_management_health_snapshot\(\)[\s\S]*to service_role/);
 });
