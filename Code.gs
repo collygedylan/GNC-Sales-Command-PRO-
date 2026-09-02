@@ -4205,6 +4205,7 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
   let upsertCount = 0;
   let deleteCount = 0;
   let importSucceeded = false;
+  let evalReport2Reconciliation = null;
 
   console.log(`[START] Processing snapshot batch: ${pendingFiles.length} file(s) -> Table: ${tableName}`);
 
@@ -4311,11 +4312,32 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
   );
 
   if (importSucceeded) {
+    if (isMasterInventoryTable_(tableName)) {
+      try {
+        evalReport2Reconciliation = callSupabaseRpc_('reconcile_eval_report2_work_v1', {
+          p_import_revision: syncStartTime,
+          p_dry_run: false,
+          p_limit: 5000
+        });
+        if (evalReport2Reconciliation && evalReport2Reconciliation.status === 'deferred') {
+          console.warn('[EVAL REPORTS #2] RECONCILIATION_DEFERRED');
+        } else {
+          console.log('[EVAL REPORTS #2] Canonical import reconciliation completed: ' +
+            String(evalReport2Reconciliation && evalReport2Reconciliation.resolved || 0) + ' work item(s) resolved.');
+        }
+      } catch (reconcileError) {
+        // The inventory commit remains authoritative. A later canonical import
+        // or the scheduled service operation can safely retry this idempotently.
+        evalReport2Reconciliation = { status: 'failed', errorCode: 'EVAL_REPORT2_RECONCILIATION_FAILED' };
+        console.error('[EVAL REPORTS #2] EVAL_REPORT2_RECONCILIATION_FAILED');
+      }
+    }
     emitTableSyncLiveEvent_(tableName, {
       filesProcessed: pendingFiles.length,
       tempFilesRemoved: tempFilesRemoved,
       upsertCount: upsertCount,
-      deleteCount: deleteCount
+      deleteCount: deleteCount,
+      evalReport2ResolvedCount: Number(evalReport2Reconciliation && evalReport2Reconciliation.resolved || 0)
     });
   }
 
@@ -4328,6 +4350,7 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
     failedFileErrors: failedFiles,
     upsertCount: upsertCount,
     deleteCount: deleteCount,
+    evalReport2Reconciliation: evalReport2Reconciliation,
     diagnostics: combinedStats
   };
 }
@@ -10467,6 +10490,26 @@ function getInventoryTransactionEmailRecipients_(payload, actorEmail) {
 
 function getReclassInquiryEmailRecipients_(payload) {
   const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const sourceContext = safePayload.sourceContext && typeof safePayload.sourceContext === 'object'
+    ? safePayload.sourceContext : {};
+  if (String(sourceContext.sourceMode || '').trim().toLowerCase() === 'eval-report-2') {
+    const actor = safePayload.actor && typeof safePayload.actor === 'object' ? safePayload.actor : {};
+    const actorUsername = String(firstNonEmptyRequestValue_(actor.username, actor.user, '') || '').trim();
+    let authoritative;
+    try {
+      authoritative = callSupabaseRpc_('get_eval_report2_direct_inquiry_recipients_v1', {
+        p_actor_username: actorUsername
+      });
+    } catch (error) {
+      console.error('[EVAL REPORTS #2] DIRECT_INQUIRY_RECIPIENTS_UNAVAILABLE');
+      throw new Error('RECLASS_VALIDATION:EVAL_REPORT2_RECIPIENTS_UNAVAILABLE');
+    }
+    const recipients = dedupeEmailAddresses_(authoritative);
+    const actorKey = actorUsername.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const expectedCount = actorKey === 'jd_jones' ? 4 : 3;
+    if (recipients.length !== expectedCount) throw new Error('RECLASS_VALIDATION:EVAL_REPORT2_RECIPIENTS_UNAVAILABLE');
+    return recipients;
+  }
   return dedupeEmailAddresses_([
     safePayload.recipientEmails,
     safePayload.emailRecipients,

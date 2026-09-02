@@ -1111,19 +1111,28 @@ function evalWorkError(error: unknown) {
   const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const code = String(source.code || "").trim();
   const message = String(source.message || error || "eval_work_failed").trim();
-  const safeCode = (message.match(/eval_work_[a-z0-9_]+/i) || [code || "eval_work_failed"])[0].toLowerCase();
+  const safeCode = (message.match(/eval_(?:work|report2)_[a-z0-9_]+/i) || [code || "eval_work_failed"])[0].toLowerCase();
   const status = code === "42501" || /forbidden|not_authorized/.test(safeCode)
     ? 403
     : (code === "40001" || /conflict/.test(safeCode) ? 409 : 400);
-  const safeMessage = safeCode === "eval_work_assignment_scope_conflict"
-    ? "The current AssignedTo value no longer matches the selected user filter. Refresh the report and select the row again."
-    : safeCode === "eval_work_assignee_email_invalid"
-    ? "One selected evaluator does not have a valid email address."
-    : safeCode === "eval_work_batch_create_forbidden"
-    ? "Only an authorized Eval Work manager can create this batch."
-    : safeCode === "eval_work_itemcode_membership_empty"
-    ? "No current inventory rows remain for this ITEMCODE. Refresh the report."
-    : "Eval Work request could not be completed.";
+  const safeMessages: Record<string, string> = {
+    eval_work_assignment_scope_conflict: "The current AssignedTo value no longer matches the selected user filter. Refresh the report and review that selection.",
+    eval_work_assignee_email_invalid: "One selected evaluator does not have a verified email address.",
+    eval_work_assignee_email_unavailable: "One selected evaluator does not have a verified email address.",
+    eval_work_assignee_not_active: "One selected evaluator is disabled, locked, or unavailable.",
+    eval_work_batch_create_forbidden: "Only Dylan, Megan, or JD can create Eval Reports #2 work.",
+    eval_work_itemcode_membership_empty: "No current inventory rows remain for this ITEMCODE. Refresh the report.",
+    eval_work_required_manager_recipient_unavailable: "A required Dylan or Megan assignment recipient is unavailable. Review the user profile before retrying.",
+    eval_work_required_assignment_recipient_unavailable: "A required assignment recipient is unavailable. Review the user profile before retrying.",
+    eval_work_report2_completion_recipient_unavailable: "A required completion recipient is unavailable. Review the user profile before retrying.",
+    eval_report2_report_invalid: "The selected report is no longer available. Refresh Eval Reports #2.",
+    eval_report2_source_invalid: "This selection did not come from the current Eval Reports #2 view. Refresh and select it again.",
+    eval_report2_page_invalid: "The report page request was invalid. Refresh Eval Reports #2.",
+    eval_work_batch_size_invalid: "Choose from 1 through 50 ITEMCODEs at a time.",
+    eval_work_batch_invalid: "The Eval Work selection changed before it could be saved. Refresh and retry.",
+    eval_work_create_token_assignees_conflict: "This retry used a different evaluator list. Refresh the existing assignment instead.",
+  };
+  const safeMessage = safeMessages[safeCode] || "Eval Work request could not be completed. Retry after refreshing the report.";
   return errorResponse(safeMessage, status, { code: safeCode });
 }
 
@@ -1239,11 +1248,27 @@ async function handleEvalWorkAction(
   if (!activeProfile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "PROFILE_NOT_ACTIVE" });
   const operation = String(payload.operation || "list").trim().toLowerCase();
   try {
+    if (operation === "report_page") {
+      if (!isEvalWorkManager(session)) {
+        return errorResponse("Only Dylan, Megan, or JD can view Eval Reports #2.", 403, { code: "eval_report2_view_forbidden" });
+      }
+      const reportId = String(payload.reportId || "").trim().toLowerCase();
+      const cursorItemcode = String(payload.cursorItemcode || "").trim().toUpperCase();
+      const limit = Math.min(50, Math.max(1, Number(payload.limit) || 25));
+      const { data, error } = await supabase.rpc("list_eval_report2_itemcodes_v1", { p_payload: {
+        actorUsername: actor,
+        reportId,
+        cursorItemcode,
+        limit,
+      } });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data, manager: true });
+    }
     if (operation === "list") {
       let query = supabase.from("ph_eval_work").select("*").order("updated_at", { ascending: false }).limit(500);
       if (!isEvalWorkManager(session)) query = query.contains("assignee_usernames", [actor]);
       const status = String(payload.status || "").trim().toLowerCase();
-      if (["open", "in_progress", "submitted", "cancelled"].includes(status)) query = query.eq("status", status);
+      if (["open", "in_progress", "submitted", "cancelled", "resolved_import"].includes(status)) query = query.eq("status", status);
       const { data, error } = await query;
       if (error) throw error;
       const withDelivery = await withEvalWorkDeliveryStatuses((data || []) as Record<string, unknown>[]);
@@ -1351,9 +1376,19 @@ async function handleEvalWorkAction(
         settingsSignature: String(payload.settingsSignature || "").trim().slice(0, 1024),
         items,
       };
-      const { data, error } = await supabase.rpc("create_eval_work_batch_multi_v2", { p_payload: rpcPayload });
+      const report2ItemCount = items.filter((item) => item.reportContext.sourceMode === "eval-report-2").length;
+      if (report2ItemCount > 0 && report2ItemCount !== items.length) {
+        return errorResponse("Drive Mode and Eval Reports #2 selections cannot be mixed in one batch.", 400, { code: "eval_work_batch_source_mixed" });
+      }
+      const rpcName = report2ItemCount === items.length
+        ? "create_eval_report2_batch_v1"
+        : "create_eval_work_batch_multi_v2";
+      const { data, error } = await supabase.rpc(rpcName, { p_payload: rpcPayload });
       if (error) throw error;
-      const rows = (data || []) as Record<string, unknown>[];
+      const report2Result = report2ItemCount === items.length && data && typeof data === "object" && !Array.isArray(data)
+        ? data as Record<string, unknown>
+        : null;
+      const rows = (report2Result ? report2Result.rows : data || []) as Record<string, unknown>[];
       const assignmentRefreshed = rows.some((row) => {
         const context = row.source_context && typeof row.source_context === "object"
           ? row.source_context as Record<string, unknown> : {};
@@ -1364,7 +1399,9 @@ async function handleEvalWorkAction(
         ok: true,
         data: await withEvalWorkOrigins(withDelivery),
         manager: true,
-        assignmentRefreshed,
+        assignmentRefreshed: report2Result?.assignmentRefreshed === true || assignmentRefreshed,
+        result: String(report2Result?.result || "created"),
+        resolvedItemcodes: Array.isArray(report2Result?.resolvedItemcodes) ? report2Result?.resolvedItemcodes : [],
       });
     }
     if (operation === "save" || operation === "submit") {
