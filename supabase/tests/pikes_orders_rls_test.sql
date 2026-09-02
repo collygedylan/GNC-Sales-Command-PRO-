@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(67);
+select plan(68);
 
 select has_table('public', 'ph_pikes_order_batches', 'Pikes batch ledger exists');
 select has_table('public', 'ph_pikes_order_source_rows', 'approved Pikes source rows exist');
@@ -35,6 +35,7 @@ select ok(not has_function_privilege('authenticated', 'public.prepare_manager_or
 select ok(has_function_privilege('service_role', 'public.prepare_manager_order_import_v2(text,text,text,text,bigint,uuid)', 'execute'), 'service role can call generic import RPC');
 select ok(not has_function_privilege('authenticated', 'public.append_manager_order_source_rows_v1(uuid,jsonb)', 'execute'), 'authenticated cannot upload manager-order source rows');
 select ok(has_function_privilege('service_role', 'public.append_manager_order_source_rows_v1(uuid,jsonb)', 'execute'), 'service role can upload manager-order source rows');
+select ok((select prosecdef from pg_proc where oid = 'public.finalize_pikes_order_import(text,text,text,integer,integer)'::regprocedure), 'service-only finalizer can resolve private assignment authority');
 select ok(not has_function_privilege('authenticated', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'authenticated cannot repair historical assignments');
 select ok(has_function_privilege('service_role', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'service role can repair historical assignments');
 select is((select count(*)::integer from private.app_access_permissions where permission_key = 'manager.orders.view' and active), 1, 'Orders permission is cataloged');
@@ -173,10 +174,12 @@ select lives_ok(
   )$q$,
   'bounded upload accepts Stine source rows'
 );
+set local role service_role;
 select lives_ok(
   $q$select public.finalize_pikes_order_import('stine-ci-drive-file', repeat('c', 64), 'Sheet1', 1, 1)$q$,
   'shared finalizer freezes Stine inventory without mixing sources'
 );
+reset role;
 select matches((select display_name from public.ph_pikes_order_batches where drive_file_id = 'stine-ci-drive-file'), '^Stine Lumber [0-9]{2}-[0-9]{2}-[0-9]{4}$', 'Stine history receives its own dated label');
 
 set local role authenticated;

@@ -10,6 +10,7 @@ const code = read('Code.gs');
 const html = read('index.html');
 const migration = read('supabase/migrations/20260902131328_stine_orders_history.sql');
 const uploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
+const finalizerPrivilegeMigration = read('supabase/migrations/20260902140500_repair_manager_order_finalizer_privilege.sql');
 const workflow = read('.github/workflows/performance-monitor.yml');
 
 function loadSharedOrderParser() {
@@ -94,6 +95,14 @@ test('source rows use the bounded service-only upload operation', () => {
   assert.match(uploadMigration, /revoke all on function public\.append_manager_order_source_rows_v1\(uuid, jsonb\)[\s\S]*from public, anon, authenticated/);
   assert.match(uploadMigration, /grant execute on function public\.append_manager_order_source_rows_v1\(uuid, jsonb\)[\s\S]*to service_role/);
   assert.match(workflow, /20260902134004_manager_order_source_row_upload\.sql/);
+});
+
+test('shared finalizer retains service-only access while resolving private assignment keys', () => {
+  assert.match(finalizerPrivilegeMigration, /alter function public\.finalize_pikes_order_import\(text, text, text, integer, integer\)[\s\S]*security definer/);
+  assert.match(finalizerPrivilegeMigration, /set search_path = ''/);
+  assert.match(finalizerPrivilegeMigration, /revoke all on function public\.finalize_pikes_order_import[\s\S]*from public, anon, authenticated/);
+  assert.match(finalizerPrivilegeMigration, /grant execute on function public\.finalize_pikes_order_import[\s\S]*to service_role/);
+  assert.match(workflow, /20260902140500_repair_manager_order_finalizer_privilege\.sql/);
 });
 
 test('Managers Orders UI labels Stine history and source rows dynamically', () => {
