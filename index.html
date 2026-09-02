@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.02.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.02.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.02.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.02.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2427,6 +2427,7 @@ body.request-detail-av-options-open #view-detail.detail-request-mode #detail-av-
 #view-detail.detail-request-mode #req-reserve-field-wrap{display:none!important}
 #request-open-info-modal{background:rgba(15,23,42,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 #request-open-info-modal.hidden{display:none!important}
+body.ios-device #request-open-info-modal,body.ios-device #request-rep-modal{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(15,23,42,.82)!important}
 .request-open-info-panel{width:min(1120px,calc(100vw - 20px));max-height:calc(var(--visual-height,100vh) - 22px);overflow:auto;border:1px solid rgba(16,185,129,.28);border-radius:22px;background:#f8fffb;padding:clamp(8px,2vw,14px);box-shadow:0 30px 80px rgba(15,23,42,.35)}
 .request-open-info-card{border:3px solid #000;border-radius:20px;background:rgba(236,253,245,.92);padding:8px}
 .request-open-info-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px;margin-bottom:8px}
@@ -6790,7 +6791,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.02.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.02.02">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6965,8 +6966,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.02.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.02.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.02.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.02.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7720,7 +7721,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.02.01').trim() || 'V2026.09.02.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.02.02').trim() || 'V2026.09.02.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9211,7 +9212,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.02.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.02.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9308,7 +9309,24 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     'Content-Type': 'application/json'
                 };
             }
-            const session = await getNativeAuthSession();
+            let session = await getNativeAuthSession();
+            if ((!session || !nativeAuthAccessToken) && NATIVE_AUTH_ENABLED) {
+                const client = getSupabaseBrowserClient();
+                if (client && client.auth && typeof client.auth.refreshSession === 'function') {
+                    try {
+                        const refreshed = await client.auth.refreshSession();
+                        const refreshedSession = refreshed && refreshed.data ? refreshed.data.session : null;
+                        if (refreshedSession && refreshedSession.access_token) {
+                            session = refreshedSession;
+                            nativeAuthSessionActive = true;
+                            nativeAuthAccessToken = String(refreshedSession.access_token || '').trim();
+                        }
+                    } catch (error) {
+                        nativeAuthSessionActive = false;
+                        nativeAuthAccessToken = '';
+                    }
+                }
+            }
             if (!session || !nativeAuthAccessToken) return null;
             return {
                 apikey: SUPABASE_KEY,
@@ -25954,10 +25972,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             requestCompletionUserColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
+                    const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+                    if (!nativeHeaders || !nativeHeaders.Authorization) return false;
                     const url = `${SUPABASE_URL}/rest/v1/ph_active_request?select=completed_by_username,completed_by_display,completed_by_email&limit=1`;
                     const response = await fetchWithTimeout(url, {
                         method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                        headers: nativeHeaders
                     }, SUPABASE_READ_TIMEOUT_MS, 'Request Completion User Schema');
                     if (!response.ok) {
                         const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
@@ -30895,7 +30915,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.02.01').trim() || 'V2026.09.02.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.02.02').trim() || 'V2026.09.02.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -155059,13 +155079,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                         payload.req_status = 'Complete';
                         itemToSave.REQ_STATUS = 'Complete';
                         itemToSave.req_status = 'Complete';
-                        const requestCompletionUser = applyRequestCompletionUserFields(itemToSave);
-                        const canPersistRequestCompletionUser = await ensureRequestCompletionUserColumnsReady().catch(() => false);
-                        if (requestCompletionUser && canPersistRequestCompletionUser) {
-                            payload.completed_by_username = requestCompletionUser.username || null;
-                            payload.completed_by_display = requestCompletionUser.display || requestCompletionUser.username || null;
-                            payload.completed_by_email = requestCompletionUser.email || null;
-                        }
+                        // save_request_work derives completion identity from the
+                        // authenticated profile. Keep the local display current without
+                        // blocking the commit on a separate schema probe.
+                        applyRequestCompletionUserFields(itemToSave);
                     }
                 } else if (prefix === 'dock-') {
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC);
@@ -155561,6 +155578,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (prefix === 'req-' && isComplete) {
+                        closeRequestPublishModal('cancel');
+                        closeRequestOpenInfoModal();
+                        closeRequestAvNoteSheet();
+                        closeAppPromptDialog('cancel');
                         restoreRequestViewState(previousRequestViewState);
                         refreshLocalRequestViewState('request-complete-rollback', {
                             forceRender: true,
@@ -155572,7 +155593,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                         queueVisibleSaveRefresh(16);
                     }
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
-                    if (!isSilentAutoSave) showToast('Network Error', message || 'Could not reach database.', true);
+                    if (!isSilentAutoSave) showToast(
+                        prefix === 'req-' && isComplete ? 'Request Still Open' : 'Network Error',
+                        prefix === 'req-' && isComplete
+                            ? 'The request was not completed. Your entries are still here. Refresh the row and tap Mark Done again.'
+                            : (message || 'Could not reach database.'),
+                        true
+                    );
                 };
 
                 const handleSaveSuccess = (artifacts) => {
@@ -155775,6 +155802,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                    if (prefix === 'req-' && isComplete) {
+                        closeRequestPublishModal('cancel');
+                        closeRequestOpenInfoModal();
+                        closeRequestAvNoteSheet();
+                        closeAppPromptDialog('cancel');
+                    }
                     if (!isSilentAutoSave && isCurrentView && isComplete && !didImmediateCleanup) showToast('Success', 'Task Completed!');
                     if (isComplete && !didOptimisticClose && !didOptimisticRender && !didImmediateCleanup) {
                         itemToSave.DATE_COMPLETED = payload.date_completed;
@@ -155867,12 +155900,33 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 drive_photo_link: firstNonEmptyValue(payload.req_photo_link, itemToSave.REQ_PHOTO_LINK, ''),
                                 drive_photo_name: firstNonEmptyValue(payload.req_photo_name, itemToSave.REQ_PHOTO_NAME, '')
                             };
-                            const rpcResult = await supabaseRpc('save_request_work', {
-                                request_id: String(itemToSave.UNIQUE_ID || '').trim(),
-                                expected_version: expectedVersion,
-                                patch: requestPatch,
-                                complete: !!isComplete
-                            }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) });
+                            let rpcExpectedVersion = expectedVersion;
+                            let rpcResult = null;
+                            for (let requestSaveAttempt = 0; requestSaveAttempt < 2; requestSaveAttempt += 1) {
+                                try {
+                                    rpcResult = await supabaseRpc('save_request_work', {
+                                        request_id: String(itemToSave.UNIQUE_ID || '').trim(),
+                                        expected_version: rpcExpectedVersion,
+                                        patch: requestPatch,
+                                        complete: !!isComplete
+                                    }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) });
+                                    break;
+                                } catch (requestSaveError) {
+                                    const errorText = String(requestSaveError && requestSaveError.message || requestSaveError || '').toUpperCase();
+                                    const isVersionConflict = errorText.includes('REQUEST_VERSION_CONFLICT') || errorText.includes('40001');
+                                    if (!isComplete || requestSaveAttempt > 0 || !isVersionConflict) throw requestSaveError;
+                                    const refreshedRow = await fetchRemoteRequestCompletionRow();
+                                    const refreshedVersion = Number(firstNonEmptyValue(
+                                        refreshedRow && refreshedRow.ROW_VERSION,
+                                        refreshedRow && refreshedRow.row_version,
+                                        0
+                                    ));
+                                    if (!refreshedRow || !Number.isFinite(refreshedVersion) || refreshedVersion < 1) throw requestSaveError;
+                                    rpcExpectedVersion = refreshedVersion;
+                                    itemToSave.ROW_VERSION = refreshedVersion;
+                                    itemToSave.row_version = refreshedVersion;
+                                }
+                            }
                             const serverRow = rpcResult && rpcResult.row ? rpcResult.row : null;
                             if (!serverRow || !String(firstNonEmptyValue(serverRow.unique_id, serverRow.UNIQUE_ID, '') || '').trim()) {
                                 throw new Error('REQUEST_SAVE_UNCONFIRMED');

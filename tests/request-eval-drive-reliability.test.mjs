@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260831210000_request_eval_drive_reliability_repair.sql');
+const currentMembershipHealth = read('../supabase/migrations/20260902165500_current_request_membership_health.sql');
 const html = read('../index.html');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const observability = read('../supabase/functions/_shared/observability.ts');
@@ -24,6 +25,16 @@ test('folder completion recovery binds the unnested request id and is service-on
   assert.match(performanceWorkflow, /request_eval_drive_reliability_baseline\.sql/);
   assert.match(sqlTest, /pg_advisory_xact_lock/);
   assert.doesNotMatch(migration, /delete from public\.ph_active_request|delete from public\.ph_request_history/i);
+});
+
+test('delivery health checks the latest completion only for currently complete folders', () => {
+  assert.match(currentMembershipHealth, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(currentMembershipHealth, /select distinct on \(completion\.request_folder\)/);
+  assert.match(currentMembershipHealth, /order by completion\.request_folder, completion\.created_at desc, completion\.event_id desc/);
+  assert.match(currentMembershipHealth, /where active\.all_complete/);
+  assert.match(currentMembershipHealth, /completion_membership_mismatch_count/);
+  assert.match(currentMembershipHealth, /grant execute on function public\.get_eval_request_delivery_health_snapshot_v2\(\)[\s\S]*to service_role/);
+  assert.match(performanceWorkflow, /20260902165500_current_request_membership_health\.sql/);
 });
 
 test('Eval Work accepts advisory assignment drift but retains current server filtering', () => {

@@ -44,6 +44,8 @@ const historicalReportBrowseMigration = read('supabase/migrations/20260821223421
 const historicalCoverageMigration = read('supabase/migrations/20260822234500_restore_drivearound_history_and_all_report_columns.sql');
 const holdLearningRefreshMigration = read('supabase/migrations/20260823002500_optimize_hold_learning_refreshes.sql');
 const historicalSourceColumnsMigration = read('supabase/migrations/20260823013134_expand_historical_report_source_columns.sql');
+const historicalCursorIndexMigration = read('supabase/migrations/20260902153652_historical_report_cursor_index.sql');
+const historicalRowsRpcRepair = read('supabase/migrations/20260902153654_optimize_historical_report_rows_rpc.sql');
 const requiredHistoricalSourceColumns = Object.freeze([
   'warehousei', 'plantgroupcode', 'itemcode', 'qualitycode', 'contsize', 'commonname',
   'lotcode', 'locationcode', 'source', 'desigitem', 'desigcust', 'desigloc', 'priority',
@@ -62,12 +64,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.02.01';
+  const release = 'V2026.09.02.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.09.02.01');
+  assert.equal(packageJson.version, '2026.09.02.02');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1642,6 +1644,18 @@ test('Managers Historical Report browses immediately with secured server filteri
   assert.match(performanceWorkflow, /20260823013134_expand_historical_report_source_columns\.sql/);
   assert.match(performanceWorkflow, /historical_report_baseline\.sql/);
   assert.match(performanceWorkflow, /20260821202202_manager_historical_report\.sql/);
+  assert.match(historicalCursorIndexMigration, /\(itemcode, report_date desc, unique_id desc\)/);
+  assert.match(historicalCursorIndexMigration, /where report_date is not null/);
+  assert.match(historicalRowsRpcRepair, /selected_itemcodes as materialized/);
+  assert.match(historicalRowsRpcRepair, /cross join lateral/);
+  assert.match(historicalRowsRpcRepair, /order by h\.report_date desc, h\.unique_id desc[\s\S]*limit safe_limit \+ 1/);
+  assert.match(historicalRowsRpcRepair, /jsonb_agg\(/);
+  assert.doesNotMatch(historicalRowsRpcRepair, /for history_row in/);
+  assert.doesNotMatch(historicalRowsRpcRepair, /result_rows := result_rows \|\|/);
+  assert.match(historicalRowsRpcRepair, /security invoker/);
+  assert.doesNotMatch(historicalRowsRpcRepair, /security definer/);
+  assert.match(performanceWorkflow, /20260902153652_historical_report_cursor_index\.sql/);
+  assert.match(performanceWorkflow, /20260902153654_optimize_historical_report_rows_rpc\.sql/);
   const historyRowsRpc = historicalReportMigration.slice(
     historicalReportMigration.indexOf('create or replace function public.get_historical_inventory_rows'),
     historicalReportMigration.indexOf('revoke all on function public.search_historical_inventory_common_names')

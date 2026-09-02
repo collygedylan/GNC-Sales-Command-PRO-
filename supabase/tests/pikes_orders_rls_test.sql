@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(68);
+select plan(71);
 
 select has_table('public', 'ph_pikes_order_batches', 'Pikes batch ledger exists');
 select has_table('public', 'ph_pikes_order_source_rows', 'approved Pikes source rows exist');
@@ -36,6 +36,9 @@ select ok(has_function_privilege('service_role', 'public.prepare_manager_order_i
 select ok(not has_function_privilege('authenticated', 'public.append_manager_order_source_rows_v1(uuid,jsonb)', 'execute'), 'authenticated cannot upload manager-order source rows');
 select ok(has_function_privilege('service_role', 'public.append_manager_order_source_rows_v1(uuid,jsonb)', 'execute'), 'service role can upload manager-order source rows');
 select ok((select prosecdef from pg_proc where oid = 'public.finalize_pikes_order_import(text,text,text,integer,integer)'::regprocedure), 'service-only finalizer can resolve private assignment authority');
+select ok((select prosecdef from pg_proc where oid = 'public.get_pikes_order_assignment_health_v1()'::regprocedure), 'Pikes assignment health is a narrow definer wrapper for its private helper');
+select ok((select 'search_path=""' = any(proconfig) from pg_proc where oid = 'public.get_pikes_order_assignment_health_v1()'::regprocedure), 'Pikes assignment health retains an empty locked search path');
+select ok(not has_function_privilege('authenticated', 'public.get_pikes_order_assignment_health_v1()', 'execute'), 'authenticated cannot call Pikes assignment health');
 select ok(not has_function_privilege('authenticated', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'authenticated cannot repair historical assignments');
 select ok(has_function_privilege('service_role', 'public.repair_pikes_order_batch_assignments_v1(uuid,boolean,text)', 'execute'), 'service role can repair historical assignments');
 select is((select count(*)::integer from private.app_access_permissions where permission_key = 'manager.orders.view' and active), 1, 'Orders permission is cataloged');
@@ -156,7 +159,9 @@ select is(
   true,
   'repair idempotency replays the stored result without a second mutation'
 );
-select is((public.get_pikes_order_assignment_health_v1()->>'falseUnassignedCount')::integer, 0, 'hosted Pikes health finds no false unassigned snapshots after repair');
+set local role service_role;
+select is((public.get_pikes_order_assignment_health_v1()->>'falseUnassignedCount')::integer, 0, 'hosted Pikes health runs through the service-only private-helper wrapper');
+reset role;
 select is((public.reconcile_eval_itemcodes()->>'status')::text, 'completed', 'incremental assignment reconciliation completes');
 
 select lives_ok(
