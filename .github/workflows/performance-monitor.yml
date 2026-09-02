@@ -58,6 +58,8 @@ jobs:
           cp supabase/migrations/20260821202202_manager_historical_report.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260821223421_historical_report_default_browse.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260823013134_expand_historical_report_source_columns.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902153652_historical_report_cursor_index.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902153654_optimize_historical_report_rows_rpc.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260825222325_stabilize_request_capabilities.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260825223040_grant_request_policy_helper.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260826133016_allow_chance_alldredge_request_create_own.sql "$ci_root/supabase/migrations/"
