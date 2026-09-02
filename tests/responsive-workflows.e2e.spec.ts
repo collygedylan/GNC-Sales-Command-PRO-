@@ -2603,6 +2603,75 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
   }
 });
 
+test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
+  test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.09.02.03', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');
+  await page.evaluate(() => window.eval(`(() => {
+    isIOSDevice = () => true;
+    saveData = () => Promise.resolve({ ok: true });
+    filterAvNotes = () => false;
+    debouncedFilterAvNotes = () => false;
+    handleRequestAvNoteInputBlur = () => false;
+    activeDetailSourceView = 'request';
+    lastView = 'request';
+    activeDetailTab = 'request';
+    activeItem = {
+      UNIQUE_ID: 'REQ-IOS-KEYBOARD-1',
+      ITEMCODE: '002255.013.1',
+      COMMONNAME: 'Chocolate Chip Ajuga',
+      CONTSIZE: '1GP',
+      LOCATIONCODE: 'D.09.035',
+      LOTCODE: '27.F1',
+      PTRAVAILABLE: 132
+    };
+    document.body.classList.add('ios-device', 'viewport-phone', 'shared-mobile-layout');
+    const login = document.getElementById('view-login');
+    if (login) login.style.display = 'none';
+    const app = document.getElementById('app-wrapper');
+    if (app) app.classList.remove('hidden');
+    document.querySelectorAll('#view-wrapper > [id^="view-"]').forEach((view) => view.classList.add('hidden'));
+    const detail = document.getElementById('view-detail');
+    detail.classList.remove('hidden');
+    detail.classList.add('detail-request-mode', 'detail-photo-update-mode');
+    document.getElementById('det-request-content').classList.remove('hidden');
+    document.getElementById('dtab-request').classList.remove('hidden');
+    document.getElementById('req-container-caliper').classList.remove('hidden');
+    return true;
+  })()`));
+
+  const samples = [
+    ['#req-spec', '24-30 inch'],
+    ['#req-caliper', '2 inch'],
+    ['#req-match', '95'],
+    ['#req-av-note', 'GOOD COLOR'],
+    ['#req-pick', 'Needs spacing'],
+    ['#req-comments', 'Keep the best plants']
+  ] as const;
+
+  for (const [selector, value] of samples) {
+    const field = page.locator(selector);
+    await expect(field).toBeVisible();
+    await field.click();
+    await field.fill(value);
+    await expect(field).toBeFocused();
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('resize'));
+      window.visualViewport?.dispatchEvent(new Event('resize'));
+      window.eval(`scheduleRequestDetailEntryVisible('e2e-realtime', { resetScroll: false, skipOptionLoad: true })`);
+    });
+    await page.waitForTimeout(450);
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue(value);
+    await expect(page.locator('#det-request-content')).toBeVisible();
+  }
+
+  await expect(page.locator('#detail-measurement-keyboard')).toBeHidden();
+  await expect(page.locator('#req-spec')).toHaveAttribute('inputmode', 'text');
+  await expect(page.locator('#req-match')).toHaveAttribute('inputmode', 'decimal');
+});
+
 test('desktop Request detail is one readable single-column workflow', async ({ page }) => {
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
     for (const theme of ['light', 'dark']) {
