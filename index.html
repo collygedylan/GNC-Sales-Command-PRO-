@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.02.02">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.02.03">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.02.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.02.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6639,6 +6639,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             min-width:0 !important;
             font-size:16px !important;
         }
+        body.ios-device.viewport-phone #view-detail.detail-request-mode :is(#req-spec,#req-caliper,#req-match,#req-av-note,#req-pick,#req-comments){
+            pointer-events:auto !important;
+            touch-action:auto !important;
+            -webkit-user-select:text !important;
+            user-select:text !important;
+            -webkit-touch-callout:default !important;
+            font-size:16px !important;
+        }
         body.ios-device.viewport-phone #view-detail.detail-request-mode :is(.grid,.flex){
             max-width:100% !important;
             min-width:0 !important;
@@ -6791,7 +6799,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.02.02">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.02.03">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6966,8 +6974,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.02.02"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.02.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.02.03"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.02.03"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7721,7 +7729,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.02.02').trim() || 'V2026.09.02.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.02.03').trim() || 'V2026.09.02.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8989,14 +8997,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="inventory-edit-request-detail-action" class="hidden mb-4"></div>
                         <div id="req-matching-inventory-container" class="mb-4"></div>
                         <div id="req-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
-                            <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
-                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="req-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" inputmode="text" data-fast-press-ignore id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
+                            <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" inputmode="text" data-fast-press-ignore id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" data-fast-press-ignore id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="req-match-qty-val">0</span></div></div>
                         </div>
-                        <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="handleRequestAvNoteInputBlur()" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div id="req-av-note-wrap" class="request-detail-field request-detail-field--wide relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" inputmode="text" data-fast-press-ignore id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="handleRequestAvNoteInputBlur()" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div id="req-reserve-field-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
-                            <div id="req-pick-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
-                            <div id="req-comments-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="req-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'req-', true)"></textarea></div>
+                            <div id="req-pick-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" inputmode="text" data-fast-press-ignore id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
+                            <div id="req-comments-wrap" class="request-detail-field"><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea inputmode="text" data-fast-press-ignore id="req-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'req-', true)"></textarea></div>
                         <div id="req-save-action-wrap" class="mt-4">
                             <button id="req-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'req-')">MARK DONE</button>
                         </div>
@@ -9212,7 +9220,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.02.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.02.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -15800,7 +15808,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function isRequestDetailNativeTypingInput(element = null) {
             if (!element || !element.matches) return false;
             const id = String(element.id || '').trim().toLowerCase();
-            return false;
+            return !!(
+                isIOSDevice()
+                && ['req-spec', 'req-caliper', 'req-match'].includes(id)
+                && element.closest('#view-detail.detail-request-mode')
+            );
         }
 
         function isDetailMeasurementKeyboardInput(element = null) {
@@ -30915,7 +30927,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.02.02').trim() || 'V2026.09.02.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.02.03').trim() || 'V2026.09.02.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -99091,6 +99103,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!item) return;
             const safePrefix = String(prefix || '').trim();
             if (!safePrefix) return;
+            if (safePrefix === 'req-' && getActiveIosPhoneRequestDetailEntry()) return;
             const detailSourceView = String(activeDetailSourceView || lastView || '').trim().toLowerCase();
             const match = document.getElementById(safePrefix + 'match');
             const spec = document.getElementById(safePrefix + 'spec');
@@ -100210,6 +100223,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeSourceView = String(activeDetailSourceView || lastView || '').trim().toLowerCase();
             if (safeSourceView !== 'request' || !activeItem) return false;
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const activeRequestEntry = getActiveIosPhoneRequestDetailEntry();
             const detailRoot = document.getElementById('view-detail');
             const requestTab = document.getElementById('dtab-request');
             const requestContent = document.getElementById('det-request-content');
@@ -100223,9 +100237,11 @@ function toggleDriveQuickRequestItem(domId) {
                 switchDetailTab('request', { suppressScroll: true });
             }
             requestContent.classList.remove('hidden');
-            populateDetailInputsForPrefix('req-', activeItem);
-            renderRequestDesiredPanel(activeItem, safeSourceView);
-            renderRequestMatchingInventoryOptions(activeItem, safeSourceView, { skipLoad: opts.skipOptionLoad === true });
+            if (!activeRequestEntry) {
+                populateDetailInputsForPrefix('req-', activeItem);
+                renderRequestDesiredPanel(activeItem, safeSourceView);
+                renderRequestMatchingInventoryOptions(activeItem, safeSourceView, { skipLoad: opts.skipOptionLoad === true });
+            }
             syncDetailSharedPanelsVisibility();
             syncDetailPhotoUpdateMode('request');
 
@@ -100234,7 +100250,7 @@ function toggleDriveQuickRequestItem(domId) {
                 document.body.classList.toggle('request-detail-av-options-open', requestAvOptionsDropdownOpen === true);
             }
             const canResetRequestDetailScroll = opts.resetScroll !== false && !hasActiveTextEntryFocus() && !isUserActivelyTyping();
-            if (isIosPhoneRequestFlowView('detail')) clearIosPhoneRequestFlowState(`request-detail:${reason || 'ensure'}`, { resetScroll: canResetRequestDetailScroll });
+            if (isIosPhoneRequestFlowView('detail') && !activeRequestEntry) clearIosPhoneRequestFlowState(`request-detail:${reason || 'ensure'}`, { resetScroll: canResetRequestDetailScroll });
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (mainScrollArea) {
                 mainScrollArea.style.overflowY = '';
@@ -100268,21 +100284,28 @@ function toggleDriveQuickRequestItem(domId) {
             return !!target.closest('#req-input-container, #request-photo-section, #detail-shared-panels, #det-request-content');
         }
 
+        function getActiveIosPhoneRequestDetailEntry() {
+            const target = document && document.activeElement ? document.activeElement : null;
+            if (!isIosPhoneRequestDetailField(target) || !isTextLikeElement(target)) return null;
+            return target;
+        }
+
+        let iosPhoneRequestDetailAnchorTimer = null;
         function scheduleIosPhoneRequestDetailFieldAnchor(reason = '') {
             const target = document.activeElement;
-            if (!isIosPhoneRequestDetailField(target)) return false;
+            if (!isIosPhoneRequestDetailField(target) || !isTextLikeElement(target)) return false;
+            if (iosPhoneRequestDetailAnchorTimer) clearTimeout(iosPhoneRequestDetailAnchorTimer);
             const run = () => {
+                iosPhoneRequestDetailAnchorTimer = null;
                 const active = document.activeElement;
-                if (!isIosPhoneRequestDetailField(active)) return;
-                try {
-                    active.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
-                } catch (error) {
-                    try { active.scrollIntoView(false); } catch (fallbackError) {}
-                }
+                if (active !== target || !isIosPhoneRequestDetailField(active) || !isTextLikeElement(active)) return;
+                if (!isMobileTextEntryPositionLocked(active)) beginMobileTextEntryStability(active);
+                settleMobileTextEntryVisibility(active);
                 if (typeof syncGlobalHeaderChrome === 'function') syncGlobalHeaderChrome({ reason: `request-detail-field:${reason || 'focus'}` });
             };
-            setTimeout(run, 80);
-            setTimeout(run, 260);
+            const safeReason = String(reason || '').trim().toLowerCase();
+            const delay = safeReason.startsWith('visual-') ? 320 : 360;
+            iosPhoneRequestDetailAnchorTimer = setTimeout(run, delay);
             return true;
         }
 
