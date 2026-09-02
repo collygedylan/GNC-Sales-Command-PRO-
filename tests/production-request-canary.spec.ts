@@ -104,7 +104,7 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
   await expect(modal).toBeHidden();
 });
 
-test('live Eval Reports #2 drill and multi-select remain actionable without mutations', async ({ page }) => {
+test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionable without mutations', async ({ page }) => {
   const blockedMutations: string[] = [];
   const pageErrors: string[] = [];
   let collectPageErrors = false;
@@ -149,9 +149,9 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
       { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly' }
     ];
     processAndLoadData({ data: [
-      { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', PTRAVAILABLE: 20 },
-      { UNIQUE_ID: 'HOSTED-EVAL2-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 12, LOCATIONCODE: 'U.02.001', PTRAVAILABLE: 12 },
-      { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'T.02.001', PTRAVAILABLE: 18 }
+      { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', LOTCODE: '27.F1', PTRONHAND: 24, PTRAVAILABLE: 20 },
+      { UNIQUE_ID: 'HOSTED-EVAL2-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 12, LOCATIONCODE: 'U.02.001', LOTCODE: '27.U1', PTRONHAND: 13, PTRAVAILABLE: 12 },
+      { UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Eval Canary', CONTSIZE: '#5 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'T.02.001', LOTCODE: '27.F1', PTRONHAND: 19, PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: canaryAssignmentRows, _fromCache: true });
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -187,8 +187,7 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   const host = page.locator('#hosted-eval2-canary');
   await expect(host).toContainText('Eval Reports #2');
   await expect(host.locator('.manager-eval2-drive-controls')).toBeVisible();
-  await expect(host.locator('.manager-eval2-drive-tabs .task-tab')).toHaveText(['Common Name', 'Location']);
-  await expect(host.locator('.manager-eval2-drive-crumb')).toBeVisible();
+  await expect(host.locator('.manager-eval2-drive-tabs')).toHaveCount(0);
   await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
   await host.getByRole('button', { name: /All Users/i }).click();
   const initialUserSheet = page.locator('#manager-eval-user-picker');
@@ -199,45 +198,28 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-  });
-  await expect(host.getByRole('button', { name: /2 Users/i })).toBeEnabled();
-  await expect(host).toContainText('Alpha Eval Canary');
-  await host.locator('button.drill-item', { hasText: 'Alpha Eval Canary' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('hosted-eval2-canary')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-  });
-  await host.locator('button.drill-item', { hasText: '#3 TEST' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('hosted-eval2-canary')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
     const records = target.querySelector('#manager-eval-report-2-records')!;
     records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
       .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
   });
+  await expect(host.getByRole('button', { name: /2 Users/i })).toBeEnabled();
+  await expect(host).toContainText('Alpha Eval Canary');
+  const alphaCard = host.getByRole('button', { name: /Open Drive Mode Item Inquiry for CANARY\.EVAL\.A/i });
+  await expect(alphaCard).toContainText('Location');
+  await expect(alphaCard).toContainText('Lot');
+  await expect(alphaCard).toContainText('On Hand');
+  await expect(alphaCard).toContainText('Available');
+  await expect(alphaCard).toContainText('T.01.001');
+  await expect(alphaCard).toContainText('27.F1');
+  await expect(alphaCard).toContainText('24');
+  await expect(alphaCard).toContainText('20');
+  await expect(alphaCard).toContainText('U.02.001');
+  await expect(alphaCard).toContainText('27.U1');
   const alpha = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CANARY.EVAL.A"]');
   await alpha.click();
   await expect(alpha).toHaveAttribute('aria-pressed', 'true');
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
 
-  await page.evaluate(() => (window as any).eval(`(() => {
-    backManagerEvalReport2Drill();
-    backManagerEvalReport2Drill();
-    document.getElementById('hosted-eval2-canary').innerHTML = renderManagerEvalReports2Panel();
-  })()`));
-  await host.locator('button.drill-item', { hasText: 'Beta Eval Canary' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('hosted-eval2-canary')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-  });
-  await host.locator('button.drill-item', { hasText: '#5 TEST' }).click();
-  await page.evaluate(() => {
-    const target = document.getElementById('hosted-eval2-canary')!;
-    target.innerHTML = (window as any).renderManagerEvalReports2Panel();
-    const records = target.querySelector('#manager-eval-report-2-records')!;
-    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
-      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
-  });
   const beta = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CANARY.EVAL.B"]');
   await beta.click();
   await expect(beta).toHaveAttribute('aria-pressed', 'true');
@@ -256,6 +238,9 @@ test('live Eval Reports #2 drill and multi-select remain actionable without muta
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
+    const records = target.querySelector('#manager-eval-report-2-records')!;
+    records.innerHTML = (window as any).getManagerEvalReport2VisibleItemGroups()
+      .map((group: unknown, index: number) => (window as any).renderManagerEvalReport2SelectableCard(group, index)).join('');
   });
   await expect(host).toContainText('Alpha Eval Canary');
   await expect(host).not.toContainText('Beta Eval Canary');

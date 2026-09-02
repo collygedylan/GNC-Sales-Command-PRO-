@@ -37,10 +37,15 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
   assert.match(workflow, /post-deployment-canary:[\s\S]*needs: deploy/);
   assert.match(workflow, /wait-for-live-release\.mjs/);
   assert.match(workflow, /production-request-canary\.spec\.ts/);
-  assert.match(canary, /live Eval Reports #2 drill and multi-select remain actionable without mutations/);
+  assert.match(canary, /live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionable without mutations/);
   assert.match(canary, /data-role="manager-eval2-selection-toggle"/);
   assert.match(canary, /manager-eval2-drive-controls/);
-  assert.match(canary, /manager-eval2-drive-crumb/);
+  assert.match(canary, /manager-eval2-drive-tabs/);
+  assert.match(canary, /Open Drive Mode Item Inquiry for CANARY\\\.EVAL\\\.A/);
+  assert.match(canary, /toContainText\('Location'\)/);
+  assert.match(canary, /toContainText\('Lot'\)/);
+  assert.match(canary, /toContainText\('On Hand'\)/);
+  assert.match(canary, /toContainText\('Available'\)/);
   assert.match(canary, /getManagerEvalReport2SelectedItems\(\)\[0\]\?\.reportId/);
   assert.match(canary, /getByRole\('button', \{ name: \/Apply 2 Users\/i \}\)/);
   assert.match(canary, /getManagerEvalAssignedUsers\('eval2'\)/);
