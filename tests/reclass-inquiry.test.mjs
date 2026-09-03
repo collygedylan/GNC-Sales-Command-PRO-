@@ -213,28 +213,30 @@ test('Reclass identity validation uses the defined production comparison helper'
   assert.doesNotMatch(overlayHandler, /normalizeInventoryTransactionComparable_/);
 });
 
-test('Reclass send uses an empty searchable picker and only explicitly selected recipients', () => {
+test('Drive Reclass skips the picker while Eval Reports #2 keeps its established recipient branch', () => {
   const start = html.indexOf('async function applyArgosInventoryTransactionEmailRecipients');
   const end = html.indexOf('function generateArgosInventoryTransactionId', start);
   const recipientHandler = html.slice(start, end);
+  assert.match(recipientHandler, /isArgosEvalReport2Inquiry\(\)/);
+  assert.match(recipientHandler, /sourceMode === 'drive'/);
+  assert.match(recipientHandler, /delete safePayload\.actor/);
+  assert.match(recipientHandler, /delete safePayload\.recipientEmails/);
+  assert.match(recipientHandler, /delete safePayload\.emailRecipients/);
   assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal/);
-  assert.match(recipientHandler, /restoredRecipients[\s\S]*: \[\]/);
-  assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal\(previewRows, restoredRecipients/);
-  assert.doesNotMatch(recipientHandler, /requiredEmails|requiredRecipients|getDefaultArgosInventoryTransactionRecipients/);
-  assert.doesNotMatch(recipientHandler, /window\.prompt/);
-  assert.match(html, /placeholder="Type a name or email address\.\.\."/);
 });
 
-test('Reclass server delivery uses only recipients explicitly selected in the picker', () => {
+test('Reclass server accepts frozen protected Drive recipients and keeps legacy parsing for non-Drive events', () => {
   const helperStart = code.indexOf('function getReclassInquiryEmailRecipients_');
   const helperEnd = code.indexOf('function getInventoryTransactionEmailRowValue_', helperStart);
   const helper = code.slice(helperStart, helperEnd);
   const enqueueStart = code.indexOf('function enqueueReclassInquiryEmail_');
   const handlerEnd = code.indexOf('function handleInventoryTransaction_', enqueueStart);
   const handler = code.slice(enqueueStart, handlerEnd);
+  assert.match(helper, /sourceMode[\s\S]*=== 'drive'/);
+  assert.match(helper, /drive-reclass-protected-v1/);
+  assert.match(helper, /DRIVE_AUTH_REQUIRED/);
   assert.match(helper, /safePayload\.recipientEmails/);
   assert.match(helper, /safePayload\.recipients/);
-  assert.doesNotMatch(helper, /actorEmail|INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_/);
   assert.match(handler, /getReclassInquiryEmailRecipients_\(safePayload\)/);
   assert.doesNotMatch(handler, /getInventoryTransactionEmailRecipients_/);
 });
@@ -305,7 +307,8 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
     assert.match(output, /\.edited-cell\{background:#fff176!important\}/);
-    assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?<span class="proposal-label">PROPOSED<\/span><strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>check<\/strong>/);
+    assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>check<\/strong>/);
+    assert.doesNotMatch(output, /PROPOSED/i);
     assert.match(output, /F1 \| sales year &lt;= 27 \| 3 rows/);
     assert.match(output, /proposal-legend/);
     assert.match(output, /border:2px solid #000/);
@@ -375,13 +378,14 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
     assert.doesNotMatch(outputs[action], /<th>H\/S<\/th>|<th>H\/S Reason<\/th>/);
   }
   assert.match(outputs.priority_change, /Request:<\/strong> Priority Change/);
-  assert.match(outputs.priority_change, /PROPOSED[\s\S]*?\[blank\]/);
-  assert.match(outputs.priority_change, /PROPOSED[\s\S]*?<strong>1<\/strong>/);
-  assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?PROPOSED[\s\S]*?UP 20 TO F1/);
-  assert.match(outputs.move_down, /<strong class="original-oh">36<\/strong>[\s\S]*?PROPOSED[\s\S]*?DOWN 15 TO U2/);
+  assert.match(outputs.priority_change, /proposal-box[\s\S]*?\[blank\]/);
+  assert.match(outputs.priority_change, /proposal-box[\s\S]*?<strong>1<\/strong>/);
+  assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?proposal-box[\s\S]*?UP 20 TO F1/);
+  assert.match(outputs.move_down, /<strong class="original-oh">36<\/strong>[\s\S]*?proposal-box[\s\S]*?DOWN 15 TO U2/);
   assert.doesNotMatch(outputs.move_up, /<th>Move Qty<\/th>|<th>To Season<\/th>/);
-  assert.match(outputs.take_off_hold, /PROPOSED[\s\S]*?\[blank\]/);
-  assert.match(outputs.off_stop_ship, /PROPOSED[\s\S]*?\[blank\]/);
+  assert.match(outputs.take_off_hold, /proposal-box[\s\S]*?\[blank\]/);
+  assert.match(outputs.off_stop_ship, /proposal-box[\s\S]*?\[blank\]/);
+  for (const output of Object.values(outputs)) assert.doesNotMatch(output, /PROPOSED/i);
   assert.doesNotMatch(outputs.recount, /class="edited-cell"/);
 });
 
@@ -470,8 +474,9 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   assert.deepEqual(headers, [
     'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'H/S', 'H/S Reason', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
   ]);
-  assert.match(output, /PROPOSED[\s\S]*?<strong>1<\/strong>/);
-  assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?PROPOSED[\s\S]*?UP 150 TO F1/);
+  assert.match(output, /proposal-box[\s\S]*?<strong>1<\/strong>/);
+  assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?proposal-box[\s\S]*?UP 150 TO F1/);
+  assert.doesNotMatch(output, /PROPOSED/i);
   assert.equal(model.identity.holdstopcode, 'H');
   assert.equal(model.identity.holdstopreason, 'sheared');
   assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode', 'holdstopreason']);
@@ -512,7 +517,7 @@ test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is
   assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th>/);
   for (const location of ['B.01.000', 'C.01.000', 'D.01.000']) {
     const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
-    assert.match(rowHtml, /PROPOSED[\s\S]*?<strong>H<\/strong>[\s\S]*?PROPOSED[\s\S]*?<strong>leaf quality<\/strong>/, `${location} should show the row proposal`);
+    assert.match(rowHtml, /proposal-box[\s\S]*?<strong>H<\/strong>[\s\S]*?proposal-box[\s\S]*?<strong>leaf quality<\/strong>/, `${location} should show the requested row values`);
   }
   for (const location of ['A.01.000', 'E.01.000', 'F.01.000']) {
     const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
@@ -557,8 +562,9 @@ test('workflow V3 accepts LOCATIONPTN1 and Location Note alone and stamps the no
   assert.equal(model.requestActionLabel, 'Location Detail Update');
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
   assert.match(output, /LOCATIONPTN1/);
-  assert.match(output, /PROPOSED[\s\S]*New PTN/);
-  assert.match(output, /PROPOSED[\s\S]*New location note/);
+  assert.match(output, /proposal-box[\s\S]*New PTN/);
+  assert.match(output, /proposal-box[\s\S]*New location note/);
+  assert.doesNotMatch(output, /PROPOSED/i);
   assert.equal(row.locationptn1, 'Existing PTN', 'the authoritative source row must remain unchanged');
 });
 
@@ -617,7 +623,8 @@ test('both movement proposals share the original OH cell and remain boxed in gra
   };
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
   assert.match(output, /<strong class="original-oh">800<\/strong>[\s\S]*?UP 40 TO F1[\s\S]*?DOWN 20 TO S1/);
-  assert.equal((output.match(/class="proposal-label">PROPOSED<\/span>/g) || []).length, 2, 'both movement proposals must be labeled');
+  assert.equal((output.match(/proposal-box proposal-box-movement/g) || []).length, 2, 'both requested movements must be boxed');
+  assert.doesNotMatch(output, /PROPOSED/i);
   assert.match(output, /box-shadow:inset 0 0 0 1px #000/);
   assert.doesNotMatch(output, /<th>Move Up|<th>Move Down/);
 });
@@ -644,7 +651,8 @@ test('originating Hold/Stop proposals drive the top code and all PDF reasons ren
   assert.equal(model.rows[1].values.holdstopreason, 'older mixed reason');
   assert.equal(rows[1].holdstopreason, 'Older MIXED Reason', 'authoritative source must remain untouched');
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?PROPOSED[\s\S]*?\[blank\][\s\S]*?HOLDSTOPREASON[\s\S]*?\[blank\]/);
+  assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?\[blank\][\s\S]*?HOLDSTOPREASON[\s\S]*?\[blank\]/);
+  assert.doesNotMatch(output, /PROPOSED/i);
   assert.doesNotMatch(output, /<th>Hold\/Stop Reason<\/th>/);
   assert.doesNotMatch(output, /Mixed CASE|Older MIXED/);
 });
@@ -751,7 +759,8 @@ test('Reclass email body is a short attachment summary without duplicated row re
   assert.match(text, /Edited Rows: 2/);
   assert.match(text, /Edited Fields: 2/);
   assert.match(htmlBody, /PDF attached:/);
-  assert.match(htmlBody, /yellow, boxed, and labeled/);
+  assert.match(htmlBody, /Yellow, boxed values are requested changes/);
+  assert.doesNotMatch(htmlBody, /PROPOSED/i);
   for (const removed of ['Reclass Request', 'Season Summary', 'Location \/ Lot Item Inquiry', '<table']) {
     assert.doesNotMatch(htmlBody, new RegExp(removed));
   }
@@ -867,6 +876,8 @@ test('Reclass client guards recipient selection and retains background drafts un
   assert.match(status, /RECLASS_DELIVERY_STORAGE_KEY/);
   assert.match(status, /reclass_inquiry_status/);
   assert.match(status, /reclass_inquiry_retry/);
+  assert.match(status, /driveReclassApi\('status'/);
+  assert.match(status, /driveReclassApi\('retry'/);
   assert.match(status, /update\.payload = null/);
   assert.match(status, /reopenReclassDeliveryJob/);
   assert.match(status, /\['delivered', 'failed', 'conflict'\]\.includes/);

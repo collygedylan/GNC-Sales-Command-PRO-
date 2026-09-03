@@ -1510,7 +1510,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
   expect(visibleSamples.every((sample) => sample.theme === 'dark')).toBe(true);
 });
 
-test('Drive Common Name search preserves grouped drill results', async ({ page }) => {
+test('Drive Common Name search uses global detailed results', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
@@ -1525,7 +1525,7 @@ test('Drive Common Name search preserves grouped drill results', async ({ page }
     };
   });
   expect(result).toEqual({
-    detailedSearchOnDefaultCommonNameTab: false,
+    detailedSearchOnDefaultCommonNameTab: true,
     hasGroupedRenderer: true,
     hasDrillSelection: true,
   });
@@ -2134,44 +2134,25 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   }
 });
 
-test('Phone Reclass send opens the searchable in-app recipient selector', async ({ page }) => {
+test('Phone Drive Reclass skips the recipient picker and strips browser recipient fields', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).applyArgosInventoryTransactionEmailRecipients === 'function'
-    && typeof (window as any).openGroupedBloomNcrRecipientModal === 'function'
   ));
   await page.evaluate(() => {
-    (window as any).eval(`
-      currentUser = 'dylan_collyge';
-      currentUserDisplay = 'Dylan Collyge';
-      argosInventoryTransactionState = { item: { ITEMCODE: '009005.031.1', COMMONNAME: 'Quick Fire Fab Hydrangea', LOCATIONCODE: 'D.17.000' } };
-    `);
     (window as any).__reclassRecipientPromise = (window as any).applyArgosInventoryTransactionEmailRecipients({
-      actor: { email: 'dylan_collyge@greenleafnursery.com' },
+      actor: { username: 'forged_user', email: 'forged@example.com' },
+      recipientEmails: ['forged@example.com'],
+      emailRecipients: ['forged@example.com'],
+      sourceContext: { sourceMode: 'drive' },
     });
   });
-
-  const modal = page.locator('#grouped-bloom-ncr-recipient-modal');
-  const search = page.locator('#grouped-bloom-ncr-recipient-search');
-  await expect(modal).toBeVisible();
-  await expect(page.locator('#grouped-bloom-ncr-recipient-title')).toHaveText('Select Reclass Email Recipients');
-  await expect(search).toHaveAttribute('placeholder', 'Type a name or email address...');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-count')).toHaveText('0 selected');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-send-btn')).toBeDisabled();
-  await search.fill('jd_jones@greenleafnursery.com');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-list')).toContainText('jd_jones@greenleafnursery.com');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-list')).not.toContainText('Required');
-  const overflow = await modal.evaluate((root) => Math.max(0, root.scrollWidth - root.clientWidth));
-  expect(overflow).toBe(0);
-
-  await page.locator('#grouped-bloom-ncr-recipient-list button').filter({ hasText: 'jd_jones@greenleafnursery.com' }).click();
-  await expect(page.locator('#grouped-bloom-ncr-recipient-count')).toHaveText('1 selected');
-  await expect(page.locator('#grouped-bloom-ncr-recipient-send-btn')).toBeEnabled();
-  await page.locator('#grouped-bloom-ncr-recipient-send-btn').click();
   const payload = await page.evaluate(async () => (window as any).__reclassRecipientPromise);
-  expect(payload.recipientEmails).toEqual(['jd_jones@greenleafnursery.com']);
-  expect(payload.emailRecipients).toEqual(['jd_jones@greenleafnursery.com']);
+  await expect(page.locator('#grouped-bloom-ncr-recipient-modal')).toBeHidden();
+  expect(payload.actor).toBeUndefined();
+  expect(payload.recipientEmails).toBeUndefined();
+  expect(payload.emailRecipients).toBeUndefined();
 });
 
 test('Phone Reclass hides intermediate delivery state and persists only the terminal result', async ({ page }) => {
@@ -2498,7 +2479,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
 
 test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.02.05&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.02.06&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).getRequestReusableData === 'function'
     && typeof (window as any).renderRequestQtyStepCurrentItem === 'function'
@@ -2712,7 +2693,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
 test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
   test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.02.05', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.02.06', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');
   await page.evaluate(() => window.eval(`(() => {
     isIOSDevice = () => true;

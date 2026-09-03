@@ -481,6 +481,89 @@ async function resolveActiveSessionProfile(
   return profile as Record<string, unknown>;
 }
 
+function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
+  const sourceInput = payload.source && typeof payload.source === "object" && !Array.isArray(payload.source)
+    ? payload.source as Record<string, unknown>
+    : {};
+  const transaction = payload.transaction && typeof payload.transaction === "object" && !Array.isArray(payload.transaction)
+    ? payload.transaction as Record<string, unknown>
+    : {};
+  const rowOverlays = Array.isArray(payload.rowOverlays) ? payload.rowOverlays : [];
+  return {
+    workflowPolicyVersion: String(payload.workflowPolicyVersion || "").trim(),
+    idempotencyToken: String(payload.idempotencyToken || payload.idempotency_token || "").trim(),
+    source: {
+      unique_id: String(sourceInput.unique_id || sourceInput.uniqueId || "").trim(),
+      source_table: "ph_master_inventory",
+      itemcode: String(sourceInput.itemcode || "").trim(),
+      lotcode: String(sourceInput.lotcode || "").trim(),
+      locationcode: String(sourceInput.locationcode || "").trim(),
+    },
+    transaction,
+    rowOverlays,
+    clientVersion: String(payload.clientVersion || "").trim().slice(0, 80),
+  };
+}
+
+function driveReclassErrorResponse(message: string) {
+  const raw = String(message || "").trim().toUpperCase();
+  if (/TOKEN_OWNERSHIP/.test(raw)) {
+    return errorResponse("This saved inquiry belongs to another user.", 403, { code: "DRIVE_RECLASS_TOKEN_OWNERSHIP_CONFLICT" });
+  }
+  if (/FORBIDDEN|PERMISSION_REQUIRED|ROW_NOT_ASSIGNED|PROFILE_NOT_ACTIVE|ACTOR_REQUIRED/.test(raw)) {
+    return errorResponse("You do not have access to Reclass this Drive row.", 403, { code: "DRIVE_RECLASS_FORBIDDEN" });
+  }
+  if (/SOURCE_CHANGED|SOURCE_MISSING|TOKEN_CONFLICT/.test(raw)) {
+    return errorResponse("Inventory or inquiry state changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
+  if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
+    return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
+  }
+  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|STATUS_INVALID|RETRY_INVALID/.test(raw)) {
+    return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
+  }
+  return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
+}
+
+async function handleDriveReclassAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401, { code: "AUTH_REQUIRED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  const activeProfile = await resolveActiveSessionProfile(session).catch(() => null);
+  if (!activeProfile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "PROFILE_NOT_ACTIVE" });
+  const actorUsername = normalizeUsername(String(activeProfile.username || session.username || session.displayName || ""));
+  if (!actorUsername) return errorResponse("Authenticated user identity is required.", 403, { code: "PROFILE_IDENTITY_REQUIRED" });
+  const operation = String(payload.operation || "create").trim().toLowerCase();
+  try {
+    if (operation === "create") {
+      const protectedPayload = {
+        ...sanitizeDriveReclassPayload(payload),
+        actorUsername,
+      };
+      const { data, error } = await supabase.rpc("enqueue_drive_reclass_inquiry_v1", { p_payload: protectedPayload });
+      if (error) return driveReclassErrorResponse(error.message || "");
+      return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
+    }
+    const token = String(payload.idempotencyToken || payload.idempotency_token || "").trim();
+    const rpcName = operation === "status"
+      ? "get_drive_reclass_inquiry_status_v1"
+      : operation === "retry"
+      ? "retry_drive_reclass_inquiry_v1"
+      : "";
+    if (!rpcName) return errorResponse("Unsupported Reclass operation.", 400, { code: "DRIVE_RECLASS_OPERATION_INVALID" });
+    const { data, error } = await supabase.rpc(rpcName, {
+      p_actor_username: actorUsername,
+      p_idempotency_token: token,
+    });
+    if (error) return driveReclassErrorResponse(error.message || "");
+    return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "missing" });
+  } catch (_) {
+    return driveReclassErrorResponse("DRIVE_RECLASS_SERVICE_UNAVAILABLE");
+  }
+}
+
 const SHEAR_LOCATION_CREATOR = "dylan_collyge";
 const SHEAR_LOCATION_TYPES = new Set(["shape_shear", "saleable_shear", "hard_shear", "corrective_shear"]);
 
@@ -2158,6 +2241,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
     return await handleSetUserPreferences(session, payload);
   }
   if (action === "eval_work") return await handleEvalWorkAction(session, payload);
+  if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
