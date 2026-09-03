@@ -374,6 +374,92 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
+test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Load More action', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=eval2-auto-all', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderManagerEvalReport2Records === 'function');
+
+  const setup = await page.evaluate(() => (window as any).eval(`(() => {
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    currentRole = 'Manager';
+    canViewManagerEvalReports2 = () => true;
+    isEvalWorkManagerUser = () => true;
+    activeHomeTab = 'eval-reports-2';
+    const rows = Array.from({ length: 47 }, (_, index) => ({
+      UNIQUE_ID: 'eval2-auto-' + String(index + 1),
+      ITEMCODE: 'AUTO.' + String(index + 1).padStart(3, '0'),
+      GENUSNAME: 'AutoGenus' + String(index + 1),
+      COMMONNAME: 'Automatic Item ' + String(index + 1),
+      CONTSIZE: '#3',
+      SEASON: 'F1',
+      SALEYEAR: 27,
+      PRIORITY: '',
+      S_LTS: 25,
+      LOCATIONCODE: 'A.' + String(index + 1).padStart(2, '0') + '.001',
+      LOTCODE: '27.F1',
+      PTRONHAND: 25,
+      PTRAVAILABLE: 25
+    }));
+    const assignments = rows.map((row, index) => ({
+      UNIQUE_ID: 'eval2-auto-assignment-' + String(index + 1),
+      ITEMCODE: row.ITEMCODE,
+      GENUSNAME: row.GENUSNAME,
+      ASSIGNEDTO: 'dylan_collyge'
+    }));
+    processAndLoadData({ data: rows, warehouseAssignedItemsData: assignments, _fromCache: true });
+    const masterState = getDatasetState('master');
+    const assignmentState = getDatasetState('warehouseAssignedItems');
+    masterState.initialLoaded = masterState.fullLoaded = true;
+    assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+    scheduleManagersRender = () => {};
+    queueScrollMainAreaToTop = () => {};
+    invalidateManagerEvalReport2Cache();
+    setManagerEvalReport2Mode('reports');
+    setManagerEvalReport2('no-pri');
+    setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
+    const host = document.createElement('div');
+    host.id = 'eval2-auto-all-host';
+    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:390px;overflow:auto;background:#fff;';
+    host.innerHTML = renderManagerEvalReports2Panel();
+    Array.from(document.querySelectorAll('#manager-eval-report-2-records')).forEach((existingRecords, index) => {
+      existingRecords.id = 'manager-eval-report-2-records-under-test-' + String(index + 1);
+    });
+    document.body.appendChild(host);
+    setManagerEvalReport2Mode('reports');
+    const renderResult = renderManagerEvalReport2Records();
+    const records = host.querySelector('#manager-eval-report-2-records');
+    return {
+      expectedCount: rows.length,
+      visibleCount: getManagerEvalReport2VisibleItemGroups().length,
+      activeHomeTab,
+      recordsFound: !!records,
+      documentTargetMatches: document.getElementById('manager-eval-report-2-records') === records,
+      renderResult: renderResult === true ? 'true' : String(renderResult),
+      sourceHasAutoRender: String(renderManagerEvalReport2Records).includes('manager-eval-2-flat:auto-all'),
+      initialRenderedCount: records ? records.querySelectorAll('.manager-eval2-item-card').length : -1,
+      initialStatus: records ? records.textContent : ''
+    };
+  })()`));
+
+  const host = page.locator('#eval2-auto-all-host');
+  expect(setup).toMatchObject({
+    visibleCount: 47,
+    activeHomeTab: 'eval-reports-2',
+    recordsFound: true,
+    documentTargetMatches: true,
+    renderResult: 'true',
+    sourceHasAutoRender: true,
+    initialRenderedCount: 20
+  });
+  expect(setup.initialStatus).toContain('Loading all 47 matching ITEMCODEs automatically');
+  await expect.poll(async () => host.locator('.manager-eval2-item-card').count(), { timeout: 15_000 }).toBe(setup.expectedCount);
+  await expect(host.locator('[data-role="manager-eval2-auto-load-status"]')).toHaveText(`All ${setup.expectedCount} matching ITEMCODEs loaded`);
+  await expect(host).not.toContainText(/Load \d+ more ITEMCODEs/i);
+  await expect(host).toContainText('Automatic Item 47');
+  expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
+});
+
 test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
@@ -2479,7 +2565,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
 
 test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.02.06&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.02.07&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).getRequestReusableData === 'function'
     && typeof (window as any).renderRequestQtyStepCurrentItem === 'function'
@@ -2693,7 +2779,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
 test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
   test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.02.06', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.02.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');
   await page.evaluate(() => window.eval(`(() => {
     isIOSDevice = () => true;
