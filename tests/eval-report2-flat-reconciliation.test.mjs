@@ -23,8 +23,11 @@ test('flat Eval Reports #2 cards show every current row and separate selection f
   assert.match(html, /onclick="return openManagerEvalReport2DirectInquiry/);
   assert.match(html, /openArgosInventoryTransactionModal\(uid, 'reclass', 'eval-report-2'\)/);
   assert.match(html, /getManagerEvalReport2RenderedItemGroups\(\)/);
-  assert.match(html, /managerEvalReport2VisibleItemLimit=20/);
-  assert.match(html, /Load .* more ITEMCODE/);
+  assert.match(html, /renderMarkupChunkedByKey\([\s\S]*'manager-eval-report-2'/);
+  assert.match(html, /Loading all \$\{totalItemcodes\} matching ITEMCODEs automatically/);
+  assert.match(html, /All \$\{totalItemcodes\} matching ITEMCODEs loaded/);
+  assert.match(html, /verifyRowSelector: '\.manager-eval2-item-card'/);
+  assert.doesNotMatch(html, /managerEvalReport2VisibleItemLimit|showMoreManagerEvalReport2Items|Load .* more ITEMCODE/);
   assert.doesNotMatch(html, /\$\{modeButton\('inquiry'/);
   assert.doesNotMatch(html, /originRows\.length > 100/);
 });
