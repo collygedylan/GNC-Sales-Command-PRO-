@@ -69,6 +69,7 @@ jobs:
           cp supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260828070741_access_control_manager_read_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/ci/request_eval_drive_reliability_baseline.sql "$ci_root/supabase/migrations/20260827000000_request_eval_drive_reliability_baseline.sql"
+          cp supabase/ci/flyer_folder_batch_contract_baseline.sql "$ci_root/supabase/migrations/20260903013000_flyer_folder_batch_contract_baseline.sql"
           cp supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260829042809_itemcode_wide_eval_work.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260830021512_mobile_codex_operations_v1.sql "$ci_root/supabase/migrations/"
