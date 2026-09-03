@@ -8,6 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 const html = read('index.html');
 const edge = read('supabase/functions/app-api/index.ts');
 const migration = read('supabase/migrations/20260828153252_promote_kayla_admin_drive_flyer_access.sql');
+const flyerAccessMigration = read('supabase/migrations/20260903013541_repair_reclass_task_flyer_access_v1.sql');
 const accessMigration = read('supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql');
 
 test('Kayla promotion is transactional, identity-linked, active-only, and audited', () => {
@@ -66,6 +67,42 @@ test('Flyer batches use authoritative rows, active users, atomic history, and re
   assert.match(html, /p_master_uids: masterUids/);
   assert.match(html, /p_assignee_usernames: selectedAssignees/);
   assert.doesNotMatch(html.slice(html.indexOf('async function createFlyerFolderRowsForItems'), html.indexOf('async function createDriveQuickFlyers')), /supabaseFetch\(FLYER_FOLDER_ROWS_TABLE, 'POST'/);
+});
+
+test('Flyer creation is server-authorized for active Admins, Dylan, and Megan without a stale client role gate', () => {
+  assert.match(flyerAccessMigration, /^begin;/);
+  assert.match(flyerAccessMigration, /create or replace function private\.require_active_flyer_creator_profile\(\)/);
+  assert.match(flyerAccessMigration, /disabled_at is not null/);
+  assert.match(flyerAccessMigration, /locked_until is not null[\s\S]*locked_until > now\(\)/);
+  assert.match(flyerAccessMigration, /v_role in \('ADMIN', 'ADMINISTRATOR'\)/);
+  assert.match(flyerAccessMigration, /v_username in \('dylan_collyge', 'megan_kelly'\)/);
+  assert.match(flyerAccessMigration, /pg_catalog\.pg_get_functiondef/);
+  assert.match(flyerAccessMigration, /private\.require_active_flyer_creator_profile\(\)/);
+  assert.match(flyerAccessMigration, /FLYER_CREATE_AUTH_GUARD_MISMATCH/);
+  assert.match(flyerAccessMigration, /revoke all on function public\.create_flyer_folder_batch_v1[\s\S]*from public, anon/);
+  assert.match(flyerAccessMigration, /grant execute on function public\.create_flyer_folder_batch_v1[\s\S]*to authenticated/);
+  assert.match(flyerAccessMigration, /commit;\s*$/);
+
+  const clientCreate = html.slice(
+    html.indexOf('function showFlyerFolderCreationFailure'),
+    html.indexOf('async function createDriveQuickFlyers')
+  );
+  assert.match(clientCreate, /if \(!nativeAuthSessionActive\)/);
+  assert.doesNotMatch(clientCreate, /getRoleAccessState\(\)\.isAdmin/);
+  assert.match(clientCreate, /supabaseRpc\('create_flyer_folder_batch_v1'/);
+  assert.match(clientCreate, /showFlyerFolderCreationFailure\(err\)/);
+  assert.doesNotMatch(clientCreate, /showToast\('Error', err && err\.message/);
+});
+
+test('Dylan and Megan can open Reclass for every Drive row regardless of AssignedTo', () => {
+  const driveOptions = html.slice(
+    html.indexOf('const DRIVE_CARD_OPTIONS_ALWAYS_USERS'),
+    html.indexOf('function canCurrentUserSelectDriveWorkflowRow')
+  );
+  assert.match(driveOptions, /DRIVE_CARD_OPTIONS_ALWAYS_USERS[\s\S]*'dylan_collyge'[\s\S]*'megan_kelly'/);
+  const gate = driveOptions.slice(driveOptions.indexOf('function canCurrentUserUseDriveCardOptions'));
+  assert.ok(gate.indexOf('isAlwaysDriveCardOptionsUser') < gate.indexOf('isWarehouseAssignedDriveCardForCurrentUser'));
+  assert.match(gate, /if \(isAlwaysDriveCardOptionsUser\(userOverride, displayOverride\)\) return true/);
 });
 
 test('role refresh invalidates role-scoped caches without granting policy-maintainer access', () => {

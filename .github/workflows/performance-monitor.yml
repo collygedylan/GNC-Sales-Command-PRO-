@@ -95,6 +95,7 @@ jobs:
           cp supabase/migrations/20260902165500_current_request_membership_health.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260901192727_repair_request_option_append.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260901201209_eval_report2_completion_routing.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903013541_repair_reclass_task_flyer_access_v1.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/codex_ops_rls_test.sql "$ci_root/supabase/tests/"

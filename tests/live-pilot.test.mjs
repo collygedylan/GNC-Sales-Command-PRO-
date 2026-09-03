@@ -64,12 +64,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.02.04';
+  const release = 'V2026.09.02.05';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.09.02.04');
+  assert.equal(packageJson.version, '2026.09.02.05');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1474,6 +1474,18 @@ test('Task View lists active assignment-sheet users and scopes Drive rows withou
   assert.doesNotMatch(html, /return item\.WAREHOUSE_ASSIGNED_USER && item\.ITEMCODE \? item : null/);
   assert.match(html, /function canRestrictedEvalUserUpdateItem/);
   assert.match(html, /function completeEvalTaskFromDetail/);
+});
+
+test('normal Task filters retain the selected filter instead of resetting every choice to All', () => {
+  const normalizer = html.slice(
+    html.indexOf('function getNormalizedTaskSubviewValue'),
+    html.indexOf('function syncTaskSelectorState')
+  );
+  assert.match(normalizer, /return normalizeTaskFilterValue\(value\);/);
+  assert.doesNotMatch(normalizer, /\n\s*return 'all';\s*\n\s*\}/);
+  for (const filter of ['season:', 'location:', 'move-up', 'ncr']) {
+    assert.match(html, new RegExp(filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  }
 });
 
 test('Warehouse assignments are Supabase-authoritative and the Sheet is export-only', () => {
