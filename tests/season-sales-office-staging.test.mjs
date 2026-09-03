@@ -7,6 +7,8 @@ const migration = read('../supabase/migrations/20260903171416_repair_season_sale
 const api = read('../supabase/functions/app-api/index.ts');
 const html = read('../index.html');
 const appsScript = read('../Code.gs');
+const workflow = read('../.github/workflows/performance-monitor.yml');
+const ciSalesOfficeBaseline = read('../supabase/ci/sales_office_baseline.sql');
 
 const sliceBetween = (source, startText, endText) => {
   const start = source.indexOf(startText);
@@ -83,4 +85,12 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
   assert.match(html, /V2026\.09\.03\.01/);
+});
+
+test('hosted database checks reproduce the protected legacy Sales Office dependency', () => {
+  assert.match(workflow, /sales_office_baseline\.sql/);
+  assert.match(ciSalesOfficeBaseline, /create table if not exists public\.ph_sales_office/i);
+  assert.match(ciSalesOfficeBaseline, /alter table public\.ph_sales_office enable row level security/i);
+  assert.match(ciSalesOfficeBaseline, /revoke all on table public\.ph_sales_office from public, anon, authenticated/i);
+  assert.doesNotMatch(ciSalesOfficeBaseline, /grant (insert|update|delete|all) on table public\.ph_sales_office to (anon|authenticated)/i);
 });
