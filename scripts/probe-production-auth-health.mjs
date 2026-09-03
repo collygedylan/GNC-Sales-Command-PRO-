@@ -434,7 +434,7 @@ if (serviceRoleKey) {
     mirrorCount: Math.max(0, Number(seasonSalesOfficeHealth.mirrorCount) || 0)
   });
 
-  const evalItemcodeHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_itemcode_work_health_snapshot_v1`, {
+  const evalItemcodeHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_itemcode_work_health_snapshot_v2`, {
     method: 'POST',
     headers: serviceHeaders,
     body: '{}'
@@ -444,7 +444,7 @@ if (serviceRoleKey) {
   if (!evalItemcodeHealthResponse.ok || !evalItemcodeWorkHealth || typeof evalItemcodeWorkHealth !== 'object') {
     throw new Error(`production_eval_itemcode_health_unavailable_HTTP_${evalItemcodeHealthResponse.status}`);
   }
-  const evalItemcodeContractHealthy = evalItemcodeWorkHealth.contract_version === 'eval-itemcode-work-health-v1'
+  const evalItemcodeContractHealthy = evalItemcodeWorkHealth.contract_version === 'eval-itemcode-work-health-v2'
     && evalItemcodeWorkHealth.scope_contract === 'itemcode-all-rows-v1'
     && Number(evalItemcodeWorkHealth.stored_membership_mismatch_count) === 0
     && Number(evalItemcodeWorkHealth.pdf_origin_mismatch_count) === 0
@@ -457,7 +457,8 @@ if (serviceRoleKey) {
     status: evalItemcodeHealthResponse.status,
     contractVersion: evalItemcodeWorkHealth.contract_version,
     scopedAssignments: Math.max(0, Number(evalItemcodeWorkHealth.scoped_assignment_count) || 0),
-    largestOriginCount: Math.max(0, Number(evalItemcodeWorkHealth.largest_origin_count) || 0)
+    largestOriginCount: Math.max(0, Number(evalItemcodeWorkHealth.largest_origin_count) || 0),
+    historicalPdfOriginMismatchCount: Math.max(0, Number(evalItemcodeWorkHealth.historical_pdf_origin_mismatch_count) || 0)
   });
 
   const codexOpsHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_codex_ops_health_snapshot_v1`, {

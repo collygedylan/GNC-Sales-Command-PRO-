@@ -47,3 +47,44 @@ drop policy if exists "Authenticated users read Sales Office" on public.ph_sales
 create policy "Authenticated users read Sales Office"
 on public.ph_sales_office for select to authenticated
 using (true);
+
+-- The Custom AV import table is another production-era dependency that is
+-- intentionally read-only in this test baseline.
+create table if not exists public.ph_cav_import (
+  unique_id text primary key,
+  last_updated timestamptz,
+  filename text,
+  itemcode text,
+  commonname text,
+  contsize text,
+  season text,
+  ptravailable text,
+  brand text,
+  spec text,
+  hz text,
+  unitprice text,
+  holdstopreason text,
+  ordertotal text,
+  product_description text,
+  brand_code text,
+  h text,
+  available text,
+  reserved_qty text,
+  order_qty text,
+  unit_price text,
+  n_star text,
+  hot_price text,
+  hold_reason text,
+  ext_item_total text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.ph_cav_import enable row level security;
+revoke all on table public.ph_cav_import from public, anon, authenticated;
+grant select on table public.ph_cav_import to anon, authenticated;
+grant all on table public.ph_cav_import to service_role;
+
+drop policy if exists "Authenticated users read Custom AV imports" on public.ph_cav_import;
+create policy "Authenticated users read Custom AV imports"
+on public.ph_cav_import for select to authenticated
+using (true);

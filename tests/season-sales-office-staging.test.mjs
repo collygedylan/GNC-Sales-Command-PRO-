@@ -9,6 +9,8 @@ const html = read('../index.html');
 const appsScript = read('../Code.gs');
 const workflow = read('../.github/workflows/performance-monitor.yml');
 const ciSalesOfficeBaseline = read('../supabase/ci/sales_office_baseline.sql');
+const evalHealthV2 = read('../supabase/migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql');
+const productionProbe = read('../scripts/probe-production-auth-health.mjs');
 
 const sliceBetween = (source, startText, endText) => {
   const start = source.indexOf(startText);
@@ -93,4 +95,13 @@ test('hosted database checks reproduce the protected legacy Sales Office depende
   assert.match(ciSalesOfficeBaseline, /alter table public\.ph_sales_office enable row level security/i);
   assert.match(ciSalesOfficeBaseline, /revoke all on table public\.ph_sales_office from public, anon, authenticated/i);
   assert.doesNotMatch(ciSalesOfficeBaseline, /grant (insert|update|delete|all) on table public\.ph_sales_office to (anon|authenticated)/i);
+  assert.match(ciSalesOfficeBaseline, /create table if not exists public\.ph_cav_import/i);
+});
+
+test('hosted health preserves old delivery history but blocks every post-release mismatch', () => {
+  assert.match(evalHealthV2, /delivery\.created_at >= contract_started_at/);
+  assert.match(evalHealthV2, /historical_pdf_origin_mismatch_count/);
+  assert.match(evalHealthV2, /coalesce\(work\.origin_count, -1\)/);
+  assert.match(productionProbe, /get_eval_itemcode_work_health_snapshot_v2/);
+  assert.match(productionProbe, /eval-itemcode-work-health-v2/);
 });
