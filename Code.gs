@@ -10525,6 +10525,14 @@ function getReclassInquiryEmailRecipients_(payload) {
   const safePayload = payload && typeof payload === 'object' ? payload : {};
   const sourceContext = safePayload.sourceContext && typeof safePayload.sourceContext === 'object'
     ? safePayload.sourceContext : {};
+  if (String(sourceContext.sourceMode || '').trim().toLowerCase() === 'drive') {
+    const protectedDelivery = safePayload.protectedDelivery && typeof safePayload.protectedDelivery === 'object'
+      ? safePayload.protectedDelivery : {};
+    if (String(protectedDelivery.contractVersion || '') !== 'drive-reclass-protected-v1') {
+      throw new Error('RECLASS_VALIDATION:DRIVE_AUTH_REQUIRED');
+    }
+    return dedupeEmailAddresses_(safePayload.recipientEmails);
+  }
   if (String(sourceContext.sourceMode || '').trim().toLowerCase() === 'eval-report-2') {
     const actor = safePayload.actor && typeof safePayload.actor === 'object' ? safePayload.actor : {};
     const actorUsername = String(firstNonEmptyRequestValue_(actor.username, actor.user, '') || '').trim();
@@ -11685,7 +11693,7 @@ function buildReclassInquiryReportText_(model) {
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
     '',
-    'Open the attached PDF to review the complete Item Inquiry. Proposed values are yellow, boxed, and labeled for color and black-and-white printing.'
+    'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.'
   ].join('\n');
 }
 
@@ -11700,7 +11708,7 @@ function buildReclassInquiryEmailHtml_(model) {
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
-    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Proposed values are yellow, boxed, and labeled for color and black-and-white printing.</p>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.</p>',
     '</div>'
   ].join(''));
 }
@@ -11718,7 +11726,7 @@ function sortReclassInquiryCompactRows_(rows) {
 function buildReclassInquiryProposalBoxHtml_(value, cssClass) {
   const raw = String(value == null ? '' : value);
   const display = raw ? escapeEmailHtml_(raw) : '[blank]';
-  return '<span class="proposal-box' + (cssClass ? ' ' + escapeEmailHtml_(cssClass) : '') + '"><span class="proposal-label">PROPOSED</span><strong>' + display + '</strong></span>';
+  return '<span class="proposal-box' + (cssClass ? ' ' + escapeEmailHtml_(cssClass) : '') + '"><strong>' + display + '</strong></span>';
 }
 
 function formatReclassInquiryScopeNote_(scope) {
@@ -11750,7 +11758,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       const reason = String(usesRequestScopeProposal ? holdProposalSummary.reason : (safeModel.identity && safeModel.identity.holdstopreason || '')).trim().toLowerCase();
       const edited = identityWasEdited || usesRequestScopeProposal;
       const valueHtml = edited
-        ? '<span class="proposal-box proposal-box-identity"><span class="proposal-label">PROPOSED</span><strong>' + (code ? esc(code) : '[blank]') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '[blank]') + '</strong></span>'
+        ? '<span class="proposal-box proposal-box-identity"><strong>' + (code ? esc(code) : '[blank]') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '[blank]') + '</strong></span>'
         : '<strong>' + (code ? esc(code) : '&nbsp;') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '&nbsp;') + '</strong>';
       const proposalContext = usesRequestScopeProposal ? '<small class="scope-note">Request scope proposal; affected rows are marked below.</small>' : '';
       return '<div class="identity-cell holdstop-identity' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + valueHtml + proposalContext + (scopeNote ? '<small class="scope-note">' + esc(scopeNote) + '</small>' : '') + '</div>';
@@ -11800,7 +11808,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     });
   });
   const supplementalTemporaryHtml = supplementalTemporaryRows.length
-    ? '<div class="section-title">Temporary Report Edits</div><table class="temporary-table"><thead><tr><th>Location</th><th>Lotcode</th><th>Field</th><th>Proposed Value</th></tr></thead><tbody>' + supplementalTemporaryRows.map(function(change) {
+    ? '<div class="section-title">Temporary Report Edits</div><table class="temporary-table"><thead><tr><th>Location</th><th>Lotcode</th><th>Field</th><th>Requested Value</th></tr></thead><tbody>' + supplementalTemporaryRows.map(function(change) {
         return '<tr><td>' + esc(change.locationcode) + '</td><td>' + esc(change.lotcode) + '</td><td>' + esc(change.label) + '</td><td class="edited-cell" data-edited="true">' + buildReclassInquiryProposalBoxHtml_(change.value) + '</td></tr>';
       }).join('') + '</tbody></table>'
     : '';
@@ -11828,7 +11836,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
     '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
-    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span class="proposal-swatch">PROPOSED</span><span>Yellow, boxed values are proposals and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
+    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span>Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
     '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + supplementalTemporaryHtml + '</body></html>';
 }
 
@@ -11944,7 +11952,7 @@ function buildReclassInquiryCompactPilotEmailHtml_(model) {
     '<h2 style="margin:0 0 14px;color:#007a4d;">GNC PH Reclass Item Inquiry</h2>',
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || '') + '<br><strong>Item:</strong> ' + escapeEmailHtml_(safeModel.identity && safeModel.identity.commonname || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
-    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>Compact PDF attached:</strong> Open the synthetic Item Inquiry PDF to review the action-specific pilot layout. Proposed cells are highlighted yellow.</p>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"><strong>Compact PDF attached:</strong> Open the synthetic Item Inquiry PDF to review the action-specific pilot layout. Requested changes are highlighted yellow.</p>',
     '<p style="font-size:12px;color:#64748b;">No production inventory, request, customer, or photo data was read or changed.</p>',
     '</div>'
   ].join(''));
@@ -12045,6 +12053,10 @@ function enqueueReclassInquiryEmail_(payload) {
   const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
   const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
   if (!sourceUid) throw new Error('Missing source inventory row id.');
+  const sourceContext = safePayload.sourceContext && typeof safePayload.sourceContext === 'object' ? safePayload.sourceContext : {};
+  if (String(sourceContext.sourceMode || '').trim().toLowerCase() === 'drive') {
+    return { ok: false, status: 'unauthorized', message: 'Refresh the app and sign in before sending this Drive Mode inquiry.' };
+  }
   const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
   if (policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
     return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app and review the current rows.' };
@@ -12158,7 +12170,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader) {
       result.subject = subject;
       result.submittedAt = now.toISOString();
       result.policyVersion = isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
-      result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Proposed cells are highlighted yellow; no inventory data was changed.';
+      result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Requested changes are highlighted yellow; no inventory data was changed.';
       return result;
     } catch (emailError) {
       if (/^RECLASS_/.test(String(emailError && emailError.message || ''))) throw emailError;

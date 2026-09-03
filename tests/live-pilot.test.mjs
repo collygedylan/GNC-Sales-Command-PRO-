@@ -64,12 +64,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.02.05';
+  const release = 'V2026.09.02.06';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.09.02.05');
+  assert.equal(packageJson.version, '2026.09.02.06');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -485,7 +485,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   assert.doesNotMatch(keyboardCascade, /@media \(max-width: 639px\)/);
 });
 
-test('Drive universal search preserves drill state and renders only its results while typing', () => {
+test('Drive universal search replaces drill state and renders only global results while typing', () => {
   assert.match(html, /drive_universal: \(item\) => \[item\.COMMONNAME, item\.LOCATIONCODE, item\.ITEMCODE, item\.CONTSIZE, item\.LOTCODE, item\.DESIGCUST, item\.DESIGITEM, item\.DESIGLOC\]/);
   assert.match(html, /function captureDriveStateBeforeUniversalSearch\(\)/);
   assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)/);
@@ -497,6 +497,9 @@ test('Drive universal search preserves drill state and renders only its results 
   assert.match(html, /if \(renderDriveUniversalSearchResultsOnly\(\)\) return;[\s\S]*renderViewContent\('drive'/);
   const searchHandler = html.slice(html.indexOf('function handleDriveSearch'), html.indexOf('function selectDriveName'));
   assert.doesNotMatch(searchHandler, /resetDriveDrillSelectionState\(\)/);
+  assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)[\s\S]*activeDriveTab = 'name';[\s\S]*resetDriveDrillSelectionState\(\);[\s\S]*driveUniversalSearchPendingScrollTop = 0/);
+  const backHandler = html.slice(html.indexOf('function goBackUniversal'), html.indexOf('function syncFabVisibility'));
+  assert.match(backHandler, /currentView === 'drive'[\s\S]*hasActiveDriveSearchTerm\(\)[\s\S]*clearDriveSearch\(\)/);
   assert.match(html, /oncompositionstart="beginDriveSearchComposition\(\)"/);
   assert.match(html, /oncompositionend="endDriveSearchComposition\(event\)"/);
   assert.match(searchHandler, /driveSearchCompositionActive \|\| \(event && event\.isComposing\)/);
@@ -505,8 +508,8 @@ test('Drive universal search preserves drill state and renders only its results 
   assert.match(html, /\? 100 : 60/);
 });
 
-test('Drive Common Name search keeps the grouped drill workflow instead of opening row cards', () => {
-  assert.match(html, /function shouldRenderDriveUniversalDetailedSearch\(\)\s*\{\s*return activeDriveTab !== 'name';\s*\}/);
+test('Drive Common Name search opens global row cards independent of drill level', () => {
+  assert.match(html, /function shouldRenderDriveUniversalDetailedSearch\(\)\s*\{\s*return activeDriveMode === 'ok';\s*\}/);
   const universalRenderer = html.slice(
     html.indexOf('function renderDriveUniversalSearchResultsOnly'),
     html.indexOf('function scheduleDriveSearchRequest')
