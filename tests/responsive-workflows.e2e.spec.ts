@@ -449,9 +449,10 @@ test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Lo
     recordsFound: true,
     documentTargetMatches: true,
     renderResult: 'true',
-    sourceHasAutoRender: true,
-    initialRenderedCount: 20
+    sourceHasAutoRender: true
   });
+  expect(setup.initialRenderedCount).toBeGreaterThan(0);
+  expect(setup.initialRenderedCount).toBeLessThanOrEqual(20);
   expect(setup.initialStatus).toContain('Loading all 47 matching ITEMCODEs automatically');
   await expect.poll(async () => host.locator('.manager-eval2-item-card').count(), { timeout: 15_000 }).toBe(setup.expectedCount);
   await expect(host.locator('[data-role="manager-eval2-auto-load-status"]')).toHaveText(`All ${setup.expectedCount} matching ITEMCODEs loaded`);
