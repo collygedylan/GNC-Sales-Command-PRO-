@@ -10765,6 +10765,11 @@ const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
   { key: 'locationnote', label: 'Location Note' }
 ];
 
+const RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_ = Object.freeze([
+  { key: 'holdstopcode', label: 'H/S', width: '.55in' },
+  { key: 'holdstopreason', label: 'H/S Reason', width: '1.05in' }
+]);
+
 const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
   hold: 'On Hold Request',
   take_off_hold: 'Off Hold Request',
@@ -10855,7 +10860,17 @@ function getReclassInquiryActionRuleV2_(value) {
 }
 
 function getReclassInquiryCompactFields_(value, requestActions) {
-  return RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
+  const actions = (Array.isArray(requestActions) ? requestActions : [value])
+    .map(function(action) { return String(action || '').trim().toLowerCase(); })
+    .filter(Boolean);
+  const includesHoldAction = actions.some(function(action) {
+    return RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) !== -1;
+  });
+  if (!includesHoldAction) return RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
+  const fields = RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
+  const reviewedIndex = fields.findIndex(function(field) { return field && field.key === 'ptrreviewed'; });
+  fields.splice.apply(fields, [reviewedIndex < 0 ? fields.length : reviewedIndex + 1, 0].concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_));
+  return fields;
 }
 
 function getReclassInquiryExactValue_(row, aliases, fallback) {
@@ -11613,6 +11628,18 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   const requestActions = Array.isArray(transaction.requestActions)
     ? RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return transaction.requestActions.indexOf(action) !== -1; })
     : (requestAction ? [requestAction] : []);
+  const rawHoldProposal = Array.isArray(transaction.holdStopProposals) && transaction.holdStopProposals.length
+    ? transaction.holdStopProposals[0]
+    : null;
+  const holdProposalRule = rawHoldProposal ? getReclassInquiryActionRuleV2_(rawHoldProposal.action) : null;
+  const holdProposalSummary = holdProposalRule && (holdProposalRule.kind === 'hold_on' || holdProposalRule.kind === 'hold_off')
+    ? {
+        action: String(rawHoldProposal.action || '').trim().toLowerCase(),
+        code: holdProposalRule.kind === 'hold_on' ? String(holdProposalRule.code || '').trim().toUpperCase() : '',
+        reason: holdProposalRule.kind === 'hold_on' ? String(rawHoldProposal.reason || '').trim().toLowerCase() : '',
+        affectedCount: Math.max(0, Math.trunc(Number(transaction.scope && transaction.scope.affectedCount) || 0))
+      }
+    : null;
   const editedRows = normalizedReportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
   const hasLocationDetailChanges = hasReclassInquiryLocationDetailChangeV3_(normalizedReportRows);
   return {
@@ -11622,6 +11649,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     seasons: seasons,
     rows: normalizedReportRows,
     transaction: transaction,
+    holdProposalSummary: holdProposalSummary,
     requestAction: requestAction,
     requestActions: requestActions,
     requestActionLabel: hasLocationDetailChanges && !requestActions.length
@@ -11713,13 +11741,19 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const scopeNote = formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
     if (field.key === 'holdstopcode') {
-      const code = String(safeModel.identity && safeModel.identity.holdstopcode || '').trim().toUpperCase();
-      const reason = String(safeModel.identity && safeModel.identity.holdstopreason || '').trim().toLowerCase();
-      const edited = identityChangedFields.indexOf('holdstopcode') !== -1 || identityChangedFields.indexOf('holdstopreason') !== -1;
+      const identityWasEdited = identityChangedFields.indexOf('holdstopcode') !== -1 || identityChangedFields.indexOf('holdstopreason') !== -1;
+      const holdProposalSummary = safeModel.holdProposalSummary && typeof safeModel.holdProposalSummary === 'object'
+        ? safeModel.holdProposalSummary
+        : null;
+      const usesRequestScopeProposal = !identityWasEdited && !!holdProposalSummary;
+      const code = String(usesRequestScopeProposal ? holdProposalSummary.code : (safeModel.identity && safeModel.identity.holdstopcode || '')).trim().toUpperCase();
+      const reason = String(usesRequestScopeProposal ? holdProposalSummary.reason : (safeModel.identity && safeModel.identity.holdstopreason || '')).trim().toLowerCase();
+      const edited = identityWasEdited || usesRequestScopeProposal;
       const valueHtml = edited
         ? '<span class="proposal-box proposal-box-identity"><span class="proposal-label">PROPOSED</span><strong>' + (code ? esc(code) : '[blank]') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '[blank]') + '</strong></span>'
         : '<strong>' + (code ? esc(code) : '&nbsp;') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '&nbsp;') + '</strong>';
-      return '<div class="identity-cell holdstop-identity' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + valueHtml + (scopeNote ? '<small class="scope-note">' + esc(scopeNote) + '</small>' : '') + '</div>';
+      const proposalContext = usesRequestScopeProposal ? '<small class="scope-note">Request scope proposal; affected rows are marked below.</small>' : '';
+      return '<div class="identity-cell holdstop-identity' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + valueHtml + proposalContext + (scopeNote ? '<small class="scope-note">' + esc(scopeNote) + '</small>' : '') + '</div>';
     }
     const edited = identityChangedFields.indexOf(field.key) !== -1;
     const rawValue = safeModel.identity && Object.prototype.hasOwnProperty.call(safeModel.identity, field.key) ? safeModel.identity[field.key] : '';

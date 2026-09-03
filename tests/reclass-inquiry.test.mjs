@@ -350,6 +350,7 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
   const server = loadServerModel();
   const actions = ['priority_change', 'recount', 'move_up', 'move_down', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'];
   const fixedHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note'];
+  const holdHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'H/S', 'H/S Reason', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note'];
   const outputs = {};
   for (const action of actions) {
     const model = server.buildReclassInquiryCompactPilotModel_(action, new Date('2026-08-22T14:15:00Z'));
@@ -357,7 +358,8 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
     outputs[action] = output;
     const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
     const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
-    assert.deepEqual(headers, fixedHeaders, `${action} should keep the fixed compact columns`);
+    const expectedHeaders = ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(action) ? holdHeaders : fixedHeaders;
+    assert.deepEqual(headers, expectedHeaders, `${action} should keep the action-specific compact columns`);
     assert.ok(output.indexOf('A.01.000') < output.indexOf('D.12.000'));
     assert.ok(output.indexOf('D.12.000') < output.indexOf('D.17.000'));
     assert.ok(output.indexOf('D.17.000') < output.indexOf('F.14.000'));
@@ -366,8 +368,11 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
     assert.match(output, /@page\{size:Letter landscape/);
     assert.equal((output.match(/<tr>/g) || []).length, 5, `${action} should include all four current rows plus the header`);
   }
-  for (const removed of ['Rev', 'Avail', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2', 'H/S', 'H/S Reason']) {
+  for (const removed of ['Rev', 'Avail', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2']) {
     for (const output of Object.values(outputs)) assert.doesNotMatch(output, new RegExp(`<th>${removed}<\\/th>`), `${removed} must not be an action pilot column`);
+  }
+  for (const action of ['priority_change', 'recount', 'move_up', 'move_down']) {
+    assert.doesNotMatch(outputs[action], /<th>H\/S<\/th>|<th>H\/S Reason<\/th>/);
   }
   assert.match(outputs.priority_change, /Request:<\/strong> Priority Change/);
   assert.match(outputs.priority_change, /PROPOSED[\s\S]*?\[blank\]/);
@@ -463,7 +468,7 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
   const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
   assert.deepEqual(headers, [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'H/S', 'H/S Reason', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
   ]);
   assert.match(output, /PROPOSED[\s\S]*?<strong>1<\/strong>/);
   assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?PROPOSED[\s\S]*?UP 150 TO F1/);
@@ -475,6 +480,44 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   assert.doesNotMatch(output, /Hold\/Stop Proposals|<th>Actions<\/th>/);
   assert.ok(output.indexOf('A.01.000') < output.indexOf('C.16.000'));
   assert.equal((output.match(/<tr>/g) || []).length, rows.length + 1);
+});
+
+test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is outside the affected scope', () => {
+  const server = loadServerModel();
+  const rows = [
+    { unique_id: 'origin', itemcode: '008614.070.1', commonname: 'Golden Falls® Redbud', contsize: '#7', lotcode: '28.S1', locationcode: 'A.01.000', source: 'LD', ptronhand: '10', ptrreviewed: '0', season: 'S1', saleyear: '28', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'eligible-1', itemcode: '008614.070.1', commonname: 'Golden Falls® Redbud', contsize: '#7', lotcode: '27.F1', locationcode: 'B.01.000', source: 'LD', ptronhand: '20', ptrreviewed: '0', season: 'F1', saleyear: '27', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'eligible-2', itemcode: '008614.070.1', commonname: 'Golden Falls® Redbud', contsize: '#7', lotcode: '26.F1', locationcode: 'C.01.000', source: 'LD', ptronhand: '30', ptrreviewed: '0', season: 'F1', saleyear: '26', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'eligible-3', itemcode: '008614.070.1', commonname: 'Golden Falls® Redbud', contsize: '#7', lotcode: '25.F1', locationcode: 'D.01.000', source: 'LD', ptronhand: '40', ptrreviewed: '0', season: 'F1', saleyear: '25', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'future', itemcode: '008614.070.1', commonname: 'Golden Falls® Redbud', contsize: '#7', lotcode: '28.F1', locationcode: 'E.01.000', source: 'LD', ptronhand: '50', ptrreviewed: '0', season: 'F1', saleyear: '28', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'other-season', itemcode: '008614.070.1', commonname: 'Golden Falls® Redbud', contsize: '#7', lotcode: '27.S1', locationcode: 'F.01.000', source: 'LD', ptronhand: '60', ptrreviewed: '0', season: 'S1', saleyear: '27', holdstopcode: '', holdstopreason: '' },
+  ];
+  const overlays = rows.map((row) => ({
+    unique_id: row.unique_id,
+    expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode, ptronhand: row.ptronhand },
+    proposals: [],
+  }));
+  const transaction = { requestActions: ['hold'], holdStopProposals: [{ action: 'hold', reason: 'Leaf Quality' }], scope: { season: 'F1', salesYear: 2027 } };
+  const result = server.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, { season: 'F1', salesYear: 2027 });
+  assert.equal(result.scope.affectedCount, 3);
+  const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, {
+    transaction: { ...transaction, scope: result.scope, holdStopProposals: result.holdStopProposals },
+    actor: { username: 'megan_kelly' },
+  }, new Date('2026-09-02T19:47:52Z'));
+  assert.equal(model.identity.holdstopcode, '', 'the opening row remains unchanged');
+  assert.deepEqual(Array.from(model.identityChangedFields), []);
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(output, /Request scope proposal; affected rows are marked below/);
+  assert.match(output, /<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>leaf quality<\/strong>/);
+  assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th>/);
+  for (const location of ['B.01.000', 'C.01.000', 'D.01.000']) {
+    const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
+    assert.match(rowHtml, /PROPOSED[\s\S]*?<strong>H<\/strong>[\s\S]*?PROPOSED[\s\S]*?<strong>leaf quality<\/strong>/, `${location} should show the row proposal`);
+  }
+  for (const location of ['A.01.000', 'E.01.000', 'F.01.000']) {
+    const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
+    assert.doesNotMatch(rowHtml, /proposal-box/, `${location} should remain unchanged`);
+  }
 });
 
 test('workflow V3 accepts LOCATIONPTN1 and Location Note alone and stamps the note date server-side', () => {
