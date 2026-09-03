@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql');
+const accessMigration = read('../supabase/migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql');
 const api = read('../supabase/functions/app-api/index.ts');
 const html = read('../index.html');
 const appsScript = read('../Code.gs');
@@ -72,6 +73,22 @@ test('AV Note save, Done, and refresh run through authenticated protected API op
   assert.doesNotMatch(syncBlock, /supabaseFetch\('ph_sales_office'/);
 });
 
+test('manager-controlled AV users are authoritative for Season Sales Note entry', () => {
+  assert.match(accessMigration, /av_blanks_photo_bypass_users/);
+  assert.match(accessMigration, /dylan_collyge'[\s\S]*'kayla_knepp'[\s\S]*'morgan_anderson'/);
+  assert.match(accessMigration, /create or replace function private\.season_sales_note_allowed_usernames_v1/);
+  assert.match(accessMigration, /SEASON_SALES_USER_NOT_ASSIGNED/);
+  assert.match(accessMigration, /manager\.av_blanks_bypass\.manage/);
+  assert.match(accessMigration, /create or replace function public\.save_season_sales_note_users_v1/);
+  assert.match(accessMigration, /revoke all on function public\.save_season_sales_note_users_v1[\s\S]*grant execute[\s\S]*to service_role/);
+  assert.match(api, /operation === "access"[\s\S]*get_season_sales_note_access_v1/);
+  assert.match(api, /operation === "save_users"[\s\S]*save_season_sales_note_users_v1/);
+  const settingsSave = sliceBetween(html, 'async function saveAvBlanksPhotoBypassSettingsToRemote', 'function canManageAvBlanksPhotoBypassSettings');
+  assert.match(settingsSave, /seasonSalesOfficeApi\('save_users'/);
+  assert.doesNotMatch(settingsSave, /rest\/v1|Authorization': 'Bearer ' \+ SUPABASE_KEY/);
+  assert.match(html, /Read only — not assigned for Season Sales Note entry/);
+});
+
 test('every committed canonical import and scheduled maintenance invoke the service reconciliation', () => {
   assert.match(appsScript, /function reconcileSeasonSalesOfficeAfterImport_/);
   assert.match(appsScript, /callSupabaseRpc_\('reconcile_season_sales_office_v1'/);
@@ -86,7 +103,7 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Needs Photo\/Data/);
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
-  assert.match(html, /V2026\.09\.03\.01/);
+  assert.match(html, /V2026\.09\.03\.02/);
 });
 
 test('hosted database checks reproduce the protected legacy Sales Office dependency', () => {

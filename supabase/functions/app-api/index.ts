@@ -568,11 +568,20 @@ function seasonSalesOfficeErrorResponse(error: unknown) {
   const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const raw = String(source.message || error || "SEASON_SALES_SERVICE_UNAVAILABLE").toUpperCase();
   const code = (raw.match(/SEASON_SALES_[A-Z0-9_]+/) || ["SEASON_SALES_SERVICE_UNAVAILABLE"])[0];
+  if (/USER_NOT_ASSIGNED/.test(code)) {
+    return errorResponse("You are not assigned to enter Season Sales Notes.", 403, { code });
+  }
+  if (/SETTINGS_PERMISSION_REQUIRED/.test(code)) {
+    return errorResponse("You do not have permission to manage Season Sales Note users.", 403, { code });
+  }
   if (/PROFILE_NOT_ACTIVE|PERMISSION_REQUIRED/.test(code)) {
     return errorResponse("Your active profile does not have Sales Office access.", 403, { code });
   }
   if (/STALE_REVISION|WINNER_CHANGED|NOT_OPEN/.test(code)) {
     return errorResponse("This Season Sales Note changed. Refresh it before trying again.", 409, { code });
+  }
+  if (/USER_INVALID|USER_LIMIT/.test(code)) {
+    return errorResponse("Every selected Season Sales Note user must be active and unlocked.", 400, { code });
   }
   if (/TOKEN_INVALID|TOKEN_CONFLICT|NOT_FOUND/.test(code)) {
     return errorResponse("The Season Sales Note request is invalid. Refresh and try again.", 400, { code });
@@ -593,6 +602,27 @@ async function handleSeasonSalesOfficeAction(
   const masterId = String(payload.masterId || payload.master_id || "").trim();
   const idempotencyKey = String(payload.idempotencyKey || payload.idempotency_key || "").trim();
   try {
+    if (operation === "access") {
+      const { data, error } = await supabase.rpc("get_season_sales_note_access_v1", {
+        p_actor_username: actorUsername,
+      });
+      if (error) throw error;
+      return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
+    }
+    if (operation === "save_users") {
+      const rawUsernames = Array.isArray(payload.usernames) ? payload.usernames : [];
+      const usernames = Array.from(new Set(rawUsernames
+        .map((value) => normalizeUsername(String(value || "")))
+        .filter(Boolean)))
+        .slice(0, 101);
+      const { data, error } = await supabase.rpc("save_season_sales_note_users_v1", {
+        p_actor_username: actorUsername,
+        p_usernames: usernames,
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) throw error;
+      return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
+    }
     if (operation === "save_av_note") {
       const expectedRevision = Number(payload.expectedRevision);
       if (!masterId || !Number.isInteger(expectedRevision) || expectedRevision < 1) {

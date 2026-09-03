@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.03.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.03.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.03.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.03.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6799,7 +6799,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.03.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.03.02">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6974,8 +6974,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.03.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.03.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.03.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.03.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7729,7 +7729,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.03.01').trim() || 'V2026.09.03.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.03.02').trim() || 'V2026.09.03.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9220,7 +9220,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.03.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.03.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9742,13 +9742,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         });
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 'visible-default' },
-            managers: { realtimeTables: ['ph_master_inventory', WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            managers: { realtimeTables: ['ph_master_inventory', WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             chat: { realtimeTables: ['ph_chat_conversations', 'ph_chat_participants', 'ph_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            tasks: { realtimeTables: ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            tasks: { realtimeTables: ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             request: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_inventory_edit_requests', 'ph_av_option_eval_requests', SHEAR_LIST_TABLE, 'ph_sales_office', 'ph_master_inventory', 'ph_soc_master'], pollMs: REQUEST_VISIBLE_POLL_MS },
-            'sales-office': { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            'sales-office': { realtimeTables: ['ph_sales_office', 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             moves: { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'take-back': { realtimeTables: ['ph_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -20435,6 +20435,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('managers');
                 if (!shouldDeferInteractiveBackgroundWork() && isViewVisible('managers') && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) scheduleManagersRender(true);
             }
+            if (tableSet.has('ph_app_settings')) {
+                refreshAvBlanksPhotoBypassSettingsFromRemote({ force: true }).then(() => {
+                    markViewDirty('tasks');
+                    markViewDirty('sales-office');
+                    markViewDirty('managers');
+                    if (isViewVisible('tasks')) scheduleTasksRender(16, 0, true);
+                    if (isViewVisible('sales-office')) queueInteractiveViewRender('sales-office', false, true, 16, 180);
+                    if (isViewVisible('managers')) scheduleManagersRender(true);
+                }).catch(() => {});
+            }
             if (tableSet.has('ph_cav_import')) {
                 syncRealtimeCavRows();
                 changedDatasetKeys.add('cav');
@@ -21082,6 +21092,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     ? removeRealtimeRow(avNotesDb, uniqueId)
                     : upsertRealtimeRow(avNotesDb, nextRow, tableName);
                 invalidateAvNotesCommonNameIndex();
+            } else if (tableName === 'ph_app_settings') {
+                const settingRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const settingKey = String(firstNonEmptyValue(settingRow.key, settingRow.KEY, '') || '').trim();
+                if (settingKey === AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY) {
+                    avBlanksPhotoBypassRemoteLoaded = false;
+                    avBlanksPhotoBypassAccessCache = null;
+                    changed = true;
+                }
             }
 
             if (changed) refreshRealtimeDetailLookupIndexes(tableName);
@@ -30927,7 +30945,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.03.01').trim() || 'V2026.09.03.01';
+        let avBlanksPhotoBypassAccessCache = null;
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.03.02').trim() || 'V2026.09.03.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31351,14 +31370,23 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (avBlanksPhotoBypassRemoteLoaded && !(options && options.force)) return getAvBlanksPhotoBypassSettings();
             avBlanksPhotoBypassRemoteLoading = true;
             try {
-                const rows = await supabaseFetch(APP_SEASON_SETTINGS_TABLE, 'GET', null, `select=key,value,updated_by,updated_at&key=eq.${encodeURIComponent(AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY)}&limit=1`);
-                const row = Array.isArray(rows) ? rows[0] : null;
-                const parsed = parseRemoteAvBlanksPhotoBypassSettingsRow(row);
+                const result = await seasonSalesOfficeApi('access', {}, { timeoutMs: 15000 });
+                const parsed = normalizeAvBlanksPhotoBypassSettingsPayload({
+                    users: result.users,
+                    updatedAt: result.updatedAt,
+                    updatedBy: result.updatedBy
+                });
+                avBlanksPhotoBypassAccessCache = {
+                    allowed: result.allowed === true,
+                    canManage: result.canManage === true,
+                    username: normalizeAvBlanksPhotoBypassUser(firstNonEmptyValue(currentUser, currentUserDisplay, '')),
+                    loadedAt: Date.now()
+                };
                 if (parsed) writeLocalAvBlanksPhotoBypassSettings(parsed);
                 avBlanksPhotoBypassRemoteLoaded = true;
                 return getAvBlanksPhotoBypassSettings();
             } catch (error) {
-                avBlanksPhotoBypassRemoteLoaded = true;
+                if (navigator.onLine === false) avBlanksPhotoBypassRemoteLoaded = true;
                 return getAvBlanksPhotoBypassSettings();
             } finally {
                 avBlanksPhotoBypassRemoteLoading = false;
@@ -31367,61 +31395,43 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function saveAvBlanksPhotoBypassSettingsToRemote(settings = null) {
             const normalized = normalizeAvBlanksPhotoBypassSettingsPayload(settings);
-            const payload = {
-                key: AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY,
-                value: {
-                    users: normalized.users,
-                    updatedAt: normalized.updatedAt,
-                    updatedBy: normalized.updatedBy
-                },
-                updated_by: normalized.updatedBy,
-                updated_at: normalized.updatedAt
-            };
-            const verifyRemoteSettings = async (fallbackRow = null) => {
-                let parsed = parseRemoteAvBlanksPhotoBypassSettingsRow(fallbackRow);
-                if (!parsed || !areAvBlanksPhotoBypassUserListsEqual(parsed.users, normalized.users)) {
-                    const rows = await supabaseFetch(
-                        APP_SEASON_SETTINGS_TABLE,
-                        'GET',
-                        null,
-                        `select=key,value,updated_by,updated_at&key=eq.${encodeURIComponent(AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY)}&limit=1`,
-                        { timeoutMs: 10000 }
-                    );
-                    parsed = parseRemoteAvBlanksPhotoBypassSettingsRow(Array.isArray(rows) ? rows[0] : null);
-                }
-                if (!parsed || !areAvBlanksPhotoBypassUserListsEqual(parsed.users, normalized.users)) {
-                    throw new Error('AV Blanks bypass settings remote verification failed.');
+            const idempotencyKey = `season-sales-users-${crypto.randomUUID()}`;
+            startGlobalProgress();
+            try {
+                const result = await seasonSalesOfficeApi('save_users', {
+                    usernames: normalized.users,
+                    idempotencyKey
+                }, { idempotencyKey, timeoutMs: 20000 });
+                const parsed = normalizeAvBlanksPhotoBypassSettingsPayload({
+                    users: result.users,
+                    updatedAt: result.updatedAt,
+                    updatedBy: result.updatedBy
+                });
+                if (!areAvBlanksPhotoBypassUserListsEqual(parsed.users, normalized.users)) {
+                    throw new Error('Season Sales Note user verification failed.');
                 }
                 writeLocalAvBlanksPhotoBypassSettings(parsed);
                 avBlanksPhotoBypassRemoteLoaded = true;
-                return true;
-            };
-            startGlobalProgress();
-            try {
-                const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${APP_SEASON_SETTINGS_TABLE}?on_conflict=key`, {
-                    method: 'POST',
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': 'Bearer ' + SUPABASE_KEY,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=representation,resolution=merge-duplicates'
-                    },
-                    body: JSON.stringify(payload)
-                }, 15000, 'AV Blanks bypass settings write');
-                if (!response.ok) throw new Error(await getResponseError(response, `AV Blanks bypass settings write failed (${response.status})`));
-                const text = await response.text();
-                let rows = null;
-                try { rows = text ? JSON.parse(text) : null; } catch (parseError) {}
-                return await verifyRemoteSettings(Array.isArray(rows) ? rows[0] : rows);
+                avBlanksPhotoBypassAccessCache = {
+                    allowed: parsed.users.includes(normalizeAvBlanksPhotoBypassUser(firstNonEmptyValue(currentUser, currentUserDisplay, ''))),
+                    canManage: true,
+                    username: normalizeAvBlanksPhotoBypassUser(firstNonEmptyValue(currentUser, currentUserDisplay, '')),
+                    loadedAt: Date.now()
+                };
+                return parsed;
             } catch (error) {
-                console.warn('AV Blanks bypass settings remote save failed; keeping local setting only.', error);
-                return false;
+                console.error('Protected Season Sales Note user save failed.', error);
+                throw error;
             } finally {
                 stopGlobalProgress();
             }
         }
 
         function canManageAvBlanksPhotoBypassSettings(userOverride = '') {
+            const currentKey = normalizeAvBlanksPhotoBypassUser(firstNonEmptyValue(userOverride, currentUser, currentUserDisplay, ''));
+            if (!userOverride && avBlanksPhotoBypassAccessCache && avBlanksPhotoBypassAccessCache.username === currentKey) {
+                return avBlanksPhotoBypassAccessCache.canManage === true;
+            }
             const candidates = [userOverride, currentUser, currentUserDisplay]
                 .map((value) => normalizeAvBlanksPhotoBypassUser(value))
                 .filter(Boolean);
@@ -31429,6 +31439,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function isAvBlanksPhotoBypassUserAllowed(userOverride = '') {
+            const currentKey = normalizeAvBlanksPhotoBypassUser(firstNonEmptyValue(userOverride, currentUser, currentUserDisplay, ''));
+            if (!userOverride && avBlanksPhotoBypassAccessCache && avBlanksPhotoBypassAccessCache.username === currentKey) {
+                return avBlanksPhotoBypassAccessCache.allowed === true;
+            }
             const settings = getAvBlanksPhotoBypassSettings();
             const allowedUsers = new Set(normalizeAvBlanksPhotoBypassUserList(settings.users));
             if (!allowedUsers.size) return false;
@@ -31436,6 +31450,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 .map((value) => normalizeAvBlanksPhotoBypassUser(value))
                 .filter(Boolean);
             return candidates.some((key) => allowedUsers.has(key));
+        }
+
+        function ensureSeasonSalesNoteAccessFresh(maxAgeMs = 30000) {
+            if (!currentUser || navigator.onLine === false || avBlanksPhotoBypassRemoteLoading) return false;
+            const loadedAt = Number(avBlanksPhotoBypassAccessCache && avBlanksPhotoBypassAccessCache.loadedAt) || 0;
+            if (avBlanksPhotoBypassRemoteLoaded && Date.now() - loadedAt <= Math.max(5000, Number(maxAgeMs) || 30000)) return false;
+            refreshAvBlanksPhotoBypassSettingsFromRemote({ force: true }).then(() => {
+                markViewDirty('sales-office');
+                markViewDirty('managers');
+                if (getCurrentVisibleViewId() === 'sales-office') queueInteractiveViewRender('sales-office', false, true, 16, 180);
+                if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
+            }).catch(() => {});
+            return true;
         }
 
         function getAvBlanksPhotoBypassDraftUsers() {
@@ -31505,12 +31532,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 updatedAt: new Date().toISOString(),
                 updatedBy: String(currentUserDisplay || currentUser || '').trim() || 'dylan_collyge'
             });
-            writeLocalAvBlanksPhotoBypassSettings(nextSettings);
-            markViewDirty('tasks');
-            markViewDirty('managers');
-            scheduleHomeOrManagersRender(true);
-            const remoteSaved = await saveAvBlanksPhotoBypassSettingsToRemote(nextSettings);
-            showToast('AV Blanks Updated', `${users.length} user${users.length === 1 ? '' : 's'} can finish AV Blanks with AV Note only${remoteSaved ? ' saved live' : ' saved on this device only'}.`, !remoteSaved);
+            try {
+                await saveAvBlanksPhotoBypassSettingsToRemote(nextSettings);
+                markViewDirty('tasks');
+                markViewDirty('sales-office');
+                markViewDirty('managers');
+                scheduleHomeOrManagersRender(true);
+                if (getCurrentVisibleViewId() === 'sales-office') queueInteractiveViewRender('sales-office', false, true, 16, 180);
+                showToast('AV Note Users Updated', `${users.length} user${users.length === 1 ? '' : 's'} can enter Season Sales Notes and finish AV Blanks with AV Note only.`);
+            } catch (error) {
+                showToast('Could Not Save', String(error && error.message || 'The user list was not changed. Retry.'), true);
+            }
             return false;
         }
 
@@ -31566,8 +31598,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0">
                         <div class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Manager Control</div>
-                        <div class="mt-3 text-2xl font-black text-slate-900">AV Blanks note-only completion</div>
-                        <div class="mt-2 max-w-2xl text-sm font-bold leading-relaxed text-slate-500">Selected users can complete Tasks &gt; AV Blanks by entering AV Note only. Photo and LOC MATCH are skipped in that view only, then the row follows the normal completion path.</div>
+                        <div class="mt-3 text-2xl font-black text-slate-900">Season Sales Note AV users</div>
+                        <div class="mt-2 max-w-2xl text-sm font-bold leading-relaxed text-slate-500">Selected users can enter AV Notes and mark Season Sales Notes Done without a photo or Spec. The same users can finish Tasks &gt; AV Blanks with AV Note only.</div>
                         <div class="mt-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">${updatedMeta}</div>
                     </div>
                     <div class="grid min-w-[180px] grid-cols-1 gap-1 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-center">
@@ -52835,7 +52867,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         const SEARCH_PROFILES = {
-            drive_name: (item) => [item.COMMONNAME, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
+            drive_name: (item) => [item.COMMONNAME],
             drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
             drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
             drive_universal: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
@@ -54269,6 +54301,7 @@ function toggleDriveQuickRequestItem(domId) {
             }).catch(() => {});
             refreshAvBlanksPhotoBypassSettingsFromRemote().then(() => {
                 markViewDirty('tasks');
+                markViewDirty('sales-office');
                 markViewDirty('managers');
                 scheduleHomeOrManagersRender(true);
             }).catch(() => {});
@@ -75182,11 +75215,6 @@ function toggleDriveQuickRequestItem(domId) {
                     return false;
                 }
                 if (activeDriveTab === 'name') {
-                    if (driveViewLevel >= 4 && selectedDriveProgram) {
-                        backToDrivePrograms();
-                        updateGlobalBackButton();
-                        return false;
-                    }
                     if (driveViewLevel >= 3 && selectedDriveSeason) {
                         backToDriveSeasons();
                         updateGlobalBackButton();
@@ -102574,6 +102602,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderSalesOffice() {
+            ensureSeasonSalesNoteAccessFresh();
             if (ensureViewDataForRender('sales-office')) return;
             const access = getRoleAccessState();
             if (shouldForceSalesOfficeOrdersOnly(access)) activeSalesOfficeTab = 'orders';
@@ -128277,7 +128306,7 @@ C.14.043 C.15.000
             if (access.canViewCropRoll) tabs.push({ id: CROP_ROLL_HOME_TAB, label: 'Crop Roll' });
             if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
-            if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Blanks' });
+            if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Note Users' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
             if (access.canViewTransactionsKeyed) tabs.push({ id: MANAGER_TRANSACTIONS_KEYED_VIEW, label: 'Transactions Keyed' });
             if (access.canViewOrders) tabs.push({ id: MANAGER_ORDERS_VIEW, label: 'Orders' });
@@ -128319,7 +128348,7 @@ C.14.043 C.15.000
             if (safeTab === CROP_ROLL_HOME_TAB) return { label: 'Crop Roll', description: 'Review completed crop-roll itemcodes before Inventory Office.', icon: 'ph-plant' };
             if (safeTab === 'moves') return { label: 'Move', description: 'Build location-code move sessions from Drive Mode rows.', icon: 'ph-map-pin-line' };
             if (safeTab === APP_SEASON_SETTINGS_VIEW) return { label: 'Season', description: 'Set the current and next sales season logic.', icon: 'ph-calendar-check' };
-            if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Blanks', description: 'Allow selected users to finish AV Blanks with AV Note only.', icon: 'ph-note-pencil' };
+            if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Note Users', description: 'Choose who can enter Season Sales Notes and finish AV Blanks without photo/spec.', icon: 'ph-note-pencil' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) return { label: 'Transactions Keyed', description: 'Compare keyed transaction counts and daily or historical shares.', icon: 'ph-table' };
             if (safeTab === MANAGER_ORDERS_VIEW) return { label: 'Orders', description: 'Open frozen order-file history and matched Drive Mode rows.', icon: 'ph-package' };
@@ -130576,6 +130605,7 @@ C.14.043 C.15.000
         }
 
         function renderManagers() {
+            if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) ensureSeasonSalesNoteAccessFresh();
             const container = document.getElementById('managers-content');
             if (!container) return;
             if (!canAccessView('managers')) {
@@ -132376,6 +132406,12 @@ C.14.043 C.15.000
                 showToast('Not Found', 'That Sales Office row could not be found.', true);
                 return;
             }
+            const source = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, '') || '').trim().toLowerCase();
+            if (source === 'season' && !isAvBlanksPhotoBypassUserAllowed()) {
+                ensureSeasonSalesNoteAccessFresh(0);
+                showToast('Read Only', 'You are not assigned to enter Season Sales Notes.', true);
+                return;
+            }
             const modal = document.getElementById('sales-office-av-modal');
             const uidField = document.getElementById('sales-office-av-uid');
             const textField = document.getElementById('sales-office-av-text');
@@ -132555,6 +132591,11 @@ C.14.043 C.15.000
             const masterRow = (syncContext && syncContext.masterRow) || (masterId ? (masterInventoryById.get(masterId) || fullInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === masterId) || null) : null);
             const salesOfficeSource = String(firstNonEmptyValue(salesOfficeRow.SO_SOURCE, salesOfficeRow.so_source, 'season') || '').trim().toLowerCase();
             if (salesOfficeSource === 'season') {
+                if (!isAvBlanksPhotoBypassUserAllowed()) {
+                    ensureSeasonSalesNoteAccessFresh(0);
+                    showToast('Read Only', 'You are not assigned to enter Season Sales Notes.', true);
+                    return;
+                }
                 if (!masterId) {
                     showToast('Refresh Required', 'The linked Season Sales Note row was not found.', true);
                     return;
@@ -133351,6 +133392,11 @@ C.14.043 C.15.000
             }
             const salesOfficeSource = String(firstNonEmptyValue(existingRow.SO_SOURCE, existingRow.so_source, 'season') || '').trim().toLowerCase();
             if (salesOfficeSource === 'season') {
+                if (!isAvBlanksPhotoBypassUserAllowed()) {
+                    ensureSeasonSalesNoteAccessFresh(0);
+                    showToast('Read Only', 'You are not assigned to complete Season Sales Notes.', true);
+                    return false;
+                }
                 const masterId = String(firstNonEmptyValue(existingRow.MASTER_ID, existingRow.MASTER_UNIQUE_ID, existingRow.master_id, existingRow.UNIQUE_ID, '') || '').trim();
                 const expectedRevision = Number(firstNonEmptyValue(existingRow.STATE_REVISION, existingRow.state_revision, 1)) || 1;
                 const idempotencyKey = `season-sales-complete-${crypto.randomUUID()}`;
@@ -133925,6 +133971,10 @@ C.14.043 C.15.000
                 const stagingStatusBadgeHtml = salesOfficeSource === 'season'
                     ? `<div class="mb-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${stagingStatusConfig.tone}">${esc(stagingStatusConfig.label)}</div>`
                     : '';
+                const seasonSalesEntryAllowed = salesOfficeSource !== 'season' || isAvBlanksPhotoBypassUserAllowed();
+                const seasonSalesEntryActionsHtml = seasonSalesEntryAllowed
+                    ? `<div class="grid grid-cols-3 gap-2 mt-3"><button class="min-h-[44px] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-indigo-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-base"></i> Itemcode</button><button class="min-h-[44px] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-purple-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); return copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-base"></i> AV Note</button><button class="min-h-[44px] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-blue-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}'); return false;"><i class="ph-bold ph-pencil-simple-line text-base"></i> Edit</button></div><button class="mt-2 w-full min-h-[48px] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-black py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95 uppercase tracking-[0.14em]" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> Done</button>`
+                    : `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.1em] text-slate-500"><i class="ph-bold ph-lock-key mr-1 text-base align-middle"></i> Read only — not assigned for Season Sales Note entry</div>`;
                 if (salesOfficeSource === 'moves' || salesOfficeSource === 'move') {
                     const actualMoved = String(firstNonEmptyValue(item.MOVE_ACTUAL_MOVED, item.ORDER_QTY, '0') || '0').trim() || '0';
                     const taQty = String(firstNonEmptyValue(item.MOVE_TA_QTY, item.ORDER_RESERVE, '0') || '0').trim() || '0';
@@ -133935,7 +133985,7 @@ C.14.043 C.15.000
                     return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office move row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="inv-card app-smart-card status-green flex-grow !mb-0 bg-emerald-50 border border-[#007a4d] transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-arrows-left-right text-sm"></i>Move</span><span class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-700">TA ${esc(taQty)}</span>${compactCardFieldChipsHtml}</div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-emerald-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-[#007a4d] font-mono tracking-wide text-sm">${esc(itemCode)}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Block / Lot</span><span class="font-bold text-gray-600 text-xs">${esc(moveBlock)} / ${esc(lotCode)}</span></div><div class="grid grid-cols-2 gap-2 mt-3"><div class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Moved</div><div class="mt-1 text-lg font-black text-emerald-800">${esc(actualMoved)}</div><div class="mt-1 text-[10px] font-bold uppercase text-emerald-700">${esc(moveFrom)} to ${esc(moveTo)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-emerald-700">Lot ${esc(lotCode)}</div></div><div class="rounded-lg border border-red-100 bg-red-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-red-600">TA</div><div class="mt-1 text-lg font-black text-red-700">${esc(taQty)}</div><div class="mt-1 text-[10px] font-bold uppercase text-red-600">${esc(moveFrom)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-red-600">Lot ${esc(lotCode)}</div></div></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${displaySalesNote ? `<div class="mt-3 rounded border border-slate-200 bg-slate-50 p-2 text-[12px] font-semibold text-slate-700 whitespace-pre-wrap">${esc(displaySalesNote)}</div>` : ''}</div>${inventoryEditActionHtml}<div class="flex flex-wrap gap-2 mt-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
                 }
 
-        return `<div class="w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office row')}><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} w-full !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="select-text" style="-webkit-user-select: text; user-select: text;">${stagingStatusBadgeHtml}<div class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Item Code</div><div class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-[16px] break-all">${esc(itemCode)}</div><div class="mt-2 font-black text-[#007a4d] text-[20px] leading-tight">${esc(item.COMMONNAME || 'Unknown')}</div><div class="mt-1 text-[14px] font-bold text-gray-500">${esc(item.CONTSIZE || '-')}</div><div class="mt-3 bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm cursor-text" onclick="event.stopPropagation();"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug whitespace-pre-wrap">${esc(avNoteText)}</div></div><div class="grid grid-cols-3 gap-2 mt-3"><button class="min-h-[44px] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-indigo-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-base"></i> Itemcode</button><button class="min-h-[44px] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-purple-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); return copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-base"></i> AV Note</button><button class="min-h-[44px] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-blue-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}'); return false;"><i class="ph-bold ph-pencil-simple-line text-base"></i> Edit</button></div><button class="mt-2 w-full min-h-[48px] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-black py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95 uppercase tracking-[0.14em]" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> Done</button></div></div></div>`;
+        return `<div class="w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office row')}><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} w-full !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="select-text" style="-webkit-user-select: text; user-select: text;">${stagingStatusBadgeHtml}<div class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Item Code</div><div class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-[16px] break-all">${esc(itemCode)}</div><div class="mt-2 font-black text-[#007a4d] text-[20px] leading-tight">${esc(item.COMMONNAME || 'Unknown')}</div><div class="mt-1 text-[14px] font-bold text-gray-500">${esc(item.CONTSIZE || '-')}</div><div class="mt-3 bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm cursor-text" onclick="event.stopPropagation();"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug whitespace-pre-wrap">${esc(avNoteText)}</div></div>${seasonSalesEntryActionsHtml}</div></div></div>`;
             }
             if(sourceView==='reserves_drill'){
                 return buildAvInventoryCard();
@@ -138264,7 +138314,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function shouldRenderDriveUniversalDetailedSearch() {
-            return activeDriveMode === 'ok';
+            return activeDriveMode === 'ok' && activeDriveTab !== 'name';
         }
 
         function renderDriveUniversalSearchResultsOnly() {
@@ -141750,9 +141800,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     driveViewLevel = 3;
                     changed = true;
                 }
-                const seasonItems = selectedSeasonIsAll ? sizeItems : sizeItems.filter((item) => String(firstNonEmptyValue(item.SEASON, '') || '').trim().toUpperCase() === normalizedSeason);
-                const selectedProgram = normalizeDriveItemProgram(selectedDriveProgram);
-                if (selectedDriveProgram && (!selectedProgram || !buildDriveItemProgramGroups(seasonItems).some((group) => group.program === selectedProgram))) {
+                if (selectedDriveProgram || driveViewLevel > 3) {
                     selectedDriveProgram = null;
                     driveViewLevel = 3;
                     changed = true;
@@ -142094,15 +142142,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
                 clearBtn.classList.remove('hidden');
-                if (shouldRenderDriveUniversalDetailedSearch()) captureDriveStateBeforeUniversalSearch();
+                if (activeDriveTab === 'name') {
+                    driveUniversalSearchRestoreState = null;
+                    resetDriveDrillSelectionState();
+                    setDriveSearchManualSelectionLock(true);
+                } else if (shouldRenderDriveUniversalDetailedSearch()) {
+                    captureDriveStateBeforeUniversalSearch();
+                    setDriveSearchManualSelectionLock(false);
+                }
             } else {
                 clearBtn.classList.add('hidden');
                 restoreDriveStateAfterUniversalSearch();
+                setDriveSearchManualSelectionLock(false);
                 const filtersDiv = document.getElementById('drive-season-filters');
                 if (filtersDiv) filtersDiv.removeAttribute('data-drive-search-results');
             }
             if (driveSearchCompositionActive || (event && event.isComposing)) return false;
-            setDriveSearchManualSelectionLock(false);
             scheduleDriveSearchRequest(term);
             return false;
         }
@@ -142895,7 +142950,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     isAll: true,
                     __driveRenderKeyValue: `${selectedDriveName}|ALL|${selectedNameItems.length}|${allSeasons.size}`
                 }].concat(groups);
-                renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > ${selectedDriveName} > Select Cont Size (${groups.length} sizes)`, sizeGroups, 'drive:name:sizes', renderDriveContSizeGroupCard, {
+                renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > ${selectedDriveName} > Select Container Size (${groups.length} sizes)`, sizeGroups, 'drive:name:sizes', renderDriveContSizeGroupCard, {
                     emptyMessage: 'No container sizes match the current Drive filters.',
                     approxCardHeight: 84
                 });
@@ -142947,21 +143002,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No rows match the selected season.</div>`, 'drive:name:cards-empty');
                 return;
             }
-            const programGroups = buildDriveItemProgramGroups(seasonItems);
-            const selectedProgram = normalizeDriveItemProgram(selectedDriveProgram);
-            if (programGroups.length >= 2 && (!selectedProgram || driveViewLevel <= 3)) {
-                renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > ${selectedDriveName} > ${selectedSizeLabel} > ${selectedSeasonLabel} > Select Q1 / Promo`, programGroups, 'drive:name:programs', renderDriveItemProgramGroupCard, {
-                    emptyMessage: 'No Q1 or Promo itemcode options match the current Drive filters.',
-                    approxCardHeight: 84
-                });
-                return;
-            }
-            const finalItems = sortDriveCardItems(selectedProgram ? filterDriveItemsByProgram(seasonItems, selectedProgram) : seasonItems);
-            const programLabel = selectedProgram ? ` > ${getDriveItemProgramLabel(selectedProgram)}` : '';
-            const crumbText = `${resolvedDriveModeLabel} > ${selectedDriveName} > ${selectedSizeLabel} > ${selectedSeasonLabel}${programLabel} (${finalItems.length} items)`;
+            selectedDriveProgram = null;
+            if (driveViewLevel > 3) driveViewLevel = 3;
+            const finalItems = seasonItems;
+            const crumbText = `${resolvedDriveModeLabel} > ${selectedDriveName} > ${selectedSizeLabel} > ${selectedSeasonLabel} (${finalItems.length} items)`;
             const renderKey = buildDriveRenderKey('drive:name:cards', crumbText, finalItems);
             if (!finalItems.length) {
-                applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No rows match the selected Q1 / Promo option.</div>`, 'drive:name:program-cards-empty');
+                applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No rows match the selected season.</div>`, 'drive:name:cards-empty');
                 return;
             }
             renderDriveRecordResults('drive-name-card', container, crumb, finalItems, crumbText, renderKey, {

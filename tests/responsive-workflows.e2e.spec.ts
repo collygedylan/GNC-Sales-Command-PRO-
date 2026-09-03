@@ -1597,7 +1597,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
   expect(visibleSamples.every((sample) => sample.theme === 'dark')).toBe(true);
 });
 
-test('Drive Common Name search uses global detailed results', async ({ page }) => {
+test('Drive Common Name search keeps the grouped drill-down', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
@@ -1612,7 +1612,7 @@ test('Drive Common Name search uses global detailed results', async ({ page }) =
     };
   });
   expect(result).toEqual({
-    detailedSearchOnDefaultCommonNameTab: true,
+    detailedSearchOnDefaultCommonNameTab: false,
     hasGroupedRenderer: true,
     hasDrillSelection: true,
   });
@@ -2566,7 +2566,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
 
 test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.03.01&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.03.02&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).getRequestReusableData === 'function'
     && typeof (window as any).renderRequestQtyStepCurrentItem === 'function'
@@ -2780,7 +2780,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
 test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
   test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.03.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.03.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');
   await page.evaluate(() => window.eval(`(() => {
     isIOSDevice = () => true;

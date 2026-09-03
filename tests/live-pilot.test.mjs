@@ -64,12 +64,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.03.01';
+  const release = 'V2026.09.03.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.09.03.01');
+  assert.equal(packageJson.version, '2026.09.03.02');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -485,7 +485,7 @@ test('mobile and tablet keyboards keep login controls visible and login reads re
   assert.doesNotMatch(keyboardCascade, /@media \(max-width: 639px\)/);
 });
 
-test('Drive universal search replaces drill state and renders only global results while typing', () => {
+test('Drive universal search remains available outside the Common Name drill', () => {
   assert.match(html, /drive_universal: \(item\) => \[item\.COMMONNAME, item\.LOCATIONCODE, item\.ITEMCODE, item\.CONTSIZE, item\.LOTCODE, item\.DESIGCUST, item\.DESIGITEM, item\.DESIGLOC\]/);
   assert.match(html, /function captureDriveStateBeforeUniversalSearch\(\)/);
   assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)/);
@@ -496,7 +496,7 @@ test('Drive universal search replaces drill state and renders only global result
   assert.match(html, /renderDriveRecordResults\('drive-universal-search'/);
   assert.match(html, /if \(renderDriveUniversalSearchResultsOnly\(\)\) return;[\s\S]*renderViewContent\('drive'/);
   const searchHandler = html.slice(html.indexOf('function handleDriveSearch'), html.indexOf('function selectDriveName'));
-  assert.doesNotMatch(searchHandler, /resetDriveDrillSelectionState\(\)/);
+  assert.match(searchHandler, /activeDriveTab === 'name'[\s\S]*resetDriveDrillSelectionState\(\)[\s\S]*setDriveSearchManualSelectionLock\(true\)/);
   assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)[\s\S]*activeDriveTab = 'name';[\s\S]*resetDriveDrillSelectionState\(\);[\s\S]*driveUniversalSearchPendingScrollTop = 0/);
   const backHandler = html.slice(html.indexOf('function goBackUniversal'), html.indexOf('function syncFabVisibility'));
   assert.match(backHandler, /currentView === 'drive'[\s\S]*hasActiveDriveSearchTerm\(\)[\s\S]*clearDriveSearch\(\)/);
@@ -508,8 +508,9 @@ test('Drive universal search replaces drill state and renders only global result
   assert.match(html, /\? 100 : 60/);
 });
 
-test('Drive Common Name search opens global row cards independent of drill level', () => {
-  assert.match(html, /function shouldRenderDriveUniversalDetailedSearch\(\)\s*\{\s*return activeDriveMode === 'ok';\s*\}/);
+test('Drive Common Name search restores Common Name, container, and season drill-down', () => {
+  assert.match(html, /function shouldRenderDriveUniversalDetailedSearch\(\)\s*\{\s*return activeDriveMode === 'ok' && activeDriveTab !== 'name';\s*\}/);
+  assert.match(html, /drive_name: \(item\) => \[item\.COMMONNAME\]/);
   const universalRenderer = html.slice(
     html.indexOf('function renderDriveUniversalSearchResultsOnly'),
     html.indexOf('function scheduleDriveSearchRequest')
@@ -518,6 +519,10 @@ test('Drive Common Name search opens global row cards independent of drill level
   assert.match(html, /if \(activeDriveTab === 'name'\) \{[\s\S]*renderDriveCommonNameDrill\(container, crumb, driveModeLabel, driveViewState\)/);
   assert.match(html, /function selectDriveName\(name\)[\s\S]*selectedDriveName = name;[\s\S]*driveViewLevel = 1/);
   assert.match(html, /function getDriveSearchProfile\(\)[\s\S]*activeDriveTab === 'name'\) return 'drive_name'/);
+  const commonNameDrill = html.slice(html.indexOf('function renderDriveCommonNameDrill'), html.indexOf('function renderDriveLocationDrill'));
+  assert.match(commonNameDrill, /Select Container Size/);
+  assert.match(commonNameDrill, /Select Season/);
+  assert.doesNotMatch(commonNameDrill, /Select Q1 \/ Promo/);
 });
 
 test('native Auth Request workflow preserves role-gated create, photo/spec update, completion, and history writes', () => {
