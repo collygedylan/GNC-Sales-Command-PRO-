@@ -387,6 +387,14 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/auth-admin/index.ts"
 
+[functions.app-api]
+enabled = true
+# Login and the custom app-session bridge authenticate inside the function.
+# Gateway JWT verification would reject those intentionally unauthenticated
+# login requests before app-api can validate credentials.
+verify_jwt = false
+entrypoint = "./functions/app-api/index.ts"
+
 [functions.request-delivery-worker]
 enabled = true
 verify_jwt = false
