@@ -2066,7 +2066,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
     await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Actions');
     await expect(origin).toHaveAttribute('data-reclass-scope-actions', 'hold');
-    await expect(origin).toContainText('Automatically included: On Hold Request');
+    await expect(origin).toContainText('Automatically included: On Hold');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();

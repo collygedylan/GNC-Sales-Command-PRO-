@@ -5,6 +5,7 @@ import { test } from 'node:test';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const migration = read('supabase/migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql');
+const auditBaseline = read('supabase/migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql');
 const api = read('supabase/functions/app-api/index.ts');
 const app = read('index.html');
 const worker = read('Code.gs');
@@ -36,6 +37,12 @@ test('Drive Reclass manager and evaluator scopes use centralized policy and auth
   assert.match(migration, /private\.resolve_app_access_policy_id_v1\(false\)/);
   assert.match(migration, /from public\.ph_warehouse_assigned_items a[\s\S]*a\.present_in_drive[\s\S]*a\.assignedto/);
   assert.match(migration, /if is_evaluator and not is_manager[\s\S]*DRIVE_RECLASS_ROW_NOT_ASSIGNED/);
+});
+
+test('Drive Reclass permission receives immutable access-audit baseline coverage', () => {
+  assert.match(auditBaseline, /insert into private\.app_access_legacy_baseline/i);
+  assert.match(auditBaseline, /effective\.permission_key = 'drive\.reclass\.submit'/i);
+  assert.match(auditBaseline, /on conflict \(profile_id, permission_key\) do nothing/i);
 });
 
 test('Drive Reclass recipients are active verified profiles derived on the server', () => {
