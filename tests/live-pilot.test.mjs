@@ -64,12 +64,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.03.02';
+  const release = 'V2026.09.03.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.09.03.02');
+  assert.equal(packageJson.version, '2026.09.03.03');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -499,7 +499,12 @@ test('Drive universal search remains available outside the Common Name drill', (
   assert.match(searchHandler, /activeDriveTab === 'name'[\s\S]*resetDriveDrillSelectionState\(\)[\s\S]*setDriveSearchManualSelectionLock\(true\)/);
   assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)[\s\S]*activeDriveTab = 'name';[\s\S]*resetDriveDrillSelectionState\(\);[\s\S]*driveUniversalSearchPendingScrollTop = 0/);
   const backHandler = html.slice(html.indexOf('function goBackUniversal'), html.indexOf('function syncFabVisibility'));
-  assert.match(backHandler, /currentView === 'drive'[\s\S]*hasActiveDriveSearchTerm\(\)[\s\S]*clearDriveSearch\(\)/);
+  const driveBackHandler = backHandler.slice(backHandler.indexOf("if (currentView === 'drive')"), backHandler.indexOf("if (currentView === 'crop-roll')"));
+  assert.match(driveBackHandler, /activeDriveTab === 'name'[\s\S]*driveViewLevel >= 2 && selectedDriveName[\s\S]*backToDriveSizes\(\)/);
+  assert.ok(driveBackHandler.indexOf('backToDriveSizes()') < driveBackHandler.indexOf('hasActiveDriveSearchTerm()'), 'Drive drill Back must return to Container Size before clearing the Common Name search');
+  assert.doesNotMatch(driveBackHandler, /backToDriveSeasons\(\)/);
+  assert.match(driveBackHandler, /hasActiveDriveSearchTerm\(\)[\s\S]*clearDriveSearch\(\)/);
+  assert.match(html, /function clearDriveSearch\(\)[\s\S]*restoreDriveStateAfterUniversalSearch\(\)/);
   assert.match(html, /oncompositionstart="beginDriveSearchComposition\(\)"/);
   assert.match(html, /oncompositionend="endDriveSearchComposition\(event\)"/);
   assert.match(searchHandler, /driveSearchCompositionActive \|\| \(event && event\.isComposing\)/);
