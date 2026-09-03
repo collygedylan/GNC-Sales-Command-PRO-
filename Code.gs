@@ -256,7 +256,42 @@ function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
 function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_ASSIGNED_ITEMS_TABLE); }
-function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('ph_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
+function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
+  const safeRevision = String(importRevision || new Date().toISOString()).trim();
+  const safeSource = String(sourceName || 'canonical_import').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 60);
+  const tokenSeed = [safeSource, safeRevision].join('|');
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, tokenSeed, Utilities.Charset.UTF_8);
+  const idempotencyKey = 'season-sales-' + Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, '').slice(0, 80);
+  const result = callSupabaseRpc_('reconcile_season_sales_office_v1', {
+    p_itemcodes: null,
+    p_dry_run: false,
+    p_import_revision: safeSource + ':' + safeRevision,
+    p_idempotency_key: idempotencyKey
+  });
+  if (result && (result.status === 'maintenance_deferred' || result.code === 'MAINTENANCE_DEFERRED')) {
+    console.warn('[SEASON SALES NOTES] MAINTENANCE_DEFERRED');
+  } else {
+    console.log('[SEASON SALES NOTES] Reconciliation completed: ' +
+      String(result && result.openCount || 0) + ' open winner(s), ' +
+      String(result && result.reopenCount || 0) + ' reopened.');
+  }
+  return result || { ok: true, status: 'completed' };
+}
+
+function runCavOnly() {
+  return processLatestFileOnlyFolder(
+    FOLDERS.CAV_DROP,
+    FOLDERS.CAV_PROCESSED,
+    getRuntimeSiteSplitTableName_('ph_cav_import', 'PH'),
+    buildCavPayload,
+    {
+      deltaMode: true,
+      afterCommit: function(context) {
+        return reconcileSeasonSalesOfficeAfterImport_(context && context.syncStartTime, 'cav_import');
+      }
+    }
+  );
+}
 function runRetiredDiseaseManualSyncStage_() {
   return {
     filesProcessed: 0,
@@ -3858,6 +3893,16 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
     }));
     if (upserts.length > 0) pushToSupabase(tableName, upserts);
     if (deltaMode && deletes.length > 0) deleteFromSupabase(tableName, deletes);
+    if (options && typeof options.afterCommit === 'function') {
+      options.afterCommit({
+        tableName: tableName,
+        fileName: newestFileName,
+        syncStartTime: syncStartTime,
+        upsertCount: upsertCount,
+        deleteCount: deleteCount,
+        totalRows: totalRows
+      });
+    }
 
     moveDriveFileToFolderWithRetry_(newestFile, processedFolder, `${tableName} processed file ${newestFileName}`);
     importSucceeded = true;
@@ -4136,6 +4181,8 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
 
     if (!anySiteRows) throw new Error('No PH/TX/NC/HL Drive Around rows were found; skipped site split sync.');
 
+    reconcileSeasonSalesOfficeAfterImport_(syncStartTime, 'master_inventory');
+
     const namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });
     if (namingSummary && namingSummary.warnings && namingSummary.warnings.length) {
       console.warn(`[DRIVE AROUND NAME] ${namingSummary.warnings.join(' | ')}`);
@@ -4294,6 +4341,10 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
 
     if (upserts.length > 0) pushToSupabase(tableName, upserts);
     if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
+
+    if (isMasterInventoryTable_(tableName)) {
+      reconcileSeasonSalesOfficeAfterImport_(syncStartTime, 'master_inventory');
+    }
 
     let namingSummary = null;
     if (isMasterInventoryTable_(tableName) && String(processedFolderId || '') === String(FOLDERS.MASTER_PROCESSED || '')) {
@@ -15824,10 +15875,18 @@ function processRequestDeliveryOutbox_(limit) {
 
 function runRequestIntegrityScheduledWorker_() {
   const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
+  let seasonSalesOffice = null;
+  try {
+    seasonSalesOffice = reconcileSeasonSalesOfficeAfterImport_(new Date().toISOString(), 'scheduled_maintenance');
+  } catch (error) {
+    seasonSalesOffice = { ok: false, status: 'failed', errorCode: 'SEASON_SALES_RECONCILIATION_FAILED' };
+    console.error('[SEASON SALES NOTES] SEASON_SALES_RECONCILIATION_FAILED');
+  }
   return {
     status: String(maintenance && maintenance.status || 'completed'),
     errorCode: String(maintenance && maintenance.errorCode || ''),
     maintenance: maintenance || {},
+    seasonSalesOffice: seasonSalesOffice,
     delivery: { delegated: true, worker: 'supabase_edge_request_delivery' }
   };
 }

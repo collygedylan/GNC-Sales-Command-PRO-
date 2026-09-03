@@ -90,6 +90,7 @@ let evalWorkCreationHealth = null;
 let evalWorkAssignmentBatchHealth = null;
 let evalItemcodeWorkHealth = null;
 let requestDriveEvidenceHealth = null;
+let seasonSalesOfficeHealth = null;
 let codexOpsHealth = null;
 let boundedMaintenance = null;
 let pikesAssignmentHealth = null;
@@ -413,6 +414,26 @@ if (serviceRoleKey) {
     recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0)
   });
 
+  const seasonSalesHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_season_sales_office_health_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const seasonSalesHealthText = await seasonSalesHealthResponse.text();
+  try { seasonSalesOfficeHealth = seasonSalesHealthText ? JSON.parse(seasonSalesHealthText) : null; } catch {}
+  if (!seasonSalesHealthResponse.ok || !seasonSalesOfficeHealth || typeof seasonSalesOfficeHealth !== 'object') {
+    throw new Error(`production_season_sales_office_health_unavailable_HTTP_${seasonSalesHealthResponse.status}`);
+  }
+  if (seasonSalesOfficeHealth.ok !== true || seasonSalesOfficeHealth.parity !== true) {
+    throw new Error('production_season_sales_office_parity_unhealthy');
+  }
+  checks.push({
+    name: 'season_sales_office_staging_v1',
+    status: seasonSalesHealthResponse.status,
+    openStates: Math.max(0, Number(seasonSalesOfficeHealth.openStates) || 0),
+    mirrorCount: Math.max(0, Number(seasonSalesOfficeHealth.mirrorCount) || 0)
+  });
+
   const evalItemcodeHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_itemcode_work_health_snapshot_v1`, {
     method: 'POST',
     headers: serviceHeaders,
@@ -564,6 +585,12 @@ const result = {
     recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0),
     evidenceMismatchCount: Math.max(0, Number(requestDriveEvidenceHealth.evidence_mismatch_count) || 0)
   } : null,
+  seasonSalesOffice: seasonSalesOfficeHealth ? {
+    openStates: Math.max(0, Number(seasonSalesOfficeHealth.openStates) || 0),
+    doneStates: Math.max(0, Number(seasonSalesOfficeHealth.doneStates) || 0),
+    mirrorCount: Math.max(0, Number(seasonSalesOfficeHealth.mirrorCount) || 0),
+    parity: seasonSalesOfficeHealth.parity === true
+  } : null,
   evalItemcodeWork: evalItemcodeWorkHealth ? {
     contractVersion: String(evalItemcodeWorkHealth.contract_version || ''),
     scopeContract: String(evalItemcodeWorkHealth.scope_contract || ''),
@@ -589,6 +616,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Bounded maintenance: ${result.boundedMaintenance?.status || 'not required'}\n- Pikes assignments: ${result.pikesAssignments ? `${result.pikesAssignments.inventoryRowCount} rows, ${result.pikesAssignments.falseUnassignedCount} false unassigned` : 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- Eval Reports #2 assignment email: ${result.evalWorkAssignmentBatch ? `${result.evalWorkAssignmentBatch.contractVersion}, grouped ${result.evalWorkAssignmentBatch.createGrouped}` : 'secure check skipped'}\n- ITEMCODE-wide Eval Work: ${result.evalItemcodeWork ? `${result.evalItemcodeWork.contractVersion}, ${result.evalItemcodeWork.scopedAssignmentCount} scoped assignments, largest ${result.evalItemcodeWork.largestOriginCount} rows` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Bounded maintenance: ${result.boundedMaintenance?.status || 'not required'}\n- Pikes assignments: ${result.pikesAssignments ? `${result.pikesAssignments.inventoryRowCount} rows, ${result.pikesAssignments.falseUnassignedCount} false unassigned` : 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- Eval Reports #2 assignment email: ${result.evalWorkAssignmentBatch ? `${result.evalWorkAssignmentBatch.contractVersion}, grouped ${result.evalWorkAssignmentBatch.createGrouped}` : 'secure check skipped'}\n- ITEMCODE-wide Eval Work: ${result.evalItemcodeWork ? `${result.evalItemcodeWork.contractVersion}, ${result.evalItemcodeWork.scopedAssignmentCount} scoped assignments, largest ${result.evalItemcodeWork.largestOriginCount} rows` : 'secure check skipped'}\n- Season Sales Notes: ${result.seasonSalesOffice ? `${result.seasonSalesOffice.openStates} open winners, ${result.seasonSalesOffice.mirrorCount} staged, parity ${result.seasonSalesOffice.parity}` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }

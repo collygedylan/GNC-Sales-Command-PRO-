@@ -564,6 +564,82 @@ async function handleDriveReclassAction(
   }
 }
 
+function seasonSalesOfficeErrorResponse(error: unknown) {
+  const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const raw = String(source.message || error || "SEASON_SALES_SERVICE_UNAVAILABLE").toUpperCase();
+  const code = (raw.match(/SEASON_SALES_[A-Z0-9_]+/) || ["SEASON_SALES_SERVICE_UNAVAILABLE"])[0];
+  if (/PROFILE_NOT_ACTIVE|PERMISSION_REQUIRED/.test(code)) {
+    return errorResponse("Your active profile does not have Sales Office access.", 403, { code });
+  }
+  if (/STALE_REVISION|WINNER_CHANGED|NOT_OPEN/.test(code)) {
+    return errorResponse("This Season Sales Note changed. Refresh it before trying again.", 409, { code });
+  }
+  if (/TOKEN_INVALID|TOKEN_CONFLICT|NOT_FOUND/.test(code)) {
+    return errorResponse("The Season Sales Note request is invalid. Refresh and try again.", 400, { code });
+  }
+  return errorResponse("Season Sales Notes could not be updated. Retry with the same action.", 503, { code });
+}
+
+async function handleSeasonSalesOfficeAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401, { code: "AUTH_REQUIRED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  const activeProfile = await resolveActiveSessionProfile(session).catch(() => null);
+  if (!activeProfile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "PROFILE_NOT_ACTIVE" });
+  const actorUsername = normalizeUsername(String(activeProfile.username || session.username || session.displayName || ""));
+  const operation = String(payload.operation || "").trim().toLowerCase();
+  const masterId = String(payload.masterId || payload.master_id || "").trim();
+  const idempotencyKey = String(payload.idempotencyKey || payload.idempotency_key || "").trim();
+  try {
+    if (operation === "save_av_note") {
+      const expectedRevision = Number(payload.expectedRevision);
+      if (!masterId || !Number.isInteger(expectedRevision) || expectedRevision < 1) {
+        throw new Error("SEASON_SALES_STALE_REVISION");
+      }
+      const { data, error } = await supabase.rpc("save_season_sales_office_av_note_v1", {
+        p_actor_username: actorUsername,
+        p_master_id: masterId,
+        p_expected_revision: expectedRevision,
+        p_av_note: String(payload.avNote || "").trim().slice(0, 4000),
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) throw error;
+      return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
+    }
+    if (operation === "complete") {
+      const expectedRevision = Number(payload.expectedRevision);
+      if (!masterId || !Number.isInteger(expectedRevision) || expectedRevision < 1) {
+        throw new Error("SEASON_SALES_STALE_REVISION");
+      }
+      const { data, error } = await supabase.rpc("complete_season_sales_office_v1", {
+        p_actor_username: actorUsername,
+        p_master_id: masterId,
+        p_expected_revision: expectedRevision,
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) throw error;
+      return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
+    }
+    if (operation === "refresh") {
+      const itemcode = String(payload.itemcode || "").trim();
+      if (!itemcode) throw new Error("SEASON_SALES_NOT_FOUND");
+      const { data, error } = await supabase.rpc("refresh_season_sales_office_v1", {
+        p_actor_username: actorUsername,
+        p_itemcode: itemcode,
+        p_import_revision: String(payload.importRevision || `client:${Date.now()}`).slice(0, 180),
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) throw error;
+      return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
+    }
+    return errorResponse("Unsupported Season Sales Notes operation.", 400, { code: "SEASON_SALES_OPERATION_INVALID" });
+  } catch (error) {
+    return seasonSalesOfficeErrorResponse(error);
+  }
+}
+
 const SHEAR_LOCATION_CREATOR = "dylan_collyge";
 const SHEAR_LOCATION_TYPES = new Set(["shape_shear", "saleable_shear", "hard_shear", "corrective_shear"]);
 
@@ -2242,6 +2318,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   }
   if (action === "eval_work") return await handleEvalWorkAction(session, payload);
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
+  if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
   if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
