@@ -10,7 +10,7 @@ async function setup(page: any, mobile = false) {
   await page.addScriptTag({content:moduleCode});
   await page.evaluate(()=>{
     const w=window as any;w.calls=[];w.allow=true;w.failSend=false;w.status='pending';w.shares=[];
-    w.bridge={allowed:()=>w.allow,request:async(operation:string,input:any)=>{
+    w.bridge={actorKey:'dylan_collyge',allowed:()=>w.allow,request:async(operation:string,input:any)=>{
       w.calls.push({operation,input:JSON.parse(JSON.stringify(input))});
       if(operation==='search'){
         const offset=input.cursor?Number(input.cursor.id)+1:0;
@@ -85,7 +85,7 @@ test('terminal notices survive close/reopen, delivered sends have no retry and d
   await page.getByRole('button',{name:'Dismiss',exact:true}).click();await expect(page.locator('#phg-notices')).toBeEmpty();
 });
 
-test('thumbnail failure shows retry without original fallback and non-Dylan cannot reopen',async({page})=>{
+test('thumbnail failure shows retry without original fallback and revoked access cannot reopen',async({page})=>{
   await setup(page,true);
   await page.route('**/fixtures/thumb-0.svg',r=>r.abort());
   await page.getByRole('searchbox').fill('failure');await page.waitForTimeout(350);
@@ -96,7 +96,28 @@ test('thumbnail failure shows retry without original fallback and non-Dylan cann
   await page.getByRole('button',{name:'Open Photo History',exact:true}).click();await expect(page.locator('#photo-history-dialog')).not.toBeVisible();
 });
 
-test('real Sales integration remains Dylan-only and native gallery inputs keep focus under the app shell',async({page})=>{
+test('different approved accounts keep separate gallery selections and messages on the same device',async({page})=>{
+  await setup(page);
+  await page.getByRole('checkbox').first().check();
+  await page.locator('#phg-message-input').fill('Dylan draft');
+  await page.getByRole('button',{name:'Close Photo History'}).click();
+  await page.evaluate(()=>{const w=window as any;w.GncPhotoHistory.open({...w.bridge,actorKey:'madison_austin'});});
+  await expect(page.locator('#phg-selection-count')).toContainText('0 photos selected');
+  await expect(page.locator('#phg-message-input')).toHaveValue('');
+  await page.getByRole('checkbox').nth(1).check();
+  await page.locator('#phg-message-input').fill('Madison draft');
+  await page.getByRole('button',{name:'Close Photo History'}).click();
+  await page.evaluate(()=>{const w=window as any;w.GncPhotoHistory.open({...w.bridge,actorKey:'madelyn_gray'});});
+  await expect(page.locator('#phg-selection-count')).toContainText('0 photos selected');
+  await expect(page.locator('#phg-message-input')).toHaveValue('');
+  await page.getByRole('button',{name:'Close Photo History'}).click();
+  await page.evaluate(()=>{const w=window as any;w.GncPhotoHistory.open(w.bridge);});
+  await expect(page.locator('#phg-selection-count')).toContainText('1 photos selected');
+  await expect(page.locator('#phg-message-input')).toHaveValue('Dylan draft');
+  await expect(page.getByRole('checkbox').first()).toBeChecked();
+});
+
+for(const username of ['dylan_collyge','madison_austin','madelyn_gray'])test(`${username} can open real Sales Photo History with native input focus; other managers cannot`,async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.route('**/functions/v1/app-api',route=>{
     const body=route.request().postDataJSON();
@@ -106,13 +127,13 @@ test('real Sales integration remains Dylan-only and native gallery inputs keep f
   });
   await page.goto('/?e2e=photo-history-sales&post_deploy_access_canary=photo-history',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>typeof (window as any).openDylanPhotoHistory==='function' && !!(window as any).GncPhotoHistory);
-  const opened = await page.evaluate(()=>{
+  const opened = await page.evaluate((username)=>{
     const w=window as any;
-    w.installMutationBlockedAccessCanaryIdentity('dylan_collyge','Dylan','ADMIN');
+    w.installMutationBlockedAccessCanaryIdentity(username,username,'ADMIN');
     w.renderSalesHub();
     w.openDylanPhotoHistory();
     return !!document.querySelector('#photo-history-dialog');
-  });
+  },username);
   expect(opened).toBe(true);
   await expect(page.locator('#photo-history-dialog')).toBeVisible();
   await page.getByRole('searchbox',{name:'Search Common Name, ITEMCODE or filename'}).fill('Lemon Grass');

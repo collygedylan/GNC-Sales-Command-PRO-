@@ -7,12 +7,13 @@ import ts from 'typescript';
 const read = path => fs.readFileSync(new URL('../'+path, import.meta.url),'utf8');
 const sql = read('supabase/migrations/20260904142737_dylan_photo_history_gallery_v1.sql');
 const copiesSql = read('supabase/migrations/20260904151119_photo_history_required_copies_v2.sql');
+const accessSql = read('supabase/migrations/20260904162451_marketing_photo_history_access_v1.sql');
 const edge = read('supabase/functions/app-api/index.ts');
 const ui = read('assets/photo-history-v2026090401.js');
 const gs = read('Code.gs');
 const helperModule = { exports: {} };
 vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/photo-history.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:helperModule.exports,URL,Set});
-const {historyPhotoUrl,publicHistoryPhoto}=helperModule.exports;
+const {historyPhotoUrl,publicHistoryPhoto,isPhotoHistoryUsernameAllowed}=helperModule.exports;
 
 test('gallery never gives a legacy card an original or a V2 card a transformation',()=>{
   const asset={bucket:'request_photos',path:'2026-06-04/Lemon Grass.jpg',storage_available:true};
@@ -27,14 +28,55 @@ test('unknown buckets and traversal cannot become fetch targets',()=>{
   for(const asset of [{bucket:'chat_voice_notes',path:'audio.jpg'},{bucket:'request_photos',path:'../private.jpg'},{bucket:'request_photos',path:''}])assert.throws(()=>historyPhotoUrl('https://x',asset));
 });
 
-test('Dylan is checked in the authenticated API and again in SQL; all table/RPC browser access is denied',()=>{
-  assert.match(edge,/normalizeUsername\(String\(profile.username \|\| ''\)\) !== 'dylan_collyge'/);
+test('only approved Photo History users pass the API and SQL gates; direct browser access stays denied',()=>{
+  assert.ok(edge.includes('!isPhotoHistoryUsernameAllowed(profile.username)'));
+  for(const username of ['dylan_collyge','madison_austin','madelyn_gray',' Madison_Austin ']) assert.equal(isPhotoHistoryUsernameAllowed(username),true);
+  for(const username of ['megan_kelly','jd_jones','kayla_knepp','admin','',null]) assert.equal(isPhotoHistoryUsernameAllowed(username),false);
+  assert.ok(accessSql.includes("in ('dylan_collyge','madison_austin','madelyn_gray')"));
+  assert.ok(accessSql.includes('not private.is_service_role_request()'));
+  assert.ok(accessSql.includes('p.disabled_at is null'));
+  assert.ok(accessSql.includes('p.locked_until<=now()'));
+  assert.ok(accessSql.includes('not p.must_change_password'));
+  assert.ok(accessSql.includes("'actorUsername',actor_username"));
+  assert.ok(accessSql.includes('actor_id=p_actor_id'));
   assert.match(edge,/p_actor_id: profile.id/);
   assert.match(sql,/lower\(btrim\(p.username\)\)='dylan_collyge'/);
   for(const table of ['assets','index_state','shares','audit'])assert.match(sql,new RegExp(`alter table public.ph_photo_history_${table} enable row level security`));
   assert.match(sql,/revoke all on function public.photo_history_gallery_v1\(uuid,text,jsonb\) from public,anon,authenticated/);
   assert.match(sql,/grant execute on function public.photo_history_gallery_v1\(uuid,text,jsonb\) to service_role/);
   assert.doesNotMatch(edge.slice(edge.indexOf('const READABLE_TABLES'),edge.indexOf('const WRITABLE_TABLES')),/ph_photo_history/);
+});
+
+test('both marketing submitters use V2 with Dylan and JD included, correct attribution and no duplicate email',()=>{
+  for(const username of ['madison_austin','madelyn_gray']){
+    const {context,sent}=emailHarness(),delivery=v2Delivery({actorUsername:username});
+    context.handleSignedPhotoHistoryShare_(delivery);context.handleSignedPhotoHistoryShare_(delivery);
+    assert.equal(sent.length,1);assert.equal(sent[0].attachments.length,3);
+    assert.deepEqual([...sent[0].toArray].sort(),['dylan@example.test','jd@example.test','rep@example.test']);
+    assert.ok(sent[0].textBody.includes('selected by '+username));
+    assert.throws(()=>emailHarness().context.handleSignedPhotoHistoryShare_(v2Delivery({actorUsername:username,contractVersion:'photo-history-share-v1'})),/PHOTO_HISTORY_VALIDATION/);
+  }
+  assert.throws(()=>emailHarness().context.handleSignedPhotoHistoryShare_(v2Delivery({actorUsername:'megan_kelly'})),/PHOTO_HISTORY_VALIDATION/);
+});
+
+test('AV Blanks no-photo approval remains per-user and Task Season context only',async()=>{
+  const html=read('index.html');
+  const contextStart=html.indexOf('        function isAvBlanksPhotoBypassTaskContext(');
+  const contextEnd=html.indexOf('        function renderAvBlanksPhotoBypassSettingsPanel(',contextStart);
+  const source=html.slice(contextStart,contextEnd);
+  for(const username of ['madison_austin','madelyn_gray']){
+    const sandbox={activeDetailSourceView:'tasks',lastView:'tasks',activeTaskTab:'av-blanks',activeTaskView:'av-blanks',
+      activeTaskSubview:'season',activeTaskFilter:'season',EVAL_TASK_ASSIGNMENT:'eval-task',
+      firstNonEmptyValue:(...values)=>values.find(v=>v!==null&&v!==undefined&&v!==''),
+      isAvBlanksPhotoBypassUserAllowed:()=>['madison_austin','madelyn_gray'].includes(username),
+      navigator:{onLine:true}};
+    vm.createContext(sandbox);vm.runInContext(source,sandbox);
+    assert.equal(await sandbox.canBypassAvBlanksCompletionRequirementsForCurrentUser({},'ssn-'),true);
+    for(const prefix of ['req-','lsn-','flyer-'])assert.equal(await sandbox.canBypassAvBlanksCompletionRequirementsForCurrentUser({},prefix),false);
+    sandbox.activeDetailSourceView='drive';
+    assert.equal(await sandbox.canBypassAvBlanksCompletionRequirementsForCurrentUser({},'ssn-'),false);
+  }
+  assert.ok(html.includes('AV Note is required before completing this AV Blanks row.'));
 });
 
 test('search is metadata-only, bounded and keyset paginated; no manual load-more control',()=>{

@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
-import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail } from "../_shared/photo-history.ts";
+import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail, isPhotoHistoryUsernameAllowed } from "../_shared/photo-history.ts";
 import {
   PHOTO_LEGACY_MAX_BYTES,
   PHOTO_V2_DISPLAY_MAX_BYTES,
@@ -565,8 +565,8 @@ async function handlePhotoHistoryAction(
 ) {
   if (!session) return errorResponse("Authentication required.", 401);
   const profile = await resolveActiveSessionProfile(session).catch(() => null);
-  if (session.mustChangePassword || !profile || normalizeUsername(String(profile.username || '')) !== 'dylan_collyge') {
-    return errorResponse('Photo History is available only to Dylan.', 403, { code: 'PHOTO_HISTORY_FORBIDDEN' });
+  if (session.mustChangePassword || !profile || !isPhotoHistoryUsernameAllowed(profile.username)) {
+    return errorResponse('Photo History is not enabled for this account.', 403, { code: 'PHOTO_HISTORY_FORBIDDEN' });
   }
   const operation = String(payload.operation || 'search');
   if (!['search', 'recipients', 'asset', 'send', 'status', 'retry', 'dismiss'].includes(operation)) {
@@ -603,7 +603,7 @@ async function handlePhotoHistoryAction(
       PHOTO_HISTORY_PREVIEW_UNAVAILABLE: 'Thumbnail unavailable. Retry or explicitly open the archived photo.',
       PHOTO_HISTORY_TOKEN_CONFLICT: 'This send was already saved with different selections. Review before sending again.',
       PHOTO_HISTORY_SELECTION_INVALID: 'Select between 1 and 20 photos and keep the message under 2,000 characters.',
-      PHOTO_HISTORY_FORBIDDEN: 'Photo History is available only to Dylan.',
+      PHOTO_HISTORY_FORBIDDEN: 'Photo History is not enabled for this account.',
     };
     const code = Object.keys(codes).find(c => raw.includes(c)) || 'PHOTO_HISTORY_RETRY';
     return errorResponse(codes[code] || 'Photo History could not finish. Retry; your selection is retained.', code === 'PHOTO_HISTORY_FORBIDDEN' ? 403 : 409, { code });

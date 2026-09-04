@@ -2,6 +2,10 @@ export const PHOTO_HISTORY_BUCKETS = new Set([
   'request_photos', 'flyer_photos', 'season_sales_notes_photos', 'location_sales_notes_photos',
 ]);
 
+export function isPhotoHistoryUsernameAllowed(username: unknown): boolean {
+  return ['dylan_collyge', 'madison_austin', 'madelyn_gray'].includes(String(username || '').trim().toLowerCase());
+}
+
 /** Paths originate in the catalog; never accept an arbitrary browser URL. */
 export function historyPhotoUrl(base: string, asset: Record<string, unknown>, open = false): string {
   const bucket = String(asset.bucket || '');

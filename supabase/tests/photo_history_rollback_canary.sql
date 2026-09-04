@@ -2,13 +2,14 @@
 begin;
 select set_config('request.jwt.claim.role','service_role',true);
 do $$
-declare actor uuid; rep uuid; asset uuid; packet jsonb; first_result jsonb; replay jsonb; ev uuid; count_before bigint;
+declare actor uuid; actor_name text; other_actor uuid; rep uuid; asset uuid; packet jsonb; first_result jsonb; replay jsonb; ev uuid; count_before bigint;
 begin
   assert not has_table_privilege('authenticated','public.ph_photo_history_assets','SELECT');
   assert not has_table_privilege('authenticated','public.ph_photo_history_shares','INSERT');
   assert not has_function_privilege('anon','public.photo_history_gallery_v1(uuid,text,jsonb)','EXECUTE');
   assert not has_function_privilege('authenticated','public.photo_history_gallery_v1(uuid,text,jsonb)','EXECUTE');
-  select id into actor from public.profiles where username='dylan_collyge';
+  foreach actor_name in array array['dylan_collyge','madison_austin','madelyn_gray'] loop
+  select id into actor from public.profiles where username=actor_name;
   select (r->>'id')::uuid into rep from jsonb_array_elements(public.photo_history_gallery_v1(actor,'recipients','{}')->'recipients')r limit 1;
   select id into asset from public.ph_photo_history_assets where commonname='Lemon Grass' order by photo_at desc limit 1;
   assert actor is not null and rep is not null and asset is not null, 'CANARY_FIXTURE_UNAVAILABLE';
@@ -25,7 +26,7 @@ begin
   assert (select count(*) from public.ph_request_delivery_outbox where event_type='photo_history_share')=count_before+1;
   select event_id into ev from public.ph_photo_history_shares where id=(first_result->>'id')::uuid;
   assert (select photo_count from public.ph_photo_history_shares where event_id=ev)=1;
-  assert (select payload->>'actorUsername' from public.ph_request_delivery_outbox where event_id=ev)='dylan_collyge';
+  assert (select payload->>'actorUsername' from public.ph_request_delivery_outbox where event_id=ev)=actor_name;
   assert (select payload->'recipientEmails' from public.ph_request_delivery_outbox where event_id=ev)<>jsonb_build_array('untrusted@example.invalid');
   assert (select payload->>'contractVersion' from public.ph_request_delivery_outbox where event_id=ev)='photo-history-share-v2';
   assert (select jsonb_array_length(payload->'requiredCopies') from public.ph_request_delivery_outbox where event_id=ev)=2;
@@ -45,6 +46,19 @@ begin
   update public.ph_request_delivery_outbox set status='delivered',email_delivered_at=now() where event_id=ev;
   perform public.photo_history_gallery_v1(actor,'retry',jsonb_build_object('id',first_result->>'id'));
   assert (select status from public.ph_request_delivery_outbox where event_id=ev)='delivered';
+  select id into other_actor from public.profiles where username=case when actor_name='dylan_collyge' then 'madison_austin' else 'dylan_collyge' end;
+  begin
+    perform public.photo_history_gallery_v1(other_actor,'retry',jsonb_build_object('id',first_result->>'id'));
+    raise exception 'CROSS_ACTOR_RETRY_WAS_NOT_REJECTED';
+  exception when raise_exception then
+    if sqlerrm<>'PHOTO_HISTORY_SHARE_MISSING' then raise; end if;
+  end;
+  end loop;
+  select id into other_actor from public.profiles where username='megan_kelly';
+  begin
+    perform public.photo_history_gallery_v1(other_actor,'search','{}');
+    raise exception 'OTHER_MANAGER_WAS_NOT_REJECTED';
+  exception when insufficient_privilege then null; end;
 end $$;
 select 'photo_history_rollback_canary_passed' result;
 rollback;

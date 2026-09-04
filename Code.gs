@@ -15724,7 +15724,9 @@ function photoHistoryEmailImage_(photo) {
 
 function handleSignedPhotoHistoryShare_(delivery) {
   const payload = delivery.payload || {};
-  if (['photo-history-share-v1', 'photo-history-share-v2'].indexOf(payload.contractVersion) < 0 || payload.actorUsername !== 'dylan_collyge'
+  const allowedActors = payload.contractVersion === 'photo-history-share-v1'
+    ? ['dylan_collyge'] : ['dylan_collyge', 'madison_austin', 'madelyn_gray'];
+  if (['photo-history-share-v1', 'photo-history-share-v2'].indexOf(payload.contractVersion) < 0 || allowedActors.indexOf(payload.actorUsername) < 0
       || !payload.shareId || !Array.isArray(payload.photos) || payload.photos.length < 1 || payload.photos.length > 20
       || !delivery.messageIdHeader) throw new Error('PHOTO_HISTORY_VALIDATION');
   const recipients = dedupeEmailAddresses_([payload.recipientEmails]);
@@ -15761,7 +15763,7 @@ function handleSignedPhotoHistoryShare_(delivery) {
       labels.push(label);
       return blob.setName(String(index + 1).padStart(2, '0') + '_' + date + '_' + name + suffix);
     });
-    const text = 'Historical plant photos selected by Dylan\n\nThese are historical photos, not confirmation of current inventory, quality, or availability.\n\n'
+    const text = 'Historical plant photos selected by ' + payload.actorUsername + '\n\nThese are historical photos, not confirmation of current inventory, quality, or availability.\n\n'
       + String(payload.message || '') + '\n\n' + labels.join('\n\n');
     const result = sendGmailApiMessage_({ toList: recipients, toArray: recipients,
       subject: 'GNC Historical Plant Photos (' + attachments.length + ')', textBody: text,

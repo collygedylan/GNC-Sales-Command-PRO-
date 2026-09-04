@@ -1,7 +1,7 @@
-/* Dylan-only historical photo gallery. Full objects are resolved only by explicit Open. */
+/* Approved-user historical photo gallery. Full objects resolve only by explicit Open. */
 (() => {
   'use strict';
-  const KEY = 'gnc-photo-history-dylan-v1';
+  let storageKey = '', actorKey = '';
   const ROW = 356;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const date = value => String(value || '').slice(0, 10) || 'Unknown date';
@@ -13,18 +13,20 @@
   const el = id => dialog.querySelector('#phg-' + id);
   const active = () => dialog?.open && bridge?.allowed();
   const api = async (operation, input = {}) => {
-    if (!bridge?.allowed()) throw new Error('Photo History is available only to Dylan.');
-    const result = await bridge.request(operation, input);
+    const owner = bridge, opened = openGeneration;
+    if (!owner?.allowed()) throw new Error('Photo History is not enabled for this account.');
+    const result = await owner.request(operation, input);
+    if (owner !== bridge || opened !== openGeneration || !owner.allowed()) throw new Error('Photo History session changed. Reopen to continue.');
     if (result?.ok !== true) throw new Error(result?.code === 'PHOTO_HISTORY_BUSY' ? 'Another send is finishing. Retry with this same selection.' : 'Photo History could not finish. Retry.');
     return result;
   };
   function persist() {
-    try { localStorage.setItem(KEY, JSON.stringify({ draft, selected: [...selection.values()] })); } catch (_) {}
+    try { if(storageKey)localStorage.setItem(storageKey, JSON.stringify({ draft, selected: [...selection.values()] })); } catch (_) {}
   }
   function tell(message) { el('message').textContent = message; }
   function restore() {
     try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
       if (saved.draft && typeof saved.draft === 'object') draft = { ...draft, ...saved.draft };
       selection = new Map((Array.isArray(saved.selected) ? saved.selected : []).slice(0,20).filter(p => p?.id).map(p => [p.id,p]));
     } catch (_) {}
@@ -48,7 +50,7 @@
     dialog.className = 'phg-dialog';
     dialog.setAttribute('aria-labelledby','phg-title');
     dialog.setAttribute('data-fast-press-ignore','');
-    dialog.innerHTML = `<div class="phg-shell"><header class="phg-header"><button id="phg-close" aria-label="Close Photo History">Back</button><h2 id="phg-title">Photo History</h2><span class="phg-muted">Dylan only</span></header>
+    dialog.innerHTML = `<div class="phg-shell"><header class="phg-header"><button id="phg-close" aria-label="Close Photo History">Back</button><h2 id="phg-title">Photo History</h2></header>
       <div class="phg-search"><input id="phg-q" type="search" inputmode="search" aria-label="Search Common Name, ITEMCODE or filename" placeholder="Common Name, ITEMCODE or photo filename"><button id="phg-clear">Clear</button></div>
       <details><summary>Filters · container, location, lot and dates</summary><div class="phg-filters">${[['container','Container size'],['location','Location'],['lot','Lot'],['from','From date'],['to','Through date']].map(([id,label])=>`<label>${label}<input id="phg-${id}" type="${id==='from'||id==='to'?'date':'text'}" autocomplete="off"></label>`).join('')}</div><button id="phg-reset">Reset filters</button></details>
       <p id="phg-count" class="phg-muted" role="status">Historical photos — not confirmation of current availability. Scroll to browse all matches.</p><p id="phg-message" class="phg-error" role="alert"></p><div id="phg-notices" class="phg-notices" aria-live="polite"></div>
@@ -151,18 +153,21 @@
   }
   async function send(){
     if(requestBusy)return;
+    const opened = openGeneration;
     if(!draft.pending && (!selection.size||!draft.recipientId)){tell('Select photos and choose a sales rep first.');return;}
     if(!draft.pending){draft.pending={ids:[...selection.keys()],recipientId:draft.recipientId,message:draft.message,idempotencyKey:crypto.randomUUID()};persist();}
     requestBusy=true;tell('');renderSelection();
     try{
       await api('send',draft.pending);
+      if(opened!==openGeneration||!active())return;
       selection.clear();draft.pending=null;draft.message='';el('message-input').value='';persist();await refreshStatus();
     }catch(error){
+      if(opened!==openGeneration||!active())return;
       if(['PHOTO_HISTORY_RECIPIENT_UNAVAILABLE','PHOTO_HISTORY_ASSET_UNAVAILABLE','PHOTO_HISTORY_SELECTION_INVALID'].includes(error?.payload?.code)){
         draft.pending=null;persist();tell(error.message);
       }else tell(error.message+' Your original send is retained; Retry Same Send cannot create a duplicate.');
     }
-    finally{requestBusy=false;renderSelection();lastWindow='';renderWindow();}
+    finally{if(opened===openGeneration){requestBusy=false;renderSelection();lastWindow='';renderWindow();}}
   }
   async function refreshStatus(){
     if(!active())return;
@@ -184,9 +189,16 @@
     }catch(error){if(viewer.open)viewer.querySelector('p').textContent=error.message;}
   }
   async function open(nextBridge){
-    bridge=nextBridge;if(!bridge?.allowed())return false;
+    if(!nextBridge?.allowed() || !/^[a-z0-9_]+$/.test(String(nextBridge.actorKey||'')))return false;
+    if(actorKey && actorKey!==nextBridge.actorKey){
+      close();if(dialog){dialog.remove();dialog=null;}selection.clear();photos=[];thumbCache.clear();
+      draft={q:'',container:'',location:'',lot:'',from:'',to:'',recipientId:'',message:'',pending:null};
+    }
+    bridge=nextBridge;actorKey=nextBridge.actorKey;
+    storageKey=actorKey==='dylan_collyge'?'gnc-photo-history-dylan-v1':'gnc-photo-history-'+actorKey+'-v1';
     if(!dialog){restore();create();}
     if(dialog.open)return false;
+    requestBusy=false;
     returnFocus=document.activeElement;dialog.showModal();const opened=++openGeneration;
     renderSelection();resetSearch();
     try{const result=await api('recipients');if(opened!==openGeneration||!active())return false;el('recipientId').innerHTML='<option value="">Choose a sales rep</option>'+result.recipients.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');el('recipientId').value=draft.recipientId;}catch(error){if(active())tell(error.message);}
@@ -194,6 +206,6 @@
     return false;
   }
   function close(){persist();generation++;openGeneration++;clearTimeout(timer);clearInterval(poll);if(viewer?.open){viewer.close();viewer.remove();}dialog?.close();returnFocus?.focus?.({preventScroll:true});}
-  function clear(){close();selection.clear();draft={q:'',container:'',location:'',lot:'',from:'',to:'',recipientId:'',message:'',pending:null};photos=[];thumbCache.clear();try{localStorage.removeItem(KEY);}catch(_){}if(dialog){dialog.remove();dialog=null;}}
+  function clear(){close();selection.clear();draft={q:'',container:'',location:'',lot:'',from:'',to:'',recipientId:'',message:'',pending:null};photos=[];thumbCache.clear();try{if(storageKey)localStorage.removeItem(storageKey);}catch(_){}if(dialog){dialog.remove();dialog=null;}actorKey='';storageKey='';requestBusy=false;}
   window.GncPhotoHistory={open,close,clear};
 })();
