@@ -225,7 +225,12 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await expect(beta).toHaveAttribute('aria-pressed', 'true');
   await expect(host).not.toContainText('Open ITEMCODE Details');
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('2 ITEMCODEs');
-  await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
+  await expect(host.locator('#manager-eval-report-2-report-select')).toBeEnabled();
+  await host.locator('#manager-eval-report-2-report-select').click();
+  await expect(host.locator('input[data-eval2-report-id][value="no-pri"]')).toBeChecked();
+  await expect(host.locator('input[data-eval2-report-id]')).toHaveCount(11);
+  await expect(host.getByRole('button', { name: 'Apply Reports' })).toBeEnabled();
+  await host.locator('#manager-eval-report-2-report-select').click();
   await expect(host.locator('#manager-eval-report-2-select-shown')).toContainText('Deselect Shown');
 
   await host.getByRole('button', { name: /2 Users/i }).click();
