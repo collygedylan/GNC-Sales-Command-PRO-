@@ -144,7 +144,7 @@ test('one Eval Reports #2 multi-select sends one email with one PDF per ITEMCODE
   assert.match(codeGs, /attachments: pdfBlobs/);
   assert.match(codeGs, /18 \* 1024 \* 1024/);
   assert.match(codeGs, /Assigned: ' \+ String\(models\.length\) \+ ' ITEMCODEs/);
-  assert.match(deliveryWorker, /eval-work-assignment-batch-v1" \? 120000 : 45000/);
+  assert.match(deliveryWorker, /const timeoutMs = \[[^\]]*"eval-work-assignment-batch-v1"[^\]]*\]\.includes[\s\S]*\? 120000 : 45000/);
   assert.match(deliveryWorker, /EVAL_WORK\.\*CONFLICT[\s\S]*return "EVAL_WORK_CONFLICT"/);
   assert.match(deliveryWorker, /EVAL_WORK\.\*VALIDATION[\s\S]*return "EVAL_WORK_VALIDATION"/);
   assert.match(productionProbe, /get_eval_work_assignment_batch_health_v1/);
