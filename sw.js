@@ -3,6 +3,7 @@
 */
 
 const APP_SHELL_BUILD = 'V2026.09.04.03';
+const APP_SHELL_RUNTIME_REVISION = 'drive-evidence-storm-r2';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -268,8 +269,36 @@ async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   } catch (error) {}
 }
 
+async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'inactive-shell-update') {
+  const safeClientId = String(clientId || '').trim();
+  if (!safeClientId) return false;
+  try {
+    const client = await self.clients.get(safeClientId);
+    if (!client || typeof client.navigate !== 'function') return false;
+    if (client.visibilityState !== 'hidden' && client.focused !== false) return false;
+    const clientUrl = getRequestUrl(client.url);
+    if (clientUrl && clientUrl.searchParams.get('shellr') === APP_SHELL_RUNTIME_REVISION) return false;
+    await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
+  try {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(clientList.map((client) => (
+      client && (client.visibilityState === 'hidden' || client.focused === false)
+        ? navigateInactiveClientToCurrentShell(client.id, reason)
+        : Promise.resolve(false)
+    )));
+  } catch (error) {}
+}
+
 function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '') {
   const shellUrl = new URL(buildShellUrl(build), self.registration.scope);
+  shellUrl.searchParams.set('shellr', APP_SHELL_RUNTIME_REVISION);
   shellUrl.searchParams.set('shellts', String(Date.now()));
   if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
   return shellUrl.href;
@@ -296,6 +325,7 @@ self.addEventListener('activate', (event) => {
       })
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
+      .then(() => navigateInactiveClientsToCurrentShell('sw-activated'))
   );
 });
 self.addEventListener('message', (event) => {
@@ -317,7 +347,10 @@ self.addEventListener('message', (event) => {
   }
 });
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+    if (event.clientId) event.waitUntil(navigateInactiveClientToCurrentShell(event.clientId, 'inactive-network-activity'));
+    return;
+  }
   if (shouldBypassServiceWorkerCache(event.request)) return;
   if (event.request.mode === 'navigate') {
     event.respondWith(

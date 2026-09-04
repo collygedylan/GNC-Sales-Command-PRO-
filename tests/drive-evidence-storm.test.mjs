@@ -7,6 +7,7 @@ const html = read('../index.html');
 const migration = read('../supabase/migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql');
 const hostedProbe = read('../scripts/probe-production-auth-health.mjs');
 const performanceWorkflow = read('../.github/workflows/performance-monitor.yml');
+const serviceWorker = read('../sw.js');
 
 test('compatibility and V2 saves use non-blocking locks and structured conflicts', () => {
   assert.match(migration, /^begin;[\s\S]*commit;\s*$/);
@@ -92,4 +93,17 @@ test('hosted health fails on retry-storm thresholds and the isolated CI includes
 test('all shell references release V2026.09.04.03', () => {
   assert.match(html, /window\.__APP_SHELL_VERSION__ = 'V2026\.09\.04\.03'/);
   assert.doesNotMatch(html, /V2026\.09\.04\.02/);
+});
+
+test('shell activation resumes when editing is idle and upgrades inactive legacy clients', () => {
+  assert.match(html, /if \(!isShellReloadBlocked\(\)\) return false;/);
+  assert.match(html, /shell-deferred-reload-applying/);
+  assert.doesNotMatch(html, /shell-deferred-reload-held/);
+  assert.match(html, /scheduleDeferredShellReloadAfterTyping\(1600\)/);
+  assert.match(html, /cancelAllDriveEvidenceSaves\('shell-activation'\)/);
+  assert.match(serviceWorker, /navigateInactiveClientsToCurrentShell\('sw-activated'\)/);
+  assert.match(serviceWorker, /navigateInactiveClientToCurrentShell\(event\.clientId, 'inactive-network-activity'\)/);
+  assert.match(serviceWorker, /client\.visibilityState !== 'hidden' && client\.focused !== false/);
+  assert.match(serviceWorker, /clientUrl\.searchParams\.get\('shellr'\) === APP_SHELL_RUNTIME_REVISION/);
+  assert.match(serviceWorker, /shellUrl\.searchParams\.set\('shellr', APP_SHELL_RUNTIME_REVISION\)/);
 });

@@ -14586,20 +14586,62 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const runtimeAge = Date.now() - APP_SHELL_RUNTIME_BOOTED_AT;
             const startupReason = safeReason.includes('startup') || safeReason === 'init';
             if (document && !document.hidden && startupReason && runtimeAge < APP_SHELL_VISIBLE_RELOAD_STARTUP_GRACE_MS && !currentUser) return false;
+            if (document && document.hidden) return false;
+            if (!isShellReloadBlocked()) return false;
             return rememberDeferredShellReload(targetBuild, reason);
+        }
+
+        function isShellReloadHardBlocked() {
+            return !!(
+                (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
+                || window.googleScriptRunInFlight
+                || pendingRequestArchiveFlushInFlight
+            );
         }
 
         function applyDeferredShellReloadIfHidden(reason = 'hidden') {
             const deferred = window.__gncDeferredShellReload || getDeferredShellReloadRequest();
             const targetBuild = String(deferred && deferred.build || '').trim();
             if (!targetBuild) return false;
-            logShellDiagnostics('shell-deferred-reload-held', {
+            if (!document.hidden || isShellReloadHardBlocked()) return false;
+            logShellDiagnostics('shell-deferred-reload-applying', {
                 reason: String(reason || 'hidden').trim(),
                 targetBuild,
                 deferredReason: String(deferred && deferred.reason || '').trim()
             });
-            return false;
+            try { sessionStorage.removeItem(APP_SHELL_DEFERRED_RELOAD_STORAGE_KEY); } catch (error) {}
+            window.__gncDeferredShellReload = null;
+            if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
+            return forceShellBuildReload(targetBuild, `${reason}:deferred`, {
+                allowVisibleReload: true,
+                ignoreBusy: true,
+                silentToast: true
+            });
         }
+
+        let deferredShellTypingIdleTimer = null;
+        function scheduleDeferredShellReloadAfterTyping(delayMs = 1600) {
+            const deferred = window.__gncDeferredShellReload || getDeferredShellReloadRequest();
+            if (!deferred || !String(deferred.build || '').trim()) return false;
+            if (deferredShellTypingIdleTimer) clearTimeout(deferredShellTypingIdleTimer);
+            deferredShellTypingIdleTimer = setTimeout(() => {
+                deferredShellTypingIdleTimer = null;
+                const latest = window.__gncDeferredShellReload || getDeferredShellReloadRequest();
+                const targetBuild = String(latest && latest.build || '').trim();
+                if (!targetBuild || isShellReloadHardBlocked()) return;
+                try { sessionStorage.removeItem(APP_SHELL_DEFERRED_RELOAD_STORAGE_KEY); } catch (error) {}
+                window.__gncDeferredShellReload = null;
+                if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
+                forceShellBuildReload(targetBuild, 'typing-idle:deferred', {
+                    allowVisibleReload: true,
+                    ignoreBusy: true,
+                    silentToast: true
+                });
+            }, Math.max(250, Number(delayMs) || 1600));
+            return true;
+        }
+        window.addEventListener('input', () => scheduleDeferredShellReloadAfterTyping(1600), { capture: true, passive: true });
+        window.addEventListener('focusout', () => scheduleDeferredShellReloadAfterTyping(320), { capture: true, passive: true });
 
         window.shouldDeferVisibleShellReloadForApp = function(targetBuild = '', reason = '', options = {}) {
             return shouldDeferVisibleShellReload(targetBuild, reason, options);
