@@ -47,12 +47,12 @@ select ok(
   'completion recovery supports a dry run'
 );
 select ok(
-  pg_get_functiondef('public.save_drive_evidence_v1(text,text,text,text,text,jsonb,boolean,text,text)'::regprocedure)
+  pg_get_functiondef('private.save_drive_evidence_core_v2(text,text,text,text,text,jsonb,jsonb,boolean,text,text,boolean,text)'::regprocedure)
     ~ 'requestRows',
   'Drive save returns canonical linked Request rows'
 );
 select ok(
-  pg_get_functiondef('public.save_drive_evidence_v1(text,text,text,text,text,jsonb,boolean,text,text)'::regprocedure)
+  pg_get_functiondef('private.save_drive_evidence_core_v2(text,text,text,text,text,jsonb,jsonb,boolean,text,text,boolean,text)'::regprocedure)
     ~ 'av_rule_bundle_updated_at',
   'Drive save stamps canonical evidence provenance'
 );
