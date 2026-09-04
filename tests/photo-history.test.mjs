@@ -6,7 +6,7 @@ import ts from 'typescript';
 
 const read = path => fs.readFileSync(new URL('../'+path, import.meta.url),'utf8');
 const sql = read('supabase/migrations/20260904142737_dylan_photo_history_gallery_v1.sql');
-const copiesSql = read('supabase/migrations/20260904150357_photo_history_required_copies_v2.sql');
+const copiesSql = read('supabase/migrations/20260904151119_photo_history_required_copies_v2.sql');
 const edge = read('supabase/functions/app-api/index.ts');
 const ui = read('assets/photo-history-v2026090401.js');
 const gs = read('Code.gs');
