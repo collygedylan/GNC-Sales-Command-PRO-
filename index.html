@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.04.03">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.04.04">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.04.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.04.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6799,7 +6799,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.04.03">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.04.04">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6974,8 +6974,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.04.03"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.04.03"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.04.04"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.04.04"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7729,7 +7729,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.04.03').trim() || 'V2026.09.04.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.04.04').trim() || 'V2026.09.04.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9202,6 +9202,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             'marketing-': 'marketing_materials',
             'default': 'flyer_photos'
         };
+        const HIGH_VOLUME_PLANT_PHOTO_BUCKETS = new Set([
+            'request_photos',
+            'flyer_photos',
+            'season_sales_notes_photos',
+            'location_sales_notes_photos'
+        ]);
         const MARKETING_MATERIALS_TABLE = 'marketing_materials';
         const MARKETING_MATERIALS_BUCKET = PHOTO_BUCKETS['marketing-'] || 'marketing_materials';
         const NCR_PHOTO_BUCKET = PHOTO_BUCKETS['req-'] || 'request_photos';
@@ -9223,7 +9229,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.04.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.04.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9861,7 +9867,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const PHOTO_MAX_WIDTH = 1920;
         const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026081709.js';
+        const PHOTO_DISPLAY_MAX_BYTES = 1250 * 1024;
+        const PHOTO_THUMB_144_MAX_BYTES = 80 * 1024;
+        const PHOTO_THUMB_320_MAX_BYTES = 160 * 1024;
+        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026090401.js';
         let photoOptimizerWorker = null;
         let photoOptimizerRequestId = 0;
         const photoOptimizerPending = new Map();
@@ -9894,14 +9903,167 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return photoOptimizerWorker;
         }
 
+        function detectPhotoBlobEncoding(bytes = new Uint8Array()) {
+            if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+            if (bytes.length >= 12
+                && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF'
+                && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'image/webp';
+            return '';
+        }
+
+        async function getPhotoBlobEncoding(blob = null) {
+            if (!(blob instanceof Blob)) return '';
+            return detectPhotoBlobEncoding(new Uint8Array(await blob.slice(0, 16).arrayBuffer()));
+        }
+
+        function getPhotoFitDimensions(width = 0, height = 0, maxEdge = PHOTO_MAX_WIDTH) {
+            const sourceWidth = Math.max(1, Number(width) || 1);
+            const sourceHeight = Math.max(1, Number(height) || 1);
+            const edge = Math.max(sourceWidth, sourceHeight);
+            const scale = edge > maxEdge ? maxEdge / edge : 1;
+            return {
+                width: Math.max(1, Math.round(sourceWidth * scale)),
+                height: Math.max(1, Math.round(sourceHeight * scale))
+            };
+        }
+
+        function canvasToPhotoBlob(canvas, type, quality) {
+            return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+        }
+
+        async function encodeMainThreadPhotoBlob(source, target, type, maxBytes) {
+            let width = target.width;
+            let height = target.height;
+            const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.84, 0.76, 0.68, 0.58, 0.48];
+            for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const context = canvas.getContext('2d', { alpha: false });
+                if (!context) throw new Error('Image canvas unavailable.');
+                context.imageSmoothingEnabled = true;
+                context.imageSmoothingQuality = 'high';
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, width, height);
+                context.drawImage(source, 0, 0, width, height);
+                let lastBlob = null;
+                for (const quality of qualities) {
+                    const encoded = await canvasToPhotoBlob(canvas, type, quality);
+                    if (!(encoded instanceof Blob) || !encoded.size || (await getPhotoBlobEncoding(encoded)) !== type) {
+                        canvas.width = 1;
+                        canvas.height = 1;
+                        throw new Error(type === 'image/webp' ? 'WEBP_ENCODER_UNAVAILABLE' : 'IMAGE_ENCODER_UNAVAILABLE');
+                    }
+                    lastBlob = encoded;
+                    if (encoded.size <= maxBytes) {
+                        canvas.width = 1;
+                        canvas.height = 1;
+                        return { blob: encoded, width, height };
+                    }
+                }
+                canvas.width = 1;
+                canvas.height = 1;
+                if (!lastBlob) throw new Error('Image encoding failed.');
+                const shrink = Math.max(0.62, Math.min(0.88, Math.sqrt(maxBytes / lastBlob.size) * 0.94));
+                width = Math.max(1, Math.round(width * shrink));
+                height = Math.max(1, Math.round(height * shrink));
+            }
+            throw new Error('PHOTO_COMPRESSION_LIMIT');
+        }
+
+        async function loadMainThreadPhotoSource(blob) {
+            if (typeof createImageBitmap === 'function') {
+                try {
+                    const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+                    return { source: bitmap, width: bitmap.width, height: bitmap.height, cleanup: () => bitmap.close() };
+                } catch (error) {}
+            }
+            const objectUrl = URL.createObjectURL(blob);
+            const image = new Image();
+            image.decoding = 'async';
+            try {
+                await new Promise((resolve, reject) => {
+                    image.onload = resolve;
+                    image.onerror = () => reject(new Error('Could not decode the selected image.'));
+                    image.src = objectUrl;
+                });
+                return {
+                    source: image,
+                    width: Number(image.naturalWidth || image.width || 0),
+                    height: Number(image.naturalHeight || image.height || 0),
+                    cleanup: () => { image.src = ''; URL.revokeObjectURL(objectUrl); }
+                };
+            } catch (error) {
+                URL.revokeObjectURL(objectUrl);
+                throw error;
+            }
+        }
+
+        async function optimizePhotoBlobOnMainThread(blob) {
+            const loaded = await loadMainThreadPhotoSource(blob);
+            try {
+                const encodeSet = async (type) => ({
+                    display: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, PHOTO_MAX_WIDTH), type, PHOTO_DISPLAY_MAX_BYTES),
+                    thumbnail144: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, 144), type, PHOTO_THUMB_144_MAX_BYTES),
+                    thumbnail320: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, 320), type, PHOTO_THUMB_320_MAX_BYTES)
+                });
+                let contentType = 'image/webp';
+                let encoded;
+                try {
+                    encoded = await encodeSet(contentType);
+                } catch (error) {
+                    if (!/WEBP_ENCODER_UNAVAILABLE/i.test(String(error && error.message || error))) throw error;
+                    contentType = 'image/jpeg';
+                    encoded = await encodeSet(contentType);
+                }
+                const digest = await crypto.subtle.digest('SHA-256', await encoded.display.blob.arrayBuffer());
+                const hash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+                return {
+                    blob: encoded.display.blob,
+                    thumbnail144Blob: encoded.thumbnail144.blob,
+                    thumbnail320Blob: encoded.thumbnail320.blob,
+                    contentType,
+                    extension: contentType === 'image/webp' ? 'webp' : 'jpg',
+                    hash,
+                    width: encoded.display.width,
+                    height: encoded.display.height,
+                    thumbnail144Width: encoded.thumbnail144.width,
+                    thumbnail144Height: encoded.thumbnail144.height,
+                    thumbnail320Width: encoded.thumbnail320.width,
+                    thumbnail320Height: encoded.thumbnail320.height
+                };
+            } finally {
+                loaded.cleanup();
+            }
+        }
+
+        function normalizeOptimizedPhotoResult(result = {}) {
+            const contentType = String(result.type || result.contentType || (result.blob && result.blob.type) || '').toLowerCase();
+            const extension = contentType === 'image/webp' ? 'webp' : 'jpg';
+            return {
+                blob: result.blob,
+                thumbnail144Blob: result.thumbnail144Blob,
+                thumbnail320Blob: result.thumbnail320Blob,
+                fileName: `${String(result.hash || '').slice(0, 64)}.${extension}`,
+                contentType,
+                extension,
+                hash: String(result.hash || ''),
+                width: Number(result.width || 0),
+                height: Number(result.height || 0),
+                thumbnail144Width: Number(result.thumbnail144Width || 0),
+                thumbnail144Height: Number(result.thumbnail144Height || 0),
+                thumbnail320Width: Number(result.thumbnail320Width || 0),
+                thumbnail320Height: Number(result.thumbnail320Height || 0)
+            };
+        }
+
         async function optimizePhotoBlobForUpload(blob, fileName = 'photo.jpg') {
             if (!(blob instanceof Blob) || !String(blob.type || '').toLowerCase().startsWith('image/')) {
-                return { blob, fileName, contentType: String(blob && blob.type || 'application/octet-stream') };
+                throw new Error('Select a supported plant photo.');
             }
             const worker = getPhotoOptimizerWorker();
-            if (!worker) return { blob, fileName, contentType: String(blob.type || 'image/jpeg') };
             const id = ++photoOptimizerRequestId;
-            try {
+            if (worker) try {
                 const result = await new Promise((resolve, reject) => {
                     const timeoutId = setTimeout(() => {
                         photoOptimizerPending.delete(id);
@@ -9910,22 +10072,26 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     photoOptimizerPending.set(id, { resolve, reject, timeoutId });
                     worker.postMessage({ id, blob, fileName });
                 });
-                const extension = String(result.extension || 'webp');
-                return {
-                    blob: result.blob,
-                    fileName: `${String(result.hash || '').slice(0, 64)}.${extension}`,
-                    contentType: String(result.type || result.blob.type || 'image/webp'),
-                    hash: String(result.hash || ''),
-                    width: Number(result.width || 0),
-                    height: Number(result.height || 0)
-                };
+                const normalized = normalizeOptimizedPhotoResult(result);
+                if (normalized.blob && normalized.thumbnail144Blob && normalized.thumbnail320Blob
+                    && normalized.blob.size <= PHOTO_DISPLAY_MAX_BYTES
+                    && normalized.thumbnail144Blob.size <= PHOTO_THUMB_144_MAX_BYTES
+                    && normalized.thumbnail320Blob.size <= PHOTO_THUMB_320_MAX_BYTES) return normalized;
+                throw new Error('PHOTO_OPTIMIZER_CONTRACT_INVALID');
             } catch (error) {
-                console.warn('Photo optimization was unavailable; preserving the original upload.', error);
-                return { blob, fileName, contentType: String(blob.type || 'image/jpeg') };
+                console.warn('Photo optimization worker unavailable; using the iPhone-compatible canvas path.', error);
+            }
+            try {
+                return normalizeOptimizedPhotoResult(await optimizePhotoBlobOnMainThread(blob));
+            } catch (error) {
+                throw new Error('Could not safely compress this photo. Try taking it again.');
             }
         }
 
         async function uploadOptimizedBlobToStorage(bucketName, requestedPath, blob, options = {}) {
+            if (HIGH_VOLUME_PLANT_PHOTO_BUCKETS.has(String(bucketName || '').trim())) {
+                throw new Error('Secure plant-photo upload is required. Refresh the app and retry.');
+            }
             const path = String(requestedPath || '').replace(/^\/+/, '');
             const slashIndex = path.lastIndexOf('/');
             const folder = slashIndex >= 0 ? path.slice(0, slashIndex + 1) : '';
@@ -9949,7 +10115,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 sha256: String(optimized.hash || '')
             };
         }
-        const PHOTO_ORIGINAL_UPLOAD_MAX_BYTES = 24 * 1024 * 1024;
+        const PHOTO_ORIGINAL_UPLOAD_MAX_BYTES = 2 * 1024 * 1024;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 350;
         const PHOTO_MASTER_PERSIST_DEBOUNCE_MS = 450;
         const INTERACTION_REFRESH_DEFER_MS = 640;
@@ -10426,19 +10592,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function getAdaptiveImageHydrationScanLimit() {
-            const level = getAdaptivePerformanceLevel();
-            const avPhotoFeedVisible = typeof getCurrentVisibleViewId === 'function'
-                && getCurrentVisibleViewId() === 'av'
-                && typeof getIsAvPhotoSubview === 'function'
-                && getIsAvPhotoSubview();
-            if (avPhotoFeedVisible) {
-                if (level >= 2) return isTouchConstrainedDevice() ? 24 : 80;
-                if (level === 1) return isTouchConstrainedDevice() ? 38 : 120;
-                return isTouchConstrainedDevice() ? 64 : 220;
-            }
-            if (level >= 2) return isTouchConstrainedDevice() ? 8 : 12;
-            if (level === 1) return isTouchConstrainedDevice() ? 12 : 20;
-            return isTouchConstrainedDevice() ? 20 : 56;
+            return isTouchConstrainedDevice() ? 12 : 24;
         }
 
         function initializeStartupPerformanceMode() {
@@ -25064,13 +25218,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function shouldUploadOriginalRowPhotoFile(file = null, sourceWidth = 0, sourceHeight = 0) {
-            if (!file || !String(file.type || '').startsWith('image/')) return false;
-            const mimeType = getPhotoUploadContentType(file, '').toLowerCase();
-            if (!/image\/(jpeg|jpg|png|webp)$/i.test(mimeType)) return false;
-            const maxDimension = Math.max(Number(sourceWidth) || 0, Number(sourceHeight) || 0);
-            if (!maxDimension || maxDimension > PHOTO_MAX_WIDTH) return false;
-            const sizeBytes = Number(file.size || 0) || 0;
-            return !sizeBytes || sizeBytes <= PHOTO_ORIGINAL_UPLOAD_MAX_BYTES;
+            return false;
         }
 
         function registerPendingPhotoUpload(item, prefix, promise) {
@@ -28101,8 +28249,17 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const safeFileName = String(optimized.fileName || fileName || 'photo.jpg').trim() || 'photo.jpg';
             const formData = new FormData();
             formData.append('prefix', String(prefix || 'default').trim() || 'default');
+            formData.append('uploadContract', 'plant-photo-v2');
             formData.append('fileName', safeFileName);
             formData.append('file', blob, safeFileName);
+            formData.append('thumbnail144', optimized.thumbnail144Blob, safeFileName);
+            formData.append('thumbnail320', optimized.thumbnail320Blob, safeFileName);
+            formData.append('displayWidth', String(optimized.width || 0));
+            formData.append('displayHeight', String(optimized.height || 0));
+            formData.append('thumbnail144Width', String(optimized.thumbnail144Width || 0));
+            formData.append('thumbnail144Height', String(optimized.thumbnail144Height || 0));
+            formData.append('thumbnail320Width', String(optimized.thumbnail320Width || 0));
+            formData.append('thumbnail320Height', String(optimized.thumbnail320Height || 0));
             if (options && options.formFields && typeof options.formFields === 'object') {
                 Object.entries(options.formFields).forEach(([key, value]) => {
                     const safeKey = String(key || '').trim();
@@ -31324,7 +31481,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.04.03').trim() || 'V2026.09.04.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.04.04').trim() || 'V2026.09.04.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -34716,7 +34873,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const add = readOnly ? '' : `<label class="eval-work-photo-add"><i class="ph-bold ph-camera-plus"></i><span>Add Photo</span><input type="file" accept="image/*" capture="environment" multiple hidden onchange="return handleEvalWorkPhotoInput(this)"></label>`;
             return `<div class="eval-work-photo-rail">${add}${photos.map((photo, index) => {
                 const url = String(photo && (photo.url || photo.publicUrl) || '').trim();
-                return `<div class="eval-work-photo-thumb"><button type="button" data-eval-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalPhotoUrl,'Eval Work photo',${index})"><img src="${escapeHtml(url)}" alt="Evaluation photo ${index + 1}"></button>${readOnly ? '' : `<button type="button" class="eval-work-photo-remove" onclick="return removeEvalWorkPhoto(${index})" aria-label="Remove photo"><i class="ph-bold ph-x"></i></button>`}</div>`;
+                return `<div class="eval-work-photo-thumb"><button type="button" data-eval-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalPhotoUrl,'Eval Work photo',${index})"><img src="${escapeHtml(getDirectImageUrl(url, 'thumb'))}" alt="Evaluation photo ${index + 1}" loading="lazy" decoding="async" fetchpriority="low"></button>${readOnly ? '' : `<button type="button" class="eval-work-photo-remove" onclick="return removeEvalWorkPhoto(${index})" aria-label="Remove photo"><i class="ph-bold ph-x"></i></button>`}</div>`;
             }).join('')}</div>`;
         }
 
@@ -34791,7 +34948,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const photoCsv = String(firstNonEmptyValue(row && row.PHOTO_LINK, row && row.photo_link, row && row.SAVED_PHOTO_LINK, '') || '').trim();
             const photos = getPhotoUrlList(photoCsv);
             if (!photos.length) return '';
-            return `<div class="eval-work-existing-photos"><span>Photos on file</span><div class="eval-work-existing-photo-list">${photos.map((url, index) => `<button type="button" data-eval-existing-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalExistingPhotoUrl,'Photo on file',${index})"><img src="${escapeHtml(url)}" alt="Photo on file ${index + 1}"></button>`).join('')}</div></div>`;
+            return `<div class="eval-work-existing-photos"><span>Photos on file</span><div class="eval-work-existing-photo-list">${photos.map((url, index) => `<button type="button" data-eval-existing-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalExistingPhotoUrl,'Photo on file',${index})"><img src="${escapeHtml(getDirectImageUrl(url, 'thumb'))}" alt="Photo on file ${index + 1}" loading="lazy" decoding="async" fetchpriority="low"></button>`).join('')}</div></div>`;
         }
 
         function calculateEvalWorkMatchQty() {
@@ -40771,19 +40928,45 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isSupabaseStorageHost(hostname = '') {
             return /\.supabase\.co$/i.test(String(hostname || ''));
         }
-        function buildSupabaseStorageThumbnailUrl(rawUrl = '') {
+        function getSupabaseStaticV2ThumbnailUrl(rawUrl = '', width = 320) {
             try {
                 const url = new URL(String(rawUrl || ''), window.location.href);
                 if (!isSupabaseStorageHost(url.hostname)) return '';
                 const objectPrefix = '/storage/v1/object/public/';
                 const renderPrefix = '/storage/v1/render/image/public/';
+                const prefix = url.pathname.startsWith(objectPrefix) ? objectPrefix : (url.pathname.startsWith(renderPrefix) ? renderPrefix : '');
+                if (!prefix) return '';
+                const publicPath = url.pathname.slice(prefix.length);
+                const match = publicPath.match(/^(.*\/)?v2\/([a-f0-9]{64})\.(webp|jpe?g)$/i);
+                if (!match) return '';
+                const staticWidth = Number(width) <= 144 ? 144 : 320;
                 const nextUrl = new URL(url.href);
-                if (url.pathname.startsWith(objectPrefix)) return nextUrl.href;
-                if (!url.pathname.startsWith(renderPrefix)) return '';
-                const publicPath = url.pathname.slice(renderPrefix.length);
-                if (!publicPath) return '';
-                nextUrl.pathname = objectPrefix + publicPath;
+                nextUrl.pathname = `${objectPrefix}${match[1] || ''}_thumbs/v2/${match[2]}-w${staticWidth}.${match[3].toLowerCase()}`;
                 SUPABASE_STORAGE_TRANSFORM_PARAMS.forEach((key) => nextUrl.searchParams.delete(key));
+                return nextUrl.href;
+            } catch (error) {
+                return '';
+            }
+        }
+        function buildSupabaseStorageThumbnailUrl(rawUrl = '', requestedWidth = 320) {
+            try {
+                const url = new URL(String(rawUrl || ''), window.location.href);
+                if (!isSupabaseStorageHost(url.hostname)) return '';
+                const objectPrefix = '/storage/v1/object/public/';
+                const renderPrefix = '/storage/v1/render/image/public/';
+                const publicPath = url.pathname.startsWith(objectPrefix)
+                    ? url.pathname.slice(objectPrefix.length)
+                    : (url.pathname.startsWith(renderPrefix) ? url.pathname.slice(renderPrefix.length) : '');
+                if (!publicPath) return '';
+                const width = Number(requestedWidth) <= 144 ? 144 : (Number(requestedWidth) <= 320 ? 320 : 640);
+                const staticUrl = getSupabaseStaticV2ThumbnailUrl(url.href, width);
+                if (staticUrl) return staticUrl;
+                const nextUrl = new URL(url.href);
+                nextUrl.pathname = renderPrefix + publicPath;
+                SUPABASE_STORAGE_TRANSFORM_PARAMS.forEach((key) => nextUrl.searchParams.delete(key));
+                nextUrl.searchParams.set('width', String(width));
+                nextUrl.searchParams.set('quality', '62');
+                nextUrl.searchParams.set('resize', 'contain');
                 return nextUrl.href;
             } catch (error) {
                 return '';
@@ -40810,8 +40993,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if(!url)return"";
             const baseWidth = getThumbnailBaseWidth(sizeOrPreset);
             const deviceScale = Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1));
-            const thumbWidth = Math.max(140, Math.min(960, Math.round(baseWidth * deviceScale)));
-            const supabaseThumbUrl = buildSupabaseStorageThumbnailUrl(String(url));
+            const requestedWidth = Math.max(140, Math.min(640, Math.round(baseWidth * deviceScale)));
+            const thumbWidth = requestedWidth <= 144 ? 144 : (requestedWidth <= 320 ? 320 : 640);
+            const supabaseThumbUrl = buildSupabaseStorageThumbnailUrl(String(url), thumbWidth);
             if (supabaseThumbUrl) return supabaseThumbUrl;
             const driveId = getDriveImageId(url);
             if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${thumbWidth}`; }
@@ -40840,7 +41024,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 .filter(Boolean);
         }
 
-        const DEFERRED_CARD_PHOTO_ROOT_MARGIN = '420px 0px 640px 0px';
+        const DEFERRED_CARD_PHOTO_ROOT_MARGIN_MOBILE = '160px 0px 320px 0px';
+        const DEFERRED_CARD_PHOTO_ROOT_MARGIN_DESKTOP = '320px 0px 480px 0px';
         let deferredCardPhotoObserver = null;
         let deferredCardPhotoObserverRootMargin = '';
         let deferredCardPhotoHydrationFrame = 0;
@@ -40901,15 +41086,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getDeferredCardPhotoFallbackSrc(src = '') {
-            const cleanSrc = String(src || '').trim();
-            if (!cleanSrc) return '';
-            const driveId = getDriveImageId(cleanSrc);
-            if (driveId) return `https://drive.google.com/uc?export=view&id=${driveId}`;
-            const supabaseOriginalUrl = getSupabaseStorageOriginalUrl(cleanSrc);
-            if (supabaseOriginalUrl) return supabaseOriginalUrl;
-            if (/[?&]sz=w\d+/i.test(cleanSrc) || /=w\d+(-h\d+)?/i.test(cleanSrc) || /=s\d+/i.test(cleanSrc)) {
-                return getExpandedImageUrl(cleanSrc);
-            }
             return '';
         }
 
@@ -40917,19 +41093,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!img || img.dataset.photoHydrated === '1') return;
             const src = String(img.dataset.src || '').trim();
             if (!src) return;
+            delete img.dataset.photoObserved;
             img.dataset.photoHydrated = '1';
             img.onerror = () => {
-                if (!img || img.dataset.photoFallbackTried === '1') {
-                    if (img && img.dataset) img.dataset.photoLoadFailed = '1';
-                    return;
-                }
-                const fallbackSrc = getDeferredCardPhotoFallbackSrc(src);
-                if (!fallbackSrc || fallbackSrc === img.src) {
-                    img.dataset.photoLoadFailed = '1';
-                    return;
-                }
-                img.dataset.photoFallbackTried = '1';
-                img.src = fallbackSrc;
+                if (!img || !img.dataset) return;
+                img.dataset.photoLoadFailed = '1';
+                img.classList.add('app-photo-thumbnail-failed');
+                img.alt = 'Photo thumbnail unavailable. Open the photo to retry.';
             };
             img.src = src;
         }
@@ -40939,10 +41109,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && getCurrentVisibleViewId() === 'av'
                 && typeof getIsAvPhotoSubview === 'function'
                 && getIsAvPhotoSubview();
-            if (avPhotoFeedVisible) {
-                return isTouchConstrainedDevice() ? '900px 0px 1200px 0px' : '1100px 0px 1400px 0px';
-            }
-            return DEFERRED_CARD_PHOTO_ROOT_MARGIN;
+            return isTouchConstrainedDevice() ? DEFERRED_CARD_PHOTO_ROOT_MARGIN_MOBILE : DEFERRED_CARD_PHOTO_ROOT_MARGIN_DESKTOP;
         }
 
         function getDeferredCardPhotoObserver() {
@@ -40952,12 +41119,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (deferredCardPhotoObserver) {
                 try { deferredCardPhotoObserver.disconnect(); } catch (error) {}
                 deferredCardPhotoObserver = null;
+                document.querySelectorAll('img[data-photo-observed="1"]')
+                    .forEach((img) => { if (img && img.dataset) delete img.dataset.photoObserved; });
             }
             deferredCardPhotoObserverRootMargin = rootMargin;
             deferredCardPhotoObserver = new IntersectionObserver((entries) => {
                 entries.forEach((entry) => {
                     if (!entry || (!entry.isIntersecting && Number(entry.intersectionRatio || 0) <= 0)) return;
                     if (deferredCardPhotoObserver) deferredCardPhotoObserver.unobserve(entry.target);
+                    if (entry.target && entry.target.dataset) delete entry.target.dataset.photoObserved;
                     hydrateDeferredCardPhoto(entry.target);
                 });
             }, { root: null, rootMargin, threshold: 0.01 });
@@ -40993,7 +41163,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         const visibleView = viewId ? document.getElementById(`view-${viewId}`) : null;
                         if (visibleView) scope = visibleView;
                     }
-                    const matches = scope.querySelectorAll('img[data-deferred-card-photo="1"]:not([data-photo-hydrated="1"])');
+                    const matches = scope.querySelectorAll('img[data-deferred-card-photo="1"]:not([data-photo-hydrated="1"]):not([data-photo-observed="1"])');
                     for (const img of matches) {
                         if (!img || seen.has(img)) continue;
                         seen.add(img);
@@ -41030,7 +41200,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 const observer = getDeferredCardPhotoObserver();
                 if (observer) {
-                    observerImgs.forEach((img) => observer.observe(img));
+                    observerImgs.forEach((img) => {
+                        img.dataset.photoObserved = '1';
+                        observer.observe(img);
+                    });
+                    const hasUnobservedPhotos = roots.some((candidateRoot) => {
+                        const scope = candidateRoot && candidateRoot.querySelector ? candidateRoot : document;
+                        return !!scope.querySelector('img[data-deferred-card-photo="1"]:not([data-photo-hydrated="1"]):not([data-photo-observed="1"])');
+                    });
+                    if (hasUnobservedPhotos) {
+                        roots.forEach((candidateRoot) => deferredCardPhotoHydrationRoots.add(candidateRoot));
+                        deferredCardPhotoHydrationIdleTimer = window.setTimeout(() => {
+                            deferredCardPhotoHydrationIdleTimer = 0;
+                            scheduleDeferredCardPhotoHydration();
+                        }, 48);
+                    }
                     return;
                 }
                 let index = 0;
@@ -41060,13 +41244,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return !!(scope && scope.querySelector && scope.querySelector('.app-av-catalog-card'));
         }
 
-        function isElementNearViewport(el = null, leadPx = 1200) {
+        function isElementNearViewport(el = null, lead = {}) {
             if (!el || typeof el.getBoundingClientRect !== 'function') return false;
             const rect = el.getBoundingClientRect();
             const viewportHeight = Math.max(1, (window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 1);
             const viewportWidth = Math.max(1, (window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth || 1);
-            return rect.bottom >= -leadPx
-                && rect.top <= viewportHeight + leadPx
+            const topPx = Math.max(0, Number(lead && lead.topPx) || 0);
+            const bottomPx = Math.max(0, Number(lead && lead.bottomPx) || 0);
+            return rect.bottom >= -topPx
+                && rect.top <= viewportHeight + bottomPx
                 && rect.right >= -120
                 && rect.left <= viewportWidth + 120;
         }
@@ -41074,12 +41260,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function retryAvDeferredPhotoFallback(img = null) {
             if (!img || !img.dataset || img.dataset.avPhotoRetryTried === '1') return;
             const originalSrc = String(img.dataset.src || '').trim();
-            const fallbackSrc = getDeferredCardPhotoFallbackSrc(originalSrc);
-            if (!fallbackSrc || fallbackSrc === img.src) return;
+            if (!originalSrc) return;
             img.dataset.avPhotoRetryTried = '1';
             img.dataset.photoLoadFailed = '';
-            img.dataset.photoFallbackTried = '1';
-            img.src = fallbackSrc;
+            img.classList.remove('app-photo-thumbnail-failed');
+            img.src = '';
+            requestAnimationFrame(() => { img.src = originalSrc; });
         }
 
         function hydrateAvCardPhotoSlide(slideEl = null) {
@@ -41100,26 +41286,30 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!isAvCardPhotoHydrationRelevant(root)) return;
             const scope = getAvCardPhotoHydrationScope(root);
             if (!scope || !scope.querySelectorAll) return;
-            const leadPx = Number(options.leadPx || (isTouchConstrainedDevice() ? 1500 : 1800));
-            const maxCount = Number(options.maxCount || (isTouchConstrainedDevice() ? 90 : 160));
+            const touch = isTouchConstrainedDevice();
+            const lead = {
+                topPx: Number(options.topPx || (touch ? 160 : 320)),
+                bottomPx: Number(options.bottomPx || (touch ? 320 : 480))
+            };
+            const maxCount = Number(options.maxCount || (touch ? 12 : 24));
             let count = 0;
             const cards = scope.matches && scope.matches('.app-av-catalog-card')
                 ? [scope]
                 : Array.from(scope.querySelectorAll('.app-av-catalog-card'));
             for (const card of cards) {
                 if (count >= maxCount) break;
-                if (!isElementNearViewport(card, leadPx)) continue;
+                if (!isElementNearViewport(card, lead)) continue;
                 const track = card.querySelector('.app-av-photo-track');
                 if (track) {
                     const slides = Array.from(track.querySelectorAll('.app-av-photo-slide'));
                     if (!slides.length) continue;
                     const slideWidth = Math.max(1, Number(track.clientWidth) || 1);
                     const currentIndex = Math.max(0, Math.min(slides.length - 1, Math.round((Number(track.scrollLeft) || 0) / slideWidth)));
-                    [slides[0], slides[currentIndex], slides[currentIndex + 1]].filter(Boolean).forEach((slide) => {
-                        if (count >= maxCount) return;
-                        hydrateAvCardPhotoSlide(slide);
+                    const activeSlide = slides[currentIndex];
+                    if (activeSlide && count < maxCount) {
+                        hydrateAvCardPhotoSlide(activeSlide);
                         count += 1;
-                    });
+                    }
                     continue;
                 }
                 const imgs = Array.from(card.querySelectorAll('img[data-deferred-card-photo="1"]'));
@@ -53882,7 +54072,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             const initialIndex = Math.max(0, Math.min(urls.length - 1, Number.isFinite(Number(startIndex)) ? Math.trunc(Number(startIndex)) : 0));
-            const displayUrls = urls.map((url) => getDirectImageUrl(url, 'modal-display') || url);
+            const displayUrls = urls.map((url) => getExpandedImageUrl(url) || url);
             photoModalState.urls = urls;
             photoModalState.displayUrls = displayUrls;
             photoModalState.index = initialIndex;
@@ -62638,12 +62828,11 @@ function toggleDriveQuickRequestItem(domId) {
                     uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, ''),
                     extension: extension.replace(/^\./, '')
                 });
-                const filePath = `${NCR_PHOTO_PATH_PREFIX}/${new Date().toISOString().split('T')[0]}/${fileName}`;
-                const directUpload = await uploadOptimizedBlobToStorage(NCR_PHOTO_BUCKET, filePath, entry.file, { contentType: entry.mimeType || entry.file.type, label: 'NCR photo upload' });
-                const publicUrl = directUpload.publicUrl;
+                const secureUpload = await uploadPhotoViaAppApi('req-', entry.file, fileName, entry.mimeType || entry.file.type || 'image/jpeg');
+                const publicUrl = secureUpload.publicUrl;
                 if (!publicUrl) throw new Error('Could not resolve NCR photo URL.');
                 entry.uploadedUrl = publicUrl;
-                entry.uploadedName = directUpload.fileName;
+                entry.uploadedName = String(secureUpload.filePath || '').split('/').pop() || fileName;
                 uploadedUrls.push(publicUrl);
                 markPhotoPersistActivity();
             }
@@ -69346,14 +69535,13 @@ function toggleDriveQuickRequestItem(domId) {
                     uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, ''),
                     extension
                 });
-                const filePath = `not-on-inventory/${new Date().toISOString().split('T')[0]}/${fileName}`;
-                const directUpload = await uploadOptimizedBlobToStorage(NCR_PHOTO_BUCKET, filePath, entry.file, { contentType: entry.mimeType || entry.file.type, label: 'Not On Inventory photo upload' });
-                const publicUrl = directUpload.publicUrl;
+                const secureUpload = await uploadPhotoViaAppApi('req-', entry.file, fileName, entry.mimeType || entry.file.type || 'image/jpeg');
+                const publicUrl = secureUpload.publicUrl;
                 if (!publicUrl) throw new Error('Could not resolve Not On Inventory photo URL.');
                 entry.uploadedUrl = publicUrl;
-                entry.uploadedName = directUpload.fileName;
+                entry.uploadedName = String(secureUpload.filePath || '').split('/').pop() || fileName;
                 uploadedUrls.push(publicUrl);
-                uploadedNames.push(directUpload.fileName);
+                uploadedNames.push(entry.uploadedName);
                 markPhotoPersistActivity();
             }
             return { photoUrls: uploadedUrls, photoNames: uploadedNames };
@@ -121316,7 +121504,7 @@ C.14.043 C.15.000
                 item.MANUAL_REVIEW ? 'Manual Review' : ''
             ].filter(Boolean);
             const photoHtml = photoUrl
-                ? `<img src="${escapeHtml(photoUrl)}" alt="" class="h-24 w-24 flex-shrink-0 rounded-xl border border-emerald-100 bg-slate-100 object-cover" loading="lazy">`
+                ? `<img src="${escapeHtml(getDirectImageUrl(photoUrl, 'thumb'))}" alt="" class="h-24 w-24 flex-shrink-0 rounded-xl border border-emerald-100 bg-slate-100 object-cover" loading="lazy" decoding="async" fetchpriority="low">`
                 : '<div class="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div>';
             const audioHtml = item.AUDIO_URL
                 ? `<audio class="mt-3 w-full" controls preload="none" src="${escapeHtml(item.AUDIO_URL)}"></audio>`
@@ -129900,7 +130088,7 @@ C.14.043 C.15.000
             const lot = String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '-') || '-').trim();
             const source = String(firstNonEmptyValue(row && row.SOURCE, row && row.source, '') || '').trim();
             const photo = String((typeof getPhotoUrlList === 'function' ? getPhotoUrlList(getRowPhotoLink(row, 'drive'))[0] : getRowPhotoLink(row, 'drive')) || '').trim();
-            const photoHtml = photo ? `<img src="${esc(photo)}" class="h-20 w-20 shrink-0 rounded-xl border border-slate-200 object-cover" loading="lazy">` : '<div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div>';
+            const photoHtml = photo ? `<img src="${esc(getDirectImageUrl(photo, 'thumb'))}" class="h-20 w-20 shrink-0 rounded-xl border border-slate-200 object-cover" loading="lazy" decoding="async" fetchpriority="low">` : '<div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div>';
             return `<div role="button" tabindex="0" class="rounded-2xl border ${checked ? 'border-[#007a4d] bg-emerald-50' : 'border-emerald-100 bg-white'} p-4 shadow-sm active:scale-[0.99]" style="touch-action: manipulation;" onclick="return toggleManagerMoveSource('${escJsAttrValue(uid)}', ${checked ? 'false' : 'true'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return toggleManagerMoveSource('${escJsAttrValue(uid)}', ${checked ? 'false' : 'true'});}">
                 <div class="flex items-start gap-3">
                     <input type="checkbox" class="mt-1 h-6 w-6 rounded border-emerald-300 text-[#007a4d] focus:ring-[#007a4d]" ${checked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="return toggleManagerMoveSource('${escJsAttrValue(uid)}', this.checked)">
@@ -138202,9 +138390,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!cleanUrl.startsWith('http')) return null;
                 const index = counter++;
                 const shareUrl = getExpandedImageUrl(cleanUrl);
+                const previewUrl = getDirectImageUrl(cleanUrl, 'card-feature') || shareUrl;
                 return {
                     label: `Photo ${index}` ,
-                    url: shareUrl,
+                    url: previewUrl,
+                    href: shareUrl,
                     displayName: item ? buildSharePhotoDisplayName(item, index, shareUrl) : shareUrl,
                     index
                 };
@@ -138247,7 +138437,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     returnText += `Photos: ${inventoryPhotos.length} photo${inventoryPhotos.length === 1 ? '' : 's'}\n`;
                     inventoryPhotos.forEach((photo, photoIndex) => {
                         returnText += `${photo.label || `Photo ${photoIndex + 1}`}: ${photo.displayName}`;
-                        if (includePhotoUrls) returnText += ` - ${photo.url}`;
+                        if (includePhotoUrls) returnText += ` - ${firstNonEmptyValue(photo.href, photo.url)}`;
                         returnText += `\n`;
                     });
                 }
@@ -150863,7 +151053,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const itemCode = escapeHtml(firstNonEmptyValue(row.ITEMCODE, row.itemcode, row.ITEM, '-'));
                 const size = escapeHtml(firstNonEmptyValue(row.CONTSIZE, row.contsize, '-'));
                 const safePhotoUrl = escapeHtml(photoUrl);
-                return `<button type="button" class="advertisement-plant-card" data-ad-photo-url="${safePhotoUrl}" data-ad-source-uid="${escapeHtml(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, ''))}" onclick="return addAdvertisementImageFromUrl(this.getAttribute('data-ad-photo-url'), this.getAttribute('data-ad-source-uid'))"><img src="${safePhotoUrl}" alt=""><span class="min-w-0"><span class="advertisement-plant-title">${name}</span><span class="advertisement-plant-meta">${itemCode} / ${size}</span></span><i class="ph-bold ph-plus-circle text-2xl text-[#007a4d]"></i></button>`;
+                const safeThumbnailUrl = escapeHtml(getDirectImageUrl(photoUrl, 'thumb'));
+                return `<button type="button" class="advertisement-plant-card" data-ad-photo-url="${safePhotoUrl}" data-ad-source-uid="${escapeHtml(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, ''))}" onclick="return addAdvertisementImageFromUrl(this.getAttribute('data-ad-photo-url'), this.getAttribute('data-ad-source-uid'))"><img src="${safeThumbnailUrl}" alt="" loading="lazy" decoding="async" fetchpriority="low"><span class="min-w-0"><span class="advertisement-plant-title">${name}</span><span class="advertisement-plant-meta">${itemCode} / ${size}</span></span><i class="ph-bold ph-plus-circle text-2xl text-[#007a4d]"></i></button>`;
             }).join('');
         }
 
@@ -157319,10 +157510,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                                     });
                                     bucketName = String(apiUpload.bucketName || bucketName).trim() || bucketName;
                                     filePath = String(apiUpload.filePath || filePath).trim() || filePath;
+                                    fileName = String(filePath.split('/').pop() || fileName).trim() || fileName;
                                     publicUrl = String(apiUpload.publicUrl || '').trim();
                                 } catch (secureUploadError) {
                                     try {
-                                        if (PROTECTED_DRIVE_PHOTO_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
+                                        if (PROTECTED_DRIVE_PHOTO_PREFIXES.has(String(prefix || '').trim().toLowerCase())
+                                            || HIGH_VOLUME_PLANT_PHOTO_BUCKETS.has(String(bucketName || '').trim())) {
                                             throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure Drive photo upload failed.'));
                                         }
                                         const fallbackStorageClient = getSupabaseBrowserClient();
@@ -157369,35 +157562,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                             schedulePhotoFieldPersist(itemToUpload, prefix);
                             return publicUrl;
                         };
-                        if (shouldUploadOriginalRowPhotoFile(file, sourceWidth, sourceHeight)) {
-                            const publicUrl = await uploadPreparedBlob(file, originalFileName, getPhotoUploadContentType(file, 'image/jpeg'));
-                            resolve(publicUrl);
-                            return;
-                        }
-                        canvas = document.createElement('canvas');
-                        const targetMaxDimension = PHOTO_MAX_WIDTH;
-                        const targetJpegQuality = PHOTO_JPEG_QUALITY;
-                        const sourceMaxDimension = Math.max(sourceWidth, sourceHeight);
-                        const scaleSize = sourceMaxDimension > targetMaxDimension ? targetMaxDimension / sourceMaxDimension : 1;
-                        canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
-                        canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
-                        const ctx = canvas.getContext('2d', { alpha: false });
-                        if (!ctx) throw new Error('Could not prepare the selected image.');
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
-                        ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-                        canvas.toBlob(async (blob) => {
-                            if (!blob) {
-                                failUpload(new Error('Could not compress the selected image.'));
-                                return;
-                            }
-                            try {
-                                const publicUrl = await uploadPreparedBlob(blob, jpegFileName, 'image/jpeg');
-                                resolve(publicUrl);
-                            } catch (err) {
-                                failUpload(err);
-                            }
-                        }, 'image/jpeg', targetJpegQuality);
+                        const publicUrl = await uploadPreparedBlob(file, originalFileName, getPhotoUploadContentType(file, 'image/jpeg'));
+                        resolve(publicUrl);
                     };
                     const startFallbackImageLoad = () => {
                         img = new Image();

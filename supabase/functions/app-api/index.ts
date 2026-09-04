@@ -2,6 +2,16 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
+import {
+  PHOTO_LEGACY_MAX_BYTES,
+  PHOTO_V2_DISPLAY_MAX_BYTES,
+  PHOTO_V2_THUMB_144_MAX_BYTES,
+  PHOTO_V2_THUMB_320_MAX_BYTES,
+  readPositivePhotoDimension,
+  sha256Hex,
+  type ValidatedPhotoPart,
+  validatePhotoPart,
+} from "../_shared/photo-upload.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -398,6 +408,16 @@ function sanitizeStorageFileName(value = "") {
   const cleaned = raw.replace(/[^a-zA-Z0-9._-]/g, "").replace(/\.{2,}/g, ".").slice(0, 140);
   if (cleaned && /\.[a-z0-9]{2,8}$/i.test(cleaned)) return cleaned;
   return "";
+}
+
+async function uploadImmutablePhotoObject(bucketName: string, path: string, part: ValidatedPhotoPart) {
+  const result = await supabase.storage.from(bucketName).upload(path, part.bytes, {
+    contentType: part.mimeType,
+    cacheControl: "31536000",
+    upsert: false,
+  });
+  const duplicate = !!(result.error && /already exists|duplicate/i.test(String(result.error.message || "")));
+  if (result.error && !duplicate) throw new Error("PHOTO_STORAGE_UNAVAILABLE");
 }
 
 function hasTableReadAccess(role = "", table = "", username = "") {
@@ -2255,6 +2275,8 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
   }
   const file = form.get("file");
   if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
+  const uploadContract = String(form.get("uploadContract") || "").trim().toLowerCase();
+  const isV2Upload = uploadContract === "plant-photo-v2";
 
   let evalWorkId = "";
   let evalOriginUid = "";
@@ -2307,27 +2329,101 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
   }
 
   const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-  const requestedFileName = sanitizeStorageFileName(String(form.get("fileName") || file.name || ""));
-  const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
-  const fileName = requestedFileName || `${originalName}-${Date.now()}.jpg`;
-  const filePath = prefix === "eval-"
-    ? (evalMultiOrigin ? `eval/${evalWorkId}/${String(evalOriginUid)}/${fileName}` : `eval/${evalWorkId}/${fileName}`)
-    : (protectedMasterUid
-      ? `drive/${sanitizeStorageFileName(protectedMasterUid)}/${fileName}`
-      : `${new Date().toISOString().split("T")[0]}/${fileName}`);
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!isV2Upload) {
+    try {
+      const legacy = await validatePhotoPart(file, PHOTO_LEGACY_MAX_BYTES);
+      const requestedFileName = sanitizeStorageFileName(String(form.get("fileName") || file.name || ""));
+      const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
+      const requestedBase = requestedFileName ? requestedFileName.replace(/\.[^.]+$/, "") : `${originalName}-${Date.now()}`;
+      const fileName = `${requestedBase}.${legacy.extension}`;
+      const filePath = prefix === "eval-"
+        ? (evalMultiOrigin ? `eval/${evalWorkId}/${String(evalOriginUid)}/${fileName}` : `eval/${evalWorkId}/${fileName}`)
+        : (protectedMasterUid
+          ? `drive/${sanitizeStorageFileName(protectedMasterUid)}/${fileName}`
+          : `${new Date().toISOString().split("T")[0]}/${fileName}`);
+      await uploadImmutablePhotoObject(bucketName, filePath, legacy);
+      const publicUrlData = supabase.storage.from(bucketName).getPublicUrl(filePath);
+      return jsonResponse({
+        ok: true,
+        contractVersion: "plant-photo-legacy-compatible",
+        publicUrl: String(publicUrlData.data.publicUrl || "").trim(),
+        bucketName,
+        filePath,
+        mimeType: legacy.mimeType,
+        byteCount: legacy.bytes.byteLength,
+        masterUid: protectedMasterUid || undefined,
+      });
+    } catch (error) {
+      const code = String(error instanceof Error ? error.message : error || "");
+      if (["PHOTO_TOO_LARGE", "PHOTO_ENCODING_UNSUPPORTED", "PHOTO_MIME_MISMATCH"].includes(code)) {
+        return errorResponse("This app version cannot safely upload that photo. Refresh the app and retry.", 409, { code: "PHOTO_TOO_LARGE_REFRESH_REQUIRED" });
+      }
+      return errorResponse("Photo upload is temporarily unavailable. Retry without retaking the photo.", 503, { code: "PHOTO_UPLOAD_RETRY" });
+    }
+  }
 
-  const uploadResult = await supabase.storage.from(bucketName).upload(filePath, bytes, {
-    contentType: String(file.type || "image/jpeg").trim() || "image/jpeg",
-    cacheControl: "31536000",
-    upsert: false,
-  });
-  const duplicateUpload = !!(uploadResult.error && /already exists|duplicate/i.test(String(uploadResult.error.message || "")));
-  if (uploadResult.error && !duplicateUpload) return errorResponse(uploadResult.error.message || "Photo upload failed.", 500);
-
-  const publicUrlData = supabase.storage.from(bucketName).getPublicUrl(filePath);
-  const publicUrl = String(publicUrlData.data.publicUrl || "").trim();
-  return jsonResponse({ ok: true, publicUrl, bucketName, filePath, masterUid: protectedMasterUid || undefined });
+  const thumbnail144 = form.get("thumbnail144");
+  const thumbnail320 = form.get("thumbnail320");
+  if (!(thumbnail144 instanceof File) || !(thumbnail320 instanceof File)) {
+    return errorResponse("The optimized thumbnail set is incomplete. Refresh the app and retry.", 400, { code: "PHOTO_THUMBNAILS_REQUIRED" });
+  }
+  try {
+    const [displayPart, thumb144Part, thumb320Part] = await Promise.all([
+      validatePhotoPart(file, PHOTO_V2_DISPLAY_MAX_BYTES),
+      validatePhotoPart(thumbnail144, PHOTO_V2_THUMB_144_MAX_BYTES),
+      validatePhotoPart(thumbnail320, PHOTO_V2_THUMB_320_MAX_BYTES),
+    ]);
+    if (displayPart.mimeType !== thumb144Part.mimeType || displayPart.mimeType !== thumb320Part.mimeType) {
+      return errorResponse("The optimized photo encodings do not match. Refresh the app and retry.", 400, { code: "PHOTO_MIME_MISMATCH" });
+    }
+    const width = readPositivePhotoDimension(form, "displayWidth", 1920);
+    const height = readPositivePhotoDimension(form, "displayHeight", 1920);
+    const thumbnail144Width = readPositivePhotoDimension(form, "thumbnail144Width", 144);
+    const thumbnail144Height = readPositivePhotoDimension(form, "thumbnail144Height", 144);
+    const thumbnail320Width = readPositivePhotoDimension(form, "thumbnail320Width", 320);
+    const thumbnail320Height = readPositivePhotoDimension(form, "thumbnail320Height", 320);
+    const hash = await sha256Hex(displayPart.bytes);
+    const filePath = `v2/${hash}.${displayPart.extension}`;
+    const thumbnail144Path = `_thumbs/v2/${hash}-w144.${displayPart.extension}`;
+    const thumbnail320Path = `_thumbs/v2/${hash}-w320.${displayPart.extension}`;
+    await Promise.all([
+      uploadImmutablePhotoObject(bucketName, thumbnail144Path, thumb144Part),
+      uploadImmutablePhotoObject(bucketName, thumbnail320Path, thumb320Part),
+    ]);
+    await uploadImmutablePhotoObject(bucketName, filePath, displayPart);
+    const publicUrl = String(supabase.storage.from(bucketName).getPublicUrl(filePath).data.publicUrl || "").trim();
+    const thumbnail144Url = String(supabase.storage.from(bucketName).getPublicUrl(thumbnail144Path).data.publicUrl || "").trim();
+    const thumbnail320Url = String(supabase.storage.from(bucketName).getPublicUrl(thumbnail320Path).data.publicUrl || "").trim();
+    return jsonResponse({
+      ok: true,
+      contractVersion: "plant-photo-v2",
+      publicUrl,
+      bucketName,
+      filePath,
+      thumbnailUrls: { "144": thumbnail144Url, "320": thumbnail320Url },
+      thumbnail144Url,
+      thumbnail320Url,
+      width,
+      height,
+      thumbnail144Width,
+      thumbnail144Height,
+      thumbnail320Width,
+      thumbnail320Height,
+      mimeType: displayPart.mimeType,
+      byteCount: displayPart.bytes.byteLength,
+      thumbnail144ByteCount: thumb144Part.bytes.byteLength,
+      thumbnail320ByteCount: thumb320Part.bytes.byteLength,
+      sha256: hash,
+      masterUid: protectedMasterUid || undefined,
+    });
+  } catch (error) {
+    const code = String(error instanceof Error ? error.message : error || "");
+    if (code === "PHOTO_TOO_LARGE") return errorResponse("The compressed photo is still too large. Retake it or retry after refresh.", 413, { code: "PHOTO_TOO_LARGE" });
+    if (code === "PHOTO_MIME_MISMATCH") return errorResponse("The photo encoding did not match its MIME type.", 400, { code: "PHOTO_MIME_MISMATCH" });
+    if (code === "PHOTO_ENCODING_UNSUPPORTED") return errorResponse("Only JPEG or WebP plant photos can be uploaded.", 415, { code: "PHOTO_ENCODING_UNSUPPORTED" });
+    if (code === "PHOTO_DIMENSIONS_INVALID") return errorResponse("The optimized photo dimensions are invalid. Refresh and retry.", 400, { code: "PHOTO_DIMENSIONS_INVALID" });
+    return errorResponse("Photo upload is temporarily unavailable. Retry without retaking the photo.", 503, { code: "PHOTO_UPLOAD_RETRY" });
+  }
 }
 
 serve((req) => withObservedRequest("app-api", req, async () => {

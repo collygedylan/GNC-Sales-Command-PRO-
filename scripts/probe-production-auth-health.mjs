@@ -92,6 +92,7 @@ let evalItemcodeWorkHealth = null;
 let requestDriveEvidenceHealth = null;
 let driveEvidenceSaveHealth = null;
 let seasonSalesOfficeHealth = null;
+let photoDeliveryHealth = null;
 let codexOpsHealth = null;
 let boundedMaintenance = null;
 let pikesAssignmentHealth = null;
@@ -443,6 +444,30 @@ if (serviceRoleKey) {
     recentUniqueConflicts
   });
   if (!requestDriveContractHealthy) throw new Error('production_request_drive_evidence_contract_unhealthy');
+
+  const photoDeliveryHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_photo_delivery_health_v1`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 60000);
+  const photoDeliveryHealthText = await photoDeliveryHealthResponse.text();
+  try { photoDeliveryHealth = photoDeliveryHealthText ? JSON.parse(photoDeliveryHealthText) : null; } catch {}
+  if (!photoDeliveryHealthResponse.ok || !photoDeliveryHealth || typeof photoDeliveryHealth !== 'object') {
+    throw new Error(`production_photo_delivery_health_unavailable_HTTP_${photoDeliveryHealthResponse.status}`);
+  }
+  if (photoDeliveryHealth.healthy !== true
+      || Number(photoDeliveryHealth.recent_oversized_upload_count) !== 0
+      || Number(photoDeliveryHealth.recent_mime_extension_mismatch_count) !== 0
+      || Number(photoDeliveryHealth.recent_png_upload_count) !== 0) {
+    throw new Error('production_photo_delivery_contract_unhealthy');
+  }
+  checks.push({
+    name: 'photo_delivery_v1',
+    status: photoDeliveryHealthResponse.status,
+    recentUploads: Math.max(0, Number(photoDeliveryHealth.recent_upload_count) || 0),
+    activeReferences: Math.max(0, Number(photoDeliveryHealth.active_reference_count) || 0),
+    staticThumbnailCoveragePercent: Math.max(0, Number(photoDeliveryHealth.static_thumbnail_coverage_percent) || 0)
+  });
 
   const seasonSalesHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_season_sales_office_health_v1`, {
     method: 'POST',

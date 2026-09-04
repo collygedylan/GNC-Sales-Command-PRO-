@@ -40,6 +40,7 @@ jobs:
           set -euo pipefail
           npm ci
           npm run check:inline
+          npm run test:photo
           npm run test:pilot
           npx playwright install --with-deps chromium firefox webkit
           npm run test:v2:e2e

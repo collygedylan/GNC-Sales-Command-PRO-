@@ -64,12 +64,12 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.04.03';
+  const release = 'V2026.09.04.04';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, '2026.09.04.03');
+  assert.equal(packageJson.version, '2026.09.04.04');
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -1134,14 +1134,15 @@ test('V07 request detail uses one naturally scrolling desktop column and never r
   assert.match(html, /const renderedHeight = Array\.from\(content\.children \|\| \[\]\)\.reduce/);
 });
 
-test('V09 avoids billable Storage transforms and unifies Columns and Excel controls', () => {
+test('plant-photo cards use bounded Storage transforms and unifies Columns and Excel controls', () => {
   const storageUrlHelper = html.slice(
     html.indexOf("function buildSupabaseStorageThumbnailUrl"),
     html.indexOf("function getSupabaseStorageOriginalUrl")
   );
-  assert.match(storageUrlHelper, /nextUrl\.pathname = objectPrefix \+ publicPath/);
-  assert.doesNotMatch(storageUrlHelper, /nextUrl\.pathname = renderPrefix/);
-  assert.doesNotMatch(storageUrlHelper, /searchParams\.set\('(width|quality|resize)'/);
+  assert.match(storageUrlHelper, /nextUrl\.pathname = renderPrefix \+ publicPath/);
+  assert.match(storageUrlHelper, /searchParams\.set\('width'/);
+  assert.match(storageUrlHelper, /searchParams\.set\('quality', '62'/);
+  assert.match(storageUrlHelper, /searchParams\.set\('resize', 'contain'/);
   assert.match(html, /ops-view-option-control[^\n]+data-drive-filter-shell="columns"/);
   assert.match(html, /ops-view-option-control[^\n]+data-av-filter-shell="columns"/);
   assert.match(html, /ops-view-option-control[^\n]+data-dock-filter-shell="columns"/);

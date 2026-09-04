@@ -106,6 +106,7 @@ jobs:
           cp supabase/migrations/20260903183000_reconcile_legacy_season_sales_mirrors.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904070154_photo_delivery_health_v1.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/codex_ops_rls_test.sql "$ci_root/supabase/tests/"
@@ -114,6 +115,7 @@ jobs:
           cp supabase/tests/request_option_append_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/drive_reclass_protected_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/drive_evidence_retry_storm_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/photo_delivery_health_rls_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         run: supabase --workdir "$SUPABASE_CI_ROOT" start
@@ -176,6 +178,7 @@ jobs:
           REQUIRE_BOUNDED_MAINTENANCE: '1'
         run: node scripts/probe-production-auth-health.mjs
       - run: npm run check:inline
+      - run: npm run test:photo
       - run: npm run test:pilot
       - run: npm run test:v2
       - run: npm run build:v2
