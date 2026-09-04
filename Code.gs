@@ -12140,7 +12140,7 @@ function enqueueReclassInquiryEmail_(payload) {
   return buildReclassInquiryOutboxResponse_(row, false);
 }
 
-function deliverReclassInquiryPayload_(payload, messageIdHeader) {
+function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipientEmails) {
     const safePayload = payload && typeof payload === 'object' ? payload : {};
     const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
     const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
@@ -12191,7 +12191,9 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader) {
       })
     }) : safePayload;
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, reportPayload, now);
-    const recipients = getReclassInquiryEmailRecipients_(safePayload);
+    const recipients = Array.isArray(frozenRecipientEmails)
+      ? dedupeEmailAddresses_(frozenRecipientEmails)
+      : getReclassInquiryEmailRecipients_(safePayload);
     if (!recipients.length) throw new Error('RECLASS_VALIDATION:RECIPIENT_REQUIRED');
     const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
     const subject = '[External] GNC PH Reclass - ' + model.requestActionLabel + ': ' + commonName;
@@ -15066,7 +15068,13 @@ function handleSignedReclassInquiryDelivery_(delivery) {
     ? eventPayload.reclassPayload
     : null;
   if (!reclassPayload) throw new Error('RECLASS_VALIDATION:PAYLOAD_MISSING');
-  const result = deliverReclassInquiryPayload_(reclassPayload, messageIdHeader);
+  const coverage = eventPayload.itemInquiryCoverage && typeof eventPayload.itemInquiryCoverage === 'object'
+    ? eventPayload.itemInquiryCoverage : null;
+  const frozenRecipients = coverage
+    && String(coverage.contractVersion || '') === 'item-inquiry-coverage-v1'
+    ? dedupeEmailAddresses_(reclassPayload.recipientEmails)
+    : null;
+  const result = deliverReclassInquiryPayload_(reclassPayload, messageIdHeader, frozenRecipients);
   result.messageIdHeader = messageIdHeader;
   saveRequestDeliveryReceipt_(messageIdHeader, result);
   return result;
