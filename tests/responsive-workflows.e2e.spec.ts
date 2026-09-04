@@ -2566,7 +2566,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
 
 test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.04.01&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.04.02&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
     typeof (window as any).getRequestReusableData === 'function'
     && typeof (window as any).renderRequestQtyStepCurrentItem === 'function'
@@ -2780,7 +2780,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
 test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
   test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/?e2e=V2026.09.04.01', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?e2e=V2026.09.04.02', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');
   await page.evaluate(() => window.eval(`(() => {
     isIOSDevice = () => true;

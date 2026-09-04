@@ -49,6 +49,12 @@ test('Kayla receives only the bounded matrix and uses the protected live save RP
   assert.match(html, /Managed Users Only/);
 });
 
+test('permission refresh cannot reset an active Managers subview through the Home shell repair', () => {
+  assert.match(html, /function repairHomeDashboardShell[\s\S]*homeView\.classList\.contains\('hidden'\) \|\| getCurrentVisibleViewId\(\) !== 'home'/);
+  assert.match(html, /requiresLiveRoleReapply = !!\(refreshedAccess && !refreshedAccess\.isAdmin[\s\S]*refreshedAccess\.isSalesMarketing/);
+  assert.match(html, /currentUser && requiresLiveRoleReapply && typeof applyRolePermissions/);
+});
+
 test('the Sales/Marketing role defaults are Drive and Tasks only', () => {
   const roleSeed = migration.slice(0, migration.indexOf('create table if not exists private.app_limited_live_overrides'));
   assert.match(roleSeed, /'SALESMARKETING'/);
