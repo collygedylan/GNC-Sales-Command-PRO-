@@ -1,5 +1,66 @@
 import { expect, test } from '@playwright/test';
 
+for (const width of [390, 1280]) {
+  test(`Eval Reports #2 multi-report picker unions rows and Queue context at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/?e2e=eval-multi-report&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof (window as any).setManagerEvalReport2Reports === 'function');
+    await page.evaluate(() => window.eval(`(() => {
+      installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN');
+      canViewManagerEvalReports2 = () => true;
+      isEvalWorkManagerUser = () => true;
+      activeHomeTab = 'eval-reports-2';
+      processAndLoadData({ data: [
+        { UNIQUE_ID: 'multi-a1', ITEMCODE: 'MULTI.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Multi', CONTSIZE: '#3', SEASON: 'U1', SALEYEAR: 27, LOTCODE: '27.U1', PRIORITY: '', LOCATIONCODE: 'A.01.001', PTRONHAND: 20, PTRAVAILABLE: 18 },
+        { UNIQUE_ID: 'multi-a2', ITEMCODE: 'MULTI.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Multi', CONTSIZE: '#3', SEASON: 'U2', SALEYEAR: 27, LOTCODE: '27.U2', PRIORITY: '', LOCATIONCODE: 'B.01.001', PTRONHAND: 10, PTRAVAILABLE: 10 },
+        { UNIQUE_ID: 'multi-b1', ITEMCODE: 'MULTI.B', GENUSNAME: 'Rosa', COMMONNAME: 'Beta Multi', CONTSIZE: '#3', SEASON: 'U2', SALEYEAR: 27, LOTCODE: '27.U2', PRIORITY: '', LOCATIONCODE: 'C.01.001', PTRONHAND: 30, PTRAVAILABLE: 25 },
+        { UNIQUE_ID: 'multi-c1', ITEMCODE: 'MULTI.C', GENUSNAME: 'Rosa', COMMONNAME: 'Excluded Multi', CONTSIZE: '#3', SEASON: 'U3', SALEYEAR: 27, LOTCODE: '27.U3', DESIGITEM: 'SHFT', LOCATIONCODE: 'D.01.001', PTRONHAND: 30 }
+      ], warehouseAssignedItemsData: ['MULTI.A','MULTI.B','MULTI.C'].map((item, i) => ({ UNIQUE_ID: 'multi-assigned-' + i, ITEMCODE: item, GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' })), _fromCache: true });
+      for (const name of ['master', 'warehouseAssignedItems']) { getDatasetState(name).initialLoaded = getDatasetState(name).fullLoaded = true; }
+      invalidateManagerEvalReport2Cache();
+      managersSearchTerm = '';
+      managerEvalReport2AssignedToFilter = 'all';
+      const host = document.createElement('div');
+      host.id = 'multi-report-host';
+      host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;overflow:auto;background:white;';
+      document.body.appendChild(host);
+      scheduleManagersRender = () => {
+        host.innerHTML = renderManagerEvalReport2ReportsPanel();
+        const records = host.querySelector('#manager-eval-report-2-records');
+        if (records) records.innerHTML = getManagerEvalReport2VisibleItemGroups().map(renderManagerEvalReport2SelectableCard).join('');
+      };
+      setManagerEvalReport2('u1');
+      scheduleManagersRender();
+      window.multiReportInquiryCalls = 0;
+      openArgosInventoryTransactionModal = (uid, action, source) => { window.multiReportInquiryCalls++; window.multiReportOpened = { uid, action, source }; return true; };
+    })()`));
+    const host = page.locator('#multi-report-host');
+    await host.locator('#manager-eval-report-2-report-select').click();
+    await host.locator('input[data-eval2-report-id][value="u2"]').check();
+    await host.locator('input[data-eval2-report-id][value="u3"]').check();
+    await host.getByRole('button', { name: 'Apply Reports' }).click();
+    await expect(host.locator('.manager-eval2-item-card')).toHaveCount(2);
+    await expect(host).toContainText('A.01.001');
+    await expect(host).toContainText('B.01.001');
+    await expect(host).toContainText('C.01.001');
+    await expect(host).not.toContainText('Excluded Multi');
+    await host.locator('#manager-eval-report-2-select-shown').click();
+    const selected = await page.evaluate(() => window.eval(`getManagerEvalReport2SelectedEntries().map(e => ({itemcode:e.itemCode, reports:e.reportIds}))`));
+    expect(selected).toEqual([{ itemcode: 'MULTI.A', reports: ['u1', 'u2'] }, { itemcode: 'MULTI.B', reports: ['u2'] }]);
+    expect(await page.evaluate(() => (window as any).multiReportInquiryCalls)).toBe(0);
+    await expect(host.locator('#manager-eval-report-2-report-select')).toBeEnabled();
+    // Removing one report preserves overlapping selection, filters and all physical rows.
+    await host.locator('#manager-eval-report-2-report-select').click();
+    await host.locator('input[data-eval2-report-id][value="u1"]').uncheck();
+    await host.getByRole('button', { name: 'Apply Reports' }).click();
+    expect(await page.evaluate(() => window.eval(`getManagerEvalReport2SelectedEntries().map(e => e.reportIds)`))).toEqual([['u2'], ['u2']]);
+    await host.getByText('Alpha Multi', { exact: true }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).multiReportInquiryCalls)).toBe(1);
+    expect(await page.evaluate(() => (window as any).multiReportOpened)).toEqual({ uid: 'multi-a1', action: 'reclass', source: 'eval-report-2' });
+    expect(await host.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  });
+}
+
 test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });

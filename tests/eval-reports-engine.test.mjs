@@ -9,6 +9,25 @@ context.globalThis = context;
 vm.runInContext(engineSource, context, { filename: 'eval-reports-engine.js' });
 const engine = context.GncEvalReports;
 
+test('multi-report selection preserves union, exact row deduplication and server-owned Queue membership', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../supabase/migrations/20260904171529_eval_report2_multi_report_selection.sql', import.meta.url), 'utf8');
+  const union = html.slice(html.indexOf('function getManagerEvalReport2Rows('), html.indexOf('function getManagerEvalReport2ItemCode('));
+  assert.match(union, /getManagerEvalReport2SelectedReportIds\(\)/);
+  assert.match(union, /getManagerEvalReport2RowKey\(row, i\)/);
+  assert.match(union, /if \(!rows.has\(key\)\)/);
+  assert.match(html, /data-manager-eval2-report-picker/);
+  assert.match(html, /Apply Reports/);
+  assert.doesNotMatch(html, /One Report Per Batch|locked until Clear/);
+  assert.match(html, /reportIds: sourceMode === 'drive' \? \[\] : getManagerEvalReport2ItemReportIds\(entry.itemCode\)/);
+  assert.match(api, /Array.isArray\(contextInput.reportIds\)/);
+  assert.match(migration, /matching_report_ids := private.eval_report2_matching_reports_v1/);
+  assert.match(migration, /cardinality\(private.eval_report2_matching_reports_v1\(work_row.source_context/);
+  assert.match(migration, /eval_multi_grouped_delivery_guard/);
+  assert.match(migration, /from public, anon, authenticated/);
+});
+
 function row(itemcode, season, saleyear, overrides = {}) {
   return {
     ITEMCODE: itemcode,

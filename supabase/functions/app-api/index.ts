@@ -1628,6 +1628,7 @@ async function handleEvalWorkAction(
           inquiry: normalizeEvalWorkBatchInquiry(item.inquiry),
           reportContext: {
             reportId: String(contextInput.reportId || "").trim().slice(0, 100),
+            ...(Array.isArray(contextInput.reportIds) ? { reportIds: contextInput.reportIds.map((value: unknown) => String(value || "").trim().toLowerCase()).slice(0, 12) } : {}),
             reportLabel: String(contextInput.reportLabel || "").trim().slice(0, 200),
             sourceMode: String(contextInput.sourceMode || "").trim().toLowerCase().slice(0, 40),
             assignedTo: String(contextInput.assignedTo || "").trim().slice(0, 200),

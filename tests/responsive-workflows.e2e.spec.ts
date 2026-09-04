@@ -321,7 +321,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
   await alphaCheckbox.click();
   await expect(alphaCheckbox).toHaveAttribute('aria-pressed', 'true');
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
-  await expect(host.locator('#manager-eval-report-2-report-select')).toBeDisabled();
+  await expect(host.locator('#manager-eval-report-2-report-select')).toBeEnabled();
   await expect(host.locator("button[onclick*=\"openManagerEvalUserPicker('eval2')\"]")).toBeEnabled();
 
   const betaCheckbox = host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="CLICK.B"]');
