@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.04.02">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.04.03">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.04.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.04.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6799,7 +6799,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.04.02">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.04.03">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6974,8 +6974,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.04.02"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.04.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.04.03"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.04.03"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7729,7 +7729,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.04.02').trim() || 'V2026.09.04.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.04.03').trim() || 'V2026.09.04.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8938,13 +8938,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onpointerdown="return handleDetailCameraInputActivation(event)" ontouchstart="return handleDetailCameraInputActivation(event)" onclick="return handleDetailCameraInputActivation(event)" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
                         <div id="task-season-review-panel-season" class="hidden"></div>
                         <div id="ssn-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                            <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="ssn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')" onchange="saveData(false, 'ssn-', true)"><div id="ssn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="ssn-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch"></div>
+                            <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch"></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="ssn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="ssn-match-qty-val">0</span></div></div>
                         </div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('ssn-')">+</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="ssn-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'ssn-', true)"></textarea></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden');}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('ssn-')">+</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="ssn-comments" class="input-field resize-y" placeholder="Any additional comments..."></textarea></div>
+                        <div id="ssn-save-conflict" class="hidden mb-3 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-amber-950" role="alert"><div class="text-[11px] font-black uppercase tracking-wide">Row changed elsewhere</div><div id="ssn-save-conflict-message" class="mt-1 text-[11px] font-semibold">Your entries are saved on this device. Review before retrying.</div><button type="button" class="mt-3 w-full rounded-lg bg-amber-500 px-3 py-2 text-[11px] font-black uppercase text-white" onclick="return reviewAndRetryDriveEvidence('ssn-')">Review &amp; Retry</button></div>
                         <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                         <button type="button" class="mt-3 w-full rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-lime-800 shadow-sm active:scale-95" onclick="return submitShearApprovalRequestForActiveDetail('ssn-')"><i class="ph-bold ph-scissors mr-1 text-base align-middle"></i>Add To Shear List</button>
                     </div>
@@ -8959,13 +8960,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onpointerdown="return handleDetailCameraInputActivation(event)" ontouchstart="return handleDetailCameraInputActivation(event)" onclick="return handleDetailCameraInputActivation(event)" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
                         <div id="task-season-review-panel-location" class="hidden"></div>
                         <div id="lsn-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
-                            <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
-                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="lsn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')" onchange="saveData(false, 'lsn-', true)"><div id="lsn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="lsn-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch"></div>
+                            <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch"></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="lsn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="lsn-match-qty-val">0</span></div></div>
                         </div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('lsn-')">+</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="lsn-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'lsn-', true)"></textarea></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden');}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('lsn-')">+</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="lsn-comments" class="input-field resize-y" placeholder="Any additional comments..."></textarea></div>
+                        <div id="lsn-save-conflict" class="hidden mb-3 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-amber-950" role="alert"><div class="text-[11px] font-black uppercase tracking-wide">Row changed elsewhere</div><div id="lsn-save-conflict-message" class="mt-1 text-[11px] font-semibold">Your entries are saved on this device. Review before retrying.</div><button type="button" class="mt-3 w-full rounded-lg bg-amber-500 px-3 py-2 text-[11px] font-black uppercase text-white" onclick="return reviewAndRetryDriveEvidence('lsn-')">Review &amp; Retry</button></div>
                         <div class="flex gap-2 mt-4"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
                         <button type="button" class="mt-3 w-full rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-lime-800 shadow-sm active:scale-95" onclick="return submitShearApprovalRequestForActiveDetail('lsn-')"><i class="ph-bold ph-scissors mr-1 text-base align-middle"></i>Add To Shear List</button>
                     </div>
@@ -8974,13 +8976,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onpointerdown="return handleDetailCameraInputActivation(event)" ontouchstart="return handleDetailCameraInputActivation(event)" onclick="return handleDetailCameraInputActivation(event)" onchange="handlePhotoUpload(this, 'na-')"></label></div>
                         <div id="eval-task-detail-panel" class="hidden mb-4"></div>
                         <div id="na-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
-                            <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch"></div>
+                            <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch"></div>
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC PHOTO MATCH: <span id="na-match-qty-val">0</span></div></div>
                         </div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('na-')">+</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                        <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="na-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'na-', true)"></textarea></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden');}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('na-')">+</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="na-comments" class="input-field resize-y" placeholder="Any additional comments..."></textarea></div>
+                        <div id="na-save-conflict" class="hidden mb-3 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-amber-950" role="alert"><div class="text-[11px] font-black uppercase tracking-wide">Row changed elsewhere</div><div id="na-save-conflict-message" class="mt-1 text-[11px] font-semibold">Your entries are saved on this device. Review before retrying.</div><button type="button" class="mt-3 w-full rounded-lg bg-amber-500 px-3 py-2 text-[11px] font-black uppercase text-white" onclick="return reviewAndRetryDriveEvidence('na-')">Review &amp; Retry</button></div>
                         <div class="mt-4">
                             <button id="na-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
                         </div>
@@ -9220,7 +9223,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.04.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.04.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21875,6 +21878,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
         async function performLogout() {
+            cancelAllDriveEvidenceSaves('logout');
             cleanupRealtime();
             clearChatBackgroundPoll();
             clearManualSyncStatusPoll();
@@ -24753,16 +24757,30 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const secureSupabaseResponse = await fetchSupabaseRestViaAppApiIfNeeded(url, options, timeoutMs, label);
             if (secureSupabaseResponse) return secureSupabaseResponse;
             const controller = new AbortController();
+            const externalSignal = options && options.signal ? options.signal : null;
+            let externallyAborted = !!(externalSignal && externalSignal.aborted);
+            const handleExternalAbort = () => {
+                externallyAborted = true;
+                try { controller.abort(externalSignal && externalSignal.reason); } catch (error) { controller.abort(); }
+            };
+            if (externalSignal && !externalSignal.aborted) externalSignal.addEventListener('abort', handleExternalAbort, { once: true });
+            else if (externallyAborted) handleExternalAbort();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             try {
                 return await fetch(url, { ...options, signal: controller.signal });
             } catch (error) {
                 if (error && error.name === 'AbortError') {
+                    if (externallyAborted) {
+                        const aborted = new Error(`${label} cancelled.`);
+                        aborted.code = 'REQUEST_ABORTED';
+                        throw aborted;
+                    }
                     throw new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`);
                 }
                 throw error;
             } finally {
                 clearTimeout(timeoutId);
+                if (externalSignal) externalSignal.removeEventListener('abort', handleExternalAbort);
             }
         }
 
@@ -25810,7 +25828,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     'Content-Type': 'application/json',
                     'Prefer': 'return=representation'
                 },
-                body: JSON.stringify(body || {})
+                body: JSON.stringify(body || {}),
+                signal: requestOptions && requestOptions.signal ? requestOptions.signal : undefined
             }, timeoutMs, `RPC ${rpcName}`);
             if (!response.ok) {
                 const error = new Error(await getResponseError(response, `${rpcName} failed (${response.status})`));
@@ -25851,47 +25870,359 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return evidence;
         }
 
-        async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false) {
+        function buildSecureDriveEvidenceBaseline(item = null) {
+            const row = item && typeof item === 'object' ? item : {};
+            const override = row.__driveEvidenceBaselineOverride;
+            if (override && typeof override === 'object') return { ...override };
+            return {
+                spec: firstNonEmptyValue(row.SPEC, row.spec, ''),
+                caliper: firstNonEmptyValue(row.CALIPER, row.caliper, ''),
+                match: firstNonEmptyValue(row.MATCH, row.match, ''),
+                loc_match_qty: firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, ''),
+                initial_ptr: firstNonEmptyValue(row.INITIAL_PTR, row.initial_ptr, ''),
+                av_note: firstNonEmptyValue(row.AV_NOTE, row.av_note, ''),
+                pick_note: firstNonEmptyValue(row.PICK, row.PIC_NOTE, row.pic_note, ''),
+                comments: firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.sales_note, ''),
+                photo_link: firstNonEmptyValue(row.SAVED_PHOTO_LINK, row.PHOTO_LINK, row.photo_link, ''),
+                photo_name: firstNonEmptyValue(row.SAVED_PHOTO_NAME, row.PHOTO_NAME, row.photo_name, '')
+            };
+        }
+
+        function normalizeDriveEvidenceComparable(value) {
+            return value === null || typeof value === 'undefined' ? '' : String(value);
+        }
+
+        function buildSecureDriveEvidencePatch(payload = {}, baseline = {}) {
+            const evidence = buildSecureDriveEvidencePayload(payload);
+            return Object.fromEntries(Object.entries(evidence).filter(([key, value]) => (
+                normalizeDriveEvidenceComparable(value) !== normalizeDriveEvidenceComparable(baseline && baseline[key])
+            )));
+        }
+
+        const DRIVE_EVIDENCE_TERMINAL_CONFLICT_CODES = new Set([
+            'DRIVE_ROW_STALE',
+            'DRIVE_COMPLETION_STALE',
+            'DRIVE_FIELD_CONFLICT',
+            'DRIVE_ROW_IDENTITY_CONFLICT',
+            'DRIVE_ROW_NOT_FOUND',
+            'IDEMPOTENCY_CONFLICT'
+        ]);
+        const driveEvidenceAbortControllers = new Map();
+        const driveEvidenceRemoteLeases = new Map();
+        const DRIVE_EVIDENCE_TAB_ID = `drive-tab-${createStableClientBatchId()}`;
+        const DRIVE_EVIDENCE_LEASE_PREFIX = 'gnc_drive_evidence_save_v2_';
+        let driveEvidenceBroadcastChannel = null;
+        try {
+            if (typeof BroadcastChannel === 'function') {
+                driveEvidenceBroadcastChannel = new BroadcastChannel('gnc-drive-evidence-save-v2');
+                driveEvidenceBroadcastChannel.addEventListener('message', (event) => {
+                    const data = event && event.data && typeof event.data === 'object' ? event.data : {};
+                    const uid = String(data.uid || '').trim();
+                    if (!uid || data.owner === DRIVE_EVIDENCE_TAB_ID) return;
+                    if (data.type === 'start') driveEvidenceRemoteLeases.set(uid, Date.now() + 45000);
+                    if (data.type === 'end') driveEvidenceRemoteLeases.delete(uid);
+                });
+            }
+        } catch (error) {
+            driveEvidenceBroadcastChannel = null;
+        }
+
+        window.addEventListener('storage', (event) => {
+            const key = String(event && event.key || '');
+            if (!key.startsWith(DRIVE_EVIDENCE_LEASE_PREFIX)) return;
+            const uid = key.slice(DRIVE_EVIDENCE_LEASE_PREFIX.length);
+            if (!uid) return;
+            if (!event.newValue) {
+                driveEvidenceRemoteLeases.delete(uid);
+                return;
+            }
+            try {
+                const lease = JSON.parse(event.newValue);
+                if (lease && lease.owner !== DRIVE_EVIDENCE_TAB_ID && Number(lease.until) > Date.now()) {
+                    driveEvidenceRemoteLeases.set(uid, Number(lease.until));
+                }
+            } catch (error) {}
+        });
+
+        function broadcastDriveEvidenceLease(type = '', uid = '') {
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return;
+            const storageKey = `${DRIVE_EVIDENCE_LEASE_PREFIX}${safeUid}`;
+            try {
+                if (type === 'start') localStorage.setItem(storageKey, JSON.stringify({ owner: DRIVE_EVIDENCE_TAB_ID, until: Date.now() + 45000 }));
+                if (type === 'end') {
+                    const current = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                    if (!current.owner || current.owner === DRIVE_EVIDENCE_TAB_ID) localStorage.removeItem(storageKey);
+                }
+            } catch (error) {}
+            if (!driveEvidenceBroadcastChannel) return;
+            try { driveEvidenceBroadcastChannel.postMessage({ type, uid: safeUid, owner: DRIVE_EVIDENCE_TAB_ID }); } catch (error) {}
+        }
+
+        function waitForDriveEvidenceRetry(delayMs = 250, signal = null) {
+            return new Promise((resolve, reject) => {
+                const safeDelay = Math.max(100, Math.min(1200, Number(delayMs) || 250)) + Math.floor(Math.random() * 120);
+                let abort = null;
+                const timer = setTimeout(() => {
+                    if (signal && abort) signal.removeEventListener('abort', abort);
+                    resolve();
+                }, safeDelay);
+                if (!signal) return;
+                abort = () => {
+                    clearTimeout(timer);
+                    const error = new Error('DRIVE_SAVE_ABORTED');
+                    error.code = 'DRIVE_SAVE_ABORTED';
+                    reject(error);
+                };
+                if (signal.aborted) abort();
+                else signal.addEventListener('abort', abort, { once: true });
+            });
+        }
+
+        async function runWithDriveEvidenceCrossTabLock(masterUid = '', runner = null) {
+            const uid = String(masterUid || '').trim();
+            if (!uid || typeof runner !== 'function') throw new Error('DRIVE_SAVE_CONTEXT_INVALID');
+            const lockName = `gnc-drive-evidence:${uid}`;
+            if (navigator.locks && typeof navigator.locks.request === 'function') {
+                return navigator.locks.request(lockName, { mode: 'exclusive' }, runner);
+            }
+            const waitStartedAt = Date.now();
+            while (true) {
+                let remoteUntil = Number(driveEvidenceRemoteLeases.get(uid) || 0);
+                try {
+                    const persistedLease = JSON.parse(localStorage.getItem(`${DRIVE_EVIDENCE_LEASE_PREFIX}${uid}`) || '{}');
+                    if (persistedLease.owner && persistedLease.owner !== DRIVE_EVIDENCE_TAB_ID) remoteUntil = Math.max(remoteUntil, Number(persistedLease.until) || 0);
+                } catch (error) {}
+                if (remoteUntil <= Date.now()) break;
+                if (Date.now() - waitStartedAt >= 5000) {
+                    const busy = new Error('Another app tab is saving this row. Your entry remains on this device.');
+                    busy.code = 'DRIVE_SAVE_BUSY_LOCAL';
+                    throw busy;
+                }
+                await waitForDriveEvidenceRetry(Math.min(600, remoteUntil - Date.now()));
+            }
+            broadcastDriveEvidenceLease('start', uid);
+            try {
+                return await runner();
+            } finally {
+                broadcastDriveEvidenceLease('end', uid);
+            }
+        }
+
+        function getDriveEvidenceConflictState(item = null) {
+            const row = item && typeof item === 'object' ? item : null;
+            if (!row) return null;
+            if (row.__driveEvidenceConflict && typeof row.__driveEvidenceConflict === 'object') return row.__driveEvidenceConflict;
+            const uid = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            const entry = uid ? getPendingEditsCache()[uid] : null;
+            return entry && entry.driveEvidenceConflict && typeof entry.driveEvidenceConflict === 'object'
+                ? entry.driveEvidenceConflict
+                : null;
+        }
+
+        function refreshDriveEvidenceConflictBanner(prefix = '', item = activeItem) {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const banner = document.getElementById(`${safePrefix}save-conflict`);
+            if (!banner) return;
+            const state = getDriveEvidenceConflictState(item);
+            banner.classList.toggle('hidden', !state);
+            const message = document.getElementById(`${safePrefix}save-conflict-message`);
+            if (!message || !state) return;
+            const fields = Array.isArray(state.conflictFields) ? state.conflictFields.filter(Boolean) : [];
+            const fieldText = fields.length ? ` Conflicting fields: ${fields.join(', ')}.` : '';
+            message.textContent = `Your entries are saved on this device.${fieldText} Review before retrying.`;
+        }
+
+        function setDriveEvidenceConflict(item = null, prefix = '', result = {}) {
+            if (!item) return;
+            const canonicalRow = result && result.row ? result.row : null;
+            const canonicalFormatted = canonicalRow
+                ? (formatFetchedRows([canonicalRow], 'ph_master_inventory')[0] || canonicalRow)
+                : null;
+            const state = {
+                code: String(result && result.code || 'DRIVE_FIELD_CONFLICT').trim().toUpperCase(),
+                conflictFields: Array.isArray(result && result.conflictFields) ? result.conflictFields.map((value) => String(value || '').trim()).filter(Boolean) : [],
+                canonicalSignature: String(firstNonEmptyValue(canonicalFormatted && canonicalFormatted.LAST_UPDATED, canonicalRow && canonicalRow.last_updated, '') || '').trim(),
+                canonicalBaseline: canonicalFormatted ? buildSecureDriveEvidenceBaseline(canonicalFormatted) : {},
+                parentToken: String(item.__driveEvidenceIdempotencyKey || '').trim(),
+                at: new Date().toISOString()
+            };
+            try {
+                Object.defineProperty(item, '__driveEvidenceConflict', { value: state, configurable: true, writable: true, enumerable: false });
+            } catch (error) {
+                item.__driveEvidenceConflict = state;
+            }
+            backupLocalItem(item);
+            const uid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
+            const pending = getPendingEditsCache();
+            if (uid && pending[uid]) {
+                pending[uid].autoRetryBlocked = true;
+                pending[uid].conflictType = 'drive-evidence';
+                pending[uid].driveEvidenceConflict = state;
+                flushPendingEditsCache(true);
+            }
+            refreshDriveEvidenceConflictBanner(prefix, item);
+            reportSemanticHealthEvent('drive_evidence_conflict', 'drive_save', state.code, { reason: 'retry_blocked' }, 'warning');
+        }
+
+        function clearDriveEvidenceConflict(item = null, prefix = '') {
+            if (!item) return;
+            try { delete item.__driveEvidenceConflict; } catch (error) { item.__driveEvidenceConflict = null; }
+            try { delete item.__driveEvidenceBaselineOverride; } catch (error) { item.__driveEvidenceBaselineOverride = null; }
+            delete item.__driveEvidenceIdempotencyKey;
+            delete item.__driveEvidenceIdempotencySignature;
+            const uid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
+            const pending = getPendingEditsCache();
+            if (uid && pending[uid]) {
+                pending[uid].autoRetryBlocked = false;
+                delete pending[uid].conflictType;
+                delete pending[uid].driveEvidenceConflict;
+                flushPendingEditsCache(true);
+            }
+            refreshDriveEvidenceConflictBanner(prefix, item);
+        }
+
+        async function reviewAndRetryDriveEvidence(prefix = '') {
+            const item = activeItem;
+            const state = getDriveEvidenceConflictState(item);
+            if (!item || !state) return false;
+            const proceed = await showAppConfirm('This row changed on another device. Keep your visible entries and retry them against the latest row?', {
+                title: 'Review Changed Row',
+                confirmLabel: 'Retry My Entries',
+                cancelLabel: 'Keep Reviewing'
+            });
+            if (!proceed) return false;
+            const baseline = state.canonicalBaseline && typeof state.canonicalBaseline === 'object' ? { ...state.canonicalBaseline } : {};
+            try {
+                Object.defineProperty(item, '__driveEvidenceBaselineOverride', { value: baseline, configurable: true, writable: true, enumerable: false });
+            } catch (error) {
+                item.__driveEvidenceBaselineOverride = baseline;
+            }
+            if (state.canonicalSignature) {
+                item.LAST_UPDATED = state.canonicalSignature;
+                item.last_updated = state.canonicalSignature;
+            }
+            clearDriveEvidenceConflict(item, prefix);
+            if (state.parentToken) item.__driveEvidenceRetryParentToken = String(state.parentToken).slice(0, 165);
+            try {
+                Object.defineProperty(item, '__driveEvidenceBaselineOverride', { value: baseline, configurable: true, writable: true, enumerable: false });
+            } catch (error) {
+                item.__driveEvidenceBaselineOverride = baseline;
+            }
+            await saveData(false, prefix, false);
+            return false;
+        }
+
+        function cancelDriveEvidenceSavesForItem(item = null, reason = 'navigation') {
+            const uid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
+            ['ssn-', 'lsn-', 'na-'].forEach(clearQueuedLagSensitiveInputSave);
+            if (!uid) return;
+            const coordinator = rowSaveCoordinatorState.get(`drive::${uid}`);
+            if (coordinator && coordinator.completionIntentUntil > Date.now()) return;
+            const controller = driveEvidenceAbortControllers.get(uid);
+            if (controller) {
+                try { controller.abort(reason); } catch (error) {}
+                driveEvidenceAbortControllers.delete(uid);
+            }
+        }
+
+        function cancelAllDriveEvidenceSaves(reason = 'navigation') {
+            ['ssn-', 'lsn-', 'na-'].forEach(clearQueuedLagSensitiveInputSave);
+            driveEvidenceAbortControllers.forEach((controller) => {
+                try { controller.abort(reason); } catch (error) {}
+            });
+            driveEvidenceAbortControllers.clear();
+            flushPendingEditsCache(true);
+        }
+
+        async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false, baselineInput = null) {
             if (!item || !SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
                 throw new Error('Secure Drive evidence context is invalid.');
+            }
+            const baseline = baselineInput && typeof baselineInput === 'object'
+                ? { ...baselineInput }
+                : buildSecureDriveEvidenceBaseline(item);
+            const evidencePatch = buildSecureDriveEvidencePatch(payload, baseline);
+            if (!isComplete && !Object.keys(evidencePatch).length) {
+                return { ok: true, code: 'NO_CHANGES', canonicalConfirmed: true, row: item, requestRows: [], noOp: true };
             }
             const evidenceSignature = JSON.stringify({
                 prefix: String(prefix || '').trim().toLowerCase(),
                 complete: !!isComplete,
-                evidence: buildSecureDriveEvidencePayload(payload)
+                expected: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
+                baseline,
+                evidence: evidencePatch
             });
             if (!item.__driveEvidenceIdempotencyKey || item.__driveEvidenceIdempotencySignature !== evidenceSignature) {
-                item.__driveEvidenceIdempotencyKey = `drive-${createStableClientBatchId()}`;
+                const parentToken = String(item.__driveEvidenceRetryParentToken || '').trim();
+                item.__driveEvidenceIdempotencyKey = parentToken
+                    ? `${parentToken.slice(0, 165)}-r1`
+                    : `drive-${createStableClientBatchId()}`;
                 item.__driveEvidenceIdempotencySignature = evidenceSignature;
+                delete item.__driveEvidenceRetryParentToken;
             }
             const masterUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
-            const result = await supabaseRpc('save_drive_evidence_v1', {
-                p_master_uid: masterUid,
-                p_expected_itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim(),
-                p_expected_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim(),
-                p_expected_lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim(),
-                p_expected_signature: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
-                p_evidence: buildSecureDriveEvidencePayload(payload),
-                p_complete: !!isComplete,
-                p_workflow: getSecureDriveEvidenceWorkflow(prefix),
-                p_idempotency_key: item.__driveEvidenceIdempotencyKey
-            }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) });
-            if (!result || result.ok !== true || result.canonicalConfirmed !== true || !result.row) {
-                throw new Error('DRIVE_SAVE_UNCONFIRMED');
+            const controller = new AbortController();
+            driveEvidenceAbortControllers.set(masterUid, controller);
+            try {
+                return await runWithDriveEvidenceCrossTabLock(masterUid, async () => {
+                    let lastError = null;
+                    for (let attempt = 0; attempt < 2; attempt += 1) {
+                        try {
+                            const result = await supabaseRpc('save_drive_evidence_v2', {
+                                p_master_uid: masterUid,
+                                p_expected_itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim(),
+                                p_expected_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim(),
+                                p_expected_lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim(),
+                                p_expected_signature: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
+                                p_baseline: baseline,
+                                p_evidence: evidencePatch,
+                                p_complete: !!isComplete,
+                                p_workflow: getSecureDriveEvidenceWorkflow(prefix),
+                                p_idempotency_key: item.__driveEvidenceIdempotencyKey
+                            }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000), signal: controller.signal });
+                            const code = String(result && result.code || '').trim().toUpperCase();
+                            if (result && result.ok === true && result.canonicalConfirmed === true && result.row) {
+                                delete item.__driveEvidenceIdempotencyKey;
+                                delete item.__driveEvidenceIdempotencySignature;
+                                try { delete item.__driveEvidenceBaselineOverride; } catch (error) { item.__driveEvidenceBaselineOverride = null; }
+                                clearDriveEvidenceConflict(item, prefix);
+                                return result;
+                            }
+                            if (code === 'DRIVE_SAVE_BUSY' && attempt === 0) {
+                                await waitForDriveEvidenceRetry(result && result.retryAfterMs, controller.signal);
+                                continue;
+                            }
+                            if (DRIVE_EVIDENCE_TERMINAL_CONFLICT_CODES.has(code)) {
+                                setDriveEvidenceConflict(item, prefix, result || { code });
+                                const conflictError = new Error(code || 'DRIVE_FIELD_CONFLICT');
+                                conflictError.code = code || 'DRIVE_FIELD_CONFLICT';
+                                conflictError.driveEvidenceConflict = true;
+                                throw conflictError;
+                            }
+                            const unconfirmedError = new Error(code || 'DRIVE_SAVE_UNCONFIRMED');
+                            unconfirmedError.code = code || 'DRIVE_SAVE_UNCONFIRMED';
+                            throw unconfirmedError;
+                        } catch (error) {
+                            lastError = error;
+                            if (error && (error.driveEvidenceConflict || error.code === 'DRIVE_SAVE_ABORTED' || error.code === 'REQUEST_ABORTED')) throw error;
+                            const status = Number(error && error.status || 0);
+                            const message = String(error && error.message || '').toUpperCase();
+                            const retryable = [408, 409, 429, 500, 502, 503, 504].includes(status)
+                                || message.includes('TIMED OUT')
+                                || message.includes('NETWORK')
+                                || message.includes('FAILED TO FETCH');
+                            if (!retryable || attempt > 0) break;
+                            await waitForDriveEvidenceRetry(300, controller.signal);
+                        }
+                    }
+                    const safeError = new Error('Drive evidence could not be saved. Retry when service is available.');
+                    safeError.code = String(lastError && lastError.code || 'DRIVE_SAVE_RETRYABLE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
+                    throw safeError;
+                });
+            } finally {
+                if (driveEvidenceAbortControllers.get(masterUid) === controller) driveEvidenceAbortControllers.delete(masterUid);
             }
-            const readBackRows = await fetchSupabasePage(
-                'ph_master_inventory',
-                `select=*&unique_id=eq.${encodeURIComponent(masterUid)}`,
-                1,
-                0
-            );
-            if (!Array.isArray(readBackRows) || !readBackRows[0]) {
-                throw new Error('DRIVE_SAVE_READBACK_UNCONFIRMED');
-            }
-            result.row = readBackRows[0];
-            delete item.__driveEvidenceIdempotencyKey;
-            delete item.__driveEvidenceIdempotencySignature;
-            return result;
         }
 
         const HEALTH_METADATA_KEYS = new Set([
@@ -29449,6 +29780,7 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         function queueLagSensitiveInputSave(prefix = '', inputId = '') {
             const safePrefix = String(prefix || '');
             if (!isLagSensitiveDetailPrefix(safePrefix) || !activeItem) return;
+            if (SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix) && getDriveEvidenceConflictState(activeItem)) return;
             const detailView = document.getElementById('view-detail');
             if (!detailView || detailView.classList.contains('hidden')) return;
             if (detailInputSaveTimers[safePrefix]) clearTimeout(detailInputSaveTimers[safePrefix]);
@@ -29509,7 +29841,9 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         function getRowSaveCoordinatorKey(prefix = '', item = null) {
             const row = item || activeItem;
             const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
-            return uniqueId ? `${String(prefix || '').trim()}::${uniqueId}` : '';
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            if (uniqueId && SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix)) return `drive::${uniqueId}`;
+            return uniqueId ? `${safePrefix}::${uniqueId}` : '';
         }
 
         function getRowSaveCoordinatorState(key = '') {
@@ -29590,7 +29924,7 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         }
 
 
-        window.addEventListener('input', (event) => {
+        function handleConsolidatedDetailEvidenceInput(event = null) {
             const target = event && event.target ? event.target : null;
             if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA')) return;
             if (isDetailMeasurementKeyboardInput(target)) {
@@ -29614,7 +29948,9 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
             if (!shouldUseDebouncedDetailInputSave(target.id)) return;
             const prefix = extractDetailPrefixFromInputId(target.id);
             if (prefix) queueLagSensitiveInputSave(prefix, target.id);
-        }, { passive: true });
+        }
+
+        window.addEventListener('input', handleConsolidatedDetailEvidenceInput, { passive: true });
 
         function invalidateAvNotesCommonNameIndex() {
             avNotesCommonNameIndexVersion = -1;
@@ -30946,7 +31282,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.04.02').trim() || 'V2026.09.04.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.04.03').trim() || 'V2026.09.04.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -54820,30 +55156,15 @@ function toggleDriveQuickRequestItem(domId) {
 
         function persistMasterAvRuleClearOps(ops = [], options = {}) {
             if (!Array.isArray(ops) || !ops.length) return [];
-            const opts = options || {};
-            const remoteOps = [];
-            const affectedItemCodes = new Set();
             ops.forEach((entry) => {
                 if (!entry || !entry.item || !entry.uniqueId) return;
-                const itemCode = getMasterItemCodeKey(entry.item);
-                if (itemCode) affectedItemCodes.add(itemCode);
                 syncRowDataAcrossViews(entry.item);
-                if (opts.skipRemote) return;
-                if (avRuleCleanupInFlight.has(entry.uniqueId)) return;
-                avRuleCleanupInFlight.add(entry.uniqueId);
-                const patchPromise = supabaseFetch('ph_master_inventory', 'PATCH', entry.payload, `unique_id=eq.${encodeURIComponent(entry.uniqueId)}`);
-                const combinedPromise = Promise.allSettled([patchPromise]).finally(() => {
-                    avRuleCleanupInFlight.delete(entry.uniqueId);
-                });
-                remoteOps.push(combinedPromise);
             });
-            if (affectedItemCodes.size) {
-                syncSeasonSalesOfficeStateForItemCodes(Array.from(affectedItemCodes), {
-                    skipRemote: !!opts.skipRemote,
-                    reason: 'master-av-rule-clear'
-                }).forEach((promise) => remoteOps.push(promise));
-            }
-            return remoteOps;
+            // Canonical AV invalidation is owned by the scheduled, service-role
+            // maintenance path. The browser may hide invalid evidence locally,
+            // but it must never retry a direct table write that RLS correctly
+            // rejects and thereby recreate the production request storm.
+            return [];
         }
 
         function processAndLoadData(res) {
@@ -99282,6 +99603,7 @@ function toggleDriveQuickRequestItem(domId) {
                 else calContainer.classList.add('hidden');
             }
             if (match) calculateMatchQty(safePrefix);
+            if (SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix)) refreshDriveEvidenceConflictBanner(safePrefix, item);
         }
 
         const DRIVE_ALT_LOC_ALL_VALUE = 'ALL';
@@ -101621,6 +101943,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function goBackFromDetail() {
             const detailBackStartedAt = beginInternalPerfMeasure();
+            cancelDriveEvidenceSavesForItem(activeItem, 'detail-back');
             teardownDetailPresentation('detail-back', { preserveDraft: false });
             clearPendingDetailHydration();
             detailHydrationToken += 1;
@@ -155067,6 +155390,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let didPreRenderRequestReturn = false;
                 let didSaveInventoryChecksDuringMarkDone = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
+                const secureDriveEvidenceBaseline = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
+                    ? buildSecureDriveEvidenceBaseline(itemToSave)
+                    : null;
                 const shouldReturnToCropRollAfterPhotoSpec = isComplete && isPendingCropRollPhotoSpecDoneReturn(prefix, itemToSave);
                 const queueVisibleSaveRefresh = (delay = 0) => {
                     const currentViewId = getCurrentVisibleViewId();
@@ -155905,6 +156231,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
 
                 const restoreFromFailedSave = (message) => {
+                    const driveConflict = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
+                        ? getDriveEvidenceConflictState(itemToSave)
+                        : null;
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
                     itemToSave.date_completed = previousDateCompleted;
                     itemToSave.REQ_STATUS = previousReqStatus;
@@ -155932,10 +156261,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
                     if (!isSilentAutoSave) showToast(
-                        prefix === 'req-' && isComplete ? 'Request Still Open' : 'Network Error',
+                        driveConflict ? 'Review Required' : (prefix === 'req-' && isComplete ? 'Request Still Open' : 'Network Error'),
                         prefix === 'req-' && isComplete
                             ? 'The request was not completed. Your entries are still here. Refresh the row and tap Mark Done again.'
-                            : (message || 'Could not reach database.'),
+                            : (driveConflict ? 'This row changed elsewhere. Your entries remain on this device; review them before retrying.' : (message || 'Could not reach database.')),
                         true
                     );
                 };
@@ -156316,7 +156645,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (nativeAuthSessionActive
                             && targetTable === 'ph_master_inventory'
                             && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
-                            const rpcResult = await saveSecureDriveEvidence(itemToSave, prefix, payload, isComplete);
+                            const rpcResult = await saveSecureDriveEvidence(itemToSave, prefix, payload, isComplete, secureDriveEvidenceBaseline);
                             const serverRow = formatFetchedRows([rpcResult.row], 'ph_master_inventory')[0] || rpcResult.row;
                             Object.assign(itemToSave, serverRow);
                             normalizeRowPhotoFields(itemToSave);
@@ -156380,6 +156709,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
                         else finalizeSave();
                     } catch (err) {
+                        if (err && (err.code === 'DRIVE_SAVE_ABORTED' || err.code === 'REQUEST_ABORTED')) return;
                         restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.');
                     }
                 };
@@ -156556,7 +156886,35 @@ ${folderNote ? `Folder Note: ${folderNote}
             for (let uid in pendingEdits) {
                 // Keep conflicted offline work recoverable, but never overlay it on
                 // a newer canonical request row or retry it automatically.
-                if (pendingEdits[uid] && pendingEdits[uid].autoRetryBlocked === true) continue;
+                if (pendingEdits[uid] && pendingEdits[uid].autoRetryBlocked === true) {
+                    const blockedEntry = pendingEdits[uid];
+                    const pendingData = blockedEntry && blockedEntry.data;
+                    if (blockedEntry.conflictType !== 'drive-evidence' || !pendingData) continue;
+                    const item = findPendingEditTarget(uid, pendingData);
+                    if (!item) continue;
+                    const canonicalSignature = String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim();
+                    const canonicalBaseline = buildSecureDriveEvidenceBaseline(item);
+                    Object.assign(item, pendingData);
+                    if (canonicalSignature) {
+                        item.LAST_UPDATED = canonicalSignature;
+                        item.last_updated = canonicalSignature;
+                    }
+                    const persistedConflict = blockedEntry.driveEvidenceConflict && typeof blockedEntry.driveEvidenceConflict === 'object'
+                        ? blockedEntry.driveEvidenceConflict
+                        : {};
+                    const conflictState = { ...persistedConflict, canonicalSignature, canonicalBaseline };
+                    try {
+                        Object.defineProperty(item, '__driveEvidenceBaselineOverride', { value: canonicalBaseline, configurable: true, writable: true, enumerable: false });
+                        Object.defineProperty(item, '__driveEvidenceConflict', { value: conflictState, configurable: true, writable: true, enumerable: false });
+                    } catch (error) {
+                        item.__driveEvidenceBaselineOverride = canonicalBaseline;
+                        item.__driveEvidenceConflict = conflictState;
+                    }
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    syncRowDataAcrossViews(item);
+                    continue;
+                }
                 const pendingData = pendingEdits[uid] && pendingEdits[uid].data;
                 const maxPendingAge = isRequestLikeLocalEditRow(pendingData) ? 30 * 24 * 60 * 60 * 1000 : 900000;
                 if (now - pendingEdits[uid].timestamp > maxPendingAge) { delete pendingEdits[uid]; changed = true; continue; }
@@ -157134,6 +157492,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 || window.backgroundRefreshInFlight
                 || window.googleScriptRunInFlight
                 || window.pendingRequestArchiveFlushInFlight
+                || (typeof driveEvidenceAbortControllers !== 'undefined' && driveEvidenceAbortControllers.size)
             );
             const shouldDeferShellReload = (targetBuild = shellBuild, reason = 'sw-shell-reload') => {
                 const safeTargetBuild = String(targetBuild || shellBuild || '').trim() || shellBuild;
@@ -157183,6 +157542,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 } catch (e) {}
                 if (safeTargetBuild === shellBuild && hasReloadedCurrentShell()) return false;
                 if (safeTargetBuild === shellBuild) markReloadedCurrentShell();
+                if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
                 try {
                     const nextUrl = new URL(window.location.href);
                     nextUrl.searchParams.set(shellQueryParam, safeTargetBuild);
@@ -157260,6 +157620,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
                 if (hasReloadedCurrentShell()) return;
                 markReloadedCurrentShell();
+                if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
                 try {
                     const nextUrl = new URL(window.location.href);
                     nextUrl.searchParams.set(shellQueryParam, safeTargetBuild);

@@ -44,8 +44,9 @@ test('Drive evidence RPC is Admin-only, exact-row, stale-safe, and field-limited
 });
 
 test('Native Auth Drive saves and protected photos cannot fall back to direct Storage', () => {
-  assert.match(html, /saveSecureDriveEvidence\(itemToSave, prefix, payload, isComplete\)/);
-  assert.match(html, /supabaseRpc\('save_drive_evidence_v1'/);
+  assert.match(html, /saveSecureDriveEvidence\(itemToSave, prefix, payload, isComplete, secureDriveEvidenceBaseline\)/);
+  assert.match(html, /supabaseRpc\('save_drive_evidence_v2'/);
+  assert.match(html, /p_baseline: baseline/);
   assert.match(html, /p_master_uid:[\s\S]*p_expected_itemcode:[\s\S]*p_expected_locationcode:[\s\S]*p_expected_lotcode:/);
   assert.match(html, /PROTECTED_DRIVE_PHOTO_PREFIXES\.has[\s\S]*throw \(secureUploadError/);
   assert.match(html, /masterUid:[\s\S]*itemCode:[\s\S]*locationCode:[\s\S]*lotCode:/);

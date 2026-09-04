@@ -53,7 +53,7 @@ test('Eval Work accepts advisory assignment drift but retains current server fil
   assert.doesNotMatch(observability, /String\(value instanceof Error \? value\.name : value/);
 });
 
-test('Drive evidence save is canonical, linked, timestamped, idempotent, and read back', () => {
+test('Drive evidence save is canonical, linked, timestamped, idempotent, and returned without a redundant read', () => {
   const save = migration.slice(
     migration.indexOf('create or replace function public.save_drive_evidence_v1'),
     migration.indexOf('create or replace function public.get_request_drive_evidence_health_snapshot_v1')
@@ -69,7 +69,9 @@ test('Drive evidence save is canonical, linked, timestamped, idempotent, and rea
   assert.match(migration, /get_request_drive_evidence_health_snapshot_v1/);
   assert.match(migration, /repair_request_drive_evidence_v1/);
   assert.match(migration, /skipped_newer_count/);
-  assert.match(html, /DRIVE_SAVE_READBACK_UNCONFIRMED/);
+  assert.match(html, /supabaseRpc\('save_drive_evidence_v2'/);
+  const clientSave = html.slice(html.indexOf('async function saveSecureDriveEvidence'), html.indexOf('const HEALTH_METADATA_KEYS'));
+  assert.doesNotMatch(clientSave, /fetchSupabasePage\(/);
   assert.match(html, /discardPendingLocalEdits\(\[itemToSave\.UNIQUE_ID\], true\)/);
   assert.match(html, /canonicalRequestRows/);
 });

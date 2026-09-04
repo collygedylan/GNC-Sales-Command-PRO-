@@ -90,6 +90,7 @@ let evalWorkCreationHealth = null;
 let evalWorkAssignmentBatchHealth = null;
 let evalItemcodeWorkHealth = null;
 let requestDriveEvidenceHealth = null;
+let driveEvidenceSaveHealth = null;
 let seasonSalesOfficeHealth = null;
 let codexOpsHealth = null;
 let boundedMaintenance = null;
@@ -414,6 +415,35 @@ if (serviceRoleKey) {
     recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0)
   });
 
+  const driveEvidenceSaveHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_drive_evidence_save_health_v2`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: '{}'
+  }, 30000);
+  const driveEvidenceSaveHealthText = await driveEvidenceSaveHealthResponse.text();
+  try { driveEvidenceSaveHealth = driveEvidenceSaveHealthText ? JSON.parse(driveEvidenceSaveHealthText) : null; } catch {}
+  if (!driveEvidenceSaveHealthResponse.ok || !driveEvidenceSaveHealth || typeof driveEvidenceSaveHealth !== 'object') {
+    throw new Error(`production_drive_evidence_save_health_unavailable_HTTP_${driveEvidenceSaveHealthResponse.status}`);
+  }
+  const driveEvidenceOutcomes = driveEvidenceSaveHealth.outcomes && typeof driveEvidenceSaveHealth.outcomes === 'object'
+    ? driveEvidenceSaveHealth.outcomes
+    : {};
+  const recentUniqueConflicts = ['DRIVE_ROW_STALE', 'DRIVE_COMPLETION_STALE', 'DRIVE_FIELD_CONFLICT', 'DRIVE_ROW_IDENTITY_CONFLICT']
+    .reduce((total, code) => total + Math.max(0, Number(driveEvidenceOutcomes[code]) || 0), 0);
+  const driveEvidenceSaveHealthy = driveEvidenceSaveHealth.contractVersion === 'drive-evidence-save-health-v2'
+    && driveEvidenceSaveHealth.healthy === true
+    && Number(driveEvidenceSaveHealth.lockWaits) === 0
+    && Number(driveEvidenceSaveHealth.activeSaveSessions) <= 10
+    && recentUniqueConflicts <= 25;
+  if (!driveEvidenceSaveHealthy) throw new Error('production_drive_evidence_retry_storm_detected');
+  checks.push({
+    name: 'drive_evidence_save_health_v2',
+    status: driveEvidenceSaveHealthResponse.status,
+    activeSaveSessions: Math.max(0, Number(driveEvidenceSaveHealth.activeSaveSessions) || 0),
+    lockWaits: Math.max(0, Number(driveEvidenceSaveHealth.lockWaits) || 0),
+    recentUniqueConflicts
+  });
+
   const seasonSalesHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_season_sales_office_health_v1`, {
     method: 'POST',
     headers: serviceHeaders,
@@ -586,6 +616,13 @@ const result = {
     recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0),
     evidenceMismatchCount: Math.max(0, Number(requestDriveEvidenceHealth.evidence_mismatch_count) || 0)
   } : null,
+  driveEvidenceSave: driveEvidenceSaveHealth ? {
+    contractVersion: String(driveEvidenceSaveHealth.contractVersion || ''),
+    recentUniqueTokens: Math.max(0, Number(driveEvidenceSaveHealth.recentUniqueTokens) || 0),
+    activeSaveSessions: Math.max(0, Number(driveEvidenceSaveHealth.activeSaveSessions) || 0),
+    lockWaits: Math.max(0, Number(driveEvidenceSaveHealth.lockWaits) || 0),
+    outcomes: driveEvidenceSaveHealth.outcomes && typeof driveEvidenceSaveHealth.outcomes === 'object' ? driveEvidenceSaveHealth.outcomes : {}
+  } : null,
   seasonSalesOffice: seasonSalesOfficeHealth ? {
     openStates: Math.max(0, Number(seasonSalesOfficeHealth.openStates) || 0),
     doneStates: Math.max(0, Number(seasonSalesOfficeHealth.doneStates) || 0),
@@ -617,6 +654,6 @@ process.stdout.write(`${JSON.stringify(result)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Bounded maintenance: ${result.boundedMaintenance?.status || 'not required'}\n- Pikes assignments: ${result.pikesAssignments ? `${result.pikesAssignments.inventoryRowCount} rows, ${result.pikesAssignments.falseUnassignedCount} false unassigned` : 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- Eval Reports #2 assignment email: ${result.evalWorkAssignmentBatch ? `${result.evalWorkAssignmentBatch.contractVersion}, grouped ${result.evalWorkAssignmentBatch.createGrouped}` : 'secure check skipped'}\n- ITEMCODE-wide Eval Work: ${result.evalItemcodeWork ? `${result.evalItemcodeWork.contractVersion}, ${result.evalItemcodeWork.scopedAssignmentCount} scoped assignments, largest ${result.evalItemcodeWork.largestOriginCount} rows` : 'secure check skipped'}\n- Season Sales Notes: ${result.seasonSalesOffice ? `${result.seasonSalesOffice.openStates} open winners, ${result.seasonSalesOffice.mirrorCount} staged, parity ${result.seasonSalesOffice.parity}` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
+    `## Production health\n\n- Status: healthy\n- App shell: ${liveRelease}\n- Apps Script lifecycle policy: ${result.appsScript ? `${result.appsScript.policyVersion} (${result.appsScript.requiredRecipientCount} required recipients, commit ${result.appsScript.commit})` : 'not required'}\n- Login bridge/Data API: HTTP 200 expected mismatch\n- Delivery: ${result.delivery ? `${result.delivery.delivered} delivered, ${result.delivery.failed} failed` : 'secure check skipped'}\n- Request integrity: ${result.requestIntegrity?.healthCode || 'secure check skipped'}\n- Drive evidence saves: ${result.driveEvidenceSave ? `${result.driveEvidenceSave.activeSaveSessions} active, ${result.driveEvidenceSave.lockWaits} lock waits, ${result.driveEvidenceSave.recentUniqueTokens} recent tokens` : 'secure check skipped'}\n- Bounded maintenance: ${result.boundedMaintenance?.status || 'not required'}\n- Pikes assignments: ${result.pikesAssignments ? `${result.pikesAssignments.inventoryRowCount} rows, ${result.pikesAssignments.falseUnassignedCount} false unassigned` : 'secure check skipped'}\n- PO Management: ${result.poManagement ? `${result.poManagement.rowCount} rows, ${result.poManagement.contractVersion}` : 'secure check skipped'}\n- Access Control: ${result.accessControl ? `${result.accessControl.permissionCount} permissions, ${result.accessControl.legacyMismatchCount} legacy mismatches, ${result.accessControl.enforcementMode}` : 'secure check skipped'}\n- Eval/Request delivery V2: ${result.evalRequestDelivery ? `${result.evalRequestDelivery.contractVersion}, ${result.evalRequestDelivery.requiredManagerRecipientCount} locked manager recipients` : 'secure check skipped'}\n- Eval Reports #2 assignment email: ${result.evalWorkAssignmentBatch ? `${result.evalWorkAssignmentBatch.contractVersion}, grouped ${result.evalWorkAssignmentBatch.createGrouped}` : 'secure check skipped'}\n- ITEMCODE-wide Eval Work: ${result.evalItemcodeWork ? `${result.evalItemcodeWork.contractVersion}, ${result.evalItemcodeWork.scopedAssignmentCount} scoped assignments, largest ${result.evalItemcodeWork.largestOriginCount} rows` : 'secure check skipped'}\n- Season Sales Notes: ${result.seasonSalesOffice ? `${result.seasonSalesOffice.openStates} open winners, ${result.seasonSalesOffice.mirrorCount} staged, parity ${result.seasonSalesOffice.parity}` : 'secure check skipped'}\n- Recent semantic failures: ${result.recentSemanticFailureCount}\n- Duration: ${result.durationMs} ms\n`
   );
 }
