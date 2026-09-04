@@ -15,7 +15,7 @@ select ok(not has_function_privilege('authenticated', 'public.get_drive_evidence
 select ok(has_function_privilege('service_role', 'public.get_drive_evidence_save_health_v2()', 'execute'), 'service role can read sanitized save health');
 select ok(pg_get_functiondef('private.save_drive_evidence_core_v2(text,text,text,text,text,jsonb,jsonb,boolean,text,text,boolean,text)'::regprocedure) like '%pg_try_advisory_xact_lock%', 'save path uses try-locks');
 select ok(pg_get_functiondef('private.save_drive_evidence_core_v2(text,text,text,text,text,jsonb,jsonb,boolean,text,text,boolean,text)'::regprocedure) not like '%FOR UPDATE%', 'save path never queues on a row lock');
-select ok(pg_get_functiondef('private.save_drive_evidence_core_v2(text,text,text,text,text,jsonb,jsonb,boolean,text,text,boolean,text)'::regprocedure) like '%last_updated IS NOT DISTINCT FROM v_row.last_updated%', 'save path uses a conditional atomic update');
+select ok(pg_get_functiondef('private.save_drive_evidence_core_v2(text,text,text,text,text,jsonb,jsonb,boolean,text,text,boolean,text)'::regprocedure) ilike '%last_updated is not distinct from v_row.last_updated%', 'save path uses a conditional atomic update');
 select is((public.get_drive_evidence_save_health_v2()->>'contractVersion')::text, 'drive-evidence-save-health-v2', 'health contract is versioned');
 
 select * from finish();
