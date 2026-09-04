@@ -61,6 +61,96 @@ for (const width of [390, 1280]) {
   });
 }
 
+test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to LocationCode without rebuilding Managers', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=eval2-block-location-performance&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).refreshManagerEvalReport2BrowseRegion === 'function');
+  const setup = await page.evaluate(() => window.eval(`(() => {
+    installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN');
+    canViewManagerEvalReports2 = () => true;
+    isEvalWorkManagerUser = () => true;
+    loadManagerEvalReports2 = () => Promise.resolve(null);
+    setHomeTab('eval-reports-2');
+    managersSearchTerm = '';
+    processAndLoadData({ data: [
+      { UNIQUE_ID:'drill-a1', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', COMMONNAME:'Alpha One', CONTSIZE:'#3', SEASON:'U1', SALEYEAR:27, PRIORITY:'', S_LTS:20, BLOCKALPHA:'A', LOCATIONCODE:'A.01.001', LOTCODE:'27.U1', PTRONHAND:20, PTRAVAILABLE:18 },
+      { UNIQUE_ID:'drill-a2', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', COMMONNAME:'Alpha One', CONTSIZE:'#3', SEASON:'U2', SALEYEAR:27, PRIORITY:'', S_LTS:15, BLOCKALPHA:'A', LOCATIONCODE:'A.02.001', LOTCODE:'27.U2', PTRONHAND:15, PTRAVAILABLE:15 },
+      { UNIQUE_ID:'drill-b1', ITEMCODE:'DRILL.B1', GENUSNAME:'Thuja', COMMONNAME:'Beta One', CONTSIZE:'#7', SEASON:'U2', SALEYEAR:27, PRIORITY:'', S_LTS:12, BLOCKALPHA:'B', LOCATIONCODE:'B.01.001', LOTCODE:'27.U2', PTRONHAND:12, PTRAVAILABLE:11 }
+    ], warehouseAssignedItemsData: [
+      { UNIQUE_ID:'assign-drill-a1', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+      { UNIQUE_ID:'assign-drill-b1', ITEMCODE:'DRILL.B1', GENUSNAME:'Thuja', ASSIGNEDTO:'dylan_collyge' }
+    ], _fromCache:true });
+    for (const name of ['master','warehouseAssignedItems']) { getDatasetState(name).initialLoaded = getDatasetState(name).fullLoaded = true; }
+    invalidateManagerEvalReport2Cache();
+    setManagerEvalReport2Reports(['u1','u2']);
+    setManagerEvalReport2BrowseMode('plant');
+    resetManagerEvalReport2Drill();
+    setManagerEvalReport2Filter('season', 'all');
+    setManagerEvalReport2Filter('contsize', 'all');
+    setManagerEvalReport2Filter('locationcode', 'all');
+    setManagerEvalReport2Filter('priority', 'all');
+    setManagerEvalReport2Filter('assignedto', 'all');
+    clearManagerEvalReport2Selection(true);
+    Array.from(document.querySelectorAll('#manager-eval-report-2-browse-region')).forEach((node, index) => { node.id = 'eval2-existing-browse-' + index; });
+    Array.from(document.querySelectorAll('#manager-eval-report-2-records')).forEach((node, index) => { node.id = 'eval2-existing-records-' + index; });
+    const host = document.createElement('div');
+    host.id = 'eval2-block-location-host';
+    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:390px;overflow:auto;background:white;';
+    host.innerHTML = renderManagerEvalReport2ReportsPanel();
+    document.body.appendChild(host);
+    renderManagerEvalReport2Records();
+    window.eval2FullManagerRenderCount = 0;
+    renderManagers = () => { window.eval2FullManagerRenderCount += 1; };
+    return {
+      initialCards:host.querySelectorAll('.manager-eval2-item-card').length,
+      visibleGroups:getManagerEvalReport2VisibleItemGroups().map((group) => group.itemCode),
+      reportIds:getManagerEvalReport2SelectedReportIds()
+    };
+  })()`));
+  expect(setup).toMatchObject({ initialCards:2, visibleGroups:['DRILL.A1','DRILL.B1'], reportIds:['u1','u2'] });
+
+  const host = page.locator('#eval2-block-location-host');
+  await host.locator('#manager-eval-report-2-view-location').click();
+  await expect(host.locator('#manager-eval-report-2-view-location')).toHaveAttribute('aria-pressed', 'true');
+  await expect(host.locator('[data-manager-eval2-drill-kind="blockalpha"]')).toHaveCount(2);
+  await expect(host).toContainText('Block Alpha');
+  await host.locator('[data-manager-eval2-drill-kind="blockalpha"][data-manager-eval2-drill-value="A"]').click();
+  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(2);
+  await expect(host).toContainText('A.01.001');
+  await expect(host).toContainText('A.02.001');
+  await expect(host).not.toContainText('B.01.001');
+  await host.locator('[data-manager-eval2-drill-kind="locationcode"][data-manager-eval2-drill-value="A.01.001"]').click();
+  await expect(host.locator('.manager-eval2-item-card')).toHaveCount(1);
+  await expect(host).toContainText('Alpha One');
+  await host.locator('[data-role="manager-eval2-selection-toggle"]').click();
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
+  await host.getByRole('button', { name:'Back' }).click();
+  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(2);
+  await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
+  await expect(host.locator('#manager-eval-report-2-report-select')).toContainText('U1 + U2');
+
+  const performanceState = await page.evaluate(() => window.eval(`(() => {
+    const before = window.eval2FullManagerRenderCount;
+    refreshManagerEvalReport2BrowseRegion({ fallbackToFullRender:true });
+    return {
+      fullManagerRenders:window.eval2FullManagerRenderCount - before,
+      reportIds:getManagerEvalReport2SelectedReportIds(),
+      assignedUsers:getManagerEvalAssignedUsers('eval2'),
+      seasonValues:Array.from(new Set(getManagerEvalReport2RowsBeforeCommonName().map(getManagerEvalReportRowSeason))),
+      selection:getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode)
+    };
+  })()`));
+  expect(performanceState).toEqual({
+    fullManagerRenders:0,
+    reportIds:['u1','u2'],
+    assignedUsers:[],
+    seasonValues:['U1','U2'],
+    selection:['DRILL.A1'],
+  });
+  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(2);
+  expect(await host.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+});
+
 test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });

@@ -572,7 +572,12 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /manager-eval2-drive-filter-grid/);
   assert.match(html, /manager-eval2-drive-group-card/);
   assert.match(html, /manager-eval2-drive-crumb/);
-  assert.match(html, /Eval Reports #2 > \$\{reportLabel\} > \$\{userLabel\} > ITEMCODEs/);
+  assert.match(html, /function getManagerEvalReport2BrowseCrumbText\(\)/);
+  assert.match(html, /return `\$\{root\} > ITEMCODEs`/);
+  assert.match(html, /return `\$\{root\} > \$\{blockLabel\} > LocationCode`/);
+  assert.match(html, /id="manager-eval-report-2-view-itemcodes"/);
+  assert.match(html, /id="manager-eval-report-2-view-location"/);
+  assert.match(html, /function refreshManagerEvalReport2BrowseRegion\(options = \{\}\)/);
   assert.match(html, /moduleFreeze\.classList\.toggle\('hidden', driveAroundLayout\)/);
   assert.match(html, /const accessibleTitle = '<h2 class="sr-only">Eval Reports #2<\/h2>'/);
   assert.match(html, /managerEvalReport2Cache\.rowsByItemCode = new Map\(\)/);

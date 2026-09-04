@@ -1031,30 +1031,35 @@ test('Eval Reports #2 manager search refreshes while the search field remains ac
     const originalCanView = canViewManagerEvalReports2;
     const originalLoad = loadManagerEvalReports2;
     const originalHomeRender = renderHomeOrManagersNow;
+    const originalRegionRefresh = refreshManagerEvalReport2BrowseRegion;
     const input = document.getElementById('managers-search');
     let renderCalls = 0;
+    let regionRefreshCalls = 0;
     try {
       canViewManagerEvalReports2 = () => true;
       loadManagerEvalReports2 = () => Promise.resolve();
       renderHomeOrManagersNow = () => false;
       setHomeTab('eval-reports-2');
       renderManagers = () => { renderCalls += 1; };
+      refreshManagerEvalReport2BrowseRegion = () => { regionRefreshCalls += 1; return true; };
       input.value = 'Karl';
       input.focus();
       handleManagersSearch();
       await new Promise((resolve) => setTimeout(resolve, 450));
-      return { term: input.value, renderCalls };
+      return { term: input.value, renderCalls, regionRefreshCalls };
     } finally {
       renderManagers = originalRender;
       canViewManagerEvalReports2 = originalCanView;
       loadManagerEvalReports2 = originalLoad;
       renderHomeOrManagersNow = originalHomeRender;
+      refreshManagerEvalReport2BrowseRegion = originalRegionRefresh;
       input.value = '';
     }
   })()`));
 
   expect(result.term).toBe('Karl');
-  expect(result.renderCalls).toBeGreaterThan(0);
+  expect(result.renderCalls).toBe(0);
+  expect(result.regionRefreshCalls).toBeGreaterThan(0);
 });
 
 test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {

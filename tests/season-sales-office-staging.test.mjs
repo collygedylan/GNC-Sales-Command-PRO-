@@ -104,7 +104,7 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Needs Photo\/Data/);
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
-  assert.match(html, /V2026\.09\.04\.11/);
+  assert.match(html, /V2026\.09\.04\.12/);
 });
 
 test('Season Sales Notes cards show an immutable authoritative arrival timestamp', () => {
