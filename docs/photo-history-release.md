@@ -1,6 +1,10 @@
-# Dylan-only Photo History — V2026.09.04.05
+# Dylan-only Photo History — V2026.09.04.06
 
 Entry: **Sales → Photo History**, visible only to Dylan. The authenticated App API independently resolves the active profile; the service-only RPC checks `dylan_collyge` again. No browser access to catalog, delivery records or arbitrary Storage paths is granted.
+
+## Required-copy repair (.06)
+
+The initial production share was successfully delivered to its selected sales rep, but the original contract did not include Dylan or JD. Future V2 shares require both active, unlocked, verified profiles and deduplicate their addresses with the selected rep. The signed Apps Script handler accepts V1 for already-queued events and validates both mandatory V2 copies. Existing delivered messages are not altered or resent. Delivery notices show the copies only when the frozen V2 payload actually includes them. Apps Script/worker V2 support is deployed before activating the new database contract, then the synchronized .06 shell.
 
 ## Behavior
 

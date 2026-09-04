@@ -143,7 +143,7 @@ async function callAppsScript(event: JsonRecord, rows: unknown[], thread: unknow
   const signature = await hmacSignature(timestamp, signedBody);
   const controller = new AbortController();
   const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
-  const timeoutMs = ["eval-work-assignment-batch-v1", "photo-history-share-v1"].includes(String(payload.contractVersion || "")) ? 120000 : 45000;
+  const timeoutMs = ["eval-work-assignment-batch-v1", "photo-history-share-v1", "photo-history-share-v2"].includes(String(payload.contractVersion || "")) ? 120000 : 45000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {

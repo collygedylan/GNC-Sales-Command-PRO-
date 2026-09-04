@@ -95,8 +95,8 @@ test('hosted health fails on retry-storm thresholds and the isolated CI includes
   assert.match(performanceWorkflow, /drive_evidence_retry_storm_test\.sql/);
 });
 
-test('all shell references release V2026.09.04.05', () => {
-  assert.match(html, /window\.__APP_SHELL_VERSION__ = 'V2026\.09\.04\.05'/);
+test('all shell references release V2026.09.04.06', () => {
+  assert.match(html, /window\.__APP_SHELL_VERSION__ = 'V2026\.09\.04\.06'/);
   assert.doesNotMatch(html, /V2026\.09\.04\.02/);
 });
 

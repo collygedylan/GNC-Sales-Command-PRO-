@@ -103,7 +103,7 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Needs Photo\/Data/);
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
-  assert.match(html, /V2026\.09\.04\.05/);
+  assert.match(html, /V2026\.09\.04\.06/);
 });
 
 test('hosted database checks reproduce the protected legacy Sales Office dependency', () => {

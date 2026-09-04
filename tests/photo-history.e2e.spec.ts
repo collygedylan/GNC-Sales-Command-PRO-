@@ -62,6 +62,7 @@ test('selection survives searches, native input keeps focus and explicit open fe
 
 test('single email submission uses IDs only and an interrupted retry keeps the same token',async({page})=>{
   await setup(page);
+  await expect(page.locator('.phg-tray')).toContainText('Dylan and JD are included automatically with the selected sales rep');
   await page.getByRole('checkbox').nth(0).check();await page.getByRole('checkbox').nth(1).check();
   await page.locator('#phg-recipientId').selectOption('rep1');await page.locator('#phg-message-input').fill('Historical choices');
   await page.evaluate(()=>{(window as any).failSend=true;});

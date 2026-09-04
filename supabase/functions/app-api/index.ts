@@ -598,6 +598,7 @@ async function handlePhotoHistoryAction(
     const raw = String(error instanceof Error ? error.message : '');
     const codes: Record<string, string> = {
       PHOTO_HISTORY_RECIPIENT_UNAVAILABLE: 'This sales rep is not available. Choose another verified sales rep.',
+      PHOTO_HISTORY_REQUIRED_COPY_UNAVAILABLE: 'Dylan and JD must both have active accounts with verified email addresses. Your photos are retained; no email was sent.',
       PHOTO_HISTORY_ASSET_UNAVAILABLE: 'A selected photo is no longer available. Review your selection.',
       PHOTO_HISTORY_PREVIEW_UNAVAILABLE: 'Thumbnail unavailable. Retry or explicitly open the archived photo.',
       PHOTO_HISTORY_TOKEN_CONFLICT: 'This send was already saved with different selections. Review before sending again.',

@@ -27,6 +27,14 @@ begin
   assert (select photo_count from public.ph_photo_history_shares where event_id=ev)=1;
   assert (select payload->>'actorUsername' from public.ph_request_delivery_outbox where event_id=ev)='dylan_collyge';
   assert (select payload->'recipientEmails' from public.ph_request_delivery_outbox where event_id=ev)<>jsonb_build_array('untrusted@example.invalid');
+  assert (select payload->>'contractVersion' from public.ph_request_delivery_outbox where event_id=ev)='photo-history-share-v2';
+  assert (select jsonb_array_length(payload->'requiredCopies') from public.ph_request_delivery_outbox where event_id=ev)=2;
+  assert (select array_agg(c->>'username' order by c->>'username') from public.ph_request_delivery_outbox o,
+    lateral jsonb_array_elements(o.payload->'requiredCopies')c where o.event_id=ev)=array['dylan_collyge','jd_jones'];
+  assert not exists(select 1 from public.ph_request_delivery_outbox o,
+    lateral jsonb_array_elements(o.payload->'requiredCopies')c where o.event_id=ev and not (o.payload->'recipientEmails' ? (c->>'email')));
+  assert (select jsonb_array_length(payload->'recipientEmails') from public.ph_request_delivery_outbox where event_id=ev)=
+    (select count(distinct x) from public.ph_request_delivery_outbox o,lateral jsonb_array_elements_text(o.payload->'recipientEmails')x where o.event_id=ev);
   assert (select jsonb_array_length(payload->'photos') from public.ph_request_delivery_outbox where event_id=ev)=1;
   begin
     perform public.photo_history_gallery_v1(actor,'send',packet||jsonb_build_object('message','changed'));

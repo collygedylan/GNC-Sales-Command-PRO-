@@ -15724,11 +15724,23 @@ function photoHistoryEmailImage_(photo) {
 
 function handleSignedPhotoHistoryShare_(delivery) {
   const payload = delivery.payload || {};
-  if (payload.contractVersion !== 'photo-history-share-v1' || payload.actorUsername !== 'dylan_collyge'
+  if (['photo-history-share-v1', 'photo-history-share-v2'].indexOf(payload.contractVersion) < 0 || payload.actorUsername !== 'dylan_collyge'
       || !payload.shareId || !Array.isArray(payload.photos) || payload.photos.length < 1 || payload.photos.length > 20
       || !delivery.messageIdHeader) throw new Error('PHOTO_HISTORY_VALIDATION');
   const recipients = dedupeEmailAddresses_([payload.recipientEmails]);
-  if (recipients.length !== 1) throw new Error('PHOTO_HISTORY_VALIDATION');
+  if (payload.contractVersion === 'photo-history-share-v1') {
+    // Already-queued V1 shares retain their original frozen recipients.
+    if (recipients.length !== 1) throw new Error('PHOTO_HISTORY_VALIDATION');
+  } else {
+    const copies = Array.isArray(payload.requiredCopies) ? payload.requiredCopies : [];
+    const names = copies.map(function(copy) { return String(copy.username || ''); }).sort();
+    const expected = dedupeEmailAddresses_([payload.selectedRecipientEmail, copies.map(function(copy) { return copy.email; })]).sort();
+    if (names.join(',') !== 'dylan_collyge,jd_jones' || !payload.selectedRecipientEmail
+        || copies.some(function(copy) { return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(copy.email || '')); })
+        || recipients.length < 1 || recipients.length > 3 || recipients.slice().sort().join(',') !== expected.join(',')) {
+      throw new Error('PHOTO_HISTORY_VALIDATION');
+    }
+  }
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) throw new Error('REQUEST_DELIVERY_BUSY');
   try {

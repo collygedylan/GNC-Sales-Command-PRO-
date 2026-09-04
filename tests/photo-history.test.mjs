@@ -6,6 +6,7 @@ import ts from 'typescript';
 
 const read = path => fs.readFileSync(new URL('../'+path, import.meta.url),'utf8');
 const sql = read('supabase/migrations/20260904142737_dylan_photo_history_gallery_v1.sql');
+const copiesSql = read('supabase/migrations/20260904150357_photo_history_required_copies_v2.sql');
 const edge = read('supabase/functions/app-api/index.ts');
 const ui = read('assets/photo-history-v2026090401.js');
 const gs = read('Code.gs');
@@ -90,4 +91,37 @@ test('failed photo prevents the entire email, without a partial send or original
   assert.equal(sent.length,0);
   const code=gs.slice(gs.indexOf('function photoHistoryEmailImage_'),gs.indexOf('function handleSignedPhotoHistoryShare_'));
   assert.match(code,/width=640&quality=62&resize=contain/);assert.doesNotMatch(code,/getFileById.*getBlob/);
+});
+
+test('new sends resolve both required copies on the server and never rewrite old deliveries',()=>{
+  assert.match(copiesSql,/in \('dylan_collyge','jd_jones'\)/);
+  assert.match(copiesSql,/jsonb_array_length\(required_copies\),0\)<>2/);
+  assert.match(copiesSql,/PHOTO_HISTORY_REQUIRED_COPY_UNAVAILABLE/);
+  assert.match(copiesSql,/u.email_confirmed_at is not null/);
+  assert.match(copiesSql,/'contractVersion','photo-history-share-v2'/);
+  assert.match(copiesSql,/'recipientEmails',recipient_emails/);
+  assert.match(copiesSql,/select recipient.email as email union select/);
+  assert.doesNotMatch(copiesSql,/set payload\s*=/i);
+  assert.match(ui,/Dylan and JD are included automatically/);
+});
+
+function v2Delivery(overrides={}) {
+  return {messageIdHeader:'<copies-fixture>',payload:{contractVersion:'photo-history-share-v2',actorUsername:'dylan_collyge',shareId:'fixture',
+    selectedRecipientEmail:'rep@example.test',recipientEmails:['rep@example.test','dylan@example.test','jd@example.test'],
+    requiredCopies:[{username:'dylan_collyge',email:'dylan@example.test'},{username:'jd_jones',email:'jd@example.test'}],
+    photos:[1,2,3].map(i=>({filename:`photo-${i}.jpg`,date:'2026-06-04'})),...overrides}};
+}
+test('V2 sends one email to the rep, Dylan and JD with separate photos; replay never resends',()=>{
+  const {context,sent}=emailHarness(); const delivery=v2Delivery();
+  context.handleSignedPhotoHistoryShare_(delivery);context.handleSignedPhotoHistoryShare_(delivery);
+  assert.equal(sent.length,1);assert.equal(sent[0].attachments.length,3);
+  assert.deepEqual([...sent[0].toArray].sort(),['dylan@example.test','jd@example.test','rep@example.test']);
+});
+test('V2 deduplicates recipients while requiring both protected copy identities',()=>{
+  const {context,sent}=emailHarness();
+  context.handleSignedPhotoHistoryShare_(v2Delivery({selectedRecipientEmail:'dylan@example.test',recipientEmails:['dylan@example.test','jd@example.test']}));
+  assert.equal(sent.length,1);assert.equal(sent[0].toArray.length,2);
+  for(const patch of [{requiredCopies:[]},{recipientEmails:['rep@example.test']},{recipientEmails:['rep@example.test','dylan@example.test','jd@example.test','extra@example.test']},{requiredCopies:[{username:'dylan_collyge',email:'dylan@example.test'},{username:'dylan_collyge',email:'jd@example.test'}]}]){
+    const h=emailHarness();assert.throws(()=>h.context.handleSignedPhotoHistoryShare_(v2Delivery(patch)),/PHOTO_HISTORY_VALIDATION/);assert.equal(h.sent.length,0);
+  }
 });
