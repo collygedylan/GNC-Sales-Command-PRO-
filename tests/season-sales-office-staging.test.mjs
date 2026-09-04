@@ -5,6 +5,7 @@ import test from 'node:test';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql');
 const accessMigration = read('../supabase/migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql');
+const arrivalMigration = read('../supabase/migrations/20260904192758_add_season_sales_office_arrived_at.sql');
 const api = read('../supabase/functions/app-api/index.ts');
 const html = read('../index.html');
 const appsScript = read('../Code.gs');
@@ -103,7 +104,23 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Needs Photo\/Data/);
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
-  assert.match(html, /V2026\.09\.04\.10/);
+  assert.match(html, /V2026\.09\.04\.11/);
+});
+
+test('Season Sales Notes cards show an immutable authoritative arrival timestamp', () => {
+  assert.match(arrivalMigration, /add column if not exists arrived_at timestamptz/i);
+  assert.match(arrivalMigration, /event_type in \('opened', 'winner_changed', 'reopened'\)/i);
+  assert.match(arrivalMigration, /set arrived_at = coalesce\(transition\.created_at, state\.created_at\)/i);
+  assert.match(arrivalMigration, /source_revision, arrived_at, updated_at/i);
+  assert.match(arrivalMigration, /arrived_at = coalesce\(sales\.arrived_at, excluded\.arrived_at\)/i);
+  assert.match(arrivalMigration, /revoke all on function private\.season_sales_mirror_winner_v1[\s\S]*from public, anon, authenticated/i);
+  const formatter = sliceBetween(html, 'function formatSalesOfficeArrivedAt', 'function shouldForceSalesOfficeOrdersOnly');
+  const seasonItems = sliceBetween(html, 'function getSalesOfficeSeasonItems', 'function getSalesOfficeDisplayAvNote');
+  const seasonCard = sliceBetween(html, "if(sourceView==='sales-office')", "if(sourceView==='reserves_drill')");
+  assert.match(formatter, /timeZone: 'America\/Chicago'/);
+  assert.match(seasonItems, /b\.ARRIVED_AT[\s\S]*a\.ARRIVED_AT/);
+  assert.match(seasonCard, /salesOfficeSource === 'season'[\s\S]*item\.ARRIVED_AT/);
+  assert.match(seasonCard, /Added to Sales Office/);
 });
 
 test('hosted database checks reproduce the protected legacy Sales Office dependency', () => {
