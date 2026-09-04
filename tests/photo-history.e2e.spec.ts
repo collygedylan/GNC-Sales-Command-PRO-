@@ -94,3 +94,32 @@ test('thumbnail failure shows retry without original fallback and non-Dylan cann
   await page.getByRole('button',{name:'Close Photo History'}).click();await page.evaluate(()=>{(window as any).allow=false;});
   await page.getByRole('button',{name:'Open Photo History',exact:true}).click();await expect(page.locator('#photo-history-dialog')).not.toBeVisible();
 });
+
+test('real Sales integration remains Dylan-only and native gallery inputs keep focus under the app shell',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.route('**/functions/v1/app-api',route=>{
+    const body=route.request().postDataJSON();
+    const data=body.operation==='search'?{ok:true,photos:[],hasMore:false,asOf:'2026-09-04',indexedAt:'2026-09-04'}:
+      body.operation==='recipients'?{ok:true,recipients:[]}:{ok:true,shares:[]};
+    return route.fulfill({contentType:'application/json',body:JSON.stringify(data)});
+  });
+  await page.goto('/?e2e=photo-history-sales&post_deploy_access_canary=photo-history',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>typeof (window as any).openDylanPhotoHistory==='function' && !!(window as any).GncPhotoHistory);
+  const opened = await page.evaluate(()=>{
+    const w=window as any;
+    w.installMutationBlockedAccessCanaryIdentity('dylan_collyge','Dylan','ADMIN');
+    w.renderSalesHub();
+    w.openDylanPhotoHistory();
+    return !!document.querySelector('#photo-history-dialog');
+  });
+  expect(opened).toBe(true);
+  await expect(page.locator('#photo-history-dialog')).toBeVisible();
+  await page.getByRole('searchbox',{name:'Search Common Name, ITEMCODE or filename'}).fill('Lemon Grass');
+  await page.waitForTimeout(500);
+  await expect(page.locator('#phg-q')).toBeFocused();await expect(page.locator('#phg-q')).toHaveValue('Lemon Grass');
+  const overflow=await page.locator('#photo-history-dialog').evaluate(e=>e.scrollWidth>e.clientWidth+1);expect(overflow).toBe(false);
+  await page.getByRole('button',{name:'Close Photo History'}).click();
+  await page.evaluate(()=>{const w=window as any;w.installMutationBlockedAccessCanaryIdentity('megan_kelly','Megan','ADMIN');w.renderSalesHub();w.openDylanPhotoHistory();});
+  await expect(page.locator('#photo-history-dialog')).not.toBeVisible();
+  await expect(page.locator('#sales-open-photo-history')).toBeHidden();
+});
