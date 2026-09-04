@@ -407,7 +407,6 @@ if (serviceRoleKey) {
   }
   const requestDriveContractHealthy = requestDriveEvidenceHealth.contract_version === 'request-drive-evidence-health-v1'
     && Number(requestDriveEvidenceHealth.evidence_mismatch_count) === 0;
-  if (!requestDriveContractHealthy) throw new Error('production_request_drive_evidence_contract_unhealthy');
   checks.push({
     name: 'request_drive_evidence_v1',
     status: requestDriveHealthResponse.status,
@@ -443,6 +442,7 @@ if (serviceRoleKey) {
     lockWaits: Math.max(0, Number(driveEvidenceSaveHealth.lockWaits) || 0),
     recentUniqueConflicts
   });
+  if (!requestDriveContractHealthy) throw new Error('production_request_drive_evidence_contract_unhealthy');
 
   const seasonSalesHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_season_sales_office_health_v1`, {
     method: 'POST',
