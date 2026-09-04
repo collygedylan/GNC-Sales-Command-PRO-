@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const appAuth = fs.readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
@@ -24,6 +25,25 @@ test('sales/marketing Tasks is restricted to Season Sales Notes', () => {
   assert.match(html, /getDefaultTaskSubviewForView[\s\S]*access\.isSalesMarketing[\s\S]*return 'season'/);
   assert.match(html, /getTaskFilterValues[\s\S]*access\.isSalesMarketing[\s\S]*return \['season'\]/);
   assert.match(html, /safeFilter === 'season'\) return 'SEASON SALES NOTES'/);
+});
+
+test('only the limited marketing role joins shared AV Blanks without personal assignments', () => {
+  const start = html.indexOf('        function shouldUseSharedTaskQueue(');
+  const end = html.indexOf('\n        function ', start + 1);
+  const source = html.slice(start, end);
+  for (const [access, expected] of [
+    [{ isSalesMarketing: true, isAdmin: false }, true],
+    [{ isSalesMarketing: false, isAdmin: false }, false],
+    [{ isSalesMarketing: false, isAdmin: true }, true],
+  ]) {
+    const actual = vm.runInNewContext(`${source}; shouldUseSharedTaskQueue('av-blanks')`, {
+      getRoleAccessState: () => access, normalizeTaskViewValue: (v) => v,
+      isNcrApprovalTaskView: () => false, isNotOnInventoryApprovalTaskView: () => false,
+      isTaskDiagnosticsView: () => false, isCurrentUserInSharedTaskGroup: () => false,
+      EVAL_TASK_ASSIGNMENT: 'eval-task', taskViewTargetUser: '',
+    });
+    assert.equal(actual, expected);
+  }
 });
 
 test('Kayla limited access management is live, user-only, role-bounded, and audited', () => {
