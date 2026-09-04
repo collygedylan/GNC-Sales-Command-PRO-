@@ -143,7 +143,7 @@ async function callAppsScript(event: JsonRecord, rows: unknown[], thread: unknow
   const signature = await hmacSignature(timestamp, signedBody);
   const controller = new AbortController();
   const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
-  const timeoutMs = String(payload.contractVersion || "") === "eval-work-assignment-batch-v1" ? 120000 : 45000;
+  const timeoutMs = ["eval-work-assignment-batch-v1", "photo-history-share-v1"].includes(String(payload.contractVersion || "")) ? 120000 : 45000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
@@ -313,7 +313,7 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
-        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType)) {
+        if (["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType)) {
           if (!event.email_delivered_at) {
             const emailResult = await callAppsScript(event, [], null);
             channelResults.email = {

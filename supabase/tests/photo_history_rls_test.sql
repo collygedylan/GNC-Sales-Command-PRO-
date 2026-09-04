@@ -1,0 +1,15 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(10);
+select has_table('public','ph_photo_history_assets','metadata catalog exists');
+select has_table('public','ph_photo_history_shares','durable idempotent sends exist');
+select ok(not has_table_privilege('anon','public.ph_photo_history_assets','select'),'anonymous cannot browse');
+select ok(not has_table_privilege('authenticated','public.ph_photo_history_assets','select'),'browser cannot bypass Dylan gate');
+select ok(not has_table_privilege('authenticated','public.ph_photo_history_shares','insert'),'browser cannot create delivery records');
+select ok(not has_function_privilege('authenticated','public.photo_history_gallery_v1(uuid,text,jsonb)','execute'),'browser cannot spoof actor RPC argument');
+select ok(not has_function_privilege('anon','public.refresh_photo_history_catalog_v1(boolean)','execute'),'anonymous cannot scan source metadata');
+select ok(has_function_privilege('service_role','public.photo_history_gallery_v1(uuid,text,jsonb)','execute'),'protected API may call gallery');
+select is((select count(*)::integer from pg_class where relname in ('ph_photo_history_assets','ph_photo_history_shares','ph_photo_history_audit','ph_photo_history_index_state') and relrowsecurity),4,'RLS enabled on every new table');
+select throws_ok($$select public.photo_history_gallery_v1(gen_random_uuid(),'search','{}')$$,'42501','PHOTO_HISTORY_FORBIDDEN','no unauthenticated actor can access gallery');
+select * from finish();
+rollback;

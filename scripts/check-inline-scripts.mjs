@@ -26,6 +26,7 @@ while ((match = scriptPattern.exec(html))) {
 for (const relativePath of [
   'assets/ops-precision-pilot.js',
   'assets/eval-reports-engine.js',
+  'assets/photo-history-v2026090401.js',
   'sw.js'
 ]) {
   const source = fs.readFileSync(path.join(root, relativePath), 'utf8');

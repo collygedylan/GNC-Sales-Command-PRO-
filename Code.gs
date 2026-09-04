@@ -15674,9 +15674,98 @@ function handleSignedLocationWorkDelivery_(delivery) {
   }
 }
 
+// Photo History uses bounded previews for viewing/email; originals remain untouched.
+function photoHistoryDrivePreview_(driveFileId, width) {
+  if (!/^[a-zA-Z0-9_-]{10,}$/.test(String(driveFileId || ''))) throw new Error('PHOTO_HISTORY_ASSET_UNAVAILABLE');
+  const headers = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  const metadata = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(driveFileId)
+    + '?fields=thumbnailLink&supportsAllDrives=true', { headers: headers, muteHttpExceptions: true });
+  if (metadata.getResponseCode() !== 200) throw new Error('PHOTO_HISTORY_PREVIEW_UNAVAILABLE');
+  const link = String(JSON.parse(metadata.getContentText()).thumbnailLink || '');
+  if (!/^https:\/\/[^/]+\.googleusercontent\.com\//.test(link)) throw new Error('PHOTO_HISTORY_PREVIEW_UNAVAILABLE');
+  const response = UrlFetchApp.fetch(link.replace(/=s\d+[^&]*$/, '=s' + width), { headers: headers, muteHttpExceptions: true });
+  if (response.getResponseCode() !== 200) throw new Error('PHOTO_HISTORY_PREVIEW_UNAVAILABLE');
+  return photoHistoryCheckedImage_(response.getBlob(), width <= 320 ? 163840 : 1310720);
+}
+
+function photoHistoryCheckedImage_(blob, maxBytes) {
+  const bytes = blob.getBytes();
+  const unsigned = function(i) { return (bytes[i] || 0) & 255; };
+  let mime = '';
+  if (unsigned(0) === 255 && unsigned(1) === 216 && unsigned(2) === 255) mime = 'image/jpeg';
+  else if (unsigned(0) === 137 && unsigned(1) === 80 && unsigned(2) === 78 && unsigned(3) === 71) mime = 'image/png';
+  else if (unsigned(0) === 82 && unsigned(1) === 73 && unsigned(2) === 70 && unsigned(3) === 70
+    && unsigned(8) === 87 && unsigned(9) === 69 && unsigned(10) === 66 && unsigned(11) === 80) mime = 'image/webp';
+  if (!mime || !bytes.length || bytes.length > maxBytes) throw new Error('PHOTO_HISTORY_PREVIEW_UNAVAILABLE');
+  return blob.setContentType(mime);
+}
+
+function handleSignedPhotoHistoryThumbnail_(payload) {
+  const delivery = verifySignedRequestDelivery_(payload);
+  if (delivery.eventType !== 'photo_history_thumbnail' || !delivery.assetId) throw new Error('PHOTO_HISTORY_FORBIDDEN');
+  const blob = photoHistoryDrivePreview_(delivery.driveFileId, 320);
+  return { ok: true, thumbnail: 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()) };
+}
+
+function photoHistoryEmailImage_(photo) {
+  if (!photo.storageAvailable) return photoHistoryDrivePreview_(photo.driveFileId, 640);
+  const bucket = String(photo.bucket || '');
+  const path = String(photo.path || '');
+  if (['request_photos', 'flyer_photos', 'season_sales_notes_photos', 'location_sales_notes_photos'].indexOf(bucket) < 0
+    || !path || /(^|\/)\.\.?($|\/)/.test(path)) throw new Error('PHOTO_HISTORY_ASSET_UNAVAILABLE');
+  // Sending is explicit, but keep legacy originals out of the delivery pipeline too.
+  const v2 = /^v2\/[a-f0-9]{64}\.(webp|jpg)$/i.test(path);
+  const url = SUPABASE_URL + '/storage/v1/' + (v2 ? 'object' : 'render/image') + '/public/' + bucket + '/'
+    + path.split('/').map(encodeURIComponent).join('/') + (v2 ? '' : '?width=640&quality=62&resize=contain');
+  const response = UrlFetchApp.fetch(url, { headers: { Accept: 'image/jpeg' }, muteHttpExceptions: true });
+  if (response.getResponseCode() !== 200) throw new Error('PHOTO_HISTORY_PREVIEW_UNAVAILABLE');
+  return photoHistoryCheckedImage_(response.getBlob(), 1310720);
+}
+
+function handleSignedPhotoHistoryShare_(delivery) {
+  const payload = delivery.payload || {};
+  if (payload.contractVersion !== 'photo-history-share-v1' || payload.actorUsername !== 'dylan_collyge'
+      || !payload.shareId || !Array.isArray(payload.photos) || payload.photos.length < 1 || payload.photos.length > 20
+      || !delivery.messageIdHeader) throw new Error('PHOTO_HISTORY_VALIDATION');
+  const recipients = dedupeEmailAddresses_([payload.recipientEmails]);
+  if (recipients.length !== 1) throw new Error('PHOTO_HISTORY_VALIDATION');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) throw new Error('REQUEST_DELIVERY_BUSY');
+  try {
+    const receipt = getRequestDeliveryReceipt_(delivery.messageIdHeader) || findSentRequestDeliveryByMessageId_(delivery.messageIdHeader);
+    if (receipt) return buildRecoveredDeliveryResult_(delivery.messageIdHeader, receipt, 'photo_history_idempotent_recovery');
+    let totalBytes = 0;
+    const labels = [];
+    const attachments = payload.photos.map(function(photo, index) {
+      const blob = photoHistoryEmailImage_(photo);
+      totalBytes += blob.getBytes().length;
+      if (totalBytes > 18 * 1024 * 1024) throw new Error('PHOTO_HISTORY_ATTACHMENTS_TOO_LARGE');
+      const date = String(photo.date || '').slice(0, 10);
+      const title = [photo.commonname || 'Unlabeled plant', photo.contsize, photo.itemcode].filter(Boolean).join(' | ');
+      const label = (index + 1) + '. ' + title + '\nPhoto date: ' + date + '\nOriginal filename: ' + photo.filename
+        + '\nLocation: ' + (photo.locationcode || 'Unknown') + ' | Lot: ' + (photo.lotcode || 'Unknown');
+      const suffix = blob.getContentType() === 'image/jpeg' ? '.jpg' : (blob.getContentType() === 'image/png' ? '.png' : '.webp');
+      const name = String(photo.commonname || photo.filename || 'Photo').replace(/[^a-z0-9 _-]/gi, '').slice(0, 65).trim();
+      labels.push(label);
+      return blob.setName(String(index + 1).padStart(2, '0') + '_' + date + '_' + name + suffix);
+    });
+    const text = 'Historical plant photos selected by Dylan\n\nThese are historical photos, not confirmation of current inventory, quality, or availability.\n\n'
+      + String(payload.message || '') + '\n\n' + labels.join('\n\n');
+    const result = sendGmailApiMessage_({ toList: recipients, toArray: recipients,
+      subject: 'GNC Historical Plant Photos (' + attachments.length + ')', textBody: text,
+      htmlBody: buildPhoneSizedEmailHtml_('<h2>Historical Plant Photos</h2><div style="white-space:pre-wrap">' + escapeEmailHtml_(text) + '</div>'),
+      attachments: attachments, fromName: 'GNC Photo History', fromAddress: resolveAutomatedEmailSenderAddress_(),
+      messageIdHeader: delivery.messageIdHeader });
+    result.messageIdHeader = delivery.messageIdHeader;
+    saveRequestDeliveryReceipt_(delivery.messageIdHeader, result);
+    return result;
+  } finally { lock.releaseLock(); }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
+  if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);
   if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
     return handleSignedReclassInquiryDelivery_(delivery);
   }
@@ -15799,7 +15888,7 @@ function processRequestDeliveryOutbox_(limit) {
     events = requestDeliveryRest_(
       'ph_request_delivery_outbox',
       'GET',
-      'select=*&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
+      'select=*&event_type=neq.photo_history_share&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
       null
     );
     events.forEach(function(eventRow) {
@@ -15875,6 +15964,13 @@ function processRequestDeliveryOutbox_(limit) {
 
 function runRequestIntegrityScheduledWorker_() {
   const maintenance = callSupabaseRpc_('run_request_integrity_maintenance', {});
+  let photoHistory = null;
+  try {
+    photoHistory = callSupabaseRpc_('refresh_photo_history_catalog_v1', { p_dry_run: false });
+  } catch (error) {
+    photoHistory = { ok: false, errorCode: 'PHOTO_HISTORY_INDEX_FAILED' };
+    console.error('[PHOTO HISTORY] PHOTO_HISTORY_INDEX_FAILED');
+  }
   let seasonSalesOffice = null;
   try {
     seasonSalesOffice = reconcileSeasonSalesOfficeAfterImport_(new Date().toISOString(), 'scheduled_maintenance');
@@ -15887,6 +15983,7 @@ function runRequestIntegrityScheduledWorker_() {
     errorCode: String(maintenance && maintenance.errorCode || ''),
     maintenance: maintenance || {},
     seasonSalesOffice: seasonSalesOffice,
+    photoHistory: photoHistory,
     delivery: { delegated: true, worker: 'supabase_edge_request_delivery' }
   };
 }
@@ -16100,6 +16197,9 @@ function doPost(e) {
 
     if (payload.type === 'request_delivery_event') {
       return jsonOutput_(handleSignedRequestDeliveryEvent_(payload));
+    }
+    if (payload.type === 'photo_history_thumbnail') {
+      return jsonOutput_(handleSignedPhotoHistoryThumbnail_(payload));
     }
 
     if (payload.type === 'reclass_inquiry_status') {

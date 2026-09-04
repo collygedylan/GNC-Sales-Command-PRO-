@@ -107,6 +107,9 @@ jobs:
           cp supabase/migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260904070154_photo_delivery_health_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904142737_dylan_photo_history_gallery_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904143546_photo_history_catalog_refresh_refinement.sql "$ci_root/supabase/migrations/"
+          cp supabase/ci/photo_history_extensions.sql "$ci_root/supabase/migrations/20260904142700_photo_history_extensions.sql"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/codex_ops_rls_test.sql "$ci_root/supabase/tests/"
@@ -116,6 +119,7 @@ jobs:
           cp supabase/tests/drive_reclass_protected_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/drive_evidence_retry_storm_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/photo_delivery_health_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/photo_history_rls_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         run: supabase --workdir "$SUPABASE_CI_ROOT" start

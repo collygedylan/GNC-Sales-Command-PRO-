@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
+import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail } from "../_shared/photo-history.ts";
 import {
   PHOTO_LEGACY_MAX_BYTES,
   PHOTO_V2_DISPLAY_MAX_BYTES,
@@ -556,6 +557,56 @@ function driveReclassErrorResponse(message: string) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
   return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
+}
+
+async function handlePhotoHistoryAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401);
+  const profile = await resolveActiveSessionProfile(session).catch(() => null);
+  if (session.mustChangePassword || !profile || normalizeUsername(String(profile.username || '')) !== 'dylan_collyge') {
+    return errorResponse('Photo History is available only to Dylan.', 403, { code: 'PHOTO_HISTORY_FORBIDDEN' });
+  }
+  const operation = String(payload.operation || 'search');
+  if (!['search', 'recipients', 'asset', 'send', 'status', 'retry', 'dismiss'].includes(operation)) {
+    return errorResponse('Unsupported Photo History action.', 400);
+  }
+  // The session supplies the actor. RPCs freeze recipients and asset references themselves.
+  const input = payload.input && typeof payload.input === 'object' && !Array.isArray(payload.input)
+    ? payload.input as Record<string, unknown> : {};
+  try {
+    const { data, error } = await supabase.rpc('photo_history_gallery_v1', {
+      p_actor_id: profile.id, p_operation: operation, p_input: input,
+    });
+    if (error) throw new Error(error.message);
+    if (operation === 'search') {
+      return jsonResponse({ ...data, photos: (data.photos || []).map((a: Record<string, unknown>) => publicHistoryPhoto(SUPABASE_URL, a)) });
+    }
+    if (operation === 'asset') {
+      const asset = data.asset as Record<string, unknown>;
+      if (input.open === true) {
+        const url = asset.storage_available ? historyPhotoUrl(SUPABASE_URL, asset, true)
+          : `https://drive.google.com/file/d/${encodeURIComponent(String(asset.drive_file_id || ''))}/view`;
+        return jsonResponse({ ok: true, url, archived: !asset.storage_available });
+      }
+      if (asset.storage_available) return jsonResponse({ ok: true, thumbnail: historyPhotoUrl(SUPABASE_URL, asset) });
+      return jsonResponse(await readArchivedHistoryThumbnail(asset));
+    }
+    return jsonResponse(data);
+  } catch (error) {
+    const raw = String(error instanceof Error ? error.message : '');
+    const codes: Record<string, string> = {
+      PHOTO_HISTORY_RECIPIENT_UNAVAILABLE: 'This sales rep is not available. Choose another verified sales rep.',
+      PHOTO_HISTORY_ASSET_UNAVAILABLE: 'A selected photo is no longer available. Review your selection.',
+      PHOTO_HISTORY_PREVIEW_UNAVAILABLE: 'Thumbnail unavailable. Retry or explicitly open the archived photo.',
+      PHOTO_HISTORY_TOKEN_CONFLICT: 'This send was already saved with different selections. Review before sending again.',
+      PHOTO_HISTORY_SELECTION_INVALID: 'Select between 1 and 20 photos and keep the message under 2,000 characters.',
+      PHOTO_HISTORY_FORBIDDEN: 'Photo History is available only to Dylan.',
+    };
+    const code = Object.keys(codes).find(c => raw.includes(c)) || 'PHOTO_HISTORY_RETRY';
+    return errorResponse(codes[code] || 'Photo History could not finish. Retry; your selection is retained.', code === 'PHOTO_HISTORY_FORBIDDEN' ? 403 : 409, { code });
+  }
 }
 
 async function handleDriveReclassAction(
@@ -2456,6 +2507,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
     return await handleSetUserPreferences(session, payload);
   }
   if (action === "eval_work") return await handleEvalWorkAction(session, payload);
+  if (action === "photo_history") return await handlePhotoHistoryAction(session, payload);
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
   if (action === "shear_location_work") return await handleShearLocationAction(session, payload);

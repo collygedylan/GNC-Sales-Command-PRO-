@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.09.04.04",
+  "version": "2026.09.04.05",
   "type": "module",
   "scripts": {
     "dev:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
@@ -15,7 +15,7 @@
     "preview:v2": "vite preview --config vite.v2.config.ts --host 0.0.0.0",
     "test:v2": "vitest run --config vite.v2.config.ts",
     "test:v2:watch": "vitest --config vite.v2.config.ts",
-    "test:photo": "node --test tests/photo-egress.test.mjs",
+    "test:photo": "node --test tests/photo-egress.test.mjs tests/photo-history.test.mjs",
     "test:v2:e2e": "playwright test",
     "storybook:v2": "storybook dev -p 6006 -c v2/.storybook",
     "build:storybook:v2": "storybook build -c v2/.storybook -o v2/storybook-static",

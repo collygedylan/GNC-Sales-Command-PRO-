@@ -85,8 +85,9 @@ test('service-only health and post-shell bucket guards are explicit', () => {
 });
 
 test('photo release uses one synchronized shell and optimizer asset', () => {
-  assert.match(html, /window\.__APP_SHELL_VERSION__ = 'V2026\.09\.04\.04'/);
-  assert.match(serviceWorker, /APP_SHELL_BUILD = 'V2026\.09\.04\.04'/);
+  const release = JSON.parse(read('../manifest.json')).version.replaceAll('.', '\\.');
+  assert.match(html, new RegExp(`window\\.__APP_SHELL_VERSION__ = '${release}'`));
+  assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release}'`));
   assert.match(serviceWorker, /image-optimize-worker-v2026090401\.js/);
   assert.doesNotMatch(serviceWorker, /image-optimize-worker-v2026081709\.js/);
 });
