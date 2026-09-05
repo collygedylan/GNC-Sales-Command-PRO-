@@ -48,6 +48,7 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
   });
   await page.goto('/?e2e=block-clearing-pdf&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).__blockClearingTestEval === 'function');
+  if (options.realShell) await page.waitForLoadState('load');
   await appEval(page, `(() => {
     installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN');
     activeHomeTab = 'block-clearing';
@@ -145,7 +146,49 @@ async function assertInventoryUnchanged(page: Page) {
   expect(await appEval(page, 'window.bcUnexpectedWrites')).toEqual([]);
 }
 
+async function readRealManagerShellState(page: Page) {
+  return appEval(page, `(() => {
+    const scroller = document.getElementById('main-scroll-area');
+    const active = document.activeElement;
+    const renderKeys = ['view:managers', 'view-interactive:managers'].filter(key => !!uiRenderTimers[key] || !!uiRenderFrames[key]);
+    return {
+      navigationPending: managerBlockClearingDraftState.restore !== null,
+      renderPending: renderKeys.length > 0,
+      stickyFramePending: stickyRailOffsetFrameQueued,
+      level: managerBlockClearingLevel,
+      viewKey: getManagerBlockClearingViewKey(),
+      heading: document.querySelector('#managers-content h2')?.textContent,
+      scrollTop: scroller.scrollTop,
+      scrollHeight: scroller.scrollHeight,
+      clientHeight: scroller.clientHeight,
+      activeElement: { tag: active?.tagName, id: active?.id, itemcode: active?.closest('[data-block-clearing-itemcode]')?.getAttribute('data-block-clearing-itemcode') },
+      renderKeys
+    };
+  })()`);
+}
+
+async function waitForRealManagerShellSettled(page: Page) {
+  await page.evaluate(async () => { await document.fonts.ready; });
+  // A cleared restore flag means the renderer queued its scroll RAF, not that
+  // scrolling finished. Observe the real render queues and flush that RAF first.
+  await expect.poll(async () => {
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    return readRealManagerShellState(page);
+  }).toMatchObject({ navigationPending: false, renderPending: false, stickyFramePending: false });
+}
+
+async function waitForMobileTextEntrySettled(page: Page) {
+  // Focus has both frame and trailing-timer visibility work. Let those native
+  // guards finish before inspecting the focused control or choosing another one.
+  await expect.poll(() => appEval(page, `({
+    inputPending: !!mobileTextEntryInputSettleTimer,
+    visibilityPending: !!mobileTextEntryVisibilitySettleTimer || !!mobileTextEntryVisibilitySettleFrame
+  })`)).toEqual({ inputPending: false, visibilityPending: false });
+  await waitForRealManagerShellSettled(page);
+}
+
 async function scrollRealManagerShell(page: Page, fraction: number) {
+  await waitForRealManagerShellSettled(page);
   await page.locator('#main-scroll-area').evaluate((element, ratio) => {
     element.scrollTop = (element.scrollHeight - element.clientHeight) * ratio;
     element.dispatchEvent(new Event('scroll', { bubbles: true }));
@@ -257,9 +300,11 @@ for (const width of [390, 1280]) {
     await expect(page.locator('#main-scroll-area #view-wrapper #view-managers')).toBeVisible();
     for (const level of [0, 1, 2]) {
       await expect.poll(() => appEval(page, 'managerBlockClearingLevel')).toBe(level);
+      await expect(page.locator('#managers-content').getByRole('heading', { name: ['Block Clearing', 'Block A', 'Block Clearing A.05'][level], exact: true })).toBeVisible();
       await assertRealShellControls(page, []);
       await scrollRealManagerShell(page, 0.9);
-      expect(await appEval(page, 'getMainAreaScrollTop()')).toBeGreaterThan(500);
+      const scrollState = await readRealManagerShellState(page);
+      expect(scrollState.scrollTop, JSON.stringify(scrollState)).toBeGreaterThan(500);
       await assertRealShellControls(page, []);
       if (level === 0) await appEval(page, `selectManagerBlockClearingBlock('A')`);
       else if (level === 1) await appEval(page, `selectManagerBlockClearingLocation('A.05')`);
@@ -302,18 +347,25 @@ for (const width of [390, 1280]) {
     await assertRealShellControls(page, ['#block-clearing-continue']);
     await page.locator('#block-clearing-continue').click();
     await expect(page.locator('[data-block-clearing-instructions]')).toHaveCount(30);
+    await waitForRealManagerShellSettled(page);
     await page.setViewportSize({ width: 320, height: 420 });
     await page.locator('[data-block-clearing-instructions]').nth(10).fill('Keyboard-height viewport keeps the top actions available.');
-    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await waitForMobileTextEntrySettled(page);
     await assertRealShellControls(page, actions);
     await expect(page.locator('[data-block-clearing-instructions]').nth(10)).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(page.locator('[data-block-clearing-quantity]').nth(10)).toBeFocused();
-    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await waitForMobileTextEntrySettled(page);
     await assertRealShellControls(page, actions);
     await assertControlBelowActionRail(page, '[data-block-clearing-quantity]', 10);
-    await page.locator('[data-block-clearing-action]').nth(15).evaluate(element => element.scrollIntoView({ block: 'start' }));
-    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await page.locator('[data-block-clearing-action]').nth(15).evaluate(element => {
+      // Transfer focus too: otherwise the keyboard guard correctly brings the
+      // still-focused quantity on card 10 back into view after this scroll.
+      (element as HTMLElement).focus({ preventScroll: true });
+      element.scrollIntoView({ block: 'start' });
+    });
+    await expect(page.locator('[data-block-clearing-action]').nth(15)).toBeFocused();
+    await waitForMobileTextEntrySettled(page);
     await assertRealShellControls(page, actions);
     await assertControlBelowActionRail(page, '[data-block-clearing-action]', 15);
     await page.screenshot({ path: testInfo.outputPath('worksheet-actions-short-focused-viewport.png') });
