@@ -15682,6 +15682,269 @@ function handleSignedLocationWorkDelivery_(delivery) {
   }
 }
 
+// Block Clearing PDFs use a frozen inventory snapshot; they do not change inventory.
+const BLOCK_CLEARING_PDF_CONTRACT_ = 'block-clearing-pdf-v1';
+
+function blockClearingPdfText_(value, field, required, maxLength) {
+  if (value !== undefined && value !== null && typeof value !== 'string' && typeof value !== 'number') {
+    throw new Error('BLOCK_CLEARING_VALIDATION:' + field);
+  }
+  const text = value === undefined || value === null ? '' : String(value).trim();
+  if ((required && !text) || text.length > (maxLength || 200) || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)) {
+    throw new Error('BLOCK_CLEARING_VALIDATION:' + field);
+  }
+  return text;
+}
+
+function blockClearingPdfCode_(value, field, required) {
+  const code = blockClearingPdfText_(value, field, required, 120).toUpperCase();
+  if (code && !/^[A-Z0-9][A-Z0-9._ /-]*$/.test(code)) throw new Error('BLOCK_CLEARING_VALIDATION:' + field);
+  return code;
+}
+
+function blockClearingPdfBucket_(locationcode) {
+  const parts = String(locationcode || '').trim().toUpperCase().split('.').slice(0, 2);
+  if (parts.length > 1 && /^\d+$/.test(parts[1])) parts[1] = parts[1].padStart(2, '0');
+  return parts.join('.');
+}
+
+function blockClearingPdfOnHand_(value) {
+  if ((typeof value !== 'number' && typeof value !== 'string') || !/^\d+(?:\.\d+)?$/.test(String(value).trim())) {
+    throw new Error('BLOCK_CLEARING_VALIDATION:PTRONHAND');
+  }
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0 || amount > Number.MAX_SAFE_INTEGER) throw new Error('BLOCK_CLEARING_VALIDATION:PTRONHAND');
+  return amount;
+}
+
+function normalizeBlockClearingPdfReport_(payload) {
+  if (!payload || payload.contractVersion !== BLOCK_CLEARING_PDF_CONTRACT_) throw new Error('BLOCK_CLEARING_VALIDATION:CONTRACT_VERSION');
+  if (payload.operation !== 'render' && payload.operation !== 'email') throw new Error('BLOCK_CLEARING_VALIDATION:OPERATION');
+  const report = payload.report;
+  if (!report || typeof report !== 'object' || Array.isArray(report)) throw new Error('BLOCK_CLEARING_VALIDATION:REPORT');
+  const rawBucket = blockClearingPdfCode_(report.locationBucket, 'LOCATION_BUCKET', true);
+  const bucket = blockClearingPdfBucket_(rawBucket);
+  const block = blockClearingPdfCode_(report.blockalpha, 'BLOCK', true);
+  const bucketParts = rawBucket.split('.');
+  if (bucketParts.length > 2 || (bucketParts.length === 2 && (!bucketParts[1] || (/^\d+$/.test(bucketParts[1]) && bucketParts[0] !== block)))) throw new Error('BLOCK_CLEARING_VALIDATION:LOCATION_BUCKET');
+  const createdAt = blockClearingPdfText_(report.createdAt, 'CREATED_AT', true, 80);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(createdAt) || !Number.isFinite(Date.parse(createdAt))) {
+    throw new Error('BLOCK_CLEARING_VALIDATION:CREATED_AT');
+  }
+  const normalized = {
+    title: blockClearingPdfText_(report.title, 'TITLE', true, 200),
+    createdAt: new Date(createdAt).toISOString(),
+    submittedBy: blockClearingPdfText_(report.submittedBy, 'SUBMITTED_BY', true, 160),
+    blockalpha: block, locationBucket: bucket, items: [], totalOnHand: 0, itemCount: 0, rowCount: 0
+  };
+  if (!Array.isArray(report.items) || !report.items.length || report.items.length > 500) throw new Error('BLOCK_CLEARING_VALIDATION:ITEMS');
+  const itemcodes = new Set();
+  const identities = new Map();
+  const physicalIdentities = new Map();
+  const checkPhysicalIdentity = function(row) {
+    const fingerprint = JSON.stringify([row.itemcode, row.locationcode, row.salesyear, row.ptronhand]);
+    if (physicalIdentities.has(row.uniqueId) && physicalIdentities.get(row.uniqueId) !== fingerprint) throw new Error('BLOCK_CLEARING_VALIDATION:CONFLICTING_ROW_ID');
+    physicalIdentities.set(row.uniqueId, fingerprint);
+  };
+  let submittedRowCount = 0;
+  report.items.forEach(function(raw) {
+    if (!raw || typeof raw !== 'object') throw new Error('BLOCK_CLEARING_VALIDATION:ITEM');
+    const itemcode = blockClearingPdfCode_(raw.itemcode, 'ITEMCODE', true);
+    if (itemcodes.has(itemcode)) throw new Error('BLOCK_CLEARING_VALIDATION:DUPLICATE_ITEMCODE');
+    itemcodes.add(itemcode);
+    const item = {
+      itemcode: itemcode,
+      commonname: blockClearingPdfText_(raw.commonname, 'COMMONNAME', true, 250),
+      contsize: blockClearingPdfText_(raw.contsize, 'CONTSIZE', true, 80),
+      action: blockClearingPdfText_(raw.action, 'ACTION', true, 30).toLowerCase(),
+      quantity: raw.quantity,
+      destinationMode: blockClearingPdfText_(raw.destinationMode, 'DESTINATION_MODE', true, 20).toLowerCase(),
+      destinationLocationcode: blockClearingPdfCode_(raw.destinationLocationcode, 'DESTINATION_LOCATION', false),
+      instructions: blockClearingPdfText_(raw.instructions, 'INSTRUCTIONS', false, 4000),
+      rows: [], destinationEvidence: [], totalOnHand: 0
+    };
+    if (['ta', 'move', 'grade_save_best'].indexOf(item.action) < 0) throw new Error('BLOCK_CLEARING_VALIDATION:ACTION');
+    if (['itemcode', 'all'].indexOf(item.destinationMode) < 0) throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_MODE');
+    if (raw.destinationEvidence !== undefined && !Array.isArray(raw.destinationEvidence)) throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_EVIDENCE');
+    if (!Array.isArray(raw.rows) || !raw.rows.length) throw new Error('BLOCK_CLEARING_VALIDATION:ROWS');
+    submittedRowCount += raw.rows.length;
+    if (submittedRowCount > 10000) throw new Error('BLOCK_CLEARING_VALIDATION:TOO_MANY_ROWS');
+    raw.rows.forEach(function(sourceRow) {
+      if (!sourceRow || typeof sourceRow !== 'object') throw new Error('BLOCK_CLEARING_VALIDATION:ROW');
+      const row = {
+        uniqueId: blockClearingPdfText_(sourceRow.uniqueId, 'ROW_ID', true, 200),
+        itemcode: blockClearingPdfCode_(sourceRow.itemcode, 'ROW_ITEMCODE', true),
+        locationcode: blockClearingPdfCode_(sourceRow.locationcode, 'ROW_LOCATION', true),
+        lotcode: blockClearingPdfText_(sourceRow.lotcode, 'LOTCODE', false, 120),
+        salesyear: blockClearingPdfText_(sourceRow.salesyear, 'SALESYEAR', false, 40).toUpperCase(),
+        source: blockClearingPdfText_(sourceRow.source, 'SOURCE', false, 120),
+        ptronhand: blockClearingPdfOnHand_(sourceRow.ptronhand)
+      };
+      if (row.itemcode !== itemcode) throw new Error('BLOCK_CLEARING_VALIDATION:ROW_ITEMCODE');
+      if (row.locationcode.indexOf('.') !== -1 && !/^[A-Z0-9_-]+(?:\.[A-Z0-9_-]+)+$/.test(row.locationcode)) throw new Error('BLOCK_CLEARING_VALIDATION:ROW_LOCATION');
+      if (blockClearingPdfBucket_(row.locationcode) !== bucket) throw new Error('BLOCK_CLEARING_VALIDATION:ROW_OUTSIDE_BUCKET');
+      checkPhysicalIdentity(row);
+      const fingerprint = JSON.stringify(row);
+      if (identities.has(row.uniqueId)) {
+        if (identities.get(row.uniqueId) !== fingerprint) throw new Error('BLOCK_CLEARING_VALIDATION:CONFLICTING_ROW_ID');
+        return;
+      }
+      identities.set(row.uniqueId, fingerprint);
+      item.rows.push(row);
+      item.totalOnHand += row.ptronhand;
+    });
+    if (!Number.isFinite(item.totalOnHand) || item.totalOnHand > Number.MAX_SAFE_INTEGER) throw new Error('BLOCK_CLEARING_VALIDATION:TOTAL_ON_HAND');
+    if ((typeof item.quantity !== 'number' && typeof item.quantity !== 'string') || !/^\d+$/.test(String(item.quantity).trim())) throw new Error('BLOCK_CLEARING_VALIDATION:QUANTITY');
+    item.quantity = Number(item.quantity);
+    if (!Number.isSafeInteger(item.quantity) || item.quantity <= 0 || item.quantity > item.totalOnHand) throw new Error('BLOCK_CLEARING_VALIDATION:QUANTITY');
+    if (item.action === 'move') {
+      // Evidence must contain the exact full raw inventory code, including non-dot locations.
+      if (!item.destinationLocationcode) throw new Error('BLOCK_CLEARING_VALIDATION:FULL_DESTINATION_REQUIRED');
+      if (blockClearingPdfBucket_(item.destinationLocationcode) === bucket) throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_INSIDE_BUCKET');
+      if (!Array.isArray(raw.destinationEvidence) || !raw.destinationEvidence.length || raw.destinationEvidence.length > 10000) throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_EVIDENCE');
+      const evidenceIds = new Map();
+      raw.destinationEvidence.forEach(function(evidenceRow) {
+        if (!evidenceRow || typeof evidenceRow !== 'object') throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_EVIDENCE');
+        const evidence = {
+          itemcode: blockClearingPdfCode_(evidenceRow.itemcode, 'DESTINATION_ITEMCODE', true),
+          locationcode: blockClearingPdfCode_(evidenceRow.locationcode, 'DESTINATION_LOCATION', true),
+          salesyear: blockClearingPdfText_(evidenceRow.salesyear, 'DESTINATION_SALESYEAR', false, 40).toUpperCase(),
+          ptronhand: blockClearingPdfOnHand_(evidenceRow.ptronhand),
+          uniqueId: blockClearingPdfText_(evidenceRow.uniqueId, 'DESTINATION_ROW_ID', true, 200)
+        };
+        if (evidence.locationcode !== item.destinationLocationcode) throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_EVIDENCE');
+        checkPhysicalIdentity(evidence);
+        const fingerprint = JSON.stringify(evidence);
+        if (evidenceIds.has(evidence.uniqueId)) {
+          if (evidenceIds.get(evidence.uniqueId) !== fingerprint) throw new Error('BLOCK_CLEARING_VALIDATION:CONFLICTING_DESTINATION_ROW_ID');
+          return;
+        }
+        evidenceIds.set(evidence.uniqueId, fingerprint);
+        item.destinationEvidence.push(evidence);
+      });
+      if (item.destinationMode === 'itemcode' && !item.destinationEvidence.some(function(evidence) {
+        return evidence.itemcode === itemcode && evidence.salesyear && item.rows.some(function(row) { return row.salesyear === evidence.salesyear; });
+      })) throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_ITEM_YEAR_MISMATCH');
+    } else if (item.destinationLocationcode || (Array.isArray(raw.destinationEvidence) && raw.destinationEvidence.length)) {
+      throw new Error('BLOCK_CLEARING_VALIDATION:DESTINATION_REQUIRES_MOVE');
+    }
+    item.rows.sort(function(a, b) { return a.locationcode.localeCompare(b.locationcode) || a.lotcode.localeCompare(b.lotcode) || a.uniqueId.localeCompare(b.uniqueId); });
+    item.destinationEvidence.sort(function(a, b) { return a.uniqueId.localeCompare(b.uniqueId); });
+    normalized.items.push(item);
+    normalized.totalOnHand += item.totalOnHand;
+    normalized.rowCount += item.rows.length;
+  });
+  if (!Number.isFinite(normalized.totalOnHand) || normalized.totalOnHand > Number.MAX_SAFE_INTEGER) throw new Error('BLOCK_CLEARING_VALIDATION:TOTAL_ON_HAND');
+  normalized.items.sort(function(a, b) { return a.itemcode.localeCompare(b.itemcode); });
+  normalized.itemCount = normalized.items.length;
+  return normalized;
+}
+
+function blockClearingPdfActionLabel_(action) {
+  return action === 'ta' ? 'TA' : action === 'move' ? 'Move To' : 'Grade & Save Best';
+}
+
+function buildBlockClearingPdfHtml_(report) {
+  const escape = escapeEmailHtml_;
+  const number = function(value) { return Number(value).toLocaleString('en-US'); };
+  const sections = report.items.map(function(item, index) {
+    const fromLocations = Array.from(new Set(item.rows.map(function(row) { return row.locationcode; }))).join(', ');
+    const rows = item.rows.map(function(row) {
+      return '<tr><td>' + escape(row.locationcode) + '</td><td>' + escape(row.lotcode || '-') + '</td><td>' + escape(row.salesyear || '-')
+        + '</td><td>' + escape(row.source || '-') + '</td><td class="num">' + number(row.ptronhand) + '</td></tr>';
+    }).join('');
+    return '<section class="item"><div class="item-heading"><span class="item-number">' + (index + 1) + '</span> '
+      + '<strong>' + escape(item.itemcode) + '</strong> &nbsp; ' + escape(item.commonname) + ' <span class="size">' + escape(item.contsize) + '</span></div>'
+      + '<table class="plan"><tbody><tr><td><b>Total Plants On Hand</b><strong>' + number(item.totalOnHand) + '</strong></td><td><b>Action</b><strong>' + escape(blockClearingPdfActionLabel_(item.action))
+      + '</strong></td><td><b>Planned Qty</b><strong>' + number(item.quantity) + '</strong></td><td><b>Actual Qty</b><div class="write-in">&nbsp;</div></td></tr></tbody></table>'
+      + '<div class="route"><b>From:</b> ' + escape(fromLocations) + '<br><b>To:</b> ' + escape(item.destinationLocationcode || '-') + '</div>'
+      + '<div class="instructions"><b>Instructions:</b> ' + escape(item.instructions || 'Follow the planned action and quantity above.').replace(/\r?\n/g, '<br>') + '</div>'
+      + (item.action === 'grade_save_best' ? '<div class="instructions"><b>Grade &amp; Save Best:</b> Planned Qty is the number of best plants to keep. No discard quantity is assigned.</div>' : '')
+      + '<table class="breakdown"><thead><tr><th colspan="5" class="row-context">' + escape(item.itemcode) + ' - ' + escape(item.commonname) + ' | ' + escape(report.locationBucket) + ' Source Rows</th></tr><tr><th style="width:30%">Source LOCATIONCODE</th><th style="width:27%">LOTCODE</th><th style="width:15%">Sales Year</th><th style="width:15%">Source</th><th style="width:13%" class="num">OH</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
+  }).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + escape(report.title) + '</title><style>'
+    + '@page{size:letter landscape;margin:9mm 10mm 12mm;@bottom-left{content:"GNC PH Block Clearing | ' + report.locationBucket + '";font:8px Arial;color:#526459}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8px Arial;color:#526459}}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#18251e;font-size:10px;margin:0}'
+    + 'h1{font-size:22px;margin:0 0 4px;color:#165b3b}header{border-bottom:2px solid #165b3b;padding-bottom:8px;margin-bottom:10px}.brand{font-size:9px;font-weight:bold;letter-spacing:1px;margin-bottom:5px}.meta{line-height:1.5}.totals{font-size:12px;font-weight:bold;margin-top:6px}'
+    + '.item{border:1px solid #9aaa9f;margin:0 0 10px;padding:8px;page-break-inside:avoid;break-inside:avoid}.item-heading{font-size:13px;line-height:1.35;margin-bottom:7px;overflow-wrap:break-word}.item-number{color:#55715f}.size{font-weight:bold}'
+    + 'table{border-collapse:collapse;width:100%;table-layout:fixed}.plan td{width:25%;border:1px solid #c7d1ca;padding:5px 7px;background:#f2f6f3;vertical-align:top}.plan b{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}.plan strong{font-size:13px}.write-in{height:15px;border-bottom:1px solid #354f40;margin-right:18px}'
+    + '.route{margin:7px 0 4px;line-height:1.4;overflow-wrap:break-word}.instructions{margin-bottom:7px;line-height:1.4;overflow-wrap:break-word}'
+    + '.breakdown th,.breakdown td{border:1px solid #c7d1ca;padding:4px 6px;text-align:left;vertical-align:top;overflow-wrap:break-word}.breakdown th{background:#edf2ee;font-size:8px;text-transform:uppercase}.breakdown .row-context{background:white;text-transform:none;font-size:9px}.breakdown .num{text-align:right}thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}'
+    + '.signoff{page-break-inside:avoid;break-inside:avoid;margin-top:15px}.signoff td{width:33.33%;padding:14px 16px 0 0}.signature-line{border-bottom:1px solid #354f40;height:14px;margin-bottom:5px}.note{font-size:8px;color:#526459;margin:8px 0 0}'
+    + '</style></head><body><header><div class="brand">GREENLEAF NURSERY COMPANY | PARK HILL</div><h1>' + escape(report.title) + '</h1>'
+    + '<div class="meta"><b>Clearing Location:</b> ' + escape(report.locationBucket) + ' &nbsp;&nbsp; <b>Block:</b> ' + escape(report.blockalpha)
+    + '<br><b>Created:</b> ' + escape(Utilities.formatDate(new Date(report.createdAt), 'America/Chicago', 'MMM d, yyyy h:mm a z'))
+    + ' &nbsp;&nbsp; <b>Submitted By:</b> ' + escape(report.submittedBy) + '</div><div class="totals">Total Plants On Hand: ' + number(report.totalOnHand) + ' &nbsp; | &nbsp; Items: ' + report.itemCount
+    + ' &nbsp; | &nbsp; Source Rows: ' + report.rowCount + '</div></header>' + sections
+    + '<table class="signoff"><tbody><tr><td><div class="signature-line"></div>Worker Name / Initials</td><td><div class="signature-line"></div>Worker Signature</td><td><div class="signature-line"></div>Completion Date</td></tr></tbody></table>'
+    + '<p class="note">Record the actual completed quantity for each item. Inventory quantities above reflect the submitted snapshot.</p></body></html>';
+}
+
+function blockClearingPdfFilename_(report) {
+  return 'GNC_PH_Block_Clearing_' + report.locationBucket.replace(/[^A-Z0-9._-]/g, '_') + '_' + report.createdAt.slice(0, 19).replace(/[-:]/g, '').replace('T', '_') + '.pdf';
+}
+
+function buildBlockClearingPdfFile_(report) {
+  const filename = blockClearingPdfFilename_(report);
+  try {
+    const blob = HtmlService.createHtmlOutput(buildBlockClearingPdfHtml_(report)).getBlob().getAs(MimeType.PDF).setName(filename);
+    const bytes = blob.getBytes();
+    if (!bytes || bytes.length < 5 || bytes.slice(0, 5).map(function(byte) { return String.fromCharCode(byte & 255); }).join('') !== '%PDF-') throw new Error('Invalid PDF');
+    return { blob: blob, filename: filename, mimeType: 'application/pdf', bytes: bytes };
+  } catch (error) {
+    throw new Error('BLOCK_CLEARING_PDF_BUILD_FAILED');
+  }
+}
+
+function handleBlockClearingPdf_(payload) {
+  const report = normalizeBlockClearingPdfReport_(payload);
+  const response = { success: true, contractVersion: BLOCK_CLEARING_PDF_CONTRACT_, attachmentCount: 1 };
+  if (payload.operation === 'render') {
+    const rendered = buildBlockClearingPdfFile_(report);
+    response.file = { filename: rendered.filename, mimeType: rendered.mimeType, base64: Utilities.base64Encode(rendered.bytes) };
+    return response;
+  }
+  const senderEmail = normalizeEmailAddress_(resolveRequestRecipientEmail_(firstNonEmptyRequestValue_(payload.requestedBy, payload.submittedBy, report.submittedBy), firstNonEmptyRequestValue_(payload.requestedByEmail, payload.requested_by_email, payload.senderEmail, '')));
+  if (!isLikelyEmailAddress_(senderEmail)) throw new Error('BLOCK_CLEARING_VALIDATION:SENDER_EMAIL_REQUIRED');
+  const recipientPayload = Object.assign({}, payload, { emailType: 'block_clearing_email', blockClearingEmail: true });
+  const recipients = dedupeEmailAddresses_([collectRequestRecipients_(recipientPayload).toArray, senderEmail, 'dylan_collyge@greenleafnursery.com']).sort();
+  if (!isGmailAdvancedServiceAvailable_()) throw new Error('BLOCK_CLEARING_EMAIL_GMAIL_SERVICE_UNAVAILABLE');
+  const key = blockClearingPdfText_(payload.idempotencyKey, 'IDEMPOTENCY_KEY', false, 180);
+  if (key && !/^[A-Za-z0-9._:-]{12,180}$/.test(key)) throw new Error('BLOCK_CLEARING_VALIDATION:IDEMPOTENCY_KEY');
+  // Exact retries share a Message-ID. Changed content or recipients are a new delivery.
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, JSON.stringify([BLOCK_CLEARING_PDF_CONTRACT_, key || Utilities.getUuid(), report, recipients]), Utilities.Charset.UTF_8);
+  const messageIdHeader = '<block-clearing-' + requestDeliveryBase64Url_(digest) + '@greenleafnursery.com>';
+  let lock;
+  try {
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(25000)) throw new Error('Busy');
+  } catch (lockError) {
+    throw new Error('BLOCK_CLEARING_EMAIL_BUSY_RETRY');
+  }
+  try {
+    const savedReceipt = getRequestDeliveryReceipt_(messageIdHeader) || findSentRequestDeliveryByMessageId_(messageIdHeader);
+    const filename = blockClearingPdfFilename_(report);
+    if (savedReceipt) return Object.assign(response, { pdfFilename: filename, recovered: true });
+    const pdf = buildBlockClearingPdfFile_(report);
+    const subject = 'GNC PH Block Clearing - ' + report.locationBucket + ' - ' + report.title.replace(/[\r\n]+/g, ' ');
+    const textBody = report.title + '\nClearing Location: ' + report.locationBucket + '\nBlock: ' + report.blockalpha + '\nSubmitted By: ' + report.submittedBy
+      + '\nTotal Plants On Hand: ' + report.totalOnHand + '\nItems: ' + report.itemCount + '\n\nThe Block Clearing worksheet PDF is attached.';
+    const result = sendGmailApiMessage_({
+      toList: recipients.join(','), toArray: recipients, subject: subject, textBody: textBody,
+      htmlBody: '<div style="font-family:Arial,sans-serif;white-space:pre-line">' + escapeEmailHtml_(textBody) + '</div>',
+      attachments: [pdf.blob], fromName: 'GNC PH Block Clearing', fromAddress: resolveAutomatedEmailSenderAddress_(), messageIdHeader: messageIdHeader
+    });
+    if (!result || result.ok !== true || !result.gmailMessageId) throw new Error('BLOCK_CLEARING_EMAIL_SEND_FAILED');
+    try { saveRequestDeliveryReceipt_(messageIdHeader, result); } catch (receiptError) { response.receiptPersisted = false; }
+    response.pdfFilename = pdf.filename;
+    return response;
+  } catch (error) {
+    if (/^BLOCK_CLEARING_/.test(String(error && error.message || ''))) throw error;
+    throw new Error('BLOCK_CLEARING_EMAIL_SEND_FAILED');
+  } finally {
+    try { lock.releaseLock(); } catch (releaseError) {}
+  }
+}
+
 // Photo History uses bounded previews for viewing/email; originals remain untouched.
 function photoHistoryDrivePreview_(driveFileId, width) {
   if (!/^[a-zA-Z0-9_-]{10,}$/.test(String(driveFileId || ''))) throw new Error('PHOTO_HISTORY_ASSET_UNAVAILABLE');
@@ -16215,6 +16478,10 @@ function doPost(e) {
 
     if (payload.type === 'deployment_health') {
       return jsonOutput_(getAppsScriptDeploymentHealth_());
+    }
+
+    if (payload.type === 'block_clearing_pdf') {
+      return jsonOutput_(handleBlockClearingPdf_(payload));
     }
 
     if (payload.type === 'request_delivery_event') {
