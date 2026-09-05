@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /(responsive-workflows\.e2e|request-integrity-local|eval-work\.e2e|scroll-performance\.e2e|photo-egress\.e2e|photo-history\.e2e|sales-marketing-tasks\.e2e)\.spec\.(ts|js)/,
+  testMatch: /(responsive-workflows\.e2e|request-integrity-local|eval-work\.e2e|block-clearing\.e2e|scroll-performance\.e2e|photo-egress\.e2e|photo-history\.e2e|sales-marketing-tasks\.e2e)\.spec\.(ts|js)/,
   fullyParallel: true,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

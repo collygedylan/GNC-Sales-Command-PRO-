@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.04.13">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.04.14">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.04.13';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.04.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6799,7 +6799,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.04.13">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.04.14">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6974,9 +6974,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.04.13"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.04.13"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.04.13"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.04.14"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.04.14"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.04.14"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7730,7 +7730,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.04.13').trim() || 'V2026.09.04.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.04.14').trim() || 'V2026.09.04.14';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9235,7 +9235,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.04.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.04.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -22553,7 +22553,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
-                const shouldRestoreScroll = !forceReset && getCurrentVisibleViewId() === safeViewId;
+                const blockClearingNavigation = safeViewId === 'managers' && activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW && managerBlockClearingDraftState.restore;
+                const shouldRestoreScroll = !forceReset && !blockClearingNavigation && getCurrentVisibleViewId() === safeViewId;
                 const restoreScrollTop = shouldRestoreScroll && !shouldResetIosPhoneMainScrollForView(safeViewId) ? getMainAreaScrollTop() : 0;
                 const viewRenderStartedAt = beginInternalPerfMeasure();
                 try {
@@ -31497,7 +31498,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.04.13').trim() || 'V2026.09.04.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.04.14').trim() || 'V2026.09.04.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -75863,6 +75864,11 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             if (currentView === 'managers') {
+                if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW) {
+                    backManagerBlockClearing();
+                    updateGlobalBackButton();
+                    return false;
+                }
                 if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && (managerEvalReport2DetailItemKey || managerEvalReport2DrillLevel > 0)) {
                     backManagerEvalReport2Drill();
                     updateGlobalBackButton();
@@ -120628,9 +120634,15 @@ C.14.043 C.15.000
             else if (requestedTab === MANAGER_CODEX_OPERATIONS_VIEW && canViewCodexOperations()) nextTab = MANAGER_CODEX_OPERATIONS_VIEW;
             else if (requestedTab === MANAGER_DELIVERY_RECOVERY_VIEW && canManageRequestDeliveryRecovery()) nextTab = MANAGER_DELIVERY_RECOVERY_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
+            if (previousTab === MANAGER_BLOCK_CLEARING_VIEW && previousTab !== nextTab) saveManagerBlockClearingNavigation();
             activeHomeTab = nextTab;
             if (nextTab !== SHEAR_APPROVAL_VIEW) activeShearApprovalDetailId = '';
             if (getCurrentVisibleViewId() === 'managers' && previousTab !== nextTab) managersSearchTerm = '';
+            if (nextTab === MANAGER_BLOCK_CLEARING_VIEW && previousTab !== nextTab) {
+                const saved = managerBlockClearingDraftState.views.get(getManagerBlockClearingViewKey());
+                if (saved) managersSearchTerm = saved.search;
+                managerBlockClearingDraftState.restore = { key: getManagerBlockClearingViewKey(), scroll: saved ? saved.scroll : 0 };
+            }
             if (nextTab === 'moves' && previousTab !== 'moves') {
                 activeMovesTab = 'main';
                 movesViewLevel = 0;
@@ -127322,1008 +127334,410 @@ C.14.043 C.15.000
             </div>`;
         }
 
+        const BLOCK_CLEARING_PDF_CONTRACT = 'block-clearing-pdf-v1';
+        const BLOCK_CLEARING_ACTIONS = Object.freeze({ ta: 'TA', move: 'Move To', grade_save_best: 'Grade & Save Best' });
+        const managerBlockClearingDraftState = { locations: new Map(), views: new Map(), decisions: new Map(), restore: null, downloading: false, prepared: null, error: '' };
+
         function canViewManagerBlockClearing(userOverride = '') {
-            return [userOverride, currentUser, currentUserDisplay]
-                .filter((value) => String(value || '').trim())
+            return [userOverride, currentUser, currentUserDisplay].filter((value) => String(value || '').trim())
                 .some((value) => DYLAN_EQUIVALENT_USER_KEYS.has(normalizePushUsername(value)));
         }
 
         function getBlockClearingRowValue(row = null, keys = [], fallback = '') {
-            if (!row || typeof row !== 'object') return fallback;
             for (const key of (Array.isArray(keys) ? keys : [keys])) {
-                if (!key || !Object.prototype.hasOwnProperty.call(row, key)) continue;
-                const value = row[key];
-                if (value === null || value === undefined) continue;
-                if (typeof value === 'string' && !value.trim()) continue;
-                return value;
+                const value = row && row[key];
+                if (value !== undefined && value !== null && String(value).trim() !== '') return value;
             }
             return fallback;
         }
 
-        function getManagerBlockClearingRowId(row = null, index = 0) {
-            const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, row && row.id, row && row.ID, '') || '').trim();
-            if (uid) return uid;
-            const fallbackParts = [
-                index,
-                getBlockClearingRowValue(row, ['ITEMCODE', 'itemcode'], ''),
-                getBlockClearingRowValue(row, ['LOCATIONCODE', 'locationcode'], ''),
-                getBlockClearingRowValue(row, ['LOTCODE', 'lotcode'], ''),
-                getBlockClearingRowValue(row, ['CONTSIZE', 'contsize'], '')
-            ].map((value) => String(value || '').trim()).join('|');
-            return `block-clearing:${fallbackParts}`;
-        }
-
-        function getManagerBlockClearingBlock(row = null) {
-            return normalizeMovesDrillValue(firstNonEmptyValue(
-                row && row.BLOCKALPHA,
-                row && row.blockalpha,
-                row && row.BLOCK_ALPHA,
-                row && row.block_alpha,
-                'No Block'
-            ));
-        }
-
         function getManagerBlockClearingRawLocation(row = null) {
-            return String(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, row && row.LOCATION, row && row.location, '') || '').trim();
+            return String(getBlockClearingRowValue(row, ['LOCATIONCODE', 'locationcode', 'LOCATION', 'location'])).trim().toUpperCase();
         }
 
-        function normalizeManagerBlockClearingLocationBucket(value = '', row = null) {
-            const rawLocation = String(value || '').trim();
-            if (!rawLocation) return 'No Loc';
-            if (typeof getTaskLocationBucket === 'function') {
-                const bucketRow = row && typeof row === 'object'
-                    ? Object.assign({}, row, { LOCATIONCODE: rawLocation, locationcode: rawLocation })
-                    : { LOCATIONCODE: rawLocation, locationcode: rawLocation };
-                const bucket = String(getTaskLocationBucket(bucketRow) || '').trim();
-                if (bucket && bucket !== 'UNASSIGNED') return bucket;
-            }
-            const exact = rawLocation.toUpperCase().match(/^([A-Z])\.(\d{2})/);
-            if (exact) return `${exact[1]}.${exact[2]}`;
-            return rawLocation.replace(/\.\d{3}$/, '') || 'No Loc';
+        function normalizeManagerBlockClearingLocationBucket(value = '') {
+            const raw = String(value || '').trim().toUpperCase();
+            const parts = raw.split('.').slice(0, 2);
+            if (parts.length > 1 && /^\d+$/.test(parts[1])) parts[1] = parts[1].padStart(2, '0');
+            return parts.join('.') || 'No Loc';
         }
 
-        function getManagerBlockClearingLocation(row = null) {
-            return normalizeMovesLocationValue(normalizeManagerBlockClearingLocationBucket(getManagerBlockClearingRawLocation(row), row));
+        function getManagerBlockClearingLocation(row = null) { return normalizeManagerBlockClearingLocationBucket(getManagerBlockClearingRawLocation(row)); }
+        function getManagerBlockClearingBlock(row = null) {
+            return String(getBlockClearingRowValue(row, ['BLOCKALPHA', 'blockalpha', 'BLOCK_ALPHA', 'block_alpha'], getManagerBlockClearingRawLocation(row).split('.')[0] || 'No Block')).trim().toUpperCase();
         }
-
-        function getManagerBlockClearingItemCode(row = null) {
-            return String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, row && row.ITEM_CODE, row && row.item_code, '') || '').trim();
-        }
-
-        function getManagerBlockClearingCommonName(row = null) {
-            return String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, row && row.COMMON_NAME, row && row.common_name, 'Unknown') || 'Unknown').trim();
-        }
-
-        function getManagerBlockClearingContSize(row = null) {
-            return String(firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, row && row.CONT_SIZE, row && row.cont_size, '-') || '-').trim();
-        }
-
-        function getManagerBlockClearingLotCode(row = null) {
-            return String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, row && row.LOT_CODE, row && row.lot_code, '') || '').trim();
-        }
-
-        function getManagerBlockClearingNumber(row = null, keys = []) {
-            const value = getBlockClearingRowValue(row, keys, '');
-            const parsed = parseAppNumber(value);
-            return parsed === null ? 0 : parsed;
+        function getManagerBlockClearingItemCode(row = null) { return String(getBlockClearingRowValue(row, ['ITEMCODE', 'itemcode', 'ITEM_CODE', 'item_code'])).trim().toUpperCase(); }
+        function getManagerBlockClearingCommonName(row = null) { return String(getBlockClearingRowValue(row, ['COMMONNAME', 'commonname', 'COMMON_NAME'], 'Unknown')).trim(); }
+        function getManagerBlockClearingContSize(row = null) { return String(getBlockClearingRowValue(row, ['CONTSIZE', 'contsize', 'CONT_SIZE'], '-')).trim(); }
+        function getManagerBlockClearingLotCode(row = null) { return String(getBlockClearingRowValue(row, ['LOTCODE', 'lotcode', 'LOT_CODE'])).trim().toUpperCase(); }
+        function getManagerBlockClearingRowId(row = null) { return String(getBlockClearingRowValue(row, ['UNIQUE_ID', 'unique_id', 'id', 'ID'])).trim(); }
+        function getManagerBlockClearingNumber(row = null, keys = []) { const n = parseAppNumber(getBlockClearingRowValue(row, keys)); return n === null ? 0 : n; }
+        function getManagerBlockClearingSalesYear(row = null) {
+            const year = getBlockClearingRowValue(row, ['SALEYEAR', 'SALESYEAR', 'salesyear', 'sale_year', 'SALE_YEAR', 'SALES_YEAR'], getManagerBlockClearingLotCode(row).split('.')[0]);
+            const n = Number(year);
+            return Number.isInteger(n) && n > 0 ? (n >= 2000 ? n % 100 : n) : null;
         }
 
         function getManagerBlockClearingCache() {
             const sourceRows = Array.isArray(fullInventory) ? fullInventory : [];
             const cacheKey = `${getDatasetLoadSignature('master')}::${sourceRows.length}::${resolvedViewStateEpoch}`;
             if (managerBlockClearingCache && managerBlockClearingCacheKey === cacheKey) return managerBlockClearingCache;
-            let rows = sourceRows.slice();
-            try { rows = applyForemanPriorityRowScope(rows); } catch (_) {}
-            try { rows = applyRepU3VisibilityScope(rows); } catch (_) {}
-            rows = rows.filter((row) => row && !shouldHideNotOnInventoryApprovalRowFromInventory(row));
+            let scoped = sourceRows.slice();
+            try { scoped = applyForemanPriorityRowScope(scoped); } catch (_) {}
+            try { scoped = applyRepU3VisibilityScope(scoped); } catch (_) {}
             const byId = new Map();
-            const byRow = new WeakMap();
-            const byBlock = new Map();
-            const byBlockLocation = new Map();
-            rows.forEach((row, index) => {
-                const uid = getManagerBlockClearingRowId(row, index);
-                if (!uid) return;
-                const block = getManagerBlockClearingBlock(row);
-                const location = getManagerBlockClearingLocation(row);
-                const itemcode = getManagerBlockClearingItemCode(row);
-                byId.set(uid, row);
-                if (row && typeof row === 'object') byRow.set(row, uid);
+            scoped.forEach((row) => {
+                if (!row || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return;
+                const id = getManagerBlockClearingRowId(row);
+                if (id && !byId.has(id)) byId.set(id, row);
+            });
+            const rows = Array.from(byId.values());
+            const byBlock = new Map(), byBlockLocation = new Map(), byLocation = new Map(), byItemcode = new Map();
+            rows.forEach((row) => {
+                const block = getManagerBlockClearingBlock(row), location = getManagerBlockClearingLocation(row), itemcode = getManagerBlockClearingItemCode(row);
                 if (!byBlock.has(block)) byBlock.set(block, { block, rows: [], locations: new Set(), itemcodes: new Set() });
                 const blockGroup = byBlock.get(block);
-                blockGroup.rows.push(row);
-                blockGroup.locations.add(location);
-                if (itemcode) blockGroup.itemcodes.add(itemcode);
-                const locationKey = `${block}||${location}`;
-                if (!byBlockLocation.has(locationKey)) byBlockLocation.set(locationKey, { block, location, rows: [], itemcodes: new Set() });
-                const locationGroup = byBlockLocation.get(locationKey);
-                locationGroup.rows.push(row);
-                if (itemcode) locationGroup.itemcodes.add(itemcode);
+                blockGroup.rows.push(row); blockGroup.locations.add(location); if (itemcode) blockGroup.itemcodes.add(itemcode);
+                if (!byLocation.has(location)) byLocation.set(location, { block, location, rows: [], itemcodes: new Set() });
+                const group = byLocation.get(location);
+                group.rows.push(row); if (itemcode) group.itemcodes.add(itemcode);
+                byBlockLocation.set(`${block}||${location}`, group);
+                if (!byItemcode.has(itemcode)) byItemcode.set(itemcode, []);
+                byItemcode.get(itemcode).push(row);
             });
-            const sortRows = (a, b) => getManagerBlockClearingItemCode(a).localeCompare(getManagerBlockClearingItemCode(b), undefined, { numeric: true, sensitivity: 'base' })
-                || getManagerBlockClearingCommonName(a).localeCompare(getManagerBlockClearingCommonName(b), undefined, { numeric: true, sensitivity: 'base' })
-                || getManagerBlockClearingContSize(a).localeCompare(getManagerBlockClearingContSize(b), undefined, { numeric: true, sensitivity: 'base' })
-                || getManagerBlockClearingLotCode(a).localeCompare(getManagerBlockClearingLotCode(b), undefined, { numeric: true, sensitivity: 'base' });
-            byBlock.forEach((group) => group.rows.sort(sortRows));
-            byBlockLocation.forEach((group) => group.rows.sort(sortRows));
-            const blocks = Array.from(byBlock.values()).sort((a, b) => a.block.localeCompare(b.block, undefined, { numeric: true, sensitivity: 'base' }));
+            const sort = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+            const blocks = Array.from(byBlock.values()).sort((a, b) => sort(a.block, b.block));
             const locationsByBlock = new Map();
-            byBlockLocation.forEach((group) => {
-                if (!locationsByBlock.has(group.block)) locationsByBlock.set(group.block, []);
-                locationsByBlock.get(group.block).push(group);
+            byBlockLocation.forEach((group, key) => {
+                const block = key.split('||')[0];
+                if (!locationsByBlock.has(block)) locationsByBlock.set(block, []);
+                locationsByBlock.get(block).push(group);
             });
-            locationsByBlock.forEach((groups) => groups.sort((a, b) => a.location.localeCompare(b.location, undefined, { numeric: true, sensitivity: 'base' })));
+            locationsByBlock.forEach((groups) => groups.sort((a, b) => sort(a.location, b.location)));
             managerBlockClearingCacheKey = cacheKey;
-            managerBlockClearingCache = { rows, byId, byRow, byBlock, byBlockLocation, blocks, locationsByBlock };
+            managerBlockClearingCache = { rows, byId, byBlock, byBlockLocation, byLocation, byItemcode, blocks, locationsByBlock };
             return managerBlockClearingCache;
         }
 
         function managerBlockClearingRowMatchesSearch(row = null) {
-            return managerTextMatchesSearch([
-                getManagerBlockClearingBlock(row),
-                getManagerBlockClearingLocation(row),
-                getManagerBlockClearingRawLocation(row),
-                getManagerBlockClearingItemCode(row),
-                getManagerBlockClearingCommonName(row),
-                getManagerBlockClearingContSize(row),
-                getManagerBlockClearingLotCode(row),
-                getBlockClearingRowValue(row, ['SOURCE', 'source'], ''),
-                getBlockClearingRowValue(row, ['PRIORITY', 'priority'], ''),
-                getBlockClearingRowValue(row, ['DESIGCUST', 'desigcust'], '')
-            ]);
+            return managerTextMatchesSearch([getManagerBlockClearingBlock(row), getManagerBlockClearingLocation(row), getManagerBlockClearingRawLocation(row), getManagerBlockClearingItemCode(row), getManagerBlockClearingCommonName(row), getManagerBlockClearingContSize(row), getManagerBlockClearingLotCode(row)]);
         }
-
-        function filterManagerBlockClearingRowsForSearch(rows = []) {
-            const list = Array.isArray(rows) ? rows : [];
-            if (!getManagersSearchTokens().length) return list;
-            return list.filter(managerBlockClearingRowMatchesSearch);
-        }
-
-        function getManagerBlockClearingLocationGroupsForBlock(blockValue = '') {
-            const block = normalizeMovesDrillValue(blockValue);
-            return getManagerBlockClearingCache().locationsByBlock.get(block) || [];
-        }
-
-        function getManagerBlockClearingRowsForSelectedLocation() {
-            const block = normalizeMovesDrillValue(managerBlockClearingSelectedBlock);
-            const location = normalizeMovesLocationValue(managerBlockClearingSelectedLocation);
-            return (getManagerBlockClearingCache().byBlockLocation.get(`${block}||${location}`) || {}).rows || [];
-        }
-
-        function getManagerBlockClearingSelectedRows() {
-            const cache = getManagerBlockClearingCache();
-            return Array.from(managerBlockClearingSelectedIds || []).map((id) => cache.byId.get(id)).filter(Boolean);
-        }
-
-        function resetManagerBlockClearingSelection(clearInstructions = true) {
-            managerBlockClearingSelectionMode = false;
-            managerBlockClearingInstructionMode = false;
-            managerBlockClearingSelectedIds = new Set();
-            if (clearInstructions) {
-                managerBlockClearingInstructionsByItemcode = new Map();
-                managerBlockClearingReportTitle = '';
-            }
-            clearManagerBlockClearingLongPress();
-        }
-
-        function getManagerBlockClearingSelectedCount() {
-            return managerBlockClearingSelectedIds instanceof Set ? managerBlockClearingSelectedIds.size : 0;
-        }
-
-        function getManagerBlockClearingRowDomId(uid = '') {
-            const raw = String(uid || '').trim();
-            let hash = 2166136261;
-            if (typeof updateRenderSignatureHash === 'function') {
-                hash = updateRenderSignatureHash(hash, raw);
-            } else {
-                for (let i = 0; i < raw.length; i += 1) {
-                    hash ^= raw.charCodeAt(i);
-                    hash = Math.imul(hash, 16777619) >>> 0;
-                }
-            }
-            return `bc_row_${(hash >>> 0).toString(16)}`;
-        }
-
-        function syncManagerBlockClearingRowSelectionDom(uid = '') {
-            const safeUid = String(uid || '').trim();
-            if (!safeUid) return false;
-            const selected = managerBlockClearingSelectedIds instanceof Set && managerBlockClearingSelectedIds.has(safeUid);
-            const domId = getManagerBlockClearingRowDomId(safeUid);
-            const card = document.getElementById(`block-clearing-row-${domId}`);
-            const marker = document.getElementById(`block-clearing-row-marker-${domId}`);
-            const icon = document.getElementById(`block-clearing-row-icon-${domId}`);
-            if (card) {
-                card.dataset.selected = selected ? '1' : '0';
-                card.classList.toggle('border-[#007a4d]', selected);
-                card.classList.toggle('bg-emerald-50', selected);
-                card.classList.toggle('border-emerald-100', !selected);
-                card.classList.toggle('bg-white', !selected);
-            }
-            if (marker) {
-                marker.classList.toggle('border-[#007a4d]', selected);
-                marker.classList.toggle('bg-[#007a4d]', selected);
-                marker.classList.toggle('text-white', selected);
-                marker.classList.toggle('border-slate-200', !selected);
-                marker.classList.toggle('bg-white', !selected);
-                marker.classList.toggle('text-slate-300', !selected);
-            }
-            if (icon) {
-                icon.classList.toggle('ph-check', selected);
-                icon.classList.toggle('ph-circle', !selected);
-            }
-            return false;
-        }
-
-        function syncManagerBlockClearingSelectionUi(changedUid = '') {
-            const selectedCount = getManagerBlockClearingSelectedCount();
-            if (changedUid) syncManagerBlockClearingRowSelectionDom(changedUid);
-            document.querySelectorAll('[data-block-clearing-selected-count]').forEach((el) => {
-                el.textContent = `${selectedCount} selected`;
-            });
-            const summary = document.getElementById('block-clearing-location-count');
-            if (summary) {
-                const countLabel = summary.dataset.countLabel || '';
-                summary.textContent = [countLabel, `${selectedCount} selected`].filter(Boolean).join(' | ');
-            }
-            const controls = document.getElementById('block-clearing-selection-controls');
-            if (controls) {
-                const showControls = managerBlockClearingSelectionMode && selectedCount > 0;
-                controls.classList.toggle('hidden', !showControls);
-                controls.classList.toggle('flex', showControls);
-            }
-            return false;
-        }
-
-        function selectManagerBlockClearingBlock(blockValue = '') {
-            managerBlockClearingSelectedBlock = normalizeMovesDrillValue(blockValue);
-            managerBlockClearingSelectedLocation = null;
-            managerBlockClearingLevel = 1;
-            resetManagerBlockClearingSelection(true);
-            scheduleManagersRender(true);
-            return false;
-        }
-
-        function selectManagerBlockClearingLocation(locationValue = '') {
-            managerBlockClearingSelectedLocation = normalizeMovesLocationValue(locationValue);
-            managerBlockClearingLevel = 2;
-            resetManagerBlockClearingSelection(true);
-            scheduleManagersRender(true);
-            return false;
-        }
-
-        function backManagerBlockClearing() {
-            if (managerBlockClearingInstructionMode) {
-                managerBlockClearingInstructionMode = false;
-                managerBlockClearingSelectionMode = true;
-                scheduleManagersRender(true);
-                return false;
-            }
-            if (managerBlockClearingLevel >= 2) {
-                managerBlockClearingLevel = 1;
-                managerBlockClearingSelectedLocation = null;
-                resetManagerBlockClearingSelection(true);
-            } else {
-                managerBlockClearingLevel = 0;
-                managerBlockClearingSelectedBlock = null;
-                managerBlockClearingSelectedLocation = null;
-                resetManagerBlockClearingSelection(true);
-            }
-            scheduleManagersRender(true);
-            return false;
-        }
-
-        function clearManagerBlockClearingLongPress() {
-            if (managerBlockClearingLongPressTimer) clearTimeout(managerBlockClearingLongPressTimer);
-            managerBlockClearingLongPressTimer = null;
-            managerBlockClearingLongPressUid = '';
-            return false;
-        }
-
-        function startManagerBlockClearingLongPress(event, uid = '') {
-            const safeUid = String(uid || '').trim();
-            if (!safeUid || managerBlockClearingInstructionMode || managerBlockClearingSelectionMode) return true;
-            clearManagerBlockClearingLongPress();
-            managerBlockClearingLongPressUid = safeUid;
-            managerBlockClearingLongPressTimer = setTimeout(() => {
-                managerBlockClearingLongPressTimer = null;
-                managerBlockClearingSuppressClickUid = safeUid;
-                managerBlockClearingSelectionMode = true;
-                managerBlockClearingSelectedIds.add(safeUid);
-                syncManagerBlockClearingSelectionUi(safeUid);
-                setTimeout(() => {
-                    if (managerBlockClearingSuppressClickUid === safeUid) managerBlockClearingSuppressClickUid = '';
-                }, Math.max(3000, MANAGER_BLOCK_CLEARING_LONG_PRESS_MS + 1800));
-            }, MANAGER_BLOCK_CLEARING_LONG_PRESS_MS);
-            return true;
-        }
-
-        function preventManagerBlockClearingContextMenu(event) {
-            if (event && typeof event.preventDefault === 'function') event.preventDefault();
-            return false;
-        }
-
-        function toggleManagerBlockClearingRow(uid = '', selected = null) {
-            const safeUid = String(uid || '').trim();
-            if (!safeUid) return false;
-            if (!(managerBlockClearingSelectedIds instanceof Set)) managerBlockClearingSelectedIds = new Set();
-            const shouldSelect = selected === null ? !managerBlockClearingSelectedIds.has(safeUid) : !!selected;
-            if (shouldSelect) managerBlockClearingSelectedIds.add(safeUid);
-            else managerBlockClearingSelectedIds.delete(safeUid);
-            managerBlockClearingSelectionMode = managerBlockClearingSelectedIds.size > 0;
-            if (!managerBlockClearingSelectionMode) managerBlockClearingInstructionsByItemcode = new Map();
-            if (managerBlockClearingSelectionMode) syncManagerBlockClearingSelectionUi(safeUid);
-            else scheduleManagersRender(true);
-            return false;
-        }
-
-        function handleManagerBlockClearingRowClick(uid = '') {
-            const safeUid = String(uid || '').trim();
-            if (managerBlockClearingSuppressClickUid === safeUid) {
-                managerBlockClearingSuppressClickUid = '';
-                return false;
-            }
-            if (managerBlockClearingSelectionMode) return toggleManagerBlockClearingRow(safeUid, null);
-            showToast('Block Clearing', 'Long press a row to start selecting.', false);
-            return false;
-        }
-
-        function finishManagerBlockClearingSelection() {
-            if (!managerBlockClearingSelectedIds || !managerBlockClearingSelectedIds.size) {
-                showToast('Select Rows', 'Select at least one row before continuing.', true);
-                return false;
-            }
-            managerBlockClearingInstructionMode = true;
-            managerBlockClearingSelectionMode = false;
-            if (!String(managerBlockClearingReportTitle || '').trim()) {
-                managerBlockClearingReportTitle = getDefaultManagerBlockClearingTitle();
-            }
-            scheduleManagersRender(true);
-            return false;
-        }
-
-        function cancelManagerBlockClearingWorkflow() {
-            resetManagerBlockClearingSelection(true);
-            scheduleManagersRender(true);
-            return false;
-        }
-
+        function filterManagerBlockClearingRowsForSearch(rows = []) { return getManagersSearchTokens().length ? rows.filter(managerBlockClearingRowMatchesSearch) : rows; }
+        function getManagerBlockClearingLocationGroupsForBlock(block = '') { return getManagerBlockClearingCache().locationsByBlock.get(String(block).trim().toUpperCase()) || []; }
+        function getManagerBlockClearingRowsForSelectedLocation() { return (getManagerBlockClearingCache().byLocation.get(normalizeManagerBlockClearingLocationBucket(managerBlockClearingSelectedLocation)) || {}).rows || []; }
         function buildManagerBlockClearingGroups(rows = null) {
-            const sourceRows = Array.isArray(rows) ? rows : getManagerBlockClearingSelectedRows();
-            const groups = new Map();
-            sourceRows.forEach((row) => {
-                const itemcode = getManagerBlockClearingItemCode(row);
-                const key = itemcode;
-                if (!groups.has(key)) {
-                    groups.set(key, {
-                        key,
-                        itemcode,
-                        commonname: getManagerBlockClearingCommonName(row),
-                        contsize: getManagerBlockClearingContSize(row),
-                        rows: [],
-                        locations: new Set(),
-                        lots: new Set(),
-                        totalOnHand: 0,
-                        totalReviewed: 0,
-                        totalAvailable: 0,
-                        totalSLts: 0
-                    });
-                }
-                const group = groups.get(key);
-                group.rows.push(row);
-                group.locations.add(getManagerBlockClearingLocation(row));
-                const lot = getManagerBlockClearingLotCode(row);
-                if (lot) group.lots.add(lot);
+            const groups = new Map(), seen = new Set();
+            (Array.isArray(rows) ? rows : getManagerBlockClearingSelectedRows()).forEach((row) => {
+                const id = getManagerBlockClearingRowId(row), itemcode = getManagerBlockClearingItemCode(row);
+                if (!id || !itemcode || seen.has(id)) return;
+                seen.add(id);
+                if (!groups.has(itemcode)) groups.set(itemcode, { key: itemcode, itemcode, commonname: getManagerBlockClearingCommonName(row), contsize: getManagerBlockClearingContSize(row), rows: [], locations: new Set(), lots: new Set(), salesyears: new Set(), totalOnHand: 0 });
+                const group = groups.get(itemcode);
+                group.rows.push(row); group.locations.add(getManagerBlockClearingRawLocation(row)); group.lots.add(getManagerBlockClearingLotCode(row));
+                const year = getManagerBlockClearingSalesYear(row); if (year !== null) group.salesyears.add(year);
                 group.totalOnHand += getManagerBlockClearingNumber(row, ['PTRONHAND', 'ptronhand', 'ONHAND', 'onhand']);
-                group.totalReviewed += getManagerBlockClearingNumber(row, ['PTRREVIEWED', 'ptrreviewed']);
-                group.totalAvailable += getManagerBlockClearingNumber(row, ['PTRAVAILABLE', 'ptravailable', 'LOC_AVAIL', 'loc_avail']);
-                group.totalSLts += getManagerBlockClearingNumber(row, ['S_LTS', 's_lts', 'SLTS', 'slts']);
             });
-            return Array.from(groups.values()).sort((a, b) => String(a.itemcode || '').localeCompare(String(b.itemcode || ''), undefined, { numeric: true, sensitivity: 'base' }));
+            groups.forEach((group) => group.rows.sort((a, b) => getManagerBlockClearingRawLocation(a).localeCompare(getManagerBlockClearingRawLocation(b), undefined, { numeric: true }) || getManagerBlockClearingLotCode(a).localeCompare(getManagerBlockClearingLotCode(b)) || getManagerBlockClearingRowId(a).localeCompare(getManagerBlockClearingRowId(b))));
+            return Array.from(groups.values()).sort((a, b) => a.commonname.localeCompare(b.commonname, undefined, { sensitivity: 'base' }) || a.itemcode.localeCompare(b.itemcode));
         }
-
-        function getManagerBlockClearingInstruction(itemcode = '') {
-            const key = String(itemcode || '');
-            return String(managerBlockClearingInstructionsByItemcode.get(key) || '').trim();
+        function getManagerBlockClearingItemGroupsForSelectedLocation() { return buildManagerBlockClearingGroups(getManagerBlockClearingRowsForSelectedLocation()); }
+        function getManagerBlockClearingSelectedRows() { return getManagerBlockClearingRowsForSelectedLocation().filter((row) => managerBlockClearingSelectedIds.has(getManagerBlockClearingItemCode(row))); }
+        function getManagerBlockClearingSelectedCount() { return getManagerBlockClearingItemGroupsForSelectedLocation().filter((group) => managerBlockClearingSelectedIds.has(group.key)).length; }
+        function getManagerBlockClearingEncodedKey(key = '') { return encodeURIComponent(key); }
+        function decodeManagerBlockClearingKey(key = '') { try { return decodeURIComponent(key).trim().toUpperCase(); } catch (_) { return ''; } }
+        function getManagerBlockClearingGroupDomId(key = '') { return Array.from(String(key)).map((c) => c.charCodeAt(0).toString(16)).join('_'); }
+        function getDefaultManagerBlockClearingTitle(block = managerBlockClearingSelectedBlock, location = managerBlockClearingSelectedLocation) { return `Block Clearing ${String(block || '').trim()} ${String(location || '').trim()}`.replace(/\s+/g, ' ').trim(); }
+        function getManagerBlockClearingReportTitle() { return String(managerBlockClearingReportTitle || '').trim(); }
+        function getManagerBlockClearingDecision(itemcode = '') {
+            const key = String(itemcode).trim().toUpperCase();
+            if (!managerBlockClearingDraftState.decisions.has(key)) managerBlockClearingDraftState.decisions.set(key, { action: '', quantity: '', destinationMode: 'itemcode', destinationLocationcode: '', destinationSearch: '', instructions: '' });
+            return managerBlockClearingDraftState.decisions.get(key);
         }
+        function getManagerBlockClearingInstruction(itemcode = '') { return getManagerBlockClearingDecision(itemcode).instructions; }
 
-        function getDefaultManagerBlockClearingTitle(blockalpha = managerBlockClearingSelectedBlock, locationcode = managerBlockClearingSelectedLocation) {
-            const safeBlock = normalizeMovesDrillValue(blockalpha);
-            const safeLocation = normalizeMovesLocationValue(locationcode);
-            return `Block Clearing ${safeBlock} ${safeLocation}`.replace(/\s+/g, ' ').trim();
+        function getManagerBlockClearingViewKey() { return [managerBlockClearingLevel, managerBlockClearingSelectedBlock || '', managerBlockClearingSelectedLocation || '', managerBlockClearingInstructionMode ? 'instructions' : 'browse'].join('|'); }
+        function saveManagerBlockClearingNavigation() {
+            managerBlockClearingDraftState.views.set(getManagerBlockClearingViewKey(), { search: managersSearchTerm, scroll: getMainAreaScrollTop() });
+            if (managerBlockClearingSelectedLocation) managerBlockClearingDraftState.locations.set(managerBlockClearingSelectedLocation, { selected: managerBlockClearingSelectedIds, decisions: managerBlockClearingDraftState.decisions, title: managerBlockClearingReportTitle, prepared: managerBlockClearingDraftState.prepared, error: managerBlockClearingDraftState.error });
         }
-
-        function getManagerBlockClearingReportTitle(blockalpha = managerBlockClearingSelectedBlock, locationcode = managerBlockClearingSelectedLocation) {
-            return String(managerBlockClearingReportTitle || '').trim() || getDefaultManagerBlockClearingTitle(blockalpha, locationcode);
+        function restoreManagerBlockClearingNavigation() {
+            const entry = managerBlockClearingDraftState.views.get(getManagerBlockClearingViewKey());
+            managersSearchTerm = entry ? entry.search : managersSearchTerm;
+            managerBlockClearingDraftState.restore = { key: getManagerBlockClearingViewKey(), scroll: entry ? entry.scroll : 0 };
+            latestPostRenderMainAreaTopResetTokensByKey['interactive:managers'] = Number(latestPostRenderMainAreaTopResetTokensByKey['interactive:managers'] || 0) + 1;
+            scheduleManagersRender(true);
+            updateGlobalBackButton();
         }
-
-        function setManagerBlockClearingReportTitle(value = '') {
-            managerBlockClearingReportTitle = String(value || '');
-            syncManagerBlockClearingInstructionUi();
-            return false;
+        function restoreManagerBlockClearingScrollAfterRender() {
+            const pending = managerBlockClearingDraftState.restore;
+            if (!pending) return;
+            managerBlockClearingDraftState.restore = null;
+            requestAnimationFrame(() => {
+                if (activeHomeTab !== MANAGER_BLOCK_CLEARING_VIEW || getManagerBlockClearingViewKey() !== pending.key) return;
+                const scroller = getMainAreaScrollTarget();
+                if (scroller && typeof scroller.scrollTo === 'function') scroller.scrollTo({ top: pending.scroll, behavior: 'instant' });
+                else if (scroller) scroller.scrollTop = pending.scroll;
+            });
         }
-
-        function getManagerBlockClearingEncodedKey(itemcode = '') {
-            return encodeURIComponent(String(itemcode || ''));
+        function selectManagerBlockClearingBlock(block = '') {
+            saveManagerBlockClearingNavigation();
+            managerBlockClearingSelectedBlock = String(block).trim().toUpperCase(); managerBlockClearingSelectedLocation = null; managerBlockClearingLevel = 1; managerBlockClearingInstructionMode = false;
+            restoreManagerBlockClearingNavigation(); return false;
         }
-
-        function decodeManagerBlockClearingKey(encodedKey = '') {
-            try { return decodeURIComponent(String(encodedKey || '')); } catch (_) { return String(encodedKey || ''); }
+        function selectManagerBlockClearingLocation(location = '') {
+            saveManagerBlockClearingNavigation();
+            managerBlockClearingSelectedLocation = normalizeManagerBlockClearingLocationBucket(location); managerBlockClearingLevel = 2; managerBlockClearingInstructionMode = false;
+            const saved = managerBlockClearingDraftState.locations.get(managerBlockClearingSelectedLocation);
+            managerBlockClearingSelectedIds = saved ? saved.selected : new Set();
+            managerBlockClearingDraftState.decisions = saved ? saved.decisions : new Map();
+            managerBlockClearingReportTitle = saved ? saved.title : getDefaultManagerBlockClearingTitle();
+            managerBlockClearingDraftState.prepared = saved ? saved.prepared : null;
+            managerBlockClearingDraftState.error = saved ? saved.error : '';
+            restoreManagerBlockClearingNavigation(); return false;
         }
-
-        function getManagerBlockClearingGroupDomId(itemcode = '') {
-            return String(itemcode || 'blank-itemcode').replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'blank_itemcode';
+        function backManagerBlockClearing() {
+            saveManagerBlockClearingNavigation();
+            if (managerBlockClearingInstructionMode) managerBlockClearingInstructionMode = false;
+            else if (managerBlockClearingLevel >= 2) { managerBlockClearingLevel = 1; managerBlockClearingSelectedLocation = null; }
+            else if (managerBlockClearingLevel === 1) { managerBlockClearingLevel = 0; managerBlockClearingSelectedBlock = null; }
+            else { openManagersModules(); return false; }
+            restoreManagerBlockClearingNavigation(); return false;
         }
-
-        function setManagerBlockClearingInstruction(encodedKey = '', value = '') {
-            const key = decodeManagerBlockClearingKey(encodedKey);
-            const text = String(value || '');
-            if (text.trim()) managerBlockClearingInstructionsByItemcode.set(key, text);
-            else managerBlockClearingInstructionsByItemcode.delete(key);
-            syncManagerBlockClearingInstructionUi();
-            return false;
+        function resetManagerBlockClearingSelection() {
+            managerBlockClearingSelectedIds = new Set(); managerBlockClearingDraftState.decisions = new Map(); managerBlockClearingInstructionsByItemcode = new Map();
+            managerBlockClearingInstructionMode = false; managerBlockClearingSelectionMode = false;
+            managerBlockClearingReportTitle = getDefaultManagerBlockClearingTitle(); managerBlockClearingDraftState.prepared = null; managerBlockClearingDraftState.error = '';
+            if (managerBlockClearingSelectedLocation) managerBlockClearingDraftState.locations.delete(managerBlockClearingSelectedLocation);
         }
-
-        function areManagerBlockClearingInstructionsComplete(groups = null) {
-            const list = Array.isArray(groups) ? groups : buildManagerBlockClearingGroups();
-            return !!list.length && list.every((group) => getManagerBlockClearingInstruction(group.key));
+        function cancelManagerBlockClearingWorkflow() { resetManagerBlockClearingSelection(); scheduleManagersRender(true); return false; }
+        function toggleManagerBlockClearingItemcode(itemcode = '', selected = null) {
+            const key = String(itemcode).trim().toUpperCase();
+            if (!getManagerBlockClearingItemGroupsForSelectedLocation().some((group) => group.key === key)) return false;
+            const next = selected === null ? !managerBlockClearingSelectedIds.has(key) : !!selected;
+            if (next) managerBlockClearingSelectedIds.add(key); else managerBlockClearingSelectedIds.delete(key);
+            managerBlockClearingSelectionMode = managerBlockClearingSelectedIds.size > 0;
+            managerBlockClearingDraftState.prepared = null;
+            saveManagerBlockClearingNavigation();
+            const card = document.querySelector(`[data-block-clearing-itemcode="${CSS.escape(key)}"]`);
+            if (card) { card.classList.toggle('ring-2', next); const input = card.querySelector('input[type="checkbox"]'); if (input) input.checked = next; }
+            syncManagerBlockClearingSelectionUi(); return false;
         }
-
-        function isManagerBlockClearingReadyToEmail(groups = null) {
-            return !!String(managerBlockClearingReportTitle || '').trim() && areManagerBlockClearingInstructionsComplete(groups);
+        function syncManagerBlockClearingSelectionUi() {
+            const count = getManagerBlockClearingSelectedCount();
+            document.querySelectorAll('[data-block-clearing-selected-count]').forEach((el) => { el.textContent = `${count} ITEMCODE${count === 1 ? '' : 's'} selected`; });
+            const button = document.getElementById('block-clearing-continue'); if (button) button.disabled = count === 0;
         }
-
+        function finishManagerBlockClearingSelection() {
+            if (!getManagerBlockClearingSelectedCount()) { showToast('Select ITEMCODEs', 'Select at least one ITEMCODE before continuing.', true); return false; }
+            saveManagerBlockClearingNavigation(); managerBlockClearingInstructionMode = true;
+            restoreManagerBlockClearingNavigation(); return false;
+        }
+        function getManagerBlockClearingDestinationOptions(group = null, mode = 'itemcode') {
+            if (!group) return [];
+            const sourceBucket = normalizeManagerBlockClearingLocationBucket(managerBlockClearingSelectedLocation);
+            const groups = new Map();
+            const rows = mode === 'all' ? getManagerBlockClearingCache().rows : (getManagerBlockClearingCache().byItemcode.get(group.itemcode) || []);
+            rows.forEach((row) => {
+                const locationcode = getManagerBlockClearingRawLocation(row);
+                if (!locationcode || /^(NO LOC|UNASSIGNED|NULL|N\/A)$/i.test(locationcode) || normalizeManagerBlockClearingLocationBucket(locationcode) === sourceBucket) return;
+                if (mode !== 'all' && (!group.salesyears.has(getManagerBlockClearingSalesYear(row)) || getManagerBlockClearingItemCode(row) !== group.itemcode)) return;
+                if (!groups.has(locationcode)) groups.set(locationcode, { locationcode, onHand: 0, matchingRows: 0, rows: [] });
+                const option = groups.get(locationcode); option.onHand += getManagerBlockClearingNumber(row, ['PTRONHAND', 'ptronhand']); option.matchingRows++; option.rows.push(row);
+            });
+            return Array.from(groups.values()).sort((a, b) => a.locationcode.localeCompare(b.locationcode, undefined, { numeric: true }));
+        }
+        function getManagerBlockClearingDecisionError(group = null) {
+            if (!group) return 'The selected ITEMCODE is no longer at this location.';
+            const decision = getManagerBlockClearingDecision(group.key), quantity = Number(decision.quantity);
+            if (!Object.prototype.hasOwnProperty.call(BLOCK_CLEARING_ACTIONS, decision.action)) return 'Choose an action.';
+            if (!/^\d+$/.test(String(decision.quantity).trim()) || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > group.totalOnHand) return `Enter a whole number from 1 to ${Math.max(0, Math.floor(group.totalOnHand))}.`;
+            if (decision.action === 'move' && !getManagerBlockClearingDestinationOptions(group, decision.destinationMode).some((option) => option.locationcode === decision.destinationLocationcode)) return 'Choose a valid destination outside this clearing location.';
+            return '';
+        }
+        function setManagerBlockClearingDecision(encodedKey = '', field = '', value = '') {
+            const key = decodeManagerBlockClearingKey(encodedKey), decision = getManagerBlockClearingDecision(key);
+            if (!['action', 'quantity', 'destinationMode', 'destinationLocationcode', 'destinationSearch', 'instructions'].includes(field)) return false;
+            const group = getManagerBlockClearingItemGroupsForSelectedLocation().find((entry) => entry.key === key);
+            if (!group) return false;
+            if (field === 'action') { decision.action = Object.prototype.hasOwnProperty.call(BLOCK_CLEARING_ACTIONS, value) ? value : ''; if (value !== 'move') decision.destinationLocationcode = ''; }
+            else if (field === 'destinationMode') decision.destinationMode = value === 'all' ? 'all' : 'itemcode';
+            else if (field === 'destinationLocationcode') decision.destinationLocationcode = String(value).trim().toUpperCase();
+            else decision[field] = String(value).slice(0, field === 'instructions' ? 4000 : 200);
+            if (field !== 'destinationSearch') managerBlockClearingDraftState.prepared = null;
+            if (decision.destinationLocationcode && !getManagerBlockClearingDestinationOptions(group, decision.destinationMode).some((option) => option.locationcode === decision.destinationLocationcode)) decision.destinationLocationcode = '';
+            const destinationHost = document.getElementById(`block-clearing-destination-fields-${getManagerBlockClearingGroupDomId(key)}`);
+            if (destinationHost && field === 'action') destinationHost.innerHTML = renderManagerBlockClearingDestinationFields(group);
+            if (field === 'destinationMode' || field === 'destinationSearch') syncManagerBlockClearingDestinationChoices(group);
+            saveManagerBlockClearingNavigation(); syncManagerBlockClearingInstructionUi(); return false;
+        }
+        function setManagerBlockClearingReportTitle(value = '') { managerBlockClearingReportTitle = String(value).slice(0, 200); managerBlockClearingDraftState.prepared = null; saveManagerBlockClearingNavigation(); syncManagerBlockClearingInstructionUi(); return false; }
+        function areManagerBlockClearingInstructionsComplete(groups = null) { const list = groups || buildManagerBlockClearingGroups(); return list.length > 0 && list.every((group) => !getManagerBlockClearingDecisionError(group)); }
+        function isManagerBlockClearingReadyToEmail(groups = null) { return !!getManagerBlockClearingReportTitle() && areManagerBlockClearingInstructionsComplete(groups); }
         function syncManagerBlockClearingInstructionUi() {
-            const groups = buildManagerBlockClearingGroups();
-            groups.forEach((group) => {
-                const card = document.getElementById(`block-clearing-instruction-card-${getManagerBlockClearingGroupDomId(group.key)}`);
-                if (card) card.classList.toggle('border-red-200', !getManagerBlockClearingInstruction(group.key));
-            });
-            const titleInput = document.getElementById('block-clearing-report-title');
-            const hasTitle = !!String(managerBlockClearingReportTitle || '').trim();
-            if (titleInput) titleInput.classList.toggle('border-red-200', !hasTitle);
-            const sendBtn = document.getElementById('block-clearing-email-send-btn');
-            const complete = isManagerBlockClearingReadyToEmail(groups) && !managerBlockClearingEmailSending;
-            if (sendBtn) {
-                sendBtn.disabled = !complete;
-                sendBtn.classList.toggle('pointer-events-none', !complete);
-                sendBtn.classList.toggle('bg-[#007a4d]', complete);
-                sendBtn.classList.toggle('text-white', complete);
-                sendBtn.classList.toggle('bg-slate-200', !complete);
-                sendBtn.classList.toggle('text-slate-400', !complete);
+            const groups = buildManagerBlockClearingEmailContext().groups, ready = !!(managerBlockClearingDraftState.prepared && managerBlockClearingDraftState.prepared.emailPayload) || isManagerBlockClearingReadyToEmail(groups);
+            groups.forEach((group) => { const error = document.getElementById(`block-clearing-error-${getManagerBlockClearingGroupDomId(group.key)}`); if (error) error.textContent = getManagerBlockClearingDecisionError(group); });
+            ['block-clearing-email-send-btn', 'block-clearing-download-pdf'].forEach((id) => { const button = document.getElementById(id); if (button) button.disabled = !ready || managerBlockClearingEmailSending || managerBlockClearingDraftState.downloading; });
+            const count = document.getElementById('block-clearing-instruction-count'); if (count) count.textContent = `${groups.filter((group) => !getManagerBlockClearingDecisionError(group)).length}/${groups.length} ready`;
+            const error = document.getElementById('block-clearing-delivery-error'); if (error) { error.textContent = managerBlockClearingDraftState.error; error.hidden = !managerBlockClearingDraftState.error; }
+        }
+        function buildManagerBlockClearingSnapshot(row = null) {
+            return { uniqueId: getManagerBlockClearingRowId(row), itemcode: getManagerBlockClearingItemCode(row), locationcode: getManagerBlockClearingRawLocation(row), lotcode: getManagerBlockClearingLotCode(row), salesyear: getManagerBlockClearingSalesYear(row), source: String(getBlockClearingRowValue(row, ['SOURCE', 'source'])), ptronhand: getManagerBlockClearingNumber(row, ['PTRONHAND', 'ptronhand']) };
+        }
+        function buildManagerBlockClearingEmailContext() {
+            const pending = managerBlockClearingDraftState.prepared && managerBlockClearingDraftState.prepared.emailPayload;
+            if (pending) {
+                const report = pending.report;
+                const groups = report.items.map((item) => ({ key: item.itemcode, itemcode: item.itemcode, commonname: item.commonname, contsize: item.contsize, rows: item.rows, totalOnHand: item.rows.reduce((sum, row) => sum + Number(row.ptronhand || 0), 0), salesyears: new Set(item.rows.map((row) => row.salesyear).filter(Boolean)) }));
+                const rows = groups.flatMap((group) => group.rows);
+                return { rows, groups, detailRows: rows, blockalpha: report.blockalpha, locationcode: report.locationBucket, title: report.title };
             }
-            const count = document.getElementById('block-clearing-instruction-count');
-            if (count) {
-                const ready = groups.filter((group) => getManagerBlockClearingInstruction(group.key)).length;
-                count.innerText = `${ready}/${groups.length} ready`;
+            const rows = getManagerBlockClearingSelectedRows(), groups = buildManagerBlockClearingGroups(rows);
+            return { rows, groups, detailRows: rows.map(buildManagerBlockClearingSnapshot), blockalpha: managerBlockClearingSelectedBlock, locationcode: managerBlockClearingSelectedLocation, title: getManagerBlockClearingReportTitle() };
+        }
+        function buildManagerBlockClearingPdfPayload(operation = 'render', recipientEmails = []) {
+            const pendingEmail = managerBlockClearingDraftState.prepared && managerBlockClearingDraftState.prepared.emailPayload;
+            if (pendingEmail) return JSON.parse(JSON.stringify({ ...pendingEmail, operation }));
+            const context = buildManagerBlockClearingEmailContext();
+            if (!isManagerBlockClearingReadyToEmail(context.groups)) throw new Error('Complete the title, actions, quantities, and Move To destinations first.');
+            const report = { title: context.title, submittedBy: String(currentUserDisplay || currentUser || '').trim(), blockalpha: context.blockalpha, locationBucket: context.locationcode, items: context.groups.map((group) => {
+                const decision = getManagerBlockClearingDecision(group.key);
+                const destination = decision.action === 'move' ? getManagerBlockClearingDestinationOptions(group, decision.destinationMode).find((option) => option.locationcode === decision.destinationLocationcode) : null;
+                return { itemcode: group.itemcode, commonname: group.commonname, contsize: group.contsize, action: decision.action, quantity: Number(decision.quantity), destinationMode: decision.destinationMode, destinationLocationcode: destination ? destination.locationcode : '', instructions: decision.instructions, rows: group.rows.map(buildManagerBlockClearingSnapshot), destinationEvidence: destination ? destination.rows.map(buildManagerBlockClearingSnapshot) : [] };
+            }) };
+            const fingerprint = JSON.stringify(report);
+            let prepared = managerBlockClearingDraftState.prepared;
+            if (!prepared || prepared.fingerprint !== fingerprint) {
+                prepared = { fingerprint, createdAt: new Date().toISOString(), token: `bc-pdf-${typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)}`, recipients: '' };
+                managerBlockClearingDraftState.prepared = prepared;
             }
+            const recipientsKey = recipientEmails.slice().sort().join('|');
+            if (operation === 'email' && prepared.recipients && prepared.recipients !== recipientsKey) { prepared.token = `bc-pdf-${typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)}`; }
+            if (operation === 'email') prepared.recipients = recipientsKey;
+            report.createdAt = prepared.createdAt;
+            const senderEmail = getManagerBlockClearingSenderEmail();
+            const payload = { type: 'block_clearing_pdf', operation, contractVersion: BLOCK_CLEARING_PDF_CONTRACT, idempotencyKey: prepared.token, report, emailType: 'block_clearing_email', blockClearingEmail: true, recipientEmails, sender: senderEmail, requestedByEmail: senderEmail, requestedBy: String(currentUser || '').trim(), requestedByDisplay: String(currentUserDisplay || currentUser || '').trim(), dylanEmail: 'dylan_collyge@greenleafnursery.com', recipientsSelectedInApp: true, skipDylanRecipientOverride: true, sendToAllSalesReps: true };
+            if (operation === 'email') prepared.emailPayload = JSON.parse(JSON.stringify(payload));
+            saveManagerBlockClearingNavigation();
+            return payload;
+        }
+        function getManagerBlockClearingSenderEmail() {
+            return normalizeRequestEmailAddress(firstNonEmptyValue(resolveRequestRecipientEmail(currentUser || currentUserDisplay || ''), getGreenleafEmailForUsername(currentUser || currentUserDisplay || ''), canViewManagerBlockClearing() ? 'dylan_collyge@greenleafnursery.com' : '', ''));
+        }
+        function assertManagerBlockClearingPdfResult(result = null, operation = 'render') {
+            if (!result || result.httpOk === false || result.success !== true || result.contractVersion !== BLOCK_CLEARING_PDF_CONTRACT || result.attachmentCount !== 1) throw new Error(String(result && (result.message || result.error) || 'The PDF was not confirmed. Your work is saved here; please retry.'));
+            if (operation === 'render' && (!result.file || result.file.mimeType !== 'application/pdf' || !String(result.file.base64 || '').startsWith('JVBERi0'))) throw new Error('The PDF file could not be verified. Your work is saved here; please retry.');
+            if (operation === 'email' && !/\.pdf$/i.test(String(result.pdfFilename || ''))) throw new Error('The email attachment was not confirmed. Your work is saved here; please retry.');
+            return result;
+        }
+        function setManagerBlockClearingDeliveryError(error = null, location = managerBlockClearingSelectedLocation) {
+            const raw = String(error && error.message || error || '');
+            const message = /BLOCK_CLEARING_EMAIL_BUSY_RETRY/.test(raw) ? 'The email service is busy. Your worksheet is saved here; please retry.'
+                : /BLOCK_CLEARING_VALIDATION/.test(raw) ? 'The worksheet could not be validated. Review its action quantities and destinations, then retry.'
+                : /BLOCK_CLEARING_/.test(raw) ? 'Could not prepare or send the PDF. Your worksheet is saved here; please retry.'
+                : getFriendlyBackendErrorMessage(error, 'Could not prepare or send the PDF. Your work is saved here; retry when connected.');
+            if (location === managerBlockClearingSelectedLocation) { managerBlockClearingDraftState.error = message; saveManagerBlockClearingNavigation(); syncManagerBlockClearingInstructionUi(); }
+            else { const saved = managerBlockClearingDraftState.locations.get(location); if (saved) saved.error = message; }
+            showToast('Could Not Complete - Retry', `${location}: ${message}`, true);
+        }
+        async function downloadManagerBlockClearingPdf() {
+            if (!canViewManagerBlockClearing() || managerBlockClearingDraftState.downloading || managerBlockClearingEmailSending) return false;
+            managerBlockClearingDraftState.downloading = true; managerBlockClearingDraftState.error = ''; syncManagerBlockClearingInstructionUi();
+            const submissionLocation = managerBlockClearingSelectedLocation;
+            try {
+                const payload = buildManagerBlockClearingPdfPayload('render');
+                const result = assertManagerBlockClearingPdfResult(await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Block Clearing PDF'), 'render');
+                const bytes = Uint8Array.from(atob(result.file.base64), (c) => c.charCodeAt(0));
+                const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+                const link = document.createElement('a'); link.href = url; link.download = String(result.file.filename || 'Block Clearing.pdf').replace(/[\\/]/g, '-'); document.body.appendChild(link); link.click(); link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+                showToast('PDF Ready', 'The location worksheet is ready to print.');
+            } catch (error) { setManagerBlockClearingDeliveryError(error, submissionLocation); }
+            finally { managerBlockClearingDraftState.downloading = false; syncManagerBlockClearingInstructionUi(); }
             return false;
         }
-
-        function buildManagerBlockClearingSnapshot(row = null, index = 0, instruction = '') {
-            return {
-                row: index + 1,
-                UNIQUE_ID: String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim(),
-                BLOCKALPHA: getManagerBlockClearingBlock(row),
-                LOCATIONCODE: getManagerBlockClearingLocation(row),
-                ITEMCODE: getManagerBlockClearingItemCode(row),
-                COMMONNAME: getManagerBlockClearingCommonName(row),
-                CONTSIZE: getManagerBlockClearingContSize(row),
-                LOTCODE: getManagerBlockClearingLotCode(row),
-                SOURCE: String(firstNonEmptyValue(row && row.SOURCE, row && row.source, '') || '').trim(),
-                PRIORITY: String(firstNonEmptyValue(row && row.PRIORITY, row && row.priority, '') || '').trim(),
-                DESIGCUST: String(firstNonEmptyValue(row && row.DESIGCUST, row && row.desigcust, '') || '').trim(),
-                PTRONHAND: normalizeCardQuantityValue(firstNonEmptyValue(row && row.PTRONHAND, row && row.ptronhand, row && row.ONHAND, row && row.onhand, '0')),
-                PTRREVIEWED: normalizeCardQuantityValue(firstNonEmptyValue(row && row.PTRREVIEWED, row && row.ptrreviewed, '0')),
-                PTRAVAILABLE: normalizeCardQuantityValue(firstNonEmptyValue(row && row.PTRAVAILABLE, row && row.ptravailable, row && row.LOC_AVAIL, row && row.loc_avail, '0')),
-                S_LTS: normalizeCardQuantityValue(firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, row && row.SLTS, row && row.slts, '0')),
-                INSTRUCTION: instruction
-            };
-        }
-
-        function buildManagerBlockClearingEmailContext() {
-            const rows = getManagerBlockClearingSelectedRows();
-            const groups = buildManagerBlockClearingGroups(rows);
-            const instructionByKey = new Map(groups.map((group) => [group.key, getManagerBlockClearingInstruction(group.key)]));
-            const detailRows = rows.map((row, index) => buildManagerBlockClearingSnapshot(row, index, instructionByKey.get(getManagerBlockClearingItemCode(row)) || ''));
-            const instructionRows = groups.map((group) => ({
-                ITEMCODE: group.itemcode || '',
-                COMMONNAME: group.commonname || '',
-                CONTSIZE: group.contsize || '',
-                ROW_COUNT: group.rows.length,
-                LOCATIONS: Array.from(group.locations).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' })).join(', '),
-                LOTS: Array.from(group.lots).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' })).join(', '),
-                TOTAL_PTRONHAND: group.totalOnHand,
-                TOTAL_PTRREVIEWED: group.totalReviewed,
-                TOTAL_PTRAVAILABLE: group.totalAvailable,
-                TOTAL_S_LTS: group.totalSLts,
-                INSTRUCTION: instructionByKey.get(group.key) || ''
-            }));
-            const blockalpha = normalizeMovesDrillValue(managerBlockClearingSelectedBlock);
-            const locationcode = normalizeMovesLocationValue(managerBlockClearingSelectedLocation);
-            const title = getManagerBlockClearingReportTitle(blockalpha, locationcode);
-            return { rows, groups, detailRows, instructionRows, blockalpha, locationcode, title };
-        }
-
-        function getManagerBlockClearingDetailColumns() {
-            return [
-                { label: 'Row', value: (row) => row.row },
-                { label: 'BLOCKALPHA', value: (row) => row.BLOCKALPHA },
-                { label: 'LOCATIONCODE', value: (row) => row.LOCATIONCODE },
-                { label: 'ITEMCODE', value: (row) => row.ITEMCODE },
-                { label: 'COMMONNAME', value: (row) => row.COMMONNAME },
-                { label: 'CONTSIZE', value: (row) => row.CONTSIZE },
-                { label: 'LOTCODE', value: (row) => row.LOTCODE },
-                { label: 'SOURCE', value: (row) => row.SOURCE },
-                { label: 'PRIORITY', value: (row) => row.PRIORITY },
-                { label: 'PTRONHAND', value: (row) => row.PTRONHAND },
-                { label: 'PTRREVIEWED', value: (row) => row.PTRREVIEWED },
-                { label: 'PTRAVAILABLE', value: (row) => row.PTRAVAILABLE },
-                { label: 'S_LTS', value: (row) => row.S_LTS },
-                { label: 'DESIGCUST', value: (row) => row.DESIGCUST },
-                { label: 'Instruction', value: (row) => row.INSTRUCTION },
-                { label: 'UNIQUE_ID', value: (row) => row.UNIQUE_ID }
-            ];
-        }
-
-        function getManagerBlockClearingInstructionColumns() {
-            return [
-                { label: 'ITEMCODE', value: (row) => row.ITEMCODE },
-                { label: 'COMMONNAME', value: (row) => row.COMMONNAME },
-                { label: 'CONTSIZE', value: (row) => row.CONTSIZE },
-                { label: 'Row Count', value: (row) => row.ROW_COUNT },
-                { label: 'Locations', value: (row) => row.LOCATIONS },
-                { label: 'Lots', value: (row) => row.LOTS },
-                { label: 'Total On Hand', value: (row) => row.TOTAL_PTRONHAND },
-                { label: 'Total Reviewed', value: (row) => row.TOTAL_PTRREVIEWED },
-                { label: 'Total Available', value: (row) => row.TOTAL_PTRAVAILABLE },
-                { label: 'Total S_LTS', value: (row) => row.TOTAL_S_LTS },
-                { label: 'Instruction', value: (row) => row.INSTRUCTION }
-            ];
-        }
-
-        function getManagerBlockClearingDateStamp(date = new Date()) {
-            const safeDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
-            const y = safeDate.getFullYear();
-            const m = String(safeDate.getMonth() + 1).padStart(2, '0');
-            const d = String(safeDate.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        }
-
-        function buildManagerBlockClearingFilename(context = null) {
-            const safeContext = context || buildManagerBlockClearingEmailContext();
-            const base = sanitizeExcelWorkbookFileBase(String(firstNonEmptyValue(safeContext.title, getManagerBlockClearingReportTitle(safeContext.blockalpha, safeContext.locationcode), 'Block Clearing') || 'Block Clearing').trim(), 'Block Clearing');
-            return `${base}.xlsx`;
-        }
-
-        async function buildManagerBlockClearingExcelAttachment(context = null) {
-            const safeContext = context || buildManagerBlockClearingEmailContext();
-            const title = String(firstNonEmptyValue(safeContext.title, getManagerBlockClearingReportTitle(safeContext.blockalpha, safeContext.locationcode), 'Block Clearing') || 'Block Clearing').trim();
-            const metaRows = [
-                ['Title', title],
-                ['Block Alpha', safeContext.blockalpha],
-                ['Location Code', safeContext.locationcode],
-                ['Selected Rows', String(safeContext.detailRows.length)],
-                ['Itemcode Groups', String(safeContext.instructionRows.length)]
-            ];
-            const workbookBlob = buildExcelMultiSheetWorkbookBlob([
-                {
-                    name: 'Block Clearing',
-                    title,
-                    rows: safeContext.detailRows,
-                    columns: getManagerBlockClearingDetailColumns(),
-                    metaRows
-                },
-                {
-                    name: 'Instructions',
-                    title: 'Block Clearing Instructions',
-                    rows: safeContext.instructionRows,
-                    columns: getManagerBlockClearingInstructionColumns(),
-                    metaRows
-                }
-            ], { freezeHeaderRow: true, includeAutoFilter: true, includePrintArea: true });
-            const base64 = await blobToBase64String(workbookBlob);
-            const filename = buildManagerBlockClearingFilename(safeContext);
-            return {
-                filename,
-                fileName: filename,
-                name: filename,
-                mimeType: XLSX_MIME_TYPE,
-                contentType: XLSX_MIME_TYPE,
-                encoding: 'base64',
-                contentBase64: base64,
-                base64
-            };
-        }
-
-        function buildManagerBlockClearingEmailText(context = null) {
-            const safeContext = context || buildManagerBlockClearingEmailContext();
-            const groupLines = safeContext.instructionRows.map((group) => `${group.ITEMCODE || '(blank itemcode)'} | ${group.ROW_COUNT} row${group.ROW_COUNT === 1 ? '' : 's'} | ${group.LOCATIONS || '-'} | ${group.INSTRUCTION}`);
-            return [
-                String(firstNonEmptyValue(safeContext.title, 'Block Clearing') || 'Block Clearing').trim(),
-                `Rows: ${safeContext.detailRows.length}`,
-                `Itemcode groups: ${safeContext.instructionRows.length}`,
-                '',
-                groupLines.join('\n')
-            ].filter((line) => line !== '').join('\n');
-        }
-
-        function buildManagerBlockClearingEmailHtml(context = null) {
-            const safeContext = context || buildManagerBlockClearingEmailContext();
-            const title = String(firstNonEmptyValue(safeContext.title, 'Block Clearing') || 'Block Clearing').trim();
-            const rowsHtml = safeContext.instructionRows.map((group) => `<tr>
-                <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:800;">${escapeHtml(group.ITEMCODE || '(blank)')}</td>
-                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${escapeHtml(group.COMMONNAME || '')}</td>
-                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${escapeHtml(group.ROW_COUNT)}</td>
-                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${escapeHtml(group.LOCATIONS || '-')}</td>
-                <td style="padding:8px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap;">${escapeHtml(group.INSTRUCTION || '')}</td>
-            </tr>`).join('');
-            return `<div style="font-family:Arial,sans-serif;color:#111827;">
-                <h2 style="margin:0 0 8px;color:#007a4d;">${escapeHtml(title)}</h2>
-                <p style="margin:0 0 12px;"><strong>Block:</strong> ${escapeHtml(safeContext.blockalpha)}<br><strong>Location:</strong> ${escapeHtml(safeContext.locationcode)}<br><strong>Rows:</strong> ${escapeHtml(safeContext.detailRows.length)}<br><strong>Itemcode Groups:</strong> ${escapeHtml(safeContext.instructionRows.length)}</p>
-                <p style="margin:0 0 14px;">The Excel workbook is attached.</p>
-                <table style="border-collapse:collapse;width:100%;max-width:920px;">
-                    <thead><tr style="background:#eefdf5;color:#065f46;text-align:left;">
-                        <th style="padding:8px;">Item</th>
-                        <th style="padding:8px;">Common Name</th>
-                        <th style="padding:8px;">Rows</th>
-                        <th style="padding:8px;">Locations</th>
-                        <th style="padding:8px;">Instruction</th>
-                    </tr></thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
-            </div>`;
-        }
-
-        function getManagerBlockClearingSenderEmail() {
-            return normalizeRequestEmailAddress(firstNonEmptyValue(
-                resolveRequestRecipientEmail(currentUser || currentUserDisplay || ''),
-                getGreenleafEmailForUsername(currentUser || currentUserDisplay || ''),
-                canViewManagerBlockClearing() ? 'dylan_collyge@greenleafnursery.com' : '',
-                ''
-            ));
-        }
-
-        function isManagerBlockClearingEmailCompatibilityError(error = null) {
-            const message = String(error && error.message ? error.message : error || '').toLowerCase();
-            return !!message && (
-                message.includes('unsupported email type')
-                || message.includes('missing recipient')
-                || message.includes('unsupported request email type')
-                || message.includes('no valid request email recipients')
-            );
-        }
-
         async function sendManagerBlockClearingEmail(button = null) {
-            if (!canViewManagerBlockClearing()) return false;
-            const context = buildManagerBlockClearingEmailContext();
-            if (!context.detailRows.length) {
-                showToast('No Rows', 'Select at least one row before sending.', true);
-                return false;
-            }
-            if (!areManagerBlockClearingInstructionsComplete(context.groups)) {
-                showToast('Instructions Required', 'Enter instructions for every itemcode group.', true);
-                syncManagerBlockClearingInstructionUi();
-                return false;
-            }
-            const title = String(context.title || '').trim();
-            if (!title) {
-                showToast('Title Required', 'Enter a file title before sending.', true);
-                syncManagerBlockClearingInstructionUi();
-                return false;
-            }
-            const senderEmail = getManagerBlockClearingSenderEmail();
-            const selectedEmails = await openGroupedBloomNcrRecipientModal(context.rows, senderEmail ? [senderEmail] : [], {
-                brandLabel: 'Block Clearing',
-                title: 'Email Block Clearing Excel',
-                requiredEmails: senderEmail ? [senderEmail] : []
-            });
-            if (selectedEmails === null) {
-                showToast('Email Cancelled', 'No email was sent.', true);
-                return false;
-            }
-            const recipientEmails = dedupeRequestEmailRecipients([selectedEmails || [], senderEmail]);
-            if (!recipientEmails.length) {
-                showToast('Email Cancelled', 'No email was sent because no recipients were selected.', true);
-                return false;
-            }
-            managerBlockClearingEmailSending = true;
-            if (button) {
-                button.disabled = true;
-                button.classList.add('pointer-events-none', 'opacity-70');
-            }
-            showToast('Sending...', 'Preparing Block Clearing Excel email.', false);
+            if (!canViewManagerBlockClearing() || managerBlockClearingEmailSending || managerBlockClearingDraftState.downloading) return false;
+            const pendingEmail = managerBlockClearingDraftState.prepared && managerBlockClearingDraftState.prepared.emailPayload;
+            if (!pendingEmail && !isManagerBlockClearingReadyToEmail()) { showToast('Complete Worksheet', 'Enter a title and complete each action, quantity, and required destination.', true); syncManagerBlockClearingInstructionUi(); return false; }
+            managerBlockClearingEmailSending = true; managerBlockClearingDraftState.error = ''; syncManagerBlockClearingInstructionUi();
+            const submissionLocation = managerBlockClearingSelectedLocation;
             try {
-                const attachment = await buildManagerBlockClearingExcelAttachment(context);
-                const subject = title;
-                const payload = {
-                    type: 'email',
-                    action: 'block_clearing_email',
-                    emailType: 'drive_shift_report',
-                    emailSubType: 'block_clearing_email',
-                    email_sub_type: 'block_clearing_email',
-                    blockClearingEmail: true,
-                    subject,
-                    blockClearingTitle: title,
-                    reportTitle: title,
-                    workbookTitle: title,
-                    brandLabel: title,
-                    fromName: 'GNC PH Block Clearing',
-                    sourceLabel: 'Managers > Block Clearing',
-                    itemsCount: context.detailRows.length,
-                    groupCount: context.instructionRows.length,
-                    blockalpha: context.blockalpha,
-                    locationcode: context.locationcode,
-                    selectedRowSnapshots: context.detailRows,
-                    groupedInstructions: context.instructionRows,
-                    blockClearingRows: context.detailRows,
-                    blockClearingInstructions: context.instructionRows,
-                    recipientEmails,
-                    emailRecipients: recipientEmails,
-                    internalRecipients: recipientEmails,
-                    dylanEmail: 'dylan_collyge@greenleafnursery.com',
-                    recipients: recipientEmails.map((email) => ({ email, role: email === senderEmail ? 'sender-copy' : 'selected-user' })),
-                    sender: senderEmail,
-                    requestedByEmail: senderEmail,
-                    requested_by_email: senderEmail,
-                    requestedBy: String(currentUser || '').trim(),
-                    requestedByDisplay: String(currentUserDisplay || currentUser || '').trim(),
-                    skipDylanRecipientOverride: true,
-                    recipientsSelectedInApp: true,
-                    sendToAllSalesReps: true,
-                    repName: '',
-                    salesRepName: '',
-                    repEmail: '',
-                    salesRepEmail: '',
-                    shiftReportFormat: 'excel',
-                    shiftReportColumns: getManagerBlockClearingDetailColumns().map((column) => ({ label: column.label, key: column.label })),
-                    shiftReportRows: context.detailRows,
-                    shiftReportFilename: attachment.filename.replace(/\.xlsx$/i, '.csv'),
-                    shiftReportWorkbookFilename: attachment.filename,
-                    shiftReportAttachment: attachment,
-                    shiftReportAttachments: [attachment],
-                    attachments: [attachment],
-                    requestItems: context.detailRows,
-                    sourceRows: context.detailRows,
-                    items: context.detailRows,
-                    formattedItemsText: buildManagerBlockClearingEmailText(context),
-                    formattedItemsHtml: buildManagerBlockClearingEmailHtml(context),
-                    exportedBy: String(firstNonEmptyValue(currentUserDisplay, currentUser, '') || '').trim(),
-                    exportedAt: new Date().toISOString()
-                };
-                let sentWithExcel = true;
-                let responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Block Clearing Email');
-                if (!responseData || responseData.ok === false) {
-                    const firstError = new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send Block Clearing email.')));
-                    if (!isManagerBlockClearingEmailCompatibilityError(firstError)) throw firstError;
-                    sentWithExcel = false;
-                    const fallbackPayload = {
-                        ...payload,
-                        emailType: 'drive_customer_outreach',
-                        hideItemHeader: true,
-                        shiftReportFormat: 'report',
-                        shiftReportAttachment: null,
-                        shiftReportAttachments: [],
-                        attachments: [],
-                        formattedItemsHtml: [
-                            '<p style="padding:12px 14px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;"><strong>Note:</strong> The email endpoint needs the current Code.gs to attach the Excel workbook. Row details are included below.</p>',
-                            buildManagerBlockClearingEmailHtml(context)
-                        ].join(''),
-                        formattedItemsText: buildManagerBlockClearingEmailText(context)
-                    };
-                    responseData = await postGoogleScriptJsonPayload(fallbackPayload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Block Clearing Email Fallback');
-                    if (!responseData || responseData.ok === false) {
-                        throw new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send Block Clearing email.')));
-                    }
+                const context = buildManagerBlockClearingEmailContext(), senderEmail = getManagerBlockClearingSenderEmail();
+                const selected = pendingEmail ? pendingEmail.recipientEmails : await openGroupedBloomNcrRecipientModal(context.rows, senderEmail ? [senderEmail] : [], { brandLabel: 'Block Clearing', title: 'Email Block Clearing PDF', requiredEmails: senderEmail ? [senderEmail] : [] });
+                if (selected === null) return false;
+                if (managerBlockClearingSelectedLocation !== submissionLocation) throw new Error('The clearing location changed. Reopen the worksheet to send it.');
+                const recipientEmails = dedupeRequestEmailRecipients([selected || [], senderEmail]);
+                if (!recipientEmails.length) throw new Error('Choose at least one email recipient.');
+                const payload = buildManagerBlockClearingPdfPayload('email', recipientEmails);
+                const submittedDraft = managerBlockClearingDraftState.prepared;
+                showToast('Sending...', 'Preparing one PDF for this clearing location.');
+                assertManagerBlockClearingPdfResult(await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Block Clearing Email'), 'email');
+                showToast('Email Sent', 'The Block Clearing email was sent with one location PDF.');
+                if (managerBlockClearingSelectedLocation === submissionLocation && managerBlockClearingDraftState.prepared === submittedDraft) cancelManagerBlockClearingWorkflow();
+                else {
+                    const saved = managerBlockClearingDraftState.locations.get(submissionLocation);
+                    if (saved && saved.prepared === submittedDraft) managerBlockClearingDraftState.locations.delete(submissionLocation);
                 }
-                showToast('Email Sent', sentWithExcel
-                    ? `Block Clearing Excel sent to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'}.`
-                    : `Block Clearing email sent to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'} without the Excel attachment.`);
-                cancelManagerBlockClearingWorkflow();
-            } catch (error) {
-                showToast('Email Error', getFriendlyBackendErrorMessage(error, 'Could not send Block Clearing email.'), true);
-            } finally {
-                managerBlockClearingEmailSending = false;
-                if (button) {
-                    button.disabled = false;
-                    button.classList.remove('pointer-events-none', 'opacity-70');
-                }
-                syncManagerBlockClearingInstructionUi();
-            }
+            } catch (error) { setManagerBlockClearingDeliveryError(error, submissionLocation); }
+            finally { managerBlockClearingEmailSending = false; syncManagerBlockClearingInstructionUi(); }
             return false;
         }
 
         function renderManagerBlockClearingBucketCard(type = 'block', label = '', group = null) {
-            const safeLabel = String(label || '').trim() || (type === 'block' ? 'No Block' : 'No Loc');
-            const rows = group && Array.isArray(group.rows) ? group.rows : [];
-            const itemCount = group && group.itemcodes ? group.itemcodes.size : 0;
-            const locationCount = group && group.locations ? group.locations.size : 0;
-            const clickHandler = type === 'block'
-                ? `return selectManagerBlockClearingBlock('${escJsAttrValue(safeLabel)}')`
-                : `return selectManagerBlockClearingLocation('${escJsAttrValue(safeLabel)}')`;
-            const extraChip = type === 'block'
-                ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${locationCount} Locations</span>`
-                : '';
-            return `<button type="button" class="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" style="touch-action: manipulation;" onclick="${clickHandler}">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${type === 'block' ? 'Block Alpha' : 'Location Code'}</div>
-                        <div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(safeLabel)}</div>
-                    </div>
-                    <i class="ph-bold ph-caret-right text-xl text-slate-300"></i>
-                </div>
-                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
-                    <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${rows.length} Rows</span>
-                    ${extraChip}
-                    <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${itemCount} Items</span>
-                </div>
-            </button>`;
+            const handler = type === 'block' ? 'selectManagerBlockClearingBlock' : 'selectManagerBlockClearingLocation';
+            return `<button type="button" class="w-full rounded-2xl border border-emerald-200 bg-white p-4 text-left shadow-sm" onclick="return ${handler}('${escJsAttrValue(label)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase text-[#007a4d]">${type === 'block' ? 'Block Alpha' : 'Clearing Location'}</div><div class="text-2xl font-black text-slate-900">${escapeHtml(label)}</div></div><i class="ph-bold ph-caret-right" aria-hidden="true"></i></div><div class="mt-3 text-xs font-bold text-slate-600">${group.rows.length} rows · ${group.itemcodes.size} ITEMCODEs${type === 'block' ? ` · ${group.locations.size} locations` : ''}</div></button>`;
         }
-
-        function renderManagerBlockClearingRowCard(row = null) {
-            const cache = getManagerBlockClearingCache();
-            const uid = cache.byRow.get(row) || getManagerBlockClearingRowId(row);
-            const rowDomId = getManagerBlockClearingRowDomId(uid);
-            const selected = managerBlockClearingSelectedIds instanceof Set && managerBlockClearingSelectedIds.has(uid);
-            const common = getManagerBlockClearingCommonName(row);
-            const size = getManagerBlockClearingContSize(row);
-            const itemcode = getManagerBlockClearingItemCode(row) || '-';
-            const lot = getManagerBlockClearingLotCode(row) || '-';
-            const location = getManagerBlockClearingLocation(row);
-            const source = String(firstNonEmptyValue(row && row.SOURCE, row && row.source, '') || '').trim();
-            const priority = String(firstNonEmptyValue(row && row.PRIORITY, row && row.priority, '') || '').trim();
-            const chips = [
-                `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">${escapeHtml(itemcode)}</span>`,
-                `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Lot ${escapeHtml(lot)}</span>`,
-                source ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">${escapeHtml(source)}</span>` : '',
-                priority ? `<span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">Priority ${escapeHtml(priority)}</span>` : ''
-            ].filter(Boolean).join('');
-            return `<div id="block-clearing-row-${rowDomId}" data-selected="${selected ? '1' : '0'}" role="button" tabindex="0" class="rounded-2xl border ${selected ? 'border-[#007a4d] bg-emerald-50' : 'border-emerald-100 bg-white'} p-4 shadow-sm active:scale-[0.99]" style="touch-action: manipulation; user-select: none; -webkit-user-select: none;" onpointerdown="return startManagerBlockClearingLongPress(event, '${escJsAttrValue(uid)}')" onpointerup="return clearManagerBlockClearingLongPress()" onpointercancel="return clearManagerBlockClearingLongPress()" onpointerleave="return clearManagerBlockClearingLongPress()" oncontextmenu="return preventManagerBlockClearingContextMenu(event)" onclick="return handleManagerBlockClearingRowClick('${escJsAttrValue(uid)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return handleManagerBlockClearingRowClick('${escJsAttrValue(uid)}');}">
-                <div class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
-                    <span id="block-clearing-row-marker-${rowDomId}" class="mt-1 flex h-7 w-7 items-center justify-center rounded-full border ${selected ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-300'}"><i id="block-clearing-row-icon-${rowDomId}" class="ph-bold ${selected ? 'ph-check' : 'ph-circle'} text-sm"></i></span>
-                    <div class="min-w-0">
-                        <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                            <span class="min-w-0 flex-1 truncate text-xl font-black leading-tight text-slate-900">${escapeHtml(common)}</span>
-                            <span class="shrink-0 text-lg font-black text-[#007a4d]">${escapeHtml(size)}</span>
-                        </div>
-                        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-black uppercase tracking-[0.08em]">
-                            <span class="text-blue-600">${escapeHtml(location)}</span>
-                        </div>
-                        <div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">${chips}${buildInventoryQuantityChipsHtml(row, { compact: true })}</div>
-                    </div>
-                </div>
-            </div>`;
+        function renderManagerBlockClearingPhysicalRows(group = null) {
+            return `<div class="mt-3 overflow-x-auto rounded-xl border border-slate-200"><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="px-3 py-2">Full LOCATIONCODE</th><th class="px-3 py-2">Lot</th><th class="px-3 py-2 text-right">On Hand</th></tr></thead><tbody>${group.rows.map((row) => `<tr class="border-t border-slate-100"><td class="px-3 py-2">${escapeHtml(getManagerBlockClearingRawLocation(row))}</td><td class="px-3 py-2">${escapeHtml(getManagerBlockClearingLotCode(row) || '-')}</td><td class="px-3 py-2 text-right">${escapeHtml(normalizeCardQuantityValue(getManagerBlockClearingNumber(row, ['PTRONHAND', 'ptronhand'])))}</td></tr>`).join('')}</tbody></table></div>`;
         }
-
-        function renderManagerBlockClearingLocationStickyHeader(countLabel = '', selectedCount = 0) {
-            const safeBlock = normalizeMovesDrillValue(managerBlockClearingSelectedBlock);
-            const safeLocation = normalizeMovesLocationValue(managerBlockClearingSelectedLocation);
-            const showControls = managerBlockClearingSelectionMode && selectedCount > 0;
-            return `<div class="sticky top-[4.75rem] z-50 rounded-xl border border-emerald-200 bg-white/95 px-2.5 py-2 shadow-md backdrop-blur">
-                <div class="flex items-center gap-2">
-                    <button type="button" aria-label="Back to locations" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-green-200 bg-white text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerBlockClearing()"><i class="ph-bold ph-arrow-left text-lg"></i></button>
-                    <div class="min-w-0 flex-1">
-                        <div class="text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Block / Location</div>
-                        <div class="truncate text-base font-black leading-tight text-slate-900">${escapeHtml(safeBlock)} / ${escapeHtml(safeLocation)}</div>
-                        <div id="block-clearing-location-count" data-count-label="${escJsAttrValue(countLabel)}" class="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-700">${escapeHtml(countLabel)} | ${selectedCount} selected</div>
-                    </div>
-                    <div id="block-clearing-selection-controls" class="${showControls ? 'flex' : 'hidden'} shrink-0 items-center gap-1.5">
-                        <span data-block-clearing-selected-count class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-[#007a4d] sm:inline-flex">${selectedCount} selected</span>
-                        <button type="button" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-slate-600 shadow-sm active:scale-95" onclick="return cancelManagerBlockClearingWorkflow()">Cancel</button>
-                        <button type="button" class="rounded-lg bg-[#007a4d] px-3 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-white shadow-sm active:scale-95" onclick="return finishManagerBlockClearingSelection()">Done</button>
-                    </div>
-                </div>
-            </div>`;
+        function renderManagerBlockClearingItemCard(group = null) {
+            const selected = managerBlockClearingSelectedIds.has(group.key);
+            return `<article data-block-clearing-itemcode="${escapeHtml(group.key)}" class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm ring-emerald-400 ${selected ? 'ring-2' : ''}"><label class="flex cursor-pointer items-start gap-3"><input type="checkbox" class="mt-1 h-6 w-6 shrink-0 accent-emerald-600" ${selected ? 'checked' : ''} aria-label="Select ${escapeHtml(group.itemcode)}" onchange="return toggleManagerBlockClearingItemcode('${escJsAttrValue(group.key)}',this.checked)"><span class="min-w-0 flex-1"><span class="block text-lg font-black text-slate-900">${escapeHtml(group.commonname)} <span class="text-[#007a4d]">${escapeHtml(group.contsize)}</span></span><span class="block text-sm font-bold text-blue-700">${escapeHtml(group.itemcode)}</span><span class="mt-2 block text-sm font-black text-[#007a4d]">Total Plants On Hand: ${escapeHtml(normalizeCardQuantityValue(group.totalOnHand))}</span><span class="block text-xs font-bold text-slate-500">${group.rows.length} current rows · All seasons and lots</span></span></label>${renderManagerBlockClearingPhysicalRows(group)}</article>`;
         }
-
+        function buildManagerBlockClearingDestinationChoices(group = null) {
+            const decision = getManagerBlockClearingDecision(group.key), search = decision.destinationSearch.trim().toUpperCase();
+            const choices = getManagerBlockClearingDestinationOptions(group, decision.destinationMode).filter((option) => !search || option.locationcode.includes(search) || option.locationcode === decision.destinationLocationcode);
+            return `<option value="">Select destination</option>${choices.map((option) => `<option value="${escapeHtml(option.locationcode)}" ${decision.destinationLocationcode === option.locationcode ? 'selected' : ''}>${escapeHtml(option.locationcode)}${decision.destinationMode === 'itemcode' ? ` - On Hand ${escapeHtml(normalizeCardQuantityValue(option.onHand))} (${option.matchingRows} rows)` : ''}</option>`).join('')}`;
+        }
+        function syncManagerBlockClearingDestinationChoices(group = null) {
+            const id = getManagerBlockClearingGroupDomId(group.key), select = document.getElementById(`block-clearing-destination-${id}`);
+            if (select) select.innerHTML = buildManagerBlockClearingDestinationChoices(group);
+        }
+        function renderManagerBlockClearingDestinationFields(group = null) {
+            const decision = getManagerBlockClearingDecision(group.key);
+            if (decision.action !== 'move') return '';
+            const key = getManagerBlockClearingEncodedKey(group.key), id = getManagerBlockClearingGroupDomId(group.key);
+            return `<div class="mt-3 grid gap-3 sm:grid-cols-2"><label class="block text-xs font-bold text-slate-700">Destination View<select data-block-clearing-destination-mode class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" onchange="return setManagerBlockClearingDecision('${key}','destinationMode',this.value)"><option value="itemcode" ${decision.destinationMode === 'itemcode' ? 'selected' : ''}>ITEMCODE Locations</option><option value="all" ${decision.destinationMode === 'all' ? 'selected' : ''}>All Locations</option></select></label><label class="block text-xs font-bold text-slate-700">Search Locations<input data-block-clearing-destination-search type="search" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" value="${escapeHtml(decision.destinationSearch)}" placeholder="Find a LOCATIONCODE" oninput="return setManagerBlockClearingDecision('${key}','destinationSearch',this.value)"></label><label class="block text-xs font-bold text-slate-700 sm:col-span-2">Move To LOCATIONCODE<select id="block-clearing-destination-${id}" data-block-clearing-destination class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" onchange="return setManagerBlockClearingDecision('${key}','destinationLocationcode',this.value)">${buildManagerBlockClearingDestinationChoices(group)}</select></label></div><p class="mt-2 text-xs text-slate-500">All ${escapeHtml(managerBlockClearingSelectedLocation)} sublocations are excluded. ITEMCODE Locations match at least one source sales year.</p>`;
+        }
         function renderManagerBlockClearingInstructionsPanel() {
-            const context = buildManagerBlockClearingEmailContext();
-            if (!context.groups.length) {
-                managerBlockClearingInstructionMode = false;
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No selected rows.</div>';
-            }
-            const groupCards = context.groups.map((group) => {
-                const key = group.key;
-                const encodedKey = getManagerBlockClearingEncodedKey(key);
-                const domId = getManagerBlockClearingGroupDomId(key);
-                const instruction = getManagerBlockClearingInstruction(key);
-                const detailRows = group.rows.map((row) => `<div class="grid gap-1 border-t border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-600 sm:grid-cols-[minmax(0,1fr)_7rem_7rem]">
-                    <div class="min-w-0 truncate">${escapeHtml(getManagerBlockClearingCommonName(row))} | ${escapeHtml(getManagerBlockClearingContSize(row))}</div>
-                    <div>${escapeHtml(getManagerBlockClearingLocation(row))}</div>
-                    <div>Lot ${escapeHtml(getManagerBlockClearingLotCode(row) || '-')}</div>
-                </div>`).join('');
-                return `<div id="block-clearing-instruction-card-${domId}" class="rounded-2xl border ${instruction ? 'border-emerald-100' : 'border-red-200'} bg-white p-4 shadow-sm">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(group.itemcode || '(blank itemcode)')}</div>
-                            <div class="mt-1 text-lg font-black leading-tight text-slate-900">${escapeHtml(group.commonname || 'Unknown')}</div>
-                            <div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
-                                <span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-blue-700">${group.rows.length} row${group.rows.length === 1 ? '' : 's'}</span>
-                                <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">Available ${escapeHtml(normalizeCardQuantityValue(group.totalAvailable))}</span>
-                                <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${escapeHtml(Array.from(group.locations).join(', '))}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Instruction
-                        <textarea rows="3" class="mt-1 w-full resize-y rounded-xl border border-emerald-100 bg-white px-3 py-3 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" oninput="return setManagerBlockClearingInstruction('${escJsAttrValue(encodedKey)}', this.value)">${escapeHtml(instruction)}</textarea>
-                    </label>
-                    <div class="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">${detailRows}</div>
-                </div>`;
+            const context = buildManagerBlockClearingEmailContext(), ready = !!(managerBlockClearingDraftState.prepared && managerBlockClearingDraftState.prepared.emailPayload) || isManagerBlockClearingReadyToEmail(context.groups);
+            if (!context.groups.length) { managerBlockClearingInstructionMode = false; return renderManagerBlockClearingPanel(); }
+            const cards = context.groups.map((group) => {
+                const decision = getManagerBlockClearingDecision(group.key), key = getManagerBlockClearingEncodedKey(group.key), id = getManagerBlockClearingGroupDomId(group.key);
+                return `<article data-block-clearing-itemcode="${escapeHtml(group.key)}" class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><h3 class="text-lg font-black text-slate-900">${escapeHtml(group.commonname)} <span class="text-[#007a4d]">${escapeHtml(group.contsize)}</span></h3><div class="text-sm font-bold text-blue-700">${escapeHtml(group.itemcode)}</div><div class="mt-2 text-base font-black text-[#007a4d]">Total Plants On Hand: ${escapeHtml(normalizeCardQuantityValue(group.totalOnHand))}</div><div class="mt-3 grid gap-3 sm:grid-cols-2"><label class="block text-xs font-bold text-slate-700">Action<select data-block-clearing-action class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" onchange="return setManagerBlockClearingDecision('${key}','action',this.value)"><option value="">Select action</option>${Object.entries(BLOCK_CLEARING_ACTIONS).map(([value, label]) => `<option value="${value}" ${decision.action === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label class="block text-xs font-bold text-slate-700">Action Quantity<input data-block-clearing-quantity type="text" inputmode="numeric" pattern="[0-9]*" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" value="${escapeHtml(decision.quantity)}" placeholder="Enter number of plants" oninput="return setManagerBlockClearingDecision('${key}','quantity',this.value)"></label></div><div id="block-clearing-destination-fields-${id}">${renderManagerBlockClearingDestinationFields(group)}</div><label class="mt-3 block text-xs font-bold text-slate-700">Instructions (optional)<textarea data-block-clearing-instructions rows="2" maxlength="4000" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" oninput="return setManagerBlockClearingDecision('${key}','instructions',this.value)">${escapeHtml(decision.instructions)}</textarea></label><p id="block-clearing-error-${id}" class="mt-2 text-xs font-semibold text-red-700" aria-live="polite">${escapeHtml(getManagerBlockClearingDecisionError(group))}</p>${renderManagerBlockClearingPhysicalRows(group)}</article>`;
             }).join('');
-            const ready = isManagerBlockClearingReadyToEmail(context.groups);
-            const title = String(managerBlockClearingReportTitle || '').trim();
-            return `<div class="space-y-4">
-                <button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerBlockClearing()"><i class="ph-bold ph-arrow-left text-base"></i>Rows</button>
-                <div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block Clearing</div>
-                    <div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(context.blockalpha)} / ${escapeHtml(context.locationcode)}</div>
-                    <div id="block-clearing-instruction-count" class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">${context.groups.filter((group) => getManagerBlockClearingInstruction(group.key)).length}/${context.groups.length} ready</div>
-                </div>
-                <label class="block rounded-2xl border ${title ? 'border-emerald-100' : 'border-red-200'} bg-white p-4 shadow-sm">
-                    <span class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Email Subject / File Name</span>
-                    <input id="block-clearing-report-title" type="text" class="mt-2 w-full rounded-xl border ${title ? 'border-emerald-100' : 'border-red-200'} bg-white px-3 py-3 text-base font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${escapeHtml(title)}" placeholder="${escapeHtml(getDefaultManagerBlockClearingTitle(context.blockalpha, context.locationcode))}" oninput="return setManagerBlockClearingReportTitle(this.value)" />
-                </label>
-                <div class="space-y-3">${groupCards}</div>
-                <div class="sticky bottom-20 z-50 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur">
-                    <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-4 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return cancelManagerBlockClearingWorkflow()">Cancel</button>
-                    <button id="block-clearing-email-send-btn" type="button" ${ready ? '' : 'disabled'} class="rounded-xl px-4 py-4 text-[11px] font-black uppercase tracking-[0.12em] shadow-sm ${ready ? 'bg-[#007a4d] text-white active:scale-95' : 'pointer-events-none bg-slate-200 text-slate-400'}" onclick="return sendManagerBlockClearingEmail(this)">${managerBlockClearingEmailSending ? 'Sending...' : 'Email Excel'}</button>
-                </div>
-            </div>`;
+            return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div class="text-xs font-black uppercase text-[#007a4d]">Block Clearing ${escapeHtml(context.locationcode)}</div><div class="mt-1 text-lg font-black text-slate-900">${context.groups.length} ITEMCODEs · Total Plants On Hand: ${escapeHtml(normalizeCardQuantityValue(context.groups.reduce((sum, group) => sum + group.totalOnHand, 0)))}</div><div id="block-clearing-instruction-count" class="text-xs font-bold text-emerald-700">${context.groups.filter((group) => !getManagerBlockClearingDecisionError(group)).length}/${context.groups.length} ready</div></div><label class="block text-sm font-bold text-slate-700">Report Title / Email Subject<input id="block-clearing-report-title" type="text" maxlength="200" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" value="${escapeHtml(context.title)}" oninput="return setManagerBlockClearingReportTitle(this.value)"></label><p class="text-xs text-slate-600">Grade &amp; Save Best quantity is the number to keep. No action is implied for the remaining plants.</p>${cards}<p id="block-clearing-delivery-error" role="alert" class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700" ${managerBlockClearingDraftState.error ? '' : 'hidden'}>${escapeHtml(managerBlockClearingDraftState.error)}</p><div class="sticky bottom-20 z-40 grid grid-cols-2 gap-2 rounded-2xl border border-emerald-200 bg-white p-3 shadow-lg"><button id="block-clearing-download-pdf" type="button" ${ready ? '' : 'disabled'} class="rounded-xl border border-[#007a4d] bg-white p-3 text-sm font-black text-[#007a4d] disabled:opacity-50" onclick="return downloadManagerBlockClearingPdf()">Download PDF</button><button id="block-clearing-email-send-btn" type="button" ${ready ? '' : 'disabled'} class="rounded-xl bg-[#007a4d] p-3 text-sm font-black text-white disabled:opacity-50" onclick="return sendManagerBlockClearingEmail(this)">Email PDF</button><button type="button" class="col-span-2 p-2 text-xs font-bold text-slate-500" onclick="return cancelManagerBlockClearingWorkflow()">Cancel Worksheet</button></div></div>`;
         }
-
         function renderManagerBlockClearingPanel() {
-            if (!canViewManagerBlockClearing()) {
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Block Clearing is available to Dylan only.</div>';
-            }
-            if (!isDatasetLoaded('master', 'full') && getDatasetRenderRowCount('master') <= 0) {
-                ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
-                return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading Drive Mode rows...</div>';
+            if (!canViewManagerBlockClearing()) return '<div class="p-6 text-center">Block Clearing is not available for this login.</div>';
+            if (!isDatasetLoaded('master', 'full')) {
+                ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => showToast('Could Not Load', 'Complete inventory is needed for accurate location totals. Please retry.', true));
+                return '<div class="p-6 text-center">Loading all inventory rows for location totals...</div>';
             }
             const cache = getManagerBlockClearingCache();
-            if (!cache.rows.length) {
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode rows are loaded.</div>';
-            }
             if (managerBlockClearingInstructionMode) return renderManagerBlockClearingInstructionsPanel();
+            if (!cache.rows.length) return '<div class="p-6 text-center">No current inventory rows are loaded.</div>';
             if (managerBlockClearingLevel <= 0) {
-                const blockGroups = cache.blocks.filter((group) => managerTextMatchesSearch([group.block]) || filterManagerBlockClearingRowsForSearch(group.rows).length);
-                const cards = blockGroups.length
-                    ? blockGroups.map((group) => renderManagerBlockClearingBucketCard('block', group.block, group)).join('')
-                    : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No blocks match the current search.</div>';
-                return `<div class="space-y-4">
-                    <div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Dylan Only</div>
-                        <div class="mt-1 text-xl font-black text-slate-900">Block Clearing</div>
-                        <div class="mt-3 grid gap-3 sm:grid-cols-3">
-                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Rows</div><div class="text-2xl font-black text-slate-900">${cache.rows.length}</div></div>
-                            <div class="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Blocks</div><div class="text-2xl font-black text-slate-900">${cache.blocks.length}</div></div>
-                            <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Shown</div><div class="text-2xl font-black text-slate-900">${blockGroups.length}</div></div>
-                        </div>
-                    </div>
-                    <div class="space-y-3">${cards}</div>
-                </div>`;
+                const groups = cache.blocks.filter((group) => managerTextMatchesSearch([group.block]) || filterManagerBlockClearingRowsForSearch(group.rows).length);
+                return `<div class="space-y-3"><h2 class="text-xl font-black text-[#007a4d]">Block Clearing</h2><p class="text-sm text-slate-600">Choose a block, then a clearing location.</p>${groups.map((group) => renderManagerBlockClearingBucketCard('block', group.block, group)).join('') || '<p>No blocks match this search.</p>'}</div>`;
             }
             if (managerBlockClearingLevel === 1) {
-                const safeBlock = normalizeMovesDrillValue(managerBlockClearingSelectedBlock);
-                const locationGroups = getManagerBlockClearingLocationGroupsForBlock(safeBlock).filter((group) => managerTextMatchesSearch([safeBlock, group.location]) || filterManagerBlockClearingRowsForSearch(group.rows).length);
-                const cards = locationGroups.length
-                    ? locationGroups.map((group) => renderManagerBlockClearingBucketCard('location', group.location, group)).join('')
-                    : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No locations match the current search.</div>';
-                return `<div class="space-y-3">
-                    <button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerBlockClearing()"><i class="ph-bold ph-arrow-left text-base"></i>Blocks</button>
-                    <div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block Alpha</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(safeBlock)}</div></div>
-                    ${cards}
-                </div>`;
+                const groups = getManagerBlockClearingLocationGroupsForBlock(managerBlockClearingSelectedBlock).filter((group) => managerTextMatchesSearch([group.location]) || filterManagerBlockClearingRowsForSearch(group.rows).length);
+                return `<div class="space-y-3"><h2 class="text-xl font-black text-[#007a4d]">Block ${escapeHtml(managerBlockClearingSelectedBlock)}</h2>${groups.map((group) => renderManagerBlockClearingBucketCard('location', group.location, group)).join('') || '<p>No locations match this search.</p>'}</div>`;
             }
-            const allRows = getManagerBlockClearingRowsForSelectedLocation();
-            const rows = filterManagerBlockClearingRowsForSearch(allRows);
-            const selectedCount = managerBlockClearingSelectedIds instanceof Set ? managerBlockClearingSelectedIds.size : 0;
-            const cards = rows.length
-                ? rows.map(renderManagerBlockClearingRowCard).join('')
-                : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No rows match the current search.</div>';
-            const searchActive = !!getManagersSearchTokens().length;
-            const countLabel = searchActive ? `${rows.length} shown of ${allRows.length}` : `${rows.length} row${rows.length === 1 ? '' : 's'}`;
-            return `<div class="space-y-4">
-                ${renderManagerBlockClearingLocationStickyHeader(countLabel, selectedCount)}
-                <div class="space-y-3">${cards}</div>
-            </div>`;
+            const allGroups = getManagerBlockClearingItemGroupsForSelectedLocation(), groups = allGroups.filter((group) => filterManagerBlockClearingRowsForSearch(group.rows).length);
+            const count = getManagerBlockClearingSelectedCount();
+            return `<div class="space-y-4"><div class="sticky top-0 z-40 rounded-xl border border-emerald-200 bg-white p-3 shadow-sm"><h2 class="text-lg font-black text-[#007a4d]">Block Clearing ${escapeHtml(managerBlockClearingSelectedLocation)}</h2><p class="text-xs font-bold text-slate-500">${groups.length} of ${allGroups.length} ITEMCODEs · All sublocations, seasons and lots</p><div class="mt-2 flex items-center justify-between gap-2"><span data-block-clearing-selected-count class="text-xs font-bold">${count} ITEMCODE${count === 1 ? '' : 's'} selected</span><button id="block-clearing-continue" type="button" ${count ? '' : 'disabled'} class="rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="return finishManagerBlockClearingSelection()">Continue</button></div></div>${groups.map(renderManagerBlockClearingItemCard).join('') || '<p>No ITEMCODEs match this search.</p>'}</div>`;
         }
 
         function normalizeAccessControlMatrix(value = null) {
@@ -129561,6 +128975,7 @@ C.14.043 C.15.000
         }
 
         function openManagersModules() {
+            if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW) saveManagerBlockClearingNavigation();
             activeHomeTab = 'dashboard';
             managersSearchTerm = '';
             selectedProductivityUser = '';
@@ -131585,6 +131000,17 @@ C.14.043 C.15.000
             if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) ensureSeasonSalesNoteAccessFresh();
             const container = document.getElementById('managers-content');
             if (!container) return;
+            if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW && !managerBlockClearingDraftState.restore && container.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) {
+                // Realtime/viewport updates must not replace a field while its native keyboard is open.
+                if (!container.dataset.blockClearingRefreshDeferred) {
+                    container.dataset.blockClearingRefreshDeferred = '1';
+                    container.addEventListener('focusout', () => {
+                        delete container.dataset.blockClearingRefreshDeferred;
+                        requestAnimationFrame(() => { if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW) scheduleManagersRender(true); });
+                    }, { once: true });
+                }
+                return;
+            }
             if (!canAccessView('managers')) {
                 switchView(getDefaultViewForAccess());
                 return;
@@ -131629,6 +131055,7 @@ C.14.043 C.15.000
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;
             syncManagersHeaderChrome();
+            if (activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW) restoreManagerBlockClearingScrollAfterRender();
             if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) requestAnimationFrame(renderManagerEvalReportRecords);
             if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) requestAnimationFrame(renderManagerEvalReport2Records);
         }
