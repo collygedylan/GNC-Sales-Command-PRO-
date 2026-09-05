@@ -20,8 +20,8 @@ async function appEval<T = any>(page: Page, script: string): Promise<T> {
   return page.evaluate(source => (window as any).__blockClearingTestEval(source), script);
 }
 
-async function setupBlockClearing(page: Page, width: number) {
-  await page.setViewportSize({ width, height: 844 });
+async function setupBlockClearing(page: Page, width: number, options: { realShell?: boolean; height?: number } = {}) {
+  await page.setViewportSize({ width, height: options.height || 844 });
   // Every fixture runs without external writes, even if an unrelated app task wakes up.
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
@@ -66,9 +66,26 @@ async function setupBlockClearing(page: Page, width: number) {
     window.bcToasts = [];
     window.bcUnexpectedWrites = [];
     showToast = (title, message, error) => window.bcToasts.push({ title: String(title || ''), message: String(message || ''), error: !!error });
-    getCurrentVisibleViewId = () => 'managers';
     isDrawerOpen = () => false;
     closeOpenInteractiveSurfaceForBack = () => false;
+    if (${JSON.stringify(options.realShell === true)}) {
+      document.getElementById('view-login').classList.add('hidden');
+      document.getElementById('view-login').style.display = 'none';
+      document.getElementById('app-wrapper').classList.remove('hidden');
+      document.querySelectorAll('#view-wrapper > [id^="view-"]').forEach(view => view.classList.toggle('hidden', view.id !== 'view-managers'));
+      currentPrimaryViewId = 'managers';
+      ensureViewDataForRender = () => false;
+      syncCurrentViewBodyClass('managers');
+      applyResponsiveViewportProfile(true);
+      renderManagers();
+      syncGlobalHeaderChrome({ reason: 'block-clearing-real-shell-fixture', force: true });
+      updateGlobalBackButton();
+      scheduleStickyRailOffsetSync('block-clearing-real-shell-fixture', true);
+      window.bcInventoryBefore = JSON.stringify(fullInventory);
+      window.bcQueueBefore = JSON.stringify({ requestsInventory, managerReviewInventory, moveUpInventory, evalWorkRows });
+      return;
+    }
+    getCurrentVisibleViewId = () => 'managers';
     const oldScroll = document.getElementById('main-scroll-area');
     if (oldScroll) oldScroll.id = 'bc-original-scroll-area';
     const host = document.createElement('main');
@@ -128,6 +145,64 @@ async function assertInventoryUnchanged(page: Page) {
   expect(await appEval(page, 'window.bcUnexpectedWrites')).toEqual([]);
 }
 
+async function scrollRealManagerShell(page: Page, fraction: number) {
+  await page.locator('#main-scroll-area').evaluate((element, ratio) => {
+    element.scrollTop = (element.scrollHeight - element.clientHeight) * ratio;
+    element.dispatchEvent(new Event('scroll', { bubbles: true }));
+  }, fraction);
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
+
+async function assertRealShellControls(page: Page, selectors: string[]) {
+  const back = page.locator('#app-top-chrome #global-header-inline-back');
+  await expect(back).toHaveCount(1);
+  await expect(page.locator('#app-wrapper').getByRole('button', { name: 'Back', exact: true })).toHaveCount(1);
+  const geometry = await page.evaluate(controlSelectors => {
+    const boxes = controlSelectors.map(selector => {
+      const element = document.querySelector(selector) as HTMLElement | null;
+      if (!element) return { selector, missing: true };
+      const rect = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return { selector, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, width: rect.width, height: rect.height, hit: !!hit && (hit === element || element.contains(hit)) };
+    });
+    const containers = ['#app-wrapper', '#main-scroll-area', '#view-managers', '.block-clearing-action-rail'].map(selector => {
+      const element = document.querySelector(selector);
+      return { selector, overflow: element ? element.scrollWidth - element.clientWidth : 0 };
+    });
+    return { boxes, containers, width: innerWidth, height: innerHeight };
+  }, ['#global-header-inline-back', ...selectors]);
+  for (const box of geometry.boxes) {
+    expect(box, JSON.stringify(geometry)).not.toHaveProperty('missing');
+    expect(box.height!, JSON.stringify(geometry)).toBeGreaterThanOrEqual(30);
+    expect(box.top!, JSON.stringify(geometry)).toBeGreaterThanOrEqual(-1);
+    expect(box.bottom!, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.height + 1);
+    expect(box.left!, JSON.stringify(geometry)).toBeGreaterThanOrEqual(-1);
+    expect(box.right!, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.width + 1);
+    expect(box.hit, JSON.stringify(geometry)).toBe(true);
+  }
+  for (let first = 0; first < geometry.boxes.length; first += 1) {
+    for (let second = first + 1; second < geometry.boxes.length; second += 1) {
+      const a = geometry.boxes[first], b = geometry.boxes[second];
+      const overlapWidth = Math.min(a.right!, b.right!) - Math.max(a.left!, b.left!);
+      const overlapHeight = Math.min(a.bottom!, b.bottom!) - Math.max(a.top!, b.top!);
+      expect(overlapWidth <= 1 || overlapHeight <= 1, JSON.stringify(geometry)).toBe(true);
+    }
+  }
+  for (const container of geometry.containers) expect(container.overflow, JSON.stringify(geometry)).toBeLessThanOrEqual(1);
+}
+
+async function assertControlBelowActionRail(page: Page, selector: string, index: number) {
+  const geometry = await page.locator(selector).nth(index).evaluate(element => {
+    const field = element.getBoundingClientRect();
+    const rail = document.querySelector('.block-clearing-action-rail')!.getBoundingClientRect();
+    const hit = document.elementFromPoint(field.left + field.width / 2, field.top + field.height / 2);
+    return { fieldTop: field.top, fieldBottom: field.bottom, railBottom: rail.bottom, viewportHeight: innerHeight, hit: !!hit && (hit === element || element.contains(hit)) };
+  });
+  expect(geometry.fieldTop, JSON.stringify(geometry)).toBeGreaterThanOrEqual(geometry.railBottom - 1);
+  expect(geometry.fieldBottom, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.viewportHeight + 1);
+  expect(geometry.hit, JSON.stringify(geometry)).toBe(true);
+}
+
 async function installPdfFetch(page: Page, response: 'success' | 'http-error' | 'invalid-pdf' | 'email-error') {
   await appEval(page, `(() => {
     window.bcRequests = [];
@@ -157,6 +232,94 @@ async function installPdfFetch(page: Page, response: 'success' | 'http-error' | 
 }
 
 for (const width of [390, 1280]) {
+  test(`Block Clearing real shell keeps one Back and top actions visible on long lists and a short viewport at ${width}px`, async ({ page }, testInfo) => {
+    await setupBlockClearing(page, width, { realShell: true });
+    await appEval(page, `(() => {
+      const rows = [];
+      for (let index = 0; index < 25; index += 1) {
+        const block = String.fromCharCode(66 + index);
+        rows.push({ UNIQUE_ID: 'bc-ui-block-' + index, ITEMCODE: 'UI.BLOCK.' + index, COMMONNAME: 'Other Block ' + index, CONTSIZE: '#3', BLOCKALPHA: block, LOCATIONCODE: block + '.10.001', LOTCODE: '27.F1', SALEYEAR: 27, PTRONHAND: 10 });
+      }
+      for (let index = 1; index <= 30; index += 1) {
+        if (index === 5) continue;
+        rows.push({ UNIQUE_ID: 'bc-ui-location-' + index, ITEMCODE: 'UI.LOCATION.' + index, COMMONNAME: 'Other Location ' + index, CONTSIZE: '#3', BLOCKALPHA: 'A', LOCATIONCODE: 'A.' + String(index).padStart(2, '0') + '.001', LOTCODE: '27.F1', SALEYEAR: 27, PTRONHAND: 10 });
+      }
+      for (let index = 0; index < 28; index += 1) {
+        rows.push({ UNIQUE_ID: 'bc-ui-item-' + index, ITEMCODE: 'UI.ITEM.' + index, COMMONNAME: 'Long Clearing Item ' + index, CONTSIZE: '#3', BLOCKALPHA: 'A', LOCATIONCODE: 'A.05.' + String(index + 200), LOTCODE: '27.F1', SALEYEAR: 27, PTRONHAND: 10 });
+      }
+      fullInventory.push(...rows);
+      managerBlockClearingCache = null;
+      managerBlockClearingCacheKey = '';
+      window.bcInventoryBefore = JSON.stringify(fullInventory);
+      renderManagers();
+    })()`);
+    await expect(page.locator('#app-wrapper')).toBeVisible();
+    await expect(page.locator('#main-scroll-area #view-wrapper #view-managers')).toBeVisible();
+    for (const level of [0, 1, 2]) {
+      await expect.poll(() => appEval(page, 'managerBlockClearingLevel')).toBe(level);
+      await assertRealShellControls(page, []);
+      await scrollRealManagerShell(page, 0.9);
+      expect(await appEval(page, 'getMainAreaScrollTop()')).toBeGreaterThan(500);
+      await assertRealShellControls(page, []);
+      if (level === 0) await appEval(page, `selectManagerBlockClearingBlock('A')`);
+      else if (level === 1) await appEval(page, `selectManagerBlockClearingLocation('A.05')`);
+      await expect.poll(() => appEval(page, 'managerBlockClearingDraftState.restore === null')).toBe(true);
+    }
+    await appEval(page, `getManagerBlockClearingItemGroupsForSelectedLocation().forEach(group => toggleManagerBlockClearingItemcode(group.key, true))`);
+    await expect(page.locator('#block-clearing-continue')).toBeEnabled();
+    await scrollRealManagerShell(page, 0.75);
+    await assertRealShellControls(page, ['#block-clearing-continue']);
+    await page.screenshot({ path: testInfo.outputPath('selection-actions-deep-scroll.png') });
+    const selectionScroll = await appEval(page, 'getMainAreaScrollTop()');
+    // The button is already visible and hit-tested above. A physical click avoids
+    // Playwright's extra scrollIntoView shifting the saved selection by a few pixels.
+    const continueBox = (await page.locator('#block-clearing-continue').boundingBox())!;
+    await page.mouse.click(continueBox.x + continueBox.width / 2, continueBox.y + continueBox.height / 2);
+    await expect(page.locator('[data-block-clearing-action]')).toHaveCount(30);
+    await appEval(page, `(() => {
+      buildManagerBlockClearingGroups().forEach(group => {
+        setManagerBlockClearingDecision(encodeURIComponent(group.key), 'action', 'ta');
+        setManagerBlockClearingDecision(encodeURIComponent(group.key), 'quantity', '1');
+      });
+      renderManagers();
+    })()`);
+    const actions = ['#block-clearing-download-pdf', '#block-clearing-email-send-btn', '#block-clearing-cancel'];
+    for (const selector of actions) await expect(page.locator(selector)).toBeEnabled();
+    for (const fraction of [0, 0.6, 1]) {
+      await scrollRealManagerShell(page, fraction);
+      await assertRealShellControls(page, actions);
+      const railTop = await page.locator('.block-clearing-action-rail').evaluate(element => element.getBoundingClientRect().top);
+      expect(railTop).toBeLessThan(250);
+    }
+    await page.locator('[data-block-clearing-action]').nth(10).evaluate(element => element.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await assertRealShellControls(page, actions);
+    await assertControlBelowActionRail(page, '[data-block-clearing-action]', 10);
+    await page.screenshot({ path: testInfo.outputPath('worksheet-actions-deep-scroll.png') });
+    await page.locator('#global-header-inline-back').click();
+    await expect(page.locator('#block-clearing-continue')).toBeEnabled();
+    await expect.poll(() => appEval(page, 'getMainAreaScrollTop()')).toBeCloseTo(selectionScroll, 0);
+    await assertRealShellControls(page, ['#block-clearing-continue']);
+    await page.locator('#block-clearing-continue').click();
+    await expect(page.locator('[data-block-clearing-instructions]')).toHaveCount(30);
+    await page.setViewportSize({ width: 320, height: 420 });
+    await page.locator('[data-block-clearing-instructions]').nth(10).fill('Keyboard-height viewport keeps the top actions available.');
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await assertRealShellControls(page, actions);
+    await expect(page.locator('[data-block-clearing-instructions]').nth(10)).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('[data-block-clearing-quantity]').nth(10)).toBeFocused();
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await assertRealShellControls(page, actions);
+    await assertControlBelowActionRail(page, '[data-block-clearing-quantity]', 10);
+    await page.locator('[data-block-clearing-action]').nth(15).evaluate(element => element.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await assertRealShellControls(page, actions);
+    await assertControlBelowActionRail(page, '[data-block-clearing-action]', 15);
+    await page.screenshot({ path: testInfo.outputPath('worksheet-actions-short-focused-viewport.png') });
+    await assertInventoryUnchanged(page);
+  });
+
   test(`Block Clearing groups full bucket ITEMCODEs and retains all source rows through search at ${width}px`, async ({ page }) => {
     await setupBlockClearing(page, width);
     await openSource(page);

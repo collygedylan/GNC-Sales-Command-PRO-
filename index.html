@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.04.14">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.05.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.04.14';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.05.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6779,6 +6779,16 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         .manager-eval2-item-card:active{transform:scale(.992)}
         #view-managers.manager-eval2-drive-shell .manager-module-freeze{display:none!important}
         #view-managers.manager-eval2-drive-shell #managers-content{gap:0!important}
+        #view-managers.manager-block-clearing-shell .manager-module-freeze{display:none!important}
+        /* Keep the main app scroller as the sticky ancestor; overflow:hidden creates a nested scroll container on phones. */
+        #view-wrapper:has(> #view-managers.manager-block-clearing-shell:not(.hidden)){overflow-x:clip!important;overflow-y:visible!important}
+        #view-managers.manager-block-clearing-shell #managers-content{gap:0!important}
+        #view-managers.manager-block-clearing-shell :is([data-block-clearing-itemcode],input,select,textarea){scroll-margin-top:8rem}
+        .block-clearing-action-rail{position:-webkit-sticky;position:sticky;top:0;z-index:56;min-width:0;max-width:100%;padding:.6rem;background:var(--sticky-chrome-bg,#fff);border:1px solid #a7f3d0;border-radius:12px;box-shadow:0 2px 6px rgba(15,23,42,.08)}
+        .block-clearing-action-rail button{min-height:44px;min-width:0;white-space:normal;line-height:1.15}
+        .block-clearing-action-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+        .block-clearing-action-status{display:flex;align-items:center;justify-content:space-between;gap:.5rem;min-width:0;margin-top:.35rem;font-size:12px}
+        .block-clearing-action-status button{padding:.35rem .5rem;flex-shrink:0}
         .manager-eval2-drive-controls{margin:0 0 .42rem;padding:.08rem 0 .18rem;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:none}
         .manager-eval2-drive-tabs{margin:0 0 .38rem!important}
         .manager-eval2-drive-filter-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.45rem;align-items:start}
@@ -6799,7 +6809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.04.14">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.05.01">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6974,9 +6984,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.04.14"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.04.14"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.04.14"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.05.01"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.05.01"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.05.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7730,7 +7740,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.04.14').trim() || 'V2026.09.04.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.05.01').trim() || 'V2026.09.05.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9235,7 +9245,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.04.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.05.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -31498,7 +31508,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.04.14').trim() || 'V2026.09.04.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.05.01').trim() || 'V2026.09.05.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -127716,7 +127726,22 @@ C.14.043 C.15.000
                 const decision = getManagerBlockClearingDecision(group.key), key = getManagerBlockClearingEncodedKey(group.key), id = getManagerBlockClearingGroupDomId(group.key);
                 return `<article data-block-clearing-itemcode="${escapeHtml(group.key)}" class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><h3 class="text-lg font-black text-slate-900">${escapeHtml(group.commonname)} <span class="text-[#007a4d]">${escapeHtml(group.contsize)}</span></h3><div class="text-sm font-bold text-blue-700">${escapeHtml(group.itemcode)}</div><div class="mt-2 text-base font-black text-[#007a4d]">Total Plants On Hand: ${escapeHtml(normalizeCardQuantityValue(group.totalOnHand))}</div><div class="mt-3 grid gap-3 sm:grid-cols-2"><label class="block text-xs font-bold text-slate-700">Action<select data-block-clearing-action class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" onchange="return setManagerBlockClearingDecision('${key}','action',this.value)"><option value="">Select action</option>${Object.entries(BLOCK_CLEARING_ACTIONS).map(([value, label]) => `<option value="${value}" ${decision.action === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label class="block text-xs font-bold text-slate-700">Action Quantity<input data-block-clearing-quantity type="text" inputmode="numeric" pattern="[0-9]*" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" value="${escapeHtml(decision.quantity)}" placeholder="Enter number of plants" oninput="return setManagerBlockClearingDecision('${key}','quantity',this.value)"></label></div><div id="block-clearing-destination-fields-${id}">${renderManagerBlockClearingDestinationFields(group)}</div><label class="mt-3 block text-xs font-bold text-slate-700">Instructions (optional)<textarea data-block-clearing-instructions rows="2" maxlength="4000" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" oninput="return setManagerBlockClearingDecision('${key}','instructions',this.value)">${escapeHtml(decision.instructions)}</textarea></label><p id="block-clearing-error-${id}" class="mt-2 text-xs font-semibold text-red-700" aria-live="polite">${escapeHtml(getManagerBlockClearingDecisionError(group))}</p>${renderManagerBlockClearingPhysicalRows(group)}</article>`;
             }).join('');
-            return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div class="text-xs font-black uppercase text-[#007a4d]">Block Clearing ${escapeHtml(context.locationcode)}</div><div class="mt-1 text-lg font-black text-slate-900">${context.groups.length} ITEMCODEs · Total Plants On Hand: ${escapeHtml(normalizeCardQuantityValue(context.groups.reduce((sum, group) => sum + group.totalOnHand, 0)))}</div><div id="block-clearing-instruction-count" class="text-xs font-bold text-emerald-700">${context.groups.filter((group) => !getManagerBlockClearingDecisionError(group)).length}/${context.groups.length} ready</div></div><label class="block text-sm font-bold text-slate-700">Report Title / Email Subject<input id="block-clearing-report-title" type="text" maxlength="200" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" value="${escapeHtml(context.title)}" oninput="return setManagerBlockClearingReportTitle(this.value)"></label><p class="text-xs text-slate-600">Grade &amp; Save Best quantity is the number to keep. No action is implied for the remaining plants.</p>${cards}<p id="block-clearing-delivery-error" role="alert" class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700" ${managerBlockClearingDraftState.error ? '' : 'hidden'}>${escapeHtml(managerBlockClearingDraftState.error)}</p><div class="sticky bottom-20 z-40 grid grid-cols-2 gap-2 rounded-2xl border border-emerald-200 bg-white p-3 shadow-lg"><button id="block-clearing-download-pdf" type="button" ${ready ? '' : 'disabled'} class="rounded-xl border border-[#007a4d] bg-white p-3 text-sm font-black text-[#007a4d] disabled:opacity-50" onclick="return downloadManagerBlockClearingPdf()">Download PDF</button><button id="block-clearing-email-send-btn" type="button" ${ready ? '' : 'disabled'} class="rounded-xl bg-[#007a4d] p-3 text-sm font-black text-white disabled:opacity-50" onclick="return sendManagerBlockClearingEmail(this)">Email PDF</button><button type="button" class="col-span-2 p-2 text-xs font-bold text-slate-500" onclick="return cancelManagerBlockClearingWorkflow()">Cancel Worksheet</button></div></div>`;
+            return `<div class="space-y-4">
+                <div class="block-clearing-action-rail" role="region" aria-label="Block Clearing worksheet actions">
+                    <div class="block-clearing-action-buttons">
+                        <button id="block-clearing-download-pdf" type="button" ${ready ? '' : 'disabled'} class="rounded-xl border border-[#007a4d] bg-white p-3 text-sm font-black text-[#007a4d] disabled:opacity-50" onclick="return downloadManagerBlockClearingPdf()">Download PDF</button>
+                        <button id="block-clearing-email-send-btn" type="button" ${ready ? '' : 'disabled'} class="rounded-xl bg-[#007a4d] p-3 text-sm font-black text-white disabled:opacity-50" onclick="return sendManagerBlockClearingEmail(this)">Email PDF</button>
+                    </div>
+                    <div class="block-clearing-action-status">
+                        <span id="block-clearing-instruction-count" class="font-bold text-emerald-700" aria-live="polite">${context.groups.filter((group) => !getManagerBlockClearingDecisionError(group)).length}/${context.groups.length} ready</span>
+                        <button id="block-clearing-cancel" type="button" class="rounded-xl font-bold text-slate-500" onclick="return cancelManagerBlockClearingWorkflow()">Cancel Worksheet</button>
+                    </div>
+                </div>
+                <p id="block-clearing-delivery-error" role="alert" class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700" ${managerBlockClearingDraftState.error ? '' : 'hidden'}>${escapeHtml(managerBlockClearingDraftState.error)}</p>
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div class="text-xs font-black uppercase text-[#007a4d]">Block Clearing ${escapeHtml(context.locationcode)}</div><div class="mt-1 text-lg font-black text-slate-900">${context.groups.length} ITEMCODEs · Total Plants On Hand: ${escapeHtml(normalizeCardQuantityValue(context.groups.reduce((sum, group) => sum + group.totalOnHand, 0)))}</div></div>
+                <label class="block text-sm font-bold text-slate-700">Report Title / Email Subject<input id="block-clearing-report-title" type="text" maxlength="200" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-3 text-base" value="${escapeHtml(context.title)}" oninput="return setManagerBlockClearingReportTitle(this.value)"></label>
+                <p class="text-xs text-slate-600">Grade &amp; Save Best quantity is the number to keep. No action is implied for the remaining plants.</p>${cards}
+            </div>`;
         }
         function renderManagerBlockClearingPanel() {
             if (!canViewManagerBlockClearing()) return '<div class="p-6 text-center">Block Clearing is not available for this login.</div>';
@@ -127737,7 +127762,7 @@ C.14.043 C.15.000
             }
             const allGroups = getManagerBlockClearingItemGroupsForSelectedLocation(), groups = allGroups.filter((group) => filterManagerBlockClearingRowsForSearch(group.rows).length);
             const count = getManagerBlockClearingSelectedCount();
-            return `<div class="space-y-4"><div class="sticky top-0 z-40 rounded-xl border border-emerald-200 bg-white p-3 shadow-sm"><h2 class="text-lg font-black text-[#007a4d]">Block Clearing ${escapeHtml(managerBlockClearingSelectedLocation)}</h2><p class="text-xs font-bold text-slate-500">${groups.length} of ${allGroups.length} ITEMCODEs · All sublocations, seasons and lots</p><div class="mt-2 flex items-center justify-between gap-2"><span data-block-clearing-selected-count class="text-xs font-bold">${count} ITEMCODE${count === 1 ? '' : 's'} selected</span><button id="block-clearing-continue" type="button" ${count ? '' : 'disabled'} class="rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="return finishManagerBlockClearingSelection()">Continue</button></div></div>${groups.map(renderManagerBlockClearingItemCard).join('') || '<p>No ITEMCODEs match this search.</p>'}</div>`;
+            return `<div class="space-y-4"><div class="block-clearing-action-rail" role="region" aria-label="Block Clearing selection actions"><div class="flex items-center justify-between gap-2"><div><h2 class="text-base font-black text-[#007a4d]">Block Clearing ${escapeHtml(managerBlockClearingSelectedLocation)}</h2><span data-block-clearing-selected-count class="text-xs font-bold" aria-live="polite">${count} ITEMCODE${count === 1 ? '' : 's'} selected</span></div><button id="block-clearing-continue" type="button" ${count ? '' : 'disabled'} class="rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="return finishManagerBlockClearingSelection()">Continue</button></div></div><p class="text-xs font-bold text-slate-500">${groups.length} of ${allGroups.length} ITEMCODEs · All sublocations, seasons and lots</p>${groups.map(renderManagerBlockClearingItemCard).join('') || '<p>No ITEMCODEs match this search.</p>'}</div>`;
         }
 
         function normalizeAccessControlMatrix(value = null) {
@@ -128792,6 +128817,7 @@ C.14.043 C.15.000
         function syncManagersHeaderChrome() {
             const tab = String(activeHomeTab || 'dashboard').trim().toLowerCase();
             const driveAroundLayout = tab === MANAGER_EVAL_REPORTS_2_VIEW;
+            const blockClearingLayout = tab === MANAGER_BLOCK_CLEARING_VIEW;
             const meta = tab === 'dashboard'
                 ? { label: 'Manager Modules', description: 'Managers' }
                 : getManagerModuleMeta(tab);
@@ -128804,7 +128830,8 @@ C.14.043 C.15.000
             const clearBtn = document.getElementById('managers-search-clear');
             const searchContainer = document.getElementById('managers-search-container');
             if (managersView) managersView.classList.toggle('manager-eval2-drive-shell', driveAroundLayout);
-            if (moduleFreeze) moduleFreeze.classList.toggle('hidden', driveAroundLayout);
+            if (managersView) managersView.classList.toggle('manager-block-clearing-shell', blockClearingLayout);
+            if (moduleFreeze) moduleFreeze.classList.toggle('hidden', driveAroundLayout || blockClearingLayout);
             if (eyebrow) eyebrow.innerText = tab === 'dashboard' ? 'Managers' : 'Active Module';
             if (title) title.innerText = meta.label || 'Managers';
             if (modulesButton) modulesButton.classList.toggle('hidden', tab === 'dashboard');
