@@ -63,6 +63,7 @@ for (const width of [390, 1280]) {
 
 for (const width of [390, 1280]) {
   test(`Eval Reports #2 Low Stock season picker matches any selected season at ${width}px`, async ({ page }) => {
+    test.setTimeout(60_000);
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/?e2e=eval2-low-stock-multi-season&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof (window as any).buildManagerEvalReport2SeasonPicker === 'function');
@@ -73,9 +74,10 @@ for (const width of [390, 1280]) {
       activeHomeTab = 'eval-reports-2';
       getConfiguredCurrentSeasonCode = () => 'F1';
       getConfiguredCurrentSalesYearCode = () => 27;
-      getConfiguredNextSaleSeasonTarget = () => ({ season:'S1', salesYear:28 });
+      getConfiguredNextSaleSeasonTarget = () => ({ season:'S1', salesYear:27 });
       processAndLoadData({ data: [
         { UNIQUE_ID:'low-a-f1', ITEMCODE:'LOW.A', GENUSNAME:'Rosa', COMMONNAME:'U1 Low', CONTSIZE:'#3', SEASON:'F1', SALEYEAR:27, S_LTS:10, LOCATIONCODE:'A.01.001', LOTCODE:'27.F1', PTRONHAND:30, PTRAVAILABLE:30 },
+        { UNIQUE_ID:'low-a-s1', ITEMCODE:'LOW.A', GENUSNAME:'Rosa', COMMONNAME:'U1 Low', CONTSIZE:'#3', SEASON:'S1', SALEYEAR:27, S_LTS:999, LOCATIONCODE:'A.01.003', LOTCODE:'27.S1', PTRONHAND:22, PTRAVAILABLE:22 },
         { UNIQUE_ID:'low-a-u1', ITEMCODE:'LOW.A', GENUSNAME:'Rosa', COMMONNAME:'U1 Low', CONTSIZE:'#3', SEASON:'U1', SALEYEAR:27, S_LTS:999, BLOCKALPHA:'A', LOCATIONCODE:'A.01.002', LOTCODE:'27.U1', PTRONHAND:20, PTRAVAILABLE:18 },
         { UNIQUE_ID:'low-b-f1', ITEMCODE:'LOW.B', GENUSNAME:'Acer', COMMONNAME:'U2 Low', CONTSIZE:'#5', SEASON:'F1', SALEYEAR:27, S_LTS:20, LOCATIONCODE:'B.01.001', LOTCODE:'27.F1', PTRONHAND:25, PTRAVAILABLE:25 },
         { UNIQUE_ID:'low-b-u2', ITEMCODE:'LOW.B', GENUSNAME:'Acer', COMMONNAME:'U2 Low', CONTSIZE:'#5', SEASON:'U2', SALEYEAR:27, S_LTS:999, BLOCKALPHA:'B', LOCATIONCODE:'B.01.002', LOTCODE:'27.U2', PTRONHAND:12, PTRAVAILABLE:12 },
@@ -124,7 +126,10 @@ for (const width of [390, 1280]) {
       filters:Array.from(getManagerEvalReport2SeasonFilters()).sort(),
       groups:getManagerEvalReport2VisibleItemGroups().map((group) => ({ itemCode:group.itemCode, rowCount:group.rowCount, reportSeasons:group.reportRows.map(getManagerEvalReportRowSeason) }))
     }))()`));
-    expect(u1State).toEqual({ filters:['U1'], groups:[{ itemCode:'LOW.A', rowCount:2, reportSeasons:['U1'] }] });
+    expect(u1State).toEqual({ filters:['U1'], groups:[{ itemCode:'LOW.A', rowCount:1, reportSeasons:['U1'] }] });
+    const u1Card = host.locator('.manager-eval2-item-card');
+    await expect(u1Card).toContainText('27.U1');
+    await expect(u1Card).not.toContainText('27.F1');
 
     await openSeasonPicker();
     await host.locator('input[data-eval2-season-value][value="U2"]').check();
@@ -137,6 +142,37 @@ for (const width of [390, 1280]) {
     await expect(host).not.toContainText('X Only Low');
     await expect(host).not.toContainText('U1 Not Low');
     await expect(host).not.toContainText('Shift Excluded');
+    const projectedSeasonRows = await page.evaluate(() => window.eval(`getManagerEvalReport2VisibleItemGroups().map((group) => ({ itemCode:group.itemCode, rows:group.rows.map(getManagerEvalReportRowSeason) }))`));
+    expect(projectedSeasonRows).toEqual([
+      { itemCode:'LOW.A', rows:['U1'] },
+      { itemCode:'LOW.B', rows:['U2'] },
+      { itemCode:'LOW.C', rows:['U3'] }
+    ]);
+
+    await openSeasonPicker();
+    await host.locator('input[data-eval2-season-all]').check();
+    await host.locator('input[data-eval2-season-value][value="X"]').check();
+    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await expect(host.locator('.manager-eval2-item-card')).toHaveCount(1);
+    await expect(host.locator('.manager-eval2-item-card')).toContainText('27.X');
+    expect(await page.evaluate(() => window.eval(`getManagerEvalReport2VisibleItemGroups().map((group) => ({ itemCode:group.itemCode, rows:group.rows.map(getManagerEvalReportRowSeason) }))`))).toEqual([
+      { itemCode:'LOW.D', rows:['X'] }
+    ]);
+
+    await openSeasonPicker();
+    await host.locator('input[data-eval2-season-all]').check();
+    await host.locator('input[data-eval2-season-value][value="S1"]').check();
+    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await expect(host.locator('.manager-eval2-item-card')).toHaveCount(1);
+    await expect(host.locator('.manager-eval2-item-card')).toContainText('27.S1');
+    await expect(host.locator('.manager-eval2-item-card')).not.toContainText('27.F1');
+
+    await openSeasonPicker();
+    await host.locator('input[data-eval2-season-all]').check();
+    await host.locator('input[data-eval2-season-value][value="U1"]').check();
+    await host.locator('input[data-eval2-season-value][value="U2"]').check();
+    await host.locator('input[data-eval2-season-value][value="U3"]').check();
+    await host.getByRole('button', { name:'Apply Seasons' }).click();
 
     await host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="LOW.A"]').click();
     await host.locator('#manager-eval-report-2-view-location').click();
@@ -158,6 +194,38 @@ for (const width of [390, 1280]) {
     expect(await host.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   });
 }
+
+test('bottom quick-access navigation opens each destination on the first click', async ({ page }) => {
+  await page.setViewportSize({ width:390, height:844 });
+  await page.goto('/?e2e=bottom-quick-access&post_deploy_access_canary=1', { waitUntil:'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).switchView === 'function' && typeof (window as any).updateFooterNavState === 'function');
+  await page.evaluate(() => window.eval(`(() => {
+    installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN');
+    canAccessView = () => true;
+    scheduleViewActivationWork = () => {};
+    scheduleWarmViewFollowup = () => {};
+    if (document.getElementById('view-login')) document.getElementById('view-login').style.display = 'none';
+    document.getElementById('app-wrapper')?.classList.remove('hidden');
+    ['home','drive','tasks','docks','communication'].forEach((viewId) => {
+      const state = ensureViewRenderState(viewId);
+      state.initialized = true;
+      state.dirty = false;
+    });
+    showOnlyPrimaryView('home');
+    updateFooterNavState();
+  })()`));
+
+  for (const viewId of ['drive','tasks','docks','communication','home']) {
+    const button = page.locator(`#bottom-nav [data-footer-view="${viewId}"]`);
+    await expect(button).toBeVisible();
+    await button.click();
+    await expect(page.locator(`#view-${viewId}`)).toBeVisible();
+    await expect(button).toHaveClass(/active/);
+  }
+
+  await page.locator('#footer-menu-btn').click();
+  await expect(page.locator('#side-drawer')).toHaveClass(/open/);
+});
 
 test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to LocationCode without rebuilding Managers', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

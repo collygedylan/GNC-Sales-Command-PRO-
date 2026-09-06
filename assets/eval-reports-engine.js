@@ -535,9 +535,9 @@
             }
             const aggregate = aggregates.get(itemCode);
             if (metadata.priority) aggregate.hasPriority = true;
-            if (season === 'F1' && validSalesYear) {
-                aggregate.hasValidF1 = true;
-                if (metadata.slts < settings.lowStockMaxSLts) aggregate.qualifiesLowStock = true;
+            if (season === 'F1' && validSalesYear) aggregate.hasValidF1 = true;
+            if (season === currentSeason && validSalesYear && metadata.slts < settings.lowStockMaxSLts) {
+                aggregate.qualifiesLowStock = true;
             }
             if (metadata.oldHold) aggregate.hasOldHold = true;
         });
