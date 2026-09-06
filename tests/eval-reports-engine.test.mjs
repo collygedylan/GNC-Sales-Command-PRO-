@@ -227,6 +227,31 @@ test('follows the configured current and next-season transition', () => {
   assert.deepEqual(ids(result.reports['low-stock']), ['shift-f1-next', 'shift-u1']);
 });
 
+test('low stock qualifies from the configured current season and returns only target-season rows', () => {
+  const rows = [
+    row('CURRENT-LOW', 'S1', 27, { TEST_ID: 'current-s1-seed', S_LTS: 149 }),
+    row('CURRENT-LOW', 'U1', 27, { TEST_ID: 'current-u1-target', S_LTS: 999 }),
+    row('CURRENT-LOW', 'X', 27, { TEST_ID: 'current-culls-target', S_LTS: 999 }),
+    row('CURRENT-LOW', 'F1', 28, { TEST_ID: 'current-f1-target', S_LTS: 999 }),
+    row('OLD-F1-LOW', 'F1', 27, { TEST_ID: 'old-f1-seed', S_LTS: 1 }),
+    row('OLD-F1-LOW', 'U1', 27, { TEST_ID: 'old-f1-u1', S_LTS: 999 }),
+    row('FUTURE-S1-LOW', 'S1', 28, { TEST_ID: 'future-s1-seed', S_LTS: 1 }),
+    row('FUTURE-S1-LOW', 'U2', 27, { TEST_ID: 'future-s1-u2', S_LTS: 999 })
+  ];
+
+  for (const classify of [engine.classifyRows, engine.classifyScriptCompatibleRows]) {
+    const result = classify(rows, {
+      currentSeason: 'S1', currentSalesYear: 27, nextSeason: 'F1', nextSalesYear: 28,
+      settings: { lowStockMaxSLts: 150 }, now
+    });
+    assert.deepEqual(ids(result.reports['low-stock']), [
+      'current-f1-target',
+      'current-u1-target',
+      'current-culls-target'
+    ]);
+  }
+});
+
 test('sorts by AssignedTo, ItemCode, season order, sales year, and location', () => {
   const rows = [
     row('B', 'X', 27, { TEST_ID: '4', ASSIGNEDTO: 'zoe_green', LOCATIONCODE: 'B.02.001' }),
