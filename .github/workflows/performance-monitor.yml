@@ -203,6 +203,9 @@ jobs:
           cp -r assets/. _site/assets/
           cp ./*.png _site/
           cp ./*.webp _site/
+      - name: Test navigation in the built production shell
+        run: npm run test:footer
+
       - name: Run Lighthouse CI with bounded protocol retry
         shell: bash
         run: |

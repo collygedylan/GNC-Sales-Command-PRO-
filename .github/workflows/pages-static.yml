@@ -87,6 +87,9 @@ jobs:
           test "$(wc -c < _site/index.html)" -le 1500000
           ! grep -Eq 'cdn\.tailwindcss\.com|unpkg\.com/@phosphor-icons|cdn\.jsdelivr\.net/npm/@supabase' _site/index.html
 
+      - name: Test navigation in the built production shell
+        run: npm run test:footer
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
@@ -133,6 +136,11 @@ jobs:
           CANARY_BASE_URL: https://agmetricapp.com
           EXPECTED_COMMIT: ${{ github.sha }}
         run: npx playwright test --config=playwright.production.config.ts tests/production-request-canary.spec.ts
+
+      - name: Verify live footer navigation on Android and iPhone
+        env:
+          FOOTER_BASE_URL: https://agmetricapp.com
+        run: npm run test:footer -- --project=footer-android-chromium --project=footer-iphone-webkit
 
       - name: Upload sanitized canary diagnostics
         if: failure()
