@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.09.05.04",
+  "version": "2026.09.05.05",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
