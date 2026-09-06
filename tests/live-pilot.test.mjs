@@ -812,6 +812,13 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(liveVendorBuild, /@phosphor-icons/);
 });
 
+test('performance monitoring audits the optimized deployable shell', () => {
+  assert.match(performanceWorkflow, /npm run build:live/);
+  assert.match(performanceWorkflow, /cp manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
+  assert.match(performanceWorkflow, /cp -r assets\/\. _site\/assets\//);
+  assert.doesNotMatch(performanceWorkflow, /cp index\.html[^\n]*_site\//);
+});
+
 test('V16 Home uses one authorization-backed primary module registry and leaves nested workflows in their hubs', () => {
   assert.match(html, /const HOME_MODULE_REGISTRY = Object\.freeze\(\[/);
   for (const view of ['drive', 'docks', 'av', 'communication', 'sales', 'managers', 'building', 'qc', 'office', 'sales-inventory', 'production', 'reports']) {
@@ -1414,7 +1421,8 @@ test('hosted performance monitoring pins CLI and emits bounded anonymous functio
   assert.match(performanceWorkflow, /deno test --allow-env --allow-net supabase\/functions/);
   assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
   assert.match(performanceWorkflow, /Prepare static shell for Lighthouse/);
-  assert.match(performanceWorkflow, /cp index\.html manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
+  assert.match(performanceWorkflow, /cp manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
+  assert.doesNotMatch(performanceWorkflow, /cp index\.html[^\n]*_site\//);
   assert.match(observability, /MAX_LOG_BYTES = 2048/);
   assert.match(observability, /SUCCESS_SAMPLE_RATE = 0\.01/);
   assert.match(observability, /function recordHandledError/);
