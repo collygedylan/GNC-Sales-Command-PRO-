@@ -65,7 +65,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.05.02';
+  const release = 'V2026.09.05.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
@@ -83,6 +83,7 @@ test('global alerts are dismissible, swipeable, deduplicated, and sync details a
   assert.match(html, /showToast\('Data Update Delayed', 'Some data may be delayed\. You can continue working\.'/);
   assert.match(css, /#toast-notification\.show[\s\S]*pointer-events: auto !important/);
   assert.match(css, /#toast-notification\.toast-dismissing/);
+  assert.match(css, /\.login-brand-lockup picture[\s\S]*width: 224px;[\s\S]*height: 140px;/);
 });
 
 test('Request entry uses semantic high-contrast fields, bounded lists, cached grouping, and a submit guard', () => {
@@ -806,9 +807,22 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
   assert.match(serviceWorker, /live-app-runtime-v2026082010\.min\.js/);
+  assert.match(serviceWorker, /ag-data-solutions-logo-v2026090503-224\.webp/);
+  assert.match(serviceWorker, /ag-data-solutions-logo-v2026090503-448\.webp/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
+  assert.match(html, /imagesrcset="\.\/ag-data-solutions-logo-v2026090503-224\.webp 224w, \.\/ag-data-solutions-logo-v2026090503-448\.webp 448w"/);
+  assert.match(workflow, /cp ag-data-solutions-logo-v2026090503-224\.webp/);
+  assert.match(performanceWorkflow, /cp \.\/\*\.webp _site\//);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
+  assert.match(liveShellBuild, /live-app-styles-base-v2026090503\.css/);
+  assert.match(liveShellBuild, /live-app-styles-authority-v2026090503\.css/);
+  assert.match(liveShellBuild, /asyncStylesheetMarkup/);
+  assert.match(liveShellBuild, /currentOrdinal < 4/);
+  assert.match(liveShellBuild, /media="print" fetchpriority="low"/);
+  assert.match(liveShellBuild, /login-critical-styles/);
+  assert.match(liveShellBuild, /loginStylesMarker/);
+  assert.match(liveShellBuild, /window\.addEventListener\('load', afterPaint/);
   assert.match(liveVendorBuild, /@phosphor-icons/);
 });
 

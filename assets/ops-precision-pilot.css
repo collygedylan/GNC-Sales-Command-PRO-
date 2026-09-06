@@ -1058,10 +1058,16 @@ html[data-ops-prepaint-theme="dark"] {
   gap: 12px;
 }
 
+.login-brand-lockup picture {
+  display: block;
+  width: 224px;
+  height: 140px;
+}
+
 .login-brand-logo {
   display: block;
   width: min(100%, 224px);
-  height: auto;
+  height: 140px;
   object-fit: contain;
 }
 

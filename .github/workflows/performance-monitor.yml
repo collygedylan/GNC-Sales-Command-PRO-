@@ -200,6 +200,7 @@ jobs:
           cp manifest.json sw.js OneSignalSDKWorker.js _site/
           cp -r assets/. _site/assets/
           cp ./*.png _site/
+          cp ./*.webp _site/
       - name: Run Lighthouse CI with bounded protocol retry
         shell: bash
         run: |
