@@ -396,23 +396,53 @@ if (serviceRoleKey) {
     contractVersion: evalWorkAssignmentBatchHealth.contractVersion
   });
 
-  const requestDriveHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_request_drive_evidence_health_snapshot_v1`, {
-    method: 'POST',
-    headers: serviceHeaders,
-    body: '{}'
-  }, 60000);
-  const requestDriveHealthText = await requestDriveHealthResponse.text();
-  try { requestDriveEvidenceHealth = requestDriveHealthText ? JSON.parse(requestDriveHealthText) : null; } catch {}
-  if (!requestDriveHealthResponse.ok || !requestDriveEvidenceHealth || typeof requestDriveEvidenceHealth !== 'object') {
-    throw new Error(`production_request_drive_evidence_health_unavailable_HTTP_${requestDriveHealthResponse.status}`);
+  let requestDriveHealthStatus = 0;
+  for (let repairPass = 0; repairPass < 3; repairPass += 1) {
+    const requestDriveHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_request_drive_evidence_health_snapshot_v1`, {
+      method: 'POST',
+      headers: serviceHeaders,
+      body: '{}'
+    }, 60000);
+    requestDriveHealthStatus = requestDriveHealthResponse.status;
+    const requestDriveHealthText = await requestDriveHealthResponse.text();
+    requestDriveEvidenceHealth = null;
+    try { requestDriveEvidenceHealth = requestDriveHealthText ? JSON.parse(requestDriveHealthText) : null; } catch {}
+    if (!requestDriveHealthResponse.ok || !requestDriveEvidenceHealth || typeof requestDriveEvidenceHealth !== 'object') {
+      throw new Error(`production_request_drive_evidence_health_unavailable_HTTP_${requestDriveHealthResponse.status}`);
+    }
+
+    const mismatchCount = Math.max(0, Number(requestDriveEvidenceHealth.evidence_mismatch_count) || 0);
+    if (mismatchCount === 0) break;
+    const mismatchRequestIds = Array.isArray(requestDriveEvidenceHealth.mismatch_request_ids)
+      ? [...new Set(requestDriveEvidenceHealth.mismatch_request_ids.map((value) => String(value || '').trim()).filter(Boolean))]
+      : [];
+    if (mismatchRequestIds.length === 0 || repairPass === 2) break;
+
+    for (let start = 0; start < mismatchRequestIds.length; start += 100) {
+      const repairResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/repair_request_drive_evidence_v1`, {
+        method: 'POST',
+        headers: serviceHeaders,
+        body: JSON.stringify({
+          p_request_ids: mismatchRequestIds.slice(start, start + 100),
+          p_dry_run: false
+        })
+      }, 60000);
+      const repairText = await repairResponse.text();
+      let repairResult = null;
+      try { repairResult = repairText ? JSON.parse(repairText) : null; } catch {}
+      if (!repairResponse.ok || !repairResult || typeof repairResult !== 'object') {
+        throw new Error(`production_request_drive_evidence_repair_unavailable_HTTP_${repairResponse.status}`);
+      }
+    }
   }
   const requestDriveContractHealthy = requestDriveEvidenceHealth.contract_version === 'request-drive-evidence-health-v1'
     && Number(requestDriveEvidenceHealth.evidence_mismatch_count) === 0;
   checks.push({
     name: 'request_drive_evidence_v1',
-    status: requestDriveHealthResponse.status,
+    status: requestDriveHealthStatus,
     contractVersion: requestDriveEvidenceHealth.contract_version,
-    recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0)
+    recentCompletedCount: Math.max(0, Number(requestDriveEvidenceHealth.recent_completed_count) || 0),
+    evidenceMismatchCount: Math.max(0, Number(requestDriveEvidenceHealth.evidence_mismatch_count) || 0)
   });
 
   const driveEvidenceSaveHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_drive_evidence_save_health_v2`, {

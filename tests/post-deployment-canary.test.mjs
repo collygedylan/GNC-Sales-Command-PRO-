@@ -79,6 +79,9 @@ test('scheduled production health checks exact live parity without racing the pu
   assert.match(probe, /production_eval_request_delivery_contract_unhealthy/);
   assert.match(probe, /missing_completion_event_count/);
   assert.match(probe, /get_request_drive_evidence_health_snapshot_v1/);
+  assert.match(probe, /repair_request_drive_evidence_v1/);
+  assert.match(probe, /p_dry_run: false/);
+  assert.match(probe, /mismatch_request_ids/);
   assert.match(probe, /production_request_drive_evidence_contract_unhealthy/);
   assert.match(probe, /get_season_sales_office_health_v1/);
   assert.match(probe, /production_season_sales_office_parity_unhealthy/);
