@@ -157514,6 +157514,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const shellQueryParam = 'shellv';
             const currentReloadMarker = `${shellVersion}::${shellBuild}`;
             const shellRegistrationScriptStartedAt = Date.now();
+            let shellControllerObserved = !!navigator.serviceWorker.controller;
             const hasReloadedCurrentShell = () => {
                 try { return sessionStorage.getItem(shellControllerReloadStorageKey) === currentReloadMarker; } catch (e) { return false; }
             };
@@ -157754,6 +157755,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
+                // A first install can claim this page without reloading it. Reload only
+                // when a page that already had a controller receives a later update.
+                if (!shellControllerObserved) {
+                    shellControllerObserved = true;
+                    window.__gncShellUpdateReady = false;
+                    window.__gncShellUpdateToastShown = false;
+                    return;
+                }
                 if (hasReloadedCurrentShell()) return;
                 markShellUpdateReady(window.__swReg);
                 if (document.hidden) setTimeout(tryApplyShellUpdateSilently, 80);

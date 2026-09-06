@@ -819,6 +819,11 @@ test('performance monitoring audits the optimized deployable shell', () => {
   assert.doesNotMatch(performanceWorkflow, /cp index\.html[^\n]*_site\//);
 });
 
+test('first service-worker control does not reload an already-rendered login shell', () => {
+  assert.match(html, /let shellControllerObserved = !!navigator\.serviceWorker\.controller/);
+  assert.match(html, /controllerchange[\s\S]*if \(!shellControllerObserved\)[\s\S]*shellControllerObserved = true;[\s\S]*return;/);
+});
+
 test('V16 Home uses one authorization-backed primary module registry and leaves nested workflows in their hubs', () => {
   assert.match(html, /const HOME_MODULE_REGISTRY = Object\.freeze\(\[/);
   for (const view of ['drive', 'docks', 'av', 'communication', 'sales', 'managers', 'building', 'qc', 'office', 'sales-inventory', 'production', 'reports']) {
