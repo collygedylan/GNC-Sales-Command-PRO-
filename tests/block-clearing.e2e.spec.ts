@@ -117,6 +117,8 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
 
 async function openSource(page: Page) {
   await appEval(page, `selectManagerBlockClearingBlock('A'); selectManagerBlockClearingLocation('A.05');`);
+  await expect.poll(() => appEval(page, 'managerBlockClearingLevel')).toBe(2);
+  await expect(page.locator('#managers-search')).toBeVisible();
 }
 
 async function selectRoseAndOpenInstructions(page: Page) {

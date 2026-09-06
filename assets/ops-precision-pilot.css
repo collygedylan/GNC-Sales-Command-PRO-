@@ -7616,8 +7616,8 @@ body.ops-precision-pilot #item-inquiry-panel .item-inquiry-empty {
 }
 
 body.ops-precision-pilot #view-detail.detail-request-mode.detail-item-inquiry-mode:not(.hidden) {
-  height: max(280px, calc(var(--ops-content-available-height, 100dvh) - 18px)) !important;
-  max-height: calc(var(--ops-content-available-height, 100dvh) - 18px) !important;
+  height: max(280px, calc(var(--ops-content-available-height, 100dvh) - 14px)) !important;
+  max-height: calc(var(--ops-content-available-height, 100dvh) - 14px) !important;
 }
 
 body.ops-precision-pilot:has(#view-detail.detail-item-inquiry-mode:not(.hidden)) #main-scroll-area {

@@ -164,7 +164,7 @@ const DRIVE_AROUND_CANONICAL_APPLY_LIMIT = 75;
 const DRIVE_AROUND_CANONICAL_NAME_PATTERN = /^(20\d{2}-\d{2}-\d{2})\s+(\d{2,})(?:\.[^.]+)?$/i;
 const DRIVE_AROUND_MACHINE_NAME_PATTERN = /^drivearoundmc\b/i;
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
-const DRIVE_AROUND_HISTORY_BACKFILL_HOUR = 2;
+const DRIVE_AROUND_HISTORY_BACKFILL_RETRY_DELAY_MS = 15 * 60 * 1000;
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
 // Eval assignment review sheet. Supabase is authoritative; this file is export-only.
@@ -2193,30 +2193,33 @@ function removeDriveAroundHistoryBackfillTrigger_() {
   });
 }
 
-function scheduleDriveAroundHistoryBackfillTrigger_() {
+function scheduleDriveAroundHistoryBackfillTrigger_(delayMs) {
   const triggers = ScriptApp.getProjectTriggers();
   const hasTrigger = triggers.some(function(trigger) {
     return trigger.getHandlerFunction() === DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER;
   });
   if (hasTrigger) return;
+  const boundedDelayMs = Math.max(
+    60 * 1000,
+    Math.min(6 * 60 * 60 * 1000, Number(delayMs) || DRIVE_AROUND_HISTORY_BACKFILL_RETRY_DELAY_MS)
+  );
   ScriptApp.newTrigger(DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER)
     .timeBased()
-    .everyDays(1)
-    .atHour(DRIVE_AROUND_HISTORY_BACKFILL_HOUR)
+    .after(boundedDelayMs)
     .create();
 }
 
 function startDriveAroundHistoryBackfill() {
   removeDriveAroundHistoryBackfillTrigger_();
-  scheduleDriveAroundHistoryBackfillTrigger_();
   return runDriveAroundHistoryBackfillChunk_();
 }
 
 function runDriveAroundHistoryBackfillChunk_() {
   const lock = LockService.getUserLock();
   if (!lock.tryLock(1000)) {
+    removeDriveAroundHistoryBackfillTrigger_();
     scheduleDriveAroundHistoryBackfillTrigger_();
-    console.log('[DRIVE AROUND HISTORY] Backfill already running. Keeping the recurring trigger active.');
+    console.log('[DRIVE AROUND HISTORY] Backfill already running. A bounded continuation is queued.');
     return { skippedLockedRun: true, remainingUnparsed: 1 };
   }
   try {
@@ -2227,6 +2230,7 @@ function runDriveAroundHistoryBackfillChunk_() {
       runBudgetMs: DRIVE_AROUND_HISTORY_BACKFILL_RUN_BUDGET_MS
     });
     if (Number(result && result.remainingUnparsed || 0) > 0) {
+      removeDriveAroundHistoryBackfillTrigger_();
       scheduleDriveAroundHistoryBackfillTrigger_();
       console.log(`[DRIVE AROUND HISTORY] Backfill continuing. ${result.remainingUnparsed} file(s) still need row parsing.`);
     } else {
@@ -2235,6 +2239,10 @@ function runDriveAroundHistoryBackfillChunk_() {
       result.learningRefresh = refreshHoldStopItemcodeLearningAfterHistory_('drive_around_history_backfill_complete');
     }
     return result;
+  } catch (error) {
+    removeDriveAroundHistoryBackfillTrigger_();
+    scheduleDriveAroundHistoryBackfillTrigger_();
+    throw error;
   } finally {
     lock.releaseLock();
   }

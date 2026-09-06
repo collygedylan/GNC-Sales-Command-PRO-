@@ -195,8 +195,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _site
-          cp index.html manifest.json sw.js OneSignalSDKWorker.js _site/
-          cp -r assets _site/assets
+          # build:live already wrote the optimized _site/index.html and runtime.
+          # Preserve that artifact and merge the remaining static files beside it.
+          cp manifest.json sw.js OneSignalSDKWorker.js _site/
+          cp -r assets/. _site/assets/
           cp ./*.png _site/
       - name: Run Lighthouse CI with bounded protocol retry
         shell: bash

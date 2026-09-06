@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260831210000_request_eval_drive_reliability_repair.sql');
+const safeRepairMigration = read('../supabase/migrations/20260905233900_safe_request_drive_evidence_repair_and_rpc_hardening.sql');
 const currentMembershipHealth = read('../supabase/migrations/20260902165500_current_request_membership_health.sql');
 const html = read('../index.html');
 const appApi = read('../supabase/functions/app-api/index.ts');
@@ -74,6 +75,16 @@ test('Drive evidence save is canonical, linked, timestamped, idempotent, and ret
   assert.doesNotMatch(clientSave, /fetchSupabasePage\(/);
   assert.match(html, /discardPendingLocalEdits\(\[itemToSave\.UNIQUE_ID\], true\)/);
   assert.match(html, /canonicalRequestRows/);
+});
+
+test('Drive evidence health and repair preserve newer or additional master evidence', () => {
+  assert.match(safeRepairMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.match(safeRepairMigration, /nullif\(btrim\(completion\.req_photo_name\), ''\) is not null/);
+  assert.match(safeRepairMigration, /mismatch_request_ids/);
+  assert.match(safeRepairMigration, /case when repair_photo_name then nullif\(btrim\(candidate\.req_photo_name\), ''\) else master\.photo_name end/);
+  assert.match(safeRepairMigration, /master\.av_rule_bundle_updated_at is not distinct from candidate\.av_rule_bundle_updated_at/);
+  assert.doesNotMatch(safeRepairMigration, /photo_name = nullif\(btrim\(candidate\.req_photo_name\), ''\)/);
+  assert.match(safeRepairMigration, /revoke all on function public\.repair_request_drive_evidence_v1\(text\[\], boolean\) from public, anon, authenticated/);
 });
 
 test('AV choices wait for click and Request rendering gets a bounded settle retry', () => {

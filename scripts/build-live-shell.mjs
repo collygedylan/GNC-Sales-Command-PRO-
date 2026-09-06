@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 
-const RELEASE = 'V2026.09.05.01';
+const RELEASE = 'V2026.09.05.02';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -36,7 +36,25 @@ const runtimeTarget = path.join(siteRoot, 'assets', runtimeName);
 await mkdir(path.dirname(runtimeTarget), { recursive: true });
 await writeFile(runtimeTarget, `${minified.code}\n`, 'utf8');
 
-const runtimeTag = `<script defer src="./assets/${runtimeName}?v=${RELEASE}"></script>`;
+// Give the browser two paint opportunities before parsing the multi-megabyte legacy
+// runtime. The login shell is already complete and interactive guards remain in place,
+// so this improves first paint/LCP without changing application initialization order.
+const runtimeTag = `<script>
+(() => {
+  const boot = () => {
+    const runtime = document.createElement('script');
+    runtime.src = './assets/${runtimeName}?v=${RELEASE}';
+    runtime.defer = true;
+    document.body.appendChild(runtime);
+  };
+  const afterPaint = () => requestAnimationFrame(() => requestAnimationFrame(boot));
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', afterPaint, { once: true });
+  } else {
+    afterPaint();
+  }
+})();
+</script>`;
 const deployedHtml = sourceHtml.slice(0, runtime.index)
   + runtimeTag
   + sourceHtml.slice(runtime.index + runtime.match.length);

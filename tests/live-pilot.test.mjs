@@ -43,6 +43,7 @@ const historicalReportMigration = read('supabase/migrations/20260821202202_manag
 const historicalReportBrowseMigration = read('supabase/migrations/20260821223421_historical_report_default_browse.sql');
 const historicalCoverageMigration = read('supabase/migrations/20260822234500_restore_drivearound_history_and_all_report_columns.sql');
 const holdLearningRefreshMigration = read('supabase/migrations/20260823002500_optimize_hold_learning_refreshes.sql');
+const rlsInitplanMigration = read('supabase/migrations/20260905234233_optimize_rls_initplans_and_pin_definer_paths.sql');
 const historicalSourceColumnsMigration = read('supabase/migrations/20260823013134_expand_historical_report_source_columns.sql');
 const historicalCursorIndexMigration = read('supabase/migrations/20260902153652_historical_report_cursor_index.sql');
 const historicalRowsRpcRepair = read('supabase/migrations/20260902153654_optimize_historical_report_rows_rpc.sql');
@@ -64,7 +65,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.05.01';
+  const release = 'V2026.09.05.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
@@ -811,6 +812,18 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(liveVendorBuild, /@phosphor-icons/);
 });
 
+test('performance monitoring audits the optimized deployable shell', () => {
+  assert.match(performanceWorkflow, /npm run build:live/);
+  assert.match(performanceWorkflow, /cp manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
+  assert.match(performanceWorkflow, /cp -r assets\/\. _site\/assets\//);
+  assert.doesNotMatch(performanceWorkflow, /cp index\.html[^\n]*_site\//);
+});
+
+test('first service-worker control does not reload an already-rendered login shell', () => {
+  assert.match(html, /let shellControllerObserved = !!navigator\.serviceWorker\.controller/);
+  assert.match(html, /controllerchange[\s\S]*if \(!shellControllerObserved\)[\s\S]*shellControllerObserved = true;[\s\S]*return;/);
+});
+
 test('V16 Home uses one authorization-backed primary module registry and leaves nested workflows in their hubs', () => {
   assert.match(html, /const HOME_MODULE_REGISTRY = Object\.freeze\(\[/);
   for (const view of ['drive', 'docks', 'av', 'communication', 'sales', 'managers', 'building', 'qc', 'office', 'sales-inventory', 'production', 'reports']) {
@@ -1413,7 +1426,8 @@ test('hosted performance monitoring pins CLI and emits bounded anonymous functio
   assert.match(performanceWorkflow, /deno test --allow-env --allow-net supabase\/functions/);
   assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
   assert.match(performanceWorkflow, /Prepare static shell for Lighthouse/);
-  assert.match(performanceWorkflow, /cp index\.html manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
+  assert.match(performanceWorkflow, /cp manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
+  assert.doesNotMatch(performanceWorkflow, /cp index\.html[^\n]*_site\//);
   assert.match(observability, /MAX_LOG_BYTES = 2048/);
   assert.match(observability, /SUCCESS_SAMPLE_RATE = 0\.01/);
   assert.match(observability, /function recordHandledError/);
@@ -1703,15 +1717,28 @@ test('weather and hold learning refreshes use bounded set-based database work', 
   assert.match(holdLearningRefreshMigration, /grant execute on function public\.v2_refresh_hold_learning_profiles\(\) to service_role/);
 });
 
-test('Drive Around history backfill is isolated to an overnight daily trigger', () => {
-  assert.match(appsScriptBackend, /const DRIVE_AROUND_HISTORY_BACKFILL_HOUR = 2/);
+test('Drive Around history backfill uses bounded one-shot continuations until the queue drains', () => {
+  assert.match(appsScriptBackend, /const DRIVE_AROUND_HISTORY_BACKFILL_RETRY_DELAY_MS = 15 \* 60 \* 1000/);
   const scheduler = appsScriptBackend.slice(
     appsScriptBackend.indexOf('function scheduleDriveAroundHistoryBackfillTrigger_'),
     appsScriptBackend.indexOf('function startDriveAroundHistoryBackfill')
   );
-  assert.match(scheduler, /\.everyDays\(1\)/);
-  assert.match(scheduler, /\.atHour\(DRIVE_AROUND_HISTORY_BACKFILL_HOUR\)/);
+  assert.match(scheduler, /\.after\(boundedDelayMs\)/);
+  assert.doesNotMatch(scheduler, /\.everyDays\(/);
   assert.doesNotMatch(scheduler, /\.everyMinutes\(/);
+  const runner = appsScriptBackend.slice(
+    appsScriptBackend.indexOf('function runDriveAroundHistoryBackfillChunk_'),
+    appsScriptBackend.indexOf('function trashDriveFileWithRetry_')
+  );
+  assert.match(runner, /remainingUnparsed[\s\S]*removeDriveAroundHistoryBackfillTrigger_\(\);[\s\S]*scheduleDriveAroundHistoryBackfillTrigger_\(\)/);
+  assert.match(runner, /catch \(error\)[\s\S]*scheduleDriveAroundHistoryBackfillTrigger_\(\)[\s\S]*throw error/);
+});
+
+test('legacy definer paths are pinned and hot RLS auth helpers are initialized once', () => {
+  assert.match(rlsInitplanMigration, /^begin;[\s\S]*commit;\s*$/);
+  assert.equal((rlsInitplanMigration.match(/\(select auth\.role\(\)\)/g) || []).length, 16);
+  assert.match(rlsInitplanMigration, /\(select auth\.jwt\(\)\) ->> 'username'/);
+  assert.match(rlsInitplanMigration, /alter function %s set search_path to public, extensions, private, vault, pg_temp/);
 });
 
 test('recoverable local request photo blobs remain visible as warnings without failing hosted health', () => {
