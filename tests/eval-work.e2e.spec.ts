@@ -215,15 +215,26 @@ test('bottom quick-access navigation opens each destination on the first click',
     updateFooterNavState();
   })()`));
 
+  let pointerId = 40;
+  const touchWithMinorDrift = async (button: ReturnType<typeof page.locator>) => {
+    pointerId += 1;
+    await button.dispatchEvent('pointerdown', { pointerId, pointerType:'touch', button:0, clientX:24, clientY:24 });
+    await button.dispatchEvent('pointermove', { pointerId, pointerType:'touch', button:0, clientX:24, clientY:40 });
+    await button.dispatchEvent('pointerup', { pointerId, pointerType:'touch', button:0, clientX:24, clientY:40 });
+    await button.dispatchEvent('click');
+  };
+
   for (const viewId of ['drive','tasks','docks','communication','home']) {
     const button = page.locator(`#bottom-nav [data-footer-view="${viewId}"]`);
     await expect(button).toBeVisible();
-    await button.click();
+    await touchWithMinorDrift(button);
     await expect(page.locator(`#view-${viewId}`)).toBeVisible();
+    await expect(page.locator('body')).toHaveAttribute('data-current-view', viewId);
+    if (viewId !== 'home') await expect(page.locator('#view-home')).toHaveClass(/hidden/);
     await expect(button).toHaveClass(/active/);
   }
 
-  await page.locator('#footer-menu-btn').click();
+  await touchWithMinorDrift(page.locator('#footer-menu-btn'));
   await expect(page.locator('#side-drawer')).toHaveClass(/open/);
 });
 
