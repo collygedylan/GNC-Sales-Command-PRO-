@@ -662,7 +662,7 @@ function seasonSalesOfficeErrorResponse(error: unknown) {
   if (/PROFILE_NOT_ACTIVE|PERMISSION_REQUIRED/.test(code)) {
     return errorResponse("Your active profile does not have Sales Office access.", 403, { code });
   }
-  if (/STALE_REVISION|WINNER_CHANGED|NOT_OPEN/.test(code)) {
+  if (/STALE_REVISION|REVISION_REQUIRED|WINNER_CHANGED|NOT_OPEN/.test(code)) {
     return errorResponse("This Season Sales Note changed. Refresh it before trying again.", 409, { code });
   }
   if (/USER_INVALID|USER_LIMIT/.test(code)) {
@@ -670,6 +670,9 @@ function seasonSalesOfficeErrorResponse(error: unknown) {
   }
   if (/TOKEN_INVALID|TOKEN_CONFLICT|NOT_FOUND/.test(code)) {
     return errorResponse("The Season Sales Note request is invalid. Refresh and try again.", 400, { code });
+  }
+  if (/BUSY/.test(code) || String(source.code || '') === '55P03' || String(source.code || '') === '57014') {
+    return errorResponse("Season Sales Notes are updating. Tap Done again to retry safely.", 503, { code: "SEASON_SALES_BUSY" });
   }
   return errorResponse("Season Sales Notes could not be updated. Retry with the same action.", 503, { code });
 }

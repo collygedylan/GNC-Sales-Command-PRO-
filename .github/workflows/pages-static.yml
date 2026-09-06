@@ -89,6 +89,8 @@ jobs:
 
       - name: Test navigation in the built production shell
         run: npm run test:footer
+      - name: Verify Season Sales Notes completion before publishing
+        run: npm run test:season-sales-office
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -141,6 +143,10 @@ jobs:
         env:
           FOOTER_BASE_URL: https://agmetricapp.com
         run: npm run test:footer -- --project=footer-android-chromium --project=footer-iphone-webkit
+      - name: Verify live Season Sales Notes with isolated browser fixtures
+        env:
+          SEASON_SALES_OFFICE_BASE_URL: https://agmetricapp.com
+        run: npm run test:season-sales-office
 
       - name: Upload sanitized canary diagnostics
         if: failure()
