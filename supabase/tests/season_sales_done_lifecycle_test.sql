@@ -82,11 +82,13 @@ select is((select count(*)::integer from public.ph_sales_office where unique_id=
 insert into public.ph_eval_work (
   id, create_token, creator_username, creator_display, assignee_username,
   assignee_display, assignee_email, completion_recipients, itemcode,
-  origin_unique_id, inventory_signature, settings_signature, source_context
+  origin_unique_id, inventory_signature, settings_signature, source_context,
+  assignee_usernames, assignee_profiles
 ) values (
   '94000000-0000-0000-0000-000000000010', 'done-eval-fixture', 'season_done_test', 'Test',
   'season_done_test', 'Test', 'season-done-test@example.invalid', array['test@example.invalid'],
-  'DONE-ITEM-A', 'DONE-A', 'fixture', 'fixture', '{"scopeContract":"itemcode-all-rows-v1"}'
+  'DONE-ITEM-A', 'DONE-A', 'fixture', 'fixture', '{"scopeContract":"itemcode-all-rows-v1"}',
+  array['season_done_test'], '[{"username":"season_done_test","display":"Test","email":"season-done-test@example.invalid"}]'
 );
 insert into public.ph_eval_work_origin_rows (eval_work_id, origin_unique_id, itemcode, ordinal, origin_snapshot)
 values ('94000000-0000-0000-0000-000000000010', 'DONE-A', 'DONE-ITEM-A', 1, '{}');
