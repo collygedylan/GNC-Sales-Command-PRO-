@@ -2,6 +2,12 @@
 -- Recreate its legacy shape only inside the isolated CI database so migrations
 -- and RLS tests exercise the same dependency that exists in production.
 
+-- The shared settings table also predates migrations. Match its production
+-- audit columns for the manager-managed Season Sales Note access migration.
+alter table public.ph_app_settings
+  add column if not exists updated_by text,
+  add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.ph_sales_office (
   unique_id text primary key,
   itemcode text,

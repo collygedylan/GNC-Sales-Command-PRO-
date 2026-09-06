@@ -27,6 +27,8 @@ const fixtures: FixtureRow[] = [
   ARRIVED_AT: '2026-09-06T12:00:00Z',
   SOURCE_TABLE: 'ph_sales_office',
 }));
+// Older mirrors can lack both the source discriminator and the state revision.
+delete fixtures[1].STATE_REVISION;
 
 /** All service traffic is mocked before navigation; never writes customer data.
  * Only identity and data-loading boundaries are supplied by the harness. The
@@ -229,6 +231,7 @@ test('a dataset read started before Done cannot resurrect its card when it arriv
       window.__releaseSeasonCompletionDataset = resolve;
     });
     window.__seasonCompletionOldRead = refreshSeasonSalesOfficeDataset();
+    void 0;
   `));
   await app.done(row).tap();
   await expect(app.card(row), 'Done does not wait for the older pending read').toHaveCount(0);

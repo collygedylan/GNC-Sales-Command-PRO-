@@ -133614,6 +133614,10 @@ C.14.043 C.15.000
             if (!container) return false;
             const row = Array.from(container.querySelectorAll('[data-dom-id]')).find((node) => node && node.getAttribute('data-dom-id') === safeDomId);
             if (!row) return false;
+            // Removing DOM outside the renderer invalidates its cached markup key.
+            // A reopened/scope-changed row must be able to render during this animation.
+            rememberSalesOfficeRenderKey(container, '');
+            bumpChunkRenderTokenByKey('sales-office-main');
             row.style.pointerEvents = 'none';
             row.style.opacity = '0';
             row.style.transform = 'translateX(18px)';
