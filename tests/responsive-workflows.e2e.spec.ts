@@ -2957,6 +2957,9 @@ test('light and dark navigation use explicit semantic fallback colors', async ({
     await page.goto(`${fixtureUrl}?view=drive&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
     await expect.poll(() => page.locator('body').getAttribute('data-ops-theme')).toBe(theme);
     await expect.poll(() => page.locator('#bottom-nav').getAttribute('data-resolved-theme')).toBe(theme);
+    // This assertion validates the resolved fallback colors, not their transition.
+    // Disable transitions so WebKit cannot sample a mid-animation color value.
+    await page.addStyleTag({ content: '#bottom-nav, #bottom-nav * { transition: none !important; }' });
     await page.locator('body').evaluate((body) => body.removeAttribute('data-ops-theme'));
     const navState = await page.locator('#bottom-nav').evaluate((nav) => {
       const toRgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
