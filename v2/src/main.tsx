@@ -30,13 +30,15 @@ function UpdatePrompt() {
     }
   });
 
-  if (!needRefresh && !offlineReady) return null;
+  // The informational offline toast covered embedded form actions on phones.
+  // Only actionable updates warrant an overlay; caching still runs normally.
+  if (!needRefresh) return null;
 
   return (
     <aside className="pwa-update-banner" role="status" aria-live="polite">
       <div>
-        <strong>{needRefresh ? 'Update ready' : 'Available offline'}</strong>
-        <span>{needRefresh ? `${APP_VERSION} is ready. Apply it when your current work is saved.` : 'The test app is cached for field use.'}</span>
+        <strong>{needRefresh ? 'Update ready' : 'Test shell available offline'}</strong>
+        <span>{needRefresh ? `${APP_VERSION} is ready. Apply it when your current work is saved.` : 'Only the test shell is cached. BloomScapes inventory and orders require an internet connection.'}</span>
       </div>
       <div className="pwa-update-actions">
         {needRefresh ? (
