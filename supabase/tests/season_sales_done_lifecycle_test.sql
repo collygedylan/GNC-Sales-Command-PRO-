@@ -17,19 +17,20 @@ on conflict (key) do update set value = excluded.value;
 insert into public.ph_master_inventory (
   unique_id, itemcode, commonname, season, saleyear, priority, ptravailable,
   s_lts, app_tab_assignment, locationcode, lotcode, av_note, photo_link, match,
-  loc_match_qty, av_rule_bundle_updated_at, end_cap_folder, holdstopcode
+  loc_match_qty, av_rule_bundle_updated_at, end_cap_folder, holdstopcode,
+  spec, av_rule_photo_updated_at
 )
 values
-  ('DONE-A', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '100', '100', 'season', 'A.01.001', '27.F1', 'SPEC', 'test-photo', 'A.01.001', '100', now(), null, null),
-  ('DONE-A-ALT', 'DONE-ITEM-A', 'Done A', 'F1', '26', '2', '50', '100', 'location', 'A.02.001', '26.F1', 'SPEC', 'test-photo', 'A.02.001', '50', now(), null, null),
-  ('DONE-A-OTHER', 'DONE-ITEM-A', 'Done A', 'U1', '27', '1', '200', '100', '', 'A.03.001', '27.U1', null, null, null, null, null, null, null),
-  ('DONE-A-FLYER', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '300', '100', 'flyer', 'A.04.001', '27.F1', null, null, null, null, null, null, null),
-  ('DONE-A-ENDCAP', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '400', '100', '', 'A.05.001', '27.F1', null, null, null, null, null, 'DISPLAY', null),
-  ('DONE-A-HOLD', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '500', '100', 'location', 'A.06.001', '27.F1', null, null, null, null, null, null, 'H'),
-  ('DONE-B', 'DONE-ITEM-B', 'Done B', 'F1', '27', '1', '100', '100', 'season', 'B.01.001', '27.F1', null, null, null, null, null, null, null),
-  ('DONE-C', 'DONE-ITEM-C', 'Done C', 'F1', '27', '1', '100', '100', 'season', 'C.01.001', '27.F1', null, null, null, null, null, null, null),
-  ('DONE-D', 'DONE-ITEM-D', 'Done D', 'F1', '27', '1', '100', '100', 'location', 'D.01.001', '27.F1', null, null, null, null, null, null, null),
-  ('DONE-D-WINNER', 'DONE-ITEM-D', 'Done D', 'F1', '27', '1', '200', '100', 'season', 'D.02.001', '27.F1', null, null, null, null, null, null, null);
+  ('DONE-A', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '100', '100', 'season', 'A.01.001', '27.F1', 'SPEC', 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/done-fixture.jpg', '100', '100', now(), null, null, '3-4 ft H', now()),
+  ('DONE-A-ALT', 'DONE-ITEM-A', 'Done A', 'F1', '26', '2', '50', '100', 'location', 'A.02.001', '26.F1', 'SPEC', 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/done-fixture-alt.jpg', '100', '50', now(), null, null, '3-4 ft H', now()),
+  ('DONE-A-OTHER', 'DONE-ITEM-A', 'Done A', 'U1', '27', '1', '200', '100', '', 'A.03.001', '27.U1', null, null, null, null, null, null, null, null, null),
+  ('DONE-A-FLYER', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '300', '100', 'flyer', 'A.04.001', '27.F1', null, null, null, null, null, null, null, null, null),
+  ('DONE-A-ENDCAP', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '400', '100', '', 'A.05.001', '27.F1', null, null, null, null, null, 'DISPLAY', null, null, null),
+  ('DONE-A-HOLD', 'DONE-ITEM-A', 'Done A', 'F1', '27', '1', '500', '100', 'location', 'A.06.001', '27.F1', null, null, null, null, null, null, 'H', null, null),
+  ('DONE-B', 'DONE-ITEM-B', 'Done B', 'F1', '27', '1', '100', '100', 'season', 'B.01.001', '27.F1', null, null, null, null, null, null, null, null, null),
+  ('DONE-C', 'DONE-ITEM-C', 'Done C', 'F1', '27', '1', '100', '100', 'season', 'C.01.001', '27.F1', null, null, null, null, null, null, null, null, null),
+  ('DONE-D', 'DONE-ITEM-D', 'Done D', 'F1', '27', '1', '100', '100', 'location', 'D.01.001', '27.F1', null, null, null, null, null, null, null, null, null),
+  ('DONE-D-WINNER', 'DONE-ITEM-D', 'Done D', 'F1', '27', '1', '200', '100', 'season', 'D.02.001', '27.F1', null, null, null, null, null, null, null, null, null);
 
 select ok(has_function_privilege('service_role', 'public.complete_season_sales_office_v1(text,text,integer,text)', 'execute'), 'protected API service role can complete');
 select ok(not has_function_privilege('anon', 'public.complete_season_sales_office_v1(text,text,integer,text)', 'execute'), 'anonymous callers cannot complete');
@@ -126,7 +127,7 @@ update public.ph_master_inventory set photo_link='' where unique_id='DONE-A';
 select lives_ok($q$select public.reconcile_season_sales_office_v1(array['DONE-ITEM-A'], false, 'evidence-invalid', null)$q$, 'invalid evidence reconciles');
 select is((select status || ':' || revision || ':' || reopen_reason from public.ph_season_sales_office_state where itemcode_normalized='DONE-ITEM-A'), 'open:5:evidence_invalid', 'the existing ready-to-invalid rule reopens Done');
 select is(public.complete_season_sales_office_v1('season_done_test', 'DONE-A', 5, 'done-a-incomplete-token')->>'status', 'done', 'reopened incomplete-evidence work can be acknowledged');
-update public.ph_master_inventory set photo_link='test-photo' where unique_id='DONE-A';
+update public.ph_master_inventory set photo_link='https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/done-fixture.jpg', av_rule_photo_updated_at=now() where unique_id='DONE-A';
 select lives_ok($q$select public.reconcile_season_sales_office_v1(array['DONE-ITEM-A'], false, 'evidence-ready-again', null)$q$, 'restored evidence reconciles without forced reopening');
 select ok((select status='done' and evidence_ready_seen_after_completion from public.ph_season_sales_office_state where itemcode_normalized='DONE-ITEM-A'), 'readiness achieved after Done is tracked without reopening');
 update public.ph_master_inventory set photo_link='' where unique_id='DONE-A';
