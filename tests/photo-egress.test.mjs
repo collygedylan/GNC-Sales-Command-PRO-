@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import './av-photo-evidence-integrity.test.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const html = read('../index.html');

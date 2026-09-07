@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.06.02">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.07.01">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.06.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.07.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6809,7 +6809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.06.02">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.07.01">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6987,9 +6987,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.06.02"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.06.02"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.06.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.07.01"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.07.01"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.07.01"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7743,7 +7743,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.06.02').trim() || 'V2026.09.06.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.07.01').trim() || 'V2026.09.07.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9248,7 +9248,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.06.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.07.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -17947,6 +17947,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function getItemDisplayValue(item, key, sourceView = '') {
             if (!item) return '';
             const normalizedKey = String(key || '').trim().toUpperCase();
+            if (normalizedKey === 'LOC_MATCH_QTY') return getDisplayLocMatchQtyValue(item, sourceView);
             const flyerKey = FLYER_SHADOW_FIELD_MAP[normalizedKey];
             if (flyerKey && shouldPreferFlyerOwnedFields(item, sourceView)) {
                 const flyerValue = firstNonEmptyValue(item[flyerKey], '');
@@ -17988,61 +17989,157 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return measuredSpec;
         }
 
-        function getDisplayLocMatchQtyValue(item, sourceView = '') {
-            if (!item) return '';
-            if (shouldPreferFlyerOwnedFields(item, sourceView)) {
-                const flyerMatch = firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, '');
-                if (isInvalidLocMatchPercent(flyerMatch)) return '';
-                const flyerQty = String(firstNonEmptyValue(item.FLYER_LOC_MATCH_QTY, '') || '').trim();
-                if (flyerQty) return flyerQty;
-                const flyerDerivedQty = calculateLocMatchQtyValue({
-                    MATCH: flyerMatch,
-                    INITIAL_PTR: firstNonEmptyValue(item.FLYER_INITIAL_PTR, item.INITIAL_PTR, ''),
-                    PTRAVAILABLE: firstNonEmptyValue(item.PTRAVAILABLE, item.LOC_AVAIL, '0')
-                });
-                if (flyerDerivedQty != null) return String(flyerDerivedQty);
+        // Observation fields are retained independently of their current photo evidence.
+        // These pure helpers never clear a row, read linked rows, or use pending uploads.
+        function getLocPhotoEvidenceContext(item = null, sourceView = '') {
+            const view = String(sourceView || '').trim().toLowerCase();
+            const table = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '')).toLowerCase();
+            if (view === 'flyer') return 'flyer';
+            if (view === 'request') return 'request';
+            if (view === 'docks' || view === 'dock') return 'dock';
+            if (/^ph_flyer_folder_/.test(table)) return 'flyer';
+            if (/^ph_(active_request|request_history)$/.test(table)) return 'request';
+            return 'shared';
+        }
+
+        function getLocPhotoOwnedValue(item = null, keys = []) {
+            // An explicit cleared canonical field must not fall back to a stale alias.
+            for (const key of keys) {
+                if (item && Object.prototype.hasOwnProperty.call(item, key)) return item[key];
             }
-            if (shouldHideSharedAppPayloadForInvalidAvRules(item)) return '';
-            if (isInvalidLocMatchPercent(firstNonEmptyValue(item.MATCH, item.MATCHPCT, item.MATCH_PCT, ''))) return '';
-            const derivedQty = calculateLocMatchQtyValue(item);
-            if (derivedQty != null) return String(derivedQty);
-            return String(firstNonEmptyValue(item.LOC_MATCH_QTY, '') || '').trim();
+            return '';
+        }
+
+        function parseLocPhotoEvidenceTimestamp(value = '') {
+            const text = String(value == null ? '' : value).trim();
+            if (!/^20\d{2}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(text)) return null;
+            const calendar = text.slice(0, 10).split('-').map(Number);
+            const check = new Date(Date.UTC(calendar[0], calendar[1] - 1, calendar[2]));
+            if (check.getUTCFullYear() !== calendar[0] || check.getUTCMonth() !== calendar[1] - 1 || check.getUTCDate() !== calendar[2]) return null;
+            const at = Date.parse(text.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'));
+            return Number.isFinite(at) ? at : null;
+        }
+
+        function getLocPhotoCaptureEvidence(value = '') {
+            let text = String(value == null ? '' : value).trim();
+            try { text = decodeURIComponent(text); } catch (error) { return { provided: true, at: null }; }
+            if (/^20\d{2}-\d{2}-\d{2}T/.test(text)) {
+                const exact = parseLocPhotoEvidenceTimestamp(text);
+                if (exact != null) return { provided: true, at: exact };
+                if (!/\.(?:jpe?g|png|webp|gif|heic|heif|avif)$/i.test(text)) return { provided: true, at: null };
+            }
+            const epoch = text.match(/(?:^|\D)((?:1[6-9]|2[0-4])\d{11})(?=\D|$)/);
+            if (epoch) return { provided: true, at: Number(epoch[1]) };
+            const iso = text.match(/(?:^|\D)(20\d{2})[-_\/](\d{1,2})[-_\/](\d{1,2})(?=\D|$)/);
+            const us = iso ? null : text.match(/(?:^|\D)(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2}|\d{2})(?=\D|$)/);
+            const parts = iso ? [+iso[1], +iso[2], +iso[3]] : us ? [+us[3] < 100 ? 2000 + +us[3] : +us[3], +us[1], +us[2]] : null;
+            if (!parts) return { provided: false, at: null };
+            const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12));
+            return { provided: true, at: date.getUTCFullYear() === parts[0] && date.getUTCMonth() === parts[1] - 1 && date.getUTCDate() === parts[2] ? +date : null };
+        }
+
+        function getLocPhotoEvidenceState(item = null, sourceView = '', now = Date.now()) {
+            const context = getLocPhotoEvidenceContext(item, sourceView);
+            const fields = {
+                shared: [['PHOTO_LINK','photo_link','SAVED_PHOTO_LINK','saved_photo_link','PHOTOLINK','PHOTO LINK'], ['PHOTO_NAME','photo_name','SAVED_PHOTO_NAME','saved_photo_name','PHOTONAME','PHOTO NAME']],
+                request: [['REQ_PHOTO_LINK','req_photo_link','REQUEST_PHOTO_LINK','request_photo_link','REQUESTPHOTO_LINK'], ['REQ_PHOTO_NAME','req_photo_name','REQUEST_PHOTO_NAME','request_photo_name','REQUESTPHOTONAME']],
+                flyer: [['FLYER_PHOTO_LINK','flyer_photo_link','FLYERPHOTO_LINK'], ['FLYER_PHOTO_NAME','flyer_photo_name','FLYERPHOTONAME']],
+                dock: [['DOCK_PHOTO_LINK','dock_photo_link','DOCKPHOTO_LINK'], ['DOCK_PHOTO_NAME','dock_photo_name','DOCKPHOTO_NAME']]
+            }[context];
+            const links = String(getLocPhotoOwnedValue(item, fields[0]) || '').split(',').map(value => value.trim());
+            const names = String(getLocPhotoOwnedValue(item, fields[1]) || '').split(',').map(value => value.trim());
+            const ownPrefix = context === 'request' ? 'REQ_' : context === 'flyer' ? 'FLYER_' : context === 'dock' ? 'DOCK_' : '';
+            const dateKeys = context === 'shared'
+                ? ['AV_RULE_PHOTO_UPDATED_AT','PHOTO_DATE','PHOTO_UPLOADED_AT','ROW_PHOTO_UPLOADED_AT','DATE_COMPLETED']
+                : [ownPrefix + 'PHOTO_UPDATED_AT', ownPrefix + 'PHOTO_DATE', ownPrefix + 'PHOTO_UPLOADED_AT'];
+            // Legacy completion dates belong to the owner only on its native row.
+            const table = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '')).toLowerCase();
+            if ((context === 'request' && /^ph_(active_request|request_history)$/.test(table))
+                || (context === 'flyer' && /^ph_flyer_folder_/.test(table))) dateKeys.push('DATE_COMPLETED');
+            if (context === 'flyer') dateKeys.push('FLYER_COMPLETED');
+            // A later completion cannot refresh an older photo-specific timestamp.
+            // An invalid nonempty photo timestamp remains undated instead of falling through.
+            const fallbackValue = firstNonEmptyValue(...dateKeys.flatMap(key => [item && item[key], item && item[key.toLowerCase()]]));
+            const fallback = parseLocPhotoEvidenceTimestamp(fallbackValue);
+            const states = [], currentDates = [];
+            links.forEach((link, index) => {
+                if (!link) return;
+                // Match the production photo projection. Dock-owned evidence additionally
+                // uses the app's canonical dock_photos bucket, never shared/master evidence.
+                const reference = link.match(/^https:\/\/kzrnyjsosryejjejliii\.supabase\.co\/storage\/v1\/(?:object\/public|render\/image\/public)\/(request_photos|flyer_photos|season_sales_notes_photos|location_sales_notes_photos|dock_photos)\/[^?#]+$/);
+                const validUrl = !!reference && (reference[1] !== 'dock_photos' || context === 'dock')
+                    && !/[\u0000-\u001f\u007f\\]/.test(link) && !/(?:^|\/|%2f)(?:\.|%2e){1,2}(?:\/|%2f|$)/i.test(link);
+                if (!validUrl) { states.push('invalid'); return; }
+                const captures = [getLocPhotoCaptureEvidence(link), getLocPhotoCaptureEvidence(names[index])].filter(value => value.provided);
+                const at = captures.some(value => value.at == null) ? null : captures.length ? Math.max(...captures.map(value => value.at)) : fallback;
+                const state = at == null || !Number.isFinite(now) ? 'undated' : at > now ? 'future' : now - at > 10 * 86400000 ? 'stale' : 'current';
+                states.push(state);
+                if (state === 'current') currentDates.push(at);
+            });
+            const state = currentDates.length ? 'current' : ['future','undated','stale','invalid'].find(value => states.includes(value)) || 'missing';
+            return { context, state, qualified: currentDates.length > 0, photoCount: states.length, currentPhotoCount: currentDates.length,
+                latestPhotoAt: currentDates.length ? Math.max(...currentDates) : null,
+                expiresAt: currentDates.length ? Math.max(...currentDates) + 10 * 86400000 + 1 : null };
+        }
+
+        function getPhotoQualifiedLocMatchQtyValue(item = null, sourceView = '', options = {}) {
+            const evidence = getLocPhotoEvidenceState(item, sourceView, options.now == null ? Date.now() : options.now);
+            if (!evidence.qualified) return null;
+            if (item && item.PHOTO_MATCH_PTR_AVAILABLE_KNOWN === false) return null;
+            const currentText = String(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, item && item.LOC_AVAIL, item && item.loc_avail, '')).replace(/,/g, '').trim();
+            if (!/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(currentText)) return null;
+            const current = parseAppNumber(currentText);
+            if (current == null) return null;
+            const context = evidence.context;
+            const match = options.matchOverride !== undefined ? options.matchOverride : context === 'request'
+                ? getLocPhotoOwnedValue(item, ['REQ_MATCH','req_match'])
+                : context === 'flyer' ? firstNonEmptyValue(item.FLYER_MATCH, item.flyer_match, item.MATCH, item.match, '')
+                : firstNonEmptyValue(item.MATCH, item.match, item.MATCHPCT, item.MATCH_PCT, '');
+            const matchText = String(match == null ? '' : match).trim();
+            if (!matchText || !/^(?:\d+(?:\.\d*)?|\.\d+)\s*%?$/.test(matchText) || parseLocMatchPercent(match) == null) return null;
+            const nativeRequest = /^ph_(active_request|request_history)$/.test(String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).toLowerCase());
+            const baseline = context === 'flyer'
+                ? firstNonEmptyValue(item.FLYER_INITIAL_PTR, item.flyer_initial_ptr, item.INITIAL_PTR, item.initial_ptr, '')
+                : context === 'request' ? firstNonEmptyValue(item.REQ_INITIAL_PTR, item.req_initial_ptr, nativeRequest ? firstNonEmptyValue(item.INITIAL_PTR, item.initial_ptr, '') : '', '')
+                : firstNonEmptyValue(item.INITIAL_PTR, item.initial_ptr, '');
+            const baselineText = String(baseline).replace(/,/g, '').trim();
+            if (baselineText && (!/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(baselineText) || parseAppNumber(baselineText) == null)) return null;
+            const derived = calculateLocMatchQtyValue({ MATCH: match, INITIAL_PTR: baseline, PTRAVAILABLE: current }, undefined, { currentAsBaseline: !!options.currentAsBaseline });
+            return derived;
+        }
+
+        function getDisplayLocMatchQtyValue(item, sourceView = '') {
+            const view = shouldPreferFlyerOwnedFields(item, sourceView) ? 'flyer' : sourceView;
+            const qty = getPhotoQualifiedLocMatchQtyValue(item, view);
+            // Preserve existing visibility rules without letting their legacy math mutate observations.
+            if (qty > 0 && getLocPhotoEvidenceContext(item, view) === 'shared'
+                && typeof shouldHideSharedAppPayloadForInvalidAvRules === 'function'
+                && shouldHideSharedAppPayloadForInvalidAvRules({ ...item })) return '';
+            return qty == null ? '' : String(qty);
         }
 
         function getCurrentCardLocPhotoMatchQtyValue(item, sourceView = '') {
-            if (!item) return '';
-            const safeSourceView = String(sourceView || '').trim();
-            const matchText = String(firstNonEmptyValue(
-                getItemDisplayValue(item, 'MATCH', safeSourceView),
-                item && item.MATCHPCT,
-                item && item.MATCH_PCT,
-                ''
-            ) || '').replace(/%/g, '').trim();
-            if (isInvalidLocMatchPercent(matchText)) return '';
-            const matchPct = parseLocMatchPercent(matchText);
-            const currentPtr = parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.LOC_AVAIL, ''));
-            if (matchPct != null && currentPtr != null) {
-                return String(Math.max(0, Math.round(Math.max(0, currentPtr) * (matchPct / 100))));
-            }
-            return String(firstNonEmptyValue(
-                getDisplayLocMatchQtyValue(item, safeSourceView),
-                item && item.LOC_MATCH_QTY,
-                item && item.loc_match_qty,
-                ''
-            ) || '').trim();
+            return getDisplayLocMatchQtyValue(item, sourceView);
+        }
+
+        function formatLocPhotoMatchQtyValue(item, sourceView = '') {
+            const value = getDisplayLocMatchQtyValue(item, sourceView);
+            return value === '' ? 'Not verified' : value;
         }
 
         function normalizeRowPhotoFields(item) {
             if (!item) return item;
+            const ownedFlyerLink = getLocPhotoOwnedValue(item, ['FLYER_PHOTO_LINK','flyer_photo_link','FLYERPHOTO_LINK']);
+            const ownedFlyerName = getLocPhotoOwnedValue(item, ['FLYER_PHOTO_NAME','flyer_photo_name','FLYERPHOTONAME']);
             normalizeFlyerShadowFields(item);
-            item.SAVED_PHOTO_LINK = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
-            item.SAVED_PHOTO_NAME = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
-            item.REQ_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.REQUEST_PHOTO_LINK, item.REQUESTPHOTO_LINK);
-            item.REQ_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.REQUEST_PHOTO_NAME, item.REQUESTPHOTONAME);
-            item.DOCK_PHOTO_LINK = firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.DOCKPHOTO_LINK);
-            item.DOCK_PHOTO_NAME = firstNonEmptyValue(item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME);
-            item.FLYER_PHOTO_LINK = firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK);
-            item.FLYER_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME);
+            item.SAVED_PHOTO_LINK = getLocPhotoOwnedValue(item, ['PHOTO_LINK','photo_link','SAVED_PHOTO_LINK','PHOTOLINK','PHOTO LINK']);
+            item.SAVED_PHOTO_NAME = getLocPhotoOwnedValue(item, ['PHOTO_NAME','photo_name','SAVED_PHOTO_NAME','PHOTONAME','PHOTO NAME']);
+            item.REQ_PHOTO_LINK = getLocPhotoOwnedValue(item, ['REQ_PHOTO_LINK','req_photo_link','REQUEST_PHOTO_LINK','REQUESTPHOTO_LINK']);
+            item.REQ_PHOTO_NAME = getLocPhotoOwnedValue(item, ['REQ_PHOTO_NAME','req_photo_name','REQUEST_PHOTO_NAME','REQUESTPHOTONAME']);
+            item.DOCK_PHOTO_LINK = getLocPhotoOwnedValue(item, ['DOCK_PHOTO_LINK','dock_photo_link','DOCKPHOTO_LINK']);
+            item.DOCK_PHOTO_NAME = getLocPhotoOwnedValue(item, ['DOCK_PHOTO_NAME','dock_photo_name','DOCKPHOTO_NAME']);
+            item.FLYER_PHOTO_LINK = ownedFlyerLink;
+            item.FLYER_PHOTO_NAME = ownedFlyerName;
             const savedPhotoOrder = sortPhotoCsvPairByCaptureOrder(item.SAVED_PHOTO_LINK, item.SAVED_PHOTO_NAME);
             item.SAVED_PHOTO_LINK = savedPhotoOrder.photoCsv;
             item.SAVED_PHOTO_NAME = savedPhotoOrder.photoNameCsv;
@@ -18055,24 +18152,19 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const flyerPhotoOrder = sortPhotoCsvPairByCaptureOrder(item.FLYER_PHOTO_LINK, item.FLYER_PHOTO_NAME);
             item.FLYER_PHOTO_LINK = flyerPhotoOrder.photoCsv;
             item.FLYER_PHOTO_NAME = flyerPhotoOrder.photoNameCsv;
-            if (item.SAVED_PHOTO_LINK) { item.PHOTO_LINK = item.SAVED_PHOTO_LINK; item.PHOTOLINK = item.SAVED_PHOTO_LINK; item['PHOTO LINK'] = item.SAVED_PHOTO_LINK; }
-            if (item.SAVED_PHOTO_NAME) { item.PHOTO_NAME = item.SAVED_PHOTO_NAME; item.PHOTONAME = item.SAVED_PHOTO_NAME; item['PHOTO NAME'] = item.SAVED_PHOTO_NAME; }
-            if (item.REQ_PHOTO_LINK) { item.REQUEST_PHOTO_LINK = item.REQ_PHOTO_LINK; item.REQUESTPHOTO_LINK = item.REQ_PHOTO_LINK; }
-            if (item.REQ_PHOTO_NAME) { item.REQUEST_PHOTO_NAME = item.REQ_PHOTO_NAME; item.REQUESTPHOTONAME = item.REQ_PHOTO_NAME; }
-            if (item.DOCK_PHOTO_LINK) item.DOCKPHOTO_LINK = item.DOCK_PHOTO_LINK;
-            if (item.DOCK_PHOTO_NAME) item.DOCKPHOTO_NAME = item.DOCK_PHOTO_NAME;
-            if (item.FLYER_PHOTO_LINK) item.FLYERPHOTO_LINK = item.FLYER_PHOTO_LINK;
-            if (item.FLYER_PHOTO_NAME) item.FLYERPHOTONAME = item.FLYER_PHOTO_NAME;
+            item.PHOTO_LINK = item.PHOTOLINK = item['PHOTO LINK'] = item.SAVED_PHOTO_LINK;
+            item.PHOTO_NAME = item.PHOTONAME = item['PHOTO NAME'] = item.SAVED_PHOTO_NAME;
+            item.REQUEST_PHOTO_LINK = item.REQUESTPHOTO_LINK = item.REQ_PHOTO_LINK;
+            item.REQUEST_PHOTO_NAME = item.REQUESTPHOTONAME = item.REQ_PHOTO_NAME;
+            item.DOCKPHOTO_LINK = item.DOCK_PHOTO_LINK;
+            item.DOCKPHOTO_NAME = item.DOCK_PHOTO_NAME;
+            item.FLYERPHOTO_LINK = item.FLYER_PHOTO_LINK;
+            item.FLYERPHOTONAME = item.FLYER_PHOTO_NAME;
             item.FLYER_VISIBLE_PHOTO_LINK = mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK]);
             item.FLYER_VISIBLE_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME, '');
             item.ROW_PHOTO_LINK = mergePhotoCsvList([item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK]);
             item.ROW_PHOTO_NAME = getSharedAppPhotoName(item);
-            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'ph_master_inventory')).toLowerCase();
-            if (sourceTable === 'ph_master_inventory') {
-                const derivedQty = calculateLocMatchQtyValue(item);
-                if (derivedQty != null) item.LOC_MATCH_QTY = derivedQty;
-                else if (isInvalidLocMatchPercent(firstNonEmptyValue(item.MATCH, item.MATCHPCT, item.MATCH_PCT, ''))) item.LOC_MATCH_QTY = '';
-            }
+            // Keep saved observations unchanged; current photo qualification is a display projection.
             return item;
         }
 
@@ -19731,8 +19823,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             preview.PICK = syncValues.pick || '';
             preview.LOC_MATCH_QTY = syncValues.locMatchQty == null ? '' : syncValues.locMatchQty;
             preview.INITIAL_PTR = syncValues.initialPtr == null ? '' : syncValues.initialPtr;
-            preview.SAVED_PHOTO_LINK = syncValues.photoLink || '';
-            preview.SAVED_PHOTO_NAME = syncValues.photoName || '';
+            preview.PHOTO_LINK = preview.SAVED_PHOTO_LINK = syncValues.photoLink || '';
+            preview.PHOTO_NAME = preview.SAVED_PHOTO_NAME = syncValues.photoName || '';
             const touchPayload = {};
             applyAvRuleTouchPayload(preview, touchPayload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
             Object.keys(touchPayload).forEach((key) => {
@@ -31520,7 +31612,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.06.02').trim() || 'V2026.09.06.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.07.01').trim() || 'V2026.09.07.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35086,9 +35178,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (input.value !== normalized) input.value = normalized;
             const origin = getEvalWorkOriginEntries(work).find((entry) => entry.origin_unique_id === evalWorkActiveOriginUid) || {};
             const sourceRow = getEvalWorkOriginSourceRow(work, origin);
-            const qty = calculateLocMatchQtyValue(sourceRow, normalized, { currentAsBaseline: true });
-            if (display) display.classList.toggle('hidden', qty == null);
-            if (valueHost) valueHost.textContent = qty == null ? '0' : String(qty);
+            const qty = getPhotoQualifiedLocMatchQtyValue(sourceRow, 'drive', { matchOverride: normalized, currentAsBaseline: true });
+            if (display) display.classList.remove('hidden');
+            if (valueHost) valueHost.textContent = qty == null ? 'Not verified' : String(qty);
             captureEvalWorkPicturesSpecsEditSoon();
             return false;
         }
@@ -35198,7 +35290,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const activeLot = String(firstNonEmptyValue(activeOrigin.lotcode, activeOrigin.origin_lotcode, safeWork.origin_lotcode, '') || '');
             const activeSourceRow = getEvalWorkOriginSourceRow(safeWork, activeOrigin);
             const activeMatchText = String(firstNonEmptyValue(evidence.locMatchPercent, evidence.loc_match_percent, '') || '').trim();
-            const activeMatchQty = calculateLocMatchQtyValue(activeSourceRow, activeMatchText, { currentAsBaseline: true });
+            const activeMatchQty = getPhotoQualifiedLocMatchQtyValue(activeSourceRow, 'drive', { matchOverride: activeMatchText, currentAsBaseline: true });
             const picturesSpecsDone = String(firstNonEmptyValue(evidence.picturesSpecsResolution, evidence.pictures_specs_resolution, '') || '').trim().toLowerCase() === 'done';
             const detailView = ['pictures-specs', 'item-inquiry'].includes(String(evalWorkDetailView || '')) ? String(evalWorkDetailView) : 'pictures-specs';
             const readOnly = safeWork.status === 'submitted' || safeWork.status === 'cancelled' || safeWork.status === 'resolved_import';
@@ -35216,7 +35308,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 <div class="eval-work-field-list">
                     <label><span>Spec (Size/Dims) <em>Required</em></span><input id="eval-work-spec" value="${escapeHtml(evidence.spec || '')}" placeholder="e.g. 24-30 inch" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label><span>Caliper</span><input id="eval-work-caliper" value="${escapeHtml(evidence.caliper || '')}" placeholder="e.g. 2 inch" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
-                    <label class="eval-work-match-wrap"><span>Loc Match % <em>Required</em></span><input id="eval-work-loc-match" type="text" inputmode="decimal" pattern="[0-9.]*" value="${escapeHtml(activeMatchText)}" placeholder="e.g. 95" oninput="return calculateEvalWorkMatchQty()" ${readOnly ? 'disabled' : ''}><span id="eval-work-match-display" class="eval-work-match-display ${activeMatchQty == null ? 'hidden' : ''}">LOC PHOTO MATCH: <b id="eval-work-match-qty-val">${escapeHtml(activeMatchQty == null ? '0' : String(activeMatchQty))}</b></span></label>
+                    <label class="eval-work-match-wrap"><span>Loc Match % <em>Required</em></span><input id="eval-work-loc-match" type="text" inputmode="decimal" pattern="[0-9.]*" value="${escapeHtml(activeMatchText)}" placeholder="e.g. 95" oninput="return calculateEvalWorkMatchQty()" ${readOnly ? 'disabled' : ''}><span id="eval-work-match-display" class="eval-work-match-display">LOC PHOTO MATCH: <b id="eval-work-match-qty-val">${escapeHtml(activeMatchQty == null ? 'Not verified' : String(activeMatchQty))}</b></span></label>
                     <label class="eval-work-av-note-wrap"><span>AV Note <em>Required</em></span><div class="eval-work-av-note-row"><input id="eval-work-av-note" type="text" value="${escapeHtml(firstNonEmptyValue(evidence.avNote, evidence.av_note, ''))}" placeholder="TYPE AV NOTE OR SELECT..." autocomplete="off" oninput="this.value=this.value.toUpperCase(); captureEvalWorkPicturesSpecsEditSoon(); return filterEvalWorkAvNotes(this.value)" onfocus="return filterEvalWorkAvNotes(this.value)" onblur="setTimeout(closeEvalWorkAvNoteDropdown,200)" ${readOnly ? 'disabled' : ''}><button type="button" aria-label="Add Spec and Caliper to AV Note" onmousedown="event.preventDefault()" onclick="return appendEvalWorkSpecCaliperToAvNote(event)" ${readOnly ? 'disabled' : ''}>+</button></div><div id="eval-work-av-dropdown-list" class="eval-work-av-dropdown hidden"></div></label>
                     <label><span>Pick Note</span><input id="eval-work-pick-note" value="${escapeHtml(firstNonEmptyValue(evidence.pickNote, evidence.pick_note, ''))}" placeholder="e.g. Needs spacing" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label><span>Comments</span><textarea id="eval-work-comments" placeholder="Any additional comments..." oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}>${escapeHtml(evidence.comments || '')}</textarea></label>
@@ -36913,13 +37005,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const normalizedSourceTable = normalizeAppTableName(sourceTable) || String(sourceTable || '').trim();
             return items.map((item, idx) => {
                 let obj = { SOURCE_TABLE: normalizedSourceTable, source_table: normalizedSourceTable };
-                for (let k in item) { if (item[k] !== null) obj[k.toUpperCase()] = item[k]; }
+                for (let k in item) {
+                    if (item[k] !== null || /^(?:(?:req_|flyer_|dock_)?photo_link|(?:req_|flyer_|dock_)?photo_name)$/i.test(k)) obj[k.toUpperCase()] = item[k];
+                }
                 obj.SOURCE_TABLE = normalizeAppTableName(firstNonEmptyValue(obj.SOURCE_TABLE, obj.source_table, normalizedSourceTable)) || normalizedSourceTable;
                 obj.source_table = obj.SOURCE_TABLE;
                 if (!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${normalizedSourceTable}_${idx}`;
                 obj.COMMONNAME = obj.COMMONNAME || obj.DESCRIPTION || obj.PLANT_NAME || 'Unknown';
                 obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || '-';
                 obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || 'No Loc';
+                obj.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(firstNonEmptyValue(obj.PTRAVAILABLE, obj.LOC_AVAIL, '')) != null;
                 obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
                 obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                 obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || '-';
@@ -41214,6 +41309,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return '';
         }
 
+        function invalidateCardPhotoMatchOnLoadFailure(img = null) {
+            // Delivery failures affect only this rendered card, never observations/history.
+            const card = img && typeof img.closest === 'function' ? img.closest('.app-smart-card, .detail-av-hero-card, [data-photo-evidence-card]') : null;
+            if (!card || typeof card.querySelectorAll !== 'function') return;
+            const values = new Set(card.querySelectorAll('[data-loc-photo-match-value]'));
+            // Older reserve cards use label/value pairs rather than the tagged catalog metric.
+            card.querySelectorAll('div, span').forEach((label) => {
+                if (/^LOC PHOTO MATCH:?$/i.test(String(label.textContent || '').trim()) && label.nextElementSibling) values.add(label.nextElementSibling);
+            });
+            values.forEach((value) => {
+                value.textContent = 'Not verified';
+                value.setAttribute('title', 'Photo could not be loaded. Reopen to retry.');
+            });
+        }
+
         function hydrateDeferredCardPhoto(img = null) {
             if (!img || img.dataset.photoHydrated === '1') return;
             const src = String(img.dataset.src || '').trim();
@@ -41225,6 +41335,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 img.dataset.photoLoadFailed = '1';
                 img.classList.add('app-photo-thumbnail-failed');
                 img.alt = 'Photo thumbnail unavailable. Open the photo to retry.';
+                invalidateCardPhotoMatchOnLoadFailure(img);
             };
             img.src = src;
         }
@@ -47997,9 +48108,8 @@ let avTopControlsRenderToken = 0;
                 ''
             ) || '').trim();
             const reserve = safePrefix === 'req-' ? (getMarkDoneInputValue('req-reserve') || String(firstNonEmptyValue(item && item.REQ_RESERVE, '') || '').trim()) : '';
-            const matchQtyFromDisplay = getMarkDoneInputValue(`${safePrefix}match-qty-val`);
-            const derivedMatchQty = match ? calculateLocMatchQtyValue(item, match, { currentAsBaseline: true, useFlyerFields: safePrefix === 'flyer-' }) : null;
-            const locMatchQty = String(firstNonEmptyValue(matchQtyFromDisplay, derivedMatchQty == null ? '' : derivedMatchQty, getDisplayLocMatchQtyValue(item, sourceView), '') || '').trim();
+            const qualifiedMatchQty = getPhotoQualifiedLocMatchQtyValue(item, sourceView, { matchOverride: match, currentAsBaseline: true });
+            const locMatchQty = qualifiedMatchQty == null ? 'Not verified' : String(qualifiedMatchQty);
             add('Spec', spec);
             add('Caliper', caliper);
             add('Loc match %', match ? `${match}%` : '');
@@ -62531,12 +62641,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (matchEl && matchEl.value !== nextValue) matchEl.value = nextValue;
             if (matchEl) markLocMatchInputValidity(matchEl);
             if (nextValue) {
-                const qty = calculateLocMatchQtyValue(item, nextValue);
-                if (qty == null) {
-                    if (displayEl) displayEl.classList.add('hidden');
-                    return;
-                }
-                if (valEl) valEl.innerText = qty;
+                const qty = getPhotoQualifiedLocMatchQtyValue(item, 'drive', { matchOverride: nextValue });
+                if (valEl) valEl.innerText = qty == null ? 'Not verified' : qty;
                 if (displayEl) displayEl.classList.remove('hidden');
             } else if (displayEl) {
                 displayEl.classList.add('hidden');
@@ -62963,8 +63069,8 @@ function toggleDriveQuickRequestItem(domId) {
         function buildNcrEmailItemPayload(item = activeItem, photoUrls = []) {
             const draft = getNcrDraft(item);
             const matchValue = String(firstNonEmptyValue(draft && draft.match, item && item.MATCH, item && item.match, '')).trim();
-            const locMatchQty = calculateLocMatchQtyValue(item, matchValue);
             const photoCsv = normalizeNcrEmailPhotoUrls(photoUrls).join(',');
+            const locMatchQty = getPhotoQualifiedLocMatchQtyValue({ ...item, PHOTO_LINK: photoCsv, PHOTO_NAME: '' }, '', { matchOverride: matchValue });
             const approvalMessage = normalizeNcrApprovalMessage(firstNonEmptyValue(draft && draft.approvalMessage, getNcrApprovalMessageFromItem(item), ''));
             const requester = getNcrApprovalRequesterEntryFromItem(item) || getCurrentNcrApprovalRequesterEntry();
             const requestedByUsername = String(firstNonEmptyValue(requester && requester.username, '') || '').trim();
@@ -63010,7 +63116,7 @@ function toggleDriveQuickRequestItem(domId) {
                 spec: String(firstNonEmptyValue(draft && draft.spec, item && item.SPEC, item && item.spec, '')).trim(),
                 caliper: String(firstNonEmptyValue(draft && draft.caliper, item && item.CALIPER, item && item.caliper, '')).trim(),
                 match: matchValue,
-                loc_match_qty: firstNonEmptyValue(item && item.LOC_MATCH_QTY, item && item.loc_match_qty, '') !== '' ? String(firstNonEmptyValue(item && item.LOC_MATCH_QTY, item && item.loc_match_qty, '')) : (locMatchQty == null ? '' : String(locMatchQty)),
+                loc_match_qty: locMatchQty,
                 av_note: String(firstNonEmptyValue(draft && draft.avNote, item && item.AV_NOTE, item && item.av_note, '')).trim(),
                 reserve: String(firstNonEmptyValue(draft && draft.reserve, 'NO')).trim(),
                 pick_note: String(firstNonEmptyValue(draft && draft.pick, item && item.PICK, item && item.pic_note, '')).trim(),
@@ -65107,7 +65213,7 @@ function toggleDriveQuickRequestItem(domId) {
                 spec: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'SPEC', sourceView), getItemDisplayValue(sourceItem, 'SPEC', sourceView), completedRow && completedRow.SPEC, sourceItem && sourceItem.SPEC, '') || '').trim(),
                 caliper: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'CALIPER', sourceView), getItemDisplayValue(sourceItem, 'CALIPER', sourceView), completedRow && completedRow.CALIPER, sourceItem && sourceItem.CALIPER, '') || '').trim(),
                 match: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'MATCH', sourceView), getItemDisplayValue(sourceItem, 'MATCH', sourceView), completedRow && completedRow.MATCH, sourceItem && sourceItem.MATCH, '') || '').trim(),
-                loc_match_qty: String(firstNonEmptyValue(getDisplayLocMatchQtyValue(completedRow, sourceView), getDisplayLocMatchQtyValue(sourceItem, sourceView), completedRow && completedRow.LOC_MATCH_QTY, sourceItem && sourceItem.LOC_MATCH_QTY, '') || '').trim(),
+                loc_match_qty: getPhotoQualifiedLocMatchQtyValue(completedRow || sourceItem, sourceView),
                 pick_note: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'PICK', sourceView), getItemDisplayValue(sourceItem, 'PICK', sourceView), completedRow && completedRow.PICK, sourceItem && sourceItem.PICK, '') || '').trim(),
                 comments: String(firstNonEmptyValue(completedRow && completedRow.SALES_NOTE, completedRow && completedRow.SALESNOTE, sourceItem && sourceItem.SALES_NOTE, sourceItem && sourceItem.SALESNOTE, '') || '').trim(),
                 photo: photoCsv,
@@ -65177,7 +65283,7 @@ function toggleDriveQuickRequestItem(domId) {
                 { label: 'Spec', value: hasPhotoEvidence ? itemPayload.spec : '', force: false },
                 { label: 'Caliper', value: hasPhotoEvidence ? itemPayload.caliper : '', force: false },
                 { label: 'LOC MATCH %', value: hasPhotoEvidence ? itemPayload.match : '', force: false, percent: true },
-                { label: 'LOC PHOTO MATCH', value: hasPhotoEvidence ? itemPayload.loc_match_qty : '', force: false },
+                { label: 'LOC PHOTO MATCH', value: itemPayload.loc_match_qty == null ? 'Not verified' : itemPayload.loc_match_qty, force: true },
                 { label: 'Pick Note', value: itemPayload.pick_note, force: false },
                 { label: 'Notes', value: itemPayload.comments, force: false },
                 { label: 'Completed By', value: itemPayload.completed_by, force: true },
@@ -78523,17 +78629,7 @@ function toggleDriveQuickRequestItem(domId) {
                     const requestReserve = firstNonEmptyValue(item && item.REQ_RESERVE, item && item.req_reserve, item && item.reserve, '');
                     const desiredSpec = String(firstNonEmptyValue(item && item.REQ_DESIRED_SPEC, item && item.req_desired_spec, item && item.DESIRED_SPEC, item && item.desired_spec, '') || '').trim();
                     const desiredCaliper = String(firstNonEmptyValue(item && item.REQ_DESIRED_CALIPER, item && item.req_desired_caliper, item && item.DESIRED_CALIPER, item && item.desired_caliper, '') || '').trim();
-                    const locMatchQty = firstNonEmptyValue(
-                        item && item.LOC_MATCH_QTY,
-                        item && item.loc_match_qty,
-                        item && item.REQ_LOC_MATCH_QTY,
-                        item && item.req_loc_match_qty,
-                        item && item.PHOTO_MATCH_QTY,
-                        item && item.photo_match_qty,
-                        isDockSuspendDcEmail ? calculateDockSuspendDcRequestLocMatchQty(item, firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, item && item.MATCH, item && item.match, '')) : '',
-                        calculateLocMatchQtyValue({ MATCH: firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, ''), PTRAVAILABLE: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, item && item.PTRONHAND, '') }),
-                        ''
-                    );
+                    const locMatchQty = getPhotoQualifiedLocMatchQtyValue(item, 'request');
                     return {
                         unique_id: firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, ''),
                         folder: getRequestFolderName(item) || folderId || '',
@@ -79704,7 +79800,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getAvOpenStockLocPhotoMatch(item = null) {
             if (!item) return '-';
-            return firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(item, 'av'), '-');
+            return formatLocPhotoMatchQtyValue(item, 'av');
         }
 
         function avReserveNeedsCaliper(item = null) {
@@ -82654,6 +82750,7 @@ function toggleDriveQuickRequestItem(domId) {
                     { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
                     { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
                     { label: 's_LTS', value: (row) => row.S_LTS || '' },
+                    { label: 'Loc Photo Match', value: (row) => formatLocPhotoMatchQtyValue(row, 'av') },
                     { label: 'Priority', value: (row) => row.PRIORITY || '' },
                     { label: 'Season', value: (row) => row.SEASON || '' },
                     { label: 'Quality Code', value: (row) => row.QUALITYCODE || '' },
@@ -82679,6 +82776,7 @@ function toggleDriveQuickRequestItem(domId) {
                 { label: 'Lot Code', value: (row) => firstNonEmptyValue(row.LOTCODE, '') || '' },
                 { label: 'Quantity Ordered', value: (row) => firstNonEmptyValue(row.QTY_ORDERED, row.QUANTITYORDERED) || '' },
                 { label: 'Quantity Shipped', value: (row) => firstNonEmptyValue(row.QTY_SHIPPED, row.QUANTITYSHIPPED) || '' },
+                { label: 'Loc Photo Match', value: (row) => formatLocPhotoMatchQtyValue(row, 'av') },
                 { label: 'Sales Rep Name', value: (row) => firstNonEmptyValue(row.SALESREPNAME, row.SALESREP, row.SALES_REP) || '' },
                 { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'av')).join('\n') }
             ];
@@ -86124,12 +86222,9 @@ function toggleDriveQuickRequestItem(domId) {
                     if(displayEl)displayEl.classList.add('hidden');
                     return;
                 }
-                let qty=calculateLocMatchQtyValue(activeItem, matchEl.value);
-                if(qty==null){
-                    if(displayEl)displayEl.classList.add('hidden');
-                    return;
-                }
-                if(valEl)valEl.innerText=qty;
+                const view = prefix === 'req-' ? 'request' : prefix === 'flyer-' ? 'flyer' : 'drive';
+                const qty = getPhotoQualifiedLocMatchQtyValue(activeItem, view, { matchOverride: matchEl.value });
+                if(valEl)valEl.innerText=qty == null ? 'Not verified' : qty;
                 if(displayEl)displayEl.classList.remove('hidden');
             }else{
                 if(displayEl)displayEl.classList.add('hidden');
@@ -97222,7 +97317,7 @@ function toggleDriveQuickRequestItem(domId) {
                     caliper: firstNonEmptyValue(getItemDisplayValue(row, 'CALIPER', 'drive'), row && row.CALIPER, ''),
                     av_note: firstNonEmptyValue(getItemDisplayValue(row, 'AV_NOTE', 'drive'), row && row.AV_NOTE, ''),
                     match: firstNonEmptyValue(getItemDisplayValue(row, 'MATCH', 'drive'), row && row.MATCH, ''),
-                    loc_match_qty: firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(row, 'drive'), getDisplayLocMatchQtyValue(row, 'drive'), row && row.LOC_MATCH_QTY, ''),
+                    loc_match_qty: getPhotoQualifiedLocMatchQtyValue(row, 'drive'),
                     photo: getDriveCustomerOutreachPhotoCsv(row),
                     photos: photoEntries.map((entry) => entry.url)
                 };
@@ -99796,7 +99891,7 @@ function toggleDriveQuickRequestItem(domId) {
             const heroPhoto = firstPhoto ? getDirectImageUrl(firstPhoto, 'detail-hero') : '';
             const caption = `${firstNonEmptyValue(item.COMMONNAME, 'AV Item')} - ${firstNonEmptyValue(item.CONTSIZE, '-')}`;
             const openPhotoCsv = photoUrls.length ? photoUrls.join(',') : photoLink;
-            const locPhotoMatchText = String(firstNonEmptyValue(getDisplayLocMatchQtyValue(item, 'av'), '') || '').trim() || '0';
+            const locPhotoMatchText = formatLocPhotoMatchQtyValue(item, 'av');
             const hasValidAvPhotos = photoUrls.length > 0;
             const pickNoteText = hasValidAvPhotos ? getAvDetailPickNoteText(item, 'av') : '';
             const ptrOnHandText = getCardPtrOnHandValue(item);
@@ -99804,12 +99899,12 @@ function toggleDriveQuickRequestItem(domId) {
             const ptrAvailableText = getCardPtrAvailableValue(item);
             const openStockText = getCardOpenStockValue(item);
             const photoHtml = heroPhoto
-                ? `<button type="button" class="detail-av-hero-photo" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(openPhotoCsv)}', '${escJsAttrValue(caption)}'); return false;"><img src="${escapeShareHtml(heroPhoto)}" loading="eager" decoding="async" alt="">${photoUrls.length > 1 ? `<span class="detail-av-hero-count">${photoUrls.length} Photos</span>` : ''}<span class="detail-av-hero-action"><i class="ph-bold ph-arrows-out-simple"></i> Full Screen</span></button>`
+                ? `<button type="button" class="detail-av-hero-photo" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(openPhotoCsv)}', '${escJsAttrValue(caption)}'); return false;"><img src="${escapeShareHtml(heroPhoto)}" loading="eager" decoding="async" alt="" onerror="invalidateCardPhotoMatchOnLoadFailure(this)">${photoUrls.length > 1 ? `<span class="detail-av-hero-count">${photoUrls.length} Photos</span>` : ''}<span class="detail-av-hero-action"><i class="ph-bold ph-arrows-out-simple"></i> Full Screen</span></button>`
                 : `<div class="detail-av-hero-empty">No Photo</div>`;
             const dotHtml = photoUrls.length > 1
                 ? `<div class="detail-av-hero-dots">${photoUrls.slice(0, 6).map(() => '<span></span>').join('')}</div>`
                 : '';
-            const stat = (label, value) => `<div class="detail-av-stat"><div class="detail-av-stat-label">${escapeShareHtml(label)}</div><div class="detail-av-stat-value">${escapeShareHtml(value)}</div></div>`;
+            const stat = (label, value) => `<div class="detail-av-stat"><div class="detail-av-stat-label">${escapeShareHtml(label)}</div><div class="detail-av-stat-value" ${label === 'Loc Photo Match' ? 'data-loc-photo-match-value' : ''}>${escapeShareHtml(value)}</div></div>`;
             hero.innerHTML = `<div class="detail-av-hero-card">${photoHtml}${dotHtml}<div class="detail-av-info"><div class="detail-av-store"><span class="detail-av-store-mark"><i class="ph-bold ph-leaf"></i></span><span>Ag Data Availability</span></div><div class="detail-av-stats">${stat('On hand', ptrOnHandText)}${stat('Review', ptrReviewText)}${stat('Available', ptrAvailableText)}${stat('Open Stock', openStockText)}${stat('Loc Photo Match', locPhotoMatchText)}</div>${pickNoteText ? `<div class="detail-av-pick-note"><div class="detail-av-pick-note-label">Pick Note</div><div class="detail-av-pick-note-text">${escapeShareHtml(pickNoteText)}</div></div>` : ''}</div></div>`;
             hero.classList.remove('hidden');
         }
@@ -102072,8 +102167,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 activeItem.PICK = '';
                 activeItem.LOC_MATCH_QTY = '';
                 activeItem.INITIAL_PTR = '';
-                activeItem.SAVED_PHOTO_LINK = '';
-                activeItem.SAVED_PHOTO_NAME = '';
+                activeItem.PHOTO_LINK = activeItem.SAVED_PHOTO_LINK = '';
+                activeItem.PHOTO_NAME = activeItem.SAVED_PHOTO_NAME = '';
                 activeItem.DATE_COMPLETED = '';
                 payload.av_note = null;
                 payload.sales_note = null;
@@ -133367,6 +133462,7 @@ C.14.043 C.15.000
             if (Object.prototype.hasOwnProperty.call(payload, 'ptravailable')) {
                 masterItem.PTRAVAILABLE = payload.ptravailable == null ? '' : payload.ptravailable;
                 masterItem.ptravailable = payload.ptravailable == null ? '' : payload.ptravailable;
+                masterItem.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(payload.ptravailable) != null;
             }
             if (Object.prototype.hasOwnProperty.call(payload, 'av_note')) masterItem.AV_NOTE = payload.av_note || '';
             if (Object.prototype.hasOwnProperty.call(payload, 'match')) masterItem.MATCH = payload.match == null ? '' : payload.match;
@@ -133405,11 +133501,11 @@ C.14.043 C.15.000
                 masterItem.specialpuller = payload.specialpuller || '';
             }
             if (Object.prototype.hasOwnProperty.call(payload, 'photo_link')) {
-                masterItem.SAVED_PHOTO_LINK = payload.photo_link || '';
+                masterItem.PHOTO_LINK = masterItem.SAVED_PHOTO_LINK = payload.photo_link || '';
                 masterItem.photo_link = payload.photo_link || null;
             }
             if (Object.prototype.hasOwnProperty.call(payload, 'photo_name')) {
-                masterItem.SAVED_PHOTO_NAME = payload.photo_name || '';
+                masterItem.PHOTO_NAME = masterItem.SAVED_PHOTO_NAME = payload.photo_name || '';
                 masterItem.photo_name = payload.photo_name || null;
             }
             if (Object.prototype.hasOwnProperty.call(payload, 'app_tab_assignment')) {
@@ -134125,14 +134221,14 @@ C.14.043 C.15.000
             const spec = String(firstNonEmptyValue(values.spec, getItemDisplayValue(item, 'SPEC', 'request'), sourceRow && sourceRow.DOCK_SPEC, sourceRow && sourceRow.dock_spec, '') || '').trim();
             const caliper = String(firstNonEmptyValue(values.caliper, getItemDisplayValue(item, 'CALIPER', 'request'), sourceRow && sourceRow.DOCK_CALIPER, sourceRow && sourceRow.dock_caliper, '') || '').trim();
             const match = String(firstNonEmptyValue(values.match, getItemDisplayValue(item, 'MATCH', 'request'), item.MATCH, item.match, sourceRow && sourceRow.MATCH, sourceRow && sourceRow.match, '') || '').trim();
-            const locMatchQty = String(firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(item, 'request'), getDisplayLocMatchQtyValue(item, 'request'), item.LOC_MATCH_QTY, item.loc_match_qty, sourceRow && sourceRow.LOC_MATCH_QTY, sourceRow && sourceRow.loc_match_qty, '') || '').trim();
+            const locMatchQty = formatLocPhotoMatchQtyValue(item, 'request');
             const avNote = String(firstNonEmptyValue(values.avNote, getItemDisplayValue(item, 'AV_NOTE', 'request'), item.AV_NOTE, item.av_note, sourceRow && sourceRow.AV_NOTE, sourceRow && sourceRow.av_note, '') || '').trim();
             const dockNote = String(firstNonEmptyValue(item.DOCK_NOTE, item.dock_note, sourceRow && sourceRow.DOCK_NOTE, sourceRow && sourceRow.dock_note, item.DOCK_ISSUE_NOTE, item.dock_issue_note, sourceRow && sourceRow.DOCK_ISSUE_NOTE, sourceRow && sourceRow.dock_issue_note, '') || '').trim();
             const pickNote = String(firstNonEmptyValue(item.REQ_PICK, item.req_pick, item.REQ_PIC_NOTE, item.req_pic_note, item.PIC_NOTE, item.pic_note, sourceRow && sourceRow.REQ_PICK, sourceRow && sourceRow.req_pick, sourceRow && sourceRow.PIC_NOTE, sourceRow && sourceRow.pic_note, '') || '').trim();
             const matchDisplay = match ? `${match}${String(match).includes('%') ? '' : '%'}` : '';
             const chips = [
                 photoCount ? `<span class="rounded border border-purple-200 bg-purple-50 px-2 py-1 text-purple-700">PHOTOS <span class="text-purple-900">${esc(String(photoCount))}</span></span>` : '',
-                locMatchQty !== '' ? `<span class="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900">${esc(normalizeCardQuantityValue(locMatchQty))}</span></span>` : '',
+                locMatchQty !== '' ? `<span class="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900" data-loc-photo-match-value>${esc(normalizeCardQuantityValue(locMatchQty))}</span></span>` : '',
                 spec ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">SPEC: <span class="text-slate-900">${esc(spec)}</span></span>` : '',
                 caliper ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">CAL: <span class="text-slate-900">${esc(caliper)}</span></span>` : '',
                 matchDisplay ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">MATCH: <span class="text-slate-900">${esc(matchDisplay)}</span></span>` : ''
@@ -134262,7 +134358,7 @@ C.14.043 C.15.000
             };
             const buildAvInventoryCard = () => {
                 const displayLocMatchQty = getDisplayLocMatchQtyValue(item, sourceView);
-                const locPhotoMatchText = String(firstNonEmptyValue(displayLocMatchQty, '') || '').trim() || '0';
+                const locPhotoMatchText = displayLocMatchQty === '' ? 'Not verified' : displayLocMatchQty;
                 const listPriceNumber = parseCardPriceNumber(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, ''));
                 const listPriceText = listPriceNumber === null ? formatCardPriceValue(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, '')) : `$${listPriceNumber.toFixed(2)}`;
                 const avNoteText = String(firstNonEmptyValue(item.AV_NOTE, '') || '').trim();
@@ -134347,7 +134443,7 @@ C.14.043 C.15.000
                 const priceHtml = activePriceText && activePriceText !== '-'
                     ? `<div class="app-av-catalog-price"><span class="app-av-catalog-price-label">${esc(priceLabel)}</span><span class="app-av-catalog-price-value">${esc(activePriceText)}</span></div>`
                     : '';
-                const avStockStatHtml = (label, value, modifier = '') => `<div class="app-av-catalog-stock-stat ${modifier}"><span class="app-av-catalog-stock-label">${esc(label)}</span><strong class="app-av-catalog-stock-value">${esc(normalizeCardQuantityValue(value))}</strong></div>`;
+                const avStockStatHtml = (label, value, modifier = '') => `<div class="app-av-catalog-stock-stat ${modifier}"><span class="app-av-catalog-stock-label">${esc(label)}</span><strong class="app-av-catalog-stock-value" ${label === 'Loc Photo Match' ? 'data-loc-photo-match-value' : ''}>${esc(normalizeCardQuantityValue(value))}</strong></div>`;
                 const openStockStatHtml = avStockStatHtml('Open Stock', openStockText, 'app-av-catalog-stock-stat--open');
                 const locOnHandHtml = avStockStatHtml('Loc On Hand', locOnHandText, 'app-av-catalog-stock-stat--hand');
                 const seasonOhHtml = showSeasonOh ? avStockStatHtml('Season OH', seasonOhText, 'app-av-catalog-stock-stat--season') : '';
@@ -134544,7 +134640,7 @@ C.14.043 C.15.000
             }
             if(sourceView==='drive' || sourceView==='crop-roll'){
                 const displaySourceView = sourceView === 'crop-roll' ? 'drive' : sourceView;
-                const displayLocMatchQty = hasCardPhotoEvidence ? getDisplayLocMatchQtyValue(item, displaySourceView) : '';
+                const displayLocMatchQty = formatLocPhotoMatchQtyValue(item, displaySourceView);
                 const displayAvNote = hasCardPhotoEvidence ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
                 const displaySpec = hasCardPhotoEvidence ? getItemDisplayValue(item, 'SPEC', displaySourceView) : '';
                 const displayCaliper = hasCardPhotoEvidence ? getItemDisplayValue(item, 'CALIPER', displaySourceView) : '';
@@ -134554,8 +134650,8 @@ C.14.043 C.15.000
                 let noteHtml='';
                 const evalTaskHtml = buildEvalTaskCardSummaryHtml(item);
                 if(evalTaskHtml) noteHtml += evalTaskHtml;
-                const hasLocPhotoMatchQty = !!(displayLocMatchQty && String(displayLocMatchQty).trim() !== '' && Number(displayLocMatchQty) > 0);
-                const locPhotoMatchChipHtml = hasLocPhotoMatchQty ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900">${esc(normalizeCardQuantityValue(displayLocMatchQty))}</span></span>` : '';
+                const hasLocPhotoMatchQty = displayLocMatchQty !== '';
+                const locPhotoMatchChipHtml = hasLocPhotoMatchQty ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900" data-loc-photo-match-value>${esc(normalizeCardQuantityValue(displayLocMatchQty))}</span></span>` : '';
                 const driveQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, trailingChipsHtml: locPhotoMatchChipHtml });
                 const driveAvNoteHtml = displayAvNote && String(displayAvNote).trim() !== '' ? `<div class="rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${esc(displayAvNote)}</div>` : '';
                 const driveSalesNoteText = String(firstNonEmptyValue(salesNoteText, '') || '').trim();
@@ -134595,7 +134691,7 @@ C.14.043 C.15.000
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
-                const displayLocMatchQty = hasCardPhotoEvidence ? getDisplayLocMatchQtyValue(item, displaySourceView) : '';
+                const displayLocMatchQty = formatLocPhotoMatchQtyValue(item, displaySourceView);
                 const displayAvNote = hasCardPhotoEvidence ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
                 const displaySpec = hasCardPhotoEvidence ? getItemDisplayValue(item, 'SPEC', displaySourceView) : '';
                 const displayCaliper = hasCardPhotoEvidence ? getItemDisplayValue(item, 'CALIPER', displaySourceView) : '';
@@ -134605,7 +134701,7 @@ C.14.043 C.15.000
                 const evalTaskHtml = buildEvalTaskCardSummaryHtml(item);
                 if(holdHtml) noteHtml += holdHtml;
                 if(evalTaskHtml) noteHtml += evalTaskHtml;
-                if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
+                if(displayLocMatchQty!==''){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> <span data-loc-photo-match-value>${displayLocMatchQty}</span></div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
                 let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
                 const taskArgosRailHtml = buildArgosInventoryTransactionRailHtml(item, 'tasks');
@@ -137340,7 +137436,7 @@ C.14.043 C.15.000
                 { label: 'Caliper', value: hasRequestPhotoEvidence ? getRequestActualCaliperValue(item) : '', force: false },
                 { label: 'AV Note', value: hasRequestPhotoEvidence ? firstNonEmptyValue(item && item.AV_NOTE, '') : '', force: hasRequestPhotoEvidence },
                 { label: 'LOC MATCH %', value: hasRequestPhotoEvidence ? firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, '') : '', force: hasRequestPhotoEvidence, percent: true },
-                { label: 'LOC PHOTO MATCH', value: hasRequestPhotoEvidence ? firstNonEmptyValue(calculateLocMatchQtyValue({ MATCH: firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, ''), PTRAVAILABLE: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, '') }), '') : '', force: hasRequestPhotoEvidence },
+                { label: 'LOC PHOTO MATCH', value: formatLocPhotoMatchQtyValue(item, 'request'), force: true },
                 { label: 'Reserve', value: firstNonEmptyValue(item && item.REQ_RESERVE, item && item.req_reserve, item && item.reserve, ''), force: false },
                 { label: 'Sales Note', value: getRequestEditableCommentsValue(item), force: false },
                 { label: 'Notes', value: firstNonEmptyValue(item && item.NOTES, item && item.notes, item && item.DOCK_NOTE, ''), force: false },
@@ -137464,7 +137560,7 @@ C.14.043 C.15.000
                 { label: 'Consignee Name', value: firstNonEmptyValue(row.CONSIGNEENAME, row.consigneename, row.CONSIGNEE_NAME, row.consignee_name, row.CONSIGNEE, row.consignee, '') },
                 { label: 'Dock Number', value: firstNonEmptyValue(row.DOCK_NUMBER, row.dock_number, row.DOCK_NUM, row.dock_num, row.DOCK, row.dock, '') },
                 { label: 'Drop Number', value: firstNonEmptyValue(row.DROP_NUMBER, row.drop_number, dropValue, row.STOPNUMBER, row.stopnumber, row.STOP, row.stop, row.DROP, row.drop, '') },
-                { label: 'Photo Match Qty', value: firstNonEmptyValue(row.PHOTO_MATCH_QTY, row.photo_match_qty, row.LOC_MATCH_QTY, row.loc_match_qty, row.REQ_LOC_MATCH_QTY, row.req_loc_match_qty, calculateDockSuspendDcRequestLocMatchQty(row, firstNonEmptyValue(row.REQ_MATCH, row.req_match, row.MATCH, row.match, '')), '') }
+                { label: 'Photo Match Qty', value: formatLocPhotoMatchQtyValue(row, 'request') }
             ].map((field) => ({
                 label: field.label,
                 value: String(firstNonEmptyValue(field.value, '') || '').trim()
@@ -138276,7 +138372,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 { label: 'Caliper', value: requestLike && hasSharePhotoEvidence ? getRequestActualCaliperValue(item) : '', force: false },
                 { label: 'AV Note', value: hasSharePhotoEvidence ? (requestLike ? firstNonEmptyValue(item && item.AV_NOTE, item && item.req_av_note, '') : firstNonEmptyValue(getItemDisplayValue(item, 'AV_NOTE', shareSourceView), '')) : '', force: hasSharePhotoEvidence },
                 { label: 'LOC MATCH %', value: hasSharePhotoEvidence ? (requestLike ? firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, '') : firstNonEmptyValue(getItemDisplayValue(item, 'MATCH', shareSourceView), sharedHidden ? '' : item && item.MATCHPCT, '')) : '', force: hasSharePhotoEvidence, percent: true },
-                { label: 'LOC PHOTO MATCH', value: hasSharePhotoEvidence ? (requestLike ? firstNonEmptyValue(calculateLocMatchQtyValue({ MATCH: firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, ''), PTRAVAILABLE: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.PTRONHAND, '') }), '') : firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(item, shareSourceView), getDisplayLocMatchQtyValue(item, shareSourceView), sharedHidden ? '' : item && item.LOC_MATCH_QTY, '')) : '', force: false },
+                { label: 'LOC PHOTO MATCH', value: formatLocPhotoMatchQtyValue(item, requestLike ? 'request' : shareSourceView), force: true },
                 { label: 'Sales Note', value: requestLike ? getRequestEditableCommentsValue(item) : firstNonEmptyValue(getItemDisplayValue(item, 'SALES_NOTE', shareSourceView), sharedHidden ? '' : item && item.SALESDESC, ''), force: false },
                 { label: 'Notes', value: getShareNotesValue(item, shareSourceView), force: false },
                 { label: 'Pick Note', value: requestLike
@@ -139776,6 +139872,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return firstNonEmptyValue(item.PRIORITY, item.priority, '');
                 case 'PTRAVAILABLE':
                     return firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, item.AVAILABLE, item.available, '');
+                case 'LOC_MATCH_QTY':
+                    return formatLocPhotoMatchQtyValue(item, 'drive');
                 case 'PTRONHAND':
                     return firstNonEmptyValue(item.PTRONHAND, item.ptronhand, '');
                 case 'PTRREVIEWED':
@@ -154116,7 +154214,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const avNote = String(firstNonEmptyValue(getItemDisplayValue(row, 'AV_NOTE', 'drive'), row && row.AV_NOTE, row && row.av_note, '') || '').trim();
             const salesNote = String(firstNonEmptyValue(getItemDisplayValue(row, 'SALES_NOTE', 'drive'), row && row.SALES_NOTE, row && row.sales_note, row && row.SALESNOTE, row && row.salesnote, '') || '').trim();
             const match = String(firstNonEmptyValue(getItemDisplayValue(row, 'MATCH', 'drive'), row && row.REQ_MATCH, row && row.MATCH, row && row.match, '') || '').trim();
-            const locMatchQty = String(firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(row, 'drive'), getDisplayLocMatchQtyValue(row, 'drive'), row && row.LOC_MATCH_QTY, row && row.loc_match_qty, '') || '').trim();
+            const locMatchQty = formatLocPhotoMatchQtyValue(row, 'drive');
             return {
                 index: index + 1,
                 optionLabel: row && row.DOCK_SUSPEND_PHOTO_SPEC_OPTION ? 'Drive Option' : 'Dock Drop',
