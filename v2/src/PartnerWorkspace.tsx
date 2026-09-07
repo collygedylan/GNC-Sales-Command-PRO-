@@ -47,8 +47,8 @@ export function PartnerWorkspace({ view }: { view: PartnerView }) {
           <a className="partner-open-link" href={partnerWorkspaceUrl(view, false)} target="_blank" rel="noopener noreferrer">
             <ExternalLink size={16} aria-hidden="true" /> Open full page
           </a>
-          <a className="partner-open-link" href="https://bloomscapes-nursery-demo.fair-chick-6843.chatgpt.site/shop" target="_blank" rel="noopener noreferrer">Storefront</a>
-          <a className="partner-open-link" href="https://bloomscapes-nursery-demo.fair-chick-6843.chatgpt.site/operations/" target="_blank" rel="noopener noreferrer">Retailer operations</a>
+          <a className="partner-open-link" href="https://bloomscapes-nursery-demo.dylancollyge.chatgpt.site/shop" target="_blank" rel="noopener noreferrer">Storefront</a>
+          <a className="partner-open-link" href="https://bloomscapes-nursery-demo.dylancollyge.chatgpt.site/operations/" target="_blank" rel="noopener noreferrer">Retailer operations</a>
         </nav>
       </header>
       <div className="partner-frame-wrap" aria-busy={state === 'loading'}>

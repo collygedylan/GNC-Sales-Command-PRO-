@@ -4,8 +4,8 @@ The Home AV tile and bottom Bloom view mount `v2/public/partner/nursery/` in a s
 
 - Nursery AV: `/v2/#partner-av`
 - Nursery fulfillment: `/v2/#bloom`
-- Customer: `https://bloomscapes-nursery-demo.fair-chick-6843.chatgpt.site/shop`
-- Retailer: `https://bloomscapes-nursery-demo.fair-chick-6843.chatgpt.site/operations/`
+- Customer: `https://bloomscapes-nursery-demo.dylancollyge.chatgpt.site/shop`
+- Retailer: `https://bloomscapes-nursery-demo.dylancollyge.chatgpt.site/operations/`
 
 Native demo membership is required. The pre-existing v2 placeholder profile never grants partner access, and no session is passed through the frame boundary. Demo credentials are private to Dylan, outside both repositories. Other v2 prototype views remain outside this partnership workflow. Payment and shipping are simulated; inventory reservations and all order transactions persist in sandbox project `apztnscvagayslumnalr`.
 
