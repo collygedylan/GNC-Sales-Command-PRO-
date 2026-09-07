@@ -232,6 +232,23 @@ test('known thumbnail failure invalidates only that card display and does not fe
   assert.match(source('renderAvDetailHero'), /onerror="invalidateCardPhotoMatchOnLoadFailure\(this\)"/);
 });
 
+test('authoritative stock updates refresh unknown-stock qualification without a reload', () => {
+  const ctx = runtime(['applyMasterSyncPayloadToLocalRow'], {
+    normalizeRowPhotoFields: (item) => item,
+    repairDisplayFieldsOnRow: () => {},
+    buildSearchIndex: () => {},
+  });
+  const saved = row({ PTRAVAILABLE: 0, PHOTO_MATCH_PTR_AVAILABLE_KNOWN: false });
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(saved), null);
+  ctx.applyMasterSyncPayloadToLocalRow(saved, { ptravailable: '347' });
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(saved), 174);
+  ctx.applyMasterSyncPayloadToLocalRow(saved, { ptravailable: 0 });
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(saved), 0);
+  ctx.applyMasterSyncPayloadToLocalRow(saved, { ptravailable: null });
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(saved), null);
+  assert.equal(saved.LOC_MATCH_QTY, '174');
+});
+
 test('public cards, shares, exports and previews use projections; invalidation is not destructive', () => {
   assert.match(source('getAvOpenStockLocPhotoMatch'), /formatLocPhotoMatchQtyValue/);
   assert.match(source('getAVExportColumns'), /label: 'Loc Photo Match', value: \(row\) => formatLocPhotoMatchQtyValue/);

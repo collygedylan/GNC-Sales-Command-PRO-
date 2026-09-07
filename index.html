@@ -133462,6 +133462,7 @@ C.14.043 C.15.000
             if (Object.prototype.hasOwnProperty.call(payload, 'ptravailable')) {
                 masterItem.PTRAVAILABLE = payload.ptravailable == null ? '' : payload.ptravailable;
                 masterItem.ptravailable = payload.ptravailable == null ? '' : payload.ptravailable;
+                masterItem.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(payload.ptravailable) != null;
             }
             if (Object.prototype.hasOwnProperty.call(payload, 'av_note')) masterItem.AV_NOTE = payload.av_note || '';
             if (Object.prototype.hasOwnProperty.call(payload, 'match')) masterItem.MATCH = payload.match == null ? '' : payload.match;
