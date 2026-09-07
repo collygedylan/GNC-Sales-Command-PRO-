@@ -4,6 +4,10 @@
 begin read only;
 set local timezone = 'UTC';
 
+-- TAP output lets the same pure assertion block run in the isolated CI database
+-- without requiring a pgTAP extension in production.
+select '1..1';
+
 do $test$
 declare
   checked integer := 0;
@@ -128,5 +132,7 @@ begin
   raise notice 'photo evidence projection: % assertions passed; no business rows touched', checked;
 end
 $test$;
+
+select 'ok 1 - 41 photo evidence projection assertions; no business rows touched';
 
 rollback;
