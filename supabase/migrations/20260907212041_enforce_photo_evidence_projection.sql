@@ -1,3 +1,4 @@
+-- Version matches the production migration record; synthetic assertions ran before its commit.
 begin;
 
 -- Observations are not verification. These pure projections deliberately do not

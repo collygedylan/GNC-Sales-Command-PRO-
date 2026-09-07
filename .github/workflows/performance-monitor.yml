@@ -116,7 +116,7 @@ jobs:
             cp supabase/migrations/20260904151119_photo_history_required_copies_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260906022733_pin_remaining_public_function_search_paths.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260906154833_repair_season_sales_done_lifecycle.sql "$ci_root/supabase/migrations/"
-          cp supabase/migrations/20260907210808_enforce_photo_evidence_projection.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260907212041_enforce_photo_evidence_projection.sql "$ci_root/supabase/migrations/"
           cp supabase/ci/photo_history_extensions.sql "$ci_root/supabase/migrations/20260904142700_photo_history_extensions.sql"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
