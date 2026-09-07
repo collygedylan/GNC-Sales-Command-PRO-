@@ -3,13 +3,14 @@
 */
 
 const APP_SHELL_BUILD = 'V2026.09.06.02';
-const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1';
+const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
-const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD;
+// A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
+const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -64,9 +65,44 @@ function buildShellUrl(build = '') {
 
 function getRequestUrl(requestOrUrl) {
   try {
-    return new URL(typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl.url, self.location.href);
+    const value = typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl && (requestOrUrl.url || requestOrUrl.href);
+    return value ? new URL(value, self.location.href) : null;
   } catch (error) {
     return null;
+  }
+}
+
+function isProductionShellUrl(value) {
+  const url = getRequestUrl(value);
+  const scope = getRequestUrl(self.registration.scope);
+  if (!url || !scope || url.origin !== scope.origin) return false;
+  return url.pathname === scope.pathname || url.pathname === new URL('index.html', scope).pathname;
+}
+
+function isIndependentAppUrl(value) {
+  const url = getRequestUrl(value);
+  const scope = getRequestUrl(self.registration.scope);
+  if (!url || !scope || url.origin !== scope.origin) return false;
+  const appPath = new URL('v2/', scope).pathname;
+  return url.pathname === appPath.slice(0, -1) || url.pathname.startsWith(appPath);
+}
+
+function isIndependentAppRequest(request) {
+  return isIndependentAppUrl(request) || Boolean(request && request.referrer && isIndependentAppUrl(request.referrer));
+}
+
+function isRetiredRootCacheName(name) {
+  // This is the only historical shell-cache namespace established by this worker.
+  // Unknown, Workbox, v2, and partner caches belong to other applications.
+  return String(name).startsWith('ag-data-v4.3-rebuild-') && name !== CACHE_NAME;
+}
+
+async function matchRootCache(request, options) {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    return await cache.match(request, options);
+  } catch (error) {
+    return undefined;
   }
 }
 
@@ -93,6 +129,7 @@ async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET
 
 async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
   if (!cache || !requestedShellUrl || !networkResponse || networkResponse.status !== 200) return;
+  if (!isProductionShellUrl(requestedShellUrl) || (networkResponse.url && !isProductionShellUrl(networkResponse.url))) return;
   const responseClone = networkResponse.clone();
   const responseCloneForCurrent = networkResponse.clone();
   const responseCloneForIndex = networkResponse.clone();
@@ -113,7 +150,7 @@ async function getCachedShellFallback(cache, requestedShellUrl, navigationReques
   for (const candidate of candidates) {
     if (!candidate) continue;
     try {
-      const cached = cache ? await cache.match(candidate) : await caches.match(candidate);
+      const cached = cache ? await cache.match(candidate) : await matchRootCache(candidate);
       if (cached) return cached;
     } catch (error) {}
   }
@@ -152,6 +189,7 @@ function isPrecachedRuntimeAssetUrl(url = null) {
 
 function shouldRuntimeCacheRequest(request, response) {
   if (!request || !response || response.status !== 200) return false;
+  if (isIndependentAppRequest(request)) return false;
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return false;
   if (requestUrl.origin !== self.location.origin) return isPrecachedRuntimeAssetUrl(requestUrl);
@@ -162,6 +200,7 @@ function shouldRuntimeCacheRequest(request, response) {
 function shouldBypassServiceWorkerCache(request) {
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return true;
+  if (isIndependentAppRequest(request)) return true;
   if (requestUrl.origin !== self.location.origin && PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;
   if (PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;
   if (/\btoken=|\bsignature=|\bsigned=/i.test(requestUrl.search)) return true;
@@ -254,13 +293,14 @@ async function handleRuntimeImageRequest(event) {
     }
     return networkResponse;
   }
-  return caches.match(event.request).then((fallback) => fallback || Response.error());
+  return matchRootCache(event.request).then((fallback) => fallback || Response.error());
 }
 
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   try {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     await Promise.all(clientList.map((client) => {
+      if (!client || !isProductionShellUrl(client.url)) return Promise.resolve();
       try {
         client.postMessage({
           type,
@@ -282,6 +322,7 @@ async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'ina
     if (!client || typeof client.navigate !== 'function') return false;
     if (client.visibilityState !== 'hidden' && client.focused !== false) return false;
     const clientUrl = getRequestUrl(client.url);
+    if (!isProductionShellUrl(clientUrl)) return false;
     if (clientUrl && clientUrl.searchParams.get('shellr') === APP_SHELL_RUNTIME_REVISION) return false;
     await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason));
     return true;
@@ -294,7 +335,7 @@ async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-up
   try {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     await Promise.all(clientList.map((client) => (
-      client && (client.visibilityState === 'hidden' || client.focused === false)
+      client && isProductionShellUrl(client.url) && (client.visibilityState === 'hidden' || client.focused === false)
         ? navigateInactiveClientToCurrentShell(client.id, reason)
         : Promise.resolve(false)
     )));
@@ -321,8 +362,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => {
-        const keepCacheNames = new Set([CACHE_NAME, IMAGE_CACHE_NAME, IMAGE_CACHE_METADATA_NAME]);
-        return Promise.all(keys.map((key) => keepCacheNames.has(key) ? Promise.resolve() : caches.delete(key)));
+        return Promise.all(keys.filter(isRetiredRootCacheName).map((key) => caches.delete(key)));
       })
       .then(() => {
         if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
@@ -336,6 +376,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   const data = event && event.data ? event.data : {};
   if (!data || typeof data !== 'object') return;
+  if (!event.source || !isProductionShellUrl(event.source.url)) return;
   if (data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {
@@ -351,7 +392,11 @@ self.addEventListener('message', (event) => {
     } catch (error) {}
   }
 });
-self.addEventListener('fetch', (event) => {
+function handleProductionFetch(event) {
+  if (isIndependentAppRequest(event.request)) return;
+  // A root registration may temporarily control /v2 before its own worker installs.
+  // It must never answer another document navigation with the production shell.
+  if (event.request.mode === 'navigate' && !isProductionShellUrl(event.request)) return;
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
     if (event.clientId) event.waitUntil(navigateInactiveClientToCurrentShell(event.clientId, 'inactive-network-activity'));
     return;
@@ -412,13 +457,13 @@ self.addEventListener('fetch', (event) => {
         if (cachedShellFallback) return cachedShellFallback;
         const cachedFromCache = await getCachedShellFallback(cache, currentShellUrl, event.request);
         if (cachedFromCache) return cachedFromCache;
-        const globalCurrentShell = await caches.match(APP_SHELL_URL);
+        const globalCurrentShell = await matchRootCache(APP_SHELL_URL);
         if (globalCurrentShell) return globalCurrentShell;
-        const globalRequestedShell = await caches.match(requestedShellUrl);
+        const globalRequestedShell = await matchRootCache(requestedShellUrl);
         if (globalRequestedShell) return globalRequestedShell;
-        const cachedRequestedNavigation = await caches.match(event.request);
+        const cachedRequestedNavigation = await matchRootCache(event.request);
         if (cachedRequestedNavigation) return cachedRequestedNavigation;
-        const globalIndex = await caches.match('./index.html');
+        const globalIndex = await matchRootCache('./index.html');
         if (globalIndex) return globalIndex;
         return Response.error();
       })()
@@ -432,7 +477,7 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = getRequestUrl(event.request);
   if (isPrecachedRuntimeAssetUrl(requestUrl) || (requestUrl && requestUrl.origin === self.location.origin && CONTENT_VERSION_REGEX.test(requestUrl.pathname))) {
     event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+      matchRootCache(event.request).then((cached) => cached || fetch(event.request).then((response) => {
         if (shouldRuntimeCacheRequest(event.request, response)) {
           event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone())).catch(() => {}));
         }
@@ -442,7 +487,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    matchRootCache(event.request).then((cachedResponse) => {
       const networkRequest = fetch(event.request).then((networkResponse) => {
       if (shouldRuntimeCacheRequest(event.request, networkResponse)) {
         const responseClone = networkResponse.clone();
@@ -454,9 +499,39 @@ self.addEventListener('fetch', (event) => {
         event.waitUntil(networkRequest.catch(() => null));
         return cachedResponse;
       }
-      return networkRequest.catch(() => caches.match(event.request));
+      return networkRequest.catch(() => matchRootCache(event.request));
     })
   );
+}
+
+self.addEventListener('fetch', (event) => {
+  if (isIndependentAppRequest(event.request)) return;
+  if (event.request.mode === 'navigate' || event.request.method !== 'GET') {
+    handleProductionFetch(event);
+    return;
+  }
+  if (shouldBypassServiceWorkerCache(event.request)) return;
+  // Referrer policy can hide /v2 behind an origin-only referrer. Resolve the
+  // actual client before starting any root cache reads/writes for its resources.
+  event.respondWith((async () => {
+    if (event.clientId) {
+      try {
+        const client = await self.clients.get(event.clientId);
+        if (!client || !isProductionShellUrl(client.url)) return fetch(event.request);
+      } catch (error) {
+        return fetch(event.request);
+      }
+    }
+    let response;
+    handleProductionFetch({
+      request: event.request,
+      clientId: event.clientId,
+      preloadResponse: event.preloadResponse,
+      waitUntil: promise => event.waitUntil(promise),
+      respondWith: promise => { response = promise; }
+    });
+    return response || fetch(event.request);
+  })());
 });
 
 self.addEventListener('push', (event) => {
@@ -466,7 +541,8 @@ self.addEventListener('push', (event) => {
   }
   const title = data.title || 'Ag Data Message';
   const iconUrl = new URL(data.icon || './ag-data-solutions-icon-v2026080925-192.png', self.registration.scope).href;
-  const targetUrl = new URL(data.url || APP_SHELL_URL, self.registration.scope).href;
+  const requestedTarget = getRequestUrl(data.url || APP_SHELL_URL);
+  const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const options = {
     body: data.body || 'You have a new message.',
     icon: iconUrl,
@@ -485,12 +561,13 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const payload = event.notification && event.notification.data ? event.notification.data : {};
-  const targetUrl = payload.url || APP_SHELL_URL;
+  const requestedTarget = getRequestUrl(payload.url || APP_SHELL_URL);
+  const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const targetView = payload.viewId || 'request';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientList) => {
       for (const client of clientList) {
-        if ('focus' in client) {
+        if (isProductionShellUrl(client.url) && 'focus' in client) {
           await client.focus();
           try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
           return client;
@@ -511,6 +588,7 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => Promise.all(clientList.map((client) => {
+      if (!client || !isProductionShellUrl(client.url)) return Promise.resolve();
       try { return client.postMessage({ type: 'GNC_RESUBSCRIBE_PUSH' }); } catch (error) { return Promise.resolve(); }
     })))
   );

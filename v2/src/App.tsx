@@ -53,8 +53,9 @@ import {
   uploadRequestPhoto
 } from './services';
 import type { AvOptionRow } from './types';
+import { PartnerWorkspace } from './PartnerWorkspace';
 
-type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
+type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'partner-av' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
 type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
 type DisplayMode = 'cards' | 'grid';
@@ -72,6 +73,13 @@ type MessageThread = {
 };
 
 const SANDBOX_ONLY = true;
+
+const viewIds = new Set<ViewId>(['home', 'request', 'drive', 'tasks', 'docks', 'comm', 'bloom', 'partner-av', 'inventory', 'managers', 'sales', 'building', 'qc', 'office', 'production', 'reports']);
+
+export function viewFromHash(hash: string): ViewId {
+  const candidate = hash.replace(/^#\/?/, '') as ViewId;
+  return viewIds.has(candidate) ? candidate : 'home';
+}
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'request', label: 'Request' },
@@ -226,7 +234,7 @@ function useChunkedRows<T>(rows: T[], batch = 30, maximum = 96) {
 export function App() {
   const [session, setSession] = useState<Session | null>(() => readStoredSession());
   const [demoMode, setDemoMode] = useState(SANDBOX_ONLY);
-  const [view, setView] = useState<ViewId>('home');
+  const [view, setView] = useState<ViewId>(() => viewFromHash(window.location.hash));
   const [activeTab, setActiveTab] = useState<TabId>('request');
   const [rows, setRows] = useState<RequestRow[]>([]);
   const [detailRow, setDetailRow] = useState<RequestRow | null>(null);
@@ -245,6 +253,19 @@ export function App() {
   const topRef = useRef<HTMLDivElement | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      setView(viewFromHash(window.location.hash));
+      setDetailRow(null);
+      setModuleDetail(null);
+      setSearch('');
+      setMenuOpen(false);
+      scrollerRef.current?.scrollTo({ top: 0 });
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   useEffect(() => {
     const syncShell = () => {
@@ -311,6 +332,7 @@ export function App() {
   };
 
   const openView = (next: ViewId) => {
+    if (window.location.hash !== `#${next}`) window.location.hash = next;
     setView(next);
     setDetailRow(null);
     setModuleDetail(null);
@@ -353,7 +375,7 @@ export function App() {
             <ArrowLeft size={28} />
           </button>
           <div>
-            <div className="brand-user">{session?.displayName || session?.username || 'demo_user'}</div>
+            <div className="brand-user">{view === 'bloom' || view === 'partner-av' ? 'AgMetric Test' : session?.displayName || session?.username || 'demo_user'}</div>
             <div className="brand-subtitle">AG DATA SOLUTIONS</div>
           </div>
           {showTopSearch ? (
@@ -427,6 +449,8 @@ export function App() {
           />
         ) : view === 'home' ? (
           <HomeView onOpen={openView} />
+        ) : view === 'bloom' || view === 'partner-av' ? (
+          <PartnerWorkspace key={view} view={view === 'partner-av' ? 'av' : 'orders'} />
         ) : view === 'request' ? (
           <RequestView
             rows={filteredRows}
@@ -575,7 +599,7 @@ function HomeView({ onOpen }: { onOpen: (view: ViewId) => void }) {
   const modules: Array<{ view: ViewId; label: string; icon: typeof Home }> = [
     { view: 'drive', label: 'Drive Mode', icon: Truck },
     { view: 'docks', label: 'Docks', icon: Truck },
-    { view: 'tasks', label: 'AV', icon: BookOpen },
+    { view: 'partner-av', label: 'AV', icon: BookOpen },
     { view: 'comm', label: 'Communication', icon: MessageCircle },
     { view: 'sales', label: 'Sales', icon: Handshake },
     { view: 'managers', label: 'Managers', icon: Cloud },
@@ -1670,6 +1694,7 @@ function labelForView(view: ViewId) {
     docks: 'Docks',
     comm: 'Communication',
     bloom: 'Bloom',
+    'partner-av': 'Nursery AV',
     inventory: 'Inventory',
     managers: 'Managers',
     sales: 'Sales',
@@ -1786,6 +1811,7 @@ function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
   const base: Record<ViewId, ModulePreviewRow[]> = {
     home: [],
     request: [],
+    'partner-av': [],
     drive: [
       { title: 'Acoma Crapemyrtle', meta: '003746.030.1 | H.03.000 | Lot 27.F1 | #3', owner: 'Kayla Knepp', status: 'Available', quantity: '94', tone: 'green' },
       { title: 'Dawn Redwood', meta: 'B.13.012 | Lot 27.S1 | #3 Lavender', owner: 'Abbey Burka', status: 'Request', quantity: '44', tone: 'blue' },

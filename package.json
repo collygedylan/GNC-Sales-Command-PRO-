@@ -21,7 +21,7 @@
     "preview:v2": "vite preview --config vite.v2.config.ts --host 0.0.0.0",
     "test:v2": "vitest run --config vite.v2.config.ts",
     "test:v2:watch": "vitest --config vite.v2.config.ts",
-    "test:photo": "node --test tests/photo-egress.test.mjs tests/photo-history.test.mjs",
+    "test:photo": "node --test tests/photo-egress.test.mjs tests/photo-history.test.mjs tests/service-worker-isolation.test.mjs",
     "test:v2:e2e": "playwright test",
     "test:footer": "playwright test --config playwright.footer.config.ts",
     "test:season-sales-office": "playwright test --config playwright.season-sales-office.config.ts",

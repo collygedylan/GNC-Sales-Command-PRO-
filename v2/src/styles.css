@@ -26,6 +26,144 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* The partner app owns its scroll area, data, and native account. */
+.main-scroll.view-bloom,
+.main-scroll.view-partner-av {
+  display: flex;
+  overflow: hidden;
+  padding: 8px;
+  scrollbar-gutter: auto;
+}
+
+.partner-workspace {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 8px;
+}
+
+.partner-intro {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.partner-demo-label {
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+.partner-intro h1 {
+  margin: 2px 0;
+  font-size: clamp(16px, 2vw, 22px);
+}
+
+.partner-intro p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.partner-open-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--green-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.partner-links {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.partner-frame-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.partner-frame {
+  visibility: hidden;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  border: 0;
+  background: var(--surface);
+}
+
+.partner-frame-ready {
+  visibility: visible;
+}
+
+.partner-frame-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  overflow: auto;
+  padding: 16px;
+  text-align: center;
+}
+
+.partner-frame-status p {
+  max-width: 44ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.partner-frame-status a {
+  padding: 12px;
+  color: var(--green-dark);
+}
+
+@media (max-width: 520px) {
+  .partner-intro {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .partner-links {
+    justify-content: flex-start;
+  }
+
+  .partner-open-link {
+    min-height: 36px;
+    padding: 4px 6px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
