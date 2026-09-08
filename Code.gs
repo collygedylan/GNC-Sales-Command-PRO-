@@ -131,12 +131,18 @@ function getSupabaseHeaders_(extraHeaders) {
 // The server validates this run header on each source statement, including
 // retries, so an expired/superseded writer cannot finish an old snapshot.
 let datasetImportFenceContext_ = null;
-function withDatasetImportProcessorLock_(work) {
-  const lock = LockService.getScriptLock();
+let datasetImportProcessorLock_ = null;
+function withDatasetImportProcessorLock_(work, existingLock) {
+  const previousLock = datasetImportProcessorLock_;
+  const lock = existingLock || previousLock || LockService.getScriptLock();
   const ownsLock = !lock.hasLock();
   if (ownsLock) lock.waitLock(30000);
+  datasetImportProcessorLock_ = lock;
   try { return work(); }
-  finally { if (ownsLock) lock.releaseLock(); }
+  finally {
+    datasetImportProcessorLock_ = previousLock;
+    if (ownsLock) lock.releaseLock();
+  }
 }
 function callDatasetImportFenceRpc_(name, payload) {
   return withRetry_('Dataset import fence', 3, 400, function() {
@@ -174,7 +180,7 @@ function beginDatasetImportFence_(sourceTables) {
     .map(function(value) { return String(value || '').trim(); }).filter(Boolean))).sort();
   if (!keys.length) return null;
   if (datasetImportFenceContext_) throw new Error('DATASET_IMPORT_NESTED_FENCE');
-  const lock = LockService.getScriptLock();
+  const lock = datasetImportProcessorLock_ || LockService.getScriptLock();
   const ownsLock = !lock.hasLock();
   if (ownsLock) lock.waitLock(30000);
   const context = { runId: Utilities.getUuid(), keys: keys, lock: lock, ownsLock: ownsLock, lastHeartbeatAt: Date.now() };
@@ -1118,7 +1124,7 @@ function runQueuedManualSyncStage_(options) {
       saveManualSyncStatus_(status);
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
-      const stageResult = stageDef.run() || {};
+      const stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
       const filesProcessed = Number(stageResult.filesProcessed || 0);
       const tempFilesRemoved = Number(stageResult.tempFilesRemoved || 0);
       const failedFiles = Number(stageResult.failedFiles || 0);

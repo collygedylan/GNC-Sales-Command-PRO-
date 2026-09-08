@@ -67,9 +67,13 @@ async function session(account) {
 }
 async function watch(client, label) {
   const events = [];
+  let postgresReady = false;
   const channel = client.channel(`revision-${label}-${randomUUID()}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions', filter: 'key=eq.ph_soc_master' }, payload => events.push(payload.new))
-    .on('system', {}, payload => console.log(`Realtime ${label} system: ${JSON.stringify(payload)}`));
+    .on('system', {}, payload => {
+      console.log(`Realtime ${label} system: ${JSON.stringify(payload)}`);
+      if (payload.extension === 'postgres_changes' && payload.status === 'ok') postgresReady = true;
+    });
   channels.push({ client, channel });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Realtime subscribe timeout')), 15000);
@@ -78,6 +82,9 @@ async function watch(client, label) {
       else if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') { clearTimeout(timer); reject(error || new Error(state)); }
     });
   });
+  // Channel join can precede the database subscription by several seconds on
+  // a cold local stack. Don't lose the fixture's first event in that gap.
+  await until(() => postgresReady, `${label} PostgreSQL subscription ready`);
   return events;
 }
 try {

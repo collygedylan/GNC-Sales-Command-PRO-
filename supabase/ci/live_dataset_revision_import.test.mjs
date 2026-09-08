@@ -105,6 +105,14 @@ test('Drive archival failure does not falsely interrupt committed database work'
   assert.ok(actions(env).includes('finish_dataset_import_v1'));
   assert.ok(!actions(env).includes('fail_dataset_import_v1'));
 });
+test('processor and fence reuse the exact outer manual-stage lock without acquiring or releasing it', () => {
+  const env = environment();
+  env.ctx.outerLock = { hasLock: () => true, waitLock: () => assert.fail('Outer lock reacquired'), releaseLock: () => assert.fail('Outer lock released') };
+  env.ctx.LockService.getScriptLock = () => assert.fail('Nested code requested a different lock wrapper');
+  const result = vm.runInContext('withDatasetImportProcessorLock_(__run, outerLock)', env.ctx);
+  assert.equal(result.failedFiles, 0);
+  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+});
 test('Master/CAV fence scopes cover actual Crop Roll, Request and evidence side effects', () => {
   const env = environment();
   const keys = plain(vm.runInContext("getDatasetImportFenceSources_('ph_master_inventory')", env.ctx));
