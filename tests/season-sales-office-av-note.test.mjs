@@ -15,6 +15,7 @@ const ownedStateSource = between('function getSeasonSalesOfficeOwnedAvNote(', 'f
 const formatterSource = between('function formatFetchedRows(', 'function yieldToUiFrame(');
 const displaySource = between('function getSalesOfficeDisplayAvNote(', 'function getSeasonSalesOfficeSyncContext(');
 const remoteSource = between('function getSeasonSalesOfficeRowsByMasterId(', 'function getSalesOfficeOrderItems(');
+const realtimeDetailSource = between('function refreshActiveMasterDetailFromRealtimeRow(', 'function normalizeAppLiveEventRow(');
 const completionRefreshSource = between('const protectedSeasonItemCode = getMasterItemCodeKey(', 'if (isCoordinatedAutoSave && savePayloadSignature)');
 const mirror = (overrides = {}) => ({ UNIQUE_ID: 'master-1', MASTER_ID: 'master-1', SO_SOURCE: 'season', AV_NOTE: 'USER NOTE', STATE_REVISION: 7, ITEMCODE: 'TEST-1', ...overrides });
 
@@ -52,9 +53,13 @@ function harness(options = {}) {
       calls.push({ operation: 'completion_refresh', itemCodes });
       return [Promise.resolve(true)];
     },
+    isViewVisible: () => true,
+    hasCompletionDateValue: () => false,
+    scheduleUiRender() {},
+    lastView: 'sales-office',
   };
   vm.createContext(ctx);
-  vm.runInContext(`${ownedStateSource}\n${formatterSource}\n${displaySource}\n${remoteSource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
+  vm.runInContext(`${ownedStateSource}\n${formatterSource}\n${displaySource}\n${remoteSource}\n${realtimeDetailSource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
   return { ctx, calls, master };
 }
 
@@ -88,6 +93,35 @@ test('an explicitly cleared Season AV Note remains blank after null formatting, 
   assert.equal(staleAlias.AV_NOTE, '');
   assert.equal(staleAlias.av_note, '');
   assert.equal(ctx.getSalesOfficeDisplayAvNote({ SO_SOURCE: 'season', av_note: 'RAW NOTE' }), 'RAW NOTE');
+});
+
+test('master realtime updates preserve the active Sales Office snapshot and source identity', () => {
+  for (const uniqueId of ['master-1', 'linked-mirror-1']) {
+    for (const note of ['USER NOTE', '']) {
+      const { ctx, master } = harness();
+      const row = mirror({ UNIQUE_ID: uniqueId, AV_NOTE: note, SOURCE_TABLE: 'ph_sales_office', source_table: 'ph_sales_office', DOM_ID: `so_${uniqueId}`, PTRAVAILABLE: 12 });
+      ctx.salesOfficeInventory = [row];
+      ctx.activeItem = row;
+      assert.equal(ctx.refreshActiveMasterDetailFromRealtimeRow({ ...master, SOURCE_TABLE: 'ph_master_inventory', source_table: 'ph_master_inventory', DOM_ID: 'master_master-1' }, 'UPDATE'), true);
+      assert.equal(row.AV_NOTE, note);
+      assert.equal(row.av_note, note);
+      assert.equal(row.SOURCE_TABLE, 'ph_sales_office');
+      assert.equal(row.source_table, 'ph_sales_office');
+      assert.equal(row.DOM_ID, `so_${uniqueId}`);
+      assert.equal(row.UNIQUE_ID, uniqueId);
+      assert.equal(row.STATE_REVISION, 7);
+      assert.equal(row.PTRAVAILABLE, 42, 'current master inventory fields still refresh');
+      assert.equal(ctx.getSalesOfficeDisplayAvNote(ctx.salesOfficeInventory[0]), note);
+    }
+  }
+});
+
+test('master detail realtime updates keep their existing direct-merge behavior', () => {
+  const { ctx, master } = harness();
+  ctx.activeItem = { ...master, AV_NOTE: 'OLD MASTER NOTE', SOURCE_TABLE: 'ph_master_inventory' };
+  ctx.refreshActiveMasterDetailFromRealtimeRow({ ...master, AV_NOTE: 'NEW MASTER NOTE', SOURCE_TABLE: 'ph_master_inventory', IMPORTED_FIELD: 'CURRENT' }, 'UPDATE');
+  assert.equal(ctx.activeItem.AV_NOTE, 'NEW MASTER NOTE');
+  assert.equal(ctx.activeItem.IMPORTED_FIELD, 'CURRENT');
 });
 
 test('non-Season notes retain their prior fallback and hydration behavior', () => {
