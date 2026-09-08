@@ -20,10 +20,15 @@ assert.equal(new URL(apiUrl).protocol, 'http:');
 const anonKey = status.ANON_KEY || status.PUBLISHABLE_KEY;
 const serviceKey = status.SERVICE_ROLE_KEY || status.SECRET_KEY;
 assert.ok(anonKey && serviceKey, 'Local development keys missing');
+const snapshotResponseBytes = [];
 const guardedFetch = async (input, init) => {
   const url = new URL(typeof input === 'string' ? input : input.url);
   assert.equal(url.origin, new URL(apiUrl).origin, 'External request forbidden');
-  return fetch(input, { ...init, redirect: 'error' });
+  const response = await fetch(input, { ...init, redirect: 'error' });
+  if (url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && response.ok) {
+    snapshotResponseBytes.push((await response.clone().arrayBuffer()).byteLength);
+  }
+  return response;
 };
 const options = { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: guardedFetch } };
 const admin = createClient(apiUrl, serviceKey, options);
@@ -125,6 +130,8 @@ try {
     assert.equal(visible.data.state, 'importing', 'Same native session can read the event row under RLS');
   }
   await until(() => firstEvents.some(e => e.state === 'importing') && secondEvents.some(e => e.state === 'importing'), 'both sessions receive import fence');
+  assert.equal(firstEvents.length, 1);
+  assert.equal(secondEvents.length, 1);
   firstEvents.length = 0; secondEvents.length = 0;
   const importer = createClient(apiUrl, serviceKey, { ...options, global: { ...options.global, headers: { 'x-gnc-import-run-id': runId } } });
   for (let chunk = 0; chunk < 3; chunk += 1) {
@@ -146,6 +153,7 @@ try {
   assert.equal((await second.from('ph_soc_master').select('*', { count: 'exact', head: true }).eq('dock', 'Dock 29')).count, 749);
   assert.ok((await importer.from('ph_soc_master').update({ quantityordered: 0 }).eq('unique_id', 'ci-1-1')).error, 'closed import retry cannot write');
   console.log('PASS two same-login sessions, actual RLS-filtered Realtime, coalesced 750-row import and pruning');
+  console.log('ph_soc_master import: 2 metadata events per authorized device (1 importing + 1 ready); 0 chunk/heartbeat events; 0 events to denied session');
 
   // Catch up from durable revisions after a WebSocket is intentionally absent.
   await first.removeChannel(channels[0].channel);
@@ -173,12 +181,17 @@ try {
   console.log('PASS concurrent source commit / finish ordering');
 
   const timings = [];
+  const firstMeasuredResponse = snapshotResponseBytes.length;
   for (let i = 0; i < 20; i += 1) {
     const start = performance.now();
     await rpc(first, 'get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master', 'ph_master_inventory', 'ph_app_settings'] });
     timings.push(performance.now() - start);
   }
+  const measuredResponseBytes = snapshotResponseBytes.slice(firstMeasuredResponse);
+  assert.equal(measuredResponseBytes.length, 20);
+  assert.ok(measuredResponseBytes.every(size => size < 4096), 'Three-source metadata response stays bounded');
   console.log(`Metadata RPC local p95: ${timings.sort((a,b) => a-b)[18].toFixed(1)}ms; fixture permission resolver, not production load benchmark`);
+  console.log(`Metadata RPC response body for 3 sources: mean ${Math.round(measuredResponseBytes.reduce((sum,size) => sum+size,0)/measuredResponseBytes.length)} bytes, max ${Math.max(...measuredResponseBytes)} bytes; actual local HTTP body, not production compressed egress`);
   const beforePermission = reconnect.permissionVersion;
   await sql.query("update public.profiles set division='20' where id=$1", [account.id]);
   assert.notEqual((await rpc(first, 'get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master'] })).permissionVersion, beforePermission);
