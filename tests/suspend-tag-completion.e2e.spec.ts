@@ -260,9 +260,11 @@ for (const failure of [
 test('malformed or mismatched acknowledgment never removes the row', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   for (const body of [
-    { ok: true, sourceUid: 'another-source', completedAt: completionTime, sourceLastUpdated: sourceRevision },
-    { ok: true, sourceUid: fixtures[0].UNIQUE_ID, completedAt: '', sourceLastUpdated: sourceRevision },
-    { ok: false, sourceUid: fixtures[0].UNIQUE_ID, completedAt: completionTime, sourceLastUpdated: sourceRevision },
+    { ok: true, sourceUid: 'another-source', completedAt: completionTime, sourceLastUpdated: sourceRevision, alreadyCompleted: false },
+    { ok: true, sourceUid: fixtures[0].UNIQUE_ID, completedAt: '', sourceLastUpdated: sourceRevision, alreadyCompleted: false },
+    { ok: false, sourceUid: fixtures[0].UNIQUE_ID, completedAt: completionTime, sourceLastUpdated: sourceRevision, alreadyCompleted: false },
+    { ok: true, sourceUid: fixtures[0].UNIQUE_ID, completedAt: completionTime, sourceLastUpdated: '2026-09-08T16:00:00.000Z', alreadyCompleted: false },
+    { ok: true, sourceUid: fixtures[0].UNIQUE_ID, completedAt: completionTime, sourceLastUpdated: sourceRevision },
   ]) {
     app.replies.push({ body });
     await app.complete();

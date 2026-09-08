@@ -155022,15 +155022,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             return hints[message] ? `${hints[message]} (${message})` : message;
         }
 
-        async function persistDockSuspendDcRequestCompletion(mirrorRow) {
+        async function persistDockSuspendDcRequestCompletion(mirrorRow, expectedRevision = getDockSuspendCompletionRevision(mirrorRow)) {
             if (!canCurrentUserViewDockSuspendDcRequests()) throw new Error('SUSPEND_TAG_FORBIDDEN');
             const sourceUid = getDockSuspendDcRequestSourceUid(mirrorRow);
             const sourceRow = findDockSuspendDcRequestSourceRow(mirrorRow) || mirrorRow;
             if (!sourceUid) throw new Error('The source Docks row ID is missing.');
-            const revision = getDockSuspendCompletionRevision(sourceRow);
+            const revision = expectedRevision;
             if (revision !== null && !Number.isFinite(Date.parse(revision))) throw new Error('The row revision is invalid. Refresh the view before retrying Done.');
             const state = getDockSuspendCompletionState();
-            const key = getDockSuspendCompletionKey(sourceRow);
+            const key = JSON.stringify([sourceUid, revision]);
             const pending = state.pending[key] || { requestId: crypto.randomUUID(), savedAt: Date.now() };
             state.pending[key] = pending;
             persistDockSuspendCompletionState(state);
@@ -155179,6 +155179,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return false;
             }
             const scope = getDockSuspendCompletionState().scope;
+            const sourceRevision = getDockSuspendCompletionRevision(mirrorRow);
             const flightKey = `${scope}|${sourceUid}`;
             if (dockSuspendCompletionInFlight.has(flightKey)) return false;
             dockSuspendCompletionInFlight.add(flightKey);
@@ -155209,7 +155210,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 button.classList.add('opacity-70', 'pointer-events-none');
                 button.innerHTML = '<i class="ph-bold ph-spinner-gap mr-1 text-base align-middle"></i> Saving...';
             }
-                const applied = await persistDockSuspendDcRequestCompletion(mirrorRow);
+                const applied = await persistDockSuspendDcRequestCompletion(mirrorRow, sourceRevision);
                 if (applied) showToast('Marked Done', 'Suspend Tag completion saved.');
             } catch (error) {
                 console.warn('Suspend Tag completion was not confirmed.', error);

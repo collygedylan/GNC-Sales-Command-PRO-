@@ -33,6 +33,6 @@ jobs:
         run: |
           set -euo pipefail
           psql -X -v ON_ERROR_STOP=1 -f supabase/ci/suspend_tag_baseline.sql
-          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20260908164959_suspend_tag_completion.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20260908165943_suspend_tag_completion.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/tests/suspend_tag_completion_test.sql
           node supabase/ci/suspend_tag_concurrency.mjs

@@ -141,6 +141,19 @@ test('completion revision retains PostgreSQL microseconds and equivalent timezon
   assert.equal(h.ctx.getDockSuspendCompletionRevision({ last_updated: null }), null);
 });
 
+test('a row changed while confirmation is open submits only the originally reviewed revision', async () => {
+  const h = harness({ api: () => { throw new Error('SUSPEND_TAG_SOURCE_CHANGED'); } });
+  let confirm;
+  h.ctx.showAppConfirm = () => new Promise((resolve) => { confirm = resolve; });
+  const pending = h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  h.ctx.currentSource = { ...source(), LAST_UPDATED: '2026-09-08T17:00:00Z' };
+  confirm(true);
+  await pending;
+  assert.equal(h.calls[0].body.p_expected_last_updated, revision);
+  assert.equal(h.ctx.currentSource.DATE_COMPLETED, '');
+  assert.ok(h.toasts.some(([, message]) => message.includes('SUSPEND_TAG_SOURCE_CHANGED')));
+});
+
 test('recount completion shares the protected persistence path', async () => {
   const h = harness();
   await h.ctx.markDockSuspendDcRequestCompleteAfterRecount(h.mirror.UNIQUE_ID);
