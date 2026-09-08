@@ -27,6 +27,9 @@ for (const relativePath of [
   'assets/ops-precision-pilot.js',
   'assets/eval-reports-engine.js',
   'assets/photo-history-v2026090401.js',
+  'assets/live-sync-registry.js',
+  'assets/live-sync-adapters.js',
+  'assets/live-sync-coordinator.js',
   'sw.js'
 ]) {
   const source = fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -38,4 +41,4 @@ for (const relativePath of [
 }
 
 if (parsed < 3) throw new Error(`Expected at least 3 inline scripts, parsed ${parsed}.`);
-console.log(`Parsed ${parsed} inline scripts and 3 shell assets.`);
+console.log(`Parsed ${parsed} inline scripts and 7 shell assets.`);

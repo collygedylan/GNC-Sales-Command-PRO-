@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.08.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.08.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.08.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.08.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6809,7 +6809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.08.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.08.02">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6987,9 +6987,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.08.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.08.01"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.08.01"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.08.02"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.08.02"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.08.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.08.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.08.02"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.08.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7743,7 +7746,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.08.01').trim() || 'V2026.09.08.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.08.02').trim() || 'V2026.09.08.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9249,7 +9252,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.08.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.08.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9468,18 +9471,114 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             flyerAssignableUsersPromise = null;
         }
 
+        let productionPermissionCheckElements = [];
+        let productionPermissionDrafts = null;
+
+        function setProductionPermissionCheckState(state = '', message = '') {
+            let overlay = document.getElementById('live-permission-check');
+            if (!state) {
+                if (overlay) overlay.remove();
+                productionPermissionCheckElements.forEach(({ element, inert }) => { if (element.isConnected) element.inert = inert; });
+                productionPermissionCheckElements = [];
+                return;
+            }
+            if (!overlay) {
+                overlay = document.createElement('section');
+                overlay.id = 'live-permission-check';
+                overlay.setAttribute('role', 'alertdialog');
+                overlay.setAttribute('aria-modal', 'true');
+                overlay.setAttribute('aria-label', 'Verifying updated access');
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#071c13;color:#f1fff7;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;gap:1rem;';
+                overlay.innerHTML = '<h2 style="font-size:1.4rem;font-weight:800">Verifying updated access</h2><p data-permission-message role="status" style="max-width:34rem"></p><button type="button" style="padding:1rem 1.5rem;background:#25df9a;color:#06261a;border-radius:1rem;font-weight:800">Retry access check</button>';
+                document.body.appendChild(overlay);
+                productionPermissionCheckElements = Array.from(document.body.children)
+                    .filter((element) => element !== overlay)
+                    .map((element) => ({ element, inert: element.inert }));
+                productionPermissionCheckElements.forEach(({ element }) => { element.inert = true; });
+                overlay.querySelector('button').onclick = () => signalProductionLiveSync('permissions-retry', 0);
+            }
+            overlay.querySelector('[data-permission-message]').textContent = state === 'failed'
+                ? (message || 'Access could not be verified. Previous data is hidden until the check succeeds. Your unsaved draft is kept on this device.')
+                : 'Your access changed. Previous data is hidden while current permissions are verified. Unsaved drafts will be restored only where access is still allowed.';
+            overlay.querySelector('button').disabled = state !== 'failed';
+            if (state === 'failed') overlay.querySelector('button').focus();
+        }
+
+        function captureProductionPermissionDrafts() {
+            const username = String(currentUser || '').trim().toLowerCase();
+            const profileId = String(nativeAuthProfile?.id || '');
+            if (productionPermissionDrafts?.username === username && productionPermissionDrafts.profileId === profileId) return;
+            productionPermissionDrafts = {
+                username, profileId,
+                access: { editor: accessControlAdminState.editor ? { ...accessControlAdminState.editor } : null, publishReason: accessControlAdminState.publishReason || '' },
+                codex: { composeOpen: codexOpsState.composeOpen === true, draft: codexOpsState.draft || '', attachments: (codexOpsState.attachments || []).slice(), messageDraft: codexOpsState.messageDraft || '', activeTaskId: codexOpsState.activeTaskId || '' }
+            };
+        }
+
+        async function restoreProductionPermissionDrafts() {
+            const saved = productionPermissionDrafts;
+            const sameAccount = () => saved && saved.username === String(currentUser || '').trim().toLowerCase() && saved.profileId === String(nativeAuthProfile?.id || '');
+            if (!sameAccount() || !canAccessView('managers')) { productionPermissionDrafts = null; return; }
+            const isDenied = (error) => error?.status === 401 || error?.status === 403 || /forbidden|permission denied|42501/i.test(String(error?.message || ''));
+            if (saved.access.editor || saved.access.publishReason) {
+                let matrix = null;
+                try {
+                    matrix = normalizeAccessControlMatrix(await supabaseRpc(isKaylaLimitedAccessManagerUser() ? 'get_limited_access_control_matrix_v1' : 'get_access_control_matrix_v2', {
+                        p_query: { subjectType: saved.access.editor?.targetType === 'role' ? 'roles' : 'users', search: saved.access.editor?.targetKey || '', subjectLimit: 20, permissionLimit: 8 }
+                    }, { timeoutMs: 20000 }));
+                    if (!matrix) throw new Error('Updated Access Control permissions could not be verified.');
+                } catch (error) { if (!isDenied(error)) throw error; }
+                if (!sameAccount()) return;
+                const caps = matrix?.capabilities;
+                if (caps?.canView === true && caps.canEdit === true) {
+                    accessControlAdminState.capabilities = caps;
+                    const editor = saved.access.editor;
+                    const targetAllowed = caps.editScope !== 'limited-users' || (editor?.targetType === 'user'
+                        && (matrix.users || []).some((subject) => subject.username === editor.targetKey));
+                    if (editor && targetAllowed) accessControlAdminState.editor = { ...editor };
+                    if (caps.canPublish === true) accessControlAdminState.publishReason = saved.access.publishReason;
+                }
+            }
+            if (saved.username === 'dylan_collyge' && (saved.codex.composeOpen || saved.codex.draft || saved.codex.messageDraft || saved.codex.attachments.length)) {
+                let capabilities = null;
+                try { capabilities = await invokeCodexOpsApi('capabilities', {}, 20000); }
+                catch (error) { if (!isDenied(error)) throw error; }
+                if (!sameAccount()) return;
+                codexOpsState.capabilities = capabilities;
+                codexOpsState.capabilitiesLoaded = true;
+                if (capabilities?.canView === true && capabilities.submissionEnabled === true) Object.assign(codexOpsState, saved.codex);
+            }
+            productionPermissionDrafts = null;
+        }
+
         async function refreshNativeRoleAndCapabilities(reason = 'session-refresh') {
             if (!NATIVE_AUTH_ENABLED || !nativeAuthSessionActive || !currentUser) return false;
-            if (nativeRoleRefreshPromise) return nativeRoleRefreshPromise;
+            const permissionChanged = reason === 'live-permissions';
+            const refreshUsername = String(currentUser || '').trim().toLowerCase();
+            const refreshProfileId = String(nativeAuthProfile?.id || '');
+            if (permissionChanged) { captureProductionPermissionDrafts(); setProductionPermissionCheckState('checking'); }
+            if (nativeRoleRefreshPromise) {
+                if (!permissionChanged) return nativeRoleRefreshPromise;
+                await nativeRoleRefreshPromise;
+                return refreshNativeRoleAndCapabilities(reason);
+            }
             nativeRoleRefreshPromise = (async () => {
+                const username = String(currentUser || '').trim().toLowerCase();
                 const previousRole = String(currentRole || '').trim();
+                const previousDivision = String(currentUserDivision || '10').trim();
                 const profile = await loadNativeAuthProfile(true);
-                if (!profile) return false;
+                if (!profile || String(currentUser || '').trim().toLowerCase() !== username
+                    || String(profile.username || '').trim().toLowerCase() !== username) {
+                    if (permissionChanged) throw new Error('Current account permissions could not be verified.');
+                    return false;
+                }
                 const nextRole = String(profile.role || 'User').trim() || 'User';
                 currentUserDisplay = String(profile.display_name || profile.username || currentUserDisplay || currentUser || '').trim();
                 currentUserDivision = String(profile.division || currentUserDivision || '10').trim() || '10';
                 currentUserLanguage = normalizeAppUserLanguage(profile.language || currentUserLanguage || 'English');
-                if (normalizeRoleAccessToken(previousRole) === normalizeRoleAccessToken(nextRole)) return false;
+                const roleChanged = normalizeRoleAccessToken(previousRole) !== normalizeRoleAccessToken(nextRole);
+                const divisionChanged = previousDivision !== currentUserDivision;
+                if (!roleChanged && !divisionChanged && !permissionChanged) return false;
 
                 currentRole = nextRole;
                 safeRole = nextRole.toUpperCase().replace(/\s+/g, '');
@@ -9490,21 +9589,35 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 await Promise.allSettled([
                     initializeRequestCapabilities({ force: true, render: false, reason: 'native-role-refresh' }),
                     initializeAppAccessSnapshot({ force: true, reason: 'native-role-refresh' }),
-                    ensureAssignableAppUsers(true),
-                    ensureFlyerAssignableUsers(true)
+                    // Native directory reads belong to the revision cycle after
+                    // this permission callback, never recursively to this cycle.
+                    ...(typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad() ? [] : [ensureAssignableAppUsers(true), ensureFlyerAssignableUsers(true)])
                 ]);
+                if (String(currentUser || '').trim().toLowerCase() !== username) throw new Error('Account changed while refreshing permissions.');
+                if (permissionChanged && (appAccessSnapshotState.status !== 'ready' || appAccessSnapshotState.stale
+                    || !appAccessSnapshotState.snapshot || requestCapabilityState.status !== 'ready'
+                    || requestCapabilityState.stale || !requestCapabilityState.capabilities)) {
+                    throw new Error('Updated permissions could not be verified. Data refresh is paused.');
+                }
+                if (permissionChanged) await restoreProductionPermissionDrafts();
                 applyRolePermissions();
                 refreshProtectedSections();
+                if (permissionChanged && getCurrentVisibleViewId() === 'managers') renderManagers();
                 markViewDirty('home');
                 markViewDirty('drive');
                 markViewDirty('tasks');
                 if (typeof renderHome === 'function') renderHome();
-                reportSemanticHealthEvent('native_role_refreshed', 'auth', 'NATIVE_ROLE_CHANGED', {
+                reportSemanticHealthEvent('native_role_refreshed', 'auth', roleChanged ? 'NATIVE_ROLE_CHANGED' : 'NATIVE_PERMISSIONS_CHANGED', {
                     reason: String(reason || 'refresh').slice(0, 48)
                 });
+                if (permissionChanged) setProductionPermissionCheckState('');
                 return true;
             })().catch((error) => {
                 console.warn('Native role refresh failed.', error);
+                if (permissionChanged) {
+                    if (String(currentUser || '').trim().toLowerCase() === refreshUsername && String(nativeAuthProfile?.id || '') === refreshProfileId) setProductionPermissionCheckState('failed');
+                    throw error;
+                }
                 return false;
             }).finally(() => {
                 nativeRoleRefreshPromise = null;
@@ -9516,6 +9629,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             const client = getSupabaseBrowserClient();
             if (client && client.auth && typeof client.auth.onAuthStateChange === 'function' && !window.__gncNativeRoleAuthWatcher) {
                 const subscription = client.auth.onAuthStateChange((event, session) => {
+                    if (typeof resetProductionLiveSync === 'function' && (event === 'SIGNED_OUT' || (session?.user?.id && session.user.id !== nativeAuthProfile?.id))) resetProductionLiveSync();
                     if (event === 'SIGNED_OUT') {
                         nativeAuthSessionActive = false;
                         nativeAuthAccessToken = '';
@@ -9524,7 +9638,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         closeBloomscapesPendingOrders();
                     }
                     if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-                        setTimeout(() => refreshNativeRoleAndCapabilities(`auth:${String(event || '').toLowerCase()}`), 0);
+                        setTimeout(async () => {
+                            await refreshNativeRoleAndCapabilities(`auth:${String(event || '').toLowerCase()}`);
+                            if (typeof signalProductionLiveSync === 'function') signalProductionLiveSync('auth-refresh', 0);
+                        }, 0);
                     }
                 });
                 window.__gncNativeRoleAuthWatcher = subscription && subscription.data && subscription.data.subscription
@@ -22074,6 +22191,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function setRealtimeSubscriptionsForView(viewId, force = false) {
+            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+                cleanupRealtime(); clearVisibleViewPollSync();
+                activeRealtimeViewId = String(viewId || 'home');
+                signalProductionLiveSync('view-entry', 0);
+                return;
+            }
             const nextView = String(viewId || '').trim() || 'home';
             const policy = getLiveSyncPolicy(nextView);
             if (hasActiveManualSync() && shouldPauseManualSyncViewRefresh(policy.viewId)) {
@@ -22108,6 +22231,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function initializeRealtime(tables = null) {
+            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+                signalProductionLiveSync('connection-check', 0);
+                return;
+            }
             const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : activeRealtimeTables);
             activeRealtimeTables = tableList;
             cleanupRealtime();
@@ -22204,6 +22331,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
         async function performLogout() {
+            if (typeof resetProductionLiveSync === 'function') resetProductionLiveSync();
             closeBloomscapesPendingOrders();
             window.GncPhotoHistory?.clear();
             cancelAllDriveEvidenceSaves('logout');
@@ -24264,6 +24392,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         async function fetchDepartmentCalendarData(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('calendar', force, { state: departmentCalendarState });
             if (departmentCalendarState.loading && departmentCalendarState.promise && !force) return departmentCalendarState.promise;
             if (departmentCalendarState.loaded && !force) return true;
             departmentCalendarState.loading = true;
@@ -25126,6 +25255,29 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         const supabaseReadInFlight = new Map();
         const supabaseReadQueue = [];
         let activeSupabaseReadCount = 0;
+        let productionLiveSyncReadGeneration = 0;
+        let productionLiveSyncReadPermissionVersion = '';
+        let productionLiveSyncReadAuthEpoch = 0;
+
+        function getSupabaseReadIdentityScope() {
+            return JSON.stringify([
+                typeof SUPABASE_URL === 'string' ? SUPABASE_URL : '',
+                typeof nativeAuthSessionActive !== 'undefined' && !!nativeAuthSessionActive,
+                typeof nativeAuthProfile !== 'undefined' ? nativeAuthProfile?.id || '' : '',
+                typeof currentUser !== 'undefined' ? String(currentUser || '').trim().toLowerCase() : '',
+                typeof currentRole !== 'undefined' ? String(currentRole || '').trim().toLowerCase() : '',
+                typeof currentUserDivision !== 'undefined' ? String(currentUserDivision || '') : '',
+                typeof getCurrentLoginCacheScopeKey === 'function' ? getCurrentLoginCacheScopeKey() : '',
+                productionLiveSyncReadAuthEpoch,
+                productionLiveSyncReadPermissionVersion
+            ]);
+        }
+
+        function staleSupabaseReadScopeError() {
+            const error = new Error('The account or data permissions changed while loading. This response was discarded.');
+            error.code = 'DATASET_READ_SCOPE_CHANGED';
+            return error;
+        }
 
         function runWithSupabaseReadSlot(taskFn) {
             return new Promise((resolve, reject) => {
@@ -25146,14 +25298,24 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function runDedupeSupabaseRead(readKey = '', taskFn = null) {
-            const safeKey = String(readKey || '').trim();
-            if (!safeKey || typeof taskFn !== 'function') return Promise.resolve(null);
+            const requestedKey = String(readKey || '').trim();
+            if (!requestedKey || typeof taskFn !== 'function') return Promise.resolve(null);
+            const identityScope = getSupabaseReadIdentityScope();
+            // Reusing a promise begun before the coordinator's revision check can
+            // certify old rows against new metadata. Each staged cycle gets its
+            // own read generation; identical reads inside that cycle still share.
+            const safeKey = JSON.stringify([identityScope, productionLiveSyncReadGeneration, requestedKey]);
             if (supabaseReadInFlight.has(safeKey)) {
                 incrementInternalPerfCounter('dedupedSupabaseReads');
                 return supabaseReadInFlight.get(safeKey);
             }
-            const promise = runWithSupabaseReadSlot(taskFn).finally(() => {
-                supabaseReadInFlight.delete(safeKey);
+            const promise = runWithSupabaseReadSlot(async () => {
+                if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                const result = await taskFn();
+                if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                return result;
+            }).finally(() => {
+                if (supabaseReadInFlight.get(safeKey) === promise) supabaseReadInFlight.delete(safeKey);
             });
             supabaseReadInFlight.set(safeKey, promise);
             return promise;
@@ -27954,6 +28116,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function ensureNcrCompletionIndexLoaded(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('ncr', force);
             loadFallbackNcrCompletedRows();
             if (ncrCompletionsLoaded && !force) return true;
             if (ncrCompletionLoadPromise && !force) return ncrCompletionLoadPromise;
@@ -30425,6 +30588,8 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsig
             lastRequestHeaderSearchMode = '';
         }
 let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let pendingDockTrip=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let selectedDockReps=new Set(); let dockRepSearchTerm=""; let dockRepFilterOpen=false; let selectedDockCustomers=new Set(); let dockCustomerSearchTerm=""; let dockCustomerFilterOpen=false; let dockColumnFilters={}; let dockColumnFilterDrafts={}; let dockColumnFilterSelectedHeaders=new Set(); let dockColumnFilterDropdownOpen=false; let dockColumnFilterStep='select'; let dockColumnFilterFieldKey=''; let dockColumnFilterMode='values'; let dockColumnFilterValueSearchTerm=''; let dockColumnFilterFieldSearchTerm=''; let dockColumnFilterHeaderFieldsCache=[]; let dockFilterItemsCache=[]; let dockFilterStateCacheKey=""; let dockFilterStateCache=null; let lastDockFilterRenderSignature=""; let docksSearchRestoreState=null; let lastSyncTime=new Date().toISOString();
+        let dockRepSelectionMode = 'all';
+        let dockCustomerSelectionMode = 'all';
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
@@ -31027,7 +31192,418 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return getRequestItemCodeOptionRows(item).find((row, index) => getAvOptionEvalOptionUid(row, index) === safeUid) || null;
         }
 
+        function shouldUseProductionLiveSyncSideLoad() {
+            return typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync();
+        }
+
+        async function ensureProductionLiveSyncSideData(id, force = false, options = {}) {
+            const context = { ...getProductionLiveSyncContext(), ...(options.context || {}) };
+            const adapter = productionLiveSyncSideAdapters.getAdapter(`side:${id}`, context);
+            if (!adapter) return false;
+            if (options.state) options.state.loading = true;
+            try {
+                const ok = await getProductionLiveSyncCoordinator().ensure(adapter, force);
+                if (!ok) throw new Error(getProductionLiveSyncCoordinator().getStatus().message || 'Current data could not be verified. Previous data has been retained.');
+                if (options.state) options.state.error = '';
+                return true;
+            } catch (error) {
+                if (options.state) options.state.error = String(error && error.message || error);
+                throw error;
+            } finally {
+                if (options.state) options.state.loading = false;
+            }
+        }
+
+        // Passive live refreshes never call the legacy loaders below: several of
+        // those also reconcile business records. Stage here, then let the shared
+        // revision coordinator commit only an unchanged, ready snapshot.
+        function getProductionLiveSyncSideContext() {
+            const view = getCurrentVisibleViewId();
+            const surfaces = [];
+            const add = (key) => { if (window.AgMetricLiveSyncRegistry.surfaces[key]) surfaces.push(key); };
+            if (view === 'request') {
+                add(`request:${activeReqTab}`);
+                if (requestDeliveryRecoveryOpen && canManageRequestDeliveryRecovery()) add('request:delivery-recovery');
+            }
+            if (view === 'sales-inventory' && productionInventoryTab === 'counting') add('sales-inventory:counting');
+            if (view === 'moves' && activeMovesTab === 'office' && normalizeInventoryOfficeApprovalType(activeInventoryOfficeApprovalType) === 'crop-roll') add('moves:crop-roll');
+            if (view === 'managers') {
+                add(`managers:${activeHomeTab}`);
+                if ([MANAGER_EVAL_REPORTS_VIEW, MANAGER_EVAL_REPORTS_2_VIEW].includes(activeHomeTab)) add('managers:eval-reports');
+                if (isCropRollManagerReviewActive()) add('managers:crop-roll');
+                if (selectedProductivityUser) add('managers:productivity');
+                if (activeHomeTab === MANAGER_DELIVERY_RECOVERY_VIEW && canManageRequestDeliveryRecovery()) add('request:delivery-recovery');
+            }
+            if (view === 'weather-hold' && canUseWeatherHoldRiskTools()) add('weather-hold:risk');
+            if (document.getElementById('bloomscapes-pending-dialog')?.open && canViewBloomscapesPendingOrders()) add('dialog:pending-orders');
+            // Footer data is visible even when the corresponding page is not.
+            if (currentUser && canAccessView('request')) add('badge:queue');
+            if (currentUser && (canAccessView('chat') || canAccessView('communication'))) add('badge:communications');
+            const shown = (id) => { const el = document.getElementById(id); return el && !el.classList.contains('hidden') && el.getAttribute('aria-hidden') !== 'true'; };
+            if (shown('dock-info-modal') || shown('dock-mistake-modal') || shown('dock-allocation-modal')) add('dialog:dock-team');
+            if (shown('request-modal') || shown('request-rep-modal') || shown('request-publish-modal') || shown('inventory-edit-request-modal')) add('dialog:request');
+            if (view === 'detail' && activeDetailTab === 'item-inquiry') add('dialog:item-inquiry');
+            if (shown('shear-list-modal')) add('dialog:shear');
+            if (shown('bloom-picker-modal')) add('dialog:bloom-picker');
+            if (shown('assign-modal') || shown('flyer-assignee-modal')) add('dialog:assignees');
+            if (shown('eval-task-modal')) add('dialog:eval-assignees');
+            if (['ncr-email-modal', 'grouped-bloom-ncr-recipient-modal', 'bloom-crop-update-modal', 'bloom-email-purpose-modal', 'bloom-share-modal', 'ncr-rep-outreach-modal', 'inventory-multi-action-email-modal'].some(shown)) add('dialog:recipients');
+            return {
+                view, surfaces: Array.from(new Set(surfaces)),
+                scope: getCurrentLoginCacheScopeKey(),
+                username: getCurrentChatUsername(),
+                evalInventoryRows: shouldLoadInventoryEditRequestsForEvalRows(),
+                productionType: String(productionWorkflowActive || ''),
+                locationWorkJobId: String(activeLocationWorkJobId || ''),
+                countType: getActiveSpreadCountType(),
+                productivityUser: normalizeProductivityUsername(selectedProductivityUser),
+                managerOrders: {
+                    level: managerOrdersState.level, sourceKey: managerOrdersState.sourceKey,
+                    batchId: managerOrdersState.selectedBatchId, assignees: Array.from(managerOrdersState.selectedAssigneeKeys || []),
+                    rowCount: managerOrdersState.rows.length, batchCount: managerOrdersState.batches.length
+                },
+                pendingOrderCount: bloomscapesPendingState.orders.length,
+                transactions: { action: inventoryTransactionHistoryState.action, search: inventoryTransactionHistoryState.search || managersSearchTerm, dateStart: inventoryTransactionHistoryState.dateStart, dateEnd: inventoryTransactionHistoryState.dateEnd },
+                transactionsKeyed: { selectedDate: managerTransactionsKeyedState.selectedDate, search: managerTransactionsKeyedState.search, dateCount: managerTransactionsKeyedState.allDates.length, fileCount: managerTransactionsKeyedState.files.length },
+                historical: { level: managerHistoricalReportState.level, name: managerHistoricalReportState.selectedCommonName, size: managerHistoricalReportState.selectedContSize, columns: managerHistoricalReportState.selectedColumns.slice(), dateStart: managerHistoricalReportState.dateStart, dateEnd: managerHistoricalReportState.dateEnd, search: managersSearchTerm, rowCount: managerHistoricalReportState.rows.length },
+                accessQuery: { subjectType: accessControlAdminState.viewMode, search: String(managersSearchTerm || '').trim(), role: accessControlAdminState.selectedRole === 'all' ? '' : accessControlAdminState.selectedRole, module: accessControlAdminState.selectedModule === 'all' ? '' : accessControlAdminState.selectedModule, subjectOffset: Number(accessControlAdminState.subjectOffset || 0), subjectLimit: Number(accessControlAdminState.subjectPageSize || 20), permissionOffset: Number(accessControlAdminState.columnOffset || 0), permissionLimit: Number(accessControlAdminState.columnPageSize || 8) },
+                codexTaskId: codexOpsState.activeTaskId
+            };
+        }
+
+        function createProductionLiveSyncSideAdapters() {
+            const api = window.AgMetricLiveSyncAdapters;
+            const registry = window.AgMetricLiveSyncRegistry;
+            const array = api.rows;
+            const read = async (table, query = 'select=*') => array(await fetchAllSupabaseRows(table, query), table);
+            const stateReady = (state, values) => Object.assign(state, values, { loaded: true, loading: false, error: '', lastLoadedAt: Date.now() });
+            const bindings = {
+                'side:settings': {
+                    stage: async () => {
+                        const rows = await read(APP_SEASON_SETTINGS_TABLE, `select=key,value,updated_by,updated_at&key=eq.${encodeURIComponent(APP_SEASON_SETTINGS_KEY)}`);
+                        const value = parseRemoteAppSeasonSettingsRow(rows[0]);
+                        if (!value) throw new Error('Current season settings are missing or invalid.');
+                        return value;
+                    },
+                    commit: (value) => { writeLocalAppSeasonSettings(value); appSeasonSettingsRemoteLoaded = true; }
+                },
+                'side:coverage': {
+                    enabled: () => canManageItemInquiryCoverage(),
+                    stage: async () => normalizeItemInquiryCoverage(await supabaseRpc('get_item_inquiry_coverage_v1', {}, { timeoutMs: 15000 })),
+                    commit: (value) => { itemInquiryCoverageState = value; }
+                },
+                'side:dockWorkflow': {
+                    stage: async () => {
+                        const [tripsResult, itemRows, issueRows, allocationRows] = await Promise.all([
+                            runDockTripStatusRequest('list'), read('ph_dock_item_status', 'select=*&order=unique_id.asc'),
+                            read('ph_dock_issue_status', 'select=*&order=issue_source_unique_id.asc'),
+                            read('ph_dock_issue_allocations', 'select=*&order=allocation_unique_id.asc')
+                        ]);
+                        const trips = api.keyed(array(tripsResult.data, 'Dock trips'), normalizeDockTeamInfo, (row) => normalizeDockTeamTripKey(row.tripnumber));
+                        const items = new Map(itemRows.map((row) => [normalizeDockItemUniqueId(row.unique_id || row.UNIQUE_ID), normalizeDockItemProgress(row)]).filter(([key]) => key));
+                        const issues = api.keyed(issueRows, normalizeDockIssueStatusRow, (row) => row.issueSourceUniqueId);
+                        const allocations = api.keyed(allocationRows, normalizeDockIssueAllocationRow, (row) => row.allocationUniqueId);
+                        const bySource = new Map();
+                        allocations.forEach((row) => {
+                            if (!bySource.has(row.issueSourceUniqueId)) bySource.set(row.issueSourceUniqueId, []);
+                            bySource.get(row.issueSourceUniqueId).push(row);
+                        });
+                        return { trips, items, issues, allocations, bySource };
+                    },
+                    commit: (value) => {
+                        dockTeamStatusByTrip = value.trips; dockItemProgressByUid = value.items;
+                        dockIssueStatusByUid = value.issues; dockIssueAllocationsById = value.allocations; dockIssueAllocationsBySourceUid = value.bySource;
+                        dockTeamStatusLoaded = dockItemProgressLoaded = dockIssueDataLoaded = true;
+                        dockTeamSchemaReady = dockItemSchemaReady = true;
+                        dockTeamStatusRenderVersion += 1;
+                        invalidateDockWorkflowResolvedState();
+                    }
+                },
+                'side:users': {
+                    stage: async () => {
+                        const rows = array(await supabaseFetch('ph_app_users', 'GET', null, 'select=*&order=username.asc'), 'App user directory');
+                        const sort = (values) => values.sort((a, b) => String(a.display || a.username || a).localeCompare(String(b.display || b.username || b), undefined, { sensitivity: 'base' }));
+                        const evalLabels = new Map();
+                        rows.forEach((row) => {
+                            const username = normalizeEvalAssignableUser(row.username || row.USERNAME || '');
+                            if (username) evalLabels.set(username, String(row.display_name || row.DISPLAY_NAME || formatAppUserDisplayName(username) || username));
+                        });
+                        return {
+                            rows, chat: rows.map(normalizeChatUser).filter(Boolean),
+                            generic: sort(rows.map(normalizeAssignableAppUserEntry).filter(Boolean)),
+                            flyer: sort(rows.map(normalizeFlyerAssignableUserEntry).filter(Boolean)),
+                            dock: sort(Array.from(new Set(rows.filter((row) => isDockAssignableRoleValue(row.role || row.ROLE)).map((row) => String(row.username || row.USERNAME || '').trim()).filter(Boolean)))),
+                            evalUsers: sort(Array.from(new Set(rows.filter((row) => isEvalRoleValue(row.role || row.ROLE || '')).map((row) => normalizeEvalAssignableUser(row.username || row.USERNAME || '')).filter((name) => name && !EVAL_TASK_INACTIVE_USERS.has(name))))),
+                            evalLabels,
+                            email: rows.map(normalizeAppEmailRecipientUserEntry).filter(Boolean),
+                            admin: rows.map(normalizeAdminRecipientUserEntry).filter(Boolean)
+                        };
+                    },
+                    commit: (value) => {
+                        departmentCalendarState.users = value.rows; chatUsers = value.chat;
+                        dockAssignableUsers = value.dock; assignableAppUsers = value.generic; assignableAppUsersLoaded = true;
+                        flyerAssignableUsers = value.flyer; evalAssignableUsers = value.evalUsers; evalAssignableUserLabels = value.evalLabels;
+                        evalAssignableUsersDirectoryResolved = true; evalAssignableUsersLastAttemptAt = Date.now();
+                        applyAppEmailRecipientUsersToRepGroups(value.email); appEmailRecipientUsersLoaded = true;
+                        applyAdminRecipientUsersToRepGroups(value.admin); appAdminRecipientUsersLoaded = true;
+                        applyEvalRecipientUsersToRepGroups(getEvalAssignableUserList());
+                        // Select values, checkbox state and unsaved text are owned
+                        // by their dialogs and are never reset by cache refresh.
+                    }
+                },
+                'side:avOptionEval': {
+                    stage: async () => array(await runAppApiSupabaseWrite(AV_OPTION_EVAL_REQUESTS_TABLE, 'GET', null, `select=${AV_OPTION_EVAL_REQUEST_SELECT_FIELDS}&order=created_at.desc&limit=750`, { timeoutMs: 22000 })).map(normalizeAvOptionEvalRequestRow).filter(Boolean),
+                    commit: (rows) => { avOptionEvalRequests = rows; avOptionEvalRequestsLoaded = true; avOptionEvalRequestsError = ''; }
+                },
+                'side:evalWork': {
+                    stage: async () => { const result = await evalWorkApi('list', {}, { timeoutMs: 20000 }); return { rows: array(result.data, 'Eval Work'), manager: result.manager === true }; },
+                    commit: (value) => { evalWorkRows = value.rows; evalWorkManager = value.manager || isEvalWorkManagerUser(); evalWorkLoaded = true; evalWorkError = ''; }
+                },
+                'side:locationWork': {
+                    // The protected list/get API restricts non-Dylan users to
+                    // their assignments. Only job creation is Dylan-only.
+                    enabled: (ctx) => !!ctx.username,
+                    scope: (ctx) => ctx.locationWorkJobId || '',
+                    stage: async (ctx) => {
+                        const rows = array((await locationWorkApi('list', { status: 'all' }, { timeoutMs: 20000 })).data, 'Location Work');
+                        const index = rows.findIndex((row) => String(row.id || '') === ctx.locationWorkJobId);
+                        if (index >= 0) {
+                            const detail = (await locationWorkApi('get', { jobId: ctx.locationWorkJobId }, { timeoutMs: 20000 })).data;
+                            if (!detail || String(detail.id || '') !== ctx.locationWorkJobId) throw new Error('Location Work detail returned an invalid response.');
+                            rows[index] = detail;
+                        }
+                        return rows;
+                    },
+                    commit: (rows) => { locationWorkRows = rows; locationWorkLoaded = true; locationWorkError = ''; }
+                },
+                'side:shear': {
+                    stage: async () => {
+                        const [rows, result] = await Promise.all([read(SHEAR_LIST_TABLE, `select=${SHEAR_LIST_SELECT_FIELDS}&status=eq.open&order=created_at.desc`), shearLocationWorkApi('list', { status: 'active' }, { timeoutMs: 20000 })]);
+                        const inquiries = array(result.data, 'Shear inquiries');
+                        // The list is authoritative; only refetch expanded details.
+                        const detailed = await Promise.all(inquiries.map(async (entry) => {
+                            if (!shearListState.openInquiryIds.has(String(entry.id || ''))) return entry;
+                            const detail = await shearLocationWorkApi('get', { inquiryId: entry.id }, { timeoutMs: 20000 });
+                            if (!detail.data || typeof detail.data !== 'object') throw new Error('Shear inquiry detail was not returned.');
+                            return detail.data;
+                        }));
+                        return { rows, inquiries: detailed };
+                    },
+                    commit: (value) => { stateReady(shearListState, value); }
+                },
+                'side:productionWorkflow': {
+                    enabled: (ctx) => isProductionWorkflowDriveType(ctx.productionType), scope: (ctx) => ctx.productionType,
+                    stage: (ctx) => read(PRODUCTION_WORKFLOW_ROWS_TABLE, `select=${PRODUCTION_WORKFLOW_ROWS_SELECT_FIELDS}&workflow_type=eq.${encodeURIComponent(ctx.productionType)}&status=eq.open&order=blockalpha.asc,locationcode.asc,updated_at.desc`),
+                    commit: (rows, ctx) => { stateReady(productionWorkflowState, { rows, workflowType: ctx.productionType }); }
+                },
+                'side:spreadCounts': {
+                    enabled: (ctx) => normalizeSpreadCountType(ctx.countType) !== 'bunch', scope: (ctx) => ctx.countType,
+                    stage: (ctx) => read(getActiveSpreadCountTableName(ctx.countType), `select=${SPREAD_COUNT_SELECT_FIELDS}&order=blockalpha.asc,locationcode.asc,row_order.asc,updated_at.desc`),
+                    commit: (rows, ctx) => { stateReady(spreadCountState, { rows, countType: normalizeSpreadCountType(ctx.countType) }); rebuildSpreadCountIndexes(); }
+                },
+                'side:bunchCounts': {
+                    enabled: (ctx) => normalizeSpreadCountType(ctx.countType) === 'bunch', scope: (ctx) => ctx.countType,
+                    stage: (ctx) => read(getActiveSpreadCountTableName(ctx.countType), `select=${SPREAD_COUNT_SELECT_FIELDS}&order=blockalpha.asc,locationcode.asc,row_order.asc,updated_at.desc`),
+                    commit: (rows, ctx) => { stateReady(spreadCountState, { rows, countType: normalizeSpreadCountType(ctx.countType) }); rebuildSpreadCountIndexes(); }
+                },
+                'side:cropRoll': {
+                    stage: async () => {
+                        const runs = await read(CROP_ROLL_RUNS_TABLE, `select=${CROP_ROLL_RUN_SELECT_FIELDS}&status=eq.${CROP_ROLL_STATUS_ACTIVE}&order=created_at.desc`);
+                        const run = runs[0] || null;
+                        const rowSets = await Promise.all([
+                            run ? read(CROP_ROLL_ROWS_TABLE, `select=${CROP_ROLL_ROW_SELECT_FIELDS}&run_id=eq.${encodeURIComponent(run.run_id)}&order=row_id.asc`) : [],
+                            read(CROP_ROLL_ROWS_TABLE, `select=${CROP_ROLL_ROW_SELECT_FIELDS}&run_id=eq.${encodeURIComponent(CROP_ROLL_LIVE_COMPLETION_RUN_ID)}&row_status=eq.${encodeURIComponent(CROP_ROLL_ROW_STATUS_COMPLETE)}&order=row_id.asc`)
+                        ]);
+                        return { run, rows: mergeCropRollRowsById(rowSets.flat()) };
+                    },
+                    commit: (value) => {
+                        cropRollActiveRun = value.run; cropRollRows = value.rows; cropRollSchemaReady = true;
+                        cropRollLoadError = cropRollOfficeCompletionLoadError = '';
+                        cropRollLastLoadedAt = cropRollOfficeCompletionLastLoadedAt = Date.now();
+                    }
+                },
+                'side:takeBack': {
+                    stage: async () => {
+                        const rows = (await read(TAKE_BACK_TABLE, `select=${TAKE_BACK_SELECT_FIELDS}&status=eq.open&order=added_at.desc`)).map(normalizeTakeBackRow).filter(Boolean);
+                        return { rows, byId: new Map(rows.map((row) => [row.UNIQUE_ID, row])) };
+                    },
+                    commit: (value) => { takeBackRows = value.rows; takeBackRowsById = value.byId; takeBackDataLoaded = true; takeBackSchemaReady = true; }
+                },
+                'side:po': {
+                    stage: async () => array(await fetchPoManagementRows(), 'PO Management'),
+                    commit: (rows) => { stateReady(poManagementState, { rows }); }
+                },
+                'side:chat': {
+                    scope: (ctx) => ctx.username,
+                    stage: async (ctx) => {
+                        const own = array(await chatApiGet(CHAT_PARTICIPANTS_TABLE, `select=*&username=eq.${encodeURIComponent(ctx.username)}&is_archived=eq.false&order=joined_at.desc`, 'Chat participants')).map(normalizeChatParticipant).filter(Boolean);
+                        const ids = Array.from(new Set(own.map((entry) => entry.conversationId).filter(Boolean)));
+                        if (!ids.length) return { conversations: [], participants: own, messages: [], ids };
+                        const idList = ids.join(',');
+                        const [conversations, participants, messages] = await Promise.all([
+                            chatApiGet(CHAT_CONVERSATIONS_TABLE, `select=*&id=in.(${idList})&order=updated_at.desc`, 'Chat conversations'),
+                            chatApiGet(CHAT_PARTICIPANTS_TABLE, `select=*&conversation_id=in.(${idList})&order=display_name.asc`, 'Chat participants'),
+                            chatApiGet(CHAT_MESSAGES_TABLE, `select=*&conversation_id=in.(${idList})&order=created_at.desc&limit=500`, 'Chat messages')
+                        ]);
+                        return { ids, conversations: array(conversations).map(normalizeChatConversation).filter(Boolean), participants: array(participants).map(normalizeChatParticipant).filter(Boolean), messages: array(messages).map(normalizeChatMessage).filter(Boolean).sort((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0)) };
+                    },
+                    commit: (value) => {
+                        chatConversations = value.conversations; chatParticipants = value.participants; chatMessages = value.messages; chatDataLoaded = true;
+                        if (activeChatConversationId && !value.ids.includes(activeChatConversationId)) activeChatConversationId = '';
+                        // Read receipts and notifications belong to explicit user activity, not passive hydration.
+                    }
+                },
+                'side:calendar': {
+                    stage: async () => (await read(DEPARTMENT_CALENDAR_EVENTS_TABLE, 'select=*&order=start_at.asc')).map(normalizeDepartmentCalendarEvent).filter(Boolean),
+                    commit: (events) => { stateReady(departmentCalendarState, { events }); }
+                },
+                'side:weather': {
+                    stage: async () => {
+                        const cutoff = new Date(Date.now() - 45 * 86400000).toISOString();
+                        const [weatherRows, dailyWeatherRows] = await Promise.all([
+                            read('ph_weather_hourly', `select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,wind_direction_deg,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&observed_at=gte.${encodeURIComponent(cutoff)}&order=observed_at.desc`),
+                            read('ph_weather_daily', `select=date,temperature_high_f,temperature_low_f,daily_gdd_base_50,precipitation_in,wind_speed_mph,wind_direction_deg&station_key=eq.park_hill_ok&date=gte.${cutoff.slice(0, 10)}&order=date.desc`)
+                        ]);
+                        return { weatherRows, dailyWeatherRows };
+                    },
+                    commit: (value) => { stateReady(weatherHoldState, value); }
+                },
+                'side:holdRisk': {
+                    enabled: () => canUseWeatherHoldRiskTools(),
+                    stage: async () => {
+                        const [holdSummaries, holdProfiles] = await Promise.all([read('ph_hold_stop_itemcode_summaries', 'select=*&order=itemcode.asc'), read('ph_hold_learning_profiles', 'select=*&order=itemcode.asc')]);
+                        return { holdSummaries, holdProfiles };
+                    },
+                    commit: (value) => { Object.assign(weatherHoldState, value, { riskLoaded: true, riskError: '', riskLastLoadedAt: Date.now() }); }
+                },
+                'side:deliveryRecovery': {
+                    enabled: () => canManageRequestDeliveryRecovery(),
+                    stage: async () => {
+                        const [rows, statuses] = await Promise.all([supabaseRpc('get_request_delivery_recovery_queue', {}, { timeoutMs: 30000 }), read('ph_request_delivery_status', 'select=delivery_status')]);
+                        const summary = { pending: 0, processing: 0, failed: 0, delivered: 0 };
+                        statuses.forEach((row) => { const status = String(row.delivery_status || '').toLowerCase(); if (Object.hasOwn(summary, status)) summary[status] += 1; });
+                        return { rows: array(rows), summary };
+                    },
+                    commit: (value) => { requestDeliveryRecoveryRows = value.rows; requestDeliveryRecoverySummary = value.summary; requestDeliveryRecoveryError = ''; }
+                },
+                'side:managerOrders': {
+                    enabled: () => canViewManagerOrders(), scope: (ctx) => [ctx.managerOrders.level, ctx.managerOrders.sourceKey, ctx.managerOrders.batchId, ctx.managerOrders.assignees],
+                    stage: async (ctx) => {
+                        const current = ctx.managerOrders;
+                        if (current.level === 'detail' && current.batchId) {
+                            let cursor = null; let result; const rows = [];
+                            do {
+                                result = await supabaseRpc('get_manager_order_batch_v1', { p_batch_id: current.batchId, p_assignedto_keys: current.assignees, p_after_itemcode: cursor?.itemcode || null, p_after_unique_id: cursor?.uniqueId || null, p_limit: 100 }, { timeoutMs: 20000 });
+                                rows.push(...array(result?.rows, 'Order batch')); cursor = result.nextCursor;
+                            } while (result.hasMore && cursor && rows.length < Math.max(100, current.rowCount));
+                            return { batch: result.batch || null, rows, assignees: array(result.assignees), unmatchedItems: array(result.unmatchedItems), unmatchedItemsTruncated: !!result.unmatchedItemsTruncated, filteredRowCount: Number(result.filteredRowCount || 0), rowsHasMore: !!result.hasMore, rowsNextCursor: cursor };
+                        }
+                        if (current.sourceKey && current.level === 'batches') {
+                            let cursor = null; let result; const batches = [];
+                            do {
+                                result = await supabaseRpc('get_manager_order_batches_v1', { p_source_key: current.sourceKey, p_before_imported_at: cursor?.importedAt || null, p_before_batch_id: cursor?.batchId || null, p_limit: 25 }, { timeoutMs: 15000 });
+                                batches.push(...array(result?.batches, 'Order batches')); cursor = result.nextCursor;
+                            } while (result.hasMore && cursor && batches.length < Math.max(25, current.batchCount));
+                            return { batches, batchesHasMore: !!result.hasMore, batchesNextCursor: cursor };
+                        }
+                        const result = await supabaseRpc('get_manager_order_sources_v1', {}, { timeoutMs: 15000 });
+                        return { sources: array(result?.sources, 'Order sources') };
+                    },
+                    commit: (value) => { stateReady(managerOrdersState, value); }
+                },
+                'side:managerEvalSettings': {
+                    enabled: () => canViewManagerEvalReports() || canViewManagerEvalReports2(),
+                    stage: async () => normalizeManagerEvalReportSettings(await supabaseRpc('get_eval_report_settings', {}, { timeoutMs: 15000 })),
+                    commit: (value) => { managerEvalReportSettings = value; stateReady(managerEvalReportSettingsState, { fallback: false }); invalidateManagerEvalReportCache(); }
+                },
+                'side:ncr': {
+                    stage: async () => api.keyed(await read(NCR_COMPLETIONS_TABLE, `select=${NCR_COMPLETION_SELECT_FIELDS}&order=completed_at.desc`), (row) => row, (row) => String(row.source_unique_id || '').trim()),
+                    commit: (value) => { ncrCompletionRecordsByUid = value; ncrCompletionsLoaded = true; ncrCompletionSchemaReady = true; }
+                },
+                'side:productivity': {
+                    enabled: (ctx) => !!ctx.productivityUser, scope: (ctx) => ctx.productivityUser,
+                    stage: async (ctx) => mergeProductivityHistoryRows([], await read(PRODUCTIVITY_HISTORY_TABLE, `select=${PRODUCTIVITY_HISTORY_SELECT_FIELDS}&completed_by_username=eq.${encodeURIComponent(ctx.productivityUser)}&order=completed_at.desc`)).filter((row) => isSupportedProductivitySourceKind(firstNonEmptyValue(row?.source_kind, row?.snapshot?.source_kind, ''))),
+                    commit: (rows, ctx) => { productivityHistoryByUser.set(ctx.productivityUser, rows); stateReady(getProductivityHistoryState(ctx.productivityUser), { loadedAt: new Date().toISOString(), schemaReady: true }); }
+                },
+                'side:transactions': {
+                    enabled: () => canViewInventoryTransactionHistory(),
+                    scope: (ctx) => ctx.transactions,
+                    stage: async (ctx) => {
+                        const state = ctx.transactions;
+                        const result = await postGoogleScriptRawJsonPayload({ type: 'inventory_transaction_history', action: state.action || 'all', search: state.search || managersSearchTerm || '', dateStart: state.dateStart || '', dateEnd: state.dateEnd || '', limit: 500, role: currentRole || '', actor: { username: String(currentUser || '').trim(), display: String(currentUserDisplay || currentUser || '').trim(), email: getArgosInventoryTransactionActorEmail() }, clientVersion: String(APP_SHELL_VERSION || APP_SHELL_BUILD || '').trim() }, Math.max(REQUEST_EMAIL_SCRIPT_TIMEOUT_MS || 0, 45000), 'Transaction History');
+                        if (!result || result.ok === false || result.httpOk === false) throw new Error(result?.message || 'Transaction history could not load.');
+                        return array(result.rows, 'Transaction history');
+                    },
+                    commit: (rows) => { stateReady(inventoryTransactionHistoryState, { rows }); }
+                },
+                'side:transactionsKeyed': {
+                    enabled: () => canViewTransactionsKeyed(), scope: (ctx) => [ctx.transactionsKeyed.selectedDate, ctx.transactionsKeyed.search],
+                    stage: async (ctx) => {
+                        const state = ctx.transactionsKeyed;
+                        const result = await supabaseRpc('get_transactions_keyed_dashboard', { selected_date: state.selectedDate || null, creator_search: state.search || '', all_dates_offset: 0, all_dates_limit: Math.max(250, state.dateCount), files_offset: 0, files_limit: Math.max(50, state.fileCount) }, { timeoutMs: 30000 });
+                        for (const key of ['availableDates', 'dateMetrics', 'allDates', 'files']) array(result?.[key], key);
+                        return result;
+                    },
+                    commit: (value) => {
+                        const keys = ['summary', 'availableDates', 'dateMetrics', 'allDates', 'files', 'allDatesHasMore', 'filesHasMore', 'allDatesTotal', 'filesTotal'];
+                        stateReady(managerTransactionsKeyedState, Object.fromEntries(keys.map((key) => [key, value[key]])));
+                    }
+                },
+                'side:historical': {
+                    enabled: () => canViewManagerHistoricalReport(), scope: (ctx) => [ctx.historical.level, ctx.historical.name, ctx.historical.size, ctx.historical.columns, ctx.historical.dateStart, ctx.historical.dateEnd, ctx.historical.search],
+                    stage: async (ctx) => {
+                        const state = ctx.historical;
+                        if (state.level === 'names') return { commonNames: array(await supabaseRpc('search_historical_inventory_common_names', { search_text: state.search || '', result_limit: 100 }, { timeoutMs: 30000 })) };
+                        if (state.level === 'sizes') return { containerSizes: array(await supabaseRpc('get_historical_inventory_container_sizes', { common_name: state.name }, { timeoutMs: 30000 })) };
+                        let cursor = {}; let result; const rows = [];
+                        do {
+                            result = await supabaseRpc('get_historical_inventory_rows', { common_name: state.name, container_size: state.size, selected_columns: state.columns, start_date: state.dateStart || null, end_date: state.dateEnd || null, cursor_report_date: cursor.report_date || null, cursor_unique_id: cursor.unique_id || null, result_limit: 100 }, { timeoutMs: 45000 });
+                            rows.push(...array(result?.rows, 'Historical inventory')); cursor = result.next_cursor || {};
+                        } while (result.has_more && result.next_cursor && rows.length < Math.max(100, state.rowCount));
+                        return { rows, loadedColumns: array(result.selected_columns), hasMore: !!result.has_more, nextCursor: result.next_cursor || null };
+                    },
+                    commit: (value) => { stateReady(managerHistoricalReportState, value); }
+                },
+                'side:access': {
+                    enabled: () => canViewAccessControl(), scope: (ctx) => ctx.accessQuery,
+                    stage: async (ctx) => {
+                        const value = normalizeAccessControlMatrix(await supabaseRpc(isKaylaLimitedAccessManagerUser() ? 'get_limited_access_control_matrix_v1' : 'get_access_control_matrix_v2', { p_query: ctx.accessQuery }, { timeoutMs: 20000 }));
+                        if (!value) throw new Error('ACCESS_CONTROL_RESPONSE_INVALID');
+                        return value;
+                    },
+                    commit: (value) => { stateReady(accessControlAdminState, { data: value, capabilities: value.capabilities }); }
+                },
+                'side:codex': {
+                    enabled: (ctx) => ctx.username === 'dylan_collyge', scope: (ctx) => ctx.codexTaskId,
+                    stage: async (ctx) => {
+                        const capabilities = await invokeCodexOpsApi('capabilities', {}, 20000);
+                        if (capabilities?.canView !== true || capabilities.submissionEnabled !== true) return { capabilities, tasks: [], activeTask: null };
+                        const [tasks, task] = await Promise.all([invokeCodexOpsApi('list', { limit: 50 }, 25000), ctx.codexTaskId ? invokeCodexOpsApi('get', { taskId: ctx.codexTaskId, eventLimit: 200 }, 25000) : null]);
+                        return { capabilities, tasks: array(tasks), activeTask: task };
+                    },
+                    commit: (value) => { Object.assign(codexOpsState, value, { capabilitiesLoaded: true, tasksLoaded: true, error: '' }); }
+                },
+                'side:pendingOrders': {
+                    enabled: () => canViewBloomscapesPendingOrders(),
+                    stage: async (ctx) => {
+                        if (!canViewBloomscapesPendingOrders()) throw new Error('Private order access is unavailable.');
+                        const orders = []; let result;
+                        do {
+                            const last = orders[orders.length - 1];
+                            result = await supabaseRpc('bloomscapes_pending_command', { p_action: 'state', p_payload: last ? { beforeTime: last.created_at, beforeId: last.id } : {}, p_request_id: null }, { timeoutMs: 20000 });
+                            if (result?.mode !== 'pending-unpaid' || result.paymentEnabled !== false || result.stockReserved !== false) throw new Error('Unexpected pending-order response.');
+                            orders.push(...array(result.orders, 'Pending orders'));
+                        } while (result.orders.length === 25 && orders.length < Math.max(25, ctx.pendingOrderCount));
+                        return { orders, more: result.orders.length === 25 };
+                    },
+                    commit: (value) => { if (canViewBloomscapesPendingOrders()) Object.assign(bloomscapesPendingState, value, { error: '' }); }
+                }
+            };
+            return api.create(bindings, registry);
+        }
+
         async function loadAvOptionEvalRequests(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('avOptionEval', force).then(() => avOptionEvalRequests);
             if (avOptionEvalRequestsLoaded && !force) return avOptionEvalRequests;
             if (avOptionEvalRequestsLoading && loadAvOptionEvalRequests._promise) return loadAvOptionEvalRequests._promise;
             avOptionEvalRequestsLoading = true;
@@ -31627,7 +32203,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.08.01').trim() || 'V2026.09.08.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.08.02').trim() || 'V2026.09.08.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31830,6 +32406,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function refreshCurrentSeasonSettingsFromRemote(options = {}) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('settings', !!options.force).then(() => getCurrentAppSeasonSettings());
             if (appSeasonSettingsRemoteLoading) return getCurrentAppSeasonSettings();
             if (appSeasonSettingsRemoteLoaded && !(options && options.force)) return getCurrentAppSeasonSettings();
             appSeasonSettingsRemoteLoading = true;
@@ -32317,6 +32894,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function loadItemInquiryCoverage(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('coverage', force, { state: itemInquiryCoverageState }).then(() => itemInquiryCoverageState);
             if (!canManageItemInquiryCoverage()) return null;
             if (itemInquiryCoverageState.loading || (itemInquiryCoverageState.loaded && !force)) return itemInquiryCoverageState;
             itemInquiryCoverageState.loading = true;
@@ -33291,6 +33869,214 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             avHotPriceKeys: { table: 'ph_view_av_hot_price_keys', sourceTable: 'ph_view_av_hot_price_keys', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'ph_av_notes', sourceTable: 'ph_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
         };
+
+        // Native-auth production reads use revision-fenced snapshots. This is separate
+        // from socket diagnostics and never considers a connection proof of freshness.
+        let productionLiveSyncCoordinator = null;
+        let productionLiveSyncSideAdapters = null;
+        let productionLiveSyncRendering = false;
+        let productionLiveSyncRenderTimer = null;
+        let productionLiveSyncDraftChanged = false;
+
+        function canUseProductionLiveSync() {
+            return !!(nativeAuthSessionActive && nativeAuthProfile?.id && currentUser
+                && String(nativeAuthProfile.username || '').trim().toLowerCase() === String(currentUser).trim().toLowerCase()
+                && window.AgMetricLiveSync && window.AgMetricLiveSyncRegistry);
+        }
+
+        function createProductionCoreLiveAdapter(key) {
+            // AV is a projection of the same all-season master already needed by
+            // its joined views. Read it once, then derive AV in processAndLoadData.
+            if (key === 'avOpen') key = 'master';
+            const definition = DATASET_DEFINITIONS[key];
+            if (!definition) throw new Error(`Unknown live dataset: ${key}`);
+            const querySource = definition.fullQuery || definition.initialQuery || 'select=*';
+            const query = typeof querySource === 'function' ? querySource('full', {}) : querySource;
+            const season = key === 'master' ? getCurrentAppSeasonSettings() : null;
+            return {
+                // An off-screen settings refresh may not have a master revision
+                // to validate. Re-entering inventory must then recheck its
+                // season-derived collections even if physical stock is unchanged.
+                id: `core:${key}`, cacheKey: JSON.stringify([key, definition.table, query, season && [season.seasonCode, season.salesYear]]),
+                sourceKeys: window.AgMetricLiveSyncRegistry.getSourceKeys([`core:${key}`]),
+                stage: async () => {
+                    // No first-page hydration, error-to-empty fallback or merge with
+                    // absent old rows: only a complete authoritative read can commit.
+                    const rows = await fetchAllSupabaseRows(definition.table, query);
+                    if (!Array.isArray(rows)) throw new Error(`${key} returned an invalid data snapshot.`);
+                    return { key, payload: buildDatasetPayload(key, rows), rowCount: rows.length };
+                }
+            };
+        }
+
+        function getProductionLiveSyncContext() {
+            const visible = !document.hidden;
+            if (!canUseProductionLiveSync()) return { scope: '', visible, online: navigator.onLine !== false, adapters: [] };
+            const context = getProductionLiveSyncSideContext();
+            const registry = window.AgMetricLiveSyncRegistry;
+            const view = registry.views[context.view] ? context.view : 'home';
+            context.scope = JSON.stringify([nativeAuthProfile.id, currentUser, currentRole, getCurrentLoginCacheScopeKey()]);
+            if (!productionLiveSyncSideAdapters) productionLiveSyncSideAdapters = createProductionLiveSyncSideAdapters();
+            const adapters = [
+                ...registry.getCoreKeys(view, context).filter((key) => !RETIRED_DATASET_KEYS.has(key)).map(createProductionCoreLiveAdapter),
+                ...productionLiveSyncSideAdapters.getViewAdapters(view, context)
+            ];
+            return { ...context, scope: context.scope, viewKey: JSON.stringify([view, context.surfaces]), visible, online: navigator.onLine !== false, adapters };
+        }
+
+        function renderProductionDataFreshness(status) {
+            let indicator = document.getElementById('live-data-freshness');
+            if (!indicator && document.body) {
+                indicator = document.createElement('button');
+                indicator.id = 'live-data-freshness'; indicator.type = 'button';
+                indicator.setAttribute('aria-live', 'polite');
+                indicator.style.cssText = 'position:fixed;right:10px;top:calc(env(safe-area-inset-top,0px) + 4px);z-index:205;border:1px solid #72bd98;border-radius:12px;padding:3px 8px;font-size:11px;line-height:16px;max-width:62vw;background:#082319;color:#dcfce7;box-shadow:0 1px 4px #0005';
+                indicator.onclick = () => {
+                    const current = productionLiveSyncCoordinator?.getStatus() || status;
+                    showToast('Data freshness', `${current.state}. ${current.message || ''} ${current.lastVerifiedAt ? `Last verified ${new Date(current.lastVerifiedAt).toLocaleString()}.` : 'No verified snapshot in this session yet.'}${productionLiveSyncDraftChanged ? ' Data changed while your edit was open. Your draft has been kept; review the latest source before saving.' : ''}`);
+                    productionLiveSyncCoordinator?.signal('status-tap', 0);
+                };
+                document.body.appendChild(indicator);
+            }
+            if (!indicator) return;
+            indicator.hidden = !canUseProductionLiveSync();
+            const time = status.lastVerifiedAt ? new Date(status.lastVerifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'not verified';
+            indicator.textContent = `${status.state} · ${time}${productionLiveSyncDraftChanged ? ' · Edit needs review' : ''}`;
+            indicator.title = status.message || 'Data freshness is verified independently of the live connection.';
+            indicator.style.background = ['Needs attention', 'Importing'].includes(status.state) ? '#713f12' : status.state === 'Offline' ? '#7f1d1d' : '#082319';
+        }
+
+        function hasProductionLiveSyncDraft() {
+            const active = document.activeElement;
+            if (active?.matches?.('textarea,[contenteditable="true"]')) return true;
+            const view = getCurrentVisibleViewId();
+            if (view === 'detail') return true;
+            // Preserve all visible data entry dialogs, not only the focused input.
+            return Array.from(document.querySelectorAll('dialog[open], [id$="-modal"]')).some((element) =>
+                !element.classList.contains('hidden') && element.getClientRects().length && element.querySelector('input:not([type="hidden"]),textarea,select,[contenteditable="true"]'));
+        }
+
+        function scheduleProductionLiveSyncRender() {
+            if (productionLiveSyncRenderTimer) return;
+            productionLiveSyncRenderTimer = setTimeout(() => {
+                productionLiveSyncRenderTimer = null;
+                if (document.hidden || !canUseProductionLiveSync()) return;
+                const view = getCurrentVisibleViewId();
+                const viewKind = window.AgMetricLiveSyncRegistry.views[view]?.kind;
+                // Footer refreshes must never rebuild static entry forms such as Hours.
+                if (viewKind === 'static' || viewKind === 'navigation') return;
+                if (hasProductionLiveSyncDraft()) {
+                    productionLiveSyncDraftChanged = true;
+                    renderProductionDataFreshness(productionLiveSyncCoordinator.getStatus());
+                    return;
+                }
+                const focused = document.activeElement;
+                // A live search remains the user's draft too; data is refreshed behind it.
+                if (focused?.matches?.('input,select,[contenteditable="true"]')) {
+                    productionLiveSyncDraftChanged = true;
+                    return;
+                }
+                productionLiveSyncDraftChanged = false;
+                const scroller = document.getElementById('main-scroll-area');
+                const scrollTop = scroller?.scrollTop || 0;
+                productionLiveSyncRendering = true;
+                try { markViewDirty(view); renderViewContent(view, false, true); }
+                finally { productionLiveSyncRendering = false; if (scroller) scroller.scrollTop = scrollTop; }
+            }, 150);
+        }
+
+        function getProductionLiveSyncCoordinator() {
+            if (productionLiveSyncCoordinator) return productionLiveSyncCoordinator;
+            if (!canUseProductionLiveSync()) return null;
+            productionLiveSyncCoordinator = window.AgMetricLiveSync.createCoordinator({
+                getContext: getProductionLiveSyncContext,
+                readRevisions: (keys) => supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000 }),
+                concurrency: isTouchConstrainedDevice() ? 1 : 2,
+                onStageStart: (context, metadata) => {
+                    productionLiveSyncReadGeneration += 1;
+                    productionLiveSyncReadPermissionVersion = String(metadata.permissionVersion || '');
+                },
+                onStatus: renderProductionDataFreshness,
+                onPermissionChange: () => refreshNativeRoleAndCapabilities('live-permissions'),
+                commitSnapshots: (snapshots, context, metadata) => {
+                    const payload = { _verifiedLiveSync: true };
+                    const core = snapshots.filter(({ adapter }) => adapter.id.startsWith('core:'));
+                    // Settings and operational maps are applied in the same JS turn.
+                    snapshots.filter(({ adapter }) => adapter.id.startsWith('side:')).forEach(({ adapter, value }) => adapter.commit(value));
+                    core.forEach(({ value }) => Object.assign(payload, value.payload));
+                    const seasonChanged = snapshots.some(({ adapter }) => adapter.id === 'side:settings');
+                    const masterState = getDatasetState('master');
+                    const masterRevision = metadata.sources.get('ph_master_inventory');
+                    const canReuseMaster = masterState.fullLoaded && masterState.liveVerifiedScope === context.scope
+                        && masterState.liveVerifiedPermission === metadata.permissionVersion
+                        && masterRevision?.state === 'ready' && masterState.liveVerifiedRevision === masterRevision.revision;
+                    if (seasonChanged && !Object.prototype.hasOwnProperty.call(payload, 'data') && canReuseMaster) {
+                        // Season changes alter derived AV/current-season collections,
+                        // not the already-verified all-season master snapshot itself.
+                        payload.data = fullInventory.map((row) => ({ ...row }));
+                    }
+                    core.forEach(({ value }) => Object.assign(getDatasetState(value.key), {
+                        initialLoaded: true, fullLoaded: true, firstPagePreviewLoaded: false, lastLoadedAt: new Date().toISOString(),
+                        liveVerifiedScope: context.scope, liveVerifiedPermission: metadata.permissionVersion,
+                        liveVerifiedRevision: metadata.sources.get(DATASET_DEFINITIONS[value.key].sourceTable || DATASET_DEFINITIONS[value.key].table)?.revision
+                    }));
+                    if (core.length || Object.prototype.hasOwnProperty.call(payload, 'data')) processAndLoadData(payload);
+                    if (core.some(({ value }) => value.key === 'warehouseAssignedItems')) applyEvalRecipientUsersToRepGroups(getEvalAssignableUserList());
+                    if (core.some(({ value }) => value.key === 'master')) Object.assign(getDatasetState('avOpen'), getDatasetState('master'));
+                    invalidateResolvedViewStateCaches();
+                    TRACKED_VIEW_IDS.forEach(markViewDirty);
+                    if (core.length) persistCurrentCache();
+                    scheduleProductionLiveSyncRender();
+                },
+                subscribe: (changed, reconnected) => {
+                    const client = getSupabaseBrowserClient();
+                    const channel = client.channel(`dataset-revisions:${nativeAuthProfile.id}`)
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' }, changed)
+                        .subscribe((state) => { if (state === 'SUBSCRIBED') reconnected(); });
+                    return () => { client.removeChannel(channel).catch(() => {}); };
+                }
+            });
+            return productionLiveSyncCoordinator;
+        }
+
+        function signalProductionLiveSync(reason = 'view-entry', delay = 0) {
+            if (document.hidden) { productionLiveSyncCoordinator?.suspend(); return; }
+            getProductionLiveSyncCoordinator()?.signal(reason, delay);
+        }
+
+        function resetProductionLiveSync() {
+            productionPermissionDrafts = null;
+            setProductionPermissionCheckState('');
+            productionLiveSyncReadAuthEpoch += 1;
+            productionLiveSyncReadGeneration += 1;
+            productionLiveSyncReadPermissionVersion = '';
+            productionLiveSyncCoordinator?.reset();
+            productionLiveSyncSideAdapters = null;
+            productionLiveSyncDraftChanged = false;
+            if (productionLiveSyncRenderTimer) clearTimeout(productionLiveSyncRenderTimer);
+            productionLiveSyncRenderTimer = null;
+            const indicator = document.getElementById('live-data-freshness');
+            if (indicator) indicator.hidden = true;
+        }
+
+        ['focus', 'pageshow', 'online', 'offline'].forEach((eventName) => {
+            window.addEventListener(eventName, () => signalProductionLiveSync(eventName, 0), { passive: true });
+        });
+        document.addEventListener('visibilitychange', () => signalProductionLiveSync('visibility', 0), { passive: true });
+        window.addEventListener('pagehide', () => productionLiveSyncCoordinator?.suspend(), { passive: true });
+        document.addEventListener('focusout', () => {
+            if (productionLiveSyncDraftChanged) scheduleProductionLiveSyncRender();
+        }, { passive: true });
+        // WebKit does not necessarily focus a tapped Cancel button, so closing
+        // an editor cannot depend on focusout to reveal the committed snapshot.
+        ['click', 'close', 'toggle'].forEach((eventName) => {
+            document.addEventListener(eventName, () => {
+                if (productionLiveSyncDraftChanged) scheduleProductionLiveSyncRender();
+            }, { capture: true, passive: true });
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && productionLiveSyncDraftChanged) scheduleProductionLiveSyncRender();
+        }, { capture: true, passive: true });
 
         const VIEW_LOAD_UI = {
             managers: { container: 'managers-content' },
@@ -34657,6 +35443,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function loadEvalWorkAssignments(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('evalWork', force).then(() => evalWorkRows);
             if (evalWorkLoading) return evalWorkRows;
             if (evalWorkLoaded && !force) return evalWorkRows;
             if (!currentUser) return [];
@@ -36099,6 +36886,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function loadRequestDeliveryRecoveryQueue(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('deliveryRecovery', force).then((ok) => { refreshRequestDeliveryRecoveryUi(); return ok; });
             if (!canManageRequestDeliveryRecovery() || requestDeliveryRecoveryLoading) return false;
             if (!force && requestDeliveryRecoveryRows.length) {
                 refreshRequestDeliveryRecoveryUi();
@@ -36542,10 +37330,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     dockContSizeSearchTerm,
                     selectedDockLocationCodes: appFilterSetToArray(selectedDockLocationCodes),
                     dockLocationSearchTerm,
-                    selectedDockReps: appFilterSetToArray(selectedDockReps),
+                    ...captureDockRepCustomerFilterState(),
                     dockRepSearchTerm,
-                    selectedDockCustomers: appFilterSetToArray(selectedDockCustomers),
-                    dockCustomerSearchTerm
+                    dockCustomerSearchTerm,
+                    dockColumnFilters: cloneDockColumnFilters(dockColumnFilters)
                 },
                 ncr: {
                     reviewSearchTerm,
@@ -36828,10 +37616,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 dockContSizeSearchTerm = appFilterText(docks.dockContSizeSearchTerm, '');
                 if (Array.isArray(docks.selectedDockLocationCodes)) selectedDockLocationCodes = appFilterArrayToSet(docks.selectedDockLocationCodes);
                 dockLocationSearchTerm = appFilterText(docks.dockLocationSearchTerm, '');
-                if (Array.isArray(docks.selectedDockReps)) selectedDockReps = appFilterArrayToSet(docks.selectedDockReps);
+                restoreDockRepCustomerFilterState(docks);
                 dockRepSearchTerm = appFilterText(docks.dockRepSearchTerm, '');
-                if (Array.isArray(docks.selectedDockCustomers)) selectedDockCustomers = appFilterArrayToSet(docks.selectedDockCustomers);
                 dockCustomerSearchTerm = appFilterText(docks.dockCustomerSearchTerm, '');
+                dockColumnFilters = cloneDockColumnFilters(docks.dockColumnFilters || {});
+                dockColumnFilterDrafts = cloneDockColumnFilters(dockColumnFilters);
+                dockColumnFilterDropdownOpen = false;
                 dockGenusFilterOpen = false;
                 dockContSizeFilterOpen = false;
                 dockLocationFilterOpen = false;
@@ -37189,16 +37979,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!response.ok) throw new Error(await getResponseError(response, `Supabase authenticated read failed (${response.status})`));
                 const text = await response.text();
                 const rows = text ? JSON.parse(text) : [];
+                if (!Array.isArray(rows)) throw new Error(`${safeTable} returned an invalid row response; previous verified data was retained.`);
                 return {
-                    rows: Array.isArray(rows) ? rows : [],
+                    rows,
                     total: parseSupabaseContentRangeTotal(response),
                     authSource: 'native'
                 };
             }
 
             const rows = await runAppApiSupabaseWrite(safeTable, 'GET', null, String(queryString || '').trim(), { timeoutMs });
+            if (!Array.isArray(rows)) throw new Error(`${safeTable} returned an invalid row response; previous verified data was retained.`);
             return {
-                rows: Array.isArray(rows) ? rows : [],
+                rows,
                 total: null,
                 authSource: 'app-api'
             };
@@ -37633,6 +38425,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (RETIRED_DATASET_KEYS.has(String(key || '').trim())) return false;
             const definition = DATASET_DEFINITIONS[key];
             if (!definition) return false;
+            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+                return getProductionLiveSyncCoordinator().ensure(createProductionCoreLiveAdapter(key), !!options.force);
+            }
             const wantsFull = mode === 'full';
             const state = getDatasetState(key);
             if (isDatasetFrozenDuringManualSync(key, mode)) {
@@ -46031,7 +46826,7 @@ let avTopControlsRenderToken = 0;
         }
 
         async function pollReclassDeliveryJobs() {
-            if (reclassDeliveryPollActive) return false;
+            if (document.hidden || reclassDeliveryPollActive) return false;
             const actor = getCurrentReclassDeliveryActor();
             if (!actor) {
                 renderReclassDeliveryStatusTray();
@@ -46046,6 +46841,7 @@ let avTopControlsRenderToken = 0;
             reclassDeliveryPollActive = true;
             try {
                 for (const job of activeJobs) {
+                    if (document.hidden || getCurrentReclassDeliveryActor() !== actor) break;
                     let result = null;
                     try {
                         result = String(job.sourceView || '').trim().toLowerCase() === 'drive'
@@ -46057,6 +46853,7 @@ let avTopControlsRenderToken = 0;
                     } catch (error) {
                         continue;
                     }
+                    if (document.hidden || getCurrentReclassDeliveryActor() !== actor) break;
                     if (!result || !result.status || result.status === 'missing') continue;
                     const nextStatus = String(result.status || job.status || 'queued').toLowerCase();
                     const update = {
@@ -46158,6 +46955,10 @@ let avTopControlsRenderToken = 0;
             void pollReclassDeliveryJobs();
             if (!reclassDeliveryPollTimer) reclassDeliveryPollTimer = window.setInterval(pollReclassDeliveryJobs, 5000);
         }
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) void pollReclassDeliveryJobs();
+        }, { passive: true });
 
         async function postArgosInventoryTransactionPayload(payload) {
             if (isProtectedDriveReclassPayload(payload)) {
@@ -50222,7 +51023,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getFlyerAssignableUserOptions(extraNames = []) {
             const map = new Map();
-            FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addFlyerAssignableUserOption(map, entry.username, entry.display));
+            if (!(typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad() && assignableAppUsersLoaded)) FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addFlyerAssignableUserOption(map, entry.username, entry.display));
             (Array.isArray(flyerAssignableUsers) ? flyerAssignableUsers : []).forEach((entry) => {
                 const normalized = normalizeFlyerAssignableUserEntry(entry);
                 if (normalized) addFlyerAssignableUserOption(map, normalized.username, normalized.display);
@@ -50234,6 +51035,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureFlyerAssignableUsers(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => flyerAssignableUsers);
             if (!forceRefresh && Array.isArray(flyerAssignableUsers) && flyerAssignableUsers.length > FLYER_ASSIGNABLE_USER_FALLBACK.length) return flyerAssignableUsers;
             if (!forceRefresh && flyerAssignableUsersPromise) return flyerAssignableUsersPromise;
             const previousUsers = Array.isArray(flyerAssignableUsers) ? flyerAssignableUsers.slice() : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
@@ -50288,7 +51090,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getAssignableAppUserOptions(extraNames = []) {
             const map = new Map();
-            FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addAssignableAppUserOption(map, entry.username, entry.display, ''));
+            if (!(typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad() && assignableAppUsersLoaded)) FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addAssignableAppUserOption(map, entry.username, entry.display, ''));
             (Array.isArray(assignableAppUsers) ? assignableAppUsers : []).forEach((entry) => {
                 const normalized = normalizeAssignableAppUserEntry(entry);
                 if (normalized) addAssignableAppUserOption(map, normalized.username, normalized.display, normalized.role);
@@ -50331,6 +51133,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureAssignableAppUsers(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => assignableAppUsers);
             if (!forceRefresh && assignableAppUsersLoaded && Array.isArray(assignableAppUsers) && assignableAppUsers.length) return assignableAppUsers;
             if (!forceRefresh && assignableAppUsersPromise) return assignableAppUsersPromise;
             const previousUsers = Array.isArray(assignableAppUsers) ? assignableAppUsers.slice() : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
@@ -55700,10 +56503,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasMaster) {
                 fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
-                avRuleClearOps = res._fromCache ? [] : collectMasterAvRuleClearOps(fullInventory);
+                avRuleClearOps = (res._fromCache || res._verifiedLiveSync) ? [] : collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
-                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache, maxRemote: 12 });
-                hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache, maxRemote: 12 });
+                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
+                hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
                 invalidateMasterDerivedInventories();
             }
 
@@ -55822,10 +56625,10 @@ function toggleDriveQuickRequestItem(domId) {
                 invalidateRequestViewResolvedCaches();
                 updateFooterRequestBadge();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
-                if (currentUser && canAccessView('request') && navigator.onLine !== false && !document.hidden) {
+                if (!res._verifiedLiveSync && currentUser && canAccessView('request') && navigator.onLine !== false && !document.hidden) {
                     syncAlwaysOnRequestData(getRequestViewLiveSyncInterval({ alwaysOn: true, allowHealthyRealtime: true }));
                 }
-                if (hasRequests) triggerRequestRealtimeUiRefresh(0);
+                if (hasRequests && !res._verifiedLiveSync) triggerRequestRealtimeUiRefresh(0);
             }
 
             if (hasSalesOffice || (hasMaster && salesOfficeInventory.length)) {
@@ -55915,9 +56718,9 @@ function toggleDriveQuickRequestItem(domId) {
                 invalidateResolvedViewStateCaches();
                 applyLocalEdits();
                 applyPendingRequestArchives();
-                refreshAffectedViews(changedDatasetKeys);
+                if (!res._verifiedLiveSync) refreshAffectedViews(changedDatasetKeys);
                 scheduleTaskHotCacheWarmup('dataset-change', hasMaster ? 90 : 160);
-                if (changedDatasetKeys.includes('requests')) flushPendingRequestArchives().catch(() => {});
+                if (!res._verifiedLiveSync && changedDatasetKeys.includes('requests')) flushPendingRequestArchives().catch(() => {});
             }
             updateDashboardSyncSummary();
         }
@@ -56044,6 +56847,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureDockTeamStatusLoaded(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('dockWorkflow', forceRefresh).then(() => dockTeamStatusByTrip);
             if (!forceRefresh && dockTeamStatusLoaded) return dockTeamStatusByTrip;
             if (!forceRefresh && dockTeamStatusPromise) return dockTeamStatusPromise;
             dockTeamStatusPromise = (async () => {
@@ -56180,6 +56984,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureDockItemStatusLoaded(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('dockWorkflow', forceRefresh).then(() => dockItemProgressByUid);
             if (!forceRefresh && dockItemProgressLoaded) return dockItemProgressByUid;
             if (!forceRefresh && dockItemProgressPromise) return dockItemProgressPromise;
             dockItemProgressPromise = (async () => {
@@ -56996,6 +57801,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureDockIssueDataLoaded(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('dockWorkflow', forceRefresh).then(() => ({ issues: dockIssueStatusByUid, allocations: dockIssueAllocationsBySourceUid }));
             if (!forceRefresh && dockIssueDataLoaded) return { issues: dockIssueStatusByUid, allocations: dockIssueAllocationsBySourceUid };
             if (!forceRefresh && dockIssueDataPromise) return dockIssueDataPromise;
             dockIssueDataPromise = (async () => {
@@ -57011,11 +57817,6 @@ function toggleDriveQuickRequestItem(domId) {
                     supabaseFetch('ph_dock_issue_allocations', 'GET', null, 'select=*')
                 ]);
                 const nextIssueMap = new Map();
-                Array.from(dockIssueStatusByUid.values()).forEach((row) => {
-                    const normalized = normalizeDockIssueStatusRow(row);
-                    if (!normalized) return;
-                    nextIssueMap.set(normalized.issueSourceUniqueId, normalized);
-                });
                 (issueRows || []).forEach((row) => {
                     const normalized = normalizeDockIssueStatusRow(row);
                     if (!normalized) return;
@@ -57025,11 +57826,6 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 });
                 const nextAllocationById = new Map();
-                Array.from(dockIssueAllocationsById.values()).forEach((row) => {
-                    const normalized = normalizeDockIssueAllocationRow(row);
-                    if (!normalized) return;
-                    nextAllocationById.set(normalized.allocationUniqueId, normalized);
-                });
                 (allocationRows || []).forEach((row) => {
                     const normalized = normalizeDockIssueAllocationRow(row);
                     if (!normalized) return;
@@ -57859,10 +58655,38 @@ function toggleDriveQuickRequestItem(domId) {
             return applyDockColumnFiltersToItemsWithMap(items, dockColumnFilters);
         }
 
+        function normalizeDockSelectionMode(mode = '', selectedSet = new Set()) {
+            if (mode === 'all' || mode === 'custom') return mode;
+            // Legacy nonempty sets are intentional selections, even if they once matched all options.
+            return selectedSet.size ? 'custom' : 'all';
+        }
+
+        function captureDockRepCustomerFilterState() {
+            return {
+                selectedDockReps: appFilterSetToArray(selectedDockReps),
+                dockRepSelectionMode,
+                selectedDockCustomers: appFilterSetToArray(selectedDockCustomers),
+                dockCustomerSelectionMode
+            };
+        }
+
+        function restoreDockRepCustomerFilterState(snapshot = {}) {
+            selectedDockReps = appFilterArrayToSet(snapshot.selectedDockReps);
+            selectedDockCustomers = appFilterArrayToSet(snapshot.selectedDockCustomers);
+            dockRepSelectionMode = normalizeDockSelectionMode(snapshot.dockRepSelectionMode, selectedDockReps);
+            dockCustomerSelectionMode = normalizeDockSelectionMode(snapshot.dockCustomerSelectionMode, selectedDockCustomers);
+            if (dockRepSelectionMode === 'all') selectedDockReps.clear();
+            if (dockCustomerSelectionMode === 'all') selectedDockCustomers.clear();
+        }
+
+        function getDockSelectionMode(kind = '') {
+            return kind === 'rep' ? dockRepSelectionMode : dockCustomerSelectionMode;
+        }
+
         function applyDockRepCustomerFiltersOnly(items = []) {
             let nextItems = Array.isArray(items) ? items : [];
-            if (selectedDockReps.size) nextItems = nextItems.filter((item) => selectedDockReps.has(getDockRepFilterValue(item)));
-            if (selectedDockCustomers.size) nextItems = nextItems.filter((item) => selectedDockCustomers.has(getDockCustomerFilterValue(item)));
+            if (dockRepSelectionMode === 'custom') nextItems = nextItems.filter((item) => selectedDockReps.has(getDockRepFilterValue(item)));
+            if (dockCustomerSelectionMode === 'custom') nextItems = nextItems.filter((item) => selectedDockCustomers.has(getDockCustomerFilterValue(item)));
             return nextItems;
         }
 
@@ -58240,11 +59064,6 @@ function toggleDriveQuickRequestItem(domId) {
                 .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
         }
 
-        function pruneDockFilterSelection(selectionSet, options = []) {
-            const available = new Set(Array.isArray(options) ? options : []);
-            return new Set(Array.from(selectionSet instanceof Set ? selectionSet : []).filter((value) => available.has(value)));
-        }
-
         function buildDockFilterState(items = []) {
             const source = Array.isArray(items) ? items : [];
             clearRemovedDockTopFilterState();
@@ -58252,6 +59071,8 @@ function toggleDriveQuickRequestItem(domId) {
                 getDatasetLoadSignature('soc'),
                 dockWorkflowStateEpoch,
                 source.length,
+                dockRepSelectionMode,
+                dockCustomerSelectionMode,
                 buildSelectionStateKey(selectedDockReps),
                 buildSelectionStateKey(selectedDockCustomers),
                 String(dockRepSearchTerm || '').trim().toLowerCase(),
@@ -58260,14 +59081,14 @@ function toggleDriveQuickRequestItem(domId) {
                 dockColumnFilterDropdownOpen ? buildDockColumnFilterStateKeyFromMap(dockColumnFilterDrafts) : '',
                 dockColumnFilterDropdownOpen ? 'columns-open' : 'columns-closed'
             ].join('|');
-            if (dockFilterStateCacheKey === stateScopeKey && dockFilterStateCache) {
+            if (dockFilterStateCacheKey === stateScopeKey && dockFilterStateCache && dockFilterStateCache.source === source) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return dockFilterStateCache;
             }
             const repOptions = buildDockFilterOptions(source, getDockRepFilterValue);
             const customerOptions = buildDockFilterOptions(source, getDockCustomerFilterValue);
-            selectedDockReps = pruneDockFilterSelection(selectedDockReps, repOptions);
-            selectedDockCustomers = pruneDockFilterSelection(selectedDockCustomers, customerOptions);
+            const availableReps = new Set(repOptions);
+            const availableCustomers = new Set(customerOptions);
             let optionHash = 2166136261;
             [repOptions, customerOptions].forEach((optionList) => {
                 optionHash = updateRenderSignatureHash(optionHash, optionList.length);
@@ -58276,6 +59097,7 @@ function toggleDriveQuickRequestItem(domId) {
             optionHash = updateRenderSignatureHash(optionHash, buildDockColumnFilterStateKey());
             dockFilterStateCacheKey = stateScopeKey;
             dockFilterStateCache = {
+                source,
                 genusOptions: [],
                 contSizeOptions: [],
                 locationOptions: [],
@@ -58296,6 +59118,8 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedLocationCount: 0,
                 selectedRepCount: selectedDockReps.size,
                 selectedCustomerCount: selectedDockCustomers.size,
+                missingReps: Array.from(selectedDockReps).filter((value) => !availableReps.has(value)),
+                missingCustomers: Array.from(selectedDockCustomers).filter((value) => !availableCustomers.has(value)),
                 selectedColumnCount: getDockColumnFilterActiveCount(),
                 canUseAdminDockFilters: true,
                 optionSignature: (optionHash >>> 0).toString(16)
@@ -58303,20 +59127,20 @@ function toggleDriveQuickRequestItem(domId) {
             return dockFilterStateCache;
         }
 
-        function buildDockFilterOptionHtml(options = [], selectedSet = new Set(), toggleHandler = '', emptyText = 'No matches') {
+        function buildDockFilterOptionHtml(options = [], selectedSet = new Set(), toggleHandler = '', emptyText = 'No matches', selectionMode = 'custom') {
             if (!Array.isArray(options) || !options.length) {
                 return `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${escapeHtml(emptyText)}</div>`;
             }
             return options.map((value) => {
                 const safeValue = escapeHtml(value);
-                const checked = selectedSet.has(value) ? 'checked' : '';
+                const checked = selectionMode === 'all' || selectedSet.has(value) ? 'checked' : '';
                 return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50"><span class="min-w-0 truncate text-[12px] font-bold text-slate-700">${safeValue}</span><input type="checkbox" class="h-4 w-4 accent-emerald-600" data-dock-option="${safeValue}" ${checked} onclick="event.stopPropagation(); return ${toggleHandler}(this.dataset.dockOption)"></label>`;
             }).join('');
         }
 
         function buildDockFilterControlHtml(kind, label, summaryAttr, panelAttr, optionsAttr, clearAttr, searchInputId, searchTerm, searchPlaceholder, searchSetter, keydownHandler, toggleHandler, iconClass) {
             const safeKind = escapeHtml(kind);
-            return `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-dock-filter-shell="${safeKind}"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return openDockMobileFilterSheet('${safeKind}') ? false : ${toggleHandler}()"><i class="${escapeHtml(iconClass)} text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">${escapeHtml(label)}</span><span class="task-top-control-summary mt-1 truncate text-[9px] font-bold normal-case tracking-normal text-slate-500" ${summaryAttr}>All</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm hidden" ${panelAttr}>${buildExcelFilterSearchHtml(searchInputId, searchTerm, searchPlaceholder, searchSetter, keydownHandler)}<div class="excel-filter-options" ${optionsAttr}></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" ${clearAttr}>Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDockFilterDropdown('${safeKind}')">Done</button></div></div></div>`;
+            return `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-dock-filter-shell="${safeKind}"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return openDockMobileFilterSheet('${safeKind}') ? false : ${toggleHandler}()"><i class="${escapeHtml(iconClass)} text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">${escapeHtml(label)}</span><span class="task-top-control-summary mt-1 truncate text-[9px] font-bold normal-case tracking-normal text-slate-500" ${summaryAttr}>All</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm hidden" ${panelAttr}>${buildExcelFilterSearchHtml(searchInputId, searchTerm, searchPlaceholder, searchSetter, keydownHandler)}<div class="excel-filter-options" ${optionsAttr}></div><div class="excel-filter-footer grid grid-cols-3 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" ${clearAttr}>All</button><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[11px] font-black text-emerald-700" onclick="return selectNoDockFilterSelection('${safeKind}')">None</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDockFilterDropdown('${safeKind}')">Done</button></div></div></div>`;
         }
 
         function buildDockColumnFilterControlHtml() {
@@ -58344,6 +59168,12 @@ function toggleDriveQuickRequestItem(domId) {
                 ${buildDockFilterControlHtml('customer', 'Customer', 'data-dock-customer-summary', 'data-dock-customer-panel', 'data-dock-customer-options', 'data-dock-customer-clear onclick="return selectAllDockCustomerFilters()"', 'dock-customer-search', dockCustomerSearchTerm, 'Search customer...', 'setDockCustomerSearchTerm', 'handleDockCustomerSearchKeydown', 'toggleDockCustomerDropdown', 'ph-bold ph-storefront')}
                 ${buildDockColumnFilterControlHtml()}
             </div>`;
+            if (!controls.parentElement?.querySelector('[data-dock-filter-status]')) {
+                const status = document.createElement('div');
+                status.setAttribute('data-dock-filter-status', '');
+                status.className = 'mt-2 rounded-xl border border-emerald-100 px-3 py-2 text-[12px] text-emerald-800';
+                controls.insertAdjacentElement('afterend', status);
+            }
         }
 
         function setDockSearchInputValue(container, inputId = '', value = '') {
@@ -58354,18 +59184,18 @@ function toggleDriveQuickRequestItem(domId) {
         function updateDockFilterPanelUi(container, config) {
             const summaryEl = container.querySelector(config.summarySelector);
             const selectedCount = Number(config.selectedCount || 0);
-            const allSelected = Array.isArray(config.options) && config.options.length > 0 && selectedCount >= config.options.length;
-            if (summaryEl) summaryEl.textContent = selectedCount && !allSelected ? `${selectedCount} selected` : config.defaultLabel;
+            const allSelected = config.selectionMode === 'all';
+            if (summaryEl) summaryEl.textContent = allSelected ? config.defaultLabel : `Custom · ${selectedCount} selected`;
             const panelEl = container.querySelector(config.panelSelector);
             if (panelEl) panelEl.classList.toggle('hidden', !config.open);
             const optionsEl = container.querySelector(config.optionsSelector);
             if (optionsEl) {
                 optionsEl.innerHTML = config.options.length
-                    ? buildDockFilterOptionHtml(config.filteredOptions, config.selectedSet, config.toggleHandler, 'No matches')
+                    ? buildDockFilterOptionHtml(config.filteredOptions, config.selectedSet, config.toggleHandler, 'No matches', config.selectionMode)
                     : `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${escapeHtml(config.emptyText)}</div>`;
             }
             const clearBtn = container.querySelector(config.clearSelector);
-            const clearDisabled = (!Array.isArray(config.options) || !config.options.length || allSelected) && !String(config.searchTerm || '').trim();
+            const clearDisabled = allSelected && !String(config.searchTerm || '').trim();
             if (clearBtn) {
                 clearBtn.classList.toggle('opacity-50', clearDisabled);
                 clearBtn.classList.toggle('cursor-not-allowed', clearDisabled);
@@ -58390,6 +59220,7 @@ function toggleDriveQuickRequestItem(domId) {
                 options: state.repOptions,
                 filteredOptions: state.filteredRepOptions,
                 selectedSet: selectedDockReps,
+                selectionMode: dockRepSelectionMode,
                 selectedCount: state.selectedRepCount,
                 open: state.canUseAdminDockFilters && dockRepFilterOpen,
                 toggleHandler: 'toggleDockRepSelection',
@@ -58407,6 +59238,7 @@ function toggleDriveQuickRequestItem(domId) {
                 options: state.customerOptions,
                 filteredOptions: state.filteredCustomerOptions,
                 selectedSet: selectedDockCustomers,
+                selectionMode: dockCustomerSelectionMode,
                 selectedCount: state.selectedCustomerCount,
                 open: state.canUseAdminDockFilters && dockCustomerFilterOpen,
                 toggleHandler: 'toggleDockCustomerSelection',
@@ -58435,6 +59267,8 @@ function toggleDriveQuickRequestItem(domId) {
             const renderSignature = [
                 dockFilterItemsCache.length,
                 state.optionSignature,
+                dockRepSelectionMode,
+                dockCustomerSelectionMode,
                 buildSelectionStateKey(selectedDockReps),
                 buildSelectionStateKey(selectedDockCustomers),
                 String(dockRepSearchTerm || '').trim(),
@@ -58453,6 +59287,72 @@ function toggleDriveQuickRequestItem(domId) {
         function applyDockStructuredFilters(items = []) {
             clearRemovedDockTopFilterState();
             return applyDockColumnFiltersToItems(applyDockRepCustomerFiltersOnly(items));
+        }
+
+        function buildDockFilterSummary(baseItems = [], shownItems = [], searchTerm = '') {
+            const base = Array.isArray(baseItems) ? baseItems : [];
+            const shown = Array.isArray(shownItems) ? shownItems : [];
+            const baseDocks = new Set(base.map((row) => normalizeDockViewDockKey(row && row.DOCK_NUM)));
+            const shownDocks = new Set(shown.map((row) => normalizeDockViewDockKey(row && row.DOCK_NUM)));
+            const repOptions = new Set(buildDockFilterOptions(base, getDockRepFilterValue));
+            const customerOptions = new Set(buildDockFilterOptions(base, getDockCustomerFilterValue));
+            const chips = [];
+            if (dockRepSelectionMode === 'custom') chips.push({ kind: 'rep', label: `Reps: ${selectedDockReps.size} selected`, detail: Array.from(selectedDockReps).join(', ') });
+            if (dockCustomerSelectionMode === 'custom') chips.push({ kind: 'customer', label: `Customers: ${selectedDockCustomers.size} selected`, detail: Array.from(selectedDockCustomers).join(', ') });
+            const columnCount = getDockColumnFilterActiveCount();
+            if (columnCount) chips.push({ kind: 'columns', label: `Column filters: ${columnCount}`, detail: '' });
+            if (String(searchTerm || '').trim()) chips.push({ kind: 'search', label: `Search: ${String(searchTerm).trim()}`, detail: '' });
+            const missing = [
+                ...(dockRepSelectionMode === 'custom' ? Array.from(selectedDockReps).filter((value) => !repOptions.has(value)) : []),
+                ...(dockCustomerSelectionMode === 'custom' ? Array.from(selectedDockCustomers).filter((value) => !customerOptions.has(value)) : [])
+            ];
+            return { shown: shown.length, total: base.length, hiddenDocks: Array.from(baseDocks).filter((key) => !shownDocks.has(key)).length, chips, missing };
+        }
+
+        function updateDockFilterSummary(baseItems = [], shownItems = [], searchTerm = '') {
+            const host = document.querySelector('[data-dock-filter-status]');
+            if (!host) return;
+            host.classList.toggle('hidden', dockViewMode !== 'docks');
+            if (dockViewMode !== 'docks') return;
+            const summary = buildDockFilterSummary(baseItems, shownItems, searchTerm);
+            const chipHandlers = { rep: 'clearDockRepFilters()', customer: 'clearDockCustomerFilters()', columns: 'clearDockColumnFilters()', search: 'clearDocksSearch()' };
+            const chips = summary.chips.map((chip) => `<button type="button" class="min-h-[44px] max-w-full rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[12px] font-bold" title="${escapeHtml(chip.detail || chip.label)}" aria-label="Clear ${escapeHtml(chip.label)}" onclick="return ${chipHandlers[chip.kind]}">${escapeHtml(chip.label)} <span aria-hidden="true">×</span></button>`).join('');
+            host.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-2"><span data-dock-filter-counts>Showing ${summary.shown.toLocaleString()} of ${summary.total.toLocaleString()} rows across docks${summary.hiddenDocks ? ` · ${summary.hiddenDocks} ${summary.hiddenDocks === 1 ? 'dock hidden' : 'docks hidden'} by filters` : ''}</span><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-white px-3 py-2 font-bold" onclick="return clearDocksFilters()">Clear Docks filters</button></div>${chips ? `<div class="mt-2 flex flex-wrap gap-2" data-dock-active-filter-chips>${chips}</div>` : '<div class="mt-1">All reps and customers · New imported options included</div>'}${summary.missing.length ? `<div class="mt-2 text-amber-800" title="${escapeHtml(summary.missing.join(', '))}">${summary.missing.length} saved ${summary.missing.length === 1 ? 'selection is' : 'selections are'} not in the current data; kept for future updates.</div>` : ''}<div class="mt-1 text-[11px]">Saved on this device</div>`;
+        }
+
+        function clearDocksFilters() {
+            setDockMobileFilterSelectionForKind('rep', new Set(), 'all');
+            setDockMobileFilterSelectionForKind('customer', new Set(), 'all');
+            clearRemovedDockTopFilterState();
+            clearDockInlineFilterSearchTerms();
+            closeDockInlineFilterDropdowns();
+            dockColumnFilters = {};
+            dockColumnFilterDrafts = {};
+            dockColumnFilterSelectedHeaders = new Set();
+            dockColumnFilterStep = 'select';
+            dockColumnFilterFieldKey = '';
+            dockColumnFilterMode = 'values';
+            dockColumnFilterValueSearchTerm = '';
+            dockColumnFilterFieldSearchTerm = '';
+            dockColumnFilterHeaderFieldsCache = [];
+            if (dockColumnFilterDropdownOpen) cancelDockColumnFilterWindow();
+            if (dockMobileFilterSheetState && dockMobileFilterSheetState.open) closeDockMobileFilterSheet();
+            docksSearchRestoreState = null;
+            dockViewLevel = 0;
+            selectedDockNum = selectedDockStop = selectedDockName = selectedDockSize = selectedDockItemCode = null;
+            selectedDockCustomer = selectedDockTrip = selectedDockRep = '';
+            selectedDockIssueUid = null;
+            selectedDockIssueAllocationId = '';
+            const search = document.getElementById('docks-search');
+            if (search) search.value = '';
+            const clearSearch = document.getElementById('docks-search-clear');
+            if (clearSearch) clearSearch.classList.add('hidden');
+            dockFilterStateCacheKey = '';
+            dockFilterStateCache = null;
+            refreshDockFilterControls();
+            persistAppFilterStateNow();
+            scheduleDocksRender(0);
+            return false;
         }
 
         function resetDockDrillForFilterChange() {
@@ -58539,11 +59439,18 @@ function toggleDriveQuickRequestItem(domId) {
             return [];
         }
 
-        function setDockMobileFilterSelectionForKind(kind = '', nextSelection = new Set()) {
+        function setDockMobileFilterSelectionForKind(kind = '', nextSelection = new Set(), mode = 'custom') {
             const safeKind = normalizeDockMobileFilterKind(kind);
             const safeSelection = nextSelection instanceof Set ? nextSelection : new Set();
-            if (safeKind === 'rep') selectedDockReps = safeSelection;
-            else if (safeKind === 'customer') selectedDockCustomers = safeSelection;
+            const selectionMode = normalizeDockSelectionMode(mode, safeSelection);
+            if (safeKind === 'rep') {
+                selectedDockReps = selectionMode === 'all' ? new Set() : safeSelection;
+                dockRepSelectionMode = selectionMode;
+            } else if (safeKind === 'customer') {
+                selectedDockCustomers = selectionMode === 'all' ? new Set() : safeSelection;
+                dockCustomerSelectionMode = selectionMode;
+            }
+            schedulePersistAppFilterState(40);
         }
 
         function clearDockInlineFilterSearchTerms() {
@@ -58580,13 +59487,22 @@ function toggleDriveQuickRequestItem(domId) {
         function selectAllDockFilterSelection(kind = '') {
             const safeKind = normalizeDockMobileFilterKind(kind);
             if (!safeKind) return false;
-            const state = buildDockFilterState(dockFilterItemsCache);
-            const options = getDockFilterOptionsForKind(state, safeKind);
-            if (!options.length) return false;
-            setDockMobileFilterSelectionForKind(safeKind, new Set(options));
+            setDockMobileFilterSelectionForKind(safeKind, new Set(), 'all');
             clearDockFilterSearchTermForKind(safeKind);
             if (dockMobileFilterSheetState && dockMobileFilterSheetState.open) closeDockInlineFilterDropdowns();
             else openDockInlineFilterDropdownForKind(safeKind);
+            resetDockDrillForFilterChange();
+            scheduleDocksRender(0);
+            refreshDockFilterControls();
+            if (dockMobileFilterSheetState && dockMobileFilterSheetState.open) renderDockMobileFilterSheetOptionsOnly();
+            return false;
+        }
+
+        function selectNoDockFilterSelection(kind = '') {
+            const safeKind = normalizeDockMobileFilterKind(kind);
+            if (!safeKind) return false;
+            setDockMobileFilterSelectionForKind(safeKind, new Set(), 'custom');
+            clearDockFilterSearchTermForKind(safeKind);
             resetDockDrillForFilterChange();
             scheduleDocksRender(0);
             refreshDockFilterControls();
@@ -58615,14 +59531,15 @@ function toggleDriveQuickRequestItem(domId) {
                 optionsHtml = `<div class="px-4 py-6 text-center text-[12px] font-bold text-slate-400">No matches for "${escapeHtml(search)}".</div>`;
             } else {
                 optionsHtml = filteredOptions.map((value) => {
-                    const selected = config.selectedSet.has(value);
+                    const selected = getDockSelectionMode(safeKind) === 'all' || config.selectedSet.has(value);
                     return `<button type="button" class="flex min-h-[50px] w-full items-center justify-between gap-3 border-b border-emerald-50 px-4 py-3 text-left ${selected ? 'bg-emerald-50 text-emerald-800' : 'bg-white text-slate-700'}" onclick="return toggleDockMobileFilterSheetOption('${escJsAttrValue(safeKind)}','${escJsAttrValue(value)}')"><span class="min-w-0 flex-1 truncate text-[13px] font-black">${escapeHtml(value)}</span><span class="grid h-6 w-6 shrink-0 place-items-center rounded-md border ${selected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-transparent'}"><i class="ph-bold ph-check text-sm"></i></span></button>`;
                 }).join('');
             }
-            const footerDoneLabel = config.selectedSet.size ? `Done (${config.selectedSet.size})` : 'Done';
-            const allSelected = config.options.length > 0 && config.selectedSet.size >= config.options.length;
-            const disabledSelectClass = (!config.options.length || allSelected) && !search ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
-            const footerHtml = `<div class="grid grid-cols-2 gap-2"><button type="button" class="min-h-[46px] rounded-xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm ${disabledSelectClass}" onclick="return selectAllDockFilterSelection('${escJsAttrValue(safeKind)}')">Select All</button><button type="button" class="min-h-[46px] rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return applyDockMobileFilterSheet('${escJsAttrValue(safeKind)}')">${escapeHtml(footerDoneLabel)}</button></div>`;
+            const allSelected = getDockSelectionMode(safeKind) === 'all';
+            const missingCount = Array.from(config.selectedSet).filter((value) => !config.options.includes(value)).length;
+            const selectionLabel = allSelected ? 'All — includes new options' : `Custom · ${config.selectedSet.size} selected${missingCount ? ` · ${missingCount} not in current data` : ''}`;
+            optionsHtml = `<div class="px-4 py-3 text-[12px] font-bold text-emerald-800">${escapeHtml(selectionLabel)}<div class="mt-1 text-[11px] font-normal">Saved on this device</div></div>${optionsHtml}`;
+            const footerHtml = `<div class="grid grid-cols-3 gap-2"><button type="button" class="min-h-[46px] rounded-xl border border-emerald-200 bg-white px-3 py-3 text-[11px] font-black text-emerald-700" onclick="return selectAllDockFilterSelection('${escJsAttrValue(safeKind)}')">All</button><button type="button" class="min-h-[46px] rounded-xl border border-emerald-200 bg-white px-3 py-3 text-[11px] font-black text-emerald-700" onclick="return selectNoDockFilterSelection('${escJsAttrValue(safeKind)}')">None</button><button type="button" class="min-h-[46px] rounded-xl bg-[#007a4d] px-3 py-3 text-[11px] font-black text-white" onclick="return applyDockMobileFilterSheet('${escJsAttrValue(safeKind)}')">Done</button></div>`;
             return { optionsHtml, footerHtml };
         }
 
@@ -58695,7 +59612,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!safeValue) return false;
             const config = getDockMobileFilterConfig(safeKind);
             if (!config) return false;
-            const nextSelection = new Set(config.selectedSet);
+            const nextSelection = new Set(getDockSelectionMode(safeKind) === 'all' ? config.options : config.selectedSet);
             if (nextSelection.has(safeValue)) nextSelection.delete(safeValue);
             else nextSelection.add(safeValue);
             setDockMobileFilterSelectionForKind(safeKind, nextSelection);
@@ -58710,7 +59627,7 @@ function toggleDriveQuickRequestItem(domId) {
         function clearDockMobileFilterSheetSelection(kind = '') {
             const safeKind = normalizeDockMobileFilterKind(kind);
             if (!safeKind) return false;
-            setDockMobileFilterSelectionForKind(safeKind, new Set());
+            setDockMobileFilterSelectionForKind(safeKind, new Set(), 'custom');
             dockMobileFilterSheetState.search = '';
             const input = document.getElementById('dock-mobile-filter-sheet-search');
             if (input) input.value = '';
@@ -58820,6 +59737,18 @@ function toggleDriveQuickRequestItem(domId) {
             if ((safeKind === 'rep' || safeKind === 'customer') && !getRoleAccessState().isAdmin) return false;
             const safeValue = normalizeDockFilterValue(value);
             if (!safeValue) return false;
+            if (safeKind === 'rep' || safeKind === 'customer') {
+                const config = getDockMobileFilterConfig(safeKind);
+                const nextSelection = new Set(getDockSelectionMode(safeKind) === 'all' ? config.options : config.selectedSet);
+                if (nextSelection.has(safeValue)) nextSelection.delete(safeValue);
+                else nextSelection.add(safeValue);
+                setDockMobileFilterSelectionForKind(safeKind, nextSelection, 'custom');
+                openDockInlineFilterDropdownForKind(safeKind);
+                resetDockDrillForFilterChange();
+                scheduleDocksRender(0);
+                refreshDockFilterControls();
+                return false;
+            }
             const targetSet = safeKind === 'genus'
                 ? selectedDockGenusNames
                 : safeKind === 'contsize'
@@ -58866,13 +59795,11 @@ function toggleDriveQuickRequestItem(domId) {
                 dockLocationSearchTerm = '';
                 dockLocationFilterOpen = false;
             } else if (safeKind === 'rep') {
-                if (!selectedDockReps.size && !dockRepSearchTerm) return false;
-                selectedDockReps = new Set();
+                setDockMobileFilterSelectionForKind('rep', new Set(), 'all');
                 dockRepSearchTerm = '';
                 dockRepFilterOpen = false;
             } else if (safeKind === 'customer') {
-                if (!selectedDockCustomers.size && !dockCustomerSearchTerm) return false;
-                selectedDockCustomers = new Set();
+                setDockMobileFilterSelectionForKind('customer', new Set(), 'all');
                 dockCustomerSearchTerm = '';
                 dockCustomerFilterOpen = false;
             }
@@ -58910,7 +59837,7 @@ function toggleDriveQuickRequestItem(domId) {
                         : safeKind === 'rep'
                             ? state.filteredRepOptions
                             : state.filteredCustomerOptions;
-            const visibleSelection = buildVisibleExcelFilterSelection(options, filteredOptions, { emptySetWhenAll: true });
+            const visibleSelection = buildVisibleExcelFilterSelection(options, filteredOptions, { emptySetWhenAll: !['rep', 'customer'].includes(safeKind) });
             if (!visibleSelection) return false;
             beginDirectNavigationActivity();
             const nextSelection = visibleSelection.selectedSet;
@@ -58927,11 +59854,11 @@ function toggleDriveQuickRequestItem(domId) {
                 dockLocationSearchTerm = '';
                 dockLocationFilterOpen = false;
             } else if (safeKind === 'rep') {
-                selectedDockReps = nextSelection;
+                setDockMobileFilterSelectionForKind('rep', nextSelection, 'custom');
                 dockRepSearchTerm = '';
                 dockRepFilterOpen = false;
             } else if (safeKind === 'customer') {
-                selectedDockCustomers = nextSelection;
+                setDockMobileFilterSelectionForKind('customer', nextSelection, 'custom');
                 dockCustomerSearchTerm = '';
                 dockCustomerFilterOpen = false;
             }
@@ -59258,6 +60185,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureDockAssignableUsers(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => dockAssignableUsers);
             if (!forceRefresh && dockAssignableUsers.length) return dockAssignableUsers;
             if (!forceRefresh && dockAssignableUsersPromise) return dockAssignableUsersPromise;
             const previousUsers = dockAssignableUsers.slice();
@@ -60835,6 +61763,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function fetchChatData(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('chat', force);
             if (!currentUser) return false;
             if (!force && chatDataLoaded) return true;
             if (chatLoadPromise && !force) return chatLoadPromise;
@@ -68228,6 +69157,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function loadProductionWorkflowRows(force = false, type = productionWorkflowActive) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('productionWorkflow', force, { state: productionWorkflowState, context: { productionType: type } }).then(() => productionWorkflowState);
             const safeType = String(type || '').trim().toLowerCase();
             if (!isProductionWorkflowDriveType(safeType)) return productionWorkflowState;
             const staleMs = 3 * 60 * 1000;
@@ -68246,7 +69176,6 @@ function toggleDriveQuickRequestItem(domId) {
             })().catch((error) => {
                 if (productionWorkflowState.workflowType !== safeType) return productionWorkflowState;
                 productionWorkflowState.error = error && error.message ? error.message : 'Production workflow rows could not load.';
-                productionWorkflowState.loaded = true;
                 return productionWorkflowState;
             }).finally(() => {
                 if (productionWorkflowState.workflowType !== safeType) return;
@@ -68270,7 +69199,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
                 }).catch(() => {});
             }
-            if ((!productionWorkflowState.loaded || productionWorkflowState.workflowType !== safeType) && !productionWorkflowState.loading) {
+            if ((!productionWorkflowState.loaded || productionWorkflowState.workflowType !== safeType) && !productionWorkflowState.loading && !productionWorkflowState.error) {
                 loadProductionWorkflowRows(false, safeType).then(() => {
                     if (isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
                 }).catch(() => {});
@@ -70251,6 +71180,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function loadSpreadCountData(force = false, countType = getActiveSpreadCountType()) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData(normalizeSpreadCountType(countType) === 'bunch' ? 'bunchCounts' : 'spreadCounts', force, { state: spreadCountState, context: { countType } }).then(() => spreadCountState);
             const safeType = normalizeSpreadCountType(countType);
             const staleMs = 3 * 60 * 1000;
             if (!force && spreadCountState.loaded && spreadCountState.countType === safeType && (Date.now() - spreadCountState.lastLoadedAt) < staleMs) return spreadCountState;
@@ -70270,7 +71200,6 @@ function toggleDriveQuickRequestItem(domId) {
             })().catch((error) => {
                 if (spreadCountState.countType !== safeType) return spreadCountState;
                 spreadCountState.error = error && error.message ? error.message : `${getSpreadCountTypeTitle(safeType)} rows could not load.`;
-                spreadCountState.loaded = true;
                 rebuildSpreadCountIndexes();
                 return spreadCountState;
             }).finally(() => {
@@ -70294,7 +71223,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (isViewVisible('sales-inventory') && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
                 }).catch(() => {});
             }
-            if ((!spreadCountState.loaded || spreadCountState.countType !== activeType) && !spreadCountState.loading) {
+            if ((!spreadCountState.loaded || spreadCountState.countType !== activeType) && !spreadCountState.loading && !spreadCountState.error) {
                 loadSpreadCountData(false, activeType).then(() => {
                     if (isViewVisible('sales-inventory') && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
                 }).catch(() => {});
@@ -71054,6 +71983,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function loadPoManagementData(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('po', force, { state: poManagementState }).then(() => poManagementState);
             if (poManagementState.promise && !force) return poManagementState.promise;
             if (poManagementState.loaded && !force) return Promise.resolve(poManagementState);
             poManagementState.loading = true;
@@ -71063,8 +71993,6 @@ function toggleDriveQuickRequestItem(domId) {
                     poManagementState.rows = await fetchPoManagementRows();
                     poManagementState.loaded = true;
                 } catch (error) {
-                    poManagementState.rows = [];
-                    poManagementState.loaded = true;
                     poManagementState.error = getPoManagementLoadErrorMessage(error);
                 } finally {
                     poManagementState.loading = false;
@@ -71274,7 +72202,7 @@ function toggleDriveQuickRequestItem(domId) {
                 setContainerUiState(container, 'content');
                 return;
             }
-            if (!poManagementState.loaded && !poManagementState.loading) loadPoManagementData(false);
+            if (!poManagementState.loaded && !poManagementState.loading && !poManagementState.error) loadPoManagementData(false).catch(() => {});
             if (poManagementState.loading && !(poManagementState.rows || []).length) {
                 let skeletonHtml = '<div class="p-4 space-y-3">';
                 for (let i = 0; i < 5; i += 1) skeletonHtml += '<div class="skeleton h-20 w-full rounded-xl"></div>';
@@ -72339,6 +73267,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function loadWeatherHoldRiskData(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('holdRisk', force, { state: weatherHoldState }).then(() => weatherHoldState);
             const staleMs = 15 * 60 * 1000;
             if (!canUseWeatherHoldRiskTools()) {
                 weatherHoldState.holdEvents = [];
@@ -72356,7 +73285,7 @@ function toggleDriveQuickRequestItem(domId) {
             weatherHoldState.riskPromise = (async () => {
                 const [holdSummaries, holdProfiles] = await Promise.all([
                     supabaseFetch('ph_hold_stop_itemcode_summaries', 'GET', null, 'select=itemcode,commonname,genus,contsize,current_rows,current_blocked_rows,current_h_rows,current_s_rows,current_is_blocked,current_blocked_code,current_holdstopreason,current_reason_category,total_cycle_count,released_cycle_count,open_cycle_count,hold_sample_count,profile_count,first_episode_start_date,last_episode_start_date,last_release_date,open_episode_start_date,open_episode_file_name,open_episode_reason,primary_reason_category,avg_days_to_release,median_days_to_release,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,history_file_count,parsed_history_file_count,parsed_history_first_file_date,parsed_history_last_file_date,rows_file_count,row_history_first_file_date,row_history_last_file_date,updated_at&order=total_cycle_count.desc&limit=5000'),
-                    supabaseFetch('ph_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=1200').catch(() => [])
+                    supabaseFetch('ph_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=1200')
                 ]);
                 weatherHoldState.holdEvents = [];
                 weatherHoldState.holdProfiles = Array.isArray(holdProfiles) ? holdProfiles : [];
@@ -72367,7 +73296,6 @@ function toggleDriveQuickRequestItem(domId) {
                 return weatherHoldState;
             })().catch((error) => {
                 weatherHoldState.riskError = error && error.message ? error.message : 'Hold risk learning could not load.';
-                weatherHoldState.riskLoaded = true;
                 return weatherHoldState;
             }).finally(() => {
                 weatherHoldState.riskLoading = false;
@@ -72386,6 +73314,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function loadWeatherHoldData(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('weather', force, { state: weatherHoldState }).then(() => weatherHoldState);
             const staleMs = 15 * 60 * 1000;
             if (!force && weatherHoldState.loaded && (Date.now() - weatherHoldState.lastLoadedAt) < staleMs) {
                 if (canUseWeatherHoldRiskTools() && !weatherHoldState.riskLoaded && !weatherHoldState.riskLoading) queueWeatherHoldRiskRefresh(false);
@@ -72409,7 +73338,6 @@ function toggleDriveQuickRequestItem(domId) {
                 return weatherHoldState;
             })().catch((error) => {
                 weatherHoldState.error = error && error.message ? error.message : 'Weather hold data could not load.';
-                weatherHoldState.loaded = true;
                 return weatherHoldState;
             }).finally(() => {
                 weatherHoldState.loading = false;
@@ -72440,7 +73368,7 @@ function toggleDriveQuickRequestItem(domId) {
         function renderWeatherHold() {
             const container = document.getElementById('weather-hold-content');
             if (!container) return;
-            if (!weatherHoldState.loaded && !weatherHoldState.loading) {
+            if (!weatherHoldState.loaded && !weatherHoldState.loading && !weatherHoldState.error) {
                 setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading weather...</div></div>');
                 loadWeatherHoldData(false).then(() => {
                     if (isViewVisible('weather-hold')) renderWeatherHold();
@@ -74155,7 +75083,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function ensureShearDecisionModalData(items = shearListModalItems) {
-            if (typeof loadWeatherHoldData === 'function' && !weatherHoldState.loaded && !weatherHoldState.loading) {
+            if (typeof loadWeatherHoldData === 'function' && !weatherHoldState.loaded && !weatherHoldState.loading && !weatherHoldState.error) {
                 loadWeatherHoldData(false).then(() => {
                     const modal = document.getElementById('shear-list-modal');
                     if (modal && !modal.classList.contains('hidden')) renderShearListModalRows();
@@ -74194,6 +75122,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function loadShearListData(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('shear', force, { state: shearListState }).then(() => shearListState);
             const staleMs = Math.max(750, Number(REQUEST_SHEAR_LIST_STALE_MS) || 1200);
             if (!force && shearListState.loaded && (Date.now() - shearListState.lastLoadedAt) < staleMs) return shearListState;
             if (shearListState.promise && !force) return shearListState.promise;
@@ -74201,7 +75130,7 @@ function toggleDriveQuickRequestItem(domId) {
             shearListState.error = '';
             shearListState.promise = (async () => {
                 const [rows, inquiryResult] = await Promise.all([
-                    supabaseFetch(SHEAR_LIST_TABLE, 'GET', null, `select=${SHEAR_LIST_SELECT_FIELDS}&status=eq.open&order=created_at.desc`).catch(() => []),
+                    supabaseFetch(SHEAR_LIST_TABLE, 'GET', null, `select=${SHEAR_LIST_SELECT_FIELDS}&status=eq.open&order=created_at.desc`),
                     shearLocationWorkApi('list', { status: 'active' }, { timeoutMs: 20000 })
                 ]);
                 shearListState.rows = Array.isArray(rows) ? rows : [];
@@ -74217,7 +75146,6 @@ function toggleDriveQuickRequestItem(domId) {
                 return shearListState;
             })().catch((error) => {
                 shearListState.error = error && error.message ? error.message : 'Shear List could not load.';
-                shearListState.loaded = true;
                 return shearListState;
             }).finally(() => {
                 shearListState.loading = false;
@@ -74294,7 +75222,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function ensureShearDriveModeData() {
-            if (typeof loadWeatherHoldData === 'function' && !weatherHoldState.loaded && !weatherHoldState.loading) {
+            if (typeof loadWeatherHoldData === 'function' && !weatherHoldState.loaded && !weatherHoldState.loading && !weatherHoldState.error) {
                 loadWeatherHoldData(false).then(() => {
                     if (isViewVisible('shear-list') && shearListState.activeTab === 'drive') renderShearList();
                 }).catch(() => {});
@@ -75252,11 +76180,9 @@ function toggleDriveQuickRequestItem(domId) {
             const crumb = document.getElementById('shear-list-crumb');
             if (!container) return;
             renderShearListHeaderSlot();
-            if (!shearListState.loaded && !shearListState.loading) {
+            if (!shearListState.loaded && !shearListState.loading && !shearListState.error) {
                 setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading shear list...</div></div>');
                 loadShearListData(false).then(() => {
-                    return reconcileInventoryEditMockShearListRows({ silent: true, renderVisible: false });
-                }).then(() => {
                     if (isViewVisible('shear-list')) renderShearList();
                 }).catch(() => {
                     if (isViewVisible('shear-list')) renderShearList();
@@ -75272,7 +76198,6 @@ function toggleDriveQuickRequestItem(domId) {
                 setContainerHtml(container, `<div class="rounded-2xl border border-amber-200 bg-white p-8 text-center"><div class="font-black text-amber-700">Shear List table needed</div><div class="mt-2 text-sm font-semibold text-slate-500">Run shear_list_migration.sql and shear_list_instructions_migration.sql in Supabase, then tap Refresh.</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white" onclick="return reloadShearListData()">Retry</button></div>`);
                 return;
             }
-            reconcileInventoryEditMockShearListRows({ silent: true }).catch(() => {});
             const tabHtml = renderShearListTabsHtml();
             const backBtn = document.getElementById('shear-list-back-btn');
             if (shearListState.activeTab === 'drive') {
@@ -77528,6 +78453,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureAppEmailRecipientUsers(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => appEmailRecipientUsers.slice());
             if (!forceRefresh && appEmailRecipientUsersLoaded) return appEmailRecipientUsers.slice();
             if (!forceRefresh && appEmailRecipientUsersPromise) return appEmailRecipientUsersPromise;
             const previousUsers = appEmailRecipientUsers.slice();
@@ -77558,6 +78484,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureAdminRecipientUsers(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => appAdminRecipientUsers.slice());
             if (!forceRefresh && appAdminRecipientUsersLoaded) return appAdminRecipientUsers.slice();
             if (!forceRefresh && appAdminRecipientUsersPromise) return appAdminRecipientUsersPromise;
             const previousUsers = appAdminRecipientUsers.slice();
@@ -84485,7 +85412,7 @@ function toggleDriveQuickRequestItem(domId) {
             updateDockAssignableTeamOptions(savedInfo);
             document.getElementById('dock-status').value = savedInfo.status || "Loading";
             document.getElementById('dock-info-modal').classList.remove('hidden');
-            ensureDockAssignableUsers().then(() => updateDockAssignableTeamOptions(getDockTeamInfo(pendingDockTrip))).catch(() => {});
+            ensureDockAssignableUsers().then(() => updateDockAssignableTeamOptions()).catch(() => {});
             ensureDockTeamStatusLoaded().then(() => {
                 const refreshedInfo = getDockTeamInfo(pendingDockTrip);
                 updateDockAssignableTeamOptions(refreshedInfo);
@@ -86064,6 +86991,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const term = document.getElementById('docks-search').value.toLowerCase().trim();
             if (dockViewMode === 'mistakes' || dockViewMode === 'dropoff') {
+                const filterStatus = document.querySelector('[data-dock-filter-status]');
+                if (filterStatus) filterStatus.classList.add('hidden');
                 const resolvedState = getDockResolvedState();
                 if (dockIssueStatusSchemaReady === false || dockIssueAllocationSchemaReady === false) {
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase to use the shared dock mistake queue.</div>`;
@@ -86084,8 +87013,10 @@ function toggleDriveQuickRequestItem(domId) {
                 : getDockResolvedState();
             let items = getScopedDocksItems(resolvedState.rows, `dock-display:${resolvedState.cacheKey}`);
             syncDockFilterControls(items);
+            const unfilteredDockItems = items;
             items = applyDockStructuredFilters(items);
             if(term) items = filterBySearch(items, term, 'docks');
+            updateDockFilterSummary(unfilteredDockItems, items, term);
             if (items.length === 0) {
                 if (dockTeamSchemaReady === false || (access.isQc && !access.isAdmin && !access.isQcSupervisor && dockItemSchemaReady === false)) {
                     const missingParts = [];
@@ -86497,6 +87428,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureTakeBackRowsLoaded(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('takeBack', force);
             if (takeBackDataLoaded && !force) return true;
             if (takeBackDataPromise && !force) return takeBackDataPromise;
             takeBackDataPromise = (async () => {
@@ -89008,6 +89940,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureEvalAssignableUsers(forceRefresh = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                await ensureDatasetLoaded('warehouseAssignedItems', 'full', { preserveRequestedMode: true });
+                await ensureProductionLiveSyncSideData('users', forceRefresh);
+                return getEvalAssignableUserList();
+            }
             if (!forceRefresh && evalAssignableUsersDirectoryResolved) return evalAssignableUsers;
             if (!forceRefresh && evalAssignableUsersPromise) return evalAssignableUsersPromise;
             const previousUsers = evalAssignableUsers.slice();
@@ -102607,6 +103544,23 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             root.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2 id="bloomscapes-pending-heading" style="font-size:24px;font-weight:800">BloomScapes Pending Orders</h2><button type="button" onclick="closeBloomscapesPendingOrders()" style="padding:12px;border:1px solid #6b9979;border-radius:10px">Close</button></div><p>Private to dylan_collyge. Source details and quoted prices are saved with each request. Arogs remains the inventory authority.</p><button type="button" onclick="loadBloomscapesPendingOrders(false)" ${state.loading ? 'disabled' : ''} style="padding:12px;border:1px solid #6b9979;border-radius:10px">Refresh pending orders</button>${state.error ? `<p role="alert" style="color:#9d2020;background:#fff1f1;padding:12px">${escapeHtml(state.error)}</p>` : ''}${state.loading ? '<p role="status">Loading private order requests…</p>' : ''}${cards}${!state.loading && !state.error && !state.orders.length ? '<p>No pending order requests have been submitted yet.</p>' : ''}${state.more ? `<button type="button" onclick="loadBloomscapesPendingOrders(true)" ${state.loading ? 'disabled' : ''} style="padding:12px;border:1px solid #6b9979;border-radius:10px">Older order requests</button>` : ''}`;
         }
         async function loadBloomscapesPendingOrders(older = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                if (!canViewBloomscapesPendingOrders() || bloomscapesPendingState.loading) return false;
+                const sequence = ++bloomscapesPendingState.sequence;
+                bloomscapesPendingState.loading = true;
+                try {
+                    await ensureProductionLiveSyncSideData('pendingOrders', true, { context: { pendingOrderCount: bloomscapesPendingState.orders.length + (older ? 25 : 0) } });
+                } catch (error) {
+                    if (sequence !== bloomscapesPendingState.sequence) return false;
+                    if ([401, 403].includes(Number(error?.status)) || /unexpected pending-order|private order access/i.test(String(error?.message || '')) || !canViewBloomscapesPendingOrders()) {
+                        bloomscapesPendingState.orders = []; bloomscapesPendingState.more = false;
+                    }
+                    bloomscapesPendingState.error = String(error?.message || 'Unable to verify pending orders.');
+                } finally {
+                    if (sequence === bloomscapesPendingState.sequence) { bloomscapesPendingState.loading = false; renderBloomscapesPendingOrders(); }
+                }
+                return false;
+            }
             if (bloomscapesPendingState.loading || !canViewBloomscapesPendingOrders()) return false;
             const sequence = ++bloomscapesPendingState.sequence;
             bloomscapesPendingState.loading = true; bloomscapesPendingState.error = ''; renderBloomscapesPendingOrders();
@@ -102623,14 +103577,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     body:JSON.stringify({p_action:'state',p_payload:last ? {beforeTime:last.created_at,beforeId:last.id} : {},p_request_id:null})
                 },20000,'BloomScapes pending orders');
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.message || `Pending orders could not be loaded (${response.status}).`);
+                if (!response.ok) { const error = new Error(data.message || `Pending orders could not be loaded (${response.status}).`); error.status = response.status; throw error; }
                 if (sequence !== bloomscapesPendingState.sequence || !canViewBloomscapesPendingOrders()) return false;
                 if (data.mode !== 'pending-unpaid' || data.paymentEnabled !== false || data.stockReserved !== false || !Array.isArray(data.orders)) throw new Error('Unexpected pending-order response.');
                 bloomscapesPendingState.orders = older ? [...bloomscapesPendingState.orders,...data.orders.filter((o)=>!bloomscapesPendingState.orders.some((p)=>p.id===o.id))] : data.orders;
                 bloomscapesPendingState.more = data.orders.length === 25;
             } catch (error) {
                 if (sequence !== bloomscapesPendingState.sequence) return false;
-                bloomscapesPendingState.orders = []; bloomscapesPendingState.more = false;
+                if ([401, 403].includes(Number(error && error.status)) || /unexpected pending-order response|only an active native|sign in with your native/i.test(String(error && error.message || '')) || !canViewBloomscapesPendingOrders()) {
+                    bloomscapesPendingState.orders = []; bloomscapesPendingState.more = false;
+                }
                 bloomscapesPendingState.error = String(error && error.message || 'Unable to load pending orders.');
             } finally {
                 if (sequence === bloomscapesPendingState.sequence) { bloomscapesPendingState.loading = false; renderBloomscapesPendingOrders(); }
@@ -107375,6 +108331,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         async function loadLocationWorkJobs(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('locationWork', force).then(() => locationWorkRows);
             if (locationWorkLoading) return locationWorkRows;
             if (locationWorkLoaded && !force) return locationWorkRows;
             locationWorkLoading = true;
@@ -107688,7 +108645,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
             if (activeReqTab === 'shear-list') {
                 const crumbText = `Shear List${requestFilterSuffix}`;
-                if (typeof loadShearListData === 'function' && shearListState && !shearListState.loaded && !shearListState.loading) {
+                if (typeof loadShearListData === 'function' && shearListState && !shearListState.loaded && !shearListState.loading && !shearListState.error) {
                     loadShearListData(false).then(() => {
                         if (isViewVisible('request') && activeReqTab === 'shear-list') renderRequest();
                     }).catch((error) => console.warn('Shear queue load failed', error));
@@ -108311,6 +109268,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function syncAlwaysOnRequestData(delay = REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS, options = {}) {
+            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+                signalProductionLiveSync('request-check', options.force ? 0 : Math.min(Number(delay) || 250, 30000));
+                return;
+            }
             const safeOptions = options && typeof options === 'object' ? { ...options } : {};
             syncRequestViewLiveSync(delay, {
                 ...safeOptions,
@@ -108322,6 +109283,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         async function runRequestViewLiveSync(options = {}) {
+            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) return getProductionLiveSyncCoordinator().check('request-check');
             const safeOptions = options && typeof options === 'object' ? options : {};
             if (requestViewLiveSyncInFlight) return false;
             if (!shouldRunRequestViewLiveSync(safeOptions)) {
@@ -108473,6 +109435,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function queueForegroundRefresh(delay = 220) {
             if (!currentUser) return;
+            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+                signalProductionLiveSync('foreground', Math.min(Number(delay) || 0, 250));
+                return;
+            }
             const requestedDelay = Math.max(0, Number(delay) || 0);
             if (shouldSkipPassiveRefreshAfterLocalSave()) {
                 clearPassiveRefreshTimersForLocalSave();
@@ -109357,6 +110323,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         async function loadProductivityHistoryForUser(username = '', force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('productivity', force, { context: { productivityUser: normalizeProductivityUsername(username) } }).then(() => productivityHistoryByUser.get(normalizeProductivityUsername(username)) || []);
             const normalizedUser = normalizeProductivityUsername(username);
             if (!normalizedUser) return [];
             const state = getProductivityHistoryState(normalizedUser);
@@ -109907,6 +110874,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         async function loadCropRollData(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('cropRoll', force).then(() => ({ run: cropRollActiveRun, rows: cropRollRows }));
             if (cropRollLoading && cropRollLoadPromise && !force) return cropRollLoadPromise;
             cropRollLoading = true;
             cropRollLoadError = '';
@@ -109950,6 +110918,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         async function loadCropRollOfficeCompletionRows(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('cropRoll', force).then(() => getCropRollCompletionRowsRaw(''));
             if (isCropRollOfficeCompletionLoadPending() && cropRollOfficeCompletionLoadPromise && !force) return cropRollOfficeCompletionLoadPromise;
             if (!force && cropRollOfficeCompletionLastLoadedAt && (Date.now() - cropRollOfficeCompletionLastLoadedAt) < CROP_ROLL_OFFICE_COMPLETION_CACHE_MS) return Promise.resolve(getCropRollCompletionRowsRaw(''));
             cropRollOfficeCompletionLoading = true;
@@ -123042,6 +124011,7 @@ C.14.043 C.15.000
         }
 
         async function loadInventoryTransactionHistoryRows(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('transactions', force, { state: inventoryTransactionHistoryState }).then(() => inventoryTransactionHistoryState.rows);
             if (!canViewInventoryTransactionHistory()) return false;
             const state = inventoryTransactionHistoryState;
             if (state.loading) return state.promise || false;
@@ -123153,6 +124123,12 @@ C.14.043 C.15.000
         }
 
         async function loadTransactionsKeyedDashboard(force = false, appendMode = '') {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                const ctx = getProductionLiveSyncSideContext();
+                if (appendMode === 'dates') ctx.transactionsKeyed.dateCount += 250;
+                if (appendMode === 'files') ctx.transactionsKeyed.fileCount += 50;
+                return ensureProductionLiveSyncSideData('transactionsKeyed', force || !!appendMode, { state: managerTransactionsKeyedState, context: { transactionsKeyed: ctx.transactionsKeyed } }).then(() => managerTransactionsKeyedState);
+            }
             if (!canViewTransactionsKeyed()) return false;
             const state = managerTransactionsKeyedState;
             const mode = String(appendMode || '').trim().toLowerCase();
@@ -123324,6 +124300,7 @@ C.14.043 C.15.000
         }
 
         async function loadManagerOrderSources(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('managerOrders', force, { state: managerOrdersState }).then(() => managerOrdersState);
             if (!canViewManagerOrders()) return false;
             const state = managerOrdersState;
             if (state.loading) return false;
@@ -123350,6 +124327,11 @@ C.14.043 C.15.000
         }
 
         async function loadManagerOrderBatches(append = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                const ctx = getProductionLiveSyncSideContext();
+                if (append) ctx.managerOrders.batchCount += 25;
+                return ensureProductionLiveSyncSideData('managerOrders', true, { state: managerOrdersState, context: { managerOrders: ctx.managerOrders } }).then(() => managerOrdersState);
+            }
             if (!canViewManagerOrders()) return false;
             const state = managerOrdersState;
             if (state.loading || !state.sourceKey) return false;
@@ -123384,6 +124366,11 @@ C.14.043 C.15.000
         }
 
         async function loadManagerOrderBatch(append = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                const ctx = getProductionLiveSyncSideContext();
+                if (append) ctx.managerOrders.rowCount += 100;
+                return ensureProductionLiveSyncSideData('managerOrders', true, { state: managerOrdersState, context: { managerOrders: ctx.managerOrders } }).then(() => managerOrdersState);
+            }
             if (!canViewManagerOrders()) return false;
             const state = managerOrdersState;
             if (state.loading || !state.selectedBatchId) return false;
@@ -123611,6 +124598,7 @@ C.14.043 C.15.000
         }
 
         async function loadManagerEvalReportSettings(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('managerEvalSettings', force, { state: managerEvalReportSettingsState }).then(() => managerEvalReportSettings);
             if (!canViewManagerEvalReports() && !canViewManagerEvalReports2()) return null;
             const state = managerEvalReportSettingsState;
             if (state.loading && state.promise) return state.promise;
@@ -126684,6 +127672,11 @@ C.14.043 C.15.000
         }
 
         async function loadManagerHistoricalCommonNames(searchValue = managersSearchTerm, force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                const ctx = getProductionLiveSyncSideContext();
+                ctx.historical.search = searchValue;
+                return ensureProductionLiveSyncSideData('historical', force, { state: managerHistoricalReportState, context: { historical: ctx.historical } }).then(() => managerHistoricalReportState.commonNames);
+            }
             if (!canViewManagerHistoricalReport()) return [];
             const state = managerHistoricalReportState;
             const search = String(searchValue || '').trim();
@@ -126797,6 +127790,11 @@ C.14.043 C.15.000
         }
 
         async function loadManagerHistoricalRows(reset = true) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                const ctx = getProductionLiveSyncSideContext();
+                if (!reset) ctx.historical.rowCount += 100;
+                return ensureProductionLiveSyncSideData('historical', true, { state: managerHistoricalReportState, context: { historical: ctx.historical } }).then(() => managerHistoricalReportState.rows);
+            }
             if (!canViewManagerHistoricalReport()) return false;
             const state = managerHistoricalReportState;
             if (!state.selectedCommonName || !state.selectedContSize) return false;
@@ -128108,6 +129106,7 @@ C.14.043 C.15.000
         }
 
         async function loadAccessControlMatrix(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('access', force, { state: accessControlAdminState });
             if (!canViewAccessControl()) return false;
             const state = accessControlAdminState;
             if (state.loading && !force) return false;
@@ -128511,6 +129510,7 @@ C.14.043 C.15.000
         }
 
         async function loadCodexOpsCapabilities(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('codex', force).then(() => codexOpsState.capabilities);
             if (getCodexOpsCurrentUserKey() !== 'dylan_collyge') {
                 codexOpsState.capabilities = null;
                 codexOpsState.capabilitiesLoaded = true;
@@ -128536,6 +129536,7 @@ C.14.043 C.15.000
         }
 
         async function loadCodexOpsTasks(force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('codex', force).then(() => codexOpsState.tasks);
             if (codexOpsState.tasksLoading) return codexOpsState.tasks;
             if (codexOpsState.tasksLoaded && !force) return codexOpsState.tasks;
             codexOpsState.tasksLoading = true;
@@ -128557,6 +129558,7 @@ C.14.043 C.15.000
         }
 
         async function loadCodexOpsTask(taskId = '', force = false) {
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('codex', force, { context: { codexTaskId: taskId } }).then(() => codexOpsState.activeTask);
             const safeId = String(taskId || '').trim();
             if (!safeId) return null;
             if (codexOpsState.taskLoading && !force) return codexOpsState.activeTask;
@@ -128579,6 +129581,7 @@ C.14.043 C.15.000
 
         function scheduleCodexOpsPoll() {
             stopCodexOpsPoll();
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return false;
             if (activeHomeTab !== MANAGER_CODEX_OPERATIONS_VIEW || document.hidden) return false;
             codexOpsState.pollTimer = setTimeout(async () => {
                 codexOpsState.pollTimer = null;

@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.09.08.01';
+const APP_SHELL_BUILD = 'V2026.09.08.02';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -25,6 +25,9 @@ const ASSETS_TO_CACHE = [
   './assets/ops-precision-pilot.js',
   './assets/eval-reports-engine.js',
   './assets/photo-history-v2026090401.js',
+  './assets/live-sync-registry.js',
+  './assets/live-sync-adapters.js',
+  './assets/live-sync-coordinator.js',
   './assets/live-tailwind-v2026082010.min.css',
   './assets/live-app-runtime-v2026082010.min.js',
   './assets/live-app-styles-base-v2026090503.css',
