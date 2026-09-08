@@ -4569,6 +4569,10 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     let obj = { unique_id: uniqueId, last_updated: syncStartTime, contsize: contSizeVal, filename: fileName };
     for (let c = 0; c < rawHeaders.length; c++) {
       let key = normalizePayloadColumnKey_(rawHeaders[c]);
+      // Suspend Tag Done is app-owned. Omit it from every SOC upsert rather
+      // than copying a previously fetched value, which could overwrite a Done
+      // saved while this import was running. Other tables keep their contracts.
+      if (logicalTable === 'ph_soc_master' && key === 'date_completed') continue;
       if (ALLOWED_DB_COLUMNS.has(key)) {
         let val = String(row[c] || '').trim();
         obj[key] = (val === '' || val === 'NULL') ? null : val;

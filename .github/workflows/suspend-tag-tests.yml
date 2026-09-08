@@ -1,0 +1,38 @@
+name: Suspend Tag completion transaction tests
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*suspend_tag*'
+      - 'supabase/tests/suspend_tag*'
+      - 'supabase/ci/suspend_tag*'
+      - '.github/workflows/suspend-tag-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  suspend-tag-transactions:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: suspend_tag_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: disposable_ci_only
+      PGDATABASE: suspend_tag_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify protected completion on isolated PostgreSQL without production access
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ci/suspend_tag_baseline.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20260908164959_suspend_tag_completion.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/suspend_tag_completion_test.sql
+          node supabase/ci/suspend_tag_concurrency.mjs

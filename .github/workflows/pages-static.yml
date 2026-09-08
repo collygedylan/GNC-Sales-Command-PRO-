@@ -91,6 +91,8 @@ jobs:
         run: npm run test:footer
       - name: Verify Season Sales Notes completion before publishing
         run: npm run test:season-sales-office
+      - name: Verify Suspend Tag completion before publishing
+        run: npm run test:suspend-tag
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -147,6 +149,10 @@ jobs:
         env:
           SEASON_SALES_OFFICE_BASE_URL: https://agmetricapp.com
         run: npm run test:season-sales-office
+      - name: Verify live Suspend Tag with isolated browser fixtures
+        env:
+          SUSPEND_TAG_BASE_URL: https://agmetricapp.com
+        run: npm run test:suspend-tag
 
       - name: Upload sanitized canary diagnostics
         if: failure()
