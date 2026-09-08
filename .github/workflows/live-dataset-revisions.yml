@@ -35,6 +35,9 @@ jobs:
         run: node supabase/ci/live_dataset_revision_realtime.mjs "$RUNNER_TEMP/agmetric-revisions-ci-local"
       - name: Inspect isolated security advisors
         run: supabase db advisors --local --workdir "$RUNNER_TEMP/agmetric-revisions-ci-local" --type security --level error --fail-on error
+      - name: Diagnose local Realtime only on failure
+        if: failure()
+        run: docker logs --tail 150 supabase_realtime_agmetric-revisions-ci-local
       - name: Stop disposable local environment
         if: always()
         run: supabase stop --workdir "$RUNNER_TEMP/agmetric-revisions-ci-local"

@@ -68,7 +68,8 @@ async function session(account) {
 async function watch(client, label) {
   const events = [];
   const channel = client.channel(`revision-${label}-${randomUUID()}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions', filter: 'key=eq.ph_soc_master' }, payload => events.push(payload.new));
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions', filter: 'key=eq.ph_soc_master' }, payload => events.push(payload.new))
+    .on('system', {}, payload => console.log(`Realtime ${label} system: ${JSON.stringify(payload)}`));
   channels.push({ client, channel });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Realtime subscribe timeout')), 15000);
@@ -81,9 +82,15 @@ async function watch(client, label) {
 }
 try {
   await sql.query("select set_config('app.sync_test','isolated',false)");
+  // Production already has this publication. A fresh empty local CLI project
+  // need not: reproduce that prerequisite without changing any Realtime schema.
+  if (!(await sql.query("select 1 from pg_publication where pubname='supabase_realtime'")).rowCount) {
+    await sql.query('create publication supabase_realtime');
+  }
   await sql.query(repoFile('supabase/ci/live_dataset_revision_baseline.sql'));
   await sql.query(repoFile('supabase/migrations/20260908185903_live_dataset_revisions.sql'));
   await sql.query(repoFile('supabase/tests/live_dataset_revisions_test.sql'));
+  assert.equal((await sql.query("select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='app_dataset_revisions'")).rowCount, 1, 'Metadata publication must be active');
   console.log('PASS isolated native PostgreSQL transaction/RLS assertions');
   const account = await actor('dylan_collyge');
   const otherAccount = await actor('synthetic_other', null);
@@ -105,6 +112,11 @@ try {
 
   const runId = randomUUID();
   await rpc(admin, 'begin_dataset_import_v1', { p_dataset_keys: ['ph_soc_master'], p_run_id: runId });
+  for (const client of [first, second]) {
+    const visible = await client.from('app_dataset_revisions').select('key,state').eq('key', 'ph_soc_master').single();
+    assert.ifError(visible.error);
+    assert.equal(visible.data.state, 'importing', 'Same native session can read the event row under RLS');
+  }
   await until(() => firstEvents.some(e => e.state === 'importing') && secondEvents.some(e => e.state === 'importing'), 'both sessions receive import fence');
   firstEvents.length = 0; secondEvents.length = 0;
   const importer = createClient(apiUrl, serviceKey, { ...options, global: { ...options.global, headers: { 'x-gnc-import-run-id': runId } } });
