@@ -96,6 +96,10 @@ select pg_temp.assert_true(not (public.get_dataset_import_status_v1(array['ph_ma
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-4000-8000-000000000002',
  'role','authenticated','exp',extract(epoch from now()+interval '1 hour'),'session_id','20000000-0000-4000-8000-000000000002')::text,true);
 select pg_temp.assert_true(public.get_my_dataset_revisions_v1(array['bloomscapes_private.orders'])->'sources'->0->>'state'='unavailable','pending stays Dylan-only');
+insert into private.fixture_permissions(profile_id,module) values ('10000000-0000-4000-8000-000000000002','request');
+select pg_temp.assert_true(app_sync_private.can_read_source('ph_location_work_jobs'),'assigned staff location-work metadata is not Dylan-only');
+select pg_temp.assert_true(app_sync_private.can_read_source('ph_eval_work'),'Request queue can refresh its existing Eval Work dependency');
+select pg_temp.assert_true(app_sync_private.can_read_source('ph_shear_list'),'Request queue can refresh its existing Shear dependency');
 update private.fixture_permissions set allowed=false where profile_id='10000000-0000-4000-8000-000000000002';
 select pg_temp.assert_true(public.get_my_dataset_revisions_v1(array['ph_soc_master'])->'sources'->0->>'state'='unavailable','role changes checked with same JWT');
 delete from auth.sessions where id='20000000-0000-4000-8000-000000000002';
