@@ -35,3 +35,4 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/ci/bloomscapes_pending_baseline.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260908014335_bloomscapes_pending_orders.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bloomscapes_pending_orders_test.sql
+          node supabase/ci/bloomscapes_pending_concurrency.mjs

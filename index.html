@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.07.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.07.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.07.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.07.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6809,7 +6809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.07.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.07.02">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6987,9 +6987,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.07.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.07.01"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.07.01"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.07.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.07.02"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.07.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7743,7 +7743,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.07.01').trim() || 'V2026.09.07.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.07.02').trim() || 'V2026.09.07.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8514,6 +8514,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">
                                     <button type="button" id="sales-office-tab-orders" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setSalesOfficeTab('orders')">Bloom Picker Orders</button>
                                     <button type="button" id="sales-office-tab-season" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="setSalesOfficeTab('season')">Season Sales Notes</button>
+                                    <button type="button" id="sales-office-bloomscapes-pending" class="hidden rounded-full border px-3 py-2 text-sm font-bold bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="openBloomscapesPendingOrders()">BloomScapes Pending</button>
                                 </div>
                             </div>
                             <button type="button" id="sales-office-export-btn" class="ops-view-option-action inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentSalesOfficeToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="sales-office-export-label">Export Excel</span></button>
@@ -9248,7 +9249,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.07.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.07.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9276,6 +9277,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         let nativeAuthSessionActive = false;
         let nativeAuthAccessToken = '';
         let nativeAuthProfile = null;
+        let bloomscapesPendingState = { sequence:0, orders:[], loading:false, more:false, error:'' };
         function getSupabaseBrowserClient() {
             if (supabaseClient && supabaseClient.storage) return supabaseClient;
             if (!SUPABASE_KEY || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
@@ -9318,8 +9320,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (error || !data || !data.session) {
                 nativeAuthSessionActive = false;
                 nativeAuthAccessToken = '';
+                closeBloomscapesPendingOrders();
                 return null;
             }
+            if (data.session.user?.id !== nativeAuthProfile?.id) closeBloomscapesPendingOrders();
             nativeAuthSessionActive = true;
             nativeAuthAccessToken = String(data.session.access_token || '').trim();
             return data.session;
@@ -9410,7 +9414,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (nativeAuthProfile && !force) return nativeAuthProfile;
             const client = getSupabaseBrowserClient();
             const session = await getNativeAuthSession();
-            if (!client || !session || !session.user) return null;
+            if (!client || !session || !session.user) { closeBloomscapesPendingOrders(); return null; }
             if (navigator.onLine === false) {
                 const cachedProfile = readCachedNativeAuthProfile(session.user.id);
                 if (cachedProfile) {
@@ -9423,8 +9427,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 .select('id,legacy_user_id,username,display_name,role,division,language,disabled_at,locked_until,must_change_password,passkey_pilot')
                 .eq('id', session.user.id)
                 .maybeSingle();
-            if (error || !data || data.disabled_at) return null;
-            if (data.locked_until && new Date(data.locked_until).getTime() > Date.now()) return null;
+            if (error || !data || data.disabled_at) { closeBloomscapesPendingOrders(); return null; }
+            if (data.locked_until && new Date(data.locked_until).getTime() > Date.now()) { closeBloomscapesPendingOrders(); return null; }
+            if (data.id !== nativeAuthProfile?.id || !canViewBloomscapesPendingOrders(data)) closeBloomscapesPendingOrders();
             nativeAuthProfile = data;
             cacheNativeAuthProfile(data);
             syncPasskeyPilotUi(data);
@@ -9434,6 +9439,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         let nativeRoleRefreshPromise = null;
 
         function clearRoleScopedClientCaches(username = currentUser) {
+            closeBloomscapesPendingOrders();
             const userKey = String(username || '').trim().toLowerCase();
             [localStorage, sessionStorage].forEach((storage) => {
                 try {
@@ -9509,7 +9515,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         function installNativeRoleRefreshWatchers() {
             const client = getSupabaseBrowserClient();
             if (client && client.auth && typeof client.auth.onAuthStateChange === 'function' && !window.__gncNativeRoleAuthWatcher) {
-                const subscription = client.auth.onAuthStateChange((event) => {
+                const subscription = client.auth.onAuthStateChange((event, session) => {
+                    if (event === 'SIGNED_OUT') {
+                        nativeAuthSessionActive = false;
+                        nativeAuthAccessToken = '';
+                        closeBloomscapesPendingOrders();
+                    } else if (session?.user?.id !== nativeAuthProfile?.id || session?.user?.id !== '54c87ebf-d76d-452b-96b4-beaaeb1742d9') {
+                        closeBloomscapesPendingOrders();
+                    }
                     if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
                         setTimeout(() => refreshNativeRoleAndCapabilities(`auth:${String(event || '').toLowerCase()}`), 0);
                     }
@@ -22191,6 +22204,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
         async function performLogout() {
+            closeBloomscapesPendingOrders();
             window.GncPhotoHistory?.clear();
             cancelAllDriveEvidenceSaves('logout');
             cleanupRealtime();
@@ -24934,6 +24948,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             bindFastInvokeById('dock-mode-btn-dropoff', 'setDockViewMode', ['dropoff'], 'Drop Off');
             bindFastInvokeById('sales-office-tab-orders', 'setSalesOfficeTab', ['orders'], 'Bloom Picker Orders');
             bindFastInvokeById('sales-office-tab-season', 'setSalesOfficeTab', ['season'], 'Season Sales Notes');
+            bindFastInvokeById('sales-office-bloomscapes-pending', 'openBloomscapesPendingOrders', [], 'BloomScapes Pending');
             bindFastInvokeById('moves-tab-main', 'setMovesTab', ['main'], 'Location Move Main');
             bindFastInvokeById('moves-tab-office', 'setMovesTab', ['office'], 'Location Move Inventory Office');
             bindFastInvokeById('tab-drive-name', 'setDriveTab', ['name'], 'COMMONNAME');
@@ -31612,7 +31627,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.07.01').trim() || 'V2026.09.07.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.07.02').trim() || 'V2026.09.07.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -102534,6 +102549,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function updateSalesOfficeTabButtons() {
+            const pendingButton = document.getElementById('sales-office-bloomscapes-pending');
+            if (pendingButton) pendingButton.classList.toggle('hidden', !canViewBloomscapesPendingOrders());
             const access = getRoleAccessState();
             const forceOrdersOnly = shouldForceSalesOfficeOrdersOnly(access);
             if (forceOrdersOnly) activeSalesOfficeTab = 'orders';
@@ -102548,6 +102565,89 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 seasonBtn.className = baseClass + ' ' + (activeSalesOfficeTab === 'season' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200');
                 seasonBtn.classList.toggle('hidden', forceOrdersOnly);
             }
+        }
+
+        // A separate private request ledger. Never add these orders to the
+        // Season/Bloom Picker queue or route them through its Done/delete path.
+        function canViewBloomscapesPendingOrders(profile = nativeAuthProfile) {
+            if (!nativeAuthSessionActive || !nativeAuthAccessToken) return false;
+            try {
+                const part = nativeAuthAccessToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+                const claims = JSON.parse(atob(part.padEnd(Math.ceil(part.length/4)*4,'=')));
+                if (claims.sub !== profile?.id || claims.iss !== 'https://kzrnyjsosryejjejliii.supabase.co/auth/v1' || !(Number(claims.exp)*1000 > Date.now())) return false;
+            } catch { return false; }
+            return String(currentUser || '').trim().toLowerCase() === 'dylan_collyge'
+                && profile && profile.id === '54c87ebf-d76d-452b-96b4-beaaeb1742d9'
+                && profile.username === 'dylan_collyge' && !profile.disabled_at && profile.must_change_password === false
+                && (!profile.locked_until || (Number.isFinite(Date.parse(profile.locked_until)) && Date.parse(profile.locked_until) <= Date.now()));
+        }
+        function closeBloomscapesPendingOrders() {
+            bloomscapesPendingState.sequence++;
+            bloomscapesPendingState.orders = [];
+            bloomscapesPendingState.loading = false;
+            bloomscapesPendingState.more = false;
+            bloomscapesPendingState.error = '';
+            const root = document.getElementById('bloomscapes-pending-dialog');
+            if (root) { if (root.open) root.close(); root.innerHTML = ''; }
+            return false;
+        }
+        function renderBloomscapesPendingOrders() {
+            const root = document.getElementById('bloomscapes-pending-dialog');
+            if (!root) return;
+            if (!canViewBloomscapesPendingOrders()) { closeBloomscapesPendingOrders(); return; }
+            const state = bloomscapesPendingState;
+            const money = (cents) => new Intl.NumberFormat('en-US', {style:'currency',currency:'USD'}).format(Number(cents || 0)/100);
+            const cards = state.orders.map((order) => {
+                const rows = (Array.isArray(order.lines) ? order.lines : []).map((line) => {
+                    const s = line.snapshot || {};
+                    return `<section style="border-top:1px solid #a7c3ae;padding:14px 0;overflow-wrap:anywhere"><strong>${escapeHtml(s.itemcode)} · ${escapeHtml(s.name)}</strong><div>${escapeHtml(s.size)} · Requested location <b>${escapeHtml(s.locationcode)}</b> · Lot <b>${escapeHtml(s.lotcode)}</b></div><div style="font-size:18px;margin:8px 0"><b>${escapeHtml(line.quantity)} requested</b> · ${escapeHtml(money(line.unit_price_cents))} each</div><div>${escapeHtml(s.spec || s.itemSpec || 'Specification needs review')}${s.caliper ? ' · ' + escapeHtml(s.caliper) : ''}</div><small>Photo reference at submission: ${s.photoLink ? 'recorded; verify current evidence before fulfillment' : 'missing; nursery review required'}</small>${s.holdCode ? `<p>Source hold code: ${escapeHtml(s.holdCode)}. Nursery review required.</p>` : ''}</section>`;
+                }).join('');
+                return `<article style="border:1px solid #6b9979;border-radius:14px;padding:16px;margin:16px 0;background:#f7faf6;color:#173c2b"><h3 style="font-size:20px;font-weight:800">Request ${escapeHtml(String(order.id).slice(0,8).toUpperCase())} · ${order.status === 'cancelled' ? 'Cancelled' : 'Pending review'}</h3><p>${escapeHtml(order.customer_name)} · ${escapeHtml(new Date(order.created_at).toLocaleString())} · ${escapeHtml(order.tier)}</p>${rows}${order.note ? `<p>Note: ${escapeHtml(order.note)}</p>` : ''}<p><b>Quoted merchandise subtotal: ${escapeHtml(money(order.subtotal_cents))}</b><br/>Shipping and tax not calculated.</p><p>Unpaid · No stock reserved. Requested locations are not confirmed allocations or instructions to pull. Confirm the order in Arogs before fulfillment.</p></article>`;
+            }).join('');
+            root.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2 id="bloomscapes-pending-heading" style="font-size:24px;font-weight:800">BloomScapes Pending Orders</h2><button type="button" onclick="closeBloomscapesPendingOrders()" style="padding:12px;border:1px solid #6b9979;border-radius:10px">Close</button></div><p>Private to dylan_collyge. Source details and quoted prices are saved with each request. Arogs remains the inventory authority.</p><button type="button" onclick="loadBloomscapesPendingOrders(false)" ${state.loading ? 'disabled' : ''} style="padding:12px;border:1px solid #6b9979;border-radius:10px">Refresh pending orders</button>${state.error ? `<p role="alert" style="color:#9d2020;background:#fff1f1;padding:12px">${escapeHtml(state.error)}</p>` : ''}${state.loading ? '<p role="status">Loading private order requests…</p>' : ''}${cards}${!state.loading && !state.error && !state.orders.length ? '<p>No pending order requests have been submitted yet.</p>' : ''}${state.more ? `<button type="button" onclick="loadBloomscapesPendingOrders(true)" ${state.loading ? 'disabled' : ''} style="padding:12px;border:1px solid #6b9979;border-radius:10px">Older order requests</button>` : ''}`;
+        }
+        async function loadBloomscapesPendingOrders(older = false) {
+            if (bloomscapesPendingState.loading || !canViewBloomscapesPendingOrders()) return false;
+            const sequence = ++bloomscapesPendingState.sequence;
+            bloomscapesPendingState.loading = true; bloomscapesPendingState.error = ''; renderBloomscapesPendingOrders();
+            try {
+                if (navigator.onLine === false) throw new Error('Connect to the internet to view private pending orders.');
+                const profile = await loadNativeAuthProfile(true);
+                if (!canViewBloomscapesPendingOrders(profile)) throw new Error('Only an active native dylan_collyge session may view these requests.');
+                const headers = await getNativeAuthRequestHeaders();
+                if (!headers || !headers.Authorization) throw new Error('Sign in with your native AgMetric account.');
+                if (sequence !== bloomscapesPendingState.sequence || !canViewBloomscapesPendingOrders()) return false;
+                const last = older ? bloomscapesPendingState.orders[bloomscapesPendingState.orders.length-1] : null;
+                const response = await fetchWithTimeout('https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/bloomscapes_pending_command', {
+                    method:'POST',cache:'no-store',credentials:'omit',redirect:'error',headers:{...headers,'Content-Type':'application/json'},
+                    body:JSON.stringify({p_action:'state',p_payload:last ? {beforeTime:last.created_at,beforeId:last.id} : {},p_request_id:null})
+                },20000,'BloomScapes pending orders');
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || `Pending orders could not be loaded (${response.status}).`);
+                if (sequence !== bloomscapesPendingState.sequence || !canViewBloomscapesPendingOrders()) return false;
+                if (data.mode !== 'pending-unpaid' || data.paymentEnabled !== false || data.stockReserved !== false || !Array.isArray(data.orders)) throw new Error('Unexpected pending-order response.');
+                bloomscapesPendingState.orders = older ? [...bloomscapesPendingState.orders,...data.orders.filter((o)=>!bloomscapesPendingState.orders.some((p)=>p.id===o.id))] : data.orders;
+                bloomscapesPendingState.more = data.orders.length === 25;
+            } catch (error) {
+                if (sequence !== bloomscapesPendingState.sequence) return false;
+                bloomscapesPendingState.orders = []; bloomscapesPendingState.more = false;
+                bloomscapesPendingState.error = String(error && error.message || 'Unable to load pending orders.');
+            } finally {
+                if (sequence === bloomscapesPendingState.sequence) { bloomscapesPendingState.loading = false; renderBloomscapesPendingOrders(); }
+            }
+            return false;
+        }
+        function openBloomscapesPendingOrders() {
+            if (!canViewBloomscapesPendingOrders()) { showToast('Private view','Only dylan_collyge may view BloomScapes pending orders.',true); return false; }
+            let root = document.getElementById('bloomscapes-pending-dialog');
+            if (!root) {
+                root = document.createElement('dialog'); root.id = 'bloomscapes-pending-dialog';
+                root.setAttribute('aria-labelledby','bloomscapes-pending-heading');
+                root.style.cssText = 'width:960px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:2px solid #6b9979;border-radius:18px;background:#f7faf6;color:#173c2b;font-size:16px;line-height:1.5';
+                root.addEventListener('cancel',()=>closeBloomscapesPendingOrders());
+                document.body.appendChild(root);
+            }
+            renderBloomscapesPendingOrders(); if (!root.open) root.showModal(); void loadBloomscapesPendingOrders(false); return false;
         }
 
         function updateSalesOfficeExportButton(count = 0) {
