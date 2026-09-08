@@ -12,9 +12,16 @@ end $$;
 create schema if not exists auth;
 create schema if not exists private;
 create schema if not exists bloomscapes_private;
-create table if not exists auth.users(id uuid primary key);
-create table if not exists auth.sessions(id uuid primary key,user_id uuid not null,not_after timestamptz);
 do $$ begin
+  -- A real local Supabase stack owns Auth DDL. Only the in-memory SQL runner
+  -- lacks these tables; don't issue even CREATE IF NOT EXISTS against native
+  -- Auth, whose schema intentionally denies CREATE to the postgres role.
+  if to_regclass('auth.users') is null then
+    create table auth.users(id uuid primary key);
+  end if;
+  if to_regclass('auth.sessions') is null then
+    create table auth.sessions(id uuid primary key,user_id uuid not null,not_after timestamptz);
+  end if;
   if to_regprocedure('auth.jwt()') is null then
     execute 'create function auth.jwt() returns jsonb language sql stable as $fn$ select nullif(current_setting(''request.jwt.claims'',true),'''')::jsonb $fn$';
   end if;
