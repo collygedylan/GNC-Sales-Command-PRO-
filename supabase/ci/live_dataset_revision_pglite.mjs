@@ -10,7 +10,9 @@ try {
   await db.exec("select set_config('app.sync_test','isolated',false)");
   for (const file of ['supabase/ci/live_dataset_revision_baseline.sql',
     'supabase/migrations/20260908185903_live_dataset_revisions.sql',
-    'supabase/tests/live_dataset_revisions_test.sql']) {
+    'supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql',
+    'supabase/tests/live_dataset_revisions_test.sql',
+    'supabase/tests/live_dataset_revisions_empty_statements_test.sql']) {
     try {
       await db.exec(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
       console.log(`PASS ${file}`);

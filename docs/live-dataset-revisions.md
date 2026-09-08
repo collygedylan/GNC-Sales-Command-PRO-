@@ -19,6 +19,9 @@ revision check runs even with a healthy socket. View entry, visibility restorati
 page restoration, reconnect and authentication refresh request an immediate check.
 Signals coalesce; an immediate signal supersedes a delayed one. Hidden sessions
 unsubscribe and stop polling. No full-data read is needed for unchanged revisions.
+Zero-row insert/update/delete statements do not advance revisions. Statement
+transition tables distinguish actual affected rows from empty maintenance work;
+import-token validation still applies even when a statement affects no rows.
 
 For a changed visible dependency or badge, the client stages a complete read,
 then verifies the same ready revision vector before applying it. Account, role,
