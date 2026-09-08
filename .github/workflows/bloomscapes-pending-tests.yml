@@ -1,0 +1,38 @@
+name: Private pending-order transaction tests
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*bloomscapes_pending*'
+      - 'supabase/tests/bloomscapes_pending*'
+      - 'supabase/ci/bloomscapes_pending*'
+      - '.github/workflows/bloomscapes-pending-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pending-transactions:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: pending_orders_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: disposable_ci_only
+      PGDATABASE: pending_orders_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test isolated pending-order transactions without production access
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/ci/bloomscapes_pending_baseline.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260908014335_bloomscapes_pending_orders.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bloomscapes_pending_orders_test.sql
+          node supabase/ci/bloomscapes_pending_concurrency.mjs
