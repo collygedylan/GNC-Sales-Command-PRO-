@@ -101,7 +101,9 @@ try {
   }
   await sql.query(repoFile('supabase/ci/live_dataset_revision_baseline.sql'));
   await sql.query(repoFile('supabase/migrations/20260908185903_live_dataset_revisions.sql'));
+  await sql.query(repoFile('supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
   await sql.query(repoFile('supabase/tests/live_dataset_revisions_test.sql'));
+  await sql.query(repoFile('supabase/tests/live_dataset_revisions_empty_statements_test.sql'));
   assert.equal((await sql.query("select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='app_dataset_revisions'")).rowCount, 1, 'Metadata publication must be active');
   console.log('PASS isolated native PostgreSQL transaction/RLS assertions');
   const account = await actor('dylan_collyge');
@@ -155,9 +157,59 @@ try {
   console.log('PASS two same-login sessions, actual RLS-filtered Realtime, coalesced 750-row import and pruning');
   console.log('ph_soc_master import: 2 metadata events per authorized device (1 importing + 1 ready); 0 chunk/heartbeat events; 0 events to denied session');
 
+  // Real Postgres statement triggers fire even when no tuple matched. These
+  // maintenance/retry commands must not advertise a source change or consume
+  // Realtime messages. Test SQL and actual PostgREST paths independently.
+  const sourceMetadata = async () => (await sql.query("select revision::text,changed_at::text from public.app_dataset_revisions where key='ph_soc_master'")).rows[0];
+  const beforeEmpty = await sourceMetadata();
+  firstEvents.length = 0; secondEvents.length = 0;
+  await sql.query("insert into public.ph_soc_master(unique_id) select 'native-empty' where false");
+  await sql.query("update public.ph_soc_master set dock='No row' where unique_id='native-missing'");
+  await sql.query("delete from public.ph_soc_master where unique_id='native-missing'");
+  await sql.query("insert into public.ph_soc_master(unique_id) values('ci-1-1') on conflict(unique_id) do nothing");
+  assert.ifError((await admin.from('ph_soc_master').update({ dock: 'No row' }).eq('unique_id', 'native-missing')).error);
+  assert.ifError((await admin.from('ph_soc_master').delete().eq('unique_id', 'native-missing')).error);
+  assert.ifError((await admin.from('ph_soc_master').upsert({ unique_id: 'ci-1-1', quantityordered: 0 }, { onConflict: 'unique_id', ignoreDuplicates: true })).error);
+  assert.deepEqual(await sourceMetadata(), beforeEmpty, 'seven empty SQL/REST commands preserve revision and timestamp');
+  for (const result of [
+    await importer.from('ph_soc_master').update({ dock: 'No row' }).eq('unique_id', 'native-missing'),
+    await importer.from('ph_soc_master').delete().eq('unique_id', 'native-missing'),
+  ]) {
+    assert.equal(result.error?.message, 'DATASET_IMPORT_FENCE_LOST', 'closed-token validation also applies to empty REST requests');
+  }
+  await delay(300);
+  assert.equal(firstEvents.length, 0, 'zero-row commands emit no phone events');
+  assert.equal(secondEvents.length, 0, 'zero-row commands emit no tablet events');
+  console.log('PASS 7 empty SQL/PostgREST commands: 0 revisions, 0 events per device; closed-token zero-row retries rejected');
+
+  // Positive controls form a delivery barrier as well as proving that event
+  // suppression did not disable real inserts/updates/deletes. The first also
+  // proves an empty earlier statement cannot hide a later real transaction.
+  const realCommands = [
+    "begin; update public.ph_soc_master set dock='none' where false; insert into public.ph_soc_master(unique_id,quantityordered) values('native-real',1); commit",
+    "update public.ph_soc_master set quantityordered=2 where unique_id='native-real'",
+    "insert into public.ph_soc_master(unique_id,quantityordered) values('native-real',3) on conflict(unique_id) do update set quantityordered=excluded.quantityordered",
+    "update public.ph_soc_master set quantityordered=quantityordered where unique_id='native-real'",
+    "delete from public.ph_soc_master where unique_id='native-real'",
+  ];
+  for (const [index, command] of realCommands.entries()) {
+    const before = await sourceMetadata();
+    await sql.query(command);
+    const after = await sourceMetadata();
+    assert.equal(BigInt(after.revision), BigInt(before.revision) + 1n, 'real mutation publishes one revision');
+    await until(() => firstEvents.length >= index + 1 && secondEvents.length >= index + 1, 'both sessions receive real source mutation');
+    assert.equal(String(firstEvents[index].revision), after.revision);
+    assert.equal(String(secondEvents[index].revision), after.revision);
+  }
+  await delay(250);
+  assert.equal(firstEvents.length, realCommands.length, 'no late empty-statement or duplicate upsert event');
+  assert.equal(secondEvents.length, realCommands.length);
+  assert.equal(deniedEvents.length, 0);
+  console.log('PASS real insert, update, upsert-update, same-value row update, delete: 5 revisions and exactly 5 events per authorized device');
+
   // Catch up from durable revisions after a WebSocket is intentionally absent.
   await first.removeChannel(channels[0].channel);
-  const beforeOffline = current.sources[0].revision;
+  const beforeOffline = (await sourceMetadata()).revision;
   await sql.query("update public.ph_soc_master set date_completed=clock_timestamp() where unique_id='ci-1-1'");
   const reconnect = await rpc(first, 'get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master'] });
   assert.ok(BigInt(reconnect.sources[0].revision) > BigInt(beforeOffline));

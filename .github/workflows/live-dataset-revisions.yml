@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - 'Code.gs'
-      - 'supabase/migrations/*live_dataset_revisions*'
+      - 'supabase/migrations/*live_dataset_revision*'
       - 'supabase/ci/live_dataset_revision*'
       - 'supabase/tests/live_dataset_revisions*'
       - '.github/workflows/live-dataset-revisions.yml'
