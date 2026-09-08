@@ -60,7 +60,7 @@ insert into app_sync_private.sources(key,modules,dylan_only) values
 ('ph_warehouse_assigned_items','{drive,tasks,managers,request}',false),
 ('ph_cav_import','{av,tasks,sales,managers,drive,advertisement}',false),
 ('ph_av_notes','{av,drive,sales}',false),
-('ph_app_settings','{drive,tasks,docks,request,reserves,av,sales,sales-office,managers,production,production-workflow,shear-list,weather-hold,review,move-up,low-stock,sales-inventory,crop-roll,qc,po-management,reports}',false),
+('ph_app_settings','{drive,tasks,docks,request,reserves,av,sales,sales-office,office,moves,managers,production,production-workflow,shear-list,weather-hold,review,move-up,low-stock,sales-inventory,crop-roll,qc,po-management,reports,building,grower,pest-management,take-back,advertisement}',false),
 ('ph_crop_roll_drive_rows','{crop-roll,drive}',false),
 ('ph_crop_roll_completed_drive_keys','{crop-roll,drive}',false),
 ('ph_crop_roll_runs','{crop-roll}',false),

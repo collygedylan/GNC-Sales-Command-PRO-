@@ -102,6 +102,8 @@ select pg_temp.assert_true(app_sync_private.can_read_source('ph_eval_work'),'Req
 select pg_temp.assert_true(app_sync_private.can_read_source('ph_shear_list'),'Request queue can refresh its existing Shear dependency');
 update private.fixture_permissions set allowed=false where profile_id='10000000-0000-4000-8000-000000000002';
 select pg_temp.assert_true(public.get_my_dataset_revisions_v1(array['ph_soc_master'])->'sources'->0->>'state'='unavailable','role changes checked with same JWT');
+insert into private.fixture_permissions(profile_id,module) values ('10000000-0000-4000-8000-000000000002','advertisement');
+select pg_temp.assert_true(public.get_my_dataset_revisions_v1(array['ph_app_settings'])->'sources'->0->>'state'='ready','existing inventory modules can refresh their season settings');
 delete from auth.sessions where id='20000000-0000-4000-8000-000000000002';
 select pg_temp.expect_error($q$select public.get_my_dataset_revisions_v1(array['ph_soc_master'])$q$,'DATASET_SESSION_REQUIRED');
 rollback;
