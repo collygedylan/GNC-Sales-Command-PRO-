@@ -174,6 +174,28 @@ test('root asset reads do not consume identically keyed responses from partner c
   assert.equal(h.calls.put[1].name, h.evaluate('CACHE_NAME'));
 });
 
+test('all live-sync modules remain available offline in the root cache without crossing into v2', async () => {
+  const modules = ['registry', 'adapters', 'coordinator'].map(name => `/assets/live-sync-${name}.js`);
+  const h = harness([{ id: 'demo', url: `${origin}/v2/` }]);
+  const cacheName = h.evaluate('CACHE_NAME');
+  for (const path of modules) {
+    assert.equal(h.evaluate(`isPrecachedRuntimeAssetUrl(new URL(${JSON.stringify(absolute(path))}))`), true, path);
+    await (await h.caches.open('bloomscapes-demo-v1')).put(path, new Response('PARTNER POISON'));
+    h.setFetch(async () => new Response(`ROOT ${path}`));
+    const online = await h.dispatch('fetch', { request: request(path) });
+    assert.equal(await online.response.text(), `ROOT ${path}`);
+    assert.equal(await (await (await h.caches.open(cacheName)).match(path)).text(), `ROOT ${path}`);
+    h.setFetch(async () => { throw new Error('offline'); });
+    const offline = await h.dispatch('fetch', { request: request(path) });
+    assert.equal(await offline.response.text(), `ROOT ${path}`);
+    const before = h.calls.put.length;
+    h.setFetch(async () => new Response('V2 NETWORK'));
+    const independent = await h.dispatch('fetch', { clientId: 'demo', request: request(path, { referrer: `${origin}/` }) });
+    assert.equal(await independent.response.text(), 'V2 NETWORK');
+    assert.equal(h.calls.put.length, before, 'A v2 request must not populate root cache');
+  }
+});
+
 test('inactive production upgrade behavior remains, but active/current and foreign clients are untouched', async () => {
   const h = harness([
     { id: 'root', url: `${origin}/index.html` },
@@ -184,7 +206,7 @@ test('inactive production upgrade behavior remains, but active/current and forei
   ]);
   for (const client of h.clients) await h.dispatch('fetch', { clientId: client.id, request: request('/write', { method: 'POST', referrer: '' }) });
   assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
-  assert.match(h.calls.navigated[0].url, /shellv=V2026\.09\.08\.01/);
+  assert.match(h.calls.navigated[0].url, /shellv=V2026\.09\.08\.02/);
   assert.match(h.calls.navigated[0].url, /shellr=photo-egress-r1-scope-r1/);
 });
 

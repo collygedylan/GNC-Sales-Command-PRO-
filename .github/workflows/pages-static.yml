@@ -42,6 +42,7 @@ jobs:
           npm run check:inline
           npm run test:photo
           npm run test:pilot
+          npm run test:live-sync
           npx playwright install --with-deps chromium firefox webkit
           npm run test:v2:e2e
           npm run build:pilot-monitoring
@@ -93,6 +94,8 @@ jobs:
         run: npm run test:season-sales-office
       - name: Verify Suspend Tag completion before publishing
         run: npm run test:suspend-tag
+      - name: Verify live refreshes and device-local Docks filters before publishing
+        run: npm run test:docks-filter
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -153,6 +156,10 @@ jobs:
         env:
           SUSPEND_TAG_BASE_URL: https://agmetricapp.com
         run: npm run test:suspend-tag
+      - name: Verify live data refreshes with mutation-blocked browser fixtures
+        env:
+          DOCKS_FILTER_BASE_URL: https://agmetricapp.com
+        run: npm run test:docks-filter
 
       - name: Upload sanitized canary diagnostics
         if: failure()

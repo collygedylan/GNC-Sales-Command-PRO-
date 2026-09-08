@@ -1,9 +1,9 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 
-const RELEASE = 'V2026.09.08.01';
+const RELEASE = 'V2026.09.08.02';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -36,6 +36,10 @@ const runtimeName = 'live-app-runtime-v2026082010.min.js';
 const runtimeTarget = path.join(siteRoot, 'assets', runtimeName);
 await mkdir(path.dirname(runtimeTarget), { recursive: true });
 await writeFile(runtimeTarget, `${minified.code}\n`, 'utf8');
+// These synchronous dependencies must accompany the extracted production
+// runtime in local verification as well as the Pages artifact.
+await Promise.all(['live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js'].map((name) =>
+  copyFile(path.join(root, 'assets', name), path.join(siteRoot, 'assets', name))));
 
 const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
     <noscript><link rel="stylesheet" href="${href}"></noscript>`;

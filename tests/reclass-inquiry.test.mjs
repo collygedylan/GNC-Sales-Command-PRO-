@@ -94,6 +94,7 @@ function loadClientPayloadBuilder(values = {}) {
   const end = html.indexOf('async function postArgosInventoryTransactionPayload', start);
   assert.ok(start > 0 && end > start);
   const context = {
+    document: { addEventListener() {} },
     argosInventoryTransactionState: {
       idempotencyToken: 'reclass-token-123456',
       snapshot: {
@@ -911,6 +912,7 @@ test('live Reclass payload obtains its validation from the direct-action V3 draf
   const end = html.indexOf('async function postArgosInventoryTransactionPayload', start);
   assert.ok(start > 0 && end > start);
   const context = {
+    document: { addEventListener() {} },
     argosInventoryTransactionState: { snapshot: {} },
     RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION: 'reclass-action-workflow-v3-row-actions-20260826',
