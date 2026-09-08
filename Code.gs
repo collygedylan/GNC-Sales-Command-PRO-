@@ -119,7 +119,110 @@ function getSupabaseHeadersForKey_(key, extraHeaders) {
 }
 
 function getSupabaseHeaders_(extraHeaders) {
-  return getSupabaseHeadersForKey_(SUPABASE_KEY, extraHeaders);
+  const headers = getSupabaseHeadersForKey_(SUPABASE_KEY, extraHeaders);
+  if (datasetImportFenceContext_ && datasetImportFenceContext_.runId) {
+    headers['x-gnc-import-run-id'] = datasetImportFenceContext_.runId;
+  }
+  return headers;
+}
+
+// Metadata-only fence around multi-request imports. Start only when there are
+// actual writes: an empty/no-change scheduled run must not refresh every phone.
+// The server validates this run header on each source statement, including
+// retries, so an expired/superseded writer cannot finish an old snapshot.
+let datasetImportFenceContext_ = null;
+let datasetImportProcessorLock_ = null;
+function withDatasetImportProcessorLock_(work, existingLock) {
+  const previousLock = datasetImportProcessorLock_;
+  const lock = existingLock || previousLock || LockService.getScriptLock();
+  const ownsLock = !lock.hasLock();
+  if (ownsLock) lock.waitLock(30000);
+  datasetImportProcessorLock_ = lock;
+  try { return work(); }
+  finally {
+    datasetImportProcessorLock_ = previousLock;
+    if (ownsLock) lock.releaseLock();
+  }
+}
+function callDatasetImportFenceRpc_(name, payload) {
+  return withRetry_('Dataset import fence', 3, 400, function() {
+    return callSupabaseRpc_(name, payload);
+  }, function(error) {
+    return /timeout|timed out|fetch|network|connection|\((429|500|502|503|504)\)/i.test(String(error && error.message || error));
+  });
+}
+function getDatasetImportFenceSources_(sourceTables) {
+  const keys = Array.isArray(sourceTables) ? sourceTables.slice() : [sourceTables];
+  if (keys.some(function(key) { return key === 'ph_master_inventory' || key === 'ph_cav_import'; })) {
+    // Existing import-triggered reconciliation changes these read dependencies
+    // across multiple HTTP transactions, so their views share the same fence.
+    keys.push('ph_master_inventory', 'ph_sales_office', 'ph_warehouse_assigned_items',
+      'ph_eval_work', 'ph_eval_work_origin_rows', 'ph_eval_work_events',
+      'ph_active_request', 'ph_request_delivery_outbox', 'ph_crop_roll_drive_rows', 'ph_hold_learning_events');
+  }
+  return Array.from(new Set(keys)).sort();
+}
+function beginDatasetImportFenceIfNeeded_(sourceTables, hasChanges) {
+  if (!hasChanges) {
+    const status = callDatasetImportFenceRpc_('get_dataset_import_status_v1', {
+      p_dataset_keys: getDatasetImportFenceSources_(sourceTables)
+    });
+    if (!status || status.ok !== true || typeof status.requiresRecovery !== 'boolean') throw new Error('DATASET_IMPORT_STATUS_INVALID');
+    if (!status.requiresRecovery) return null;
+  }
+  // Called only after validating/comparing the complete canonical snapshot.
+  // A partial run may already have written every changed row before failing;
+  // a successful zero-delta replay is what safely releases that prior fence.
+  return beginDatasetImportFence_(sourceTables);
+}
+function beginDatasetImportFence_(sourceTables) {
+  const keys = Array.from(new Set(getDatasetImportFenceSources_(sourceTables)
+    .map(function(value) { return String(value || '').trim(); }).filter(Boolean))).sort();
+  if (!keys.length) return null;
+  if (datasetImportFenceContext_) throw new Error('DATASET_IMPORT_NESTED_FENCE');
+  const lock = datasetImportProcessorLock_ || LockService.getScriptLock();
+  const ownsLock = !lock.hasLock();
+  if (ownsLock) lock.waitLock(30000);
+  const context = { runId: Utilities.getUuid(), keys: keys, lock: lock, ownsLock: ownsLock, lastHeartbeatAt: Date.now() };
+  try {
+    const result = callDatasetImportFenceRpc_('begin_dataset_import_v1', {
+      p_dataset_keys: keys, p_run_id: context.runId,
+      p_canonical_keys: Array.isArray(sourceTables) ? sourceTables : [sourceTables]
+    });
+    if (!result || result.ok !== true || result.state !== 'active') throw new Error('DATASET_IMPORT_NOT_ACTIVE');
+    datasetImportFenceContext_ = context;
+    return context;
+  } catch (error) {
+    if (ownsLock) lock.releaseLock();
+    throw error;
+  }
+}
+function heartbeatDatasetImportFence_() {
+  const context = datasetImportFenceContext_;
+  if (!context || Date.now() - context.lastHeartbeatAt < 60000) return;
+  const result = callDatasetImportFenceRpc_('heartbeat_dataset_import_v1', { p_run_id: context.runId });
+  if (!result || result.ok !== true || result.state !== 'active') throw new Error('DATASET_IMPORT_FENCE_LOST');
+  context.lastHeartbeatAt = Date.now();
+}
+function closeDatasetImportFence_(context, succeeded) {
+  if (!context || context.closed) return;
+  try {
+    const result = callDatasetImportFenceRpc_(succeeded ? 'finish_dataset_import_v1' : 'fail_dataset_import_v1', { p_run_id: context.runId });
+    if (!result || result.ok !== true) throw new Error('DATASET_IMPORT_CLOSE_FAILED');
+    context.closed = true;
+  } finally {
+    if (datasetImportFenceContext_ === context) datasetImportFenceContext_ = null;
+    if (context.ownsLock) { context.lock.releaseLock(); context.ownsLock = false; }
+  }
+}
+function failDatasetImportFence_(context) {
+  if (!context || context.closed) return;
+  try { closeDatasetImportFence_(context, false); }
+  catch (error) {
+    // Never mislabel an uncertain/partial import ready. The database lease
+    // becomes interrupted on expiry; the next canonical import can recover it.
+    console.error('[DATASET SYNC] Import remains incomplete: ' + String(error && error.message || error));
+  }
 }
 
 const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
@@ -268,6 +371,9 @@ function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
     p_import_revision: safeSource + ':' + safeRevision,
     p_idempotency_key: idempotencyKey
   });
+  if (datasetImportFenceContext_ && (!result || result.ok !== true || result.status !== 'completed')) {
+    throw new Error('SEASON_SALES_RECONCILIATION_INCOMPLETE');
+  }
   if (result && (result.status === 'maintenance_deferred' || result.code === 'MAINTENANCE_DEFERRED')) {
     console.warn('[SEASON SALES NOTES] MAINTENANCE_DEFERRED');
   } else {
@@ -1018,7 +1124,7 @@ function runQueuedManualSyncStage_(options) {
       saveManualSyncStatus_(status);
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
-      const stageResult = stageDef.run() || {};
+      const stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
       const filesProcessed = Number(stageResult.filesProcessed || 0);
       const tempFilesRemoved = Number(stageResult.tempFilesRemoved || 0);
       const failedFiles = Number(stageResult.failedFiles || 0);
@@ -1120,6 +1226,7 @@ function executeFetchAllBatches(requests, batchSize) {
   const safeBatchSize = Math.max(1, Number(batchSize) || 1);
   let responses = [];
   for (let i = 0; i < requests.length; i += safeBatchSize) {
+    heartbeatDatasetImportFence_();
     let batch = requests.slice(i, i + safeBatchSize);
     let batchResponses;
     try {
@@ -3453,7 +3560,14 @@ function deleteFromSupabase(tableName, idsToDelete) {
       muteHttpExceptions: true
     });
   }
-  if (requests.length > 0) executeFetchAllBatches(requests, SUPABASE_DELETE_FETCH_BATCH_SIZE);
+  if (requests.length > 0) {
+    const responses = executeFetchAllBatches(requests, SUPABASE_DELETE_FETCH_BATCH_SIZE);
+    responses.forEach(function(response) {
+      if (!isSuccessfulSupabaseWriteResponse_(response)) {
+        throw new Error(`Supabase delete failed for ${tableName} (${response.getResponseCode()}): ${response.getContentText()}`);
+      }
+    });
+  }
 }
 
 function normalizeSupabaseUpsertChunk(rows) {
@@ -3730,6 +3844,11 @@ function throwSupabaseUpsertFailures_(tableName, failures) {
 }
 
 function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilderFunc) {
+  return withDatasetImportProcessorLock_(function() {
+    return processFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc);
+  });
+}
+function processFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
   const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
   const files = listDriveFilesWithRetry_(dropFolder, `${tableName} drop folder`);
@@ -3750,6 +3869,7 @@ function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilde
     filesSeen++;
     console.log(`[START] Processing: ${fileName} -> Table: ${tableName}`);
 
+    let revisionFence = null;
     try {
       const syncStartTime = new Date().toISOString();
       let rawData = extractDataFromFile(file, dropFolderId);
@@ -3772,15 +3892,18 @@ function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilde
 
         console.log(`Sync results: ${upserts.length} rows upserted | ${deletes.length} removed rows | ${totalRows} parsed rows`);
 
+        revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
         if (upserts.length > 0) pushToSupabase(tableName, upserts);
         if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
       } else {
         console.warn('[SKIP] 0 rows meeting criteria found.');
       }
 
+      closeDatasetImportFence_(revisionFence, true);
       moveDriveFileToFolderWithRetry_(file, processedFolder, `${tableName} processed file ${fileName}`);
       filesProcessed++;
     } catch (err) {
+      failDatasetImportFence_(revisionFence);
       const errorMessage = err && err.message ? err.message : String(err);
       failedFiles.push({ name: fileName, error: errorMessage });
       console.error(`[ERROR] Failed processing ${fileName} for ${tableName}: ${err && err.stack ? err.stack : errorMessage}`);
@@ -3816,6 +3939,11 @@ function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilde
 }
 
 function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
+  return withDatasetImportProcessorLock_(function() {
+    return processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options);
+  });
+}
+function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
   const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
   const deltaMode = !!(options && options.deltaMode);
@@ -3866,6 +3994,7 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
   let syncDiagnostics = createDeltaSyncStats_();
   let failedFiles = [];
   let importSucceeded = false;
+  let revisionFence = null;
 
   console.log(
     `[START] Processing latest file only: ${newestFileName} -> Table: ${tableName}` +
@@ -3899,6 +4028,7 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
       archivedOlderFiles: olderFiles.length,
       upserts: upsertCount
     }));
+    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
     if (upserts.length > 0) pushToSupabase(tableName, upserts);
     if (deltaMode && deletes.length > 0) deleteFromSupabase(tableName, deletes);
     if (options && typeof options.afterCommit === 'function') {
@@ -3912,9 +4042,11 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
       });
     }
 
+    closeDatasetImportFence_(revisionFence, true);
     moveDriveFileToFolderWithRetry_(newestFile, processedFolder, `${tableName} processed file ${newestFileName}`);
     importSucceeded = true;
   } catch (err) {
+    failDatasetImportFence_(revisionFence);
     const errorMessage = err && err.message ? err.message : String(err);
     upsertCount = 0;
     deleteCount = 0;
@@ -4071,6 +4203,11 @@ function filterMasterRawDataBySite_(rawData, siteCode) {
 }
 
 function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolderId) {
+  return withDatasetImportProcessorLock_(function() {
+    return processSiteSplitMasterSnapshotBatchFolderLocked_(dropFolderId, processedFolderId);
+  });
+}
+function processSiteSplitMasterSnapshotBatchFolderLocked_(dropFolderId, processedFolderId) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, 'site split drive around drop folder');
   const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'site split drive around processed folder');
   const files = listDriveFilesWithRetry_(dropFolder, 'site split drive around drop folder');
@@ -4115,6 +4252,7 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
   let totalUpserts = 0;
   let totalDeletes = 0;
   let importSucceeded = false;
+  let revisionFence = null;
 
   console.log(`[START] Processing site split Drive Around snapshot batch: ${pendingFiles.length} file(s)`);
 
@@ -4130,6 +4268,9 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
     });
 
     let anySiteRows = false;
+    const siteFenceSources = SITE_SPLIT_SITE_CODES_.filter(function(code) {
+      return parsedFiles.some(function(entry) { return filterMasterRawDataBySite_(entry.rawData, code).length > 1; });
+    }).map(function(code) { return resolveSiteSplitTableName_('ph_master_inventory', code); });
     SITE_SPLIT_SITE_CODES_.forEach(function(siteCode) {
       const tableName = resolveSiteSplitTableName_('ph_master_inventory', siteCode);
       const siteParsedFiles = parsedFiles
@@ -4169,6 +4310,9 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
         upserts: upserts.length
       }));
 
+      if (!revisionFence) {
+        revisionFence = beginDatasetImportFenceIfNeeded_(siteFenceSources, upserts.length || deletes.length);
+      }
       if (upserts.length > 0) pushToSupabase(tableName, upserts);
       if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
       emitTableSyncLiveEvent_(tableName, {
@@ -4191,12 +4335,14 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
 
     reconcileSeasonSalesOfficeAfterImport_(syncStartTime, 'master_inventory');
 
+    closeDatasetImportFence_(revisionFence, true);
     const namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });
     if (namingSummary && namingSummary.warnings && namingSummary.warnings.length) {
       console.warn(`[DRIVE AROUND NAME] ${namingSummary.warnings.join(' | ')}`);
     }
     importSucceeded = true;
   } catch (err) {
+    failDatasetImportFence_(revisionFence);
     const errorMessage = err && err.message ? err.message : String(err);
     failedFiles.push.apply(failedFiles, pendingFiles.map(function(file) {
       return { name: file.getName(), error: errorMessage };
@@ -4231,6 +4377,11 @@ function runSiteSplitDriveAroundOnly_() {
 }
 
 function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
+  return withDatasetImportProcessorLock_(function() {
+    return processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options);
+  });
+}
+function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
   const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
   const files = listDriveFilesWithRetry_(dropFolder, `${tableName} drop folder`);
@@ -4275,6 +4426,7 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
   let upsertCount = 0;
   let deleteCount = 0;
   let importSucceeded = false;
+  let revisionFence = null;
   let evalReport2Reconciliation = null;
 
   console.log(`[START] Processing snapshot batch: ${pendingFiles.length} file(s) -> Table: ${tableName}`);
@@ -4347,13 +4499,33 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
       upserts: upsertCount
     }));
 
+    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
     if (upserts.length > 0) pushToSupabase(tableName, upserts);
     if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
 
     if (isMasterInventoryTable_(tableName)) {
       reconcileSeasonSalesOfficeAfterImport_(syncStartTime, 'master_inventory');
+      try {
+        evalReport2Reconciliation = callSupabaseRpc_('reconcile_eval_report2_work_v1', {
+          p_import_revision: syncStartTime, p_dry_run: false, p_limit: 5000
+        });
+        if (revisionFence && (!evalReport2Reconciliation || evalReport2Reconciliation.status !== 'completed')) {
+          throw new Error('EVAL_REPORT2_RECONCILIATION_INCOMPLETE');
+        }
+        if (evalReport2Reconciliation && evalReport2Reconciliation.status === 'deferred') {
+          console.warn('[EVAL REPORTS #2] RECONCILIATION_DEFERRED');
+        } else {
+          console.log('[EVAL REPORTS #2] Canonical import reconciliation completed: ' +
+            String(evalReport2Reconciliation && evalReport2Reconciliation.resolved || 0) + ' work item(s) resolved.');
+        }
+      } catch (reconcileError) {
+        evalReport2Reconciliation = { status: 'failed', errorCode: 'EVAL_REPORT2_RECONCILIATION_FAILED' };
+        if (revisionFence) throw reconcileError;
+        console.error('[EVAL REPORTS #2] EVAL_REPORT2_RECONCILIATION_FAILED');
+      }
     }
 
+    closeDatasetImportFence_(revisionFence, true);
     let namingSummary = null;
     if (isMasterInventoryTable_(tableName) && String(processedFolderId || '') === String(FOLDERS.MASTER_PROCESSED || '')) {
       namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });
@@ -4367,6 +4539,7 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
     }
     importSucceeded = true;
   } catch (err) {
+    failDatasetImportFence_(revisionFence);
     const errorMessage = err && err.message ? err.message : String(err);
     upsertCount = 0;
     deleteCount = 0;
@@ -4386,26 +4559,6 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
   );
 
   if (importSucceeded) {
-    if (isMasterInventoryTable_(tableName)) {
-      try {
-        evalReport2Reconciliation = callSupabaseRpc_('reconcile_eval_report2_work_v1', {
-          p_import_revision: syncStartTime,
-          p_dry_run: false,
-          p_limit: 5000
-        });
-        if (evalReport2Reconciliation && evalReport2Reconciliation.status === 'deferred') {
-          console.warn('[EVAL REPORTS #2] RECONCILIATION_DEFERRED');
-        } else {
-          console.log('[EVAL REPORTS #2] Canonical import reconciliation completed: ' +
-            String(evalReport2Reconciliation && evalReport2Reconciliation.resolved || 0) + ' work item(s) resolved.');
-        }
-      } catch (reconcileError) {
-        // The inventory commit remains authoritative. A later canonical import
-        // or the scheduled service operation can safely retry this idempotently.
-        evalReport2Reconciliation = { status: 'failed', errorCode: 'EVAL_REPORT2_RECONCILIATION_FAILED' };
-        console.error('[EVAL REPORTS #2] EVAL_REPORT2_RECONCILIATION_FAILED');
-      }
-    }
     emitTableSyncLiveEvent_(tableName, {
       filesProcessed: pendingFiles.length,
       tempFilesRemoved: tempFilesRemoved,

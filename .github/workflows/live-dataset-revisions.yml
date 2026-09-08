@@ -1,0 +1,43 @@
+name: Live dataset revision transactions and native Realtime
+on:
+  pull_request:
+    paths:
+      - 'Code.gs'
+      - 'supabase/migrations/*live_dataset_revisions*'
+      - 'supabase/ci/live_dataset_revision*'
+      - 'supabase/tests/live_dataset_revisions*'
+      - '.github/workflows/live-dataset-revisions.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-native-revisions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: '2.111.0'
+      - run: npm ci
+      - run: node --test supabase/ci/live_dataset_revision_import.test.mjs
+      - name: Start disposable local Auth, REST and Realtime only
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/agmetric-revisions-ci-local"
+          supabase init --workdir "$RUNNER_TEMP/agmetric-revisions-ci-local"
+          supabase start --workdir "$RUNNER_TEMP/agmetric-revisions-ci-local" --exclude storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor
+      - name: Verify transactions, native sessions, two-device WebSockets and quota coalescing
+        run: node supabase/ci/live_dataset_revision_realtime.mjs "$RUNNER_TEMP/agmetric-revisions-ci-local"
+      - name: Inspect isolated security advisors
+        run: supabase db advisors --local --workdir "$RUNNER_TEMP/agmetric-revisions-ci-local" --type security --level error --fail-on error
+      - name: Diagnose local Realtime only on failure
+        if: failure()
+        run: docker logs --tail 150 supabase_realtime_agmetric-revisions-ci-local
+      - name: Stop disposable local environment
+        if: always()
+        run: supabase stop --workdir "$RUNNER_TEMP/agmetric-revisions-ci-local"
