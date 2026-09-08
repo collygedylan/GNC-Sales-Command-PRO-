@@ -33892,8 +33892,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!definition) throw new Error(`Unknown live dataset: ${key}`);
             const querySource = definition.fullQuery || definition.initialQuery || 'select=*';
             const query = typeof querySource === 'function' ? querySource('full', {}) : querySource;
+            const season = key === 'master' ? getCurrentAppSeasonSettings() : null;
             return {
-                id: `core:${key}`, cacheKey: JSON.stringify([key, definition.table, query]),
+                // An off-screen settings refresh may not have a master revision
+                // to validate. Re-entering inventory must then recheck its
+                // season-derived collections even if physical stock is unchanged.
+                id: `core:${key}`, cacheKey: JSON.stringify([key, definition.table, query, season && [season.seasonCode, season.salesYear]]),
                 sourceKeys: window.AgMetricLiveSyncRegistry.getSourceKeys([`core:${key}`]),
                 stage: async () => {
                     // No first-page hydration, error-to-empty fallback or merge with
