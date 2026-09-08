@@ -215,6 +215,8 @@ jobs:
         run: npm run test:footer
       - name: Test Season Sales Notes completion in the built production shell
         run: npm run test:season-sales-office
+      - name: Test Suspend Tag completion in the built production shell
+        run: npm run test:suspend-tag
 
       - name: Run Lighthouse CI with bounded protocol retry
         shell: bash
