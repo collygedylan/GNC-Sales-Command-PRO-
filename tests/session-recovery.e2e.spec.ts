@@ -344,3 +344,58 @@ test('[recovery-edge] an explicit manual sign-in after prior logout can recover 
   expect(await page.evaluate(() => (window as any).__sessionFixture.signIns.length)).toBe(1);
   expect(await page.evaluate(() => (window as any).__sessionFixture.signOuts)).toEqual([]);
 });
+
+test('[final-auth-audit] foreground discovers an ended SDK session even without a SIGNED_OUT event', async ({ page, baseURL }) => {
+  await isolatedSession(page, baseURL!);
+  await page.evaluate(() => (window as any).__sessionFixture.start());
+  await readyHome(page);
+  await page.evaluate(() => {
+    sessionStorage.setItem('isolated-request-draft','retained after expiry');
+    (window as any).__sessionFixture.session=null;
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(page.locator('#native-session-recovery')).toContainText('Session Ended');
+  await expect(page.locator('#login-inputs')).toBeVisible();
+  await expect(page.locator('#app-wrapper')).toBeHidden();
+  const state=await page.evaluate(() => (window as any).__sessionFixture.snapshot());
+  expect(state.username).toBe('');expect(state.active).toBe(false);
+  expect(await page.evaluate(() => sessionStorage.getItem('isolated-request-draft'))).toBe('retained after expiry');
+  expect(await page.evaluate(() => (window as any).__sessionFixture.signOuts)).toEqual([]);
+});
+
+test('[final-auth-audit] late passkey result cannot overwrite a newer signed-in account', async ({ page, baseURL }) => {
+  await isolatedSession(page, baseURL!);
+  await page.evaluate(() => {
+    const w=window as any,f=w.__sessionFixture;
+    let release:any;const gate=new Promise(resolve=>release=resolve);f.releasePasskey=release;
+    f.client.auth.signInWithPasskey=async()=>{const session=f.session;f.passkeyStarted=true;await gate;return {data:{session},error:null}};
+    f.passkeyPromise=w.signInWithAppPasskey().finally(()=>f.passkeyDone=true);
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).__sessionFixture.passkeyStarted)).toBe(true);
+  await page.evaluate(() => {const f=(window as any).__sessionFixture;f.profile=f.makeProfile('newer_than_passkey');f.session=f.makeSession(f.profile);f.start();});
+  await readyHome(page);
+  await page.evaluate(async () => {const f=(window as any).__sessionFixture;f.releasePasskey();await f.passkeyPromise;});
+  const state=await page.evaluate(() => (window as any).__sessionFixture.snapshot());
+  expect(state.username).toBe('newer_than_passkey');
+  expect(state.profileId).toBe('isolated-newer_than_passkey');
+  expect(state.token).toBe('isolated-token-newer_than_passkey');
+  expect(state.accessUsername).toBe('newer_than_passkey');
+  expect(state.capabilityState.username).toBe('newer_than_passkey');
+  await readyHome(page);
+  expect(await page.evaluate(() => (window as any).__sessionFixture.signOuts)).toEqual([]);
+});
+
+test('[final-auth-audit] deliberate passkey sign-in after logout can retry an authenticated profile outage', async ({ page, baseURL }) => {
+  await isolatedSession(page, baseURL!);
+  await page.evaluate(async () => {
+    const w=window as any,f=w.__sessionFixture;w.setExplicitLogoutMarker();f.profileFailure=true;
+    f.client.auth.signInWithPasskey=async()=>({data:{session:f.session},error:null});
+    await w.signInWithAppPasskey();
+  });
+  await expect(page.locator('#native-session-recovery')).toContainText('Connection Interrupted');
+  expect(await page.evaluate(() => (window as any).hasExplicitLogoutMarker())).toBe(false);
+  await page.evaluate(() => {(window as any).__sessionFixture.profileFailure=false;});
+  await page.locator('#native-session-recovery').getByRole('button',{name:/retry/i}).click();
+  await readyHome(page);
+  expect(await page.evaluate(() => (window as any).__sessionFixture.signOuts)).toEqual([]);
+});

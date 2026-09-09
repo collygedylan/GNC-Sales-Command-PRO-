@@ -15,18 +15,21 @@ const headersCode = section('        async function getNativeAuthRequestHeaders(
 const profileCode = section('        function readCachedNativeAuthProfile', '        let nativeRoleRefreshPromise');
 const watcherCode = section('        function installNativeRoleRefreshWatchers()', "        document.addEventListener('visibilitychange'");
 const passwordCode = section('        async function tryNativeAuthPasswordLogin', '        async function ensureNativeAppSessionBridge');
+const passkeyCode = section('        async function signInWithAppPasskey(', '        async function registerAppPasskey(');
+const roleCode = section('        async function refreshNativeRoleAndCapabilities(', '        function installNativeRoleRefreshWatchers(');
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 const session = (id = 'profile-a', token = 'token-a') => ({ user: { id }, access_token: token });
 const profile = (id = 'profile-a') => ({ id, username: id, display_name: id, role: 'MANAGER', disabled_at: null, locked_until: null });
 
 function fixture() {
-    const writes = [], diagnostics = [], timers = new Map(), calls = { session: 0, profile: 0, signIn: 0, signOut: 0, refresh: 0, reset: 0 };
+    const writes = [], diagnostics = [], timers = new Map(), calls = { session: 0, profile: 0, signIn: 0, signOut: 0, refresh: 0, reset: 0, finalized: [], passwordGates: [], failures: [] };
     let timerId = 0, loginGeneration = 1, callback, sessionResult = { data: { session: session() }, error: null }, profileResult = { data: profile(), error: null };
     const client = {
         auth: {
             getSession: async () => { calls.session++; return typeof sessionResult === 'function' ? sessionResult() : sessionResult; },
             signInWithPassword: async () => { calls.signIn++; return { data: { session: session() }, error: null }; },
+            signInWithPasskey: async () => ({ data: { session: session() }, error: null }),
             signOut: async () => { calls.signOut++; },
             refreshSession: async () => { calls.refresh++; return { data: { session: session() }, error: null }; },
             onAuthStateChange: cb => { callback = cb; return { data: { subscription: { unsubscribe() {} } } }; }
@@ -55,8 +58,20 @@ function fixture() {
         refreshNativeRoleAndCapabilities: async () => false,
         signalProductionLiveSync() {}
     };
+    Object.assign(ctx, {
+        currentUser: '', currentUserDisplay: '', currentRole: '', currentUserDivision: '10', currentUserLanguage: 'English', safeRole: '',
+        loginShellPreparing: false, normalizeAppUserLanguage: value => value,
+        normalizeRoleAccessToken: value => String(value).toLowerCase(),
+        beginLoginSessionAttempt: () => { loginGeneration++; ctx.invalidateNativeAuthRecovery(); ctx.loginShellPreparing = true; return loginGeneration; },
+        ensureNativeAppSessionBridge: async () => null,
+        beginInitialAppLoad() {}, clearLoginStartupWatchdog() {}, showToast() {},
+        clearExplicitLogoutMarker: () => { calls.logoutMarkerCleared = true; },
+        finalizeLogin: async user => { calls.finalized.push(user); },
+        showForcedPasswordChangeGate: user => calls.passwordGates.push(user),
+        handleNativeSessionRecoveryFailure: error => { calls.failures.push(error.code); return true; }
+    });
     vm.createContext(ctx);
-    vm.runInContext(core + sessionCode + headersCode + profileCode + watcherCode + passwordCode + '\nthis.authState = () => ({ active: nativeAuthSessionActive, token: nativeAuthAccessToken, profile: nativeAuthProfile, userId: nativeAuthSessionUserId }); this.seedProfile = value => { nativeAuthProfile = value; };', ctx);
+    vm.runInContext(core + sessionCode + headersCode + profileCode + watcherCode + passwordCode + passkeyCode + '\nthis.authState = () => ({ active: nativeAuthSessionActive, token: nativeAuthAccessToken, profile: nativeAuthProfile, userId: nativeAuthSessionUserId }); this.seedProfile = value => { nativeAuthProfile = value; };', ctx);
     return { ctx, client, calls, writes, diagnostics, timers, storage,
         setSession: value => { sessionResult = value; }, setProfile: value => { profileResult = value; },
         advanceLogin: () => { loginGeneration++; ctx.invalidateNativeAuthRecovery(); },
@@ -195,4 +210,58 @@ test('password transport failures cannot fall through to legacy credentials', as
     await assert.rejects(f.ctx.tryNativeAuthPasswordLogin('profile-a', 'fixture-password'), error => error.retryable && error.sessionRecovery);
     f.client.auth.signInWithPassword = async () => ({ data: null, error: { status: 400, code: 'invalid_credentials' } });
     assert.equal(await f.ctx.tryNativeAuthPasswordLogin('profile-a', 'fixture-password'), null);
+});
+
+test('passkey bridge continuation cannot repopulate identity after logout or account switching', async () => {
+    for (const switchedUser of ['', 'profile-b']) {
+        const f = fixture(), bridge = deferred(); f.ctx.ensureNativeAppSessionBridge = () => bridge.promise;
+        const pending = f.ctx.signInWithAppPasskey(); await settle();
+        f.advanceLogin(); f.ctx.currentUser = switchedUser;
+        bridge.resolve(null); await pending;
+        assert.equal(f.ctx.currentUser, switchedUser); assert.deepEqual(f.calls.finalized, []); assert.deepEqual(f.calls.failures, []);
+    }
+});
+
+test('passkey transport and profile continuations cannot adopt a superseded login', async () => {
+    for (const stage of ['auth', 'profile']) {
+        const f = fixture(), gate = deferred();
+        if (stage === 'auth') f.client.auth.signInWithPasskey = () => gate.promise;
+        else f.setProfile(() => gate.promise);
+        const pending = f.ctx.signInWithAppPasskey(); await settle(); f.advanceLogin(); f.ctx.currentUser = 'profile-b';
+        gate.resolve(stage === 'auth' ? { data: { session: session() }, error: null } : { data: profile(), error: null });
+        await pending; assert.equal(f.ctx.currentUser, 'profile-b'); assert.deepEqual(f.calls.finalized, []);
+    }
+});
+
+test('passkey required password change uses the existing gate instead of opening Home', async () => {
+    const f = fixture(); f.setProfile({ data: { ...profile(), must_change_password: true }, error: null });
+    await f.ctx.signInWithAppPasskey();
+    assert.deepEqual(f.calls.passwordGates, ['profile-a']); assert.deepEqual(f.calls.finalized, []);
+    assert.equal(f.ctx.loginShellPreparing, false); assert.equal(f.ctx.authState().active, true);
+});
+
+test('passkey profile transient failures retain the session for connection recovery', async () => {
+    const f = fixture(); f.setProfile({ data: null, error: { status: 503 } });
+    await f.ctx.signInWithAppPasskey();
+    assert.deepEqual(f.calls.failures, ['NATIVE_SESSION_SERVICE_UNAVAILABLE']); assert.deepEqual(f.calls.finalized, []);
+    assert.equal(f.ctx.authState().active, true); assert.equal(f.calls.signOut, 0);
+    assert.equal(f.calls.logoutMarkerCleared, true, 'a deliberate passkey login permits recovery after an earlier logout');
+});
+
+test('foreground confirmed session loss without SIGNED_OUT invokes terminal recovery', async () => {
+    const f = fixture(); f.ctx.adoptNativeAuthSession(session()); f.ctx.seedProfile(profile());
+    f.ctx.currentUser = 'profile-a'; f.ctx.currentRole = 'MANAGER'; f.ctx.nativeRoleRefreshPromise = null; f.ctx.nativeRoleRefreshOwner = null;
+    f.setSession({ data: { session: null }, error: null }); vm.runInContext(roleCode, f.ctx);
+    await f.ctx.refreshNativeRoleAndCapabilities('foreground');
+    assert.deepEqual(f.calls.failures, ['NATIVE_SESSION_REQUIRED']); assert.equal(f.ctx.authState().active, false);
+});
+
+test('foreground old-session loss cannot mark a newer account as signed out', async () => {
+    const f = fixture(), gate = deferred(); f.ctx.adoptNativeAuthSession(session()); f.ctx.seedProfile(profile());
+    f.ctx.currentUser = 'profile-a'; f.ctx.currentRole = 'MANAGER'; f.ctx.nativeRoleRefreshPromise = null; f.ctx.nativeRoleRefreshOwner = null;
+    f.setSession(() => gate.promise); vm.runInContext(roleCode, f.ctx);
+    const pending = f.ctx.refreshNativeRoleAndCapabilities('foreground'); await settle();
+    f.advanceLogin(); f.ctx.currentUser = 'profile-b'; f.ctx.adoptNativeAuthSession(session('profile-b', 'token-b'));
+    gate.resolve({ data: { session: null }, error: null }); await pending;
+    assert.deepEqual(f.calls.failures, []); assert.equal(f.ctx.authState().userId, 'profile-b'); assert.equal(f.ctx.authState().active, true);
 });

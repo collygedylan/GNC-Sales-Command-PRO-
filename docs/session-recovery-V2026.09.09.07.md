@@ -11,8 +11,8 @@
 
 ## Verification
 
-- Compiled production shell: 36 Chromium/iPhone recovery scenarios passed, including profile/session failures, reconnect, revoked sessions, account switches, forced password changes, and draft preservation.
-- Pilot regressions: 594 passed. Photo regressions: 95 passed. Live-sync regressions: 75 passed.
+- Compiled production shell: 42 Chromium/iPhone recovery scenarios passed, including profile/session failures, reconnect, revoked sessions, account switches, forced password changes, draft preservation, late passkey results, and confirmed session loss without an SDK sign-out event.
+- Pilot regressions: 600 passed. Photo regressions: 95 passed. Live-sync regressions: 75 passed.
 - Existing login/photo Chromium/Android browser checks: 40 passed.
 - AV Blanks desktop/iPhone: nine initial passes; the remaining iPhone scenario timed out under simultaneous browser load and passed when rerun alone, without changing assertions.
 - Inline validation, live shell build, and V2 production build passed.

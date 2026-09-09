@@ -9687,6 +9687,17 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 const previousRole = String(currentRole || '').trim();
                 const previousDivision = String(currentUserDivision || '10').trim();
                 const profile = await loadNativeAuthProfile(true);
+                // A confirmed missing SDK session invalidates the native-read epoch,
+                // but is not an account switch when this same login still owns the UI.
+                if (!profile && refreshOwner.loginGeneration === captureNativeAuthRecoveryOwnership().loginGeneration
+                    && String(currentUser || '').trim().toLowerCase() === username
+                    && !nativeAuthSessionActive && !nativeAuthSessionUserId) {
+                    if (permissionChanged) setProductionPermissionCheckState('');
+                    if (typeof handleNativeSessionRecoveryFailure === 'function') {
+                        handleNativeSessionRecoveryFailure(createNativeSessionRecoveryError('NATIVE_SESSION_REQUIRED', 'profile'), { reason });
+                    }
+                    return false;
+                }
                 if (!ownsNativeAuthRecovery(refreshOwner) || !profile || String(currentUser || '').trim().toLowerCase() !== username
                     || String(profile.username || '').trim().toLowerCase() !== username) {
                     if (permissionChanged) throw new Error('Current account permissions could not be verified.');
@@ -9887,23 +9898,44 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             const client = getSupabaseBrowserClient();
             if (!client || !client.auth || !client.auth.signInWithPasskey) return false;
+            clearExplicitLogoutMarker();
+            const loginGeneration = beginLoginSessionAttempt();
             try {
                 const { data, error } = await client.auth.signInWithPasskey();
+                if (loginGeneration !== getCurrentLoginGeneration()) return false;
                 if (error || !data || !data.session) throw error || new Error('Passkey sign-in failed.');
                 adoptNativeAuthSession(data.session);
+                const passkeyOwner = captureNativeAuthRecoveryOwnership();
                 const profile = await loadNativeAuthProfile(true);
+                if (!profile && loginGeneration === getCurrentLoginGeneration() && !nativeAuthSessionActive && !nativeAuthSessionUserId) {
+                    throw createNativeSessionRecoveryError('NATIVE_SESSION_REQUIRED', 'profile');
+                }
+                if (!ownsNativeAuthRecovery(passkeyOwner) || loginGeneration !== getCurrentLoginGeneration()) return false;
                 if (!profile) throw new Error('This account is not enabled for passkeys.');
-                await ensureNativeAppSessionBridge(true).catch(() => null);
+                await ensureNativeAppSessionBridge(true).catch((bridgeError) => {
+                    if (bridgeError?.code === 'NATIVE_SESSION_SUPERSEDED') throw bridgeError;
+                    return null;
+                });
+                if (!ownsNativeAuthRecovery(passkeyOwner) || loginGeneration !== getCurrentLoginGeneration()) return false;
                 currentUser = String(profile.username || '').trim().toLowerCase();
                 currentUserDisplay = String(profile.display_name || profile.username || '').trim();
                 currentRole = String(profile.role || 'User');
                 currentUserDivision = String(profile.division || '10');
                 currentUserLanguage = normalizeAppUserLanguage(profile.language || 'English');
                 safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
+                if (profile.must_change_password === true) {
+                    loginShellPreparing = false;
+                    clearLoginStartupWatchdog();
+                    showForcedPasswordChangeGate(currentUser, '', currentRole, currentUserDisplay);
+                    return false;
+                }
                 beginInitialAppLoad('Signing in...');
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, sessionSource: 'native-passkey' });
                 return false;
             } catch (error) {
+                if (loginGeneration !== getCurrentLoginGeneration() || error?.code === 'NATIVE_SESSION_SUPERSEDED') return false;
+                loginShellPreparing = false;
+                if (typeof handleNativeSessionRecoveryFailure === 'function' && handleNativeSessionRecoveryFailure(error, { reason: 'passkey-login' })) return false;
                 showToast('Passkey', String(error && error.message || 'Passkey sign-in was cancelled.'), true);
                 return false;
             }
