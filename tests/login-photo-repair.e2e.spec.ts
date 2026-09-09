@@ -466,6 +466,76 @@ test('late detail hydration preserves typed AV Note and cursor before its protec
   expect(fixture.masterWrites).toEqual([]);
 });
 
+for (const scenario of ['closed', 'visible-blank', 'hold'] as const) {
+  test(`Request render verification distinguishes ${scenario} detail from a genuine loading failure`, async ({ page }) => {
+    const fixture = await preparePhotoRow(page);
+    await page.evaluate(scenario => {
+      const w = window as any;
+      w.goBackFromDetail();
+      const request = { ...w.__repair.photoRows[0], UNIQUE_ID:'request-render-fixture',
+        MASTER_UNIQUE_ID:'photo-fixture-one', SOURCE_TABLE:'ph_active_request',
+        REQUEST_STATUS:'Pending', STATUS:'Pending', FOLDER_ID:'isolated-request-folder',
+        HOLDSTOPCODE:scenario === 'hold' ? 'H' : '', HOLDSTOPREASON:scenario === 'hold' ? 'Leaf quality' : '' };
+      if (scenario === 'hold') w.__repair.photoRows[0].HOLDSTOPCODE = 'H';
+      w.__repair.requestRow = request;
+      w.processAndLoadData({ requestsData:[request], _fromCache:true });
+      w.hydrateDatasetLoadState({ requests:{ initialLoaded:true, fullLoaded:true } });
+      w.openDetail(request.UNIQUE_ID, 'request', { skipRequestOpenInfoModal:true });
+    }, scenario);
+    await expect(page.locator('#req-match')).toBeVisible();
+    const result = await page.evaluate(scenario => {
+      const w = window as any;
+      const request = w.__repair.requestRow;
+      const events: any[] = [];
+      w.reportSemanticHealthEvent = (...args: any[]) => { events.push(args); };
+      // Hold only the verification callbacks, not rendering or navigation.
+      // This deterministically delivers the real nested rAF/80ms retry after
+      // Back, without sleeps or replacing the verifier with a test double.
+      const nativeFrame = w.requestAnimationFrame;
+      const nativeTimeout = w.setTimeout;
+      const delayed: Array<() => void> = [];
+      let intercepted = 0;
+      const isVerification = (callback: any) => typeof callback === 'function'
+        && String(callback).includes('verifyRequestDetailRendered');
+      w.requestAnimationFrame = (callback: any) => {
+        if (!isVerification(callback)) return nativeFrame(callback);
+        intercepted += 1; delayed.push(() => callback(performance.now())); return -intercepted;
+      };
+      w.setTimeout = (callback: any, delay: number, ...args: any[]) => {
+        if (!isVerification(callback)) return nativeTimeout(callback, delay, ...args);
+        intercepted += 1; delayed.push(() => callback(...args)); return -intercepted;
+      };
+      try {
+        w.renderDetailView({ preferredTab:'request', suppressScroll:true, skipGalleryRender:true });
+        const initiallyVisible = !!document.getElementById('req-match')?.getClientRects().length;
+        if (scenario === 'closed') w.goBackFromDetail();
+        if (scenario === 'visible-blank') document.getElementById('req-spec')?.remove();
+        let drained = 0;
+        while (delayed.length && drained < 12) { drained += 1; delayed.shift()!(); }
+        return { initiallyVisible, intercepted, drained, pending:delayed.length,
+          visibleView:w.getCurrentVisibleViewId(), avRequired:w.requiresAvNoteForCompletion(request),
+          avVisible:!!document.getElementById('req-av-note')?.getClientRects().length,
+          failures:events.filter(event => event[0] === 'request_detail_render_failed'),
+          errorVisible:!!document.querySelector('#request-detail-load-state.request-detail-load-state--error') };
+      } finally { w.requestAnimationFrame = nativeFrame; w.setTimeout = nativeTimeout; }
+    }, scenario);
+    expect(result.initiallyVisible, JSON.stringify(result)).toBe(true);
+    expect(result.intercepted).toBeGreaterThan(0);
+    expect(result.pending).toBe(0);
+    if (scenario === 'visible-blank') {
+      expect(result.visibleView).toBe('detail');
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0][2]).toBe('REQUEST_DETAIL_RENDER_FAILED');
+      expect(result.errorVisible).toBe(true);
+    } else {
+      expect(result.failures).toEqual([]);
+      if (scenario === 'closed') expect(result.visibleView).not.toBe('detail');
+      if (scenario === 'hold') { expect(result.avRequired).toBe(false); expect(result.avVisible).toBe(false); }
+    }
+    expect(fixture.masterWrites).toEqual([]);
+  });
+}
+
 test('same-field photo conflict keeps the draft and stops background retries', async ({ page }) => {
   test.setTimeout(60_000);
   const fixture = await preparePhotoRow(page);

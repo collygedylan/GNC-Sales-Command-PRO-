@@ -92,9 +92,10 @@ test('AV choices wait for click and Request rendering gets a bounded settle retr
   assert.doesNotMatch(html, /addEventListener\('touchstart', handleAvNoteOptionPressStart/);
   assert.match(html, /request-av-note-sheet #req-av-dropdown-list\{[\s\S]*overflow-y:auto!important[\s\S]*touch-action:pan-y!important/);
   assert.match(html, /body\.request-av-note-sheet-open #main-scroll-area\{[\s\S]*touch-action:pan-y!important/);
-  assert.match(html, /verifyRequestDetailRendered\(reason = '', attempt = 0\)/);
+  assert.match(html, /verifyRequestDetailRendered\(reason = '', attempt = 0, context = captureRequestDetailRenderContext\(\)\)/);
   assert.match(html, /render-verify-retry/);
-  assert.match(html, /requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => verifyRequestDetailRendered/);
+  assert.match(html, /scheduleRequestDetailRenderVerification\('render'\)/);
+  assert.match(html, /requestAnimationFrame\(\(\) => \{\s*if \(!isRequestDetailRenderContextCurrent\(context\)\) return;\s*requestAnimationFrame\(\(\) => verifyRequestDetailRendered/);
 });
 
 test('Request reuse separates reusable evidence from auto-completion and requires an explicit choice', () => {
