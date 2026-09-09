@@ -320,13 +320,13 @@ for (const width of [320, 390, 1280]) {
       await expect(page.locator('#drive-search-clear')).toBeVisible();
       await expect(search).toBeFocused();
       // A status repaint must neither blur nor clear the active search draft.
-      await page.evaluate(() => window.eval('renderProductionDataFreshness(window.__headerStatusFixture)'));
+      await page.evaluate(() => window.eval('productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture)'));
       await expect(search).toHaveValue('Synthetic retained search');
       await expect(search).toBeFocused();
       await page.locator('#drive-search-clear').click();
       await expect(search).toHaveValue('');
 
-      await page.evaluate(() => window.eval(`activeSalesOfficeTab='season'; switchView('sales-office'); renderProductionDataFreshness(window.__headerStatusFixture)`));
+      await page.evaluate(() => window.eval(`activeSalesOfficeTab='season'; switchView('sales-office'); productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture)`));
       await expect(page.locator('#view-sales-office')).toBeVisible();
       const salesOfficeGeometry = await page.locator('#global-header-inline-back').evaluate(back => {
         const rect = back.getBoundingClientRect();
