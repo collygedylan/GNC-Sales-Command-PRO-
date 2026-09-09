@@ -102,6 +102,8 @@ jobs:
         run: npm run test:suspend-tag
       - name: Verify live refreshes and device-local Docks filters before publishing
         run: npm run test:docks-filter
+      - name: Verify AV Blanks completion and protected Reclass before publishing
+        run: npm run test:task-av-blanks
       - name: Verify actual login and protected photo saves on Android before publishing
         run: npx playwright test --config playwright.login-photo.config.ts --project=android
 
@@ -113,6 +115,7 @@ jobs:
           path: |
             playwright-report
             test-results
+            artifacts/task-av-blanks-browser
           if-no-files-found: ignore
           retention-days: 7
 

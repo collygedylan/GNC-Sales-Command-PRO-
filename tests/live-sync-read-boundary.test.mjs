@@ -312,16 +312,21 @@ test('native Codex live updates do not start the redundant fifteen-second timer'
 test('Reclass delivery checks issue no requests while hidden and discard responses after suspension', async () => {
     const from = html.indexOf('async function pollReclassDeliveryJobs()');
     const to = html.indexOf('async function retryReclassDeliveryJob(', from);
-    const ctx = { document: { hidden: true }, reclassDeliveryPollActive: false, requests: 0, updates: 0,
-        getCurrentReclassDeliveryActor: () => 'fixture', renderReclassDeliveryStatusTray() {},
-        readReclassDeliveryJobs: () => [{ actorUsername: 'fixture', sourceView: 'drive', status: 'queued', token: 'fixture' }],
-        driveReclassApi: async () => { ctx.requests++; ctx.document.hidden = true; return { status: 'delivered' }; },
-        upsertReclassDeliveryJob: () => { ctx.updates++; }
-    };
-    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
-    assert.equal(await ctx.pollReclassDeliveryJobs(), false); assert.equal(ctx.requests, 0);
-    ctx.document.hidden = false; await ctx.pollReclassDeliveryJobs();
-    assert.equal(ctx.requests, 1); assert.equal(ctx.updates, 0); assert.equal(ctx.reclassDeliveryPollActive, false);
+    const routingFrom = html.indexOf('function isProtectedDriveReclassPayload(');
+    const routingTo = html.indexOf('async function driveReclassApi(', routingFrom);
+    assert.ok(routingFrom >= 0 && routingTo > routingFrom, 'real protected routing helpers are included');
+    for (const sourceView of ['drive', 'tasks-av-blanks']) {
+        const ctx = { document: { hidden: true }, reclassDeliveryPollActive: false, requests: 0, updates: 0,
+            getCurrentReclassDeliveryActor: () => 'fixture', renderReclassDeliveryStatusTray() {},
+            readReclassDeliveryJobs: () => [{ actorUsername: 'fixture', sourceView, status: 'queued', token: 'fixture' }],
+            driveReclassApi: async () => { ctx.requests++; ctx.document.hidden = true; return { status: 'delivered' }; },
+            upsertReclassDeliveryJob: () => { ctx.updates++; }
+        };
+        vm.createContext(ctx); vm.runInContext(html.slice(routingFrom, routingTo) + html.slice(from, to), ctx);
+        assert.equal(await ctx.pollReclassDeliveryJobs(), false); assert.equal(ctx.requests, 0);
+        ctx.document.hidden = false; await ctx.pollReclassDeliveryJobs();
+        assert.equal(ctx.requests, 1, sourceView); assert.equal(ctx.updates, 0); assert.equal(ctx.reclassDeliveryPollActive, false);
+    }
 });
 
 test('Reclass delivery status reconciles immediately when visibility returns', () => {
