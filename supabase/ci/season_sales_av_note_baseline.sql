@@ -23,7 +23,7 @@ create table public.ph_master_inventory(
   unique_id text primary key,itemcode text,commonname text,contsize text,
   season text,saleyear text,priority text,ptravailable text,s_lts text,
   app_tab_assignment text,locationcode text,lotcode text,av_note text,sales_note text,
-  spec text,caliper text,photo_link text,photo_name text,match text,loc_match_qty text,initial_ptr text,
+  spec text,caliper text,pic_note text,photo_link text,photo_name text,match text,loc_match_qty text,initial_ptr text,
   end_cap_folder text,holdstopcode text,holdstopreason text,date_completed timestamptz,last_updated timestamptz,
   av_rule_bundle_updated_at timestamptz,av_rule_av_note_updated_at timestamptz,
   av_rule_spec_updated_at timestamptz,av_rule_match_updated_at timestamptz,
