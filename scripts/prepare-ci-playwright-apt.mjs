@@ -18,7 +18,7 @@ export function validateChromeSource(content) {
 }
 
 export function validateChromeDeb822Source(content) {
-  const allowed = new Set(['types', 'uris', 'suites', 'components', 'architectures', 'signed-by', 'enabled']);
+  const allowed = new Set(['types', 'uris', 'suites', 'components', 'architectures', 'signed-by', 'enabled', 'x-repolib-name']);
   let activeCount = 0;
   for (const paragraph of String(content).replace(/^[ \t]*#.*$/gm, '').trim().split(/\r?\n\s*\r?\n/)) {
     if (!paragraph.trim()) continue;

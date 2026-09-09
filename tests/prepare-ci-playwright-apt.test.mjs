@@ -5,6 +5,9 @@ import { prepareCiPlaywrightApt, validateChromeSource, validateChromeDeb822Sourc
 const source = '/etc/apt/sources.list.d/google-chrome.list';
 const valid = '# Managed by system Chrome\ndeb [arch=amd64] https://dl.google.com/linux/chrome-stable/deb/ stable main\n';
 const deb822 = 'Types: deb\nURIs: https://dl.google.com/linux/chrome-stable/deb/\nSuites: stable\nComponents: main\nArchitectures: amd64\nSigned-By: /usr/share/keyrings/google-chrome.gpg\n';
+// Shape emitted by official Chromium gen_sources_content() in:
+// https://chromium.googlesource.com/chromium/src/+/lkgr/chrome/installer/linux/common/apt.include
+const officialDeb822 = '### THIS FILE IS AUTOMATICALLY CONFIGURED ###\n# Changes to this file will not be preserved.\n# This file will not be recreated if removed.\nX-Repolib-Name: Google Chrome\n' + deb822;
 function fixture(options = {}) {
   const moves = [];
   const files = options.files || { 'google-chrome.list': options.content ?? valid };
@@ -67,6 +70,13 @@ test('discovers alternative runner names and Deb822, leaving other apt sources u
   assert.deepEqual(prepareCiPlaywrightApt(f.fs), { disabled: 2, files: ['chrome.sources', 'google-chrome-stable.list'] });
   assert.equal(f.moves.length, 2);
   assert.ok(f.moves.every(([from, to]) => to === from + '.playwright-disabled'));
+});
+test('accepts the complete official current Chrome stanza including inert X-Repolib-Name', () => {
+  const f = fixture({ files: { 'google-chrome.sources': officialDeb822 } });
+  assert.deepEqual(prepareCiPlaywrightApt(f.fs), { disabled: 1, files: ['google-chrome.sources'] });
+  assert.deepEqual(f.moves, [['/etc/apt/sources.list.d/google-chrome.sources', '/etc/apt/sources.list.d/google-chrome.sources.playwright-disabled']]);
+  assert.throws(() => validateChromeDeb822Source(officialDeb822.replace('dl.google.com/', 'dl.google.com.evil/')), /UNEXPECTED_CONTENT/);
+  assert.throws(() => validateChromeDeb822Source(officialDeb822 + 'X-Repolib-Name: Duplicate\n'), /UNEXPECTED_CONTENT/);
 });
 test('all matching source files validate before any rename', () => {
   const f = fixture({ files: { 'a-chrome.list': valid, 'b-chrome.sources': deb822 + '\nTypes: deb\nURIs: https://archive.ubuntu.com/ubuntu\nSuites: noble\nComponents: main\n' } });
