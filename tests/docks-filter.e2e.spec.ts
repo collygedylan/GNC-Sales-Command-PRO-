@@ -185,19 +185,21 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
   await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
   const headerGeometry = await page.locator('#live-data-freshness').evaluate(element => {
     const rect = element.getBoundingClientRect();
-    const obscured = ['global-header-inline-back', 'docks-search'].filter(id => {
+    const obscured = ['global-header-inline-back', 'docks-search', ...Array.from(document.querySelectorAll('#global-header-search-slot [id$="-clear"]')).map(el => el.id)].filter(id => {
       const target = document.getElementById(id);
       if (!target || !target.getClientRects().length) return false;
       const targetRect = target.getBoundingClientRect();
-      const hit = document.elementFromPoint(targetRect.left + targetRect.width / 2, targetRect.top + targetRect.height / 2);
-      return !!hit?.closest('#live-data-freshness');
+      return [0.2, 0.5, 0.8].some(x => [0.2, 0.5, 0.8].some(y => {
+        const hit = document.elementFromPoint(targetRect.left + targetRect.width * x, targetRect.top + targetRect.height * y);
+        return !!hit?.closest('#live-data-freshness');
+      }));
     });
-    return {left:rect.left, right:rect.right, top:rect.top, width:window.innerWidth, obscured};
+    return {right:rect.right, parent:element.parentElement?.id, position:getComputedStyle(element).position, obscured};
   });
-  expect(headerGeometry.left).toBeGreaterThanOrEqual(0);
-  expect(headerGeometry.right).toBeLessThanOrEqual(headerGeometry.width + 1);
-  expect(headerGeometry.top).toBeGreaterThanOrEqual(0);
-  expect(headerGeometry.obscured, 'Freshness status must not cover header action centers').toEqual([]);
+  expect(headerGeometry.parent).toBe('side-drawer');
+  expect(headerGeometry.position).toBe('static');
+  expect(headerGeometry.right, 'Closed Menu must keep the status offscreen').toBeLessThanOrEqual(1);
+  expect(headerGeometry.obscured, 'Freshness status must not cover search, X or Back').toEqual([]);
   await page.screenshot({path:test.info().outputPath('native-freshness-header.png')});
 }
 
@@ -254,6 +256,16 @@ test('native shared coordinator preserves filtered sessions, stages import races
     });
     await expect(page.locator('#live-data-freshness')).toContainText('Data Update Needs Attention');
     await expect(counts(page)).toContainText('Showing 150 of 150');
+    await page.locator('#footer-menu-btn').click();
+    const statusButton = page.locator('#side-drawer #live-data-freshness');
+    await expect(page.locator('#side-drawer')).toHaveClass(/open/);
+    await statusButton.scrollIntoViewIfNeeded();
+    const revisionReads = await page.evaluate(() => (window as any).__nativeSyncFixture.revisionReads);
+    await statusButton.click();
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeSyncFixture.revisionReads)).toBeGreaterThan(revisionReads);
+    await expect(statusButton).toContainText('Data Update Needs Attention');
+    await expect(page.locator('#toast-notification')).toContainText('Retrying the data check');
+    await page.evaluate(() => window.eval('setMenuOpenState(false)'));
     await page.evaluate(() => {
       (window as any).__nativeSyncFixture.readFailure = false;
       (window as any).__nativeSyncFixture.reconnected();
@@ -284,6 +296,71 @@ test('real customer controls expose empty Custom, All and device-saved selection
   await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 2 of 2');
   app.assertClean();
 });
+
+for (const width of [320, 390, 1280]) {
+  test(`Menu data status never intercepts search X or Sales Office Back at ${width}px`, async ({ page, baseURL }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const app = await harness(page, baseURL!, [row('header', 'Customer A')]);
+    // The coordinator integration above tests real failure/retry semantics. This
+    // independent layout fixture supplies its statuses directly without starting
+    // a second permission/data bootstrap when the real navigation changes views.
+    await page.evaluate(() => window.eval(`canUseProductionLiveSync=()=>true; getProductionLiveSyncCoordinator=()=>null`));
+    const statuses = [
+      { state: 'Needs attention', lastVerifiedAt: null, message: 'A dataset could not load. Your entered draft remains available for review.', draft: true },
+      { state: 'Up to date', lastVerifiedAt: '2026-09-09T16:42:00Z', message: 'All required revisions verified.', draft: false },
+      { state: 'Offline', lastVerifiedAt: null, message: 'The device is offline. Cached data has not been verified.', draft: false },
+    ];
+    for (const status of statuses) {
+      await page.evaluate(nextStatus => {
+        (window as any).__headerStatusFixture = nextStatus;
+        window.eval(`productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture); switchView('drive');`);
+      }, status);
+      const search = page.locator('#drive-search');
+      await search.fill('Synthetic retained search');
+      await expect(page.locator('#drive-search-clear')).toBeVisible();
+      await expect(search).toBeFocused();
+      // A status repaint must neither blur nor clear the active search draft.
+      await page.evaluate(() => window.eval('renderProductionDataFreshness(window.__headerStatusFixture)'));
+      await expect(search).toHaveValue('Synthetic retained search');
+      await expect(search).toBeFocused();
+      await page.locator('#drive-search-clear').click();
+      await expect(search).toHaveValue('');
+
+      await page.evaluate(() => window.eval(`activeSalesOfficeTab='season'; switchView('sales-office'); renderProductionDataFreshness(window.__headerStatusFixture)`));
+      await expect(page.locator('#view-sales-office')).toBeVisible();
+      const salesOfficeGeometry = await page.locator('#global-header-inline-back').evaluate(back => {
+        const rect = back.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        const status = document.getElementById('live-data-freshness')!;
+        return { backHit: hit === back || !!hit && back.contains(hit), statusRight: status.getBoundingClientRect().right,
+          statusPosition: getComputedStyle(status).position, inMenu: status.parentElement?.id === 'side-drawer' };
+      });
+      expect(salesOfficeGeometry).toMatchObject({ backHit: true, statusPosition: 'static', inMenu: true });
+      expect(salesOfficeGeometry.statusRight).toBeLessThanOrEqual(1);
+      await page.locator('#footer-menu-btn').click();
+      await expect(page.locator('#side-drawer')).toHaveClass(/open/);
+      const statusButton = page.locator('#side-drawer #live-data-freshness');
+      await statusButton.scrollIntoViewIfNeeded();
+      await expect(statusButton).toBeInViewport();
+      const layout = await statusButton.evaluate(element => ({
+        left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right,
+        drawerRight: element.parentElement!.getBoundingClientRect().right,
+        label: element.getAttribute('aria-label'), text: element.textContent,
+      }));
+      expect(layout.left).toBeGreaterThanOrEqual(0);
+      expect(layout.right).toBeLessThanOrEqual(layout.drawerRight + 1);
+      expect(layout.label).toContain(layout.text!);
+      if (status.state === 'Needs attention') {
+        await expect(statusButton).toContainText('Awaiting first data check');
+        await expect(statusButton).toContainText('Edit needs review');
+      }
+      await page.evaluate(() => window.eval('setMenuOpenState(false)'));
+      await expect(page.locator('#side-drawer')).not.toHaveClass(/open/);
+    }
+    await page.screenshot({ path: test.info().outputPath(`nonblocking-data-status-${width}.png`) });
+    app.assertClean();
+  });
+}
 
 test('native refresh preserves an open Dock draft and reloads changed query and identity scopes', async ({ page, baseURL }) => {
   const initial = [row('draft-a', 'Customer A')];

@@ -13,11 +13,16 @@ function section(start, end) {
 function freshnessFixture() {
     let indicator;
     const notices = [], signals = [];
+    const drawer = { appendChild: value => { indicator = value; value.parentElement = drawer; } };
+    const syncAction = { parentElement: drawer, insertAdjacentElement(position, value) {
+        assert.equal(position, 'afterend');
+        drawer.appendChild(value);
+    } };
     const ctx = {
         document: {
-            getElementById: () => indicator,
+            getElementById: id => ({ 'live-data-freshness': indicator, 'side-drawer': drawer, 'drawer-force-sync-btn': syncAction })[id],
             createElement: () => ({ style: {}, setAttribute() {} }),
-            body: { appendChild: value => { indicator = value; } }
+            body: { appendChild() { assert.fail('Data status must not become a floating body overlay'); } }
         },
         productionLiveSyncDraftChanged: false,
         productionLiveSyncCoordinator: { getStatus: () => null, signal: (...args) => signals.push(args) },
@@ -26,8 +31,19 @@ function freshnessFixture() {
     };
     vm.createContext(ctx);
     vm.runInContext(section('        function renderProductionDataFreshness(', '        function hasProductionLiveSyncDraft('), ctx);
-    return { ctx, notices, signals, get indicator() { return indicator; } };
+    return { ctx, notices, signals, drawer, get indicator() { return indicator; } };
 }
+
+test('data status stays in normal Menu flow instead of covering search controls', () => {
+    const f = freshnessFixture();
+    f.ctx.renderProductionDataFreshness({ state: 'Needs attention', lastVerifiedAt: null });
+    assert.equal(f.indicator.parentElement, f.drawer);
+    assert.match(f.indicator.style.cssText, /position:static/);
+    assert.doesNotMatch(f.indicator.style.cssText, /position:fixed|position:absolute|z-index/);
+    const first = f.indicator;
+    f.ctx.renderProductionDataFreshness({ state: 'Up to date', lastVerifiedAt: Date.now() });
+    assert.equal(f.indicator, first);
+});
 
 test('partial and unverified snapshots never display Data Current or account-verification warnings', () => {
     for (const state of ['Syncing', 'Importing', 'Needs attention', 'Offline']) {
