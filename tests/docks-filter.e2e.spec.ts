@@ -331,7 +331,15 @@ for (const layout of ['compact', 'standard']) {
       await page.locator('#drive-search-clear').click();
       await expect(search).toHaveValue('');
 
-      await page.evaluate(() => window.eval(`activeSalesOfficeTab='season'; switchView('sales-office')`));
+      // This mutation-blocked geometry fixture already has an authorized canary
+      // identity. Seed its separate Season access snapshot too, as the dedicated
+      // Sales Office fixture does; a blocked permission fetch otherwise keeps
+      // marking this view dirty while navigation readiness is being asserted.
+      await page.evaluate(() => window.eval(`
+        avBlanksPhotoBypassRemoteLoaded=true;
+        avBlanksPhotoBypassAccessCache={username:'dylan_collyge',allowed:true,canManage:true,loadedAt:Date.now()};
+        activeSalesOfficeTab='season'; switchView('sales-office');
+      `));
       await expect(page.locator('#view-sales-office')).toBeVisible();
       await expect.poll(() => page.evaluate(() => window.eval(`getCurrentVisibleViewId()==='sales-office' && ensureViewRenderState('sales-office').initialized && !ensureViewRenderState('sales-office').dirty`))).toBe(true);
       await page.evaluate(() => window.eval('productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture)'));
