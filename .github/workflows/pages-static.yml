@@ -90,6 +90,8 @@ jobs:
 
       - name: Test navigation in the built production shell
         run: npm run test:footer
+      - name: Verify Home visibility for all roles before publishing
+        run: npm run test:home-roles
       - name: Verify Season Sales Notes completion before publishing
         run: npm run test:season-sales-office
       - name: Verify Suspend Tag completion before publishing
@@ -148,6 +150,10 @@ jobs:
         env:
           FOOTER_BASE_URL: https://agmetricapp.com
         run: npm run test:footer -- --project=footer-android-chromium --project=footer-iphone-webkit
+      - name: Verify live Home role layouts with isolated browser fixtures
+        env:
+          HOME_ROLE_BASE_URL: https://agmetricapp.com
+        run: npm run test:home-roles
       - name: Verify live Season Sales Notes with isolated browser fixtures
         env:
           SEASON_SALES_OFFICE_BASE_URL: https://agmetricapp.com

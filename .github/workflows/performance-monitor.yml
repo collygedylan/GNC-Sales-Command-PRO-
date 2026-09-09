@@ -218,6 +218,8 @@ jobs:
           cp ./*.webp _site/
       - name: Test navigation in the built production shell
         run: npm run test:footer
+      - name: Verify Home visibility for all roles in the built shell
+        run: npm run test:home-roles
       - name: Test Season Sales Notes completion in the built production shell
         run: npm run test:season-sales-office
       - name: Test Suspend Tag completion in the built production shell
