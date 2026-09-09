@@ -2,7 +2,10 @@
 -- predates the checked-in migration history. Preserve its real reset behavior
 -- so the new migration is tested against the deployed dependency.
 create or replace function public.check_inventory_changes_and_reset()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+-- Production already received the September 6 search-path hardening migration.
+set search_path = public, extensions, private, vault, pg_temp
+as $$
 declare
   needs_reset boolean := false;
   old_hold varchar;
