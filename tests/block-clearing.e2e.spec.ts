@@ -48,7 +48,9 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
   });
   await page.goto('/?e2e=block-clearing-pdf&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).__blockClearingTestEval === 'function');
-  if (options.realShell) await page.waitForLoadState('load');
+  // Finish the document startup before installing this isolated identity. The
+  // real header remains in app-wrapper even when the worksheet is lifted below.
+  await page.waitForLoadState('load');
   await appEval(page, `(() => {
     installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN');
     activeHomeTab = 'block-clearing';
@@ -69,10 +71,10 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
     showToast = (title, message, error) => window.bcToasts.push({ title: String(title || ''), message: String(message || ''), error: !!error });
     isDrawerOpen = () => false;
     closeOpenInteractiveSurfaceForBack = () => false;
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-login').style.display = 'none';
+    document.getElementById('app-wrapper').classList.remove('hidden');
     if (${JSON.stringify(options.realShell === true)}) {
-      document.getElementById('view-login').classList.add('hidden');
-      document.getElementById('view-login').style.display = 'none';
-      document.getElementById('app-wrapper').classList.remove('hidden');
       document.querySelectorAll('#view-wrapper > [id^="view-"]').forEach(view => view.classList.toggle('hidden', view.id !== 'view-managers'));
       currentPrimaryViewId = 'managers';
       ensureViewDataForRender = () => false;
@@ -118,7 +120,16 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
 async function openSource(page: Page) {
   await appEval(page, `selectManagerBlockClearingBlock('A'); selectManagerBlockClearingLocation('A.05');`);
   await expect.poll(() => appEval(page, 'managerBlockClearingLevel')).toBe(2);
-  await expect(page.locator('#managers-search')).toBeVisible();
+  // Exercise the real header ownership transfer, not its incidental timing.
+  await appEval(page, `syncGlobalHeaderChrome({ reason: 'block-clearing-fixture-source', force: true });`);
+  const headerParents = await page.locator('#managers-search').evaluate(element => {
+    const parents = [];
+    for (let parent: HTMLElement | null = element as HTMLElement; parent; parent = parent.parentElement) {
+      parents.push({ id: parent.id, display: getComputedStyle(parent).display, hidden: parent.classList.contains('hidden') });
+    }
+    return parents;
+  });
+  await expect(page.locator('#managers-search'), JSON.stringify(headerParents)).toBeVisible();
 }
 
 async function selectRoseAndOpenInstructions(page: Page) {
