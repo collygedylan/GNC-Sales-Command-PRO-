@@ -142,6 +142,55 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   return { requests, replies, card, done, seed, refresh, assertClean };
 }
 
+test('blank AV Notes stay out of the Season queue and export while note updates refresh visibility', async ({ page, baseURL }) => {
+  const rows = [
+    { ...fixtures[0], AV_NOTE: 'KEEP THIS USER NOTE' },
+    { ...fixtures[1], AV_NOTE: '' },
+    { ...fixtures[2], SO_SOURCE: 'season', AV_NOTE: ' \t ' },
+  ];
+  const app = await harness(page, baseURL!, rows);
+  const cards = page.locator('#sales-office-content .item-row');
+  const exportIds = () => page.evaluate(() => window.eval("buildSalesOfficeExportContext('season').rows.map(row => row.UNIQUE_ID)"));
+  await expect(cards).toHaveCount(1);
+  await expect(app.card(rows[0])).toContainText('KEEP THIS USER NOTE');
+  await expect(page.locator('#sales-office-crumb')).toHaveText('Season Sales Notes (1 row)');
+  await expect(page.locator('#sales-office-content')).not.toContainText('No AV Note Provided');
+  expect(await exportIds()).toEqual([rows[0].UNIQUE_ID]);
+  expect(await page.evaluate(() => window.eval('salesOfficeInventory.length'))).toBe(3);
+
+  // A newly entered note must reappear even when the blank row was absent from the cached list.
+  await page.evaluate((masterId) => window.eval(`
+    syncSeasonSalesOfficeAvNoteState(${JSON.stringify(masterId)}, 'NEW USER NOTE');
+    renderSalesOffice();
+  `), rows[1].MASTER_ID);
+  await expect(cards).toHaveCount(2);
+  await expect(app.card(rows[1])).toContainText('NEW USER NOTE');
+  await expect(page.locator('#sales-office-crumb')).toHaveText('Season Sales Notes (2 rows)');
+  expect((await exportIds()).sort()).toEqual([rows[0].UNIQUE_ID, rows[1].UNIQUE_ID].sort());
+
+  // The authoritative cleared mirror stays blank despite its linked master still having a note.
+  await app.refresh([
+    { ...rows[0], AV_NOTE: '', STATE_REVISION: 2 },
+    { ...rows[1], AV_NOTE: 'NEW USER NOTE', STATE_REVISION: 2 },
+    rows[2],
+  ]);
+  await expect(cards).toHaveCount(1);
+  await expect(app.card(rows[0])).toHaveCount(0);
+  await expect(page.locator('#sales-office-crumb')).toHaveText('Season Sales Notes (1 row)');
+  expect(await exportIds()).toEqual([rows[1].UNIQUE_ID]);
+
+  await page.evaluate((masterId) => window.eval(`
+    syncSeasonSalesOfficeAvNoteState(${JSON.stringify(masterId)}, '');
+    renderSalesOffice();
+  `), rows[1].MASTER_ID);
+  await expect(cards).toHaveCount(0);
+  await expect(page.locator('#sales-office-content')).toContainText('No Season Sales Notes rows found.');
+  expect(await exportIds()).toEqual([]);
+  expect(await page.evaluate(() => window.eval('salesOfficeInventory.length'))).toBe(3);
+  expect(app.requests).toHaveLength(0);
+  app.assertClean();
+});
+
 test('every eligible Season card uses protected Done and stays absent across stale refresh and reload', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   for (const row of fixtures) {
