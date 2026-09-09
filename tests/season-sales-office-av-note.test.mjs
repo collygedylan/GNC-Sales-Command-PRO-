@@ -22,6 +22,8 @@ const officeHydrationSource = between('function syncRealtimeSalesOfficeRows(', '
 const fieldDisplaySource = between('function getItemDisplayValue(', 'function normalizeSpecIdentityValue(');
 const formatterSource = between('function formatFetchedRows(', 'function yieldToUiFrame(');
 const displaySource = between('function getSalesOfficeDisplayAvNote(', 'function getSeasonSalesOfficeSyncContext(');
+const seasonListSource = between('function isSeasonSalesOfficeItem(', 'function getSalesOfficeDisplayAvNote(');
+const exportContextSource = between('function buildSalesOfficeExportContext(', 'function exportSalesOfficeRowsToExcel(');
 const remoteSource = between('function getSeasonSalesOfficeRowsByMasterId(', 'function getSalesOfficeOrderItems(');
 const realtimeDetailSource = between('function refreshActiveMasterDetailFromRealtimeRow(', 'function normalizeAppLiveEventRow(');
 const completionRefreshSource = between('const protectedSeasonItemCode = getMasterItemCodeKey(', 'if (isCoordinatedAutoSave && savePayloadSignature)');
@@ -52,6 +54,12 @@ function harness(options = {}) {
     findItemByUniqueId: () => master,
     fullInventory: [master],
     salesOfficeInventory: options.rows ?? [mirror()],
+    resolvedViewStateEpoch: 0,
+    salesOfficeSeasonItemsCacheKey: '',
+    salesOfficeSeasonItemsCache: null,
+    getDatasetLoadSignature: () => 'fixture-snapshot-1',
+    incrementInternalPerfCounter() {},
+    isCurrentSeasonSalesNotesRow: () => true,
     isBloomPickerSalesOfficeItem: (row) => row.SO_SOURCE === 'bloom_picker',
     getMasterItemCodeKey: (row) => row?.ITEMCODE || '',
     invalidateSalesOfficeLocalState() {},
@@ -95,7 +103,7 @@ function harness(options = {}) {
     showToast() {},
   };
   vm.createContext(ctx);
-  vm.runInContext(`${photoOwnedValueSource}\n${normalizePhotoSource}\n${masterSyncSource}\n${ownedStateSource}\n${adoptionSource}\n${formatterSource}\n${displaySource}\n${remoteSource}\n${realtimeDetailSource}\n${clearPayloadSource}\n${explicitClearSource}\n${officeHydrationSource}\n${fieldDisplaySource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
+  vm.runInContext(`${photoOwnedValueSource}\n${normalizePhotoSource}\n${masterSyncSource}\n${ownedStateSource}\n${adoptionSource}\n${formatterSource}\n${displaySource}\n${seasonListSource}\n${exportContextSource}\n${remoteSource}\n${realtimeDetailSource}\n${clearPayloadSource}\n${explicitClearSource}\n${officeHydrationSource}\n${fieldDisplaySource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
   return { ctx, calls, master, writes, rendered };
 }
 
@@ -129,6 +137,56 @@ test('an explicitly cleared Season AV Note remains blank after null formatting, 
   assert.equal(staleAlias.AV_NOTE, '');
   assert.equal(staleAlias.av_note, '');
   assert.equal(ctx.getSalesOfficeDisplayAvNote({ SO_SOURCE: 'season', av_note: 'RAW NOTE' }), 'RAW NOTE');
+});
+
+test('Season queue and export omit blank retained notes without removing their editable snapshots', () => {
+  const { ctx, master, calls, writes } = harness();
+  const blankRows = [null, '', ' \t\n '].map((note, index) => mirror({ UNIQUE_ID: `blank-${index}`, AV_NOTE: note }));
+  const retained = mirror({ UNIQUE_ID: 'retained', AV_NOTE: 'KEEP USER NOTE', WORKFLOW_STATUS: 'needs_photo_data' });
+  ctx.salesOfficeInventory = [...blankRows, retained];
+  const before = JSON.stringify(ctx.salesOfficeInventory);
+  assert.equal(master.AV_NOTE, 'NEW CAV NOTE');
+  assert.deepEqual(Array.from(ctx.getSalesOfficeSeasonItems(), row => row.UNIQUE_ID), ['retained']);
+  assert.deepEqual(Array.from(ctx.buildSalesOfficeExportContext('season').rows, row => row.UNIQUE_ID), ['retained']);
+  assert.equal(JSON.stringify(ctx.salesOfficeInventory), before, 'visibility never changes mirror state or revision');
+  for (const row of blankRows) assert.equal(ctx.isSeasonSalesOfficeItem(row), true, 'blank snapshots remain eligible for protected editing');
+  master.AV_NOTE = '';
+  assert.equal(ctx.getSalesOfficeSeasonItems()[0], retained, 'the user note stays visible independently of CAV and photo readiness');
+  assert.equal(calls.length, 0);
+  assert.equal(writes.length, 0);
+});
+
+test('a cached Season queue immediately hides an in-place note clear and returns it after a new note', () => {
+  const { ctx } = harness();
+  const row = ctx.salesOfficeInventory[0];
+  assert.equal(ctx.getSalesOfficeSeasonItems().length, 1);
+  const cacheKey = ctx.salesOfficeSeasonItemsCacheKey;
+  row.AV_NOTE = '';
+  row.av_note = 'STALE NOTE ALIAS';
+  assert.equal(ctx.getSalesOfficeSeasonItems().length, 0);
+  assert.equal(ctx.buildSalesOfficeExportContext('season').rows.length, 0);
+  assert.equal(ctx.salesOfficeSeasonItemsCacheKey, cacheKey, 'the guard also runs on cache hits');
+  assert.equal(ctx.salesOfficeInventory.length, 1);
+  row.AV_NOTE = 'NEW USER NOTE';
+  assert.equal(ctx.getSalesOfficeSeasonItems()[0], row);
+});
+
+test('Season visibility respects source classification and leaves blank Bloom orders available', () => {
+  const { ctx, master } = harness();
+  const bloom = mirror({ UNIQUE_ID: 'bloom', SO_SOURCE: 'bloom_picker', AV_NOTE: '' });
+  const move = mirror({ UNIQUE_ID: 'move', SO_SOURCE: 'moves', AV_NOTE: 'MOVE NOTE' });
+  const legacy = mirror({ UNIQUE_ID: 'legacy', SO_SOURCE: 'flyer_folder', AV_NOTE: '' });
+  const noSource = mirror({ UNIQUE_ID: 'no-source', SO_SOURCE: '', AV_NOTE: '' });
+  ctx.salesOfficeInventory = [bloom, move, legacy, noSource];
+  assert.deepEqual(Array.from(ctx.getSalesOfficeSeasonItems(), row => row.UNIQUE_ID), ['legacy']);
+  assert.equal(ctx.getSalesOfficeDisplayAvNote(legacy), master.AV_NOTE, 'legacy source fallback stays unchanged');
+  ctx.getSalesOfficeOrderItems = () => [bloom];
+  ctx.getSalesOfficeOrderRowsForCurrentFolder = rows => rows;
+  ctx.getSalesOfficeOrderSelectedRepLabel = () => '';
+  ctx.getSalesOfficeOrderSelectedCustomerLabel = () => '';
+  ctx.sanitizeAVExportFilePart = value => value;
+  assert.equal(ctx.buildSalesOfficeExportContext('orders').rows[0], bloom, 'the Orders tab has no note requirement');
+  assert.equal(ctx.salesOfficeInventory.length, 4);
 });
 
 test('master realtime updates preserve the active Sales Office snapshot and source identity', () => {
