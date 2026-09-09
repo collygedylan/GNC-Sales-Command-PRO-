@@ -205,6 +205,8 @@ jobs:
       - run: npm run build:live
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:v2:e2e
+      - name: Exercise Android startup and protected photo persistence
+        run: npx playwright test --config playwright.login-photo.config.ts --project=android
       - name: Prepare static shell for Lighthouse
         shell: bash
         run: |

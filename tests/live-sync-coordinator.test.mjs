@@ -145,3 +145,46 @@ test('two visible aliases of the same physical snapshot issue one full read', as
     const f = fixture(); f.context.adapters.push({ ...f.adapter });
     await f.coordinator.check(); assert.equal(f.reads, 1); assert.equal(f.commits.length, 1);
 });
+
+test('a verified requested snapshot succeeds while an unrelated adapter fails', async () => {
+    const f = fixture();
+    f.context.adapters.push({ id: 'side:calendar', cacheKey: 'calendar/all', sourceKeys: ['calendar'],
+        stage: async () => { throw new Error('Calendar unavailable'); }, commit() {} });
+    assert.equal(await f.coordinator.ensure(f.adapter, true), true);
+    assert.equal(f.commits.length, 1);
+    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
+    assert.equal(f.coordinator.getStatus().lastVerifiedAt, null);
+});
+
+test('a verified loader does not require an unrelated denied source to become ready', async () => {
+    const f = fixture();
+    const denied = { id: 'side:denied', cacheKey: 'denied', sourceKeys: ['denied'],
+        stage: async () => { throw new Error('Unavailable auxiliary data'); }, commit() {} };
+    f.context.adapters.push(denied);
+    assert.equal(await f.coordinator.ensure(f.adapter), true);
+    assert.equal(await f.coordinator.ensure(denied, true), false);
+    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
+});
+
+test('failed forced verification cannot succeed from an older applied cache entry', async () => {
+    const f = fixture();
+    assert.equal(await f.coordinator.ensure(f.adapter), true);
+    f.revision = '2'; f.fault = new Error('Requested data failed');
+    assert.equal(await f.coordinator.ensure(f.adapter, true), false);
+    assert.equal(f.commits.length, 1);
+    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
+});
+
+test('an account change cannot satisfy an old account loader even if the new one loads', async () => {
+    const f = fixture(); const gate = deferred(); f.loadHook = () => gate.promise;
+    const pending = f.coordinator.ensure(f.adapter, true); await settle();
+    f.context.scope = 'new-account'; gate.resolve();
+    assert.equal(await pending, false);
+});
+
+test('failed metadata validation cannot acknowledge a cached snapshot', async () => {
+    const f = fixture(); await f.coordinator.ensure(f.adapter);
+    f.metadataHook = async () => { throw new Error('Revision check failed'); };
+    assert.equal(await f.coordinator.ensure(f.adapter, true), false);
+    assert.equal(await f.coordinator.ensure(f.adapter), false);
+});

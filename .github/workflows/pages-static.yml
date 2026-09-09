@@ -98,6 +98,8 @@ jobs:
         run: npm run test:suspend-tag
       - name: Verify live refreshes and device-local Docks filters before publishing
         run: npm run test:docks-filter
+      - name: Verify actual login and protected photo saves on Android before publishing
+        run: npx playwright test --config playwright.login-photo.config.ts --project=android
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -166,6 +168,10 @@ jobs:
         env:
           DOCKS_FILTER_BASE_URL: https://agmetricapp.com
         run: npm run test:docks-filter
+      - name: Verify live startup and photo persistence with mutation-blocked browser fixtures
+        env:
+          LOGIN_PHOTO_BASE_URL: https://agmetricapp.com
+        run: npx playwright test --config playwright.login-photo.config.ts --project=chromium --project=webkit --project=android
 
       - name: Upload sanitized canary diagnostics
         if: failure()

@@ -79,6 +79,8 @@ function harness(options = {}) {
       body: { appendChild: (element) => { dialog = element; } },
     },
     showToast: (...args) => toasts.push(args), stopCodexOpsPoll() {},
+    clearInMemorySessionIdentity: () => { ctx.currentUser = ''; ctx.currentRole = ''; },
+    resetLoginUiState: () => { ctx.window.loginReset = true; },
     getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: (callback) => {
       authCallback = callback; return { data: { subscription: {} } };
     } } }),
@@ -221,6 +223,9 @@ test('real SIGNED_OUT callback immediately erases private data and rejects a del
   assertCleared(h);
   assert.equal(h.ctx.nativeAuthSessionActive, false);
   assert.equal(h.ctx.nativeAuthAccessToken, '');
+  assert.equal(h.ctx.currentUser, '');
+  assert.equal(h.ctx.nativeAuthProfile, null);
+  assert.equal(h.ctx.window.loginReset, true);
   reply.resolve(response([order('late-private-order')]));
   await flight;
   assertCleared(h);

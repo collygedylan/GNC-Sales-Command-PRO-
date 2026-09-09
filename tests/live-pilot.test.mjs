@@ -65,7 +65,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.09.02';
+  const release = 'V2026.09.09.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
@@ -1138,9 +1138,9 @@ test('V06 contains runaway requests and uses bounded retry and cache policies', 
   assert.match(serviceWorker, /IMAGE_CACHE_MAX_AGE_MS = 30 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(serviceWorker, /IMAGE_CACHE_MAX_BYTES = 100 \* 1024 \* 1024/);
   assert.match(serviceWorker, /PRIVATE_NETWORK_PATH_REGEX/);
-  assert.match(serviceWorker, /client\.visibilityState !== 'hidden' && client\.focused !== false/);
-  assert.match(serviceWorker, /navigateInactiveClientToCurrentShell/);
-  assert.doesNotMatch(serviceWorker, /client\.navigate\([^)]*\)(?![\s\S]{0,120}return true)/);
+  assert.match(serviceWorker, /broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)/);
+  assert.doesNotMatch(serviceWorker, /client\.navigate\(/);
+  assert.match(html, /hasPendingProtectedPhotoDrafts/);
 });
 
 test('V07 request detail uses one naturally scrolling desktop column and never renders collapsed AV cards', () => {

@@ -182,7 +182,7 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
       getProductionLiveSyncCoordinator().check('fixture-native-entry');
     })()`);
   }, rows);
-  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
   const headerGeometry = await page.locator('#live-data-freshness').evaluate(element => {
     const rect = element.getBoundingClientRect();
     const obscured = ['global-header-inline-back', 'docks-search'].filter(id => {
@@ -222,13 +222,13 @@ test('native shared coordinator preserves filtered sessions, stages import races
         const fixture = (window as any).__nativeSyncFixture;
         fixture.rows = data; fixture.revision = '2'; fixture.state = 'importing'; fixture.changed();
       }, imported);
-      await expect(p.locator('#live-data-freshness')).toContainText('Importing');
+      await expect(p.locator('#live-data-freshness')).toContainText('Data Updating');
     }
     await expect(counts(page)).toContainText('Showing 117 of 117');
     await expect(counts(other)).toContainText('Showing 55 of 117');
     for (const p of [page, other]) {
       await p.evaluate(() => { const fixture = (window as any).__nativeSyncFixture; fixture.state = 'ready'; fixture.changed(); });
-      await expect(p.locator('#live-data-freshness')).toContainText('Up to date');
+      await expect(p.locator('#live-data-freshness')).toContainText('Data Current');
     }
     await expect(counts(page)).toContainText('Showing 149 of 149');
     await expect(counts(other)).toContainText('Showing 55 of 149');
@@ -240,7 +240,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
       fixture.gate = new Promise<void>(resolve => { fixture.release = resolve; });
       fixture.changed();
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Syncing');
+    await expect(page.locator('#live-data-freshness')).toContainText('Data Updating');
     await expect(counts(page)).toContainText('Showing 149 of 149');
     await page.evaluate(data => {
       const fixture = (window as any).__nativeSyncFixture;
@@ -252,13 +252,13 @@ test('native shared coordinator preserves filtered sessions, stages import races
       (window as any).__nativeSyncFixture.readFailure = true;
       window.dispatchEvent(new Event('focus'));
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
+    await expect(page.locator('#live-data-freshness')).toContainText('Data Update Needs Attention');
     await expect(counts(page)).toContainText('Showing 150 of 150');
     await page.evaluate(() => {
       (window as any).__nativeSyncFixture.readFailure = false;
       (window as any).__nativeSyncFixture.reconnected();
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+    await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
     await expect(other.locator('[data-dock-customer-summary]')).toHaveText('Custom · 4 selected');
     all.assertClean(); custom.assertClean();
   } finally {
@@ -291,7 +291,7 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   await enableNativeCoordinator(page, initial);
   await page.evaluate(() => window.eval(`openDockInfoModal('28', '37231')`));
   await expect(page.locator('#dock-info-modal')).toBeVisible();
-  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
   await page.locator('#dock-status').selectOption('Palletize');
   await page.evaluate(data => {
     const fixture = (window as any).__nativeSyncFixture;
@@ -331,7 +331,7 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
     const fixture = (window as any).__nativeSyncFixture;
     fixture.revision = '3'; fixture.changed();
   });
-  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
   await expect(page.locator('#hours-amount')).toHaveValue('12.5');
   app.assertClean();
 });

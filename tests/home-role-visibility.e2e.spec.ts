@@ -115,37 +115,42 @@ async function harness(page: Page, baseURL: string) {
   return { seed, assertTiles, assertClean };
 }
 
-test('authorized Home tiles are visible and reachable for every supported role', async ({ page, baseURL, isMobile }) => {
-  const app = await harness(page, baseURL!);
-  for (const entry of roleCases) {
-    await test.step(`${entry.role}: visible modules and native return Home`, async () => {
-      await app.seed(entry.username, entry.role);
-      await app.assertTiles(entry.views, entry.dynamic);
-      if (['tony_bono', 'home_admin_fixture'].includes(entry.username)) {
-        for (const theme of ['dark', 'light']) {
-          await page.evaluate(({ username, theme }) => {
-            localStorage.setItem('gnc_last_theme_v1', theme);
-            (window as any).__gncOpsPilot.primeCachedAppearance({ userKey: username, activeView: 'home' });
-          }, { username: entry.username, theme });
-          await expect(page.locator('body')).toHaveAttribute('data-ops-theme', theme);
-          const grid = page.locator(entry.dynamic ? '#home-rep-dashboard-grid' : '#home-dashboard-grid');
-          await expect(grid).toBeVisible();
-          await expect(grid.locator(':scope > button:visible')).toHaveCount(entry.views.length);
-          await page.locator(tileSelector(entry.views.at(-1)!, entry.dynamic)).click({ trial: true });
+// Keep ordered account transitions while bounding each WebKit test's cumulative work.
+// All role, theme, far-tile reachability, and native navigation assertions stay identical.
+for (let offset = 0; offset < roleCases.length; offset += 4) {
+  const group = roleCases.slice(offset, offset + 4);
+  test(`authorized Home tiles are visible and reachable for roles ${offset + 1}-${offset + group.length}`, async ({ page, baseURL, isMobile }) => {
+    const app = await harness(page, baseURL!);
+    for (const entry of group) {
+      await test.step(`${entry.role}: visible modules and native return Home`, async () => {
+        await app.seed(entry.username, entry.role);
+        await app.assertTiles(entry.views, entry.dynamic);
+        if (['tony_bono', 'home_admin_fixture'].includes(entry.username)) {
+          for (const theme of ['dark', 'light']) {
+            await page.evaluate(({ username, theme }) => {
+              localStorage.setItem('gnc_last_theme_v1', theme);
+              (window as any).__gncOpsPilot.primeCachedAppearance({ userKey: username, activeView: 'home' });
+            }, { username: entry.username, theme });
+            await expect(page.locator('body')).toHaveAttribute('data-ops-theme', theme);
+            const grid = page.locator(entry.dynamic ? '#home-rep-dashboard-grid' : '#home-dashboard-grid');
+            await expect(grid).toBeVisible();
+            await expect(grid.locator(':scope > button:visible')).toHaveCount(entry.views.length);
+            await page.locator(tileSelector(entry.views.at(-1)!, entry.dynamic)).click({ trial: true });
+          }
         }
-      }
-      const view = ['drive', 'communication', 'production'].find(candidate => entry.views.includes(candidate))!;
-      const tile = page.locator(tileSelector(view, entry.dynamic));
-      if (isMobile) await tile.tap(); else await tile.click();
-      await expect(page.locator(`#view-${view}`)).toBeVisible();
-      const homeButton = page.locator('#bottom-nav [data-footer-view="home"]');
-      if (isMobile) await homeButton.tap(); else await homeButton.click();
-      await expect(page.locator('#view-home')).toBeVisible();
-      await expect(page.locator(tileSelector(entry.views[0], entry.dynamic))).toBeVisible();
-    });
-  }
-  app.assertClean();
-});
+        const view = ['drive', 'communication', 'production'].find(candidate => entry.views.includes(candidate))!;
+        const tile = page.locator(tileSelector(view, entry.dynamic));
+        if (isMobile) await tile.tap(); else await tile.click();
+        await expect(page.locator(`#view-${view}`)).toBeVisible();
+        const homeButton = page.locator('#bottom-nav [data-footer-view="home"]');
+        if (isMobile) await homeButton.tap(); else await homeButton.click();
+        await expect(page.locator('#view-home')).toBeVisible();
+        await expect(page.locator(tileSelector(entry.views[0], entry.dynamic))).toBeVisible();
+      });
+    }
+    app.assertClean();
+  });
+}
 
 test('REP Home preserves module denials and shows Request loading and retry states', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);

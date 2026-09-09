@@ -24,7 +24,9 @@
         const later = options.setTimeout || setTimeout;
         const cancel = options.clearTimeout || clearTimeout;
         const applied = new Map();
+        const verified = new Map();
         const requested = new Map();
+        let verificationSequence = 0;
         let epoch = 0, scope = '', permission = '', running = null, queued = false;
         let pollTimer = null, signalTimer = null, signalAt = Infinity, unsubscribe = null, subscribedScope = '';
         let lastVerifiedAt = null, currentStatus = { state: 'Syncing', lastVerifiedAt: null };
@@ -44,7 +46,7 @@
             unsubscribe = null; subscribedScope = '';
         }
         function reset() {
-            epoch++; clearTimers(); closeSubscription(); applied.clear(); requested.clear();
+            epoch++; clearTimers(); closeSubscription(); applied.clear(); verified.clear(); requested.clear();
             permission = ''; scope = ''; lastVerifiedAt = null; queued = false;
             publish('Syncing', 'Waiting to verify current data.');
         }
@@ -52,7 +54,7 @@
             const next = options.getContext();
             if (!next || !next.scope || next.visible === false || next.online === false) return next;
             if (scope !== next.scope) {
-                epoch++; applied.clear(); requested.clear(); permission = ''; lastVerifiedAt = null;
+                epoch++; applied.clear(); verified.clear(); requested.clear(); permission = ''; lastVerifiedAt = null;
                 scope = next.scope; closeSubscription();
             }
             return { ...next, adapters: (next.adapters || []).map((adapter) => ({ ...adapter, sourceKeys: [...adapter.sourceKeys] })) };
@@ -93,6 +95,8 @@
             if (ctx.online === false) { publish('Offline', 'Showing the last verified data, if available.'); return false; }
             const startedEpoch = epoch;
             const adapters = descriptors(ctx);
+            const sequence = ++verificationSequence;
+            adapters.forEach((adapter) => verified.delete(adapter.id));
             requested.clear();
             const keys = unique(adapters.flatMap((item) => item.sourceKeys));
             if (!keys.length) { publish('Up to date', 'This screen has no live data.'); return true; }
@@ -101,7 +105,7 @@
             const before = snapshot(await options.readRevisions(keys), keys);
             if (!stillCurrent(ctx, startedEpoch)) { statistics.discardedLoads++; queued = true; return false; }
             if (permission && permission !== before.permissionVersion) {
-                applied.clear(); lastVerifiedAt = null;
+                applied.clear(); verified.clear(); lastVerifiedAt = null;
                 await options.onPermissionChange?.(before.permissionVersion);
                 if (!stillCurrent(ctx, startedEpoch)) { queued = true; return false; }
             }
@@ -110,6 +114,7 @@
             const blockedIds = new Set(blocked.map((item) => item.id));
             const changed = adapters.filter((adapter) => !blockedIds.has(adapter.id) && applied.get(adapter.id)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]));
             const staged = [];
+            const failedIds = new Set();
             let failure = null, cursor = 0;
             if (changed.length) {
                 publish('Syncing', 'Checking and loading changed data.');
@@ -122,7 +127,7 @@
                             const value = await adapter.stage();
                             if (value === undefined) throw new Error(`${adapter.id} did not return a snapshot.`);
                             staged.push({ adapter, value });
-                        } catch (error) { failure = error; }
+                        } catch (error) { failedIds.add(adapter.id); failure = error; }
                     }
                 }));
                 statistics.revisionReads++;
@@ -145,6 +150,14 @@
                     }
                 }
             }
+            // A loader owns its verified snapshot, not the health of unrelated
+            // badges or background adapters. Keep the overall status strict.
+            adapters.forEach((adapter) => {
+                if (!blockedIds.has(adapter.id) && !failedIds.has(adapter.id)
+                    && applied.get(adapter.id)?.cacheKey === adapter.cacheKey) {
+                    verified.set(adapter.id, { cacheKey: adapter.cacheKey, sequence });
+                }
+            });
             if (failure) { publish('Needs attention', failure.message || String(failure)); return false; }
             if (blocked.length) {
                 const states = blocked.flatMap((adapter) => adapter.sourceKeys.map((key) => before.sources.get(key).state));
@@ -191,9 +204,20 @@
         function ensure(adapter, force = false) {
             const ctx = context();
             if (!ctx?.scope || ctx.visible === false || ctx.online === false) return Promise.resolve(false);
-            if (!force && applied.get(adapter.id)?.cacheKey === adapter.cacheKey) return Promise.resolve(true);
+            if (!force && applied.get(adapter.id)?.cacheKey === adapter.cacheKey
+                && verified.get(adapter.id)?.cacheKey === adapter.cacheKey) return Promise.resolve(true);
+            const startedEpoch = epoch;
+            const startedSequence = verificationSequence;
             requested.set(adapter.id, adapter);
-            return check('loader').then((ok) => ok && applied.get(adapter.id)?.cacheKey === adapter.cacheKey);
+            return check('loader').then(() => {
+                const current = options.getContext();
+                const checked = verified.get(adapter.id);
+                return epoch === startedEpoch && current?.scope === ctx.scope
+                    && current?.visible !== false && current?.online !== false
+                    && !!checked && checked.sequence > startedSequence
+                    && checked.cacheKey === adapter.cacheKey
+                    && applied.get(adapter.id)?.cacheKey === adapter.cacheKey;
+            });
         }
         function suspend() { epoch++; clearTimers(); closeSubscription(); queued = false; }
         return Object.freeze({ check, signal, ensure, reset, suspend, getStatus: () => ({ ...currentStatus }), getStatistics: () => ({ ...statistics }) });

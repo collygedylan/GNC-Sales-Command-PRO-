@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.09.09.02';
+const APP_SHELL_BUILD = 'V2026.09.09.03';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -317,34 +317,6 @@ async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   } catch (error) {}
 }
 
-async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'inactive-shell-update') {
-  const safeClientId = String(clientId || '').trim();
-  if (!safeClientId) return false;
-  try {
-    const client = await self.clients.get(safeClientId);
-    if (!client || typeof client.navigate !== 'function') return false;
-    if (client.visibilityState !== 'hidden' && client.focused !== false) return false;
-    const clientUrl = getRequestUrl(client.url);
-    if (!isProductionShellUrl(clientUrl)) return false;
-    if (clientUrl && clientUrl.searchParams.get('shellr') === APP_SHELL_RUNTIME_REVISION) return false;
-    await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason));
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
-  try {
-    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    await Promise.all(clientList.map((client) => (
-      client && isProductionShellUrl(client.url) && (client.visibilityState === 'hidden' || client.focused === false)
-        ? navigateInactiveClientToCurrentShell(client.id, reason)
-        : Promise.resolve(false)
-    )));
-  } catch (error) {}
-}
-
 function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '') {
   const shellUrl = new URL(buildShellUrl(build), self.registration.scope);
   shellUrl.searchParams.set('shellr', APP_SHELL_RUNTIME_REVISION);
@@ -373,7 +345,6 @@ self.addEventListener('activate', (event) => {
       })
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
-      .then(() => navigateInactiveClientsToCurrentShell('sw-activated'))
   );
 });
 self.addEventListener('message', (event) => {
@@ -401,7 +372,8 @@ function handleProductionFetch(event) {
   // It must never answer another document navigation with the production shell.
   if (event.request.mode === 'navigate' && !isProductionShellUrl(event.request)) return;
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
-    if (event.clientId) event.waitUntil(navigateInactiveClientToCurrentShell(event.clientId, 'inactive-network-activity'));
+    // A hidden tab may be using the camera or persisting a photo. Only the
+    // page can decide when its drafts and uploads make a shell reload safe.
     return;
   }
   if (shouldBypassServiceWorkerCache(event.request)) return;

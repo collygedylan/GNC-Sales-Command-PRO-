@@ -24,9 +24,12 @@ test('Request permissions come from one authenticated capability contract', () =
   assert.match(html, /localStorage\.removeItem\('gnc_request_capabilities_v1:' \+ usernameKey\)/);
   assert.match(html, /REQUEST_CAPABILITY_LOAD_FAILED/);
 
-  const finalizeLoginStart = html.indexOf('async function finalizeLogin');
+  const finalizeLoginStart = html.indexOf('async function completeLoginBootstrap');
+  assert.ok(finalizeLoginStart > 0);
   const finalizeLogin = html.slice(finalizeLoginStart, finalizeLoginStart + 18000);
-  assert.ok(finalizeLogin.indexOf('await initializeRequestCapabilities') < finalizeLogin.indexOf('getRoleAccessState'));
+  assert.match(finalizeLogin, /await Promise\.allSettled\(\[\s*initializeRequestCapabilities\(/);
+  assert.ok(finalizeLogin.indexOf('initializeRequestCapabilities(') < finalizeLogin.indexOf('getRoleAccessState'));
+  assert.ok(finalizeLogin.indexOf('isLoginSessionOwnershipCurrent(owner)') < finalizeLogin.indexOf('getRoleAccessState'));
   const permissionCode = html.slice(
     html.indexOf('function canCurrentUserArchiveRequestRows'),
     html.indexOf('function canCurrentUserArchiveRequestRow(item')
