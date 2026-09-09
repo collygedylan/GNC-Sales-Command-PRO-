@@ -131,7 +131,8 @@ function permissionFixture(options = {}) {
     const to = html.indexOf('function installNativeRoleRefreshWatchers()', from);
     const calls = [];
     const ctx = { String, Promise, Error, console: { warn() {} }, calls,
-        NATIVE_AUTH_ENABLED: true, nativeAuthSessionActive: true, nativeRoleRefreshPromise: null,
+        NATIVE_AUTH_ENABLED: true, nativeAuthSessionActive: true, nativeRoleRefreshPromise: null, nativeRoleRefreshOwner: null,
+        nativeAuthRecoveryGeneration: 0,
         nativeAuthProfile: { id: 'account-a' }, captureProductionPermissionDrafts() {}, restoreProductionPermissionDrafts: async () => {},
         setProductionPermissionCheckState: (state) => { ctx.mask = state; }, getCurrentVisibleViewId: () => 'home',
         currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan', currentRole: 'Admin', currentUserDivision: '10', currentUserLanguage: 'English',
@@ -144,7 +145,9 @@ function permissionFixture(options = {}) {
         ensureAssignableAppUsers: async () => {}, ensureFlyerAssignableUsers: async () => {},
         applyRolePermissions: () => { calls.push('apply'); }, refreshProtectedSections() {}, markViewDirty() {}, renderHome() {}, reportSemanticHealthEvent() {}
     };
-    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    const ownership = html.slice(html.indexOf('function captureNativeAuthRecoveryOwnership()'), html.indexOf('function invalidateNativeAuthRecovery()'));
+    const errors = html.slice(html.indexOf('function createNativeSessionRecoveryError('), html.indexOf('function normalizeNativeSessionRecoveryError('));
+    vm.createContext(ctx); vm.runInContext(errors + ownership + html.slice(from, to), ctx);
     return ctx;
 }
 
@@ -178,6 +181,22 @@ test('live permission signal arriving during a foreground check performs a full 
     const policy = ctx.refreshNativeRoleAndCapabilities('live-permissions');
     gate.resolve();
     assert.equal(await foreground, false); assert.equal(await policy, true);
+    assert.deepEqual(ctx.calls, ['clear', 'capabilities', 'access', 'apply']);
+});
+
+test('a superseded profile refresh cannot apply permissions or clear the new login refresh promise', async () => {
+    const ctx = permissionFixture(), oldGate = deferred(), currentGate = deferred();
+    const getProfile = ctx.loadNativeAuthProfile;
+    ctx.loadNativeAuthProfile = async () => { await oldGate.promise; return getProfile(); };
+    const old = ctx.refreshNativeRoleAndCapabilities('live-permissions');
+    ctx.nativeAuthRecoveryGeneration++;
+    ctx.loadNativeAuthProfile = async () => { await currentGate.promise; return getProfile(); };
+    const current = ctx.refreshNativeRoleAndCapabilities('live-permissions');
+    const currentFlight = ctx.nativeRoleRefreshPromise;
+    oldGate.resolve(); assert.equal(await old, false);
+    assert.equal(ctx.nativeRoleRefreshPromise, currentFlight);
+    assert.deepEqual(ctx.calls, []);
+    currentGate.resolve(); assert.equal(await current, true);
     assert.deepEqual(ctx.calls, ['clear', 'capabilities', 'access', 'apply']);
 });
 

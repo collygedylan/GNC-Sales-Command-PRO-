@@ -13,6 +13,7 @@ const appsScriptDeploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '
 const requireAppsScriptHealth = String(process.env.REQUIRE_APPS_SCRIPT_HEALTH || '').trim() === '1';
 const requireLiveReleaseMatch = String(process.env.REQUIRE_LIVE_RELEASE_MATCH || '').trim() === '1';
 const requireBoundedMaintenance = String(process.env.REQUIRE_BOUNDED_MAINTENANCE || '').trim() === '1';
+const readOnlyProbe = String(process.env.PRODUCTION_PROBE_READ_ONLY || '').trim() === '1';
 const appOrigin = String(process.env.PRODUCTION_APP_ORIGIN || 'https://agmetricapp.com').replace(/\/+$/, '');
 const expectedRelease = source.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1] || '';
 const expectedLifecyclePolicyVersion = 'plant-request-lifecycle-v2';
@@ -26,6 +27,7 @@ if (requireAppsScriptHealth && !appsScriptDeploymentId) {
 }
 
 async function checkedFetch(url, options = {}, timeoutMs = 15000) {
+  if (readOnlyProbe) assertReadOnlyProbeRequest(url, options);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -33,6 +35,37 @@ async function checkedFetch(url, options = {}, timeoutMs = 15000) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Release verification observes existing state. The scheduled recovery job keeps
+// its established defaults. Health/audit records are allowed, business writes are not.
+function assertReadOnlyProbeRequest(url, options = {}) {
+  const target = new URL(url);
+  const method = String(options.method || 'GET').toUpperCase();
+  let body = null;
+  try { body = options.body ? JSON.parse(options.body) : null; } catch {}
+  const app = new URL(appOrigin), backend = new URL(supabaseUrl);
+  if (method === 'GET' && target.origin === app.origin && target.pathname === '/') return;
+  if (method === 'GET' && target.origin === backend.origin && target.pathname === '/rest/v1/ph_app_health_events') return;
+  if (method === 'POST' && target.origin === backend.origin && target.pathname === '/functions/v1/app-api'
+      && body?.action === 'login' && body?.username === 'hosted_auth_health_probe_nonexistent'
+      && body?.password === 'invalid-health-probe' && Object.keys(body).length === 3) return;
+  if (method === 'POST' && target.origin === 'https://script.google.com'
+      && target.pathname === `/macros/s/${encodeURIComponent(appsScriptDeploymentId)}/exec`
+      && body?.type === 'deployment_health' && Object.keys(body).length === 1) return;
+  const allowedSnapshots = new Set([
+    'get_hosted_health_snapshot', 'get_pikes_order_assignment_health_v1',
+    'get_po_management_health_snapshot', 'get_access_control_health_snapshot_v1',
+    'get_eval_request_delivery_health_snapshot_v2', 'get_eval_work_creation_health_snapshot_v1',
+    'get_eval_work_assignment_batch_health_v1', 'get_request_drive_evidence_health_snapshot_v1',
+    'get_drive_evidence_save_health_v2', 'get_photo_delivery_health_v1',
+    'get_season_sales_office_health_v1', 'get_eval_itemcode_work_health_snapshot_v2',
+    'get_codex_ops_health_snapshot_v1'
+  ]);
+  const rpc = target.pathname.startsWith('/rest/v1/rpc/') ? target.pathname.slice('/rest/v1/rpc/'.length) : '';
+  if (method === 'POST' && target.origin === backend.origin && allowedSnapshots.has(rpc)
+      && body && Object.keys(body).length === 0) return;
+  throw new Error('production_read_only_probe_mutation_blocked');
 }
 
 function sanitizeCode(value = '') {
@@ -152,7 +185,7 @@ if (!healthyMismatch) {
 checks.push({ name: 'login_bridge_and_data_api', status: probeResponse.status, result: 'expected_mismatch' });
 
 if (serviceRoleKey) {
-  if (!deliveryCronSecret) throw new Error('production_probe_delivery_cron_secret_missing');
+  if (!readOnlyProbe && !deliveryCronSecret) throw new Error('production_probe_delivery_cron_secret_missing');
   const serviceHeaders = {
     apikey: serviceRoleKey,
     authorization: `Bearer ${serviceRoleKey}`,
@@ -161,6 +194,7 @@ if (serviceRoleKey) {
 
   // Idempotently wake delivery so this monitor can recover a delayed cron wake
   // or an expired worker lease before it declares an incident.
+  if (!readOnlyProbe) {
   const workerResponse = await checkedFetch(`${supabaseUrl}/functions/v1/request-delivery-worker`, {
     method: 'POST',
     headers: { ...serviceHeaders, 'x-delivery-cron-secret': deliveryCronSecret },
@@ -180,8 +214,11 @@ if (serviceRoleKey) {
     delivered: Number(deliveryWorkerResult?.delivered || 0),
     failed: workerFailed
   });
+  } else {
+    checks.push({ name: 'request_delivery_worker', result: 'skipped_read_only' });
+  }
 
-  if (requireBoundedMaintenance) {
+  if (requireBoundedMaintenance && !readOnlyProbe) {
     const boundedStartedAt = Date.now();
     const boundedResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/run_request_integrity_maintenance`, {
       method: 'POST',
@@ -202,6 +239,8 @@ if (serviceRoleKey) {
       result: boundedStatus,
       durationMs: Date.now() - boundedStartedAt
     });
+  } else if (requireBoundedMaintenance) {
+    checks.push({ name: 'bounded_request_maintenance', result: 'skipped_read_only' });
   }
 
   // Record a fast sanitized request-integrity audit after delivery has had a
@@ -413,6 +452,7 @@ if (serviceRoleKey) {
 
     const mismatchCount = Math.max(0, Number(requestDriveEvidenceHealth.evidence_mismatch_count) || 0);
     if (mismatchCount === 0) break;
+    if (readOnlyProbe) break;
     const mismatchRequestIds = Array.isArray(requestDriveEvidenceHealth.mismatch_request_ids)
       ? [...new Set(requestDriveEvidenceHealth.mismatch_request_ids.map((value) => String(value || '').trim()).filter(Boolean))]
       : [];
@@ -605,6 +645,7 @@ if (serviceRoleKey) {
 
 const result = {
   ok: true,
+  mode: readOnlyProbe ? 'read-only' : 'scheduled-recovery',
   checkedAt: new Date().toISOString(),
   durationMs: Date.now() - startedAt,
   expectedRelease,

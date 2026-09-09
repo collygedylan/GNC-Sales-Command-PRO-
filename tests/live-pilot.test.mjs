@@ -65,7 +65,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.09.06';
+  const release = 'V2026.09.09.07';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
@@ -1187,7 +1187,11 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.match(html, /const NATIVE_AUTH_ENABLED = true/);
   assert.match(html, /const NATIVE_AUTH_ALIAS_DOMAIN = 'greenleafnursery\.com'/);
   assert.match(html, /const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1'/);
-  assert.match(html, /navigator\.onLine === false[\s\S]*readCachedNativeAuthProfile\(session\.user\.id\)/);
+  const profileRead = html.slice(html.indexOf('async function loadNativeAuthProfile('), html.indexOf('let nativeRoleRefreshPromise'));
+  assert.match(profileRead, /navigator\.onLine === false\) throw createNativeSessionRecoveryError\('NATIVE_SESSION_NETWORK', 'profile'\)/);
+  assert.doesNotMatch(profileRead, /readCachedNativeAuthProfile\(/);
+  assert.match(profileRead, /NATIVE_PROFILE_DISABLED/);
+  assert.match(profileRead, /NATIVE_PROFILE_LOCKED/);
   assert.match(html, /cacheNativeAuthProfile\(data\)/);
   assert.match(html, /auth\.signInWithPassword\(\{ email, password: String\(password\) \}\)/);
   assert.match(html, /auth\.signInWithPasskey\(\)/);

@@ -104,7 +104,10 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Needs Photo\/Data/);
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
-  assert.match(html, /V2026\.09\.09\.06/);
+  const release = `V${JSON.parse(read('../package.json')).version}`;
+  assert.equal(release, 'V2026.09.09.07');
+  assert.equal(html.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1], release);
+  assert.equal(JSON.parse(read('../manifest.json')).version, release);
 });
 
 test('Season Sales Notes cards show an immutable authoritative arrival timestamp', () => {

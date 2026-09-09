@@ -195,6 +195,7 @@ jobs:
       - run: npm ci
       - name: Probe production login bridge and Data API
         env:
+          PRODUCTION_PROBE_READ_ONLY: '1'
           PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}

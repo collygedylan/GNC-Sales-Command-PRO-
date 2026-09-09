@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import vm from 'node:vm';
 
 const root = process.cwd();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -34,9 +35,22 @@ test('Request completion derives the completing user server-side without a legac
   assert.doesNotMatch(completionSchemaProbe, /'Authorization': 'Bearer ' \+ SUPABASE_KEY/);
 });
 
-test('native auth refreshes once before protected Request reads or writes fail', () => {
-  assert.match(nativeHeaders, /client\.auth\.refreshSession\(\)/);
-  assert.match(nativeHeaders, /nativeAuthAccessToken = String\(refreshedSession\.access_token/);
+test('protected Request headers use the shared SDK session recovery without another refresh or fallback', async () => {
+  let reads = 0, refreshes = 0;
+  const ctx = {
+    mutationBlockedAccessCanaryAuthEnabled: false, SUPABASE_KEY: 'fixture-publishable', nativeAuthAccessToken: 'fresh-token',
+    getNativeAuthSession: async () => { reads++; return { access_token: 'fresh-token' }; },
+    getSupabaseBrowserClient: () => ({ auth: { refreshSession: async () => { refreshes++; } } })
+  };
+  vm.createContext(ctx); vm.runInContext(nativeHeaders, ctx);
+  assert.equal((await ctx.getNativeAuthRequestHeaders()).Authorization, 'Bearer fresh-token');
+  const failure = Object.assign(new Error('Connection interrupted'), { code: 'NATIVE_SESSION_NETWORK', retryable: true });
+  ctx.getNativeAuthSession = async () => { reads++; throw failure; };
+  await assert.rejects(ctx.getNativeAuthRequestHeaders(), error => error === failure);
+  ctx.getNativeAuthSession = async () => { reads++; return null; };
+  assert.equal(await ctx.getNativeAuthRequestHeaders(), null);
+  assert.equal(refreshes, 0); assert.equal(reads, 3);
+  assert.equal(ctx.nativeAuthAccessToken, 'fresh-token', 'temporary read errors do not erase credentials');
 });
 
 test('Request completion retries one current row-version conflict with the canonical version', () => {
