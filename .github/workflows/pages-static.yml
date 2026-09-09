@@ -138,7 +138,7 @@ jobs:
   post-deployment-canary:
     needs: deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - name: Checkout deployed commit
         uses: actions/checkout@v4
