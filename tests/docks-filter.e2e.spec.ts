@@ -297,8 +297,9 @@ test('real customer controls expose empty Custom, All and device-saved selection
   app.assertClean();
 });
 
-for (const width of [320, 390, 1280]) {
-  test(`Menu data status never intercepts search X or Sales Office Back at ${width}px`, async ({ page, baseURL }) => {
+for (const layout of ['compact', 'standard']) {
+  test(`Menu data status never intercepts search X or Sales Office Back in ${layout} layout`, async ({ page, baseURL }, testInfo) => {
+    const width = layout === 'compact' ? 320 : testInfo.project.use.isMobile ? 390 : 1280;
     await page.setViewportSize({ width, height: 900 });
     const app = await harness(page, baseURL!, [row('header', 'Customer A')]);
     // The coordinator integration above tests real failure/retry semantics. This
@@ -342,17 +343,19 @@ for (const width of [320, 390, 1280]) {
       const statusButton = page.locator('#side-drawer #live-data-freshness');
       await statusButton.scrollIntoViewIfNeeded();
       await expect(statusButton).toBeInViewport();
-      const layout = await statusButton.evaluate(element => ({
+      const menuLayout = await statusButton.evaluate(element => ({
         left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right,
         drawerRight: element.parentElement!.getBoundingClientRect().right,
-        label: element.getAttribute('aria-label'), text: element.textContent,
+        label: element.getAttribute('aria-label'), text: element.textContent, color: getComputedStyle(element).color,
       }));
-      expect(layout.left).toBeGreaterThanOrEqual(0);
-      expect(layout.right).toBeLessThanOrEqual(layout.drawerRight + 1);
-      expect(layout.label).toContain(layout.text!);
+      expect(menuLayout.left).toBeGreaterThanOrEqual(0);
+      expect(menuLayout.right).toBeLessThanOrEqual(menuLayout.drawerRight + 1);
+      expect(menuLayout.label).toContain(menuLayout.text!);
+      expect(menuLayout.color, 'Global button themes must not mute status text against its dark background').toBe('rgb(220, 252, 231)');
       if (status.state === 'Needs attention') {
         await expect(statusButton).toContainText('Awaiting first data check');
         await expect(statusButton).toContainText('Edit needs review');
+        if (width === 320) await page.screenshot({ path: test.info().outputPath('menu-status-readable.png') });
       }
       await page.evaluate(() => window.eval('setMenuOpenState(false)'));
       await expect(page.locator('#side-drawer')).not.toHaveClass(/open/);

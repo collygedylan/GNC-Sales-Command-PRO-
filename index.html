@@ -34421,7 +34421,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 indicator.setAttribute('aria-live', 'polite');
                 // Status belongs in Menu, never over the search field or its X.
                 // Normal flow also keeps long status text safe at large text sizes.
-                indicator.style.cssText = 'position:static;width:100%;max-width:100%;box-sizing:border-box;text-align:left;white-space:normal;overflow-wrap:anywhere;border:0;border-bottom:1px solid #72bd98;background:#082319;color:#dcfce7';
+                indicator.style.cssText = 'position:static;width:100%;max-width:100%;box-sizing:border-box;text-align:left;white-space:normal;overflow-wrap:anywhere;border:0;border-bottom:1px solid #72bd98;background:#082319;color:#dcfce7!important';
                 indicator.onclick = () => {
                     const current = productionLiveSyncCoordinator?.getStatus() || status;
                     const label = current.state === 'Up to date' ? 'Data Current'

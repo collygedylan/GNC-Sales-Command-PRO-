@@ -39,6 +39,7 @@ test('data status stays in normal Menu flow instead of covering search controls'
     f.ctx.renderProductionDataFreshness({ state: 'Needs attention', lastVerifiedAt: null });
     assert.equal(f.indicator.parentElement, f.drawer);
     assert.match(f.indicator.style.cssText, /position:static/);
+    assert.match(f.indicator.style.cssText, /color:#dcfce7!important/);
     assert.doesNotMatch(f.indicator.style.cssText, /position:fixed|position:absolute|z-index/);
     const first = f.indicator;
     f.ctx.renderProductionDataFreshness({ state: 'Up to date', lastVerifiedAt: Date.now() });

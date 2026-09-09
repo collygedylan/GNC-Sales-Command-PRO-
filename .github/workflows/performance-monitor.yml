@@ -148,7 +148,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: |
+          node --test tests/prepare-ci-playwright-apt.test.mjs
+          PLAYWRIGHT_CI_NODE="$(command -v node)"
+          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
+          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
+          npx playwright install --with-deps chromium
       - name: Run browser request transactions against local Supabase
         shell: bash
         run: |
@@ -203,7 +208,12 @@ jobs:
       - run: npm run test:v2
       - run: npm run build:v2
       - run: npm run build:live
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: |
+          node --test tests/prepare-ci-playwright-apt.test.mjs
+          PLAYWRIGHT_CI_NODE="$(command -v node)"
+          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
+          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
+          npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:v2:e2e
       - name: Exercise Android startup and protected photo persistence
         run: npx playwright test --config playwright.login-photo.config.ts --project=android

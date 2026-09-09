@@ -43,6 +43,10 @@ jobs:
           npm run test:photo
           npm run test:pilot
           npm run test:live-sync
+          node --test tests/prepare-ci-playwright-apt.test.mjs
+          PLAYWRIGHT_CI_NODE="$(command -v node)"
+          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
+          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
           npx playwright install --with-deps chromium firefox webkit
           npm run test:v2:e2e
           npm run build:pilot-monitoring
@@ -141,7 +145,11 @@ jobs:
       - run: npm ci
 
       - name: Install production canary browsers
-        run: npx playwright install --with-deps chromium webkit
+        run: |
+          PLAYWRIGHT_CI_NODE="$(command -v node)"
+          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
+          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
+          npx playwright install --with-deps chromium webkit
 
       - name: Wait for exact live release and commit
         id: live_release
