@@ -142,7 +142,10 @@ for (const restored of [false, true]) {
     await expect(page.locator('#view-login')).toBeHidden();
     await expect(page.locator('#home-tile-drive')).toBeVisible();
     expect(await page.evaluate(() => (window as any).__repair.snapshot().native)).toBe(true);
-    const freshness = page.getByRole('button', { name:/^Data (Updating|Update Needs Attention)/ });
+    await page.locator('#footer-menu-btn').click();
+    await expect(page.locator('#side-drawer')).toHaveClass(/open/);
+    const freshness = page.getByRole('button', { name:/^Data status: Data (Updating|Update Needs Attention)/ });
+    await freshness.scrollIntoViewIfNeeded();
     await expect(freshness).toBeVisible();
     await expect(freshness).not.toContainText(/not verified|Data Current/i);
   });
