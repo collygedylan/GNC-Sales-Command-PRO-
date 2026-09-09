@@ -326,7 +326,7 @@ test('Reclass delivery checks issue no requests while hidden and discard respons
 
 test('Reclass delivery status reconciles immediately when visibility returns', () => {
     const marker = "document.addEventListener('visibilitychange', () => {\n            if (!document.hidden) void pollReclassDeliveryJobs();\n        }, { passive: true });";
-    assert.ok(html.includes(marker)); let handler; let calls = 0;
+    assert.ok(html.replace(/\r\n/g, '\n').includes(marker)); let handler; let calls = 0;
     const ctx = { document: { hidden: true, addEventListener: (_, callback) => { handler = callback; } }, pollReclassDeliveryJobs: () => { calls++; } };
     vm.createContext(ctx); vm.runInContext(marker, ctx);
     handler(); assert.equal(calls, 0); ctx.document.hidden = false; handler(); assert.equal(calls, 1);

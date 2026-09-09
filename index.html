@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.09.01">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.09.02">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.09.01';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.09.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6809,8 +6809,19 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.09.01">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.09.02">
     <style id="request-mobile-v2-authority">
+        /* AV Blanks facets must stay readable and reachable, not squeezed off a phone's one-row rail. */
+        @media(max-width:820px){
+            #view-tasks #task-tabs-container[data-task-view="av-blanks"]{
+                display:grid!important;grid-auto-flow:row!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+                grid-template-rows:none!important;gap:.4rem!important;min-width:0!important;width:100%!important;overflow:visible!important;
+            }
+            #view-tasks #task-tabs-container[data-task-view="av-blanks"]>.min-w-0{min-width:0!important;width:auto!important;max-width:100%!important;grid-column:auto!important}
+            #view-tasks #task-tabs-container[data-task-view="av-blanks"] .task-top-control-button{min-height:48px!important;padding:.45rem!important}
+            #view-tasks #task-tabs-container[data-task-view="av-blanks"] .task-top-control-title{font-size:11px!important;line-height:1.2!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+            #view-tasks #task-tabs-container[data-task-view="av-blanks"] .task-top-control-summary{font-size:12px!important;line-height:1.2!important}
+        }
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
         .request-av-note-sheet__backdrop{position:absolute;inset:0;border:0;background:rgba(2,20,14,.58);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
@@ -6987,12 +6998,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.09.01"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.09.01"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.09.01"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.09.01"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.09.01"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.09.01"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.09.02"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.09.02"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.09.02"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.09.02"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.09.02"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.09.02"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7746,7 +7757,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.09.01').trim() || 'V2026.09.09.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.09.02').trim() || 'V2026.09.09.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9252,7 +9263,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.09.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.09.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -32269,7 +32280,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.09.01').trim() || 'V2026.09.09.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.09.02').trim() || 'V2026.09.09.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -146956,9 +146967,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             return safeLevel >= 2 && taskViewUsesBlockDrill(tab) ? 'detail' : 'collection';
         }
 
+        function isTaskAvBlanksFilterView(tab = activeTaskView) {
+            const safeView = normalizeTaskViewValue(tab);
+            return safeView === 'av-blanks'
+                || (safeView === EVAL_TASK_ASSIGNMENT && getActiveEvalSimpleTaskFilterValue() === 'av-blanks');
+        }
+
         function shouldShowTaskInlineGenusFilter(tab = activeTaskView, level = taskViewLevel) {
             const safeView = normalizeTaskViewValue(tab);
             if (isApprovalTaskView(safeView) || isTaskDiagnosticsView(safeView)) return false;
+            if (isTaskAvBlanksFilterView(safeView)) return true;
             if (safeView === EVAL_TASK_ASSIGNMENT && shouldUseSimplifiedEvalTaskFilters()) return false;
             return true;
         }
@@ -146966,6 +146984,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function shouldShowTaskInlineContSizeFilter(tab = activeTaskView, level = taskViewLevel) {
             const safeView = normalizeTaskViewValue(tab);
             if (isApprovalTaskView(safeView) || isTaskDiagnosticsView(safeView)) return false;
+            if (isTaskAvBlanksFilterView(safeView)) return true;
             if (safeView === EVAL_TASK_ASSIGNMENT && shouldUseSimplifiedEvalTaskFilters()) return false;
             return true;
         }
@@ -147048,11 +147067,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!container) return;
             const simpleEvalShell = shouldUseSimplifiedEvalTaskFilters();
             const safeTab = simpleEvalShell ? EVAL_TASK_ASSIGNMENT : normalizeTaskViewValue(tab);
+            container.dataset.taskView = isTaskAvBlanksFilterView(safeTab) ? 'av-blanks' : safeTab;
             const shouldShowTaskMode = getTaskModeDropdownOptions().length > 0;
             const shouldShowEvalUser = false;
             const shouldShowSubview = shouldShowTaskSubviewDropdown(safeTab);
-            const shouldShowGenus = !simpleEvalShell && shouldShowTaskInlineGenusFilter(safeTab, taskViewLevel);
-            const shouldShowContSize = !simpleEvalShell && shouldShowTaskInlineContSizeFilter(safeTab, taskViewLevel);
+            const shouldShowGenus = shouldShowTaskInlineGenusFilter(safeTab, taskViewLevel);
+            const shouldShowContSize = shouldShowTaskInlineContSizeFilter(safeTab, taskViewLevel);
             const shouldShowDetailFilters = !simpleEvalShell && shouldShowTaskInlineDetailFilters(safeTab, taskViewLevel);
             const wasHidden = container.classList.contains('hidden');
             const visibleCount = (shouldShowTaskMode ? 1 : 0) + (shouldShowEvalUser ? 1 : 0) + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowContSize ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
@@ -147534,8 +147554,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (kind === 'mode') return 'Task View';
             if (kind === 'eval-user') return 'Eval User';
             if (kind === 'subview') return normalizeTaskViewValue(activeTaskTab) === EVAL_TASK_ASSIGNMENT ? (shouldUseSimplifiedEvalTaskFilters() ? 'Work Queue' : 'Task Type') : 'Task Filter';
-            if (kind === 'genus') return 'Genus';
-            if (kind === 'contsize') return 'Cont Size';
+            if (kind === 'genus') return 'Genus Name';
+            if (kind === 'contsize') return 'Container Size';
             if (kind === 'reserve-customer') return 'Customer-Consignee';
             return 'Task Filter';
         }
@@ -148324,7 +148344,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             taskGenusFilterScopeKey = String(firstNonEmptyValue(scopeKey, taskGenusFilterScopeKey, '') || '').trim() || `task-genus:${resolvedViewStateEpoch}:${taskGenusFilterItemsCache.length}`;
             if (!container.dataset.genusReady) {
                 container.dataset.genusReady = '1';
-                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-ios-task-filter-trigger="genus" ${buildExcelFilterFastAttrs('toggleTaskGenusDropdown')}><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel>${buildExcelFilterSearchHtml('task-genus-search', taskGenusSearchTerm, 'Search genus...', 'setTaskGenusSearchTerm', 'handleTaskGenusSearchKeydown')}<div class="excel-filter-options" data-genus-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear ${buildExcelFilterFastAttrs('selectAllTaskGenusFilters')}>Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeTaskGenusDropdown')}>Done</button></div></div></div>`;
+                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-ios-task-filter-trigger="genus" ${buildExcelFilterFastAttrs('toggleTaskGenusDropdown')}><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus Name</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel>${buildExcelFilterSearchHtml('task-genus-search', taskGenusSearchTerm, 'Search genus...', 'setTaskGenusSearchTerm', 'handleTaskGenusSearchKeydown')}<div class="excel-filter-options" data-genus-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear ${buildExcelFilterFastAttrs('selectAllTaskGenusFilters')}>Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeTaskGenusDropdown')}>Done</button></div></div></div>`;
             }
             const state = buildTaskGenusFilterState(taskGenusFilterItemsCache, taskGenusFilterScopeKey);
             const renderSignature = [
@@ -148521,7 +148541,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const state = buildTaskContSizeFilterState(taskContSizeFilterItemsCache, taskContSizeFilterScopeKey);
             if (!container.dataset.contsizeReady) {
                 container.dataset.contsizeReady = '1';
-                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-ios-task-filter-trigger="contsize" ${buildExcelFilterFastAttrs('toggleTaskContSizeDropdown')}><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">CONTSIZE</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel>${buildExcelFilterSearchHtml('task-contsize-search', taskContSizeSearchTerm, 'Search cont size...', 'setTaskContSizeSearchTerm', 'handleTaskContSizeSearchKeydown')}<div class="excel-filter-options" data-contsize-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear ${buildExcelFilterFastAttrs('selectAllTaskContSizeFilter')}>Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeTaskContSizeDropdown')}>Done</button></div></div></div>`;
+                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-ios-task-filter-trigger="contsize" ${buildExcelFilterFastAttrs('toggleTaskContSizeDropdown')}><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Container Size</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel>${buildExcelFilterSearchHtml('task-contsize-search', taskContSizeSearchTerm, 'Search cont size...', 'setTaskContSizeSearchTerm', 'handleTaskContSizeSearchKeydown')}<div class="excel-filter-options" data-contsize-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear ${buildExcelFilterFastAttrs('selectAllTaskContSizeFilter')}>Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeTaskContSizeDropdown')}>Done</button></div></div></div>`;
             }
             const renderSignature = [
                 taskContSizeFilterScopeKey,
@@ -149270,6 +149290,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const taskSearchApplicationMode = getTaskHeaderSearchApplicationMode(activeTaskTab, taskViewLevel, taskSearchTerm);
                 const shouldApplyTopTaskSearch = taskSearchApplicationMode === 'collection';
                 const shouldApplyFilteredTaskSearch = shouldApplyTopTaskSearch;
+                const applyGenusFilter = shouldShowTaskInlineGenusFilter(activeTaskTab, taskViewLevel);
+                const applyContSizeFilter = shouldShowTaskInlineContSizeFilter(activeTaskTab, taskViewLevel);
                 const filteredStateKey = [
                     hotState.key,
                     taskViewLevel,
@@ -149279,6 +149301,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     selectedEndCapFolder || '',
                     buildSelectionStateKey(selectedTaskGenusNames),
                     buildSelectionStateKey(selectedTaskContSizes),
+                    applyGenusFilter,
+                    applyContSizeFilter,
                     shouldApplyFilteredTaskSearch ? taskSearchProfile : '',
                     shouldApplyFilteredTaskSearch ? taskSearchTerm.toLowerCase() : '',
                     String(selectedTaskLocationDetailGenus || '').trim(),
@@ -149293,10 +149317,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
                 const drilldownBaseItems = getTaskDrilldownBaseItems(hotState);
                 const nextTaskGenusBaseItems = Array.isArray(drilldownBaseItems) ? drilldownBaseItems : [];
-                const nextTaskContSizeBaseItems = selectedTaskGenusNames.size
+                // Preserve AV Blanks choices on Back, but never apply invisible
+                // facets to another simplified evaluator Work Queue.
+                const nextTaskContSizeBaseItems = applyGenusFilter && selectedTaskGenusNames.size
                     ? nextTaskGenusBaseItems.filter((item) => selectedTaskGenusNames.has(getTaskGenusName(item)))
                     : nextTaskGenusBaseItems;
-                let nextTabItems = selectedTaskContSizes.size
+                let nextTabItems = applyContSizeFilter && selectedTaskContSizes.size
                     ? nextTaskContSizeBaseItems.filter((item) => selectedTaskContSizes.has(getTaskLocationDetailContSize(item)))
                     : nextTaskContSizeBaseItems;
                 if (shouldApplyTopTaskSearch) nextTabItems = filterBySearch(nextTabItems, taskSearchTerm, taskSearchProfile);
