@@ -253,6 +253,11 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
       Object.fromEntries(Object.entries(item).map(([key, value]) => [key.toLowerCase(), value]))]));
     w.__repair.uploads = [];
     w.__repair.saves = [];
+    const scheduleHydration = w.scheduleDeferredDetailHydration;
+    w.scheduleDeferredDetailHydration = (token: number, delay: number) => {
+      w.__repair.detailHydrationToken = token;
+      return scheduleHydration(token, delay);
+    };
     const previousRpc = w.supabaseRpc;
     w.supabaseRpc = async (operation: string, payload: any) => {
       if (operation !== 'save_drive_evidence_v2') return previousRpc(operation, payload);
@@ -421,6 +426,7 @@ test('Drive saves multiple photos while preserving entered AV note data', async 
   test.setTimeout(60_000);
   const fixture = await preparePhotoRow(page);
   await page.locator('#na-av-note').fill('FRESH GROWTH');
+  await expect(page.locator('#na-av-note')).toHaveValue('FRESH GROWTH');
   await page.evaluate(async () => { await (window as any).saveData(false, 'na-', true); });
   await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].av_note)).toBe('FRESH GROWTH');
   await selectGeneratedPhoto(page, 2);
@@ -428,6 +434,35 @@ test('Drive saves multiple photos while preserving entered AV note data', async 
   await page.evaluate(() => (window as any).__repair.reloadCanonical());
   await expect(page.locator('#na-av-note')).toHaveValue('FRESH GROWTH');
   expect(await page.evaluate(() => (window as any).__repair.uploads.length)).toBe(2);
+  expect(fixture.masterWrites).toEqual([]);
+});
+
+test('late detail hydration preserves typed AV Note and cursor before its protected save', async ({ page }) => {
+  const fixture = await preparePhotoRow(page);
+  const field = page.locator('#na-av-note');
+  const hydration = await field.evaluate(element => {
+    const w = window as any;
+    const input = element as HTMLInputElement;
+    const spec = document.getElementById('na-spec') as HTMLInputElement;
+    // Both input events and the late hydration occur before the 340ms autosave.
+    // Keeping them in one browser task reproduces the fast hosted-WebKit race
+    // without adding sleeps or depending on Playwright transport latency.
+    spec.focus(); spec.value = '24-30 H'; spec.dispatchEvent(new Event('input', { bubbles:true }));
+    input.focus(); input.value = 'FRESH GROWTH'; input.dispatchEvent(new Event('input', { bubbles:true }));
+    input.setSelectionRange(5, 5);
+    const before = input.value;
+    const baseline = w.__repair.savedRows['photo-fixture-one'].av_note;
+    const ran = w.runDeferredDetailHydration(w.__repair.detailHydrationToken);
+    return { before, ran, after:input.value, focused:document.activeElement === input,
+      start:input.selectionStart, end:input.selectionEnd, spec:spec.value, baseline,
+      canonicalAv:w.getEditableDetailItemForPrefix('na-').AV_NOTE };
+  });
+  expect(hydration).toEqual({ before:'FRESH GROWTH', ran:true, after:'FRESH GROWTH', focused:true,
+    start:5, end:5, spec:'24-30 H', baseline:'', canonicalAv:'' });
+  await page.evaluate(async () => { await (window as any).saveData(false, 'na-', true); });
+  await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].av_note)).toBe('FRESH GROWTH');
+  expect(await page.evaluate(() => (window as any).__repair.saves[0].p_baseline.av_note)).toBe('');
+  expect(await page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].spec)).toBe('24-30 H');
   expect(fixture.masterWrites).toEqual([]);
 });
 

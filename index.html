@@ -30737,10 +30737,10 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         function extractDetailPrefixFromInputId(inputId = '') {
             const id = String(inputId || '').trim();
             if (id.endsWith('-av-note')) return `${id.slice(0, -8)}-`;
-            if (id.endsWith('-spec')) return `${id.slice(0, -4)}-`;
-            if (id.endsWith('-caliper')) return `${id.slice(0, -7)}-`;
-            if (id.endsWith('-match')) return `${id.slice(0, -5)}-`;
-            if (id.endsWith('-pick')) return `${id.slice(0, -4)}-`;
+            if (id.endsWith('-spec')) return `${id.slice(0, -5)}-`;
+            if (id.endsWith('-caliper')) return `${id.slice(0, -8)}-`;
+            if (id.endsWith('-match')) return `${id.slice(0, -6)}-`;
+            if (id.endsWith('-pick')) return `${id.slice(0, -5)}-`;
             if (id.endsWith('-comments')) return `${id.slice(0, -9)}-`;
             if (id === 'req-reserve') return 'req-';
             if (id === 'flyer-notes') return 'flyer-';
@@ -30935,6 +30935,7 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
             }
             if (!shouldUseDebouncedDetailInputSave(target.id)) return;
             const prefix = extractDetailPrefixFromInputId(target.id);
+            rememberDetailHydrationInputEdit(target);
             if (prefix) queueLagSensitiveInputSave(prefix, target.id);
         }
 
@@ -103246,6 +103247,73 @@ function toggleDriveQuickRequestItem(domId) {
             return usable;
         }
 
+        const detailHydrationInputEditContexts = new WeakMap();
+
+        function getDetailHydrationDraftContext() {
+            if (!activeItem || !detailHydrationToken) return null;
+            return {
+                token: detailHydrationToken,
+                rowKey: JSON.stringify(['UNIQUE_ID', 'SOURCE_TABLE', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'].map((key) => (
+                    String(firstNonEmptyValue(activeItem[key], activeItem[key.toLowerCase()], '') || '').trim()
+                ))),
+                sourceView: String(activeDetailSourceView || lastView || '').trim().toLowerCase(),
+                owner: captureLoginSessionOwnership()
+            };
+        }
+
+        function isDetailHydrationDraftContextCurrent(context = null) {
+            const current = getDetailHydrationDraftContext();
+            return !!(context && current && context.token === current.token
+                && context.rowKey === current.rowKey && context.sourceView === current.sourceView
+                && isLoginSessionOwnershipCurrent(context.owner));
+        }
+
+        function rememberDetailHydrationInputEdit(input = null) {
+            if (!input || !input.closest || !input.closest('#view-detail') || input.disabled) return false;
+            const prefix = extractDetailPrefixFromInputId(input.id);
+            if (!shouldUseDebouncedDetailInputSave(input.id) || !canEditRowDetails(prefix, activeItem)) return false;
+            const context = getDetailHydrationDraftContext();
+            if (!context) return false;
+            detailHydrationInputEditContexts.set(input, context);
+            return true;
+        }
+
+        function captureDetailHydrationInputDrafts() {
+            const detail = document.getElementById('view-detail');
+            if (!detail) return [];
+            const drafts = [];
+            detail.querySelectorAll('input[id], textarea[id]').forEach((input) => {
+                const context = detailHydrationInputEditContexts.get(input);
+                if (!isDetailHydrationDraftContextCurrent(context) || input.disabled) return;
+                const prefix = extractDetailPrefixFromInputId(input.id);
+                if (!canEditRowDetails(prefix, activeItem)) return;
+                drafts.push({ context, id: input.id, value: String(input.value == null ? '' : input.value),
+                    focused: document.activeElement === input,
+                    start: input.selectionStart, end: input.selectionEnd, direction: input.selectionDirection });
+            });
+            return drafts;
+        }
+
+        function restoreDetailHydrationInputDrafts(drafts = []) {
+            drafts.forEach((draft) => {
+                if (!isDetailHydrationDraftContextCurrent(draft.context)) return;
+                const input = document.getElementById(draft.id);
+                const prefix = extractDetailPrefixFromInputId(draft.id);
+                if (!input || !input.isConnected || input.disabled || !input.closest('#view-detail')
+                    || !canEditRowDetails(prefix, activeItem)) return;
+                // Preserve only DOM drafts; changing activeItem here would erase the save RPC's baseline.
+                if (input.value !== draft.value) input.value = draft.value;
+                detailHydrationInputEditContexts.set(input, draft.context);
+                if (!draft.focused) return;
+                try {
+                    if (document.activeElement !== input) input.focus({ preventScroll: true });
+                    if (typeof input.setSelectionRange === 'function' && typeof draft.start === 'number') {
+                        input.setSelectionRange(draft.start, draft.end, draft.direction || 'none');
+                    }
+                } catch (error) {}
+            });
+        }
+
         function runDeferredDetailHydration(token = 0) {
             const expectedToken = Number(token) || 0;
             if (!expectedToken || expectedToken !== detailHydrationToken) return false;
@@ -103253,6 +103321,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hydrationStartedAt = beginInternalPerfMeasure();
             const primaryDetailTab = getPrimaryDetailTabForItemContext(activeItem, activeDetailSourceView || lastView || '');
             const preferredTab = resolveVisibleDetailTab(activeDetailTab || primaryDetailTab, primaryDetailTab || 'overview');
+            const inputDrafts = captureDetailHydrationInputDrafts();
             try {
                 renderDetailView({ preferredTab, suppressScroll: true, skipChromeSync: true, skipGalleryRender: true });
             } catch (error) {
@@ -103261,6 +103330,8 @@ function toggleDriveQuickRequestItem(domId) {
                     reportSemanticHealthEvent('request_detail_render_failed', 'request_detail', 'REQUEST_DETAIL_RENDER_FAILED', { reason: 'hydrate-exception' });
                 }
                 throw error;
+            } finally {
+                restoreDetailHydrationInputDrafts(inputDrafts);
             }
             recordInternalPerfDuration('detailHydrationDurations', hydrationStartedAt, activeDetailSourceView || 'detail');
             return true;

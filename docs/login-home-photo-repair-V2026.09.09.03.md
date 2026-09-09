@@ -18,6 +18,7 @@ Client-only release from a clean worktree based on `3b6e9a4969a72d4bec4dbdb05320
 - Capture the exact physical identity, revision and evidence baseline before creating the preview. Uploaded URLs stay in an actor-scoped retry draft until `save_drive_evidence_v2` confirms the URL on the original row.
 - Photo-only writes cannot acknowledge pending uploads via the client NO_CHANGES shortcut. No direct master-table PATCH is used by the protected photo workflow.
 - Multiple uploads serialize against advancing canonical photo baselines. Field drafts are not overwritten. Photo conflicts require explicit review and do not replace another field's conflict record.
+- Deferred detail hydration preserves only user-edited fields belonging to the current row and session, including intentional empty values and the active cursor. Hosted WebKit exposed the old hydration overwriting a just-typed AV Note before autosave; a deterministic regression now forces that timing.
 - Failed saves retain URLs in memory/sessionStorage for explicit retry without reupload. Account changes prevent late acknowledgement from altering another session.
 - AV's photo-only controls use the existing Drive Admin/exact-master authorization. Ambiguous catalog rows stay blocked; ordinary AV fields remain read-only.
 - Pending uploads and unconfirmed photo drafts prevent shell replacement. The service worker broadcasts updates but no longer forcibly navigates hidden clients that could be using a camera or saving data.

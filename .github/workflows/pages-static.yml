@@ -101,6 +101,17 @@ jobs:
       - name: Verify actual login and protected photo saves on Android before publishing
         run: npx playwright test --config playwright.login-photo.config.ts --project=android
 
+      - name: Upload isolated pre-publish browser diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-publish-browser-diagnostics
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
