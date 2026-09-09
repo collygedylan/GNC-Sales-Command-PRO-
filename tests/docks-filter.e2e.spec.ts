@@ -316,6 +316,10 @@ for (const layout of ['compact', 'standard']) {
         (window as any).__headerStatusFixture = nextStatus;
         window.eval(`productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture); switchView('drive');`);
       }, status);
+      // switchView exposes the search element before its scheduled first render.
+      // Wait for that real initialization/reset to finish before testing a later
+      // status repaint; input visibility alone is not navigation readiness.
+      await expect.poll(() => page.evaluate(() => window.eval(`getCurrentVisibleViewId()==='drive' && ensureViewRenderState('drive').initialized && !ensureViewRenderState('drive').dirty`))).toBe(true);
       const search = page.locator('#drive-search');
       await search.fill('Synthetic retained search');
       await expect(page.locator('#drive-search-clear')).toBeVisible();
@@ -327,8 +331,10 @@ for (const layout of ['compact', 'standard']) {
       await page.locator('#drive-search-clear').click();
       await expect(search).toHaveValue('');
 
-      await page.evaluate(() => window.eval(`activeSalesOfficeTab='season'; switchView('sales-office'); productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture)`));
+      await page.evaluate(() => window.eval(`activeSalesOfficeTab='season'; switchView('sales-office')`));
       await expect(page.locator('#view-sales-office')).toBeVisible();
+      await expect.poll(() => page.evaluate(() => window.eval(`getCurrentVisibleViewId()==='sales-office' && ensureViewRenderState('sales-office').initialized && !ensureViewRenderState('sales-office').dirty`))).toBe(true);
+      await page.evaluate(() => window.eval('productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture)'));
       const salesOfficeGeometry = await page.locator('#global-header-inline-back').evaluate(back => {
         const rect = back.getBoundingClientRect();
         const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
