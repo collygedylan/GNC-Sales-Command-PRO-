@@ -41,7 +41,9 @@ async function harness(page: Page, baseURL: string) {
     const request = route.request();
     const url = new URL(request.url());
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
-      if (!['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'].includes(url.pathname)) {
+      const isManualStatusRead = request.method() === 'POST' && url.hostname === 'script.google.com'
+        && /^\/macros\/s\/[^/]+\/exec$/.test(url.pathname) && request.postData() === '{"type":"manual_status"}';
+      if (!isManualStatusRead && !['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'].includes(url.pathname)) {
         unexpectedMutations.push(`${request.method()}:${url.pathname}`);
       }
       return route.abort('blockedbyclient');
