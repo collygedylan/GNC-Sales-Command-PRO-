@@ -77,6 +77,7 @@ async function fixture(page: Page, baseURL: string) {
   const state = {
     username: USER_A, revision: '1', permission: 'fixture-permission-1', denied: false,
     sourceRevisions: {} as Record<string, string>,
+    revisionRequests: [] as { sequence: number; keys: string[]; startedAt: number; responseStartedAt?: number }[],
     rows: [stock()], reads: [] as { table: string; full: boolean }[], revisions: 0,
     forbidden: [] as string[], runtime: [] as string[], gates: new Map<string, Gate>(),
     held: [] as string[], permissionResponses: 0, errors: [] as string[], unconfigured: [] as string[],
@@ -143,7 +144,10 @@ async function fixture(page: Page, baseURL: string) {
       }
       if (operation === 'get_my_dataset_revisions_v1') {
         state.revisions++;
+        const observation = { sequence: state.revisions, keys: [...(body.p_dataset_keys || [])], startedAt: Date.now(), responseStartedAt: undefined as number | undefined };
+        state.revisionRequests.push(observation);
         await wait('revisions');
+        observation.responseStartedAt = Date.now();
         return json(route, { contractVersion: 1, permissionVersion: state.permission, serverTime: new Date().toISOString(),
           sources: (body.p_dataset_keys || []).map((key: string) => ({ key, revision: state.denied ? null : state.sourceRevisions[key] || state.revision,
             state: state.denied ? 'unavailable' : 'ready' })) });
@@ -506,6 +510,77 @@ test('a denied revision source cannot authorize its old saved rows', async ({ pa
   await expect.poll(() => page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator()?.getStatus().state`))).toBe('Needs attention');
   await expect(page.locator('#drive-content')).not.toContainText(SAVED_NAME);
   expect(await page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().isVerified(createProductionCoreLiveAdapter('master'))`))).toBe(false);
+  expect(f.state.forbidden).toEqual([]);
+});
+
+test('verified footer badges stay idle and one real revision event causes only a bounded refresh', async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!);
+  await f.open();
+  await page.evaluate(() => {
+    const original = (window as any).signalProductionLiveSync;
+    (window as any).signalProductionLiveSync = function (...args: any[]) {
+      (window as any).__cacheMetrics.lifecycle.push({ event: 'native-check-signal', at: performance.now(),
+        details: { reason: args[0], delay: args[1], caller: new Error().stack } });
+      return original.apply(this, args);
+    };
+  });
+  await drive(page); await saved(page); await verified(page);
+  const badgesReady = () => page.evaluate(() => window.eval(`isProductionBadgeVerified('badge:queue')
+    && isProductionBadgeVerified('badge:communications')`));
+  await expect.poll(badgesReady).toBe(true);
+  // Login deliberately defers its first realtime-subscription check through
+  // this real touch-task queue. Start the idle horizon only after that task
+  // and its metadata work settle. The old 700ms feedback loop cannot satisfy
+  // even this 1s quiet precondition, let alone the following 3.1s assertion.
+  let settledReads = f.state.revisions, unchangedSince = performance.now();
+  await expect.poll(async () => {
+    const startupQueued = await page.evaluate(() => window.eval(`!!runAfterTouchInteractionTasks['current-view-realtime-subscriptions']`));
+    if (startupQueued || f.state.revisions !== settledReads) {
+      settledReads = f.state.revisions; unchangedSince = performance.now();
+    }
+    return !startupQueued && performance.now() - unchangedSince >= 1000;
+  }).toBe(true);
+  const initialReads = f.state.revisions;
+  // The observation horizon is the behavior under test: a footer paint must
+  // not re-arm the former 450ms + 250ms self-refresh feedback loop.
+  await page.waitForTimeout(3100);
+  expect(f.state.revisions - initialReads).toBe(0);
+  const initialDownloads = f.masterReads();
+  const eventSignalsStart = await page.evaluate(() => (window as any).__cacheMetrics.lifecycle.filter((entry: any) => entry.event === 'native-check-signal').length);
+  const eventDataReadsStart = f.state.reads.length;
+  const eventImageRequests: string[] = [];
+  page.on('request', request => { if (request.resourceType() === 'image') eventImageRequests.push(new URL(request.url()).pathname); });
+  f.state.sourceRevisions.ph_master_inventory = '2'; f.state.rows = [stock(CURRENT_NAME)];
+  const dispatched = await page.evaluate(() => window.eval(`(() => {
+    const channel=getSupabaseBrowserClient().getChannels().find(channel=>channel.topic.includes('dataset-revisions:'));
+    const binding=channel?.bindings?.postgres_changes?.find(binding=>binding.filter?.table==='app_dataset_revisions');
+    if(!binding || typeof binding.callback!=='function') throw new Error('The actual production revision subscription is required');
+    binding.callback({eventType:'UPDATE',schema:'public',table:'app_dataset_revisions',
+      new:{key:'ph_master_inventory'},old:{}});
+    return true;
+  })()`));
+  expect(dispatched).toBe(true);
+  await expect(page.locator('#drive-content')).toContainText(CURRENT_NAME);
+  await verified(page); await expect.poll(badgesReady).toBe(true);
+  const afterEventReads = f.state.revisions;
+  expect(afterEventReads - initialReads).toBeGreaterThan(0);
+  // Two real lanes each need a before/after vector and may join one in-flight
+  // render-triggered check. Those cached joins make six the finite bound;
+  // they must not start another download or any subsequent idle feedback.
+  expect(afterEventReads - initialReads).toBeLessThanOrEqual(6);
+  expect(f.masterReads() - initialDownloads).toBe(1);
+  await page.waitForTimeout(3100);
+  expect(f.state.revisions).toBe(afterEventReads);
+  expect(await page.evaluate(() => (window as any).__cacheMetrics.lifecycle.filter((entry: any) => entry.event === 'native-check-signal').length)).toBe(eventSignalsStart);
+  expect(f.state.reads.slice(eventDataReadsStart).filter(read => read.table === 'ph_master_inventory')).toHaveLength(1);
+  expect(eventImageRequests).toEqual([]);
+  await info.attach('bounded-revision-refresh', { contentType: 'application/json',
+    body: JSON.stringify({ idleObservationMs: 3100, idleRevisionReads: 0,
+      eventRevisionReads: afterEventReads - initialReads, eventInventoryDownloads: f.masterReads() - initialDownloads,
+      finalRevisionReads: f.state.revisions,
+      bound: '2 lanes × (before + after + at most one queued cached join) = 6',
+      eventDataReads: f.state.reads.slice(eventDataReadsStart), eventImageRequests,
+      revisionRpcTimeline: f.state.revisionRequests.filter(request => request.sequence > initialReads) }, null, 2) });
   expect(f.state.forbidden).toEqual([]);
 });
 

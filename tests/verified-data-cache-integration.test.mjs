@@ -44,7 +44,7 @@ function definitions(context) {
     vm.runInContext(`${source}\nthis.DATASET_DEFINITIONS = DATASET_DEFINITIONS;`, context);
 }
 
-function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-permission-v1', revision = '9007199254740993' } = {}) {
+function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-permission-v1', revision = '9007199254740993', onVerified = () => {} } = {}) {
     const calls = { diskReads: [], diskWrites: [], rowReads: [], previews: [], commits: [], toasts: [], transport: [], permissionRefresh: [] };
     const state = { permission, revision, sourceRevisions: new Map(), revisionState: 'ready', rowGate: null, metadataGate: null };
     const context = {
@@ -81,6 +81,10 @@ function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-pe
     // coordinator/guard must replace it with the full native cache identity.
     context.getProductionLiveSyncSideContext = () => ({ scope: context.loginScope, username: context.currentUser });
     context.productionLiveSyncSideAdapters = sideAdapterApi.create({
+        ...Object.fromEntries(['side:shear', 'side:evalWork'].map((id) => [id, {
+            stage: async () => { calls.rowReads.push({ table: id, query: 'synthetic read boundary' }); return []; },
+            commit() {}
+        }])),
         'side:dockWorkflow': {
             stage: async () => {
                 calls.rowReads.push({ table: 'synthetic-dock-workflow', query: 'list' });
@@ -107,6 +111,7 @@ function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-pe
         saveSnapshot: context.saveProductionDatasetSnapshot,
         previewSnapshots: (snapshots) => calls.previews.push(snapshots),
         commitSnapshots: (snapshots) => calls.commits.push(snapshots),
+        onVerified: (verifiedContext) => onVerified(context, verifiedContext),
         onPermissionChange: async (version) => {
             calls.permissionRefresh.push(version);
             context.appAccessSnapshotState.snapshot.permissionVersion = version;
@@ -429,6 +434,56 @@ test('post-verification callback updates permission and badge chrome without rep
     callbacks.onStageStart({}, { permissionVersion: 'fixture-permission-v2' });
     assert.equal(ctx.productionLiveSyncReadGeneration, 1);
     assert.equal(ctx.productionLiveSyncReadPermissionVersion, 'fixture-permission-v2');
+});
+
+test('verified footer painting never feeds a native check back into the coordinator', async () => {
+    const badgeIds = Array.from(registry.getViewAdapters('login', { surfaces: ['badge:queue'] }));
+    const keys = badgeIds.map((id) => id.startsWith('core:') ? id.slice(5) : id);
+    let paints = 0;
+    const f = fixture({ keys, onVerified: (ctx) => { paints++; ctx.updateFooterRequestBadge(); } });
+    const ctx = f.context, timers = new Map(), cancelled = [], legacyChecks = [];
+    let nextTimer = 0;
+    const element = () => ({ classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, removeAttribute() {} });
+    const button = element(), badge = element();
+    Object.assign(ctx, {
+        document: { hidden: false, getElementById: (id) => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null },
+        requestBadgeLiveSyncTimer: null, requestViewLiveSyncTimer: null, requestViewLiveSyncInFlight: false,
+        REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS: 30000,
+        REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS: 30000,
+        canUseFooterRequestShortcut: () => true, getRequestQueueAlertCount: () => 0, updateFooterNavState() {},
+        setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); return id; },
+        clearTimeout: (id) => { cancelled.push(id); timers.delete(id); },
+        syncRequestViewLiveSync: (...args) => legacyChecks.push(args)
+    });
+    vm.runInContext(['isProductionBadgeVerified', 'signalProductionLiveSync', 'syncAlwaysOnRequestData',
+        'queueRequestBadgeLiveSync', 'updateFooterRequestBadge'].map(helper).join('\n'), ctx);
+    assert.equal(ctx.isProductionBadgeVerified('badge:queue'), false);
+    assert.equal(await f.coordinator.check('initial'), true);
+    assert.equal(ctx.isProductionBadgeVerified('badge:queue'), true, 'all real registered badge adapters are current');
+    const initialReads = f.coordinator.getStatistics().revisionReads;
+    for (let index = 0; index < 3; index++) ctx.updateFooterRequestBadge();
+    await settle();
+    assert.equal(timers.size, 0, 'native footer painting must not schedule the old 450ms badge poll');
+    assert.equal(f.coordinator.getStatistics().signals, 0);
+    assert.equal(f.coordinator.getStatistics().revisionReads, initialReads);
+    const oldTimer = ctx.setTimeout(() => { throw new Error('Old legacy badge poll survived native takeover'); }, 450);
+    ctx.requestBadgeLiveSyncTimer = oldTimer;
+    ctx.queueRequestBadgeLiveSync();
+    assert.ok(cancelled.includes(oldTimer)); assert.equal(ctx.requestBadgeLiveSyncTimer, null);
+    assert.equal(timers.size, 0);
+    f.state.revision = '9007199254740994';
+    assert.equal(await f.coordinator.check('single-external-revision'), true);
+    assert.ok(f.coordinator.getStatistics().revisionReads - initialReads <= 2, 'one revision change needs only its before/after fence');
+    assert.equal(timers.size, 0); assert.equal(f.coordinator.getStatistics().signals, 0);
+    assert.equal(paints, 2);
+    ctx.nativeAuthSessionActive = false;
+    ctx.queueRequestBadgeLiveSync();
+    assert.equal(timers.size, 1, 'legacy sessions retain their existing fallback poll');
+    const timer = [...timers.values()][0];
+    assert.equal(timer.delay, 450);
+    timer.callback();
+    assert.equal(legacyChecks.length, 1); assert.equal(legacyChecks[0][0], 0);
+    assert.equal(legacyChecks[0][1].minIntervalMs, 30000);
 });
 
 test('first-paint rendering preempts the normal 150ms batch while preserving drafts and scroll', () => {

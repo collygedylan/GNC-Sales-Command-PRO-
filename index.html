@@ -51364,6 +51364,13 @@ let avTopControlsRenderToken = 0;
         }
 
         function queueRequestBadgeLiveSync(delay = 450) {
+            if (canUseProductionLiveSync()) {
+                // The coordinator owns native event and safeguard polling.
+                // A verified badge render must not schedule its next check.
+                if (requestBadgeLiveSyncTimer) clearTimeout(requestBadgeLiveSyncTimer);
+                requestBadgeLiveSyncTimer = null;
+                return;
+            }
             if (!currentUser || navigator.onLine === false || requestBadgeLiveSyncTimer) return;
             if (requestViewLiveSyncTimer || requestViewLiveSyncInFlight) return;
             requestBadgeLiveSyncTimer = setTimeout(() => {
