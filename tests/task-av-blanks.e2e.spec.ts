@@ -35,9 +35,14 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
   await page.goto('/?post_deploy_access_canary=1&task_av_blanks_canary=1', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
   await page.evaluate(async ({ rows, role, username, allowReclass }) => {
-    (window as any).__taskAv = { rows, role, username, allowReclass, revision: 1, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], saveEvents: [], failed: false };
-    await window.eval(`(async () => {
+    (window as any).__taskAv = { rows, role, username, allowReclass, revision: 1, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], saveEvents: [], failed: false,
+      bootstrap: { phase: 'created', events: [], revisionReads: [], datasetReads: [] } };
+    // Keep the cross-evaluation bootstrap strongly owned by the page until it
+    // settles. An unrooted nested eval promise can be collected by Chromium.
+    (window as any).__taskAvReady = window.eval(`(async () => {
       const f = window.__taskAv;
+      const phase=name=>{f.bootstrap.phase=name;f.bootstrap.events.push({name,at:Date.now()})};
+      phase('native-auth');
       const profile={id:'isolated-profile-'+f.username,username:f.username,role:f.role,active:true};
       const session={access_token:'synthetic-not-a-real-token',user:{id:profile.id}};
       const channel={on:()=>channel,subscribe:()=>channel};
@@ -46,6 +51,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
         from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:profile})})})}),channel:()=>channel,removeChannel:async()=>{}};
       getSupabaseBrowserClient=()=>client;
       if(!await tryNativeAuthPasswordLogin(f.username,'isolated-password')) throw new Error('TASK_FIXTURE_AUTH_FAILED');
+      phase('install-service-boundaries');
       installMutationBlockedAccessCanaryIdentity(f.username, 'Isolated Task AV', f.role);
       const permissions=['module.home.view','module.tasks.view','module.drive.view','drive.reclass.submit'].map(key=>({permissionKey:key,kind:key.startsWith('module.')?'module':'action',moduleKey:key.split('.')[1],allowed:key==='drive.reclass.submit'?f.allowReclass:true,scope:f.role==='EVAL'?'assigned':'global'}));
       const snapshot=normalizeAppAccessSnapshot({contractVersion:'app-access-v1',enforcementMode:'enforced',username:f.username,role:f.role,permissions},f.username);
@@ -64,6 +70,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
       // Supply server boundaries to the production coordinator. Seeded app rows
       // alone must never satisfy the native freshness/mutation gate.
       fetchAllSupabaseRows=async (table)=>{
+        f.bootstrap.datasetReads.push({table,at:Date.now()});
         if(table===APP_SEASON_SETTINGS_TABLE) return [{key:APP_SEASON_SETTINGS_KEY,value:{seasonCode:'F1',salesYear:27}}];
         if(table==='ph_master_inventory') return structuredClone(f.rows);
         if(table==='ph_cav_import') return f.rows.map(r=>({ITEMCODE:r.ITEMCODE,SEASON:'F1',HOLDSTOPREASON:''}));
@@ -93,8 +100,11 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
         throw new Error('UNEXPECTED_APP_API:'+payload.action+':'+payload.operation);
       };
       supabaseRpc=async (name,payload)=>{
-        if(name==='get_my_dataset_revisions_v1') return {contractVersion:1,permissionVersion:'task-fixture-policy-v1',
-          sources:payload.p_dataset_keys.map(key=>({key,revision:String(f.revision),state:'ready'}))};
+        if(name==='get_my_dataset_revisions_v1') {
+          f.bootstrap.revisionReads.push({keys:payload.p_dataset_keys,revision:f.revision,at:Date.now()});
+          return {contractVersion:1,permissionVersion:'task-fixture-policy-v1',
+            sources:payload.p_dataset_keys.map(key=>({key,revision:String(f.revision),state:'ready'}))};
+        }
         if(name==='save_drive_evidence_v2'){
           f.saves.push(structuredClone(payload));
           if(f.gate) await f.gate;
@@ -114,10 +124,13 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
         f.rows=structuredClone(nextRows);
         f.revision++;
         const coordinator=getProductionLiveSyncCoordinator();
+        phase('verify-import');
         if(!coordinator || !await coordinator.check('isolated-task-import')) throw new Error('TASK_FIXTURE_VERIFICATION_FAILED:'+JSON.stringify(coordinator?.getStatus()));
         if(!canUseVerifiedProductionData(['master','cavAvBlankKeys','warehouseAssignedItems'])) throw new Error('TASK_FIXTURE_NOT_VERIFIED');
+        phase('render-import');
         invalidateResolvedViewStateCaches();
         renderTasks();
+        phase('import-ready');
       };
       f.verifyDetail=async()=>{
         const coordinator=getProductionLiveSyncCoordinator();
@@ -135,7 +148,18 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
       showOnlyPrimaryView('tasks');
       await f.importRows(f.rows);
       const state=ensureViewRenderState('tasks');state.initialized=true;state.dirty=false;
+      phase('ready');
     })()`);
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([(window as any).__taskAvReady, new Promise((_, reject) => {
+        deadline = setTimeout(() => reject(new Error('TASK_FIXTURE_BOOTSTRAP_TIMEOUT:' + JSON.stringify({
+          ...(window as any).__taskAv.bootstrap,
+          status: window.eval('productionLiveSyncCoordinator?.getStatus()'),
+          statistics: window.eval('productionLiveSyncCoordinator?.getStatistics()'),
+        }))), 45_000);
+      })]);
+    } finally { clearTimeout(deadline); }
   }, { rows, role, username, allowReclass });
   await expect(page.locator('#view-tasks')).toBeVisible();
   expect(runtime, 'the deferred production-built runtime must be loaded once').toHaveLength(1);
