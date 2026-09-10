@@ -37,6 +37,27 @@ Main releases are serialized with cancellation disabled. Immediately before publ
 
 After deployment, exact-live release and commit verification runs before parallel mutation-blocked production canaries. Post-deployment failure remains visible in hosted health. Publishing quickly is not equivalent to completing those checks.
 
+## Local candidate preflight
+
+Use `scripts/release-candidate.mjs` from the candidate checkout before an authorized release. It does not fetch, commit, merge, push, deploy, or save an approval file. `prepare` and `check` are read-only. Start from a committed release branch that includes current `origin/main`:
+
+```powershell
+node scripts/release-candidate.mjs prepare
+# If the branch is not published at this exact commit, prepare prints its SHA-pinned push command.
+# After publishing the branch, explicitly request validation:
+node scripts/release-candidate.mjs prepare --dispatch
+# When the benchmark finishes:
+node scripts/release-candidate.mjs check
+# Optionally bind the check to a specific run; it must still be the latest exact-commit run:
+node scripts/release-candidate.mjs check --run 123456789
+```
+
+The helper requires a named branch other than `main`, a clean index/worktree including untracked files and submodules, no assume-unchanged or skip-worktree index flags, and matching GitHub origin fetch/push destinations. Ignored build/dependency files are outside the clean-worktree check. It reads current remote refs with `git ls-remote`, requires local `origin/main` to match live main, and verifies that main is an ancestor of the candidate. A stale remote-tracking ref requires an explicit `git fetch origin` and a new preflight. A same-named remote tag is rejected so benchmark dispatch cannot select the wrong ref.
+
+`--dispatch` is the only remote write: it requests `performance-monitor.yml` on the already-pushed branch at the checked HEAD. It never dispatches on main. GitHub resolves the branch during dispatch, so the helper rechecks refs immediately afterwards and treats dispatch as a request, not a successful validation. `check` separately requires the remote branch and the latest manual benchmark to match the exact local SHA, branch, repository, workflow ID and workflow path. PR merge runs, schedules, another branch's success, an older green run beneath a newer failed/pending run, and earlier rerun attempts do not satisfy the gate. It checks the current attempt's complete job list and the successful sealed release-gate step; only the intentionally skipped branch production-health job is exempt. Incomplete or ambiguous API responses fail closed.
+
+A passing check prints the immutable candidate SHA, benchmark run/attempt, main base, and the normal fast-forward push command for a release owner to execute when authorized. It performs no main push. Worktree, branch, origin and remote refs are checked again before reporting success; the latest run is also reread after job inspection. This remains a point-in-time preflight, not an atomic lock on GitHub. Rerun it immediately before publishing, and integrate/rebenchmark if main or the candidate changes. Main's sealed Pages validation, current-main deployment guard, production health and exact-live canaries remain required.
+
 ## Measuring the result
 
 Baseline Pages run **34424345738**, shell `.08`, took **24m 44s** from workflow creation to the successful deploy-pages step. The actual deployment step took **6s**. Full workflow completion was **37m 56s**, approximately **38 minutes**. This is a publication/CI baseline, not a claim about the entire coding and debugging task.
