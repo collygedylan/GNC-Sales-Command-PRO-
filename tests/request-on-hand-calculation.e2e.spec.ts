@@ -68,7 +68,7 @@ async function fixture(page: Page, baseURL: string) {
       if (result.exact) state.exactReads++; else state.listReads++;
       return result.rows;
     }
-    if (/^ph_active_request(?:_live_rows)?$/.test(table)) return [request];
+    if (['ph_active_request', 'ph_active_request_live_rows', 'ph_request_queue_live_rows'].includes(table)) return [request];
     if (table === 'ph_app_settings') return [{ key: 'current_season_salesyear',
       value: { seasonCode: 'F1', salesYear: 27 }, updated_at: new Date().toISOString() }];
     return [];
