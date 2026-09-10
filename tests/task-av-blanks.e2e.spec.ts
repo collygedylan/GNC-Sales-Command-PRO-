@@ -35,7 +35,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
   await page.goto('/?post_deploy_access_canary=1&task_av_blanks_canary=1', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
   await page.evaluate(async ({ rows, role, username, allowReclass }) => {
-    (window as any).__taskAv = { rows, role, username, allowReclass, revision: 1, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], failed: false };
+    (window as any).__taskAv = { rows, role, username, allowReclass, revision: 1, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], saveEvents: [], failed: false };
     await window.eval(`(async () => {
       const f = window.__taskAv;
       const profile={id:'isolated-profile-'+f.username,username:f.username,role:f.role,active:true};
@@ -73,6 +73,16 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
       };
       avRuleColumnsReady=true;
       showToast=(title,message)=>f.toasts.push({title,message});
+      const productionSaveData=saveData;
+      saveData=async (...args)=>{
+        const event={args:args.slice(0,3),uid:activeItem?.UNIQUE_ID,at:Date.now(),
+          allowed:canEditRowDetails(args[1],activeItem),verified:canUseVerifiedProductionData(['master']),
+          note:document.getElementById('ssn-av-note')?.value,
+          status:getProductionLiveSyncCoordinator()?.getStatus()};
+        f.saveEvents.push(event);
+        try { return await productionSaveData(...args); }
+        finally { event.finishedAt=Date.now();event.toasts=f.toasts.slice(); }
+      };
       postGoogleScriptRawJsonPayload=async payload=>{f.publicCalls.push(payload);throw new Error('PUBLIC_DELIVERY_FORBIDDEN')};
       postAppFunctionJson=async (_url,payload)=>{
         if(payload.action==='drive_reclass_inquiry'){
@@ -209,14 +219,29 @@ test('note-only Mark Done awaits protected confirmation; failure preserves draft
     await page.evaluate(()=>(window as any).__taskAv.verifyDetail());
     await expect(page.locator('#ssn-av-note')).toBeVisible();
     await expect(page.locator('#ssn-av-note')).toHaveValue('DRAFT NOTE');
+    await page.evaluate(()=>{
+      const f=(window as any).__taskAv;
+      f.failed=true;
+      f.gate=new Promise<void>(resolve=>f.release=resolve);
+    });
     // Type through the existing note editor, then freeze the actual entered
     // draft: failure must preserve it exactly, including the existing text.
     await page.locator('#ssn-av-note').fill('RETAINED EDIT');
     const enteredDraft=await page.locator('#ssn-av-note').inputValue();
     expect(enteredDraft).toContain('RETAINED EDIT');
-    await page.evaluate(()=>(window as any).__taskAv.failed=true);
+    // Make the mobile overlap deterministic: a real note autosave is in flight
+    // while Mark Done queues behind it. Both writes receive the failed reply.
+    await expect.poll(()=>page.evaluate(()=>(window as any).__taskAv.saves.some((save:any)=>
+      save.p_master_uid==='isolated-av-failure' && !save.p_complete))).toBe(true);
     await page.locator('#ssn-btn-save-complete').click();
-    await expect.poll(()=>page.evaluate(()=>(window as any).__taskAv.saves.filter((s:any)=>s.p_complete && s.p_master_uid==='isolated-av-failure').length)).toBe(1);
+    await expect.poll(()=>page.evaluate(()=>(window as any).__taskAv.saveEvents.filter((event:any)=>
+      event.uid==='isolated-av-failure' && event.args[0]===true))).toMatchObject([{allowed:true,verified:true,note:enteredDraft}]);
+    await page.evaluate(()=>{const f=(window as any).__taskAv;f.gate=null;f.release()});
+    await expect.poll(()=>page.evaluate(()=>{
+      const f=(window as any).__taskAv;
+      return {completeSaves:f.saves.filter((s:any)=>s.p_complete && s.p_master_uid==='isolated-av-failure').length,
+        saves:f.saves,toasts:f.toasts,events:f.saveEvents};
+    })).toMatchObject({completeSaves:1});
     await expect.poll(()=>page.evaluate(()=>(window as any).__taskAv.toasts.some((t:any)=>/error|sync|save|could|failed/i.test(t.title)))).toBe(true);
     await expect(page.locator('#ssn-av-note')).toHaveValue(enteredDraft);
     expect(await app.ids()).toContain('isolated-av-failure');
