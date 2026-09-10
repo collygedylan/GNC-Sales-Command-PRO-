@@ -7,6 +7,9 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').rep
 const contractContext = { module: { exports: {} } };
 vm.runInNewContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
 const contract = contractContext.module.exports;
+const coordinatorContext = { module: { exports: {} } };
+vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), coordinatorContext);
+const coordinatorApi = coordinatorContext.module.exports;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 function helper(name) {
     const match = html.match(new RegExp(`        (?:async )?function ${name}\\([^]*?\\n        \\}`));
@@ -60,6 +63,49 @@ function fixture() {
     ].map(helper).join('\n'), ctx);
     return { ctx, calls };
 }
+function installRealIdentityFence(ctx) {
+    Object.assign(ctx, {
+        SUPABASE_URL: 'https://fixture.supabase.invalid', nativeAuthSessionActive: true,
+        nativeAuthProfile: { id: 'account-a' }, currentUser: 'fixture-admin', currentRole: 'ADMIN', currentUserDivision: 'fixture-division',
+        loginScope: 'account-a:admin', getCurrentLoginCacheScopeKey: () => ctx.loginScope,
+        productionLiveSyncReadAuthEpoch: 1, productionLiveSyncReadPermissionVersion: 'permission-1', productionLiveSyncReadGeneration: 0
+    });
+    vm.runInContext(helper('getSupabaseReadIdentityScope'), ctx);
+}
+async function waitUntil(predicate) {
+    for (let index = 0; index < 100; index++) {
+        if (predicate()) return;
+        await Promise.resolve();
+    }
+    assert.fail('Expected asynchronous test boundary was not reached');
+}
+function coordinatorFixture() {
+    const { ctx, calls } = fixture(); installRealIdentityFence(ctx);
+    const state = { view: 'drive', scope: 'account-a', revision: '1', permission: 'permission-1', commits: [], statuses: [] };
+    const master = () => ctx.createProductionCoreLiveAdapter('master');
+    const joined = { id: 'side:fixture-joined', cacheKey: 'joined-v1', sourceKeys: ['joined'], stage: async () => [] };
+    const stageStart = html.match(/onStageStart: (\(context, metadata\) => \{[^]*?\n                \}),/);
+    assert.ok(stageStart, 'Real stage-cycle start hook exists');
+    vm.runInContext(`this.stageStartFixture = ${stageStart[1]};`, ctx);
+    const getContext = () => ({ scope: state.scope, viewKey: state.view, visible: true, online: true,
+        adapters: state.view === 'drive' ? [master()] : [master(), joined], backgroundAdapters: [] });
+    ctx.fetchAllSupabaseRows = async (table, query) => {
+        calls.reads.push({ table, query, revision: state.revision, scope: state.scope });
+        return wireRows(canonicalRows(260).map((row) => ({ ...row, ptravailable: state.revision })));
+    };
+    const timers = new Map(); let timerId = 0;
+    const sync = coordinatorApi.createCoordinator({
+        getContext, onStageStart: ctx.stageStartFixture, yieldToUi: async () => {},
+        readRevisions: async (keys) => ({ contractVersion: 1, permissionVersion: state.permission,
+            sources: keys.map((key) => ({ key, revision: state.revision, state: 'ready' })) }),
+        onPermissionChange: async (permission) => { ctx.productionLiveSyncReadPermissionVersion = permission; },
+        commitSnapshots: (snapshots, context, metadata) => state.commits.push({ snapshots, view: context.viewKey,
+            scope: context.scope, permission: metadata.permissionVersion, revision: metadata.sources.get('ph_master_inventory')?.revision }),
+        onStatus: (status) => state.statuses.push(status),
+        setTimeout: (fn) => { timers.set(++timerId, fn); return timerId; }, clearTimeout: (id) => timers.delete(id)
+    });
+    return { ctx, calls, state, sync, master };
+}
 
 test('detached staging yields by row budget and preserves canonical values and index reference identity', async () => {
     const { ctx, calls } = fixture(), canonical = canonicalRows(260), wire = wireRows(canonical);
@@ -106,17 +152,88 @@ test('elapsed-time budget yields before the maximum row count', async () => {
     assert.equal(calls.yields, 3);
 });
 
-test('scope and generation changes discard detached work at the next yield', async () => {
-    for (const change of ['identity', 'generation']) {
+test('account, auth epoch and permission identity changes discard detached work at the next yield', async () => {
+    for (const change of ['account', 'auth-epoch', 'permission']) {
         const { ctx, calls } = fixture(), previous = ctx.fullInventory;
+        installRealIdentityFence(ctx);
         ctx.yieldToUiFrame = async () => {
             calls.yields++;
-            if (change === 'identity') ctx.identity = 'account-b:permission-2';
-            else ctx.productionLiveSyncReadGeneration++;
+            if (change === 'account') ctx.nativeAuthProfile = { id: 'account-b' };
+            else if (change === 'auth-epoch') ctx.productionLiveSyncReadAuthEpoch++;
+            else ctx.productionLiveSyncReadPermissionVersion = 'permission-2';
         };
         await assert.rejects(ctx.prepareMasterListDatasetPayload(wireRows(canonicalRows(260))), { code: 'DATASET_READ_SCOPE_CHANGED' });
         assert.equal(calls.yields, 1); assert.equal(calls.formats, 128);
         assert.equal(ctx.fullInventory, previous);
+    }
+});
+
+test('an unrelated check-cycle generation change does not cancel detached preparation', async () => {
+    const { ctx } = fixture();
+    ctx.yieldToUiFrame = async () => { ctx.productionLiveSyncReadGeneration++; };
+    const payload = await ctx.prepareMasterListDatasetPayload(wireRows(canonicalRows(260)));
+    assert.equal(payload.data.length, 260);
+    assert.equal(ctx.productionLiveSyncReadGeneration, 9);
+});
+
+test('real coordinator navigation groups reuse one pending master stage and publish the complete current screen', async () => {
+    const { ctx, calls, state, sync, master } = coordinatorFixture(), gate = deferred();
+    ctx.yieldToUiFrame = async () => { calls.yields++; if (calls.yields === 1) await gate.promise; };
+    const drive = sync.check('drive-open');
+    await waitUntil(() => calls.yields === 1);
+    const firstGeneration = ctx.productionLiveSyncReadGeneration;
+    state.view = 'tasks';
+    const tasks = sync.check('tasks-navigation');
+    await waitUntil(() => ctx.productionLiveSyncReadGeneration > firstGeneration);
+    assert.equal(calls.reads.length, 1, 'the second group shares the in-flight master stage');
+    gate.resolve();
+    assert.equal(await tasks, true);
+    await drive;
+    assert.equal(calls.reads.length, 1);
+    assert.equal(sync.isVerified(master()), true);
+    assert.equal(sync.getStatus().state, 'Up to date');
+    const masterCommits = state.commits.flatMap((commit) => commit.snapshots.filter(({ adapter }) => adapter.id === 'core:master').map(({ value }) => ({ commit, value })));
+    assert.equal(masterCommits.length, 1);
+    assert.equal(masterCommits[0].commit.view, 'tasks');
+    assert.equal(masterCommits[0].value.payload.data.length, 260);
+    assert.equal(masterCommits[0].value.payload.data.at(-1).UNIQUE_ID, 'synthetic-259');
+    assert.equal(state.statuses.some((status) => status.state === 'Needs attention'), false);
+    sync.reset();
+});
+
+test('real coordinator rejects an old source revision after a yielded stage and retries before publishing', async () => {
+    const { ctx, calls, state, sync } = coordinatorFixture(), gate = deferred();
+    ctx.yieldToUiFrame = async () => { calls.yields++; if (calls.yields === 1) await gate.promise; };
+    const work = sync.check('revision-change');
+    await waitUntil(() => calls.yields === 1);
+    state.revision = '2';
+    gate.resolve();
+    assert.equal(await work, true);
+    assert.equal(calls.reads.length, 2);
+    assert.ok(sync.getStatistics().discardedLoads >= 1);
+    assert.equal(state.commits.length, 1);
+    assert.equal(state.commits[0].revision, '2');
+    assert.equal(state.commits[0].snapshots[0].value.payload.data[0].PTRAVAILABLE, '2');
+    sync.reset();
+});
+
+test('real coordinator never commits yielded rows for a replaced account or permission', async () => {
+    for (const change of ['account', 'permission']) {
+        const { ctx, calls, state, sync } = coordinatorFixture(), gate = deferred();
+        ctx.yieldToUiFrame = async () => { calls.yields++; if (calls.yields === 1) await gate.promise; };
+        const work = sync.check('identity-change');
+        await waitUntil(() => calls.yields === 1);
+        if (change === 'account') {
+            state.scope = 'account-b'; ctx.nativeAuthProfile = { id: 'account-b' }; ctx.loginScope = 'account-b:admin';
+        } else {
+            state.permission = 'permission-2'; ctx.productionLiveSyncReadPermissionVersion = 'permission-2';
+        }
+        gate.resolve();
+        await work;
+        assert.ok(state.commits.every((commit) => change === 'account' ? commit.scope === 'account-b' : commit.permission === 'permission-2'));
+        assert.equal(state.commits.some((commit) => change === 'account' ? commit.scope === 'account-a' : commit.permission === 'permission-1'), false);
+        assert.ok(calls.reads.length >= 2, 'a changed identity cannot reuse the old canonical stage');
+        sync.reset();
     }
 });
 
@@ -148,7 +265,7 @@ test('native master adapter alone selects compact aliases and versions its cache
     const gate = deferred();
     ctx.fetchAllSupabaseRows = async () => { await gate.promise; return ctx.wire; };
     const stale = adapter.stage();
-    ctx.productionLiveSyncReadGeneration++;
+    ctx.identity = 'account-b:permission-2';
     gate.resolve();
     await assert.rejects(stale, { code: 'DATASET_READ_SCOPE_CHANGED' });
     delete ctx.window.AgMetricInventoryList;

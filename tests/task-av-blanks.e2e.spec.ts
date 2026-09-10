@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 type Row = Record<string, any>;
 const release = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
@@ -7,7 +8,7 @@ const stamp = '2026-09-09T17:00:00.000Z';
 const row = (id: string, extra: Row = {}): Row => ({
   UNIQUE_ID: `isolated-av-${id}`, ITEMCODE: `TEST-${id}`, COMMONNAME: `Fixture ${id}`,
   GENUSNAME: 'Hydrangea', CONTSIZE: '#3', LOCATIONCODE: 'A.05.000', LOTCODE: '27.F1',
-  BLOCKALPHA: 'A', SEASON: 'F1', SALESYEAR: '27', PRIORITY: '1', SOURCE: 'LD',
+  BLOCKALPHA: 'A', SEASON: 'F1', SALEYEAR: '27', SALESYEAR: '27', PRIORITY: '1', SOURCE: 'LD',
   PTRONHAND: '100', PTRAVAILABLE: '100', S_LTS: '100', HOLDSTOPCODE: '',
   APP_TAB_ASSIGNMENT: 'season', SOURCE_TABLE: 'ph_master_inventory',
   ASSIGNEDTO: 'eval_fixture', AV_NOTE: '', DATE_COMPLETED: '', LAST_UPDATED: stamp,
@@ -34,6 +35,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
   await page.routeWebSocket('**/*', socket => socket.close());
   await page.goto('/?post_deploy_access_canary=1&task_av_blanks_canary=1', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
+  await installInventoryReadFixture(page);
   await page.evaluate(async ({ rows, role, username, allowReclass }) => {
     (window as any).__taskAv = { rows, role, username, allowReclass, revision: 1, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], saveEvents: [], failed: false,
       bootstrap: { phase: 'created', events: [], revisionReads: [], datasetReads: [] } };
@@ -69,10 +71,15 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
       ensureAppAccessSnapshotLoaded=async()=>snapshot;
       // Supply server boundaries to the production coordinator. Seeded app rows
       // alone must never satisfy the native freshness/mutation gate.
-      fetchAllSupabaseRows=async (table)=>{
+      fetchAllSupabaseRows=async (table,query='')=>{
         f.bootstrap.datasetReads.push({table,at:Date.now()});
         if(table===APP_SEASON_SETTINGS_TABLE) return [{key:APP_SEASON_SETTINGS_KEY,value:{seasonCode:'F1',salesYear:27}}];
-        if(table==='ph_master_inventory') return structuredClone(f.rows);
+        if(table==='ph_master_inventory') {
+          const result=window.__inventoryReadFixture.read(f.rows,query);
+          Object.assign(f.bootstrap.datasetReads.at(-1),{select:result.select,exact:result.exact,
+            ids:result.uniqueIds,fieldCount:result.rows[0]?Object.keys(result.rows[0]).length:0});
+          return result.rows;
+        }
         if(table==='ph_cav_import') return f.rows.map(r=>({ITEMCODE:r.ITEMCODE,SEASON:'F1',HOLDSTOPREASON:''}));
         if(table===WAREHOUSE_ASSIGNED_ITEMS_TABLE) return f.rows.map(r=>({...r,PRESENT_IN_DRIVE:true}));
         if(Object.values(DATASET_DEFINITIONS).some(definition=>definition.table===table)) return [];
@@ -162,6 +169,9 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
     } finally { clearTimeout(deadline); }
   }, { rows, role, username, allowReclass });
   await expect(page.locator('#view-tasks')).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__taskAv.bootstrap.datasetReads.some((read: any) =>
+    read.table === 'ph_master_inventory' && !read.exact && read.select !== '*' && read.fieldCount === 161)),
+    'Task fixture must load the actual compact inventory contract').toBe(true);
   expect(runtime, 'the deferred production-built runtime must be loaded once').toHaveLength(1);
   expect(await page.evaluate(() => window.eval('APP_SHELL_VERSION'))).toBe(release);
   const ids = () => page.evaluate(() => window.eval('buildResolvedTaskState().tabItems.map(row=>row.UNIQUE_ID).sort()'));
@@ -178,7 +188,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
 }
 
 test('canonical completed winner is excluded, unfinished evidence remains in normal and simplified AV Blanks', async ({ page, browser, baseURL }) => {
-  const rows=[row('done',{AV_NOTE:'SAVED NOTE',DATE_COMPLETED:stamp}),row('runner',{ITEMCODE:'TEST-done',PTRAVAILABLE:'20',LOCATIONCODE:'B.02.000'}),row('draft',{AV_NOTE:'SAVED BUT UNFINISHED'}),row('photo',{SAVED_PHOTO_LINK:'https://example.invalid/photo.webp'}),row('null',{AV_NOTE:'NULL',DATE_COMPLETED:stamp}),row('reset',{AV_NOTE:'OLD NOTE',DATE_COMPLETED:stamp,AV_RULE_LAST_CLEARED_AT:'2026-09-09T18:00:00.000Z'})];
+  const rows=[row('done',{AV_NOTE:'SAVED NOTE',DATE_COMPLETED:stamp}),row('runner',{ITEMCODE:'TEST-done',PTRAVAILABLE:'20',LOCATIONCODE:'B.02.000'}),row('draft',{AV_NOTE:'SAVED BUT UNFINISHED'}),row('photo',{PHOTO_LINK:'https://example.invalid/photo.webp'}),row('null',{AV_NOTE:'NULL',DATE_COMPLETED:stamp}),row('reset',{AV_NOTE:'OLD NOTE',DATE_COMPLETED:stamp,AV_RULE_LAST_CLEARED_AT:'2026-09-09T18:00:00.000Z'})];
   const app=await harness(page,baseURL!,rows);
   expect(await app.ids()).toEqual(['isolated-av-draft','isolated-av-null','isolated-av-photo','isolated-av-reset']);
   await app.openRows();
@@ -228,6 +238,10 @@ test('note-only Mark Done awaits protected confirmation; failure preserves draft
     await app.openRows();
     await page.evaluate(()=>window.eval(`openDetail('isolated-av-complete','tasks',{preferredTab:'season'})`));
     await page.evaluate(()=>(window as any).__taskAv.verifyDetail());
+    await expect.poll(() => page.evaluate(() => window.eval('hasProductionMasterDetailForItem(activeItem)'))).toBe(true);
+    expect(await page.evaluate(() => (window as any).__taskAv.bootstrap.datasetReads.some((read: any) =>
+      read.table === 'ph_master_inventory' && read.exact && read.select === '*' && read.fieldCount === 213
+        && read.ids.length === 1 && read.ids[0] === 'isolated-av-complete'))).toBe(true);
     await expect(page.locator('#ssn-btn-save-complete')).toBeVisible();
     await page.evaluate(()=>{const f=(window as any).__taskAv;f.gate=new Promise<void>(resolve=>f.release=resolve)});
     await page.locator('#ssn-btn-save-complete').click();
@@ -241,6 +255,7 @@ test('note-only Mark Done awaits protected confirmation; failure preserves draft
     await expect.poll(other.ids).not.toContain('isolated-av-complete');
     await page.evaluate(()=>window.eval(`openDetail('isolated-av-failure','tasks',{preferredTab:'season'})`));
     await page.evaluate(()=>(window as any).__taskAv.verifyDetail());
+    await expect.poll(() => page.evaluate(() => window.eval('hasProductionMasterDetailForItem(activeItem)'))).toBe(true);
     await expect(page.locator('#ssn-av-note')).toBeVisible();
     await expect(page.locator('#ssn-av-note')).toHaveValue('DRAFT NOTE');
     await page.evaluate(()=>{

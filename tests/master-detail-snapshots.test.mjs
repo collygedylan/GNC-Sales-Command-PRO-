@@ -46,6 +46,7 @@ function fixture(options = {}) {
         },
         onPermissionChange: async (permission) => { state.refreshes.push(permission); },
         onStatus: (status) => state.statuses.push(status),
+        onVerified: (ctx) => options.onVerified?.(ctx),
         loadSnapshot: options.storage ? async (adapter) => options.storage.get(adapter.cacheKey) || null : undefined,
         saveSnapshot: options.storage ? async (entry) => { options.storage.set(entry.cacheKey, plain(entry)); } : undefined,
         setTimeout: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, delay }); return id; },
@@ -352,10 +353,201 @@ function bindingFixture(f) {
     });
     const names = ['usesProductionMasterListProjection', 'getProductionMasterDetailIds',
         'getProductionMasterDetailIdentity', 'productionMasterDetailFenceMatches',
-        'bindProductionMasterDetailRow', 'hasProductionMasterDetailForItem'];
+        'bindProductionMasterDetailRow', 'isProductionMasterDetailBindingCurrent', 'hasProductionMasterDetailForItem'];
     vm.runInContext(names.map(appFunction).join('\n'), context);
     return context;
 }
+
+test('Tasks NCR list actions retain verified-list assignment policy while editors require exact details', async () => {
+    const f = fixture({ rows: [row('A', { assignedto: 'eval-user', eval_task_type: 'new-crop' })] });
+    const listAdapter = { id: 'core:master', cacheKey: 'list-v1', sourceKeys: ['ph_master_inventory'],
+        stage: async () => f.state.rows };
+    f.context.adapters = [listAdapter];
+    await f.coordinator.check();
+    const ctx = bindingFixture(f);
+    let visible = 'tasks';
+    let access = { isEval: true, isAdmin: false, isRepLike: false };
+    Object.assign(ctx, {
+        activeDetailSourceView: '', lastView: 'tasks', activeTaskTab: 'new-crop',
+        currentUser: 'eval-user', currentUserDisplay: 'Eval User',
+        getCurrentVisibleViewId: () => visible,
+        getRoleAccessState: () => access,
+        getProductionDetailDatasetKeys: () => ['master'],
+        canUseVerifiedProductionData: () => f.coordinator.isVerified(listAdapter),
+        getEditableDetailItemForPrefix: (_prefix, item) => item || ctx.activeItem,
+        canRestrictedEvalUserUpdateItem: (item) => item?.ASSIGNEDTO === 'eval-user',
+        isPrivilegedManagerUser: () => false, canUseEvalTaskAssignment: () => false,
+        isEvalTaskItem: (item) => Boolean(item?.EVAL_TASK_TYPE), normalizeEvalTaskType: (value) => value,
+        isSalesOfficeLikeItem: () => false, canAccessView: () => false,
+        canUseNcrTaskView: () => false, canUseNcrApprovalTaskView: () => false,
+    });
+    vm.runInContext(['firstNonEmptyValue', 'isRepReadOnlyUser', 'canRepEditDetailPrefix',
+        'isRestrictedEvalUser', 'isEvalNcrOrMoveUpDetailTask', 'isDriveModePhotoDataEditContext',
+        'canCurrentUserUpdateDrivePhotoDataByRole', 'canCurrentUserUpdateDrivePhotoData',
+        'canEditRowDetailsByRole', 'canEditRowDetails', 'canEditNcrWorkflow'].map(appFunction).join('\n'), ctx);
+    const listRow = { UNIQUE_ID: 'A', SOURCE_TABLE: 'ph_master_inventory', ASSIGNEDTO: 'eval-user', EVAL_TASK_TYPE: 'new-crop' };
+    assert.equal(ctx.hasProductionMasterDetailForItem(listRow), false);
+    assert.equal(ctx.canEditNcrWorkflow(listRow), true);
+    listRow.EVAL_TASK_TYPE = 'move-up';
+    assert.equal(ctx.canEditNcrWorkflow(listRow), true);
+    listRow.ASSIGNEDTO = 'someone-else';
+    assert.equal(ctx.canEditNcrWorkflow(listRow), false);
+    listRow.ASSIGNEDTO = 'eval-user';
+    access = { isEval: false, isAdmin: false, isRepLike: true };
+    assert.equal(ctx.canEditNcrWorkflow(listRow), false);
+    access = { isEval: true, isAdmin: false, isRepLike: false };
+    ctx.activeItem = listRow; visible = 'detail'; ctx.activeDetailSourceView = 'tasks';
+    assert.equal(ctx.canEditNcrWorkflow(listRow), false);
+    assert.equal(ctx.canEditRowDetails('ncr-', listRow), false);
+    assert.equal(ctx.canCurrentUserUpdateDrivePhotoData(listRow, 'ncr-'), false);
+    f.context.adapters = [listAdapter, f.store.getAdapter(['A'])];
+    const [full] = await f.store.ensure(['A']);
+    ctx.activeItem = { ...full, SOURCE_TABLE: 'ph_master_inventory' };
+    ctx.bindProductionMasterDetailRow(ctx.activeItem, ['A']);
+    assert.equal(ctx.canEditNcrWorkflow(ctx.activeItem), true);
+    visible = 'tasks'; ctx.activeItem = null; ctx.activeDetailSourceView = '';
+    f.state.sourceState = 'importing';
+    await f.coordinator.check();
+    assert.equal(ctx.canEditNcrWorkflow(listRow), false);
+});
+
+test('an unrelated verified callback during an unchanged detail check locks temporarily without rebasing or marking changed', async () => {
+    let ctx;
+    const f = fixture({ onVerified: () => ctx?.onProductionMasterDetailsVerified() });
+    f.activate(['A']); await f.store.ensure(['A']);
+    ctx = bindingFixture(f);
+    ctx.activeItem = { ...f.store.getVerifiedRows(['A'])[0], SOURCE_TABLE: 'ph_master_inventory' };
+    ctx.bindProductionMasterDetailRow(ctx.activeItem, ['A']);
+    const baseline = ctx.activeItem;
+    const editor = { value: 'USER DRAFT', disabled: false };
+    const scheduledRenders = [];
+    Object.assign(ctx, {
+        detailHydrationToken: 1, activeDetailSourceView: 'drive', lastView: 'drive',
+        getCurrentVisibleViewId: () => 'detail', isLoginSessionOwnershipCurrent: (owner) => owner === 'owner-A',
+        argosInventoryTransactionState: null, document: { getElementById: () => null },
+        applyProductionMasterDetailControlState: () => { editor.disabled = !ctx.hasProductionMasterDetailForItem(ctx.activeItem); },
+        scheduleDeferredDetailHydration: (...args) => scheduledRenders.push(args),
+    });
+    ctx.productionMasterDetailSession = { token: 1, owner: 'owner-A', sourceView: 'drive', status: 'ready',
+        rowIdentity: ctx.getProductionMasterDetailIdentity(baseline) };
+    vm.runInContext(['isProductionMasterDetailSessionCurrent', 'onProductionMasterDetailsVerified', 'runDeferredDetailHydration'].map(appFunction).join('\n'), ctx);
+    const gate = deferred(); let joinedStarted = false;
+    f.context.adapters.push({ id: 'side:held-join', cacheKey: 'join-v1', sourceKeys: ['ph_settings'],
+        stage: async () => { joinedStarted = true; await gate.promise; return []; } });
+    const badge = { id: 'side:badge', cacheKey: 'badge-v1', sourceKeys: ['ph_active_request'], stage: async () => [] };
+    f.context.backgroundAdapters = [badge];
+    const pending = f.coordinator.check();
+    await settle();
+    assert.equal(joinedStarted, true);
+    assert.equal(ctx.hasProductionMasterDetailForItem(baseline), false);
+    assert.equal(ctx.runDeferredDetailHydration(1), false);
+    assert.equal(ctx.productionMasterDetailSession.status, 'ready', 'the deferred render path also waits without marking changed');
+    assert.equal(await f.coordinator.ensure(badge), true);
+    assert.equal(editor.disabled, true, 'the mutation gate remains locked while the critical check is pending');
+    assert.equal(ctx.productionMasterDetailSession.status, 'ready', 'temporary unverified state is not an observed change');
+    assert.equal(ctx.activeItem, baseline);
+    assert.equal(editor.value, 'USER DRAFT');
+    gate.resolve(); await pending; await settle();
+    assert.equal(editor.disabled, false);
+    assert.equal(ctx.productionMasterDetailSession.status, 'ready');
+    assert.deepEqual(scheduledRenders, [[1, 0]], 'the deferred full-row paint is resumed only after verification');
+    assert.equal(ctx.activeItem, baseline);
+    assert.equal(editor.value, 'USER DRAFT');
+    f.state.revision = '2';
+    await f.coordinator.check();
+    assert.equal(ctx.productionMasterDetailSession.status, 'changed', 'a genuinely new master revision still requires reopening');
+    assert.equal(editor.disabled, true);
+    assert.equal(ctx.activeItem, baseline);
+    assert.equal(editor.value, 'USER DRAFT');
+});
+
+test('Reclass controls and recipients recover from a same-fence check but not a changed revision', async () => {
+    let ctx;
+    const f = fixture({ onVerified: () => ctx?.onProductionMasterDetailsVerified() });
+    const exact = f.activate(['A']); await f.store.ensure(['A']);
+    ctx = bindingFixture(f);
+    const input = { id: 'proposal', value: 'RETAINED PROPOSAL', disabled: false };
+    const recipient = { id: 'recipient', value: 'chosen-recipient', disabled: false };
+    const readonly = { id: 'readonly', value: 'fixed', disabled: true };
+    const button = { id: 'argos-inventory-transaction-apply', innerHTML: 'Email Item Inquiry', disabled: false };
+    Object.defineProperty(button, 'textContent', { get: () => button.innerHTML, set: (value) => { button.innerHTML = value; } });
+    const controls = [input, recipient, readonly, button];
+    const modal = { classList: { contains: () => false }, querySelectorAll: () => controls };
+    const state = { masterDetailToken: 1, masterDetailOwner: 'owner-A', masterDetailIds: ['A'],
+        masterDetailFence: { ...f.context }, submitting: false, inquiryModel: { rows: ['UNCHANGED BASELINE'] } };
+    Object.assign(ctx, {
+        getCurrentVisibleViewId: () => 'drive', productionMasterReclassGeneration: 1,
+        isLoginSessionOwnershipCurrent: (owner) => owner === 'owner-A',
+        canUseVerifiedProductionData: () => f.coordinator.isVerified(exact),
+        argosInventoryTransactionState: state, productionMasterReclassDisabledControls: new WeakMap(),
+        document: { getElementById: (id) => id === 'argos-inventory-transaction-modal' ? modal : id === button.id ? button : null },
+    });
+    vm.runInContext(['isProductionReclassDetailFenceCurrent', 'isProductionReclassDetailVerified',
+        'onProductionMasterDetailsVerified'].map(appFunction).join('\n'), ctx);
+    const gate = deferred();
+    f.context.adapters.push({ id: 'side:held-join', cacheKey: 'join-v1', sourceKeys: ['ph_settings'], stage: async () => { await gate.promise; return []; } });
+    const badge = { id: 'side:badge', cacheKey: 'badge-v1', sourceKeys: ['ph_active_request'], stage: async () => [] };
+    f.context.backgroundAdapters = [badge];
+    const pending = f.coordinator.check(); await settle();
+    await f.coordinator.ensure(badge);
+    assert.equal(controls.every((control) => control.disabled), true);
+    assert.match(button.textContent, /Checking inventory/);
+    assert.equal(ctx.isProductionReclassDetailVerified(), false);
+    gate.resolve(); await pending; await settle();
+    assert.deepEqual(controls.map((control) => control.disabled), [false, false, true, false]);
+    assert.equal(button.innerHTML, 'Email Item Inquiry');
+    assert.equal(ctx.isProductionReclassDetailVerified(), true);
+    assert.equal(ctx.argosInventoryTransactionState, state);
+    assert.equal(input.value, 'RETAINED PROPOSAL');
+    assert.equal(recipient.value, 'chosen-recipient');
+    assert.deepEqual(state.inquiryModel, { rows: ['UNCHANGED BASELINE'] });
+    f.state.revision = '2'; await f.coordinator.check();
+    assert.equal(controls.every((control) => control.disabled), true);
+    assert.match(button.textContent, /Inventory changed/);
+    assert.equal(ctx.isProductionReclassDetailVerified(), false);
+    assert.equal(ctx.argosInventoryTransactionState, state);
+    assert.equal(input.value, 'RETAINED PROPOSAL');
+    assert.equal(recipient.value, 'chosen-recipient');
+});
+
+test('an unchanged recovery panel retains the same Retry button until its genuine action changes state', () => {
+    const ctx = bindingFixture(fixture());
+    const elements = new Map();
+    const createElement = () => {
+        const node = { children: [], hidden: false, setAttribute() {}, appendChild(child) { this.children.push(child); } };
+        let text = '';
+        Object.defineProperty(node, 'textContent', { get: () => text, set: (value) => { text = value; node.children = []; } });
+        return node;
+    };
+    elements.set('view-detail', { prepend: (node) => elements.set(node.id, node) });
+    const scheduled = [];
+    Object.assign(ctx, {
+        activeItem: { UNIQUE_ID: 'A', SOURCE_TABLE: 'ph_master_inventory' }, detailHydrationToken: 1,
+        activeDetailSourceView: 'drive', lastView: 'drive', getCurrentVisibleViewId: () => 'detail',
+        isLoginSessionOwnershipCurrent: (owner) => owner === 'owner-A',
+        document: { getElementById: (id) => elements.get(id), createElement },
+        scheduleDeferredDetailHydration: (...args) => scheduled.push(args),
+    });
+    const session = { token: 1, owner: 'owner-A', sourceView: 'drive', status: 'error', error: 'Verification needs a retry',
+        rowIdentity: ctx.getProductionMasterDetailIdentity(ctx.activeItem) };
+    ctx.productionMasterDetailSession = session;
+    vm.runInContext(['isProductionMasterDetailSessionCurrent', 'renderProductionMasterDetailState'].map(appFunction).join('\n'), ctx);
+    ctx.renderProductionMasterDetailState();
+    const panel = elements.get('master-detail-load-state'), retry = panel.children[0];
+    for (let i = 0; i < 50; i++) ctx.renderProductionMasterDetailState();
+    assert.equal(panel.children[0], retry, 'verification callbacks preserve pointer/focus target identity');
+    assert.equal(panel.children.length, 1);
+    assert.deepEqual(scheduled, []);
+    retry.onclick();
+    assert.equal(session.status, 'loading');
+    assert.deepEqual(scheduled, [[1, 0]]);
+    assert.equal(panel.children.length, 0);
+    for (let i = 0; i < 50; i++) ctx.renderProductionMasterDetailState();
+    assert.deepEqual(scheduled, [[1, 0]], 'passive status renders never create a retry loop');
+    session.status = 'error'; session.error = 'Verification needs a retry';
+    ctx.renderProductionMasterDetailState();
+    assert.notEqual(panel.children[0], retry, 'a new failed attempt receives a new action');
+});
 
 test('real app detail binding rejects a linked ID or source identity mutation on the same object', async () => {
     const f = fixture(); f.activate(['A']); await f.store.ensure(['A']);
@@ -408,4 +600,44 @@ test('persisted evidence restores only to the DOM sidecar and leaves verified se
     inputs.get('na-spec').value = 'NEWER TYPING';
     ctx.restoreProductionMasterDetailDraft();
     assert.equal(inputs.get('na-spec').value, 'NEWER TYPING');
+});
+
+test('structural pending-edit replay cannot broadcast master drafts into verified list/detail baselines', async () => {
+    for (const blocked of [false, true]) {
+        const f = fixture({ rows: [row('A', { spec: 'SERVER SPEC', sales_note: 'SERVER NOTE' })] });
+        f.activate(['A']); await f.store.ensure(['A']);
+        const ctx = bindingFixture(f);
+        const list = { ...f.store.getVerifiedRows(['A'])[0], SOURCE_TABLE: 'ph_master_inventory' };
+        ctx.activeItem = { ...list };
+        ctx.bindProductionMasterDetailRow(ctx.activeItem, ['A']);
+        const pending = { A: { timestamp: Date.now(), sourceTable: 'ph_master_inventory',
+            data: { ...list, SPEC: 'LOCAL DRAFT', SALES_NOTE: 'LOCAL NOTE' },
+            ...(blocked ? { autoRetryBlocked: true, conflictType: 'drive-evidence', driveEvidenceConflict: {} } : {}) } };
+        Object.assign(ctx, {
+            fullInventory: [list], masterInventoryById: new Map([['A', list]]),
+            avOpenInventory: [], lowStockInventory: [], managerReviewInventory: [], moveUpInventory: [],
+            salesOfficeInventory: [], socInventory: [], reservesInventory: [], requestsInventory: [], flyerFolderInventory: [],
+            EXACT_ROW_SYNC_KEYS: ['SPEC', 'SALES_NOTE'], LINKED_ROW_SYNC_KEYS: [],
+            getPendingEditsCache: () => pending,
+            findPendingEditTarget: (uid) => ctx.masterInventoryById.get(uid),
+            findLinkedMasterRow: () => list, isFlyerFolderRow: () => false,
+            clonePhotoFields() {}, syncSharedFlyerPhotoFields() {}, normalizeRowPhotoFields() {}, buildSearchIndex: (item) => item,
+            shouldIncludeMasterItemInAvSeasonView: () => false, rebuildInventoryByIdMap: () => new Map(),
+            shouldDiscardPendingEditForCurrentRow: () => false, flushPendingEditsCache() {},
+        });
+        vm.runInContext(['firstNonEmptyValue', 'isRequestLikeLocalEditRow', 'buildSecureDriveEvidenceBaseline',
+            'syncMasterFieldsToRow', 'syncRowDataAcrossViews', 'applyLocalEdits'].map(appFunction).join('\n'), ctx);
+        ctx.applyLocalEdits();
+        assert.equal(list.SPEC, 'SERVER SPEC');
+        assert.equal(ctx.activeItem.SPEC, 'SERVER SPEC');
+        assert.equal(ctx.hasProductionMasterDetailForItem(ctx.activeItem), true);
+        assert.equal(pending.A.data.SPEC, 'LOCAL DRAFT', 'recoverable work remains in its sidecar');
+        assert.equal(pending.A.autoRetryBlocked === true, blocked);
+        assert.equal(f.store.getVerifiedRows(['A'])[0].SPEC, 'SERVER SPEC');
+        // The supported legacy full-row workflow retains its original replay.
+        ctx.getDatasetState = () => ({ listProjectionVersion: '' });
+        ctx.applyLocalEdits();
+        assert.equal(list.SPEC, 'LOCAL DRAFT');
+        assert.equal(ctx.activeItem.SPEC, 'LOCAL DRAFT');
+    }
 });

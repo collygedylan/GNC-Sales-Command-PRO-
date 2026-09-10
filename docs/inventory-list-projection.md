@@ -59,13 +59,15 @@ immutable decoded server list values, never the actively edited row or its draft
 The native master adapter now prepares decoded/formatted rows, search fields and
 its three lookup Maps in detached chunks of at most 128 rows, checking an 8 ms work
 budget after each row (a single expensive row can exceed that time target).
-Each yield rechecks the captured account/permission identity and read generation;
+Each yield rechecks the captured account/permission/authentication identity;
 a stage-wide identity Set rejects duplicates even across pages or chunks. The
 `_preparedMasterList` payload retains shared references between the data array and
 Map values through coordinator cloning and IndexedDB. Publication reinstalls the
 list tags and synchronously swaps the complete array and Maps. Preview and commit
 dataset states both retain `listProjectionVersion`; a preview still does not mark
-the data verified.
+the data verified. The coordinator fences source revisions before and after
+loading. An unrelated screen's new cycle does not cancel a reusable master stage;
+the underlying read-generation deduplication boundary remains unchanged.
 
 This is not a claim that all client work is chunked: coordinator snapshot cloning,
 season assignments, crop inheritance, AV derivation and joined-dataset updates

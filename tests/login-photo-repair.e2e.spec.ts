@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 // The real browser bootstrap, permission loaders, renderer, optimizer, upload,
 // and evidence coordinator run here. Only authentication and remote boundaries
@@ -241,6 +242,7 @@ test('logout during permission loading cannot be undone by a late login response
 
 async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', role = 'ADMIN') {
   const fixture = await isolatedApp(page);
+  await installInventoryReadFixture(page);
   await page.evaluate(async ({ role }) => {
     const w = window as any;
     if (role !== 'ADMIN') await w.__repair.identity('photo_worker_fixture', role);
@@ -265,7 +267,8 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
     const other = { ...row, UNIQUE_ID:'photo-fixture-two', ITEMCODE:'TEST.PHOTO.2', COMMONNAME:'Different Fixture Plant', LOCATIONCODE:'B.02.001' };
     w.__repair.photoRows = [row, other];
     w.__repair.savedRows = Object.fromEntries([row, other].map(item => [item.UNIQUE_ID,
-      Object.fromEntries(Object.entries(item).map(([key, value]) => [key.toLowerCase(), value]))]));
+      w.__inventoryReadFixture.row(item)]));
+    w.__repair.masterReads = [];
     w.__repair.uploads = [];
     w.__repair.saves = [];
     w.__repair.revision = 1;
@@ -274,9 +277,14 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
     const definitions = w.eval('DATASET_DEFINITIONS');
     // Real adapter descriptors, metadata fences, staging and commits verify the
     // synthetic canonical rows. No readiness/permission predicate is replaced.
-    w.fetchAllSupabaseRows = async (table: string) => {
+    w.fetchAllSupabaseRows = async (table: string, query = '') => {
       if (table === settingsTable) return [{ key:settingsKey, value:{ seasonCode:season, salesYear:year } }];
-      if (table === 'ph_master_inventory') return structuredClone(Object.values(w.__repair.savedRows));
+      if (table === 'ph_master_inventory') {
+        const result = w.__inventoryReadFixture.read(Object.values(w.__repair.savedRows), query);
+        w.__repair.masterReads.push({ select:result.select, exact:result.exact, ids:result.uniqueIds,
+          fieldCount:result.rows[0] ? Object.keys(result.rows[0]).length : 0 });
+        return result.rows;
+      }
       if (table === 'ph_active_request') return w.__repair.requestRow ? [structuredClone(w.__repair.requestRow)] : [];
       if (Object.values(definitions).some((definition: any) => definition.table === table)) return [];
       throw new Error('UNEXPECTED_PHOTO_FIXTURE_DATASET:' + table);
@@ -333,6 +341,13 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
     await w.__repair.verifyData();
   }, { source });
   await expect(page.locator('#view-detail')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.eval('hasProductionMasterDetailForItem(activeItem)'))).toBe(true);
+  const masterReads = await page.evaluate(() => (window as any).__repair.masterReads);
+  expect(masterReads.some((read: any) => !read.exact && read.select !== '*' && read.fieldCount === 161),
+    'Native fixture must exercise the actual compact projection').toBe(true);
+  expect(masterReads.some((read: any) => read.exact && read.select === '*' && read.fieldCount === 213
+    && read.ids.length === 1 && read.ids[0] === 'photo-fixture-one'),
+    'Photo controls require an exact full master read, not an unscoped fixture response').toBe(true);
   return fixture;
 }
 

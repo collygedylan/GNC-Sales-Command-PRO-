@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
 const moduleHashes = new Map(['registry', 'adapters', 'coordinator'].map(name => {
@@ -133,6 +134,7 @@ test('two sessions retain local choices, converge after clear, and keep All incl
 });
 
 async function enableNativeCoordinator(page: Page, rows: Row[]) {
+  await installInventoryReadFixture(page);
   await page.evaluate(data => {
     (window as any).__nativeSyncFixture = { rows: data, revision: '1', state: 'ready', readFailure: false, reads: [], revisionReads: 0 };
     window.eval(`(() => {
@@ -140,9 +142,10 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
       nativeAuthSessionActive = true;
       nativeAuthProfile = { id: 'synthetic-dylan-live-sync', username: 'dylan_collyge', role: 'ADMIN', active: true };
       nativeAuthAccessToken = 'synthetic-not-a-real-token';
-      fetchAllSupabaseRows = async (table) => {
+      fetchAllSupabaseRows = async (table, query = '') => {
         fixture.reads.push(table);
         if (table === 'ph_app_settings') return [{key:'current_season_salesyear', value:{seasonCode:'F1',salesYear:'27'}}];
+        if (table === 'ph_master_inventory') return window.__inventoryReadFixture.read([], query).rows;
         const snapshot = table === 'ph_soc_master' ? structuredClone(fixture.rows) : [];
         if (table === 'ph_soc_master' && fixture.gate) await fixture.gate;
         return snapshot;

@@ -22,6 +22,7 @@ function moduleApi(path) {
 const engine = moduleApi('../assets/live-sync-coordinator.js');
 const registry = moduleApi('../assets/live-sync-registry.js');
 const sideAdapterApi = moduleApi('../assets/live-sync-adapters.js');
+const inventoryList = moduleApi('../assets/inventory-list-contract.js');
 const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 function deferred() {
     let resolve;
@@ -44,7 +45,7 @@ function definitions(context) {
     vm.runInContext(`${source}\nthis.DATASET_DEFINITIONS = DATASET_DEFINITIONS;`, context);
 }
 
-function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-permission-v1', revision = '9007199254740993' } = {}) {
+function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-permission-v1', revision = '9007199254740993', onVerified = () => {} } = {}) {
     const calls = { diskReads: [], diskWrites: [], rowReads: [], previews: [], commits: [], toasts: [], transport: [], permissionRefresh: [] };
     const state = { permission, revision, sourceRevisions: new Map(), revisionState: 'ready', rowGate: null, metadataGate: null };
     const context = {
@@ -53,7 +54,18 @@ function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-pe
         nativeAuthSessionActive: true, nativeAuthProfile: { id: 'fixture-account-a', username: 'fixture_user' },
         currentUser: 'fixture_user', currentRole: 'Admin', loginShellPreparing: false,
         loginScope: 'fixture_user::admin', getCurrentLoginCacheScopeKey: () => context.loginScope,
-        navigator: { onLine: true }, window: { AgMetricLiveSync: engine, AgMetricLiveSyncRegistry: registry },
+        navigator: { onLine: true }, window: { AgMetricLiveSync: engine, AgMetricLiveSyncRegistry: registry, AgMetricInventoryList: inventoryList },
+        performance: { now: () => 0 }, productionLiveSyncReadGeneration: 0,
+        getSupabaseReadIdentityScope: () => context.getProductionDataScope(),
+        normalizeAppTableName: (name) => name,
+        parseAppNumber: (value) => value === '' || value == null ? null : Number(value),
+        repairDisplayFieldsOnRow: (row) => row, normalizeRowPhotoFields: (row) => row,
+        getMasterInventorySourceCode: (row) => String(row.SOURCE || '').toUpperCase(),
+        yieldToUiFrame: async () => {},
+        // This integration boundary records publication without running the
+        // whole DOM. Non-detail callback tests therefore expose an honestly
+        // unprojected publication, not a permissive detail-verification stub.
+        getDatasetState: () => ({ listProjectionVersion: '' }),
         // Authoritative permission fixtures are ready, never a bypass flag or permissive isVerified stub.
         appAccessSnapshotState: { status: 'ready', stale: false, snapshot: { permissionVersion: permission, views: { drive: true, request: true } } },
         requestCapabilityState: { status: 'ready', stale: false, capabilities: { canView: true, canCreate: true } },
@@ -61,7 +73,10 @@ function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-pe
         saveCacheValue: async (key, entry) => { calls.diskWrites.push({ key, entry }); disk.set(key, structuredClone(entry)); return true; },
         fetchAllSupabaseRows: async (table, query) => {
             calls.rowReads.push({ table, query });
-            const captured = [{ unique_id: 'synthetic-row', fixtureRevision: state.revision }];
+            const physical = { unique_id: 'synthetic-row', itemcode: 'FIXTURE', locationcode: 'A001', av_note: state.revision };
+            const captured = table === 'ph_master_inventory'
+                ? [Object.fromEntries(Array.from(inventoryList.columns, (name, index) => [inventoryList.aliases[index], physical[name] ?? null]))]
+                : [{ unique_id: 'synthetic-row', fixtureRevision: state.revision }];
             if (state.rowGate) await state.rowGate.promise;
             return captured;
         },
@@ -73,14 +88,23 @@ function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-pe
     };
     vm.createContext(context);
     definitions(context);
-    const names = ['getProductionDatasetCacheKey', 'loadProductionDatasetSnapshot', 'saveProductionDatasetSnapshot',
+    const names = ['getProductionDatasetCacheKey', 'loadProductionDatasetSnapshot', 'saveProductionDatasetSnapshot', 'saveOwnedProductionDatasetSnapshot',
         'getProductionDataScope', 'canUseVerifiedProductionData', 'requireVerifiedProductionData', 'canUseProductionLiveSync',
-        'getProductionTableDatasetKeys', 'getProductionDetailDatasetKeys', 'guardProductionDataCommand', 'createProductionCoreLiveAdapter', 'supabaseRpc'];
+        'getProductionTableDatasetKeys', 'getProductionDetailDatasetKeys', 'guardProductionDataCommand',
+        'firstNonEmptyValue', 'normalizeSearchValue', 'buildSearchIndex', 'formatFetchedRows',
+        'scopeMasterInventoryRowsForCurrentUser', 'getMasterInventoryExactKey', 'getItemInquiryItemCode',
+        'staleSupabaseReadScopeError', 'prepareMasterListDatasetPayload',
+        'usesProductionMasterListProjection', 'getActiveProductionMasterDetailAdapters', 'onProductionMasterDetailsVerified',
+        'createProductionCoreLiveAdapter', 'supabaseRpc'];
     vm.runInContext(names.map(helper).join('\n'), context);
     // The production side-context helper exposes the legacy login scope; the
     // coordinator/guard must replace it with the full native cache identity.
     context.getProductionLiveSyncSideContext = () => ({ scope: context.loginScope, username: context.currentUser });
     context.productionLiveSyncSideAdapters = sideAdapterApi.create({
+        ...Object.fromEntries(['side:shear', 'side:evalWork'].map((id) => [id, {
+            stage: async () => { calls.rowReads.push({ table: id, query: 'synthetic read boundary' }); return []; },
+            commit() {}
+        }])),
         'side:dockWorkflow': {
             stage: async () => {
                 calls.rowReads.push({ table: 'synthetic-dock-workflow', query: 'list' });
@@ -104,9 +128,14 @@ function fixture({ disk = new Map(), keys = ['master'], permission = 'fixture-pe
                 sources: sourceKeys.map((key) => ({ key, revision: state.sourceRevisions.get(key) ?? state.revision, state: state.revisionState })) };
         },
         loadSnapshot: context.loadProductionDatasetSnapshot,
+        loadStableSnapshot: context.loadProductionDatasetSnapshot,
         saveSnapshot: context.saveProductionDatasetSnapshot,
+        saveOwnedSnapshot: context.saveOwnedProductionDatasetSnapshot,
+        getSnapshotReadIdentity: context.getSupabaseReadIdentityScope,
+        yieldToUi: context.yieldToUiFrame,
         previewSnapshots: (snapshots) => calls.previews.push(snapshots),
         commitSnapshots: (snapshots) => calls.commits.push(snapshots),
+        onVerified: (verifiedContext) => onVerified(context, verifiedContext),
         onPermissionChange: async (version) => {
             calls.permissionRefresh.push(version);
             context.appAccessSnapshotState.snapshot.permissionVersion = version;
@@ -128,12 +157,19 @@ test('real snapshot identity isolates auth account, application user, role, logi
         () => { ctx.nativeAuthProfile.id = 'fixture-account-b'; },
         () => { ctx.currentUser = 'another_fixture_user'; },
         () => { ctx.currentRole = 'Sales'; },
-        () => { ctx.loginScope = 'another_scope'; },
-        () => { ctx.DATASET_DEFINITIONS.master.fullQuery = 'select=unique_id&order=unique_id.asc'; }
+        () => { ctx.loginScope = 'another_scope'; }
     ]) {
         const before = key(); change(); assert.notEqual(key(), before);
     }
     assert.notEqual(ctx.getProductionDatasetCacheKey(adapter, 'a","b'), ctx.getProductionDatasetCacheKey({ ...adapter, id: 'b' }, 'a'));
+    assert.deepEqual(JSON.parse(adapter.cacheKey), ['master', 'ph_master_inventory', inventoryList.buildQuery(), inventoryList.version],
+        'native master identity includes the actual compact query and projection version');
+    const compactKey = key();
+    ctx.DATASET_DEFINITIONS.master.fullQuery = 'select=unique_id&order=unique_id.asc';
+    assert.equal(key(), compactKey, 'the legacy full query does not control the native compact adapter');
+    const socKey = ctx.createProductionCoreLiveAdapter('soc').cacheKey;
+    ctx.DATASET_DEFINITIONS.soc.fullQuery = 'select=unique_id&order=unique_id.asc';
+    assert.notEqual(ctx.createProductionCoreLiveAdapter('soc').cacheKey, socKey, 'non-master cache identities still follow their physical query');
     assert.equal(ctx.createProductionCoreLiveAdapter('avOpen').cacheKey, ctx.createProductionCoreLiveAdapter('master').cacheKey,
         'AV is the same physical all-season snapshot, not a duplicate download');
 });
@@ -187,12 +223,47 @@ test('disk writes clone immediately, serialize the same key, and allow another k
     ctx.saveCacheValue = original;
 });
 
+test('owned snapshot writes serialize a transferred graph without another synchronous clone', async () => {
+    const f = fixture(), ctx = f.context, gate = deferred(), writes = [];
+    const serverRow = { UNIQUE_ID: 'synthetic-row', SPEC: 'server baseline' };
+    const first = { id: 'core:master', cacheKey: f.adapters[0].cacheKey, scope: ctx.getProductionDataScope(),
+        sources: [{ key: 'ph_master_inventory', revision: '1', state: 'ready' }],
+        value: { payload: { data: [structuredClone(serverRow)] } } };
+    const second = structuredClone(first); second.sources[0].revision = '2';
+    second.value.payload.data[0].SPEC = 'new server baseline';
+    ctx.structuredClone = () => { throw new Error('The exclusively transferred graph must not be synchronously recloned'); };
+    ctx.saveCacheValue = async (key, entry) => {
+        writes.push(entry);
+        if (entry === first) await gate.promise;
+        f.disk.set(key, entry); return true;
+    };
+    ctx.saveOwnedProductionDatasetSnapshot(first);
+    ctx.saveOwnedProductionDatasetSnapshot(second);
+    await settle();
+    assert.equal(writes.length, 1); assert.equal(writes[0], first);
+    assert.equal(await ctx.loadProductionDatasetSnapshot(f.adapters[0], { scope: first.scope }), second,
+        'the newest independent transfer is immediately available while its disk write waits');
+    assert.equal(serverRow.SPEC, 'server baseline');
+    assert.notEqual(first.value.payload.data[0], serverRow);
+    gate.resolve(); await Promise.all(ctx.productionDatasetCacheWrites.values()); await settle();
+    assert.equal(writes.length, 2); assert.equal(writes[1], second);
+    assert.equal(f.disk.get(ctx.getProductionDatasetCacheKey(first, first.scope)), second);
+    assert.equal(ctx.productionDatasetCacheWrites.size, 0);
+    ctx.saveOwnedProductionDatasetSnapshot({ id: 'side:chat', scope: first.scope, cacheKey: 'chat', value: {} });
+    assert.equal(writes.length, 2, 'the transfer optimization does not broaden persistent cache scope');
+});
+
 test('stored metadata is immutable, preserves decimal revisions, and unchanged reload waits for fresh verification', async () => {
     const first = fixture();
     assert.equal(await first.coordinator.check(), true); await settle();
     const stored = [...first.disk.values()][0];
     assert.equal(stored.contractVersion, 1); assert.equal(stored.permissionVersion, 'fixture-permission-v1');
     assert.equal(stored.sources[0].revision, '9007199254740993'); assert.equal(typeof stored.sources[0].revision, 'string');
+    assert.equal(stored.value.listProjectionVersion, inventoryList.version);
+    assert.equal(stored.value.payload.data[0].AV_NOTE, '9007199254740993', 'the actual decoder and formatter produced the stored row');
+    assert.equal(stored.value.payload._preparedMasterList.byId.get('synthetic-row'), stored.value.payload.data[0],
+        'structured cache clones preserve the real prepared index-to-row identity');
+    assert.equal(Object.hasOwn(stored.value.payload.data[0], 'UNITPRICE'), false, 'a list snapshot cannot imply full-detail completeness');
     first.calls.commits[0][0].value.payload.data[0].note = 'unsaved draft';
     assert.equal(stored.value.payload.data[0].note, undefined);
     const warm = fixture({ disk: first.disk }); const gate = deferred(); warm.state.metadataGate = gate;
@@ -210,7 +281,7 @@ test('changed revisions reload; changed permissions or account never preview ano
     const changed = fixture({ disk: first.disk, revision: '9007199254740994' });
     assert.equal(await changed.coordinator.check(), true);
     assert.equal(changed.calls.rowReads.length, 1);
-    assert.equal(changed.calls.commits.at(-1)[0].value.payload.data[0].fixtureRevision, '9007199254740994');
+    assert.equal(changed.calls.commits.at(-1)[0].value.payload.data[0].AV_NOTE, '9007199254740994');
     for (const kind of ['permission', 'account']) {
         const f = fixture({ disk: first.disk, permission: kind === 'permission' ? 'fixture-permission-v2' : 'fixture-permission-v1' });
         if (kind === 'account') f.context.nativeAuthProfile.id = 'fixture-account-b';
@@ -429,6 +500,56 @@ test('post-verification callback updates permission and badge chrome without rep
     callbacks.onStageStart({}, { permissionVersion: 'fixture-permission-v2' });
     assert.equal(ctx.productionLiveSyncReadGeneration, 1);
     assert.equal(ctx.productionLiveSyncReadPermissionVersion, 'fixture-permission-v2');
+});
+
+test('verified footer painting never feeds a native check back into the coordinator', async () => {
+    const badgeIds = Array.from(registry.getViewAdapters('login', { surfaces: ['badge:queue'] }));
+    const keys = badgeIds.map((id) => id.startsWith('core:') ? id.slice(5) : id);
+    let paints = 0;
+    const f = fixture({ keys, onVerified: (ctx) => { paints++; ctx.updateFooterRequestBadge(); } });
+    const ctx = f.context, timers = new Map(), cancelled = [], legacyChecks = [];
+    let nextTimer = 0;
+    const element = () => ({ classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, removeAttribute() {} });
+    const button = element(), badge = element();
+    Object.assign(ctx, {
+        document: { hidden: false, getElementById: (id) => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null },
+        requestBadgeLiveSyncTimer: null, requestViewLiveSyncTimer: null, requestViewLiveSyncInFlight: false,
+        REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS: 30000,
+        REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS: 30000,
+        canUseFooterRequestShortcut: () => true, getRequestQueueAlertCount: () => 0, updateFooterNavState() {},
+        setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); return id; },
+        clearTimeout: (id) => { cancelled.push(id); timers.delete(id); },
+        syncRequestViewLiveSync: (...args) => legacyChecks.push(args)
+    });
+    vm.runInContext(['isProductionBadgeVerified', 'signalProductionLiveSync', 'syncAlwaysOnRequestData',
+        'queueRequestBadgeLiveSync', 'updateFooterRequestBadge'].map(helper).join('\n'), ctx);
+    assert.equal(ctx.isProductionBadgeVerified('badge:queue'), false);
+    assert.equal(await f.coordinator.check('initial'), true);
+    assert.equal(ctx.isProductionBadgeVerified('badge:queue'), true, 'all real registered badge adapters are current');
+    const initialReads = f.coordinator.getStatistics().revisionReads;
+    for (let index = 0; index < 3; index++) ctx.updateFooterRequestBadge();
+    await settle();
+    assert.equal(timers.size, 0, 'native footer painting must not schedule the old 450ms badge poll');
+    assert.equal(f.coordinator.getStatistics().signals, 0);
+    assert.equal(f.coordinator.getStatistics().revisionReads, initialReads);
+    const oldTimer = ctx.setTimeout(() => { throw new Error('Old legacy badge poll survived native takeover'); }, 450);
+    ctx.requestBadgeLiveSyncTimer = oldTimer;
+    ctx.queueRequestBadgeLiveSync();
+    assert.ok(cancelled.includes(oldTimer)); assert.equal(ctx.requestBadgeLiveSyncTimer, null);
+    assert.equal(timers.size, 0);
+    f.state.revision = '9007199254740994';
+    assert.equal(await f.coordinator.check('single-external-revision'), true);
+    assert.ok(f.coordinator.getStatistics().revisionReads - initialReads <= 2, 'one revision change needs only its before/after fence');
+    assert.equal(timers.size, 0); assert.equal(f.coordinator.getStatistics().signals, 0);
+    assert.equal(paints, 2);
+    ctx.nativeAuthSessionActive = false;
+    ctx.queueRequestBadgeLiveSync();
+    assert.equal(timers.size, 1, 'legacy sessions retain their existing fallback poll');
+    const timer = [...timers.values()][0];
+    assert.equal(timer.delay, 450);
+    timer.callback();
+    assert.equal(legacyChecks.length, 1); assert.equal(legacyChecks[0][0], 0);
+    assert.equal(legacyChecks[0][1].minIntervalMs, 30000);
 });
 
 test('first-paint rendering preempts the normal 150ms batch while preserving drafts and scroll', () => {

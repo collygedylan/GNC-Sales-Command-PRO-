@@ -34712,7 +34712,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return item;
         }
 
-        function hasProductionMasterDetailForItem(item = null) {
+        function isProductionMasterDetailBindingCurrent(item = null) {
             if (!usesProductionMasterListProjection()) return true;
             if (!item) return false;
             try {
@@ -34721,9 +34721,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!ids.length) return !binding || binding.rowIdentity === getProductionMasterDetailIdentity(item);
                 return !!binding && productionMasterDetailFenceMatches(binding.fence)
                     && binding.rowIdentity === getProductionMasterDetailIdentity(item)
-                    && binding.masterIds === JSON.stringify(ids)
-                    && !!getProductionMasterDetailStore()?.getVerifiedRows(binding.ids);
+                    && binding.masterIds === JSON.stringify(ids);
             } catch (_) { return false; }
+        }
+
+        function hasProductionMasterDetailForItem(item = null) {
+            if (!usesProductionMasterListProjection()) return true;
+            if (!isProductionMasterDetailBindingCurrent(item)) return false;
+            const binding = productionMasterDetailBindings.get(item);
+            return !binding?.ids.length || !!getProductionMasterDetailStore()?.getVerifiedRows(binding.ids);
         }
 
         function beginProductionMasterDetailDemand(ids, isCurrent, datasetKeys = []) {
@@ -34802,12 +34808,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 detail.prepend(panel);
             }
             panel.hidden = false;
-            panel.textContent = session.status === 'ready'
+            const message = session.status === 'ready'
                 ? 'Saved local evidence is retained separately from the current server row. Review the restored form before saving; pending photos remain saved on this device.'
                 : session.status === 'changed'
                 ? 'Inventory changed while this row was open. Your draft is retained. Close and reopen the row to review current details before saving.'
                 : session.status === 'error' ? (session.error || 'Exact inventory details could not be verified. Your row remains read-only.')
                 : 'Checking exact inventory details. Saved information remains available to view.';
+            const renderKey = JSON.stringify([session.status, message]);
+            if (panel.__masterDetailSession === session && panel.__masterDetailRenderKey === renderKey) return;
+            panel.__masterDetailSession = session;
+            panel.__masterDetailRenderKey = renderKey;
+            // Repeated verification callbacks must not detach the Retry button
+            // between pointer-down and click or discard its focus.
+            panel.textContent = message;
             if (session.status === 'error') {
                 const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry details';
                 retry.className = 'ml-2 underline';
@@ -34905,12 +34918,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             session.pendingDraftRestored = true;
         }
 
-        function isProductionReclassDetailVerified(state = argosInventoryTransactionState) {
+        function isProductionReclassDetailFenceCurrent(state = argosInventoryTransactionState) {
             if (!usesProductionMasterListProjection()) return true;
             return !!state && state.masterDetailToken === productionMasterReclassGeneration
                 && isLoginSessionOwnershipCurrent(state.masterDetailOwner)
-                && canUseVerifiedProductionData(['master']) && !!state.masterDetailIds?.length
-                && productionMasterDetailFenceMatches(state.masterDetailFence)
+                && !!state.masterDetailIds?.length && productionMasterDetailFenceMatches(state.masterDetailFence);
+        }
+
+        function isProductionReclassDetailVerified(state = argosInventoryTransactionState) {
+            if (!usesProductionMasterListProjection()) return true;
+            return isProductionReclassDetailFenceCurrent(state) && canUseVerifiedProductionData(['master'])
                 && !!getProductionMasterDetailStore()?.getVerifiedRows(state.masterDetailIds || []);
         }
 
@@ -34922,17 +34939,44 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     session = beginProductionMasterDetailSession(activeItem, detailHydrationToken);
                     scheduleDeferredDetailHydration(detailHydrationToken, 0);
                 }
-                if (isProductionMasterDetailSessionCurrent(session) && session.status === 'ready' && !hasProductionMasterDetailForItem(activeItem)) session.status = 'changed';
+                // An unrelated group's callback can arrive while the current
+                // group is checking unchanged revisions. Keep the editor
+                // locked during that check, but only require reopening after
+                // an actual identity or scope/permission/revision change.
+                if (isProductionMasterDetailSessionCurrent(session) && session.status === 'ready'
+                    && !isProductionMasterDetailBindingCurrent(activeItem)) session.status = 'changed';
                 applyProductionMasterDetailControlState();
+                if (isProductionMasterDetailSessionCurrent(session) && session.status === 'ready'
+                    && session.renderWaitingForVerification && hasProductionMasterDetailForItem(activeItem)) {
+                    session.renderWaitingForVerification = false;
+                    scheduleDeferredDetailHydration(session.token, 0);
+                }
             }
             const modal = document.getElementById('argos-inventory-transaction-modal');
-            if (argosInventoryTransactionState && modal && !modal.classList.contains('hidden') && !isProductionReclassDetailVerified()) {
+            const state = argosInventoryTransactionState;
+            if (state && modal && !modal.classList.contains('hidden')) {
+                const ready = isProductionReclassDetailVerified(state);
                 modal.querySelectorAll('input,select,textarea,#argos-inventory-transaction-apply').forEach((element) => {
-                    if (!productionMasterReclassDisabledControls.has(element)) productionMasterReclassDisabledControls.set(element, element.disabled);
-                    element.disabled = true;
+                    if (!ready) {
+                        if (!productionMasterReclassDisabledControls.has(element)) productionMasterReclassDisabledControls.set(element, {
+                            disabled: element.disabled, submitting: state.submitting,
+                            html: element.id === 'argos-inventory-transaction-apply' ? element.innerHTML : null
+                        });
+                        element.disabled = true;
+                    } else if (productionMasterReclassDisabledControls.has(element)) {
+                        if (element.id === 'argos-inventory-transaction-apply' && state.submitting) return;
+                        const previous = productionMasterReclassDisabledControls.get(element);
+                        // A finished submit owns its button label/disabled state.
+                        if (!(element.id === 'argos-inventory-transaction-apply' && previous.submitting)) {
+                            element.disabled = previous.disabled;
+                            if (previous.html !== null) element.innerHTML = previous.html;
+                        }
+                        productionMasterReclassDisabledControls.delete(element);
+                    }
                 });
                 const button = document.getElementById('argos-inventory-transaction-apply');
-                if (button) button.textContent = 'Inventory changed — reopen inquiry';
+                if (button && !ready) button.textContent = isProductionReclassDetailFenceCurrent(state)
+                    ? 'Checking inventory — draft retained' : 'Inventory changed — reopen inquiry';
             }
         }
 
@@ -35000,9 +35044,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function saveProductionDatasetSnapshot(entry) {
             if (!entry.id.startsWith('core:') && entry.id !== 'side:settings') return;
+            // Direct callers retain immediate capture, even while an earlier
+            // write is waiting for IndexedDB. Their input may still be mutable.
+            return saveOwnedProductionDatasetSnapshot(structuredClone(entry));
+        }
+
+        function saveOwnedProductionDatasetSnapshot(entry) {
+            if (!entry.id.startsWith('core:') && entry.id !== 'side:settings') return;
             const key = getProductionDatasetCacheKey(entry, entry.scope);
+            // The coordinator transfers an independent, fully prepared graph;
+            // it never exposes or mutates this entry again after this call.
             // Serialize writes to each key so a slower old commit cannot replace a new one.
-            const value = structuredClone(entry);
+            const value = entry;
             productionDatasetCacheReads.set(key, Promise.resolve(value));
             const previous = productionDatasetCacheWrites.get(key) || Promise.resolve();
             const pending = previous.catch(() => false).then(() => saveCacheValue(key, value));
@@ -35129,15 +35182,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 // Keep the physical snapshot reusable across a season change.
                 id: `core:${key}`, cacheKey: JSON.stringify(listContract ? [key, definition.table, query, listContract.version] : [key, definition.table, query]),
                 sourceKeys: window.AgMetricLiveSyncRegistry.getSourceKeys([`core:${key}`]),
+                // Compact preparation owns fresh rows and indexes that have
+                // never been published to app code. Transfer that graph only.
+                ...(listContract ? { snapshotOwnership: 'coordinator' } : {}),
                 stage: async () => {
                     // No first-page hydration, error-to-empty fallback or merge with
                     // absent old rows: only a complete authoritative read can commit.
                     const identityScope = getSupabaseReadIdentityScope();
-                    const readGeneration = productionLiveSyncReadGeneration;
                     const rows = await fetchAllSupabaseRows(definition.table, query);
                     if (!Array.isArray(rows)) throw new Error(`${key} returned an invalid data snapshot.`);
                     if (listContract) {
-                        const payload = await prepareMasterListDatasetPayload(rows, { identityScope, readGeneration });
+                        const payload = await prepareMasterListDatasetPayload(rows, { identityScope });
                         return { key, payload, rowCount: rows.length, listProjectionVersion: listContract.version };
                     }
                     return { key, payload: buildDatasetPayload(key, rows), rowCount: rows.length };
@@ -35255,7 +35310,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 readRevisions: (keys) => supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000 }),
                 concurrency: isTouchConstrainedDevice() ? 1 : 2,
                 loadSnapshot: loadProductionDatasetSnapshot,
+                // Memoized cache entries are replaced, never mutated. Only
+                // explicitly owned master adapters may use this stable read.
+                loadStableSnapshot: loadProductionDatasetSnapshot,
                 saveSnapshot: saveProductionDatasetSnapshot,
+                saveOwnedSnapshot: saveOwnedProductionDatasetSnapshot,
+                getSnapshotReadIdentity: getSupabaseReadIdentityScope,
+                yieldToUi: yieldToUiFrame,
                 previewSnapshots: previewProductionDatasetSnapshots,
                 onStageStart: (context, metadata) => {
                     productionLiveSyncReadGeneration += 1;
@@ -39612,9 +39673,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const contract = window.AgMetricInventoryList;
             if (!contract || !Array.isArray(rows)) throw new Error('The inventory list response is invalid.');
             const identityScope = options.identityScope ?? getSupabaseReadIdentityScope();
-            const readGeneration = options.readGeneration ?? productionLiveSyncReadGeneration;
             const assertCurrent = () => {
-                if (identityScope !== getSupabaseReadIdentityScope() || readGeneration !== productionLiveSyncReadGeneration) throw staleSupabaseReadScopeError();
+                // Navigation may share this stage across multiple check cycles.
+                // Account/auth/permission identity cancels it; the coordinator's
+                // before/after source-vector fence decides revision freshness.
+                if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
             };
             const data = [], seenIds = new Set();
             const byId = new Map(), byExactKey = new Map(), byItemCode = new Map();
@@ -47309,7 +47372,7 @@ let avTopControlsRenderToken = 0;
             // was left intact until this explicit new open replaced it.
             if (exactProjection) modal.querySelectorAll('input,select,textarea,#argos-inventory-transaction-apply').forEach((element) => {
                 if (!productionMasterReclassDisabledControls.has(element)) return;
-                element.disabled = productionMasterReclassDisabledControls.get(element);
+                element.disabled = productionMasterReclassDisabledControls.get(element).disabled;
                 productionMasterReclassDisabledControls.delete(element);
             });
             const snapshot = getArgosInventorySourceSnapshot(item);
@@ -51809,6 +51872,10 @@ let avTopControlsRenderToken = 0;
 
         function canCurrentUserUpdateDrivePhotoData(itemOverride = null, prefix = '') {
             if (!hasProductionMasterDetailForItem(getEditableDetailItemForPrefix(prefix, itemOverride))) return false;
+            return canCurrentUserUpdateDrivePhotoDataByRole(itemOverride, prefix);
+        }
+
+        function canCurrentUserUpdateDrivePhotoDataByRole(itemOverride = null, prefix = '') {
             const access = getRoleAccessState();
             if (access && access.isAdmin) return true;
             return canRestrictedEvalUserUpdateItem(getEditableDetailItemForPrefix(prefix, itemOverride), currentUser, currentUserDisplay);
@@ -51817,12 +51884,16 @@ let avTopControlsRenderToken = 0;
         function canEditRowDetails(prefix = '', itemOverride = null) {
             if (typeof canUseVerifiedProductionData === 'function' && !canUseVerifiedProductionData(getProductionDetailDatasetKeys(prefix))) return false;
             if (!hasProductionMasterDetailForItem(getEditableDetailItemForPrefix(prefix, itemOverride))) return false;
+            return canEditRowDetailsByRole(prefix, itemOverride);
+        }
+
+        function canEditRowDetailsByRole(prefix = '', itemOverride = null) {
             const normalizedPrefix = String(prefix || '').trim();
             const access = getRoleAccessState();
             if (normalizedPrefix === 'req-') return canCurrentUserWorkRequestItem(getEditableDetailItemForPrefix(normalizedPrefix, itemOverride));
             if (isRepReadOnlyUser() && !canRepEditDetailPrefix(normalizedPrefix)) return false;
             if (isRestrictedEvalUser(access) && !canRestrictedEvalUserUpdateItem(getEditableDetailItemForPrefix(normalizedPrefix, itemOverride))) return false;
-            if (isDriveModePhotoDataEditContext(normalizedPrefix, itemOverride) && !canCurrentUserUpdateDrivePhotoData(itemOverride, normalizedPrefix)) return false;
+            if (isDriveModePhotoDataEditContext(normalizedPrefix, itemOverride) && !canCurrentUserUpdateDrivePhotoDataByRole(itemOverride, normalizedPrefix)) return false;
             if (normalizedPrefix === 'hold-release-') return true;
             if (activeItem && isSalesOfficeLikeItem(activeItem) && canAccessView('sales-office')) return true;
             if (normalizedPrefix === 'dock-') return canEditDockWorkflow();
@@ -51855,10 +51926,17 @@ let avTopControlsRenderToken = 0;
         }
 
         function canEditNcrWorkflow(item = activeItem) {
-            if (item === activeItem
-                && getCurrentVisibleViewId() === 'detail' && !hasProductionMasterDetailForItem(item)) return false;
+            const isActiveDetail = item === activeItem && getCurrentVisibleViewId() === 'detail';
+            if (isActiveDetail && !hasProductionMasterDetailForItem(item)) return false;
             const detailSourceView = String(activeDetailSourceView || lastView || '').trim().toLowerCase();
-            if (detailSourceView === 'tasks' && isEvalNcrOrMoveUpDetailTask(item)) return canEditRowDetails('ncr-', item);
+            if (detailSourceView === 'tasks' && isEvalNcrOrMoveUpDetailTask(item)) {
+                if (isActiveDetail) return canEditRowDetails('ncr-', item);
+                // Task cards use retained workflow fields from the verified
+                // list. They need the same role/assignment policy, not an
+                // editor-only exact-row binding on the shared list object.
+                return canUseVerifiedProductionData(getProductionDetailDatasetKeys('ncr-'))
+                    && canEditRowDetailsByRole('ncr-', item);
+            }
             return canAccessView('review') || canAccessView('move-up') || canUseNcrTaskView() || canUseNcrApprovalTaskView();
         }
         function getPendingRequestCount() {
@@ -51868,6 +51946,13 @@ let avTopControlsRenderToken = 0;
         }
 
         function queueRequestBadgeLiveSync(delay = 450) {
+            if (canUseProductionLiveSync()) {
+                // The coordinator owns native event and safeguard polling.
+                // A verified badge render must not schedule its next check.
+                if (requestBadgeLiveSyncTimer) clearTimeout(requestBadgeLiveSyncTimer);
+                requestBadgeLiveSyncTimer = null;
+                return;
+            }
             if (!currentUser || navigator.onLine === false || requestBadgeLiveSyncTimer) return;
             if (requestViewLiveSyncTimer || requestViewLiveSyncInFlight) return;
             requestBadgeLiveSyncTimer = setTimeout(() => {
@@ -104645,9 +104730,12 @@ function toggleDriveQuickRequestItem(domId) {
                 const session = productionMasterDetailSession || beginProductionMasterDetailSession(activeItem, expectedToken);
                 if (!isProductionMasterDetailSessionCurrent(session)) return false;
                 if (!hasProductionMasterDetailForItem(activeItem)) {
-                    if (session.status === 'ready') session.status = 'changed';
+                    if (session.status === 'ready') {
+                        if (!isProductionMasterDetailBindingCurrent(activeItem)) session.status = 'changed';
+                        else session.renderWaitingForVerification = true;
+                    }
                     applyProductionMasterDetailControlState();
-                    if (session.status === 'changed' || session.renderPending) return false;
+                    if (session.status === 'changed' || session.status === 'ready' || session.renderPending) return false;
                     session.renderPending = true;
                     ensureActiveProductionMasterDetail(session).then((ready) => {
                         session.renderPending = false;
@@ -104662,6 +104750,7 @@ function toggleDriveQuickRequestItem(domId) {
                     });
                     return false;
                 }
+                session.renderWaitingForVerification = false;
             }
             const hydrationStartedAt = beginInternalPerfMeasure();
             const primaryDetailTab = getPrimaryDetailTabForItemContext(activeItem, activeDetailSourceView || lastView || '');
@@ -160657,6 +160746,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             let changed = false;
 
             for (let uid in pendingEdits) {
+                const pendingEntry = pendingEdits[uid];
+                const pendingMasterData = pendingEntry && pendingEntry.data;
+                const pendingTable = String(firstNonEmptyValue(pendingMasterData && pendingMasterData.SOURCE_TABLE,
+                    pendingMasterData && pendingMasterData.source_table, pendingEntry && pendingEntry.sourceTable, '') || '').trim().toLowerCase();
+                if (usesProductionMasterListProjection() && pendingMasterData
+                    && (pendingTable === 'ph_master_inventory' || (!pendingTable && masterInventoryById.has(String(uid).trim())
+                        && !isRequestLikeLocalEditRow(pendingMasterData)))) {
+                    // Exact-detail editors restore these records into a fenced
+                    // DOM sidecar. Replaying them into the verified list would
+                    // also broadcast draft fields back over activeItem's fresh
+                    // full-row baseline via syncRowDataAcrossViews.
+                    continue;
+                }
                 // Keep conflicted offline work recoverable, but never overlay it on
                 // a newer canonical request row or retry it automatically.
                 if (pendingEdits[uid] && pendingEdits[uid].autoRetryBlocked === true) {

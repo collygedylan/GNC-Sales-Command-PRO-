@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 async function seedAvBlankFilters(page: Page, username: string, role: string, includeNcrRows = false) {
   // The real task UI runs against synthetic cached inventory. All external
@@ -158,19 +159,27 @@ for (const username of ['madison_austin', 'madelyn_gray']) {
   test(`${username} sees shared AV Blanks but only Season Sales Notes`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     // No real accounts, customer data, or production writes are used.
-    const fixtureRows = async (table: string) => page.evaluate(table => {
-      const fixture = (window as any).__marketingFixture || {};
-      return fixture[table === 'ph_master_inventory' ? 'data' : table === 'ph_cav_import' ? 'cavAvBlankKeysData' : 'unused'] || [];
-    }, table);
+    const fixtureRows = async (table: string, query = '') => {
+      const rows = await page.evaluate(table => {
+        const fixture = (window as any).__marketingFixture || {};
+        return fixture[table === 'ph_master_inventory' ? 'data' : table === 'ph_cav_import' ? 'cavAvBlankKeysData' : 'unused'] || [];
+      }, table);
+      const params = new URLSearchParams(query);
+      // These are legacy cached-data tests. Keep their unchanged unprojected
+      // response, but never ignore an explicit compact or exact-row query.
+      const scopedOrProjected = !!params.get('unique_id') || !!params.get('select') && params.get('select') !== '*';
+      return table === 'ph_master_inventory' && scopedOrProjected ? inventoryReadFixture.read(rows, query).rows : rows;
+    };
     await page.route('**/functions/v1/**', async route => {
       const body = route.request().postDataJSON() || {};
       if (body.action === 'db' && body.method !== 'GET') return route.abort();
-      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: await fixtureRows(body.table) }) });
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: await fixtureRows(body.table, body.query || '') }) });
     });
     await page.route('**/rest/v1/**', async route => {
       if (route.request().method() !== 'GET') return route.abort();
-      const table = new URL(route.request().url()).pathname.split('/').pop()!;
-      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(await fixtureRows(table)) });
+      const url = new URL(route.request().url());
+      const table = url.pathname.split('/').pop()!;
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(await fixtureRows(table, url.search)) });
     });
     await page.goto('/?post_deploy_access_canary=sales-marketing-tasks', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');

@@ -54,7 +54,9 @@ function fullSchemaRows(): InventoryRow[] {
   return Array.from({ length: inventorySchema.sampledRows }, (_, index) => Object.fromEntries(
     inventorySchema.schema.map(column => {
       const value = index < column.sampleNonNullRows ? inventorySchema.syntheticValues[column.name] : null;
-      expect(value, `Explicit synthetic value for ${column.name}`).not.toBeUndefined();
+      // Keep schema validation strict without registering 27,264 Playwright
+      // assertion steps before navigation. This does not change fixture data.
+      if (value === undefined) throw new Error(`Missing explicit synthetic value for ${column.name}`);
       return [column.name, column.name === 'unique_id' ? `${value}-${index}` : value];
     })));
 }
@@ -91,9 +93,21 @@ test.afterEach(async ({ page }, info) => {
     const browser = await page.evaluate(() => {
       const measured = (window as any).__cacheMetrics;
       const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+      let detailState: unknown;
+      try {
+        detailState = window.eval(`({view:getCurrentVisibleViewId(),
+          projection:getDatasetState('master').listProjectionVersion,
+          uid:activeItem?.UNIQUE_ID, detailStatus:productionMasterDetailSession?.status,
+          detailError:productionMasterDetailSession?.error,
+          exact:!!activeItem && hasProductionMasterDetailForItem(activeItem),
+          savedDraft:productionMasterDetailSession?.pendingLocalDraft?.SPEC,
+          spec:document.getElementById('lsn-spec')?.value,
+          specDisabled:document.getElementById('lsn-spec')?.disabled})`);
+      } catch (error) { detailState = { unavailable: String(error) }; }
       return {
         measurementScope: 'Latest document navigation; timestamps are milliseconds from navigation start',
         ...measured,
+        detailState,
         launchToHomeMs: measured?.homeVisibleAt || null,
         requiredAccessToSavedVisibleMs: measured?.accessResolvedAt && measured?.savedVisibleAt
           ? measured.savedVisibleAt - measured.accessResolvedAt : null,
@@ -121,9 +135,15 @@ test.afterEach(async ({ page }, info) => {
 
 async function fixture(page: Page, baseURL: string) {
   const origin = new URL(baseURL).origin;
+  // Notification permission is outside this data fixture. Dismiss the actual
+  // help dialog if it interrupts a user click; never force-click through it.
+  await page.addLocatorHandler(page.locator('#push-permission-help-modal'), async modal => {
+    await modal.getByRole('button', { name: 'Close', exact: true }).click();
+  });
   const state = {
     username: USER_A, revision: '1', permission: 'fixture-permission-1', denied: false,
     sourceRevisions: {} as Record<string, string>,
+    revisionRequests: [] as { sequence: number; keys: string[]; startedAt: number; responseStartedAt?: number }[],
     rows: [stock()], reads: [] as { table: string; full: boolean; select?: string; exact?: boolean }[], revisions: 0,
     exactDetailUnavailable: false,
     masterResponses: [] as { select: string; exact: boolean; rowCount: number; fieldCount: number; bodyBytes: number }[],
@@ -192,7 +212,10 @@ async function fixture(page: Page, baseURL: string) {
       }
       if (operation === 'get_my_dataset_revisions_v1') {
         state.revisions++;
+        const observation = { sequence: state.revisions, keys: [...(body.p_dataset_keys || [])], startedAt: Date.now(), responseStartedAt: undefined as number | undefined };
+        state.revisionRequests.push(observation);
         await wait('revisions');
+        observation.responseStartedAt = Date.now();
         return json(route, { contractVersion: 1, permissionVersion: state.permission, serverTime: new Date().toISOString(),
           sources: (body.p_dataset_keys || []).map((key: string) => ({ key, revision: state.denied ? null : state.sourceRevisions[key] || state.revision,
             state: state.denied ? 'unavailable' : 'ready' })) });
@@ -413,6 +436,31 @@ async function storedSnapshotCount(page: Page) {
   })()`));
 }
 
+async function openLocationDetail(page: Page) {
+  await page.evaluate(uid => (window as any).openDetail(uid, 'drive', { preferredTab: 'location' }), ROW_ID);
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#lsn-spec')).toBeVisible();
+}
+
+async function exactDetailReady(page: Page) {
+  await expect.poll(() => page.evaluate(() => window.eval(`productionMasterDetailSession?.status === 'ready'
+    && hasProductionMasterDetailForItem(activeItem)`))).toBe(true);
+  await expect(page.locator('#lsn-spec')).toBeEditable();
+  await expect(page.locator('#lsn-btn-save-complete')).toBeEnabled();
+}
+
+async function seedSavedDetailDraft(page: Page) {
+  // Seed the actual persisted local-edit format, not a disabled placeholder.
+  // The real compact -> exact hydration must recover it into the correct form.
+  await page.evaluate(uid => window.eval(`(() => {
+    const row=fullInventory.find(row=>row.UNIQUE_ID===${JSON.stringify(uid)});
+    if(!row) throw new Error('Saved draft requires its exact authorized list identity');
+    getPendingEditsCache()[row.UNIQUE_ID]={timestamp:Date.now(), sourceTable:'ph_master_inventory',
+      data:{...row, SPEC:'Retained local draft', AV_NOTE:'Retained local note'}};
+    flushPendingEditsCache(true);
+  })()`), ROW_ID);
+}
+
 test('warm reload reuses its persisted verified snapshot without a full inventory download', async ({ page, baseURL }) => {
   const f = await fixture(page, baseURL!);
   await f.open(); await drive(page); await saved(page); await verified(page);
@@ -490,35 +538,24 @@ test('an open saved detail enables its controls after verification without repop
   f.state.revision = '2';
   const release = f.gate('ph_master_inventory');
   await page.reload({ waitUntil: 'load' }); await home(page); await drive(page); await saved(page);
-  await page.evaluate(uid => (window as any).openDetail(uid, 'drive', { preferredTab: 'location' }), ROW_ID);
-  await expect(page.locator('#view-detail')).toBeVisible();
+  await seedSavedDetailDraft(page);
+  await openLocationDetail(page);
   const field = page.locator('#lsn-spec');
-  await expect(field).toBeVisible();
-  // openDetail binds a fast shell and then hydrates its initial row on a queued
-  // frame. An already-restored draft belongs after that initial binding, not in
-  // its still-disabled placeholder. Wait the real work; do not force or stub it.
   await expect.poll(() => page.evaluate(() => window.eval(`({
     row: activeItem?.UNIQUE_ID,
-    hydrated: !!detailHydrationToken && !pendingDetailHydrationToken && !detailHydrationTimer
-      && !uiRenderFrames['detail-hydrate:'+detailHydrationToken],
+    saved: productionMasterDetailSession?.pendingLocalDraft?.SPEC,
     verified: getProductionLiveSyncCoordinator().isVerified(createProductionCoreLiveAdapter('master'))
-  })`))).toEqual({ row: ROW_ID, hydrated: true, verified: false });
+  })`))).toEqual({ row: ROW_ID, saved: 'Retained local draft', verified: false });
   await expect(field).not.toBeEditable();
   await expect(page.locator('#lsn-btn-save-complete')).toBeDisabled();
-  // Represent already-restored local form text without dispatching an autosave.
-  await field.evaluate((element: HTMLInputElement) => {
-    if (!element.isConnected) throw new Error('The restored draft must bind to the connected Detail input');
-    element.value = 'Retained local draft';
-    (window as any).__cacheMetrics.lifecycle.push({ event: 'fixture-restored-draft', at: performance.now(),
-      details: window.eval(`({row:activeItem?.UNIQUE_ID, token:detailHydrationToken, pendingToken:pendingDetailHydrationToken,
-        timer:!!detailHydrationTimer, queuedFrame:!!uiRenderFrames['detail-hydrate:'+detailHydrationToken]})`) });
-  });
-  await expect(field).toHaveValue('Retained local draft');
   release();
-  await expect.poll(() => page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().isVerified(createProductionCoreLiveAdapter('master'))`))).toBe(true);
-  await expect(field).toBeEditable();
-  await expect(page.locator('#lsn-btn-save-complete')).toBeEnabled();
+  await exactDetailReady(page);
   await expect(field).toHaveValue('Retained local draft');
+  await expect(page.locator('#lsn-av-note')).toHaveValue('Retained local note');
+  expect(await page.evaluate(() => window.eval(`({server:activeItem.SPEC || '',
+    list:fullInventory.find(row=>row.UNIQUE_ID===activeItem.UNIQUE_ID).SPEC || ''})`)))
+    .toEqual({ server: '', list: '' });
+  expect(f.state.masterResponses.some(response => response.exact && response.select === '*')).toBe(true);
   expect(f.state.forbidden).toEqual([]);
 });
 
@@ -567,6 +604,77 @@ test('a denied revision source cannot authorize its old saved rows', async ({ pa
   expect(f.state.forbidden).toEqual([]);
 });
 
+test('verified footer badges stay idle and one real revision event causes only a bounded refresh', async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!);
+  await f.open();
+  await page.evaluate(() => {
+    const original = (window as any).signalProductionLiveSync;
+    (window as any).signalProductionLiveSync = function (...args: any[]) {
+      (window as any).__cacheMetrics.lifecycle.push({ event: 'native-check-signal', at: performance.now(),
+        details: { reason: args[0], delay: args[1], caller: new Error().stack } });
+      return original.apply(this, args);
+    };
+  });
+  await drive(page); await saved(page); await verified(page);
+  const badgesReady = () => page.evaluate(() => window.eval(`isProductionBadgeVerified('badge:queue')
+    && isProductionBadgeVerified('badge:communications')`));
+  await expect.poll(badgesReady).toBe(true);
+  // Login deliberately defers its first realtime-subscription check through
+  // this real touch-task queue. Start the idle horizon only after that task
+  // and its metadata work settle. The old 700ms feedback loop cannot satisfy
+  // even this 1s quiet precondition, let alone the following 3.1s assertion.
+  let settledReads = f.state.revisions, unchangedSince = performance.now();
+  await expect.poll(async () => {
+    const startupQueued = await page.evaluate(() => window.eval(`!!runAfterTouchInteractionTasks['current-view-realtime-subscriptions']`));
+    if (startupQueued || f.state.revisions !== settledReads) {
+      settledReads = f.state.revisions; unchangedSince = performance.now();
+    }
+    return !startupQueued && performance.now() - unchangedSince >= 1000;
+  }).toBe(true);
+  const initialReads = f.state.revisions;
+  // The observation horizon is the behavior under test: a footer paint must
+  // not re-arm the former 450ms + 250ms self-refresh feedback loop.
+  await page.waitForTimeout(3100);
+  expect(f.state.revisions - initialReads).toBe(0);
+  const initialDownloads = f.masterReads();
+  const eventSignalsStart = await page.evaluate(() => (window as any).__cacheMetrics.lifecycle.filter((entry: any) => entry.event === 'native-check-signal').length);
+  const eventDataReadsStart = f.state.reads.length;
+  const eventImageRequests: string[] = [];
+  page.on('request', request => { if (request.resourceType() === 'image') eventImageRequests.push(new URL(request.url()).pathname); });
+  f.state.sourceRevisions.ph_master_inventory = '2'; f.state.rows = [stock(CURRENT_NAME)];
+  const dispatched = await page.evaluate(() => window.eval(`(() => {
+    const channel=getSupabaseBrowserClient().getChannels().find(channel=>channel.topic.includes('dataset-revisions:'));
+    const binding=channel?.bindings?.postgres_changes?.find(binding=>binding.filter?.table==='app_dataset_revisions');
+    if(!binding || typeof binding.callback!=='function') throw new Error('The actual production revision subscription is required');
+    binding.callback({eventType:'UPDATE',schema:'public',table:'app_dataset_revisions',
+      new:{key:'ph_master_inventory'},old:{}});
+    return true;
+  })()`));
+  expect(dispatched).toBe(true);
+  await expect(page.locator('#drive-content')).toContainText(CURRENT_NAME);
+  await verified(page); await expect.poll(badgesReady).toBe(true);
+  const afterEventReads = f.state.revisions;
+  expect(afterEventReads - initialReads).toBeGreaterThan(0);
+  // Two real lanes each need a before/after vector and may join one in-flight
+  // render-triggered check. Those cached joins make six the finite bound;
+  // they must not start another download or any subsequent idle feedback.
+  expect(afterEventReads - initialReads).toBeLessThanOrEqual(6);
+  expect(f.masterReads() - initialDownloads).toBe(1);
+  await page.waitForTimeout(3100);
+  expect(f.state.revisions).toBe(afterEventReads);
+  expect(await page.evaluate(() => (window as any).__cacheMetrics.lifecycle.filter((entry: any) => entry.event === 'native-check-signal').length)).toBe(eventSignalsStart);
+  expect(f.state.reads.slice(eventDataReadsStart).filter(read => read.table === 'ph_master_inventory')).toHaveLength(1);
+  expect(eventImageRequests).toEqual([]);
+  await info.attach('bounded-revision-refresh', { contentType: 'application/json',
+    body: JSON.stringify({ idleObservationMs: 3100, idleRevisionReads: 0,
+      eventRevisionReads: afterEventReads - initialReads, eventInventoryDownloads: f.masterReads() - initialDownloads,
+      finalRevisionReads: f.state.revisions,
+      bound: '2 lanes × (before + after + at most one queued cached join) = 6',
+      eventDataReads: f.state.reads.slice(eventDataReadsStart), eventImageRequests,
+      revisionRpcTimeline: f.state.revisionRequests.filter(request => request.sequence > initialReads) }, null, 2) });
+  expect(f.state.forbidden).toEqual([]);
+});
+
 test('offline resume retains the snapshot and a draft, then verifies on reconnect', async ({ page, context, baseURL }) => {
   const f = await fixture(page, baseURL!);
   await f.open(); await drive(page); await saved(page); await verified(page);
@@ -587,5 +695,192 @@ test('offline resume retains the snapshot and a draft, then verifies on reconnec
       request.onsuccess=()=>resolve(request.result?.note);
     });
   })()`))).toBe('Unsent synthetic draft');
+  expect(f.state.forbidden).toEqual([]);
+});
+
+test('compact list preserves full-schema list filters and counts with at least 50 percent fewer JSON bytes', async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!);
+  const constructionStartedAt = performance.now();
+  const fullRows = fullSchemaRows();
+  const syntheticFixtureConstructionMs = performance.now() - constructionStartedAt;
+  f.state.rows = fullRows;
+  await f.open(); await drive(page); await verified(page);
+  await expect.poll(() => page.evaluate(() => window.eval('fullInventory.length'))).toBe(fullRows.length);
+  await expect(page.locator('#drive-content')).toContainText('Synthetic Plant');
+  const readyObservation = await page.evaluate(() => ({ observedAt: performance.now(),
+    accessResolvedAt: (window as any).__cacheMetrics.accessResolvedAt,
+    verifiedVisibleAt: (window as any).__cacheMetrics.verifiedVisibleAt }));
+  const parity = await page.evaluate(rawRows => {
+    (window as any).__fullSchemaParityRows = rawRows;
+    return window.eval(`(() => {
+      const baseline=formatFetchedRows(window.__fullSchemaParityRows,'ph_master_inventory');
+      delete window.__fullSchemaParityRows;
+      baseline.forEach(buildSearchIndex);
+      const ids=rows=>rows.map(row=>row.UNIQUE_ID).sort();
+      const searches=['synthetic','TEST.001','A.01.001','27.F1','no-matching-synthetic-row'];
+      const searchResults=searches.map(term=>({term, full:ids(filterBySearch(baseline,term,'drive_name')),
+        compact:ids(filterBySearch(fullInventory,term,'drive_name'))}));
+      const filters=[
+        {name:'Synthetic',location:'',lot:'',size:'',mode:'',value:''},
+        {name:'',location:'A.01.001',lot:'27.F1',size:'#3',mode:'',value:''},
+        {name:'',location:'',lot:'',size:'',mode:'gt',value:'99'},
+        {name:'',location:'',lot:'',size:'',mode:'gt',value:'101'}
+      ];
+      const quickResults=filters.map((filter,index)=>{
+        driveQuickFilterName=filter.name; driveQuickFilterLocation=filter.location;
+        driveQuickFilterLot=filter.lot; driveQuickFilterSize=filter.size;
+        driveQuickFilterLtsMode=filter.mode; driveQuickFilterLtsValue=filter.value;
+        return {full:ids(applyDriveQuickFiltersToItems(baseline,'full-parity-'+index)),
+          compact:ids(applyDriveQuickFiltersToItems(fullInventory,'compact-parity-'+index))};
+      });
+      const count=rows=>({rows:rows.length, itemcodes:new Set(rows.map(row=>row.ITEMCODE)).size,
+        locations:new Set(rows.map(row=>row.LOCATIONCODE)).size,
+        lts:rows.reduce((sum,row)=>sum+(parseFloat(row.S_LTS)||0),0),
+        held:rows.filter(isDriveHoldStopCodeRow).length,
+        programs:buildDriveItemProgramGroups(rows)});
+      return {version:getDatasetState('master').listProjectionVersion,
+        allList:fullInventory.every(row=>window.AgMetricInventoryList.isListRow(row)),
+        ids:{full:ids(baseline),compact:ids(fullInventory)},
+        count:{full:count(baseline),compact:count(fullInventory)},searchResults,quickResults};
+    })()`);
+  }, fullRows);
+  expect(parity.version).toBe('master-list-v1'); expect(parity.allList).toBe(true);
+  expect(parity.ids.compact).toEqual(parity.ids.full);
+  expect(parity.count.compact).toEqual(parity.count.full);
+  for (const result of [...parity.searchResults, ...parity.quickResults]) expect(result.compact).toEqual(result.full);
+  const responses = f.state.masterResponses.filter(response => !response.exact);
+  expect(responses.length).toBeGreaterThan(0);
+  expect(responses.every(response => response.select !== '*' && (response.rowCount === 0 || response.fieldCount === 161))).toBe(true);
+  const compactJsonBytes = responses.reduce((sum, response) => sum + response.bodyBytes, 0);
+  const fullJsonBytes = Buffer.byteLength(JSON.stringify(fullRows));
+  const reductionPercent = 100 * (1 - compactJsonBytes / fullJsonBytes);
+  expect(reductionPercent).toBeGreaterThanOrEqual(50);
+  await info.attach('compact-list-parity-and-bytes', { contentType: 'application/json',
+    body: JSON.stringify({ fullJsonBytes, compactJsonBytes, reductionPercent,
+      syntheticFixtureConstructionMs, readyObservation,
+      note: 'Identical 213-field synthetic rows. Uncompressed routed JSON bodies, not compressed network egress.', parity }, null, 2) });
+  expect(f.state.errors).toEqual([]); expect(f.state.forbidden).toEqual([]);
+});
+
+test('list completeness keeps the editor read-only until the exact full row is verified', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!);
+  await f.open(); await drive(page); await saved(page); await verified(page);
+  const release = f.gate('master-detail');
+  await openLocationDetail(page);
+  await expect.poll(() => f.state.held.includes('master-detail')).toBe(true);
+  await expect(page.locator('#master-detail-load-state')).toContainText('Checking exact inventory details');
+  await expect(page.locator('#lsn-spec')).not.toBeEditable();
+  await expect(page.locator('#lsn-btn-save-complete')).toBeDisabled();
+  expect(await page.evaluate(() => window.eval(`({
+    list:window.AgMetricInventoryList.isListRow(fullInventory[0]),
+    fullOnly:Object.hasOwn(fullInventory[0],'UNITPRICE'),
+    editable:canEditRowDetails('lsn-',activeItem), exact:hasProductionMasterDetailForItem(activeItem)
+  })`))).toEqual({ list: true, fullOnly: false, editable: false, exact: false });
+  release(); await exactDetailReady(page);
+  expect(await page.evaluate(() => window.eval(`({uid:activeItem.UNIQUE_ID,price:activeItem.UNITPRICE,
+    ordered:activeItem.QUANTITYORDERED,note:activeItem.INTERNALINVNOTE,
+    full:window.AgMetricInventoryList.isDetailRow(activeItem,{...getProductionMasterDetailContext(),uniqueId:activeItem.UNIQUE_ID}),
+    listOnly:window.AgMetricInventoryList.isListRow(fullInventory[0]),
+    listHasFullOnly:Object.hasOwn(fullInventory[0],'UNITPRICE'), detached:activeItem!==fullInventory[0]})`)))
+    .toEqual({ uid: ROW_ID, price: '45.67', ordered: '987', note: 'Synthetic exact full-only note',
+      full: true, listOnly: true, listHasFullOnly: false, detached: true });
+  const exactResponses = f.state.masterResponses.filter(response => response.exact);
+  expect(exactResponses.length).toBeGreaterThan(0);
+  expect(exactResponses.every(response => response.select === '*' && response.fieldCount === 213)).toBe(true);
+  expect(f.state.errors).toEqual([]); expect(f.state.forbidden).toEqual([]);
+});
+
+test('missing exact details stay read-only and retry restores a real saved local draft separately', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!);
+  await f.open(); await drive(page); await saved(page); await verified(page);
+  await seedSavedDetailDraft(page);
+  f.state.exactDetailUnavailable = true;
+  await openLocationDetail(page);
+  await expect(page.getByRole('button', { name: 'Retry details', exact: true })).toBeVisible();
+  await expect(page.locator('#lsn-spec')).not.toBeEditable();
+  await expect(page.locator('#lsn-btn-save-complete')).toBeDisabled();
+  expect(await page.evaluate(() => window.eval(`({status:productionMasterDetailSession?.status,
+    saved:getPendingEditsCache()[activeItem.UNIQUE_ID]?.data.SPEC,
+    local:productionMasterDetailSession?.pendingLocalDraft?.SPEC,
+    exact:hasProductionMasterDetailForItem(activeItem)})`)))
+    .toEqual({ status: 'error', saved: 'Retained local draft', local: 'Retained local draft', exact: false });
+  f.state.exactDetailUnavailable = false;
+  await page.getByRole('button', { name: 'Retry details', exact: true }).click();
+  await exactDetailReady(page);
+  await expect(page.locator('#lsn-spec')).toHaveValue('Retained local draft');
+  await expect(page.locator('#lsn-av-note')).toHaveValue('Retained local note');
+  expect(await page.evaluate(() => window.eval(`({server:activeItem.SPEC||'',
+    canonical:getProductionMasterDetailStore().getVerifiedRows([activeItem.UNIQUE_ID])[0].SPEC||''})`)))
+    .toEqual({ server: '', canonical: '' });
+  expect(f.state.forbidden).toEqual([]);
+});
+
+test('a changed verified revision retains an open editor draft without rebasing it onto a new full row', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!);
+  await f.open(); await drive(page); await saved(page); await verified(page);
+  await openLocationDetail(page); await exactDetailReady(page);
+  // This editor is genuinely ready before the draft is made. Do not trigger
+  // autosave while exercising a read-only refresh/retention boundary.
+  await page.locator('#lsn-spec').evaluate((element: HTMLInputElement) => {
+    element.value = 'Keep my current editor draft';
+    element.focus(); element.setSelectionRange(5, 11);
+  });
+  f.state.revision = '2'; f.state.rows = [{ ...stock(), spec: 'New server spec' }];
+  await page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().check('fixture-revision-change')`));
+  await expect.poll(() => page.evaluate(() => window.eval('productionMasterDetailSession?.status'))).toBe('changed');
+  await expect(page.locator('#lsn-spec')).toHaveValue('Keep my current editor draft');
+  await expect(page.locator('#lsn-spec')).not.toBeEditable();
+  await expect(page.locator('#lsn-btn-save-complete')).toBeDisabled();
+  await expect(page.locator('#master-detail-load-state')).toContainText('Your draft is retained');
+  expect(await page.evaluate(() => window.eval(`activeItem.SPEC||''`))).toBe('');
+  expect(f.state.forbidden).toEqual([]);
+});
+
+test('a persisted snapshot from a different projection query cannot supply visible rows', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!);
+  await f.open(); await drive(page); await saved(page); await verified(page);
+  await expect.poll(() => storedSnapshotCount(page)).toBeGreaterThan(0);
+  await page.evaluate(async () => window.eval(`(async()=>{
+    const adapter=createProductionCoreLiveAdapter('master');
+    const key=getProductionDatasetCacheKey(adapter,getProductionDataScope());
+    const entry=await loadCacheValue(key);
+    if(!entry) throw new Error('Real canonical snapshot must be persisted before corruption fixture');
+    entry.cacheKey=JSON.stringify(['master','ph_master_inventory','select=*','obsolete-projection']);
+    if(!await saveCacheValue(key,entry)) throw new Error('Failed to persist the mismatched query fixture');
+  })()`));
+  const release = f.gate('ph_master_inventory');
+  await page.reload({ waitUntil: 'load' }); await home(page); await drive(page);
+  await expect.poll(() => f.state.held.includes('ph_master_inventory')).toBe(true);
+  await expect(page.locator('#drive-content')).not.toContainText(SAVED_NAME);
+  expect(await page.evaluate(() => window.eval(`fullInventory.some(row=>row.UNIQUE_ID==='verified-cache-row')`))).toBe(false);
+  release(); await verified(page); await saved(page);
+  expect(f.state.forbidden).toEqual([]);
+});
+
+test('a permission change during an exact read rejects its old full row before the editor becomes ready', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!);
+  f.state.rows = [{ ...stock(), spec: 'Old permission row' }];
+  await f.open(); await drive(page); await saved(page); await verified(page);
+  const release = f.gate('master-detail');
+  await openLocationDetail(page);
+  await expect.poll(() => f.state.held.includes('master-detail')).toBe(true);
+  await expect(page.locator('#lsn-spec')).not.toBeEditable();
+  const firstExactReads = f.state.reads.filter(read => read.exact).length;
+  // The held response has already captured the previous permission's row.
+  // The real coordinator's post-read permission fence must discard that value.
+  f.state.permission = 'fixture-permission-2';
+  f.state.rows = [{ ...stock(), spec: 'Current permission row' }];
+  release();
+  await expect(page.getByRole('button', { name: 'Retry details', exact: true })).toBeVisible();
+  await expect(page.locator('#lsn-spec')).not.toBeEditable();
+  await expect(page.locator('#lsn-btn-save-complete')).toBeDisabled();
+  expect(await page.evaluate(() => window.eval('hasProductionMasterDetailForItem(activeItem)'))).toBe(false);
+  await page.getByRole('button', { name: 'Retry details', exact: true }).click();
+  await exactDetailReady(page);
+  await expect(page.locator('#lsn-spec')).toHaveValue('Current permission row');
+  expect(await page.evaluate(() => window.eval(`({spec:activeItem.SPEC,
+    permission:getProductionMasterDetailContext().permissionVersion})`)))
+    .toEqual({ spec: 'Current permission row', permission: 'fixture-permission-2' });
+  expect(f.state.reads.filter(read => read.exact).length).toBeGreaterThan(firstExactReads);
   expect(f.state.forbidden).toEqual([]);
 });

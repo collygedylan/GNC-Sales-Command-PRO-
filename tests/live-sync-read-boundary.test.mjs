@@ -116,8 +116,15 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
     }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
         season: { seasonCode: 'S1', salesYear: 27 }, getCurrentAppSeasonSettings: () => ctx.season,
+        getSupabaseReadIdentityScope: () => 'fixture-account-permission',
         fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }) };
-    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    vm.createContext(ctx);
+    vm.runInContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), ctx);
+    ctx.window.AgMetricInventoryList = ctx.AgMetricInventoryList;
+    const prepFrom = html.indexOf('async function prepareMasterListDatasetPayload(');
+    const prepTo = html.indexOf('function buildDatasetPayload(', prepFrom);
+    assert.ok(prepFrom > 0 && prepTo > prepFrom);
+    vm.runInContext(html.slice(prepFrom, prepTo) + html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
     assert.equal(av.id, 'core:master'); assert.equal(av.cacheKey, master.cacheKey);
     assert.equal((await av.stage()).key, 'master');

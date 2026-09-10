@@ -37,10 +37,51 @@
         Object.keys(value).forEach((key) => Object.defineProperty(result, key, { value: clone(value[key], seen), writable: true, enumerable: true, configurable: true }));
         return result;
     }
+    // Only caller-owned, stable graphs may be copied across a yield. Generic
+    // adapter results keep the immediate capture above: their producers may
+    // retain and mutate them as soon as stage() returns.
+    async function copyOwnedSnapshot(value, options = {}) {
+        const clock = options.now || (() => typeof performance !== 'undefined' ? performance.now() : Date.now());
+        const pause = options.yieldToUi || (() => new Promise((resolve) => setTimeout(resolve, 0)));
+        const seen = new Map(), pending = [];
+        function allocate(source) {
+            if (source === null || typeof source !== 'object') return source;
+            if (seen.has(source)) return seen.get(source);
+            const kind = Object.prototype.toString.call(source);
+            if (kind === '[object Date]') {
+                const target = new source.constructor(source.getTime()); seen.set(source, target); return target;
+            }
+            const target = kind === '[object Map]' || kind === '[object Set]' ? new source.constructor()
+                : Array.isArray(source) ? new source.constructor(source.length) : Object.create(Object.getPrototypeOf(source));
+            seen.set(source, target);
+            const iterator = kind === '[object Map]' ? source.entries() : kind === '[object Set]' ? source.values()
+                : (function* () { for (const key in source) if (Object.prototype.hasOwnProperty.call(source, key)) yield key; })();
+            pending.push({ source, target, kind, iterator });
+            return target;
+        }
+        options.assertCurrent?.();
+        const result = allocate(value);
+        let started = clock(), operations = 0;
+        while (pending.length) {
+            const frame = pending[pending.length - 1], next = frame.iterator.next();
+            if (next.done) pending.pop();
+            else if (frame.kind === '[object Map]') frame.target.set(allocate(next.value[0]), allocate(next.value[1]));
+            else if (frame.kind === '[object Set]') frame.target.add(allocate(next.value));
+            else Object.defineProperty(frame.target, next.value, { value: allocate(frame.source[next.value]), writable: true, enumerable: true, configurable: true });
+            operations++;
+            if (pending.length && (operations >= 8192 || clock() - started >= 8)) {
+                options.assertCurrent?.(); options.onYield?.();
+                await pause();
+                options.assertCurrent?.(); started = clock(); operations = 0;
+            }
+        }
+        options.assertCurrent?.();
+        return result;
+    }
     function createCoordinator(options) {
         const now = options.now || Date.now, later = options.setTimeout || setTimeout, cancel = options.clearTimeout || clearTimeout;
         const canonical = new Map(), applied = new Map(), verified = new Map(), knownSources = new Map();
-        const jobs = new Map(), loads = new Map();
+        const jobs = new Map(), loads = new Map(), ownedLoadIdentities = new Map();
         let sequence = 0, metadataSequence = 0, epoch = 0, scope = '', permission = '';
         let permissionRefresh = null;
         let pollTimer = null, signalTimer = null, signalAt = Infinity, unsubscribe = null, subscribedScope = '';
@@ -48,6 +89,23 @@
         const statistics = { revisionReads: 0, adapterReads: 0, discardedLoads: 0, commits: 0, signals: 0, cacheHits: 0, previews: 0 };
         const adapterKey = (adapter, ctx) => JSON.stringify([ctx.scope, adapter.id, adapter.cacheKey, unique(adapter.sourceKeys)]);
         const appliedSignature = (adapter, meta) => JSON.stringify([adapter.cacheKey, signature(meta, adapter.sourceKeys)]);
+        const ownsMasterSnapshot = (adapter) => adapter.id === 'core:master' && adapter.snapshotOwnership === 'coordinator';
+        function copyCancellation() { return Object.assign(new Error('Data changed while preparing a snapshot.'), { code: 'SNAPSHOT_COPY_CANCELLED' }); }
+        function readIdentity() { return options.getSnapshotReadIdentity?.(); }
+        function prepareCopy(value, ctx, startedEpoch, adapters, copyState) {
+            // One identity anchor covers the entire copy phase, including the
+            // microtask gaps between sequential disk/UI copies.
+            const capturedIdentity = copyState.readIdentity;
+            return copyOwnedSnapshot(value, { yieldToUi: options.yieldToUi,
+                assertCurrent: () => { if (!validWork(ctx, startedEpoch, adapters) || readIdentity() !== capturedIdentity) throw copyCancellation(); },
+                onYield: () => { copyState.yielded = true; }
+            });
+        }
+        function stageKey(adapter, ctx, meta, startedEpoch, capturedIdentity = readIdentity()) {
+            const parts = [startedEpoch, adapterKey(adapter, ctx), signature(meta, adapter.sourceKeys)];
+            if (ownsMasterSnapshot(adapter)) parts.push(capturedIdentity);
+            return JSON.stringify(parts);
+        }
         function publish(state, message = '', extra = {}) {
             currentStatus = { state, message, lastVerifiedAt, ...extra };
             options.onStatus?.(currentStatus);
@@ -62,7 +120,7 @@
             unsubscribe = null; subscribedScope = '';
         }
         function invalidate() {
-            epoch++; applied.clear(); verified.clear(); canonical.clear(); knownSources.clear(); loads.clear();
+            epoch++; applied.clear(); verified.clear(); canonical.clear(); knownSources.clear(); loads.clear(); ownedLoadIdentities.clear();
             permission = ''; permissionRefresh = null; lastVerifiedAt = null;
         }
         function reset() {
@@ -173,12 +231,35 @@
         function entryMatches(entry, adapter, meta) {
             return ready(meta, adapter) && signature({ permissionVersion: entry.permissionVersion, sources: new Map(entry.sources.map((source) => [source.key, source])) }, adapter.sourceKeys) === signature(meta, adapter.sourceKeys);
         }
-        async function loadCanonical(adapter, ctx) {
+        async function loadCanonical(adapter, ctx, startedEpoch, copyState) {
             const existing = canonical.get(adapterKey(adapter, ctx));
             if (existing) return existing;
-            try { return clone(await options.loadSnapshot?.(adapter, ctx)) || null; } catch (_) { return null; }
+            try {
+                if (ownsMasterSnapshot(adapter) && options.loadStableSnapshot) {
+                    const entry = await options.loadStableSnapshot(adapter, ctx);
+                    return entry ? await prepareCopy(entry, ctx, startedEpoch, [adapter], copyState) : null;
+                }
+                return clone(await options.loadSnapshot?.(adapter, ctx)) || null;
+            } catch (error) { if (error?.code === 'SNAPSHOT_COPY_CANCELLED') throw error; return null; }
         }
-        function saveCanonical(adapter, ctx, meta, value) {
+        function canonicalEntry(adapter, ctx, meta, value) {
+            return { contractVersion: 1, id: adapter.id, cacheKey: adapter.cacheKey, scope: ctx.scope,
+                permissionVersion: meta.permissionVersion,
+                sources: adapter.sourceKeys.map((key) => { const source = meta.sources.get(key); return { key, revision: source.revision, state: source.state }; }),
+                verifiedAt: now(), value };
+        }
+        function saveCanonical(adapter, ctx, meta, value, preparedDiskEntry) {
+            if (ownsMasterSnapshot(adapter)) {
+                const entry = canonicalEntry(adapter, ctx, meta, value);
+                canonical.set(adapterKey(adapter, ctx), entry);
+                if (preparedDiskEntry) {
+                    preparedDiskEntry.verifiedAt = entry.verifiedAt;
+                    // This dedicated graph is transferred exactly once. Neither
+                    // canonical nor the later UI commit shares mutable values.
+                    try { Promise.resolve((options.saveOwnedSnapshot || options.saveSnapshot)?.(preparedDiskEntry)).catch(() => {}); } catch (_) { /* Optional storage. */ }
+                }
+                return entry;
+            }
             const entry = { contractVersion: 1, id: adapter.id, cacheKey: adapter.cacheKey, scope: ctx.scope,
                 permissionVersion: meta.permissionVersion,
                 sources: adapter.sourceKeys.map((key) => { const source = meta.sources.get(key); return { key, revision: source.revision, state: source.state }; }),
@@ -193,16 +274,28 @@
             return { ...snapshot(await options.readRevisions(keys), keys), observedOrder };
         }
         function stage(adapter, ctx, meta, startedEpoch) {
-            const key = JSON.stringify([startedEpoch, adapterKey(adapter, ctx), signature(meta, adapter.sourceKeys)]);
+            const capturedIdentity = readIdentity();
+            if (ownsMasterSnapshot(adapter)) ownedLoadIdentities.forEach((identity, key) => {
+                if (identity !== capturedIdentity) { loads.delete(key); ownedLoadIdentities.delete(key); }
+            });
+            const key = stageKey(adapter, ctx, meta, startedEpoch, capturedIdentity);
             if (loads.has(key)) return loads.get(key);
             const task = Promise.resolve().then(async () => {
+                if (ownsMasterSnapshot(adapter) && capturedIdentity !== readIdentity()) throw copyCancellation();
                 statistics.adapterReads++;
                 const value = await adapter.stage();
                 if (value === undefined) throw new Error(adapter.id + ' did not return a snapshot.');
+                if (ownsMasterSnapshot(adapter)) {
+                    if (!validWork(ctx, startedEpoch, [adapter]) || capturedIdentity !== readIdentity()) throw copyCancellation();
+                    // The explicit descriptor transfers a detached master graph;
+                    // it is never handed directly to UI or persistence callers.
+                    return value;
+                }
                 return clone(value);
             });
             loads.set(key, task);
-            task.catch(() => { if (loads.get(key) === task) loads.delete(key); });
+            if (ownsMasterSnapshot(adapter)) ownedLoadIdentities.set(key, capturedIdentity);
+            task.catch(() => { if (loads.get(key) === task) { loads.delete(key); ownedLoadIdentities.delete(key); } });
             // Keep a finished read available until its metadata fence stores
             // the canonical entry so navigation can share the same request.
             return task;
@@ -239,7 +332,8 @@
             const keys = unique(adapters.flatMap((adapter) => adapter.sourceKeys));
             if (!keys.length) { report('Up to date', 'This screen has no live data.'); return { result: true }; }
             if (keys.length > 64) throw new Error('This screen exceeds the revision request limit.');
-            const [before, entries] = await Promise.all([readMetadata(keys), Promise.all(adapters.map((adapter) => loadCanonical(adapter, ctx)))]);
+            const copyState = { yielded: false, readIdentity: readIdentity() };
+            let [before, entries] = await Promise.all([readMetadata(keys), Promise.all(adapters.map((adapter) => loadCanonical(adapter, ctx, startedEpoch, copyState)))]);
             if (!validWork(ctx, startedEpoch, adapters)) return aborted();
             if (!await acceptMetadata(before, ctx, startedEpoch, adapters)) return retry();
             if (!validWork(ctx, startedEpoch, adapters)) return aborted();
@@ -249,7 +343,7 @@
                 if (!eligible(entry, adapter, ctx, before)) return;
                 canonical.set(adapterKey(adapter, ctx), entry);
                 if (entryMatches(entry, adapter, before)) { cached.set(adapter.id, entry); statistics.cacheHits++; }
-                else previews.push({ adapter, value: clone(entry.value) });
+                else previews.push({ adapter, value: ownsMasterSnapshot(adapter) ? entry.value : clone(entry.value) });
             });
             // A matching saved master must still be visible while a changed
             // joined source loads. Keep the entire preview read-only until
@@ -257,9 +351,25 @@
             if (adapters.some((adapter) => !cached.has(adapter.id))) {
                 adapters.forEach((adapter) => {
                     const entry = cached.get(adapter.id);
-                    if (entry && applied.get(adapter.id) !== appliedSignature(adapter, before)) previews.push({ adapter, value: clone(entry.value) });
+                    if (entry && applied.get(adapter.id) !== appliedSignature(adapter, before)) previews.push({ adapter, value: ownsMasterSnapshot(adapter) ? entry.value : clone(entry.value) });
                 });
             }
+            for (const preview of previews) if (ownsMasterSnapshot(preview.adapter)) {
+                preview.value = await prepareCopy(preview.value, ctx, startedEpoch, [preview.adapter], copyState);
+            }
+            // An authorized saved preview must not wait for changed row reads.
+            // Recheck access after yielding copies, before exposing that preview.
+            if (previews.length && copyState.yielded) {
+                const previewMeta = await readMetadata(keys);
+                if (!validWork(ctx, startedEpoch, adapters)) return aborted();
+                if (readIdentity() !== copyState.readIdentity) throw copyCancellation();
+                if (!await acceptMetadata(previewMeta, ctx, startedEpoch, adapters)) return retry();
+                if (signature(before, keys) !== signature(previewMeta, keys)
+                    || signature(previewMeta, keys) !== signature({ permissionVersion: permission, sources: knownSources }, keys)) return retry();
+                before = previewMeta; copyState.yielded = false;
+            }
+            if (previews.some((item) => ownsMasterSnapshot(item.adapter)) && readIdentity() !== copyState.readIdentity) throw copyCancellation();
+            if (previews.length && signature(before, keys) !== signature({ permissionVersion: permission, sources: knownSources }, keys)) return retry();
             if (previews.length && sameView(ctx) && validWork(ctx, startedEpoch, adapters)) {
                 options.previewSnapshots?.(previews, ctx, before); statistics.previews += previews.length;
             }
@@ -270,6 +380,8 @@
             if (changed.length) {
                 report('Syncing', 'Checking and loading changed data.');
                 if (sameView(ctx)) options.onStageStart?.(ctx, before);
+                // onStageStart may initialize the accepted permission identity.
+                copyState.readIdentity = readIdentity();
                 await Promise.all(Array.from({ length: Math.min(options.concurrency || 2, changed.length) }, async () => {
                     while (cursor < changed.length) {
                         const adapter = changed[cursor++];
@@ -278,17 +390,32 @@
                     }
                 }));
             }
-            const after = changed.length ? await readMetadata(keys) : before;
+            const preparedCommits = new Map(), preparedDisk = new Map();
+            for (const adapter of adapters) if (ownsMasterSnapshot(adapter) && !failed.has(adapter.id)) {
+                const loaded = staged.find((item) => item.adapter.id === adapter.id);
+                const value = loaded ? loaded.value : cached.get(adapter.id)?.value;
+                if (value === undefined) continue;
+                if (loaded && (options.saveOwnedSnapshot || options.saveSnapshot)) {
+                    preparedDisk.set(adapter.id, await prepareCopy(canonicalEntry(adapter, ctx, before, value), ctx, startedEpoch, [adapter], copyState));
+                }
+                if (applied.get(adapter.id) !== appliedSignature(adapter, before)) {
+                    preparedCommits.set(adapter.id, await prepareCopy(value, ctx, startedEpoch, [adapter], copyState));
+                }
+            }
+            if (failure?.code === 'SNAPSHOT_COPY_CANCELLED') throw failure;
+            const after = changed.length || copyState.yielded ? await readMetadata(keys) : before;
             if (!validWork(ctx, startedEpoch, adapters)) return aborted();
+            if (adapters.some(ownsMasterSnapshot) && readIdentity() !== copyState.readIdentity) throw copyCancellation();
             if (!await acceptMetadata(after, ctx, startedEpoch, adapters)) return retry();
             if (!validWork(ctx, startedEpoch, adapters)) return aborted();
+            if (adapters.some(ownsMasterSnapshot) && readIdentity() !== copyState.readIdentity) throw copyCancellation();
             if (signature(after, keys) !== signature({ permissionVersion: permission, sources: knownSources }, keys)) return retry();
             // Keep stable datasets across a retry. Only adapters whose own
             // source vectors changed need another complete download.
             staged.forEach(({ adapter, value }) => {
-                if (ready(after, adapter) && signature(before, adapter.sourceKeys) === signature(after, adapter.sourceKeys)) cached.set(adapter.id, saveCanonical(adapter, ctx, after, value));
+                if (ready(after, adapter) && signature(before, adapter.sourceKeys) === signature(after, adapter.sourceKeys)) cached.set(adapter.id, saveCanonical(adapter, ctx, after, value, preparedDisk.get(adapter.id)));
             });
-            changed.forEach((adapter) => loads.delete(JSON.stringify([startedEpoch, adapterKey(adapter, ctx), signature(before, adapter.sourceKeys)])));
+            changed.forEach((adapter) => { const key = stageKey(adapter, ctx, before, startedEpoch); loads.delete(key); ownedLoadIdentities.delete(key); });
             if (signature(before, keys) !== signature(after, keys)) {
                 statistics.discardedLoads++;
                 report('Syncing', 'Source data changed while loading; checking again.');
@@ -297,8 +424,14 @@
             // No asynchronous work between final validation and application.
             // A past screen can populate storage but cannot paint its view.
             if (!sameView(ctx)) return { result: false };
+            // Another navigation cycle may change applied while the metadata
+            // request is pending. Never substitute an unprepared/undefined UI
+            // graph for a newly necessary commit; prepare it in a fresh cycle.
+            if (adapters.some((adapter) => ownsMasterSnapshot(adapter) && cached.has(adapter.id) && !failed.has(adapter.id)
+                && applied.get(adapter.id) !== appliedSignature(adapter, after) && !preparedCommits.has(adapter.id))) return retry();
             const commits = adapters.filter((adapter) => cached.has(adapter.id) && !failed.has(adapter.id)
-                && applied.get(adapter.id) !== appliedSignature(adapter, after)).map((adapter) => ({ adapter, value: clone(cached.get(adapter.id).value) }));
+                && applied.get(adapter.id) !== appliedSignature(adapter, after)).map((adapter) => ({ adapter,
+                    value: ownsMasterSnapshot(adapter) ? preparedCommits.get(adapter.id) : clone(cached.get(adapter.id).value) }));
             if (commits.length) {
                 if (options.commitSnapshots) options.commitSnapshots(commits, ctx, after);
                 else commits.forEach(({ adapter, value }) => adapter.commit(value));
@@ -332,7 +465,8 @@
                         const outcome = await cycle(active, group, foreground);
                         result = outcome.result; job.queued ||= !!outcome.retry;
                     } catch (error) {
-                        if (foreground && sameView(active)) publish('Needs attention', error.message || String(error));
+                        if (error?.code === 'SNAPSHOT_COPY_CANCELLED') job.queued = true;
+                        else if (foreground && sameView(active)) publish('Needs attention', error.message || String(error));
                         result = false;
                     }
                     if (job.queued && foreground) {
@@ -385,8 +519,8 @@
             return task.then(() => epoch === startedEpoch && options.getContext()?.scope === ctx.scope
                 && isVerified(adapter) && verified.get(adapterKey(adapter, ctx))?.sequence > startedSequence);
         }
-        function suspend() { epoch++; verified.clear(); loads.clear(); clearTimers(); closeSubscription(); }
+        function suspend() { epoch++; verified.clear(); loads.clear(); ownedLoadIdentities.clear(); clearTimers(); closeSubscription(); }
         return Object.freeze({ check, signal, ensure, isVerified, reset, suspend, getStatus: () => ({ ...currentStatus }), getStatistics: () => ({ ...statistics }) });
     }
-    return Object.freeze({ createCoordinator, snapshot, signature });
+    return Object.freeze({ createCoordinator, snapshot, signature, copyOwnedSnapshot });
 });
