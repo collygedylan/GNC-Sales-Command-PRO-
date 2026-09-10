@@ -1,0 +1,18 @@
+name: Download and verify the release candidate
+description: Every consumer verifies the sealed build from this exact workflow run and commit.
+inputs:
+  digest:
+    description: SHA256 of the manifest sealed by the build job.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: release-site-${{ github.sha }}
+        path: _site
+    - name: Verify exact build bytes and commit
+      shell: bash
+      env:
+        EXPECTED_RELEASE_DIGEST: ${{ inputs.digest }}
+      run: node scripts/release-artifact.mjs verify

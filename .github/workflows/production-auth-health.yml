@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   issues: write
 
 concurrency:
@@ -17,8 +18,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  published-release:
+    runs-on: ubuntu-latest
+    outputs:
+      should-probe: ${{ steps.published.outputs.should-probe }}
+    steps:
+      - name: Distinguish an actual publication from a failed or superseded candidate
+        id: published
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName !== 'workflow_run') {
+              core.setOutput('should-probe', 'true');
+              return;
+            }
+            const run = context.payload.workflow_run;
+            if (run.head_branch !== 'main') {
+              core.setOutput('should-probe', 'false');
+              return;
+            }
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              ...context.repo, run_id: run.id, per_page: 100
+            });
+            const published = jobs.some(job => job.name === 'deploy' && job.steps?.some(step =>
+              ['Deploy verified artifact to Pages', 'Deploy to Pages'].includes(step.name) && step.conclusion === 'success'));
+            core.setOutput('should-probe', String(published));
+            if (!published) core.notice('No publication occurred; normal scheduled production checks remain active.');
   probe:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main'
+    needs: published-release
+    if: needs.published-release.outputs.should-probe == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

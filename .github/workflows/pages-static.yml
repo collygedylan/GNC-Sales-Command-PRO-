@@ -2,167 +2,79 @@ name: Deploy static app to Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  issues: write
-  pages: write
-  id-token: write
 
+# Do not cancel a release mid-publish or while exact-live checks are running.
+# Feature-branch validation can run independently; checks within a release fan out.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  validation:
+    uses: ./.github/workflows/release-validation.yml
+    with:
+      production-health: ${{ github.ref == 'refs/heads/main' }}
+    secrets: inherit
+
   deploy:
+    needs: validation
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     outputs:
-      page_url: ${{ steps.deployment.outputs.page_url }}
+      published: ${{ steps.current.outputs.publish }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-
-      - name: Build v2 beta app
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm ci
-          npm run check:inline
-          npm run test:photo
-          npm run test:pilot
-          npm run test:live-sync
-          node --test tests/eval-review-assignedto-api.test.mjs
-          node --test tests/production-probe-read-only.test.mjs
-          node --test tests/prepare-ci-playwright-apt.test.mjs
-          PLAYWRIGHT_CI_NODE="$(command -v node)"
-          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
-          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
-          npx playwright install --with-deps chromium firefox webkit
-          npm run test:v2:e2e
-          npm run build:pilot-monitoring
-          npm run build:live:assets
-          npm run build:v2
-
-      - name: Prepare static app
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p _site
-          cp index.html _site/index.html
-          cp manifest.json _site/manifest.json
-          cp sw.js _site/sw.js
-          cp CNAME _site/CNAME
-          cp .nojekyll _site/.nojekyll
-          cp OneSignalSDKWorker.js _site/OneSignalSDKWorker.js
-          cp -r assets _site/assets
-          cp -r reports _site/reports
-          cp ag-data-solutions-logo-v2026080923.png _site/ag-data-solutions-logo-v2026080923.png
-          cp ag-data-solutions-splash-v2026080923.png _site/ag-data-solutions-splash-v2026080923.png
-          cp ag-data-solutions-icon-v2026080923-32.png _site/ag-data-solutions-icon-v2026080923-32.png
-          cp ag-data-solutions-icon-v2026080923-180.png _site/ag-data-solutions-icon-v2026080923-180.png
-          cp ag-data-solutions-icon-v2026080923-192.png _site/ag-data-solutions-icon-v2026080923-192.png
-          cp ag-data-solutions-icon-v2026080923-512.png _site/ag-data-solutions-icon-v2026080923-512.png
-          cp ag-data-solutions-logo-v2026080925.png _site/ag-data-solutions-logo-v2026080925.png
-          cp ag-data-solutions-logo-v2026090503-224.webp _site/ag-data-solutions-logo-v2026090503-224.webp
-          cp ag-data-solutions-logo-v2026090503-448.webp _site/ag-data-solutions-logo-v2026090503-448.webp
-          cp ag-data-solutions-splash-v2026080925.png _site/ag-data-solutions-splash-v2026080925.png
-          cp ag-data-solutions-splash-v2026081702.png _site/ag-data-solutions-splash-v2026081702.png
-          cp ag-data-solutions-splash-v2026081705.png _site/ag-data-solutions-splash-v2026081705.png
-          cp ag-data-solutions-splash-v2026081706.png _site/ag-data-solutions-splash-v2026081706.png
-          cp ag-data-solutions-splash-v2026081708.png _site/ag-data-solutions-splash-v2026081708.png
-          cp ag-data-solutions-splash-v2026081709.png _site/ag-data-solutions-splash-v2026081709.png
-          cp ag-data-solutions-icon-v2026080925-32.png _site/ag-data-solutions-icon-v2026080925-32.png
-          cp ag-data-solutions-icon-v2026080925-180.png _site/ag-data-solutions-icon-v2026080925-180.png
-          cp ag-data-solutions-icon-v2026080925-192.png _site/ag-data-solutions-icon-v2026080925-192.png
-          cp ag-data-solutions-icon-v2026080925-512.png _site/ag-data-solutions-icon-v2026080925-512.png
-          mkdir -p _site/v2
-          cp -r v2/dist/* _site/v2/
-          npm run build:live:shell
-          node scripts/write-deployment-fingerprint.mjs
-          test "$(wc -c < _site/index.html)" -le 1500000
-          ! grep -Eq 'cdn\.tailwindcss\.com|unpkg\.com/@phosphor-icons|cdn\.jsdelivr\.net/npm/@supabase' _site/index.html
-
-      - name: Test navigation in the built production shell
-        run: npm run test:footer
-      - name: Verify Home visibility for all roles before publishing
-        run: npm run test:home-roles
-      - name: Verify Season Sales Notes completion before publishing
-        run: npm run test:season-sales-office
-      - name: Verify Suspend Tag completion before publishing
-        run: npm run test:suspend-tag
-      - name: Verify live refreshes and device-local Docks filters before publishing
-        run: npm run test:docks-filter
-      - name: Verify AV Blanks completion and protected Reclass before publishing
-        run: npm run test:task-av-blanks
-      - name: Verify actual login and protected photo saves on Android before publishing
-        run: npx playwright test --config playwright.login-photo.config.ts --project=android
-      - name: Verify session recovery and permission retries in the compiled shell
-        run: npm run test:session-recovery
-      - name: Verify AssignedTo review assignment in the compiled shell
-        run: npx playwright test --config playwright.review-assignedto.config.ts
-
-      - name: Upload isolated pre-publish browser diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
+      - name: Reject a superseded candidate before publication
+        id: current
+        uses: actions/github-script@v7
         with:
-          name: pre-publish-browser-diagnostics
-          path: |
-            playwright-report
-            test-results
-            artifacts/task-av-blanks-browser
-            artifacts/session-recovery-browser
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+          script: |
+            const ref = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
+            const publish = ref.data.object.sha === context.sha;
+            core.setOutput('publish', String(publish));
+            if (!publish) core.notice('SUPERSEDED_RELEASE: a newer main commit must finish its own checks.');
+      - uses: ./.github/actions/download-release
+        if: steps.current.outputs.publish == 'true'
+        with:
+          digest: ${{ needs.validation.outputs.digest }}
+      - uses: actions/configure-pages@v5
+        if: steps.current.outputs.publish == 'true'
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.current.outputs.publish == 'true'
         with:
           path: _site
-
-      - name: Deploy to Pages
+      - name: Deploy verified artifact to Pages
         id: deployment
+        if: steps.current.outputs.publish == 'true'
         uses: actions/deploy-pages@v4
 
-  post-deployment-canary:
+  exact-live:
     needs: deploy
+    if: needs.deploy.outputs.published == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 6
     steps:
-      - name: Checkout deployed commit
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Install production canary browsers
-        run: |
-          PLAYWRIGHT_CI_NODE="$(command -v node)"
-          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
-          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
-          npx playwright install --with-deps chromium webkit
-
       - name: Wait for exact live release and commit
-        id: live_release
         env:
           CANARY_BASE_URL: https://agmetricapp.com
           EXPECTED_COMMIT: ${{ github.sha }}
@@ -170,100 +82,106 @@ jobs:
           CANARY_WAIT_INTERVAL_MS: '5000'
         run: node scripts/wait-for-live-release.mjs
 
-      - name: Run mutation-blocked production Request canary
-        id: request_canary
+  post-deployment-canary:
+    needs: [deploy, exact-live]
+    if: needs.deploy.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - suite: requests
+            command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts
+          - suite: session
+            command: npm run test:session-recovery -- --workers=1
+          - suite: assignedto
+            command: npx playwright test --config playwright.review-assignedto.config.ts --project=chromium --project=webkit --workers=1
+          - suite: footer
+            command: npm run test:footer -- --project=footer-android-chromium --project=footer-iphone-webkit --workers=1
+          - suite: home
+            command: npm run test:home-roles -- --workers=1
+          - suite: season
+            command: npm run test:season-sales-office -- --workers=1
+          - suite: suspend
+            command: npm run test:suspend-tag -- --workers=1
+          - suite: docks
+            command: npm run test:docks-filter -- --workers=1
+          - suite: login-photo
+            command: npx playwright test --config playwright.login-photo.config.ts --project=chromium --project=webkit --project=android --workers=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: chromium webkit
+      - name: Mutation-blocked live ${{ matrix.suite }} checks
         env:
           CANARY_BASE_URL: https://agmetricapp.com
           EXPECTED_COMMIT: ${{ github.sha }}
-        run: npx playwright test --config=playwright.production.config.ts tests/production-request-canary.spec.ts
-
-      - name: Verify live session recovery without business mutations
-        env:
           SESSION_RECOVERY_BASE_URL: https://agmetricapp.com
-        run: npm run test:session-recovery
-      - name: Verify live AssignedTo reviews without business mutations
-        env:
-          CANARY_BASE_URL: https://agmetricapp.com
-        run: npx playwright test --config playwright.review-assignedto.config.ts --project=chromium --project=webkit
-
-      - name: Verify live footer navigation on Android and iPhone
-        env:
           FOOTER_BASE_URL: https://agmetricapp.com
-        run: npm run test:footer -- --project=footer-android-chromium --project=footer-iphone-webkit
-      - name: Verify live Home role layouts with isolated browser fixtures
-        env:
           HOME_ROLE_BASE_URL: https://agmetricapp.com
-        run: npm run test:home-roles
-      - name: Verify live Season Sales Notes with isolated browser fixtures
-        env:
           SEASON_SALES_OFFICE_BASE_URL: https://agmetricapp.com
-        run: npm run test:season-sales-office
-      - name: Verify live Suspend Tag with isolated browser fixtures
-        env:
           SUSPEND_TAG_BASE_URL: https://agmetricapp.com
-        run: npm run test:suspend-tag
-      - name: Verify live data refreshes with mutation-blocked browser fixtures
-        env:
           DOCKS_FILTER_BASE_URL: https://agmetricapp.com
-        run: npm run test:docks-filter
-      - name: Verify live startup and photo persistence with mutation-blocked browser fixtures
-        env:
           LOGIN_PHOTO_BASE_URL: https://agmetricapp.com
-        run: npx playwright test --config playwright.login-photo.config.ts --project=chromium --project=webkit --project=android
-
-      - name: Upload sanitized canary diagnostics
+        run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
         if: failure()
-        uses: actions/upload-artifact@v4
         with:
-          name: production-request-canary-diagnostics
+          name: live-${{ matrix.suite }}-${{ github.run_attempt }}
           path: |
             playwright-report
             test-results
+            artifacts
           if-no-files-found: ignore
           retention-days: 7
 
   report-production-health:
-    if: always()
-    needs: [deploy, post-deployment-canary]
+    if: always() && github.ref == 'refs/heads/main'
+    needs: [validation, deploy, exact-live, post-deployment-canary]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Open, update, or close the sanitized hosted-health incident
         uses: actions/github-script@v7
+        env:
+          VALIDATION_RESULT: ${{ needs.validation.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          PUBLISHED: ${{ needs.deploy.outputs.published }}
+          LIVE_RESULT: ${{ needs.exact-live.result }}
+          CANARY_RESULT: ${{ needs.post-deployment-canary.result }}
         with:
           script: |
+            if (process.env.VALIDATION_RESULT === 'success' &&
+                process.env.DEPLOY_RESULT === 'success' && process.env.PUBLISHED !== 'true') {
+              core.notice('Superseded candidate was not published; no production incident.');
+              return;
+            }
+            const healthy = ['VALIDATION_RESULT','DEPLOY_RESULT','LIVE_RESULT','CANARY_RESULT']
+              .every(key => process.env[key] === 'success');
+            const code = process.env.VALIDATION_RESULT !== 'success' ? 'RELEASE_VALIDATION_FAILED'
+              : process.env.DEPLOY_RESULT !== 'success' ? 'DEPLOY_TO_PAGES_FAILED'
+              : process.env.LIVE_RESULT !== 'success' ? 'LIVE_RELEASE_MISMATCH'
+              : 'POST_DEPLOYMENT_REQUEST_CANARY_FAILED';
             const title = '[Hosted Health] Production health check failing';
             const { owner, repo } = context.repo;
-            const deployResult = '${{ needs.deploy.result }}';
-            const canaryResult = '${{ needs.post-deployment-canary.result }}';
-            const healthy = deployResult === 'success' && canaryResult === 'success';
-            const code = deployResult !== 'success'
-              ? 'DEPLOY_TO_PAGES_FAILED'
-              : 'POST_DEPLOYMENT_REQUEST_CANARY_FAILED';
-            const issues = await github.paginate(github.rest.issues.listForRepo, {
-              owner, repo, state: 'open', per_page: 100
-            });
-            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            const issues = await github.paginate(github.rest.issues.listForRepo, {owner,repo,state:'open',per_page:100});
+            const existing = issues.find(issue => !issue.pull_request && issue.title === title);
+            const run = context.serverUrl + '/' + owner + '/' + repo + '/actions/runs/' + context.runId;
             if (healthy) {
               if (existing) {
-                await github.rest.issues.createComment({
-                  owner, repo, issue_number: existing.number,
-                  body: `Recovered automatically. Post-deployment canary passed for commit ${context.sha}.`
-                });
-                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+                await github.rest.issues.createComment({owner,repo,issue_number:existing.number,
+                  body:'Recovered automatically. All parallel release checks passed for commit ' + context.sha + '. Run: ' + run});
+                await github.rest.issues.update({owner,repo,issue_number:existing.number,state:'closed'});
               }
               return;
             }
-            const body = [
-              'The production deployment or its sanitized Request canary failed.',
-              '',
-              `Error code: ${code}`,
-              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
-              `Commit: ${context.sha}`,
-              '',
-              'No customer data, notes, photos, names, request contents, credentials, or tokens are included.'
-            ].join('\n');
-            if (existing) {
-              await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
-            } else {
-              await github.rest.issues.create({ owner, repo, title, body });
-            }
+            const body = ['The production release or its sanitized canaries failed.', '',
+              'Error code: ' + code, 'Run: ' + run, 'Commit: ' + context.sha, '',
+              'No business data, credentials, tokens, or user information are included.'].join('\n');
+            if (existing) await github.rest.issues.createComment({owner,repo,issue_number:existing.number,body});
+            else await github.rest.issues.create({owner,repo,title,body});

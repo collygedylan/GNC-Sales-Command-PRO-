@@ -1,3 +1,4 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -31,10 +32,10 @@ test('deployment fingerprint normalization rejects ambiguous identifiers', () =>
 });
 
 test('Pages workflow publishes and gates the production deployment fingerprint', () => {
-  const workflow = fs.readFileSync(new URL('../.github/workflows/pages-static.yml', import.meta.url), 'utf8');
+  const workflow = readReleaseWorkflowSources('.github/workflows/pages-static.yml').text;
   const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
   assert.match(workflow, /write-deployment-fingerprint\.mjs/);
-  assert.match(workflow, /post-deployment-canary:[\s\S]*needs: deploy/);
+  assert.match(workflow, /post-deployment-canary:\s+needs: \[deploy, exact-live\]/);
   assert.match(workflow, /wait-for-live-release\.mjs/);
   assert.match(workflow, /production-request-canary\.spec\.ts/);
   assert.match(canary, /live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionable without mutations/);

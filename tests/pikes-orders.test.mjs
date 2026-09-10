@@ -1,3 +1,4 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,7 +18,7 @@ const boundedMaintenanceRepair = read('supabase/migrations/20260902151444_optimi
 const boundedDeltaRepair = read('supabase/migrations/20260902152210_bound_eval_assignment_delta.sql');
 const separateHealthAudit = read('supabase/migrations/20260902152707_separate_request_health_audit.sql');
 const sourceRowUploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
-const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
+const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const rlsTest = read('supabase/tests/pikes_orders_rls_test.sql');
 
 function loadPikesParser() {

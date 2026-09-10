@@ -22,6 +22,7 @@ async function appEval<T = any>(page: Page, script: string): Promise<T> {
 
 async function setupBlockClearing(page: Page, width: number, options: { realShell?: boolean; height?: number } = {}) {
   await page.setViewportSize({ width, height: options.height || 844 });
+  const lexicalTestBridge = '\n;window.__blockClearingTestEval = (source) => eval(source);\n';
   // Every fixture runs without external writes, even if an unrelated app task wakes up.
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
@@ -35,12 +36,19 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
       await route.abort();
       return;
     }
+    if (/^\/(?:_site\/)?assets\/live-app-runtime-v\d+\.min\.js$/.test(url.pathname)) {
+      const response = await route.fetch();
+      // Release lanes use the extracted compiled runtime. Append the same
+      // lexical test bridge to its response; never rewrite the sealed file.
+      await route.fulfill({ response, body: (await response.text()) + lexicalTestBridge });
+      return;
+    }
     if (route.request().resourceType() === 'document') {
       const response = await route.fetch();
       // Local source uses indirect eval, which keeps its let/const bindings private.
       // Expose only a test bridge in that lexical environment; production code is untouched.
       const html = (await response.text()).replace(/(<script id="app-script-source" type="text\/plain">)([\s\S]*?)(<\/script>)/,
-        (_match, start, source, end) => `${start}${source}\nwindow.__blockClearingTestEval = (source) => eval(source);\n${end}`);
+        (_match, start, source, end) => `${start}${source}${lexicalTestBridge}${end}`);
       await route.fulfill({ response, body: html });
       return;
     }

@@ -1,3 +1,4 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,12 +16,14 @@ const darkDefaultMigration = read('supabase/migrations/20260815121724_dylan_ops_
 const requestWorkflowMigration = read('supabase/migrations/20260817154154_restore_native_request_workflow.sql');
 const manifest = JSON.parse(read('manifest.json'));
 const serviceWorker = read('sw.js');
-const workflow = read('.github/workflows/pages-static.yml');
+const workflow = readReleaseWorkflowSources('.github/workflows/pages-static.yml').text;
+const releasePreparation = readReleaseWorkflowSources('.github/workflows/pages-static.yml').files
+  .find(file => file.path === 'scripts/prepare-release-site.mjs')?.source || '';
 const playwrightConfig = read('playwright.config.ts');
 const packageJson = JSON.parse(read('package.json'));
 const liveShellBuild = read('scripts/build-live-shell.mjs');
 const liveVendorBuild = read('scripts/vendor-live-assets.mjs');
-const performanceWorkflow = read('.github/workflows/performance-monitor.yml');
+const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const appAuth = read('supabase/functions/_shared/app-auth.ts');
 const observability = read('supabase/functions/_shared/observability.ts');
 const authMigration = read('supabase/migrations/20260816172822_native_auth_profiles.sql');
@@ -802,8 +805,9 @@ test('V14 locks premium responsive grids, safe navigation clearance, motion, and
 test('static deployment includes the pilot assets and builds the pinned bundle', () => {
   assert.match(workflow, /npm run build:pilot-monitoring/);
   assert.match(workflow, /npm run build:live:assets/);
-  assert.match(workflow, /npm run build:live:shell/);
-  assert.match(workflow, /cp -r assets _site\/assets/);
+  assert.match(workflow, /node scripts\/prepare-release-site\.mjs/);
+  assert.match(releasePreparation, /for \(const script of \['build-live-shell\.mjs', 'write-deployment-fingerprint\.mjs'\]\)/);
+  assert.match(releasePreparation, /copyTree\(path\.join\(root, 'assets'\), path\.join\(site, 'assets'\)\)/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
   assert.match(serviceWorker, /live-app-runtime-v2026082010\.min\.js/);
@@ -811,8 +815,10 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(serviceWorker, /ag-data-solutions-logo-v2026090503-448\.webp/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
   assert.match(html, /imagesrcset="\.\/ag-data-solutions-logo-v2026090503-224\.webp 224w, \.\/ag-data-solutions-logo-v2026090503-448\.webp 448w"/);
-  assert.match(workflow, /cp ag-data-solutions-logo-v2026090503-224\.webp/);
-  assert.match(performanceWorkflow, /cp \.\/\*\.webp _site\//);
+  assert.match(releasePreparation, /'ag-data-solutions-logo-v2026090503-224\.webp'/);
+  assert.match(releasePreparation, /'ag-data-solutions-logo-v2026090503-448\.webp'/);
+  assert.match(releasePreparation, /for \(const name of files\) await copyTree\(path\.join\(root, name\), path\.join\(site, name\)\)/);
+  assert.match(performanceWorkflow, /node scripts\/prepare-release-site\.mjs/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
   assert.match(liveShellBuild, /deployedBytes > 1_500_000/);
   assert.match(liveShellBuild, /live-app-styles-base-v2026090503\.css/);
@@ -827,10 +833,15 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
 });
 
 test('performance monitoring audits the optimized deployable shell', () => {
-  assert.match(performanceWorkflow, /npm run build:live/);
-  assert.match(performanceWorkflow, /cp manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
-  assert.match(performanceWorkflow, /cp -r assets\/\. _site\/assets\//);
-  assert.doesNotMatch(performanceWorkflow, /cp index\.html[^\n]*_site\//);
+  assert.match(performanceWorkflow, /npm run build:live:assets/);
+  assert.match(performanceWorkflow, /node scripts\/prepare-release-site\.mjs/);
+  assert.match(releasePreparation, /'manifest\.json', 'sw\.js'[\s\S]*'OneSignalSDKWorker\.js'/);
+  assert.match(releasePreparation, /copyTree\(path\.join\(root, 'assets'\), path\.join\(site, 'assets'\)\)/);
+  const copyAt = releasePreparation.indexOf('for (const name of files) await copyTree');
+  const compileAt = releasePreparation.indexOf("for (const script of ['build-live-shell.mjs'");
+  assert.ok(copyAt >= 0 && compileAt > copyAt, 'compile after static copying, never overwrite optimized index with raw source');
+  assert.match(performanceWorkflow, /node scripts\/release-artifact\.mjs seal/);
+  assert.match(performanceWorkflow, /node scripts\/release-artifact\.mjs verify/);
 });
 
 test('first service-worker control does not reload an already-rendered login shell', () => {
@@ -1120,7 +1131,9 @@ test('Task search application mode executes the production level contract', () =
 });
 
 test('CI gates responsive release checks in Chromium, Firefox, and WebKit', () => {
-  assert.match(workflow, /playwright install --with-deps chromium firefox webkit/);
+  assert.match(workflow, /default: chromium firefox webkit/);
+  assert.match(workflow, /RELEASE_TEST_BROWSERS: \$\{\{ inputs\.browsers \}\}/);
+  assert.match(workflow, /playwright install --with-deps \$RELEASE_TEST_BROWSERS/);
   assert.match(playwrightConfig, /name: 'chromium'/);
   assert.match(playwrightConfig, /name: 'firefox'/);
   assert.match(playwrightConfig, /name: 'webkit'/);
@@ -1443,9 +1456,10 @@ test('hosted performance monitoring pins CLI and emits bounded anonymous functio
   assert.match(performanceWorkflow, /supabase(?:\s+--workdir[^\n]+)?\s+test db/);
   assert.match(performanceWorkflow, /deno test --allow-env --allow-net supabase\/functions/);
   assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
-  assert.match(performanceWorkflow, /Prepare static shell for Lighthouse/);
-  assert.match(performanceWorkflow, /cp manifest\.json sw\.js OneSignalSDKWorker\.js _site\//);
-  assert.doesNotMatch(performanceWorkflow, /cp index\.html[^\n]*_site\//);
+  assert.match(performanceWorkflow, /Lighthouse/);
+  assert.match(performanceWorkflow, /node scripts\/prepare-release-site\.mjs/);
+  assert.match(releasePreparation, /'manifest\.json', 'sw\.js'[\s\S]*'OneSignalSDKWorker\.js'/);
+  assert.match(performanceWorkflow, /EXPECTED_RELEASE_DIGEST/);
   assert.match(observability, /MAX_LOG_BYTES = 2048/);
   assert.match(observability, /SUCCESS_SAMPLE_RATE = 0\.01/);
   assert.match(observability, /function recordHandledError/);

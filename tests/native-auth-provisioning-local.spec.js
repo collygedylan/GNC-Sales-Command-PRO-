@@ -77,6 +77,16 @@ test.describe('Native Auth profile-link provisioning', () => {
       legacyUserId = Number(repaired.body[0].legacy_user_id);
       expect(legacyUserId).toBeGreaterThan(0);
 
+      // The protected app API updates Native Auth before synchronizing the
+      // legacy/profile record. The SQL provisioning RPC does not change Auth's
+      // password itself; exercise both halves of that existing contract.
+      const nativePasswordChange = await jsonFetch(`${localUrl}/auth/v1/admin/users/${encodeURIComponent(authUserId)}`, {
+        method: 'PUT',
+        headers: serviceHeaders(),
+        body: JSON.stringify({ password: nextPassword })
+      });
+      expect(nativePasswordChange.response.ok, JSON.stringify(nativePasswordChange.body)).toBeTruthy();
+
       const passwordChange = await serviceRpc('provision_native_auth_app_user', {
         p_auth_user_id: authUserId,
         p_username: username,
@@ -108,6 +118,14 @@ test.describe('Native Auth profile-link provisioning', () => {
         body: JSON.stringify({ email, password: nextPassword })
       });
       expect(signedIn.response.ok, JSON.stringify(signedIn.body)).toBeTruthy();
+      const oldPasswordSignIn = await jsonFetch(`${localUrl}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: starterPassword })
+      });
+      expect(oldPasswordSignIn.response.ok).toBeFalsy();
+      expect(oldPasswordSignIn.response.status).toBe(400);
+      expect(oldPasswordSignIn.body.error_code || oldPasswordSignIn.body.code).toBe('invalid_credentials');
     } finally {
       if (legacyUserId > 0) {
         await jsonFetch(`${localUrl}/rest/v1/ph_app_users?id=eq.${legacyUserId}`, {

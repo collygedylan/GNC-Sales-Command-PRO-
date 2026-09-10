@@ -1,3 +1,4 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -10,7 +11,7 @@ const currentMembershipHealth = read('../supabase/migrations/20260902165500_curr
 const html = read('../index.html');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const observability = read('../supabase/functions/_shared/observability.ts');
-const performanceWorkflow = read('../.github/workflows/performance-monitor.yml');
+const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const sqlTest = read('../supabase/tests/request_eval_drive_reliability_test.sql');
 
 test('folder completion recovery binds the unnested request id and is service-only', () => {

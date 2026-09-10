@@ -1,3 +1,4 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -6,7 +7,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const html = read('../index.html');
 const migration = read('../supabase/migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql');
 const hostedProbe = read('../scripts/probe-production-auth-health.mjs');
-const performanceWorkflow = read('../.github/workflows/performance-monitor.yml');
+const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const serviceWorker = read('../sw.js');
 
 test('compatibility and V2 saves use non-blocking locks and structured conflicts', () => {

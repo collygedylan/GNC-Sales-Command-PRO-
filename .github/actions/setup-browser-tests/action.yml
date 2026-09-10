@@ -1,0 +1,29 @@
+name: Prepare isolated browser runner
+description: Reuse the proven browser dependency setup without sharing ports or output directories across jobs.
+inputs:
+  browsers:
+    description: Space-separated Playwright browsers required by this job.
+    default: chromium firefox webkit
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+      shell: bash
+    - name: Install pinned Playwright browsers and system dependencies
+      shell: bash
+      env:
+        RELEASE_TEST_BROWSERS: ${{ inputs.browsers }}
+      run: |
+        set -euo pipefail
+        node --test tests/prepare-ci-playwright-apt.test.mjs
+        PLAYWRIGHT_CI_NODE="$(command -v node)"
+        test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
+        sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
+        for browser in $RELEASE_TEST_BROWSERS; do
+          case "$browser" in chromium|firefox|webkit) ;; *) exit 1 ;; esac
+        done
+        npx playwright install --with-deps $RELEASE_TEST_BROWSERS

@@ -1,0 +1,187 @@
+name: Release isolated database and functions
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  database-and-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Prepare isolated migration project
+        shell: bash
+        run: |
+          set -euo pipefail
+          ci_root="$RUNNER_TEMP/gnc-supabase-ci"
+          mkdir -p "$ci_root/supabase/migrations" "$ci_root/supabase/tests"
+          cp supabase/config.toml "$ci_root/supabase/config.toml"
+          cp -R supabase/functions "$ci_root/supabase/functions"
+          : > "$ci_root/supabase/seed.sql"
+          cp supabase/ci/request_workflow_baseline.sql "$ci_root/supabase/migrations/20260803100000_request_workflow_baseline.sql"
+          cp supabase/ci/historical_report_baseline.sql "$ci_root/supabase/migrations/20260803105000_historical_report_baseline.sql"
+          cp supabase/migrations/20260803121000_add_request_note_to_ph_active_request.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260803225959_add_csr_request_audit_fields.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260809011735_ph_27f1_hl_po.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260816172822_native_auth_profiles.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260816172823_pwa_containment_flags.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260816172825_database_compaction_shadow.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260817154154_restore_native_request_workflow.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820114722_request_integrity_and_eval_assignments.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820133000_request_integrity_health_profile_index.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820134500_profiles_service_role_grant.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820140000_master_inventory_service_role_grant.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820143000_suppress_initial_eval_event_fanout.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820150000_legacy_completion_atomic_guard.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820160000_eval_assignment_roster_and_sheet_cutover.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820190857_acknowledge_stale_completed_request_work.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820195456_complete_eval_assignment_sheet_import.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820202902_reconcile_exact_assignment_sheet.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260820230245_reliable_request_delivery_worker.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821011223_hosted_health_auto_repair.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821012500_restore_request_email_threads_schema.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821040617_manager_eval_report_settings.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821040854_harden_eval_report_settings_rpc.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821202202_manager_historical_report.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260821223421_historical_report_default_browse.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260823013134_expand_historical_report_source_columns.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902153652_historical_report_cursor_index.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902153654_optimize_historical_report_rows_rpc.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260825222325_stabilize_request_capabilities.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260825223040_grant_request_policy_helper.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260826133016_allow_chance_alldredge_request_create_own.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260826170020_request_capabilities_v2_restore_kayla.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260827005258_eval_work_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260827161513_eval_work_create_batch_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260828070741_access_control_manager_read_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/ci/request_eval_drive_reliability_baseline.sql "$ci_root/supabase/migrations/20260827000000_request_eval_drive_reliability_baseline.sql"
+          cp supabase/ci/sales_office_baseline.sql "$ci_root/supabase/migrations/20260827000001_sales_office_baseline.sql"
+          cp supabase/ci/flyer_folder_batch_contract_baseline.sql "$ci_root/supabase/migrations/20260903013000_flyer_folder_batch_contract_baseline.sql"
+          cp supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260829042809_itemcode_wide_eval_work.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260830021512_mobile_codex_operations_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260830022003_codex_ops_terra_escalation_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260830023800_codex_ops_access_audit_baseline_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260830213039_eval_work_item_inquiry_row_resolution_v3.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831004047_eval_work_request_drive_parity.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831030457_eval_work_multi_assignee_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831141127_native_auth_profile_link_repair.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831165043_pikes_orders_manager_history.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831175530_pikes_orders_access_audit_baseline.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831181200_optimize_request_read_rls.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831210000_request_eval_drive_reliability_repair.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260831230825_harden_pikes_assignment_repair_audit.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902131328_stine_orders_history.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902134004_manager_order_source_row_upload.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902140500_repair_manager_order_finalizer_privilege.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902141956_repair_pikes_assignment_health_rpc_privilege.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902151444_optimize_bounded_request_maintenance.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902152210_bound_eval_assignment_delta.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902152707_separate_request_health_audit.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902160400_optimize_po_management_health_snapshot.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902165500_current_request_membership_health.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260901192727_repair_request_option_append.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260901201209_eval_report2_completion_routing.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260902032807_repair_eval_work_assignee_insert_contract.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903013541_repair_reclass_task_flyer_access_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903180500_repair_season_sales_pgcrypto_search_path.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903181500_repair_season_sales_winner_alias.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903183000_reconcile_legacy_season_sales_mirrors.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904184630_repair_request_season_sales_office_refresh.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904192758_add_season_sales_office_arrived_at.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904070154_photo_delivery_health_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260904142737_dylan_photo_history_gallery_v1.sql "$ci_root/supabase/migrations/"
+            cp supabase/migrations/20260904143546_photo_history_catalog_refresh_refinement.sql "$ci_root/supabase/migrations/"
+            cp supabase/migrations/20260904151119_photo_history_required_copies_v2.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260906022733_pin_remaining_public_function_search_paths.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260906154833_repair_season_sales_done_lifecycle.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260907212041_enforce_photo_evidence_projection.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260908231650_retain_season_sales_office_av_notes.sql "$ci_root/supabase/migrations/"
+          cp supabase/ci/season_sales_av_note_reset_baseline.sql "$ci_root/supabase/migrations/20260909004000_season_sales_av_note_reset_baseline.sql"
+          cp supabase/migrations/20260909004018_align_season_sales_av_note_shared_resets.sql "$ci_root/supabase/migrations/"
+          cp supabase/ci/photo_history_extensions.sql "$ci_root/supabase/migrations/20260904142700_photo_history_extensions.sql"
+          cp supabase/migrations/20260910005005_reclass_review_assignedto_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/codex_ops_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/pikes_orders_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/request_eval_drive_reliability_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/reclass_review_assignedto_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/request_option_append_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/drive_reclass_protected_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/drive_evidence_retry_storm_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/photo_delivery_health_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/photo_history_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/function_search_path_pinning_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/season_sales_done_lifecycle_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/season_sales_av_note_retention_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/season_sales_av_note_reset_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/photo_evidence_projection_test.sql "$ci_root/supabase/tests/"
+          echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
+      - name: Start isolated Supabase stack
+        run: supabase --workdir "$SUPABASE_CI_ROOT" start
+      - name: Apply migrations to isolated database
+        run: supabase --workdir "$SUPABASE_CI_ROOT" db reset --local --no-seed
+      - name: Run pgTAP and RLS tests
+        run: supabase --workdir "$SUPABASE_CI_ROOT" test db
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: |
+          node --test tests/prepare-ci-playwright-apt.test.mjs
+          PLAYWRIGHT_CI_NODE="$(command -v node)"
+          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
+          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
+          npx playwright install --with-deps chromium
+      - name: Run browser request transactions against local Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --workdir "$SUPABASE_CI_ROOT" status -o env > "$RUNNER_TEMP/supabase-status.env"
+          set -a
+          source "$RUNNER_TEMP/supabase-status.env"
+          set +a
+          CI=true EVAL_REVIEW_TEST_DB_URL="$DB_URL" node scripts/test-reclass-review-concurrency.mjs
+          SUPABASE_LOCAL_URL="$API_URL" \
+          SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
+          SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          npx playwright test --config playwright.database.config.ts --project=chromium
+      - name: Run Edge Function unit tests
+        run: deno test --allow-env --allow-net supabase/functions
+      - name: Save relation-size report query
+        run: |
+          mkdir -p artifacts
+          cp scripts/report-database-bloat.sql artifacts/report-database-bloat.sql
+          cp scripts/report-unused-table-candidates.sql artifacts/report-unused-table-candidates.sql
+          cp scripts/report-rls-policies.sql artifacts/report-rls-policies.sql
+          cp scripts/report-secret-bearing-functions.sql artifacts/report-secret-bearing-functions.sql
+          cp scripts/report-drive-around-compaction-parity.sql artifacts/report-drive-around-compaction-parity.sql
+          cp scripts/report-app-live-events-retirement.sql artifacts/report-app-live-events-retirement.sql
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-database-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts
+            playwright-report/database
+            test-results/database
+          if-no-files-found: ignore

@@ -1,3 +1,4 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -13,7 +14,7 @@ const healthRepair = fs.readFileSync(
 );
 const healthProbe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
 const productionCanary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
-const performanceWorkflow = fs.readFileSync(new URL('../.github/workflows/performance-monitor.yml', import.meta.url), 'utf8');
+const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 
 test('PO Management RLS permits only trusted active manager profiles', () => {
   assert.match(migration, /create or replace function private\.can_view_po_management\(\)/);

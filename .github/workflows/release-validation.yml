@@ -1,0 +1,221 @@
+name: Validate one immutable release
+
+on:
+  workflow_call:
+    inputs:
+      production-health:
+        type: boolean
+        default: false
+    outputs:
+      digest:
+        description: Verified release manifest SHA256
+        value: ${{ jobs.build.outputs.digest }}
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:inline
+      - run: node scripts/run-release-unit-checks.mjs
+      - run: npm run test:v2
+
+  database:
+    uses: ./.github/workflows/release-database.yml
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    outputs:
+      digest: ${{ steps.seal.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:pilot-monitoring
+      - run: npm run build:live:assets
+      - run: npm run build:v2
+      - run: node scripts/prepare-release-site.mjs
+      - id: seal
+        run: node scripts/release-artifact.mjs seal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-site-${{ github.sha }}
+          path: _site
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  functional:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+      - uses: ./.github/actions/download-release
+        with:
+          digest: ${{ needs.build.outputs.digest }}
+      - name: Functional browsers, shard ${{ matrix.shard }} of 4
+        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --shard=${{ matrix.shard }}/4 --reporter=github,blob
+      - name: Verify tests did not change the release package
+        env:
+          EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
+        run: node scripts/release-artifact.mjs verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: functional-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: |
+            blob-report
+            test-results
+          if-no-files-found: ignore
+
+  compiled:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - suite: footer
+            config: playwright.footer.config.ts
+          - suite: home
+            config: playwright.home-role.config.ts
+          - suite: season
+            config: playwright.season-sales-office.config.ts
+          - suite: suspend
+            config: playwright.suspend-tag.config.ts
+          - suite: docks
+            config: playwright.docks-filter.config.ts
+          - suite: av-blanks
+            config: playwright.task-av-blanks.config.ts
+          - suite: session
+            config: playwright.session-recovery.config.ts
+          - suite: assignedto
+            config: playwright.review-assignedto.config.ts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+      - uses: ./.github/actions/download-release
+        with:
+          digest: ${{ needs.build.outputs.digest }}
+      - name: Compiled shell — ${{ matrix.suite }}
+        run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob
+      - name: Verify tests did not change the release package
+        env:
+          EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
+        run: node scripts/release-artifact.mjs verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compiled-${{ matrix.suite }}-${{ github.run_attempt }}
+          path: |
+            blob-report
+            test-results
+            artifacts
+          if-no-files-found: ignore
+
+  timing:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+      - uses: ./.github/actions/download-release
+        with:
+          digest: ${{ needs.build.outputs.digest }}
+      - name: Scroll and throttled startup on a quiet runner
+        run: npx playwright test --config playwright.release-timing.config.ts --workers=1
+      - name: Android startup and protected photo persistence
+        run: npx playwright test --config playwright.release-android.config.ts --project=android --workers=1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: timing-diagnostics-${{ github.run_attempt }}
+          path: test-results
+          if-no-files-found: ignore
+
+  lighthouse:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: chromium
+      - name: Prepare static shell for Lighthouse — verify, never rebuild
+        uses: ./.github/actions/download-release
+        with:
+          digest: ${{ needs.build.outputs.digest }}
+      - name: Lighthouse on a quiet runner with bounded protocol retry
+        run: node scripts/run-release-lighthouse.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-${{ github.run_attempt }}
+          path: .lighthouseci*
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+  production-health:
+    if: inputs.production-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe production login bridge and Data API
+        env:
+          PRODUCTION_PROBE_READ_ONLY: '1'
+          PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          REQUIRE_APPS_SCRIPT_HEALTH: '1'
+          REQUIRE_BOUNDED_MAINTENANCE: '1'
+        run: node scripts/probe-production-auth-health.mjs
+
+  release-gate:
+    if: always()
+    needs: [unit, database, build, functional, compiled, timing, lighthouse, production-health]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every safety lane for this commit
+        env:
+          RELEASE_JOB_RESULTS: ${{ toJSON(needs) }}
+          REQUIRE_PRODUCTION_HEALTH: ${{ inputs.production-health }}
+        run: |
+          node --input-type=module <<'NODE'
+          const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
+          const required = ['unit','database','build','functional','compiled','timing','lighthouse'];
+          if (process.env.REQUIRE_PRODUCTION_HEALTH === 'true') required.push('production-health');
+          for (const name of required) {
+            if (jobs[name]?.result !== 'success') throw new Error(`RELEASE_GATE_FAILED_${name}`);
+          }
+          if (!/^[a-f0-9]{64}$/.test(jobs.build.outputs.digest || '')) throw new Error('RELEASE_DIGEST_MISSING');
+          console.log('Every required lane passed for the sealed release.');
+          NODE

@@ -1,3 +1,4 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,7 +12,7 @@ const html = read('index.html');
 const migration = read('supabase/migrations/20260902131328_stine_orders_history.sql');
 const uploadMigration = read('supabase/migrations/20260902134004_manager_order_source_row_upload.sql');
 const finalizerPrivilegeMigration = read('supabase/migrations/20260902140500_repair_manager_order_finalizer_privilege.sql');
-const workflow = read('.github/workflows/performance-monitor.yml');
+const workflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 
 function loadSharedOrderParser() {
   const start = code.indexOf('const PIKES_ORDER_COLUMNS');

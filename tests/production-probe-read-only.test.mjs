@@ -1,10 +1,11 @@
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
 const script = readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
-const workflow = readFileSync(new URL('../.github/workflows/performance-monitor.yml', import.meta.url), 'utf8');
+const workflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const scheduled = readFileSync(new URL('../.github/workflows/production-auth-health.yml', import.meta.url), 'utf8');
 const shell = "window.__APP_SHELL_VERSION__ = 'V-fixture';";
 function healthyPayloads() {
