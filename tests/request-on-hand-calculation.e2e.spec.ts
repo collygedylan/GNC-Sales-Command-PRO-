@@ -33,7 +33,7 @@ async function fixture(page: Page, baseURL: string) {
   const request = { unique_id: REQUEST_ID, master_id: MASTER_ID, itemcode: 'QTY1001',
     commonname: 'Request Quantity Plant', contsize: '#3', locationcode: 'A001', lotcode: '27.F1',
     ptravailable: null, initial_ptr: '900', req_qty: '40', req_match: '50',
-    req_spec: 'Request-owned spec', req_caliper: '2 inch', av_note: 'Request-owned note',
+    req_spec: 'Request-owned spec', req_caliper: '2 inch', av_note: 'REQUEST-OWNED NOTE',
     request_note: 'Customer instructions', req_photo_link: PHOTO, req_photo_name: `${date}_request.webp`,
     requested_by: 'Request Quantity Fixture', request_folder: 'QUANTITY-FIXTURE', req_customer: 'Synthetic Customer',
     req_status: 'Pending', req_archived: false, app_tab_assignment: 'location', date_completed: null };
@@ -188,12 +188,16 @@ test('Request detail shows verified On Hand and calculates LOC MATCH from Availa
   }
   await expect(page.locator('#req-match')).toHaveValue('60');
   await expect(page.locator('#req-match-qty-val')).toHaveText('440');
+  // Exercise the same canonical-row handoff used by the delayed autosave.
+  // The fixture rejects the server write, so this verifies quantity retention
+  // through that handoff and failure without creating business data.
+  await page.evaluate(() => (window as any).saveData(false, 'req-', true));
   expect(await page.evaluate(() => window.eval(`({
     available:activeItem.PTRAVAILABLE,onHand:activeItem.PTRONHAND,baseline:activeItem.INITIAL_PTR,
     spec:activeItem.REQ_SPEC,note:activeItem.AV_NOTE,photo:activeItem.REQ_PHOTO_LINK,
     id:activeItem.UNIQUE_ID,masterId:activeItem.MASTER_ID
   })`))).toEqual({ available: '800', onHand: '1000', baseline: '900', spec: 'Request-owned spec',
-    note: 'Request-owned note', photo: PHOTO, id: REQUEST_ID, masterId: MASTER_ID });
+    note: 'REQUEST-OWNED NOTE', photo: PHOTO, id: REQUEST_ID, masterId: MASTER_ID });
   expect(f.state.errors).toEqual([]);
   // Normal input autosave may be attempted; every external mutation is fulfilled
   // with a local rejection above. No request is forwarded to a business service.

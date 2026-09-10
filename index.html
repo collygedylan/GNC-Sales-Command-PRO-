@@ -35105,9 +35105,24 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             // The Request live view omits On Hand and Review.
                             // Copy only verified quantities; Request evidence,
                             // observation baseline, identity and drafts stay owned by the Request.
-                            ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE'].forEach((key) => { activeItem[key] = full[key]; });
-                            activeItem.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = full.PHOTO_MATCH_PTR_AVAILABLE_KNOWN !== false
-                                && parseAppNumber(firstNonEmptyValue(full.PTRAVAILABLE, full.LOC_AVAIL, '')) != null;
+                            const quantityTargets = [activeItem];
+                            const canonicalRequest = findRequestInventoryRowByUniqueId(activeItem.UNIQUE_ID);
+                            const canonicalIds = canonicalRequest ? getProductionMasterDetailIds(canonicalRequest) : [];
+                            const sameCanonicalRequest = canonicalRequest
+                                && getProductionMasterDetailIdentity(canonicalRequest) === session.rowIdentity
+                                && canonicalIds.length === 1 && String(canonicalIds[0]) === String(session.ids[0]);
+                            if (sameCanonicalRequest) quantityTargets.push(canonicalRequest);
+                            quantityTargets.forEach((target) => {
+                                ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE'].forEach((key) => { target[key] = full[key]; });
+                                target.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = full.PHOTO_MATCH_PTR_AVAILABLE_KNOWN !== false
+                                    && parseAppNumber(firstNonEmptyValue(full.PTRAVAILABLE, full.LOC_AVAIL, '')) != null;
+                            });
+                            // Autosave and photo work use the canonical Request
+                            // object. Keep that exact row's quantities and proof
+                            // ready without transferring any Request-owned draft.
+                            if (sameCanonicalRequest && canUseVerifiedProductionData(['master', 'requests'])) {
+                                bindProductionMasterDetailRow(canonicalRequest, session.ids);
+                            }
                         }
                     }
                     bindProductionMasterDetailRow(activeItem, session.ids);

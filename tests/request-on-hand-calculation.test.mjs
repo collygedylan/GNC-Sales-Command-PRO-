@@ -117,7 +117,7 @@ test('quantity hydration does not bypass missing or stale Request-owned photo ev
   }
 });
 
-function detailRuntime({ verified = true, delayed = false } = {}) {
+function detailRuntime({ verified = true, delayed = false, canonicalChanges = null } = {}) {
   const ctx = runtime();
   const request = persistedRequest(ctx, {
     initial_ptr: '900', req_initial_ptr: '900', req_spec: 'Request spec',
@@ -125,28 +125,37 @@ function detailRuntime({ verified = true, delayed = false } = {}) {
     req_status: 'Pending', source: 'REQUEST-SOURCE',
   });
   request.DOM_ID = 'req_request-1';
+  const canonicalRequest = canonicalChanges ? { ...request, ...canonicalChanges } : request;
   const inventory = master({
     SOURCE: 'MASTER-SOURCE', PTRREVIEWED: '50', INITIAL_PTR: '1200', MATCH: '95',
     SPEC: 'Master spec', AV_NOTE: 'Master note', PHOTO_LINK: PHOTO.replace('crop', 'master'),
   });
   const owner = {};
+  const fence = { scope: 'quantity-fixture', permissionVersion: 'permissions-1', revision: 'master-1' };
   let release;
   const rowPromise = delayed ? new Promise(resolve => { release = () => resolve([inventory]); }) : Promise.resolve([inventory]);
   Object.assign(ctx, {
     activeItem: request, activeDetailSourceView: 'request', lastView: 'request', detailHydrationToken: 1,
     productionMasterDetailSession: null,
+    productionMasterDetailBindings: new WeakMap(),
+    requestsInventory: [canonicalRequest],
+    usesProductionMasterListProjection: () => true,
+    getItemUniqueId: row => String(row.UNIQUE_ID || '').trim(),
+    getProductionMasterDetailContext: () => fence,
     getCurrentVisibleViewId: () => 'detail',
     isLoginSessionOwnershipCurrent: value => value === owner,
     getProductionMasterDetailStore: () => ({ ensure: async ids => {
       assert.deepEqual(Array.from(ids), ['master-1']);
       return rowPromise;
-    } }),
+    }, getVerifiedRows: ids => verified && ids.length === 1 && ids[0] === inventory.UNIQUE_ID ? [inventory] : null }),
     getProductionDetailDatasetKeys: () => ['master', 'requests'],
     canUseVerifiedProductionData: () => verified,
     applyProductionMasterDetailControlState: () => {},
-    bindProductionMasterDetailRow: (item, ids) => { ctx.boundItem = item; ctx.boundIds = Array.from(ids); },
   });
   vm.runInContext([
+    source('findRequestInventoryRowByUniqueId'), source('getProductionMasterDetailIds'),
+    source('productionMasterDetailFenceMatches'), source('bindProductionMasterDetailRow'),
+    source('isProductionMasterDetailBindingCurrent'), source('hasProductionMasterDetailForItem'),
     source('getProductionMasterDetailIdentity'), source('isProductionMasterDetailSessionCurrent'),
     source('ensureActiveProductionMasterDetail'),
   ].join('\n'), ctx);
@@ -156,7 +165,7 @@ function detailRuntime({ verified = true, delayed = false } = {}) {
     masterIdentities: new Map([['master-1', ctx.getProductionMasterDetailIdentity(inventory)]]),
   };
   ctx.productionMasterDetailSession = session;
-  return { ctx, session, request, inventory, release };
+  return { ctx, session, request, canonicalRequest, inventory, release };
 }
 
 test('verified compact detail fills Request quantities without replacing Request-owned evidence or identity', async () => {
@@ -172,10 +181,61 @@ test('verified compact detail fills Request quantities without replacing Request
     assert.equal(ctx.activeItem[key], requestBefore[key], `${key} remains Request-owned`);
   }
   assert.equal(ctx.isProductionMasterDetailSessionCurrent(session), true);
-  assert.equal(ctx.boundItem, ctx.activeItem);
-  assert.deepEqual(ctx.boundIds, ['master-1']);
-  assert.deepEqual(structuredClone(request), requestBefore, 'the list Request object is not mutated by detail hydration');
+  assert.equal(ctx.hasProductionMasterDetailForItem(ctx.activeItem), true);
+  assert.equal(ctx.hasProductionMasterDetailForItem(request), true, 'the canonical Request retains the same verified proof');
+  assert.deepEqual(structuredClone(request), {
+    ...requestBefore, PTRONHAND: '1000', PTRREVIEWED: '50', PTRAVAILABLE: '800', PHOTO_MATCH_PTR_AVAILABLE_KNOWN: true,
+  }, 'only verified quantities change on the canonical Request');
   assert.deepEqual(inventory, inventoryBefore, 'the canonical master snapshot is not mutated');
+});
+
+test('Request autosave can adopt its canonical row without losing quantities or verification', async () => {
+  const { ctx, session, canonicalRequest } = detailRuntime();
+  assert.equal(await ctx.ensureActiveProductionMasterDetail(session), true);
+  assert.notEqual(ctx.activeItem, canonicalRequest);
+  let permissionRow;
+  Object.assign(ctx, {
+    autoSaveTimer: null,
+    document: { getElementById: () => null },
+    isDockSuspendDcRequestMirrorRow: () => false,
+    findRequestRowByUniqueId: id => ctx.findRequestInventoryRowByUniqueId(id),
+    mergePhotoCsvList: values => [...new Set(values.filter(Boolean))].join(','),
+    getRowSaveCoordinatorKey: () => 'request-1',
+    beginFieldSaveActivity: () => {}, endFieldSaveActivity: () => {},
+    // Exercise the real save adoption and proof gates, then stop at the role
+    // boundary so this regression never constructs or writes a business payload.
+    canEditRowDetailsByRole: (_prefix, item) => { permissionRow = item; return false; },
+  });
+  vm.runInContext([
+    source('mergeRequestPhotoFields'), source('getEditableDetailItemForPrefix'),
+    source('canEditRowDetails'), source('saveData'),
+  ].join('\n'), ctx);
+  await ctx.saveData(false, 'req-', true);
+  assert.equal(ctx.activeItem, canonicalRequest, 'saveData uses the canonical Request object');
+  assert.equal(permissionRow, canonicalRequest, 'canonical proof passes before the role boundary');
+  assert.equal(ctx.isProductionMasterDetailSessionCurrent(session), true);
+  assert.equal(ctx.hasProductionMasterDetailForItem(ctx.activeItem), true);
+  assert.equal(ctx.getCardPtrOnHandValue(ctx.activeItem), '1000');
+  assert.equal(ctx.getCardPtrAvailableValue(ctx.activeItem), '800');
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(ctx.activeItem, 'request'), 350);
+  assert.equal(ctx.activeItem.REQ_SPEC, 'Request spec');
+  assert.equal(ctx.activeItem.INITIAL_PTR, '900');
+  assert.equal(ctx.activeItem.REQ_PHOTO_LINK, PHOTO);
+});
+
+test('a replaced or differently linked canonical Request receives no quantities or detail proof', async () => {
+  for (const change of [
+    { UNIQUE_ID: 'another-request' },
+    { LOCATIONCODE: 'OTHER-LOCATION' },
+    { MASTER_ID: 'another-master', MASTER_UNIQUE_ID: 'another-master' },
+  ]) {
+    const { ctx, session, canonicalRequest } = detailRuntime({ canonicalChanges: change });
+    const before = structuredClone(canonicalRequest);
+    await ctx.ensureActiveProductionMasterDetail(session);
+    assert.deepEqual(structuredClone(canonicalRequest), before, 'mismatched canonical Request is untouched');
+    assert.equal(ctx.productionMasterDetailBindings.has(canonicalRequest), false);
+    assert.equal(ctx.hasProductionMasterDetailForItem(canonicalRequest), false);
+  }
 });
 
 test('unverified or superseded compact detail cannot inject inventory quantities into a Request', async () => {
