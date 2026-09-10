@@ -256,11 +256,14 @@ async function fixture(page: Page, baseURL: string) {
       // arguments/receiver and retain its original return value and promise.
       (window as any)[name] = function (...args: any[]) {
         const relevant = accept(args);
-        if (relevant) metrics.lifecycle.push({ event: `${name}-start`, at: performance.now() });
+        const detailState = () => /^(runDeferredDetailHydration|renderDetailView|refreshDetailInputsFromActiveItem)$/.test(name)
+          ? { spec: (document.getElementById('lsn-spec') as HTMLInputElement)?.value,
+            disabled: (document.getElementById('lsn-spec') as HTMLInputElement)?.disabled } : undefined;
+        if (relevant) metrics.lifecycle.push({ event: `${name}-start`, at: performance.now(), details: detailState() });
         const result = current.apply(this, args);
         if (relevant && result && typeof result.then === 'function') {
           result.then(() => metrics.lifecycle.push({ event: `${name}-settled`, at: performance.now() }), () => {});
-        } else if (relevant) metrics.lifecycle.push({ event: `${name}-end`, at: performance.now() });
+        } else if (relevant) metrics.lifecycle.push({ event: `${name}-end`, at: performance.now(), details: detailState() });
         return result;
       };
     };
@@ -269,6 +272,9 @@ async function fixture(page: Page, baseURL: string) {
       observeCall('processAndLoadData', args => args[0]?._verifiedLiveSync === true);
       observeCall('scheduleProductionLiveSyncRender', () => true);
       observeCall('renderViewContent', args => args[0] === 'drive');
+      for (const name of ['runDeferredDetailHydration', 'renderDetailView', 'refreshDetailInputsFromActiveItem']) {
+        observeCall(name, () => true);
+      }
       for (const name of ['openAppShellAfterLogin', 'applyRolePermissions', 'refreshProtectedSections',
         'repairAppShellScrollState', 'syncCurrentViewBodyClass', 'showOnlyPrimaryView', 'updateFooterNavState',
         'syncGlobalHeaderChrome', 'syncRoleAccessUi', 'renderHome', 'ensureHomeDashboardReadyAfterLogin',
@@ -430,10 +436,26 @@ test('an open saved detail enables its controls after verification without repop
   await expect(page.locator('#view-detail')).toBeVisible();
   const field = page.locator('#lsn-spec');
   await expect(field).toBeVisible();
+  // openDetail binds a fast shell and then hydrates its initial row on a queued
+  // frame. An already-restored draft belongs after that initial binding, not in
+  // its still-disabled placeholder. Wait the real work; do not force or stub it.
+  await expect.poll(() => page.evaluate(() => window.eval(`({
+    row: activeItem?.UNIQUE_ID,
+    hydrated: !!detailHydrationToken && !pendingDetailHydrationToken && !detailHydrationTimer
+      && !uiRenderFrames['detail-hydrate:'+detailHydrationToken],
+    verified: getProductionLiveSyncCoordinator().isVerified(createProductionCoreLiveAdapter('master'))
+  })`))).toEqual({ row: ROW_ID, hydrated: true, verified: false });
   await expect(field).not.toBeEditable();
   await expect(page.locator('#lsn-btn-save-complete')).toBeDisabled();
   // Represent already-restored local form text without dispatching an autosave.
-  await field.evaluate((element: HTMLInputElement) => { element.value = 'Retained local draft'; });
+  await field.evaluate((element: HTMLInputElement) => {
+    if (!element.isConnected) throw new Error('The restored draft must bind to the connected Detail input');
+    element.value = 'Retained local draft';
+    (window as any).__cacheMetrics.lifecycle.push({ event: 'fixture-restored-draft', at: performance.now(),
+      details: window.eval(`({row:activeItem?.UNIQUE_ID, token:detailHydrationToken, pendingToken:pendingDetailHydrationToken,
+        timer:!!detailHydrationTimer, queuedFrame:!!uiRenderFrames['detail-hydrate:'+detailHydrationToken]})`) });
+  });
+  await expect(field).toHaveValue('Retained local draft');
   release();
   await expect.poll(() => page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().isVerified(createProductionCoreLiveAdapter('master'))`))).toBe(true);
   await expect(field).toBeEditable();

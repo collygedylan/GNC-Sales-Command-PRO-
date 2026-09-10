@@ -208,8 +208,9 @@ test('permission-change coordinator callback returns the permission refresh prom
 });
 
 test('footer refresh does not render or reset static Hours and navigation screens', () => {
-    const from = html.indexOf('function scheduleProductionLiveSyncRender()');
+    const from = html.indexOf('function scheduleProductionLiveSyncRender(');
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
+    assert.ok(from > 0 && to > from, 'extract the real render scheduler');
     for (const kind of ['static', 'navigation']) {
         const ctx = { productionLiveSyncRenderTimer: null, document: { hidden: false },
             setTimeout: (callback) => { callback(); return 1; }, canUseProductionLiveSync: () => true,
@@ -222,8 +223,9 @@ test('footer refresh does not render or reset static Hours and navigation screen
 });
 
 test('focused live search defers one redraw without scheduling a busy retry timer', () => {
-    const from = html.indexOf('function scheduleProductionLiveSyncRender()');
+    const from = html.indexOf('function scheduleProductionLiveSyncRender(');
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
+    assert.ok(from > 0 && to > from, 'extract the real render scheduler');
     const queued = [];
     const ctx = { productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
         setTimeout: (callback) => { queued.push(callback); return queued.length; }, document: { hidden: false, activeElement: { matches: () => true } },

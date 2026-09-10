@@ -305,7 +305,7 @@ for (const layout of ['compact', 'standard']) {
     // The coordinator integration above tests real failure/retry semantics. This
     // independent layout fixture supplies its statuses directly without starting
     // a second permission/data bootstrap when the real navigation changes views.
-    await page.evaluate(() => window.eval(`canUseProductionLiveSync=()=>true; getProductionLiveSyncCoordinator=()=>null`));
+    await page.evaluate(() => window.eval(`canUseProductionLiveSync=()=>true; getProductionLiveSyncCoordinator=()=>({check:()=>Promise.resolve(false),signal:()=>{},isVerified:()=>false})`));
     const statuses = [
       { state: 'Needs attention', lastVerifiedAt: null, message: 'A dataset could not load. Your entered draft remains available for review.', draft: true },
       { state: 'Up to date', lastVerifiedAt: '2026-09-09T16:42:00Z', message: 'All required revisions verified.', draft: false },
