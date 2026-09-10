@@ -23,7 +23,9 @@ The initial real browser pipeline (authentication HTTP fixtures, IndexedDB, revi
 | Android | 369 ms | 0 | 0 |
 | iPhone | 676 ms | 0 | 0 |
 
-These are controlled local fixture measurements, not production latency guarantees. The full release unit union passed 850/850. Successful and failed browser timing records are retained by the compiled validation artifact; do not discard successful benchmark results. Later WebKit/iPhone timing failures exposed an unnecessary first-paint debounce; first snapshots now use an immediate render while ordinary refreshes retain debouncing.
+These are controlled local fixture measurements, not production latency guarantees. The full release unit union passed 850/850. Successful and failed browser timing records are retained by the compiled validation artifact; do not discard successful benchmark results. Later WebKit/iPhone timing failures exposed an unnecessary first-paint debounce, a late-starting revision check, and unnecessary hidden-editor refreshes. First snapshots now render immediately, verification begins when navigation selects its screen, and plain lists skip hidden form chrome.
+
+The final freshly compiled, isolated warm-reopen run passed all five profiles with the unchanged 1,000 ms limit: Chromium 399 ms, Firefox 300 ms, WebKit 684 ms, Android 311 ms, and iPhone 368 ms. Each made zero full inventory reads and transferred zero inventory response bytes. The separate five-profile mixed-revision run also passed: an unchanged master preview remains visible while a changed joined dependency loads, without enabling writes early. These final successful measurements are retained in `artifacts/verified-data-cache-final-warm/results.json`; earlier failures remain separate diagnostic artifacts.
 
 Coverage includes unchanged and changed cache, preview write denial, verified editor enablement, retained drafts, unrelated hanging badges, shared navigation reads, account isolation, denied sources, and offline recovery. Four WebKit/iPhone reload scenarios recorded cross-origin diagnostics consistent with cancelled synthetic requests; assertions still passed, so this report does not claim an error-free console.
 

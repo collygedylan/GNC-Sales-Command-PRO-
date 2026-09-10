@@ -269,6 +269,12 @@ async function fixture(page: Page, baseURL: string) {
       observeCall('processAndLoadData', args => args[0]?._verifiedLiveSync === true);
       observeCall('scheduleProductionLiveSyncRender', () => true);
       observeCall('renderViewContent', args => args[0] === 'drive');
+      for (const name of ['openAppShellAfterLogin', 'applyRolePermissions', 'refreshProtectedSections',
+        'repairAppShellScrollState', 'syncCurrentViewBodyClass', 'showOnlyPrimaryView', 'updateFooterNavState',
+        'syncGlobalHeaderChrome', 'syncRoleAccessUi', 'renderHome', 'ensureHomeDashboardReadyAfterLogin',
+        'setHomeDashboardModulesReady', 'setMenuOpenState', 'switchView', 'applyCurrentUserMasterInventoryScope',
+        'restorePersistedAppFilterStateForCurrentUser', 'initializeCartUi', 'updateGlobalActionBar',
+        'renderProductionDataFreshness']) observeCall(name, () => !metrics.savedVisibleAt);
       const drive = document.getElementById('drive-content');
       const home = document.getElementById('view-home');
       if (!metrics.homeVisibleAt && home?.getClientRects().length

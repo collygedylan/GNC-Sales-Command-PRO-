@@ -34895,11 +34895,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         scheduleProductionLiveSyncRender();
                     }
                     // Change only permissions/chrome here, never repopulate a focused form.
-                    refreshProtectedSections();
                     if (getCurrentVisibleViewId() === 'detail') {
+                        refreshProtectedSections();
                         applyCameraPermissions(activeDetailSourceView, activeItem);
                         applyAvDetailReadOnlyState(activeDetailSourceView);
-                    }
+                    } else if (hasProductionLiveSyncDraft()) refreshProtectedSections();
                     updateFooterRequestBadge();
                     updateFooterChatBadge();
                 },
@@ -56816,7 +56816,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (typeof syncCurrentViewBodyClass === 'function') syncCurrentViewBodyClass('home');
             document.body.classList.remove('detail-field-active');
             repairAppShellScrollState('login-shell-open', { resetGestureState: true });
-            syncRoleAccessUi(getRoleAccessState());
             showOnlyPrimaryView('home');
             applyRolePermissions({ preparingLogin: true });
             renderHome();
@@ -78234,6 +78233,9 @@ function toggleDriveQuickRequestItem(domId) {
             const renderToken = needsTargetRender ? prepareLatestViewRender(nextViewId) : 0;
             if (targetView) {
                 showOnlyPrimaryView(nextViewId);
+                // Start the current screen's lightweight verification before
+                // its scheduled render/chrome frame, not from the later loader.
+                if (canUseProductionLiveSync()) getProductionLiveSyncCoordinator().check('view-entry');
                 repairAppShellScrollState(`view-switch:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
                 updateFooterNavState();
                 syncGlobalHeaderChrome({ reason: `view-switch:${nextViewId}`, force: true });
