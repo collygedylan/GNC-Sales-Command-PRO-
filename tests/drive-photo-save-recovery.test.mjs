@@ -17,6 +17,7 @@ const REMOTE = 'https://photos.invalid/v2/remote.webp';
 const row = () => ({ UNIQUE_ID: 'row-a', ITEMCODE: 'item-a', LOCATIONCODE: 'location-a', LOTCODE: 'lot-a',
   SOURCE_TABLE: 'ph_master_inventory', LAST_UPDATED: 'v1', SAVED_PHOTO_LINK: '', SAVED_PHOTO_NAME: '', SPEC: 'original spec' });
 const names = ['firstNonEmptyValue', 'appendPhotoCsvValue', 'getDrivePhotoIdentity', 'getDrivePhotoMasterItem',
+  'usesProductionMasterListProjection', 'hasProductionMasterDetailForItem',
   'canUploadRowPhoto', 'getDrivePhotoDraftStorageKey', 'persistDrivePhotoDraftRecord', 'getDrivePhotoDraft',
   'hasPendingProtectedPhotoDrafts', 'beginDrivePhotoDraft', 'assertDrivePhotoDraftContext', 'buildDrivePhotoDraftPayload', 'applyConfirmedDrivePhotoFields',
   'persistDrivePhotoDraft', 'retryDrivePhotoSave', 'buildSecureDriveEvidencePayload', 'buildSecureDriveEvidenceBaseline',
@@ -37,6 +38,7 @@ function runtime(options = {}) {
   const ctx = vm.createContext({ Map, Set, AbortController, Date, Promise, URL, console,
     window: {}, navigator: { onLine: true }, sessionStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     nativeAuthSessionActive: true, activeItem: row(), activeDetailSourceView: 'drive', lastView: 'drive',
+    getDatasetState: () => ({ listProjectionVersion: '' }),
     captureLoginSessionOwnership: () => ({ generation, username, profileId }),
     isLoginSessionOwnershipCurrent: (owner) => owner.generation === generation && owner.username === username && owner.profileId === profileId,
     getRoleAccessState: () => ({ isAdmin }), canEditRowDetails: () => true,

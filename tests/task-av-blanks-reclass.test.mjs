@@ -25,6 +25,8 @@ function fixture(overrides = {}) {
     nativeAuthProfile: { username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false },
     masterInventoryById: new Map([[row.UNIQUE_ID, row]]), fullInventory: [row],
     argosInventoryTransactionState: null, argosReclassRowEditorEntries: new Map(),
+    productionMasterReclassGeneration: 0, productionMasterDetailDemands: new Map(),
+    getDatasetState: () => ({ listProjectionVersion: '' }),
     reclassDeliveryPollActive: false,
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
     normalizeEvalTaskFilterValue: value => value,
@@ -54,6 +56,7 @@ function fixture(overrides = {}) {
   };
   vm.createContext(context);
   const names = [
+    'usesProductionMasterListProjection',
     'isArgosInventoryTransactionEligible', 'isTaskAvBlanksReclassContext', 'resolveTaskAvBlanksReclassRow',
     'canCurrentUserUseTaskAvBlanksReclass', 'buildArgosInventoryTransactionRailHtml',
     'openArgosInventoryTransactionModal', 'closeArgosInventoryTransactionModal',

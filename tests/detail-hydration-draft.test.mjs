@@ -12,6 +12,7 @@ function source(name) {
   return html.slice(start, end + '\n        }'.length);
 }
 const names = ['firstNonEmptyValue', 'extractDetailPrefixFromInputId', 'isLagSensitiveDetailPrefix',
+  'usesProductionMasterListProjection', 'isProductionMasterDetailSessionCurrent', 'restoreProductionMasterDetailDraft',
   'shouldUseDebouncedDetailInputSave', 'handleConsolidatedDetailEvidenceInput',
   'getDetailHydrationDraftContext', 'isDetailHydrationDraftContextCurrent', 'rememberDetailHydrationInputEdit',
   'captureDetailHydrationInputDrafts', 'restoreDetailHydrationInputDrafts', 'runDeferredDetailHydration',
@@ -25,6 +26,7 @@ function runtime() {
   const ctx = vm.createContext({ WeakMap, Map, Set, console, document,
     activeItem: { UNIQUE_ID:'row-a', SOURCE_TABLE:'ph_master_inventory', ITEMCODE:'item-a', LOCATIONCODE:'location-a', LOTCODE:'lot-a', AV_NOTE:'', SPEC:'N/A' },
     activeDetailSourceView:'drive', lastView:'drive', activeDetailTab:'notes', detailHydrationToken:1,
+    productionMasterDetailSession: null, getDatasetState: () => ({ listProjectionVersion: '' }),
     captureLoginSessionOwnership: () => ({ generation, username:'actor-a' }),
     isLoginSessionOwnershipCurrent: owner => owner.generation === generation,
     canEditRowDetails: () => allowed,

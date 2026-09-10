@@ -1,4 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 /** The compiled shell, real Supabase SDK, IndexedDB, revision coordinator,
  * loaders, rendering and scheduling all run unchanged. Only network responses
@@ -10,6 +12,13 @@ const ROW_ID = 'verified-cache-row';
 const SAVED_NAME = 'Verified Cache Fixture';
 const CURRENT_NAME = 'Updated Cache Fixture';
 const readMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
+const inventorySchema = JSON.parse(readFileSync(resolve('tests/fixtures/inventory-list-schema.json'), 'utf8')) as {
+  sampledRows: number;
+  schema: { name: string; type: string; sampleNonNullRows: number }[];
+  syntheticValues: Record<string, string | number>;
+};
+const physicalColumns = new Set(inventorySchema.schema.map(column => column.name));
+type InventoryRow = Record<string, string | number | null>;
 
 function profile(username: string) {
   return { id: username === USER_A ? '00000000-0000-4000-8000-000000000001' : '00000000-0000-4000-8000-000000000002',
@@ -29,11 +38,49 @@ function session(username: string) {
 }
 
 function stock(commonname = SAVED_NAME) {
-  return { unique_id: ROW_ID, itemcode: 'CACHE1001', commonname, botanicalname: 'Synthetic fixture',
-    contsize: '3G', season: 'F1', seasoncode: 'F1', salesyear: '27', warehouse: '10', warehousecode: '10',
-    division: '10', blockalpha: 'A', locationcode: 'A001', lotcode: 'FIXTURE',
-    qtyavailable: 42, qtyonhand: 42, quantity: 42, total_available: 42, ptravailable: 42,
-    holdstopcode: '', lts: 0, last_updated: '2026-09-10T12:00:00Z' };
+  // Real physical schema and types, never non-schema padding or numeric values
+  // in text columns. Unpopulated nullable columns remain explicit nulls.
+  return Object.assign(Object.fromEntries(inventorySchema.schema.map(column => [column.name, null])), {
+    unique_id: ROW_ID, itemcode: 'CACHE1001', commonname, botanicalname: 'Synthetic fixture',
+    contsize: '3G', season: 'F1', saleyear: '27', warehouseid: '10', warehousei: '10',
+    blockalpha: 'A', locationcode: 'A001', lotcode: '27.F1', ptravailable: '42', ptronhand: '42',
+    s_lts: '42', a_lts: '42', si_lts: '42', ai_lts: '42', holdstopcode: '',
+    last_updated: '2026-09-10T12:00:00Z', unitprice: '45.67', quantityordered: '987',
+    internalinvnote: 'Synthetic exact full-only note',
+  }) as InventoryRow;
+}
+
+function fullSchemaRows(): InventoryRow[] {
+  return Array.from({ length: inventorySchema.sampledRows }, (_, index) => Object.fromEntries(
+    inventorySchema.schema.map(column => {
+      const value = index < column.sampleNonNullRows ? inventorySchema.syntheticValues[column.name] : null;
+      expect(value, `Explicit synthetic value for ${column.name}`).not.toBeUndefined();
+      return [column.name, column.name === 'unique_id' ? `${value}-${index}` : value];
+    })));
+}
+
+function selectedMasterRows(source: InventoryRow[], query: URLSearchParams) {
+  const select = query.get('select') || '*';
+  const filter = query.get('unique_id');
+  let matching = source;
+  if (filter) {
+    let ids: string[];
+    if (filter.startsWith('eq.')) ids = [filter.slice(3).replace(/^"|"$/g, '')];
+    else if (filter.startsWith('in.(') && filter.endsWith(')')) {
+      ids = filter.slice(4, -1).split(',').map(id => id.trim().replace(/^"|"$/g, ''));
+    } else throw new Error(`Unsupported synthetic exact-ID filter: ${filter}`);
+    matching = source.filter(row => ids.includes(String(row.unique_id)));
+  }
+  const offset = Number(query.get('offset') || 0), limit = Number(query.get('limit') || 1000);
+  const page = matching.slice(offset, offset + limit);
+  // Emulate the documented PostgREST alias transformation from the SELECT
+  // string actually sent by the app, not from a duplicate projection contract.
+  const rows = select === '*' ? structuredClone(page) : page.map(row => Object.fromEntries(select.split(',').map(field => {
+    const match = /^(?:([A-Za-z]\w*):)?([a-z_]\w*)$/.exec(field);
+    if (!match || !physicalColumns.has(match[2])) throw new Error(`Nonphysical synthetic selected field: ${field}`);
+    return [match[1] || match[2], row[match[2]]];
+  })));
+  return { rows, offset, total: matching.length, select, exact: !!filter };
 }
 
 type Gate = { promise: Promise<void>; release: () => void };
@@ -77,7 +124,9 @@ async function fixture(page: Page, baseURL: string) {
   const state = {
     username: USER_A, revision: '1', permission: 'fixture-permission-1', denied: false,
     sourceRevisions: {} as Record<string, string>,
-    rows: [stock()], reads: [] as { table: string; full: boolean }[], revisions: 0,
+    rows: [stock()], reads: [] as { table: string; full: boolean; select?: string; exact?: boolean }[], revisions: 0,
+    exactDetailUnavailable: false,
+    masterResponses: [] as { select: string; exact: boolean; rowCount: number; fieldCount: number; bodyBytes: number }[],
     forbidden: [] as string[], runtime: [] as string[], gates: new Map<string, Gate>(),
     held: [] as string[], permissionResponses: 0, errors: [] as string[], unconfigured: [] as string[],
     syntheticJsonResponses: 0, syntheticUncompressedJsonBodyBytes: 0,
@@ -164,15 +213,19 @@ async function fixture(page: Page, baseURL: string) {
       if (table === 'profiles') return json(route, /vnd\.pgrst\.object/.test(request.headers().accept || '')
         ? profile(state.username) : [profile(state.username)]);
       const select = url.searchParams.get('select') || '*';
+      if (table === 'ph_master_inventory') {
+        const result = selectedMasterRows(state.rows, url.searchParams);
+        state.reads.push({ table, full: !result.exact, select, exact: result.exact });
+        await wait(table);
+        if (result.exact) await wait('master-detail');
+        const rows = result.exact && state.exactDetailUnavailable ? [] : result.rows;
+        state.masterResponses.push({ select, exact: result.exact, rowCount: rows.length,
+          fieldCount: rows[0] ? Object.keys(rows[0]).length : 0, bodyBytes: Buffer.byteLength(JSON.stringify(rows)) });
+        return json(route, rows, 200, { 'content-range': rows.length
+          ? `${result.offset}-${result.offset + rows.length - 1}/${result.total}` : `*/${result.total}` });
+      }
       state.reads.push({ table, full: select === '*' || select.includes('commonname') });
       await wait(table);
-      if (table === 'ph_master_inventory') {
-        const offset = Number(url.searchParams.get('offset') || 0);
-        const limit = Number(url.searchParams.get('limit') || 1000);
-        const rows = state.rows.slice(offset, offset + limit);
-        return json(route, rows, 200, { 'content-range': rows.length
-          ? `${offset}-${offset + rows.length - 1}/${state.rows.length}` : `*/${state.rows.length}` });
-      }
       if (table === 'ph_app_settings') return json(route, [{ key: 'current_season_salesyear',
         value: { seasonCode: 'F1', salesYear: 27 }, updated_at: '2026-09-10T12:00:00Z' }]);
       return json(route, []);
@@ -192,14 +245,19 @@ async function fixture(page: Page, baseURL: string) {
         }
         const query = new URLSearchParams(body.query || '');
         const select = query.get('select') || '*';
-        state.reads.push({ table: body.table, full: select === '*' || select.includes('commonname') });
-        await wait(body.table);
         if (body.table === 'ph_master_inventory') {
-          const offset = Number(query.get('offset') || 0);
-          const rows = state.rows.slice(offset, offset + Number(query.get('limit') || 1000));
+          const result = selectedMasterRows(state.rows, query);
+          state.reads.push({ table: body.table, full: !result.exact, select, exact: result.exact });
+          await wait(body.table);
+          if (result.exact) await wait('master-detail');
+          const rows = result.exact && state.exactDetailUnavailable ? [] : result.rows;
+          state.masterResponses.push({ select, exact: result.exact, rowCount: rows.length,
+            fieldCount: rows[0] ? Object.keys(rows[0]).length : 0, bodyBytes: Buffer.byteLength(JSON.stringify(rows)) });
           state.syntheticUncompressedInventoryBodyBytes += Buffer.byteLength(JSON.stringify(rows));
           return json(route, { ok: true, data: rows });
         }
+        state.reads.push({ table: body.table, full: select === '*' || select.includes('commonname') });
+        await wait(body.table);
         return json(route, { ok: true, data: [] });
       }
       if (['eval_work', 'shear_location_work', 'location_work', 'dock_trip_status'].includes(body.action)

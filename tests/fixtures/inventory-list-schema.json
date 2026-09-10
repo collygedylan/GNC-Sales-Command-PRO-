@@ -1,0 +1,1384 @@
+{
+  "fixtureVersion": 1,
+  "description": "Synthetic data only. Physical schema metadata and bounded sample non-null counts were observed on 2026-09-10; no business row values were retrieved or copied. Tests populate these exact schema keys using explicit synthetic values, with no padding fields.",
+  "table": "ph_master_inventory",
+  "sampledRows": 128,
+  "schema": [
+    {
+      "name": "unique_id",
+      "type": "text",
+      "nullable": false,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "itemcode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "commonname",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "contsize",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "locationcode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "lotcode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "ptravailable",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "season_supply",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "priority",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 46
+    },
+    {
+      "name": "qualitycode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "field_tag_color",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "s_lts",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 98
+    },
+    {
+      "name": "season",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "plantgroupcode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "listprice",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "concat",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "last_updated",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "assignedto",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "date_completed",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 2
+    },
+    {
+      "name": "end_cap_folder",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "end_cap_qty",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "end_cap_level",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "match",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "spec",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "caliper",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "pic_note",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "sales_note",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "av_note",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "photo_link",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "photo_name",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "dock_spec",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "dock_caliper",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "dock_note",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "dock_photo_link",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "dock_photo_name",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_cat",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_title",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_inst",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_assigned",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_notes",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_photo_link",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_photo_name",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_completed",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "initial_ptr",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 2
+    },
+    {
+      "name": "loc_match_qty",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "warehousei",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "desigitem",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 6
+    },
+    {
+      "name": "desigcust",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "desigloc",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 5
+    },
+    {
+      "name": "ptronhand",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "ptrreviewed",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 11
+    },
+    {
+      "name": "holdstopcode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 7
+    },
+    {
+      "name": "holdstopbegindate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 7
+    },
+    {
+      "name": "holdstopreason",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 7
+    },
+    {
+      "name": "hsreasonbegin",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "season_oh",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "season_demand",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 32
+    },
+    {
+      "name": "oversellpercentage",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "itemspec",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 93
+    },
+    {
+      "name": "locationnote",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 90
+    },
+    {
+      "name": "locationnotedate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 88
+    },
+    {
+      "name": "suspend",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 4
+    },
+    {
+      "name": "suspendto",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "specialpuller",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 15
+    },
+    {
+      "name": "pulltagnote1",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "pulltagnote2",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "fieldtagcolor",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 109
+    },
+    {
+      "name": "salesnote",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "inventorynote",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 2
+    },
+    {
+      "name": "locationptn1",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 22
+    },
+    {
+      "name": "locationptn2",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 15
+    },
+    {
+      "name": "prisetby",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 49
+    },
+    {
+      "name": "priupdated",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 48
+    },
+    {
+      "name": "bypassloc",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "largeptrqty",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 103
+    },
+    {
+      "name": "maxorderquantity",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "lochold",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ext_ptronhand",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "varietycode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "genusname",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "botanicalname",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "reversecommon",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "sortnamevariety",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "containersort",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "saleyear",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "blockalpha",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "blocknumber",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "bay",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "pullerresponsibility",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 125
+    },
+    {
+      "name": "grower",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 124
+    },
+    {
+      "name": "si_lts",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 98
+    },
+    {
+      "name": "a_lts",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 98
+    },
+    {
+      "name": "ai_lts",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 98
+    },
+    {
+      "name": "season_available",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "holdstopenddate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 3
+    },
+    {
+      "name": "salesnote_1",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "fnsalesnote",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "warehousename",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "mcstatus",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "hz",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "intercopo",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 27
+    },
+    {
+      "name": "insurancegroup",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "brand",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "printedcontainercode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "warehouseid",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "isreserve",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "salesrepid",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "salesrepname",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "nationalaccount",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "idgroup",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "customeridentityid",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "customername",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "consigneeidentityid",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "consigneename",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "consigneecity",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "consigneestate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "consigneezip",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "tripnumber",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "stopnumber",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "zonecode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "tagcode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "transactionnumber",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "purchaseordernumber",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "extunitprice",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ordertotal",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "requestdate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "stagename",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "step",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "customersku",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "formattedupc",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "descriptorcode",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "quantityordered",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "quantityshipped",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "unitprice",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "handlingchargeperitem",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "taggingchargeperitem",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "combinedprice",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "freightrateperitem",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "landed",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "retailprice",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "picknote",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "planstart",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "generalloadinstr",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "invoicedate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "consigneeaddress_1",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "consigneeaddress_2",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "altshipcomment",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "shiptotelephone_1",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "okloadinstructions",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "txloadinstructions",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ncloadinstructions",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "hlloadinstructions",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "dock",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "dock_num",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "equiv_unit",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "equiv_uom",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "wingdingunits",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "dropweight",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "internalinvnote",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "hardinesszone",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "tagdeptnote",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ext_unit_merch_shipped",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ext_eunit_shipped",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "avg_price_eunit_shipped",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "requestdateweek",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "carrier",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "suspend_to",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 11
+    },
+    {
+      "name": "qa_code",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "si_available",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "source",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "filename",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 128
+    },
+    {
+      "name": "app_tab_assignment",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 11
+    },
+    {
+      "name": "salesnotebegindate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ncr_approval_type",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ncr_requested_by_username",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ncr_requested_by_display",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ncr_requested_by_email",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ncr_requested_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "ncr_approval_message",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "hold_release_approved_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "hold_release_approved_by",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "hold_release_approved_by_display",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "hold_release_approved_holdstopbegindate",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_av_note",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_match",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_loc_match_qty",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_spec",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_caliper",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_pick",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "flyer_initial_ptr",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_type",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_status",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_instructions",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_assigned_by",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_assigned_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_completed_by",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_completed_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_recount_qty",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_moved_up_qty",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_hold_action",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_hold_code",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_hold_reason",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "eval_task_result_note",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "av_rule_bundle_updated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "av_rule_av_note_updated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "av_rule_spec_updated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "av_rule_match_updated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "av_rule_caliper_updated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "av_rule_photo_updated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 1
+    },
+    {
+      "name": "av_rule_priority_snapshot",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 6
+    },
+    {
+      "name": "av_rule_holdstop_snapshot",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 6
+    },
+    {
+      "name": "av_rule_last_clear_reason",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 5
+    },
+    {
+      "name": "av_rule_last_cleared_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "sampleNonNullRows": 5
+    }
+  ],
+  "syntheticValues": {
+    "unique_id": "synthetic-master",
+    "itemcode": "TEST.001",
+    "commonname": "Synthetic Plant",
+    "contsize": "#3",
+    "locationcode": "A.01.001",
+    "lotcode": "27.F1",
+    "ptravailable": "100",
+    "season_supply": "100",
+    "priority": "1",
+    "qualitycode": "A",
+    "s_lts": "100",
+    "season": "F1",
+    "plantgroupcode": "SHRUB",
+    "listprice": "12.00",
+    "source": "LD",
+    "concat": "TEST.001|A.01.001|27.F1",
+    "last_updated": "2026-09-10T12:00:00Z",
+    "date_completed": "2026-09-09T12:00:00Z",
+    "av_note": "SYNTHETIC INSPECTION",
+    "spec": "24 H",
+    "photo_link": "https://photos.example.invalid/master.webp",
+    "photo_name": "synthetic-master.webp",
+    "initial_ptr": "100",
+    "loc_match_qty": "50",
+    "match": "50",
+    "desigitem": "SYNTHETIC",
+    "desigloc": "A",
+    "ptronhand": "110",
+    "ptrreviewed": "10",
+    "holdstopcode": "H",
+    "holdstopbegindate": "2026-09-01",
+    "holdstopreason": "Synthetic hold",
+    "season_oh": "100",
+    "season_demand": "10",
+    "itemspec": "#3",
+    "locationnote": "Synthetic location note",
+    "locationnotedate": "2026-09-01",
+    "suspend": "YES",
+    "suspend_to": "DC",
+    "specialpuller": "SYNTHETIC",
+    "fieldtagcolor": "BLUE",
+    "inventorynote": "Synthetic note",
+    "locationptn1": "North",
+    "locationptn2": "West",
+    "prisetby": "synthetic_user",
+    "priupdated": "2026-09-01",
+    "largeptrqty": "100",
+    "ext_ptronhand": "1100",
+    "varietycode": "TEST",
+    "genusname": "Synthetic",
+    "botanicalname": "Synthetic plant variety",
+    "reversecommon": "Plant Synthetic",
+    "sortnamevariety": "Synthetic Plant",
+    "containersort": "3",
+    "saleyear": "27",
+    "blockalpha": "A",
+    "blocknumber": "01",
+    "bay": "001",
+    "pullerresponsibility": "Synthetic Team",
+    "grower": "Synthetic Grower",
+    "si_lts": "100",
+    "a_lts": "100",
+    "ai_lts": "100",
+    "season_available": "100",
+    "holdstopenddate": "2026-09-30",
+    "warehousename": "Synthetic Site",
+    "mcstatus": "A",
+    "hz": "7",
+    "intercopo": "N",
+    "insurancegroup": "SYNTHETIC",
+    "printedcontainercode": "TEST3",
+    "warehouseid": "10",
+    "equiv_unit": "1",
+    "filename": "synthetic-inventory.csv",
+    "app_tab_assignment": "season",
+    "av_rule_bundle_updated_at": "2026-09-09T12:00:00Z",
+    "av_rule_av_note_updated_at": "2026-09-09T12:00:00Z",
+    "av_rule_spec_updated_at": "2026-09-09T12:00:00Z",
+    "av_rule_match_updated_at": "2026-09-09T12:00:00Z",
+    "av_rule_caliper_updated_at": "2026-09-09T12:00:00Z",
+    "av_rule_photo_updated_at": "2026-09-09T12:00:00Z",
+    "av_rule_priority_snapshot": "1",
+    "av_rule_holdstop_snapshot": "H",
+    "av_rule_last_clear_reason": "Synthetic clear",
+    "av_rule_last_cleared_at": "2026-09-09T12:00:00Z"
+  },
+  "aggregateEvidence": {
+    "measuredAt": "2026-09-10",
+    "sampleRule": "First 128 rows ordered by unique_id; aggregate output only",
+    "physicalColumnCount": 213,
+    "projectionColumnCount": 161,
+    "fullJsonObjectBytes": 688921,
+    "projectedJsonObjectBytes": 526489,
+    "aliasedJsonObjectBytes": 320409,
+    "reductionPercent": 53.491,
+    "measurement": "Sum of octet_length(jsonb::text) across the same sample, not compressed HTTP egress"
+  }
+}
