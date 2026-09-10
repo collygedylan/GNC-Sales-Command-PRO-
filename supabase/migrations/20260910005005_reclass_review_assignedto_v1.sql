@@ -116,9 +116,9 @@ end
 $function$;
 
 -- Clone the FINAL composed v1 body, including the required assignee arrays at
--- INSERT. Do not replace the public base used by legacy/batch entrypoints. Two
--- latent single-review blockers are repaired only in this private clone: the
--- over-escaped email dot and JD's existing App API/UI creator authorization.
+-- INSERT. Do not replace the public base used by legacy/batch entrypoints.
+-- Align JD's already-existing single-review App API/UI creator authorization
+-- only in this private clone; all other base behavior remains unchanged.
 do $migration$
 declare
   definition text := pg_get_functiondef('public.create_eval_work_v1(jsonb)'::regprocedure);
@@ -128,7 +128,6 @@ begin
     raise exception 'review_base_assignee_insert_contract_missing';
   end if;
   definition := replace(definition, 'public.create_eval_work_v1(', 'private.create_eval_work_review_base_v1(');
-  definition := replace(definition, chr(92) || chr(92) || '.', '[.]');
   definition := replace(definition, 'not in (''dylan_collyge'', ''megan_kelly'')',
     'not in (''dylan_collyge'', ''megan_kelly'', ''jd_jones'')');
   execute definition;
@@ -152,6 +151,7 @@ declare
   recipient_profile public.profiles;
   recipients text[];
   recipient_profiles jsonb;
+  frozen_context jsonb;
   assignment_recipients text[];
   work public.ph_eval_work;
 begin
@@ -210,6 +210,11 @@ begin
       'displayName', coalesce(nullif(btrim(recipient_profile.display_name), ''), recipient_profile.username),
       'email', email_value));
   end loop;
+  frozen_context := jsonb_build_object('reviewAssignment', jsonb_build_object('evaluator', evaluator,
+    'completionRecipients', recipient_profiles, 'assignmentRevision', setup->>'assignmentRevision'));
+  if octet_length(frozen_context::text) > 8192 then
+    raise exception using errcode = '22023', message = 'REVIEW_RECIPIENT_INVALID';
+  end if;
   -- Construct the base payload from an allowlist. Manual assignees, recipient
   -- arrays, and browser actor fields cannot override the authoritative result.
   work := private.create_eval_work_review_base_v1(jsonb_build_object(
@@ -220,20 +225,14 @@ begin
     'completionRecipients', to_jsonb(recipients)
   ) || case when p_payload->'inquiry' is null or p_payload->'inquiry' = 'null'::jsonb
        then '{}'::jsonb else jsonb_build_object('inquiry', p_payload->'inquiry') end);
-  update public.ph_eval_work set source_context = coalesce(source_context, '{}'::jsonb) ||
-    jsonb_build_object('reviewAssignment', jsonb_build_object('evaluator', evaluator,
-      'completionRecipients', recipient_profiles, 'assignmentRevision', setup->>'assignmentRevision'))
+  frozen_context := coalesce(work.source_context, '{}'::jsonb) || frozen_context;
+  if octet_length(frozen_context::text) > 8192 then
+    raise exception using errcode = '22023', message = 'REVIEW_RECIPIENT_INVALID';
+  end if;
+  update public.ph_eval_work set source_context = frozen_context
     where id = work.id returning * into work;
-  -- Preserve the existing assignment-copy policy. Use a correctly escaped
-  -- address check here without changing the shared batch/completion helper.
-  select array_agg(distinct email order by email) into assignment_recipients from (
-    select evaluator->>'email' as email
-    union all
-    select lower(btrim(u.email)) from public.profiles p join auth.users u on u.id = p.id
-    where lower(p.username) in ('dylan_collyge','megan_kelly') and p.disabled_at is null
-      and (p.locked_until is null or p.locked_until <= now())
-      and btrim(coalesce(u.email,'')) ~* '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$'
-  ) addresses;
+  select array_agg(distinct value order by value) into assignment_recipients
+  from unnest(private.eval_work_required_manager_emails_v2() || array[evaluator->>'email']) value;
   update public.ph_request_delivery_outbox
     set payload = payload || jsonb_build_object(
       'assigneeUsernames', to_jsonb(work.assignee_usernames), 'assignees', work.assignee_profiles,

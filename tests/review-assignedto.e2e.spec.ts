@@ -1,16 +1,27 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const usePublishedShell = Boolean(String(process.env.CANARY_BASE_URL || '').trim());
+
 async function prepareAssignedToReview(page: Page, width = 390) {
   await page.setViewportSize({ width, height: 844 });
-  // Use the generated runtime and extracted styles. The shell builder leaves
-  // unchanged assets in the repository, so serve those from their root.
-  await page.route('**/_site/**', async route => {
-    const url = new URL(route.request().url());
-    const builtAsset = /\/(live-app-runtime-|live-app-styles-|live-sync-(registry|adapters|coordinator)\.js)/.test(url.pathname);
-    const builtDocument = url.pathname === '/_site/' || url.pathname === '/_site/index.html';
-    await route.continue(builtAsset || builtDocument ? {} : { url: url.toString().replace('/_site/', '/') });
-  });
-  await page.goto('/_site/?e2e=review-assignedto&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
+  if (usePublishedShell) {
+    // Install before loading the published app; the synthetic identity and
+    // protected transport stub below remain active for every interaction.
+    await page.route('**/*', async route => {
+      if (['GET', 'HEAD', 'OPTIONS'].includes(route.request().method())) await route.fallback();
+      else await route.abort('blockedbyclient');
+    });
+  } else {
+    // Use the generated runtime and extracted styles. The shell builder leaves
+    // unchanged assets in the repository, so serve those from their root.
+    await page.route('**/_site/**', async route => {
+      const url = new URL(route.request().url());
+      const builtAsset = /\/(live-app-runtime-|live-app-styles-|live-sync-(registry|adapters|coordinator)\.js)/.test(url.pathname);
+      const builtDocument = url.pathname === '/_site/' || url.pathname === '/_site/index.html';
+      await route.continue(builtAsset || builtDocument ? {} : { url: url.toString().replace('/_site/', '/') });
+    });
+  }
+  await page.goto(`${usePublishedShell ? '/' : '/_site/'}?e2e=review-assignedto&post_deploy_access_canary=1`, { waitUntil: 'load' });
   await page.waitForFunction(() => typeof (window as any).openEvalWorkSetupFromReclass === 'function');
   await page.evaluate(() => window.eval(`(() => {
     installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN');

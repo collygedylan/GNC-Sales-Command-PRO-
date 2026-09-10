@@ -181,6 +181,10 @@ jobs:
         env:
           SESSION_RECOVERY_BASE_URL: https://agmetricapp.com
         run: npm run test:session-recovery
+      - name: Verify live AssignedTo reviews without business mutations
+        env:
+          CANARY_BASE_URL: https://agmetricapp.com
+        run: npx playwright test --config playwright.review-assignedto.config.ts --project=chromium --project=webkit
 
       - name: Verify live footer navigation on Android and iPhone
         env:

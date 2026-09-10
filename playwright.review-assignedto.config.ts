@@ -1,9 +1,16 @@
 import { defineConfig } from '@playwright/test';
 import base from './playwright.config';
 
-// The production shell must be built before this suite: npm run build:live:shell.
-// Tests load /_site and route unchanged static dependencies to the repository.
+const canaryBaseURL = String(process.env.CANARY_BASE_URL || '').trim().replace(/\/+$/, '');
+
+// Local runs require npm run build:live:shell and load /_site. A supplied
+// CANARY_BASE_URL uses the published root with all write requests blocked.
 export default defineConfig({
   ...base,
   testMatch: /review-assignedto\.e2e\.spec\.ts/,
+  use: {
+    ...base.use,
+    baseURL: canaryBaseURL || base.use?.baseURL,
+  },
+  webServer: canaryBaseURL ? undefined : base.webServer,
 });
