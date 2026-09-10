@@ -30,7 +30,7 @@ test('browser shards and compiled suites use isolated runners without racing per
   assert.equal(validation.jobs.functional.strategy['max-parallel'], 4);
   assert.equal(validation.jobs.functional.strategy['fail-fast'], false);
   assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=/);
-  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home','season','suspend','docks','av-blanks','session','assignedto','verified-cache']);
+  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home','season','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability']);
   assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-timing.config.ts --workers=1/);
   assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-android.config.ts --project=android --workers=1/);
   assert.equal(validation.jobs.lighthouse['runs-on'], 'ubuntu-latest');

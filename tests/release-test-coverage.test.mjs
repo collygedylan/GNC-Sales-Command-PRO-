@@ -89,6 +89,9 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/eval-review-assignedto-api.test.mjs',
     'tests/production-probe-read-only.test.mjs',
     'tests/prepare-ci-playwright-apt.test.mjs',
+    'tests/request-entry-source.test.mjs',
+    'tests/request-commit-verification.test.mjs',
+    'tests/request-on-hand-calculation.test.mjs',
   ]);
   const priorFiles = releaseUnitScriptNames.flatMap(name =>
     [...manifest.scripts[name].matchAll(/tests\/[\w./-]+\.test\.(?:mjs|cjs|js)/g)].map(match => match[0]));
@@ -207,6 +210,16 @@ for (const [name, spec, projects] of compiledSuites) {
     else assert.match(readFileSync(path.join(root, files[0]), 'utf8'), /\/_site\//);
   });
 }
+
+test('Request regressions run against the compiled shell across desktop and mobile browsers', () => {
+  const load = configLoader();
+  const config = load('playwright.request-reliability.config.ts');
+  assert.deepEqual(selected(config), ['tests/request-entry-source.e2e.spec.ts', 'tests/request-on-hand-calculation.e2e.spec.ts']);
+  assert.deepEqual(plain(config.projects.map(project => project.name)), ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']);
+  assert.match(config.webServer.command, /startReleaseTestServer/);
+  assert.equal(config.workers, 1);
+  assert.equal(config.retries, 0);
+});
 
 test('compiled Android login coverage stays separate while three desktop projects move to timing', () => {
   const load = configLoader();

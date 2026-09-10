@@ -8,6 +8,9 @@ export const explicitReleaseUnitTests = Object.freeze([
   'tests/eval-review-assignedto-api.test.mjs',
   'tests/production-probe-read-only.test.mjs',
   'tests/prepare-ci-playwright-apt.test.mjs',
+  'tests/request-entry-source.test.mjs',
+  'tests/request-commit-verification.test.mjs',
+  'tests/request-on-hand-calculation.test.mjs',
 ]);
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 

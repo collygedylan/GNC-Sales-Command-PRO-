@@ -106,7 +106,7 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
   const release = `V${JSON.parse(read('../package.json')).version}`;
-  assert.equal(release, 'V2026.09.10.02');
+  assert.equal(release, 'V2026.09.10.04');
   assert.equal(html.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1], release);
   assert.equal(JSON.parse(read('../manifest.json')).version, release);
 });
