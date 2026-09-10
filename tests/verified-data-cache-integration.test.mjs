@@ -417,6 +417,15 @@ test('post-verification callback updates permission and badge chrome without rep
     assert.deepEqual(calls, ['permissions', 'camera', 'detail-permissions', 'request-badge', 'chat-badge']);
     assert.deepEqual(input, { value: 'my unsaved note', selectionStart: 4, selectionEnd: 7 });
     assert.equal(ctx.activeItem, item); assert.equal(item.note, 'draft');
+    calls.length = 0;
+    ctx.getCurrentVisibleViewId = () => 'drive';
+    ctx.hasProductionLiveSyncDraft = () => false;
+    callbacks.onVerified({ scope: ctx.getProductionDataScope() });
+    assert.deepEqual(calls, ['request-badge', 'chat-badge'], 'plain lists do not refresh hidden form chrome before first paint');
+    calls.length = 0;
+    ctx.hasProductionLiveSyncDraft = () => true;
+    callbacks.onVerified({ scope: ctx.getProductionDataScope() });
+    assert.deepEqual(calls, ['permissions', 'request-badge', 'chat-badge'], 'an open data-entry dialog still refreshes protected controls');
     callbacks.onStageStart({}, { permissionVersion: 'fixture-permission-v2' });
     assert.equal(ctx.productionLiveSyncReadGeneration, 1);
     assert.equal(ctx.productionLiveSyncReadPermissionVersion, 'fixture-permission-v2');
