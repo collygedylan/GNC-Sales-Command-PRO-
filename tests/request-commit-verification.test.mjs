@@ -178,3 +178,161 @@ test('initial submission and durable retry use the shared verification boundary'
     assert.doesNotMatch(source, /supabaseRpc\([\s\S]{0,120}['"]create_(?:av_)?request_batch['"]/);
   }
 });
+
+function submittedBatch(source, suffix, overrides = {}) {
+  return {
+    clientBatchId: `98000000-0000-4000-8000-0000000000${suffix}`,
+    username: 'synthetic-current-user',
+    status: 'pending',
+    requestSource: source,
+    requests: [{ unique_id: `synthetic-${suffix}`, master_id: 'synthetic-master', req_qty: '7' }],
+    createdAt: '2026-09-10T10:00:00.000Z',
+    attempts: 0,
+    ...overrides,
+  };
+}
+
+function flushFixture(records, { rpcError, heldRpc = false, ...verificationOptions } = {}) {
+  const f = fixture({ native: false, ...verificationOptions });
+  const disk = new Map(structuredClone(records).map(record => [record.clientBatchId, record]));
+  const storage = { reads: 0, saved: [], deleted: [], dirty: [] };
+  let releaseRpc;
+  let signalRpcStarted;
+  const rpcStarted = new Promise(resolve => { signalRpcStarted = resolve; });
+  const rpcGate = heldRpc ? new Promise(resolve => { releaseRpc = resolve; }) : Promise.resolve();
+  Object.assign(f.context, {
+    currentUser: 'synthetic-current-user',
+    navigator: { onLine: true },
+    REQUEST_OUTBOX_STORE: 'request_outbox',
+    ACTIVE_REQUEST_TABLE: 'synthetic_request_table',
+    requestsInventory: [],
+    async getAllIndexedDbRecords(store) {
+      assert.equal(store, 'request_outbox');
+      storage.reads++;
+      return structuredClone([...disk.values()]);
+    },
+    async deleteIndexedDbRecord(store, id) {
+      assert.equal(store, 'request_outbox');
+      storage.deleted.push(id);
+      disk.delete(id);
+    },
+    async saveRequestOutboxEntry(entry) {
+      storage.saved.push(structuredClone(entry));
+      disk.set(entry.clientBatchId, structuredClone(entry));
+    },
+    async supabaseRpc(...args) {
+      f.calls.rpc.push(args);
+      signalRpcStarted();
+      await rpcGate;
+      if (rpcError) throw rpcError;
+      return { client_batch_id: args[1].client_batch_id, rows: args[1].requests };
+    },
+    formatFetchedRows: rows => rows,
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
+    findRequestInventoryRowByUniqueId: id => f.context.requestsInventory.find(row => row.unique_id === id),
+    rebuildRequestInventoryIndexes() {},
+    markDatasetDirty: (...args) => storage.dirty.push(args),
+    refreshLocalRequestViewState() {},
+    triggerRequestRealtimeUiRefresh() {},
+  });
+  vm.runInContext(`let requestOutboxFlushPromise = null;\n${declarations.get('flushRequestOutbox')}`, f.context);
+  return {
+    ...f, disk, storage, rpcStarted,
+    releaseRpc: () => releaseRpc(),
+    flush: reason => f.context.flushRequestOutbox(reason),
+  };
+}
+
+test('outbox retry preserves unsent drafts and malformed records without counting or submitting them', async () => {
+  const records = [
+    { clientBatchId: 'verified-cache-draft', username: 'synthetic-current-user', state: 'draft', note: 'Unsent synthetic draft' },
+    submittedBatch('av', '01', { state: 'draft' }),
+    submittedBatch('av', '02', { status: undefined }),
+    submittedBatch('av', '03', { status: 'sent' }),
+    submittedBatch('av', '04', { clientBatchId: '   ' }),
+    submittedBatch('unknown', '05'),
+    submittedBatch('av', '06', { requests: undefined }),
+    submittedBatch('av', '07', { requests: [] }),
+    submittedBatch('av', '08', { requests: { unique_id: 'not-an-array' } }),
+    submittedBatch(undefined, '09'),
+  ];
+  const f = flushFixture(records);
+  const before = JSON.stringify([...f.disk.values()]);
+  assert.deepEqual(structuredClone(await f.flush('online')), { sent: 0, pending: 0 });
+  assert.equal(f.calls.rpc.length, 0);
+  assert.deepEqual(f.storage.saved, []);
+  assert.deepEqual(f.storage.deleted, []);
+  assert.deepEqual(f.storage.dirty, []);
+  assert.equal(JSON.stringify([...f.disk.values()]), before, 'skipped records remain byte-for-byte unchanged');
+});
+
+test('outbox retries submitted AV and General batches with their saved IDs and payloads', async () => {
+  const draft = { clientBatchId: 'unsent-draft', state: 'draft', note: 'Keep this local' };
+  const av = submittedBatch('av', '11', { createdAt: '2026-09-10T10:01:00.000Z' });
+  const general = submittedBatch('general', '12');
+  const f = flushFixture([draft, av, general]);
+  assert.deepEqual(structuredClone(await f.flush('online')), { sent: 2, pending: 0 });
+  assert.deepEqual(f.calls.rpc.map(([name]) => name), ['create_request_batch', 'create_av_request_batch']);
+  for (const [index, entry] of [general, av].entries()) {
+    const [, body, options] = f.calls.rpc[index];
+    assert.equal(body.client_batch_id, entry.clientBatchId);
+    assert.deepEqual(structuredClone(body.requests), entry.requests);
+    assert.equal(options.timeoutMs, 30000);
+  }
+  assert.deepEqual(f.storage.deleted, [general.clientBatchId, av.clientBatchId]);
+  assert.deepEqual(f.storage.saved, []);
+  assert.deepEqual([...f.disk.values()], [draft]);
+  assert.deepEqual(f.storage.dirty, [['requests', 'request-outbox:online']]);
+});
+
+test('failed submitted batches remain pending with their original payload while drafts stay untouched', async () => {
+  const draft = { clientBatchId: 'unsent-draft', state: 'draft', note: 'Keep this local' };
+  const entry = submittedBatch('av', '21', { attempts: 2, customField: 'preserve-me' });
+  const f = flushFixture([draft, entry], { rpcError: Object.assign(new Error('Synthetic unavailable response'), { status: 503 }) });
+  assert.deepEqual(structuredClone(await f.flush()), { sent: 0, pending: 1 });
+  assert.equal(f.calls.rpc.length, 1);
+  assert.deepEqual(f.storage.deleted, []);
+  assert.equal(f.storage.saved.length, 1);
+  const saved = f.disk.get(entry.clientBatchId);
+  const { attempts, lastErrorCode, lastAttemptAt, ...retained } = saved;
+  const { attempts: originalAttempts, ...original } = entry;
+  assert.deepEqual(retained, original);
+  assert.equal(attempts, originalAttempts + 1);
+  assert.equal(lastErrorCode, 'HTTP_503');
+  assert.ok(Number.isFinite(Date.parse(lastAttemptAt)));
+  assert.deepEqual(f.disk.get(draft.clientBatchId), draft);
+  assert.deepEqual(f.storage.dirty, []);
+});
+
+test('outbox verification failures retain submitted batches without reaching the write RPC', async () => {
+  const entry = submittedBatch('av', '31');
+  const f = flushFixture([entry], { native: true, failedKey: 'master' });
+  assert.deepEqual(structuredClone(await f.flush()), { sent: 0, pending: 1 });
+  assert.deepEqual(f.calls.ensure, ['master', 'requests']);
+  assert.equal(f.calls.rpc.length, 0);
+  assert.deepEqual(f.storage.deleted, []);
+  const saved = f.disk.get(entry.clientBatchId);
+  assert.equal(saved.status, 'pending');
+  assert.equal(saved.clientBatchId, entry.clientBatchId);
+  assert.deepEqual(saved.requests, entry.requests);
+  assert.equal(saved.attempts, 1);
+  assert.equal(saved.lastErrorCode, 'REQUEST_COMMIT_FAILED');
+});
+
+test('concurrent outbox flushes share one retry and can run again after completion', async () => {
+  const entry = submittedBatch('general', '41');
+  const f = flushFixture([entry], { heldRpc: true });
+  const first = f.flush('online');
+  await f.rpcStarted;
+  const second = f.flush('resume');
+  assert.equal(f.storage.reads, 1);
+  assert.equal(f.calls.rpc.length, 1);
+  assert.deepEqual(f.storage.deleted, []);
+  f.releaseRpc();
+  const results = await Promise.all([first, second]);
+  for (const result of results) assert.deepEqual(structuredClone(result), { sent: 1, pending: 0 });
+  assert.deepEqual(f.storage.deleted, [entry.clientBatchId]);
+  assert.deepEqual(structuredClone(await f.flush('manual')), { sent: 0, pending: 0 });
+  assert.equal(f.storage.reads, 2, 'a completed flush releases its concurrency guard');
+  assert.equal(f.calls.rpc.length, 1, 'an acknowledged batch is not submitted twice');
+});

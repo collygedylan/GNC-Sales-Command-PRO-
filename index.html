@@ -30650,7 +30650,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (requestOutboxFlushPromise) return requestOutboxFlushPromise;
             requestOutboxFlushPromise = (async () => {
                 if (!currentUser || navigator.onLine === false) return { sent: 0, pending: 0 };
-                const entries = await getAllIndexedDbRecords(REQUEST_OUTBOX_STORE).catch(() => []);
+                const records = await getAllIndexedDbRecords(REQUEST_OUTBOX_STORE).catch(() => []);
+                // Reconnect retries submitted batches only. An unsent draft or
+                // incomplete local record must remain local and untouched.
+                const entries = records.filter((entry) => entry
+                    && entry.status === 'pending' && entry.state !== 'draft'
+                    && String(entry.clientBatchId || '').trim()
+                    && ['av', 'general'].includes(entry.requestSource)
+                    && Array.isArray(entry.requests) && entry.requests.length > 0);
                 let sent = 0;
                 for (const entry of entries.sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))) {
                     try {
