@@ -347,6 +347,7 @@ function appFunction(name) {
 function bindingFixture(f) {
     const context = vm.createContext({ Map, Set, WeakMap, Object, JSON, String,
         productionMasterDetailBindings: new WeakMap(), productionMasterDetailSession: null, activeItem: null,
+        pendingRequestCameraSelection: null, retainedRequestCameraSelections: [],
         getDatasetState: () => ({ listProjectionVersion: 'master-list-v1' }),
         getProductionMasterDetailContext: () => f.context,
         getProductionMasterDetailStore: () => f.store,
@@ -354,7 +355,8 @@ function bindingFixture(f) {
     });
     const names = ['usesProductionMasterListProjection', 'getProductionMasterDetailIds',
         'getProductionMasterDetailIdentity', 'productionMasterDetailFenceMatches',
-        'bindProductionMasterDetailRow', 'isProductionMasterDetailBindingCurrent', 'hasProductionMasterDetailForItem'];
+        'bindProductionMasterDetailRow', 'isProductionMasterDetailBindingCurrent', 'hasProductionMasterDetailForItem',
+        'getRetainedRequestCameraSelections', 'renderRequestCameraSelectionState', 'resumeProductionRequestDetailOwnSave'];
     vm.runInContext(names.map(appFunction).join('\n'), context);
     return context;
 }

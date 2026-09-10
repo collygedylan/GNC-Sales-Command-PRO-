@@ -92,6 +92,7 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/request-entry-source.test.mjs',
     'tests/request-commit-verification.test.mjs',
     'tests/request-on-hand-calculation.test.mjs',
+    'tests/request-detail-proof.test.mjs',
   ]);
   const priorFiles = releaseUnitScriptNames.flatMap(name =>
     [...manifest.scripts[name].matchAll(/tests\/[\w./-]+\.test\.(?:mjs|cjs|js)/g)].map(match => match[0]));
@@ -194,6 +195,7 @@ const compiledSuites = [
   ['session-recovery', 'session-recovery', ['session-chromium', 'session-iphone']],
   ['review-assignedto', 'review-assignedto', ['chromium', 'firefox', 'webkit']],
   ['verified-data-cache', 'verified-data-cache', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
+  ['request-photo', 'request-photo-completion', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
 ];
 
 for (const [name, spec, projects] of compiledSuites) {
@@ -205,7 +207,7 @@ for (const [name, spec, projects] of compiledSuites) {
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
-    if (name === 'verified-data-cache') assert.match(config.webServer.command, /startReleaseTestServer/);
+    if (['verified-data-cache', 'request-photo'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
     else assert.match(readFileSync(path.join(root, files[0]), 'utf8'), /\/_site\//);
   });

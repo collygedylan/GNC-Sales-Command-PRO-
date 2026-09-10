@@ -25,6 +25,8 @@ function harness(existingSession = storage()) {
     APP_SHELL_RUNTIME_BOOTED_AT: 0, APP_SHELL_VISIBLE_RELOAD_STARTUP_GRACE_MS: 8000,
     currentUser: 'test-user', loginShellPreparing: false, requestSubmitInFlight: false,
     pendingRequestArchiveFlushInFlight: false, driveEvidenceAbortControllers: new Map(),
+    pendingRequestCameraSelection: null, retainedRequestCameraSelections: [], requestCameraPickerOwner: null,
+    isLoginSessionOwnershipCurrent: owner => owner === 'current-fixture',
     document: { hidden: false, body: { classList: { contains: () => false } } },
     blocked: false, focused: false, view: 'home', photoDraftPending: false,
     logShellDiagnostics() {}, setStoredTargetShellBuild() {}, getDeferredShellReloadRequest() { return null; },
@@ -42,7 +44,7 @@ function harness(existingSession = storage()) {
   };
   context.window = { location: { href: 'https://app.test/?shellv=VTEST.06', replace: url => calls.navigations.push(url), reload: () => calls.navigations.push('reload') } };
   vm.createContext(context);
-  for (const name of ['rememberDeferredShellReload', 'isShellReloadHardBlocked', 'isShellReloadBlocked', 'shouldDeferVisibleShellReload', 'navigateToRecoveredShellBuild', 'applyDeferredShellReloadIfHidden', 'forceShellBuildReload', 'recoverStandaloneShellController']) {
+  for (const name of ['rememberDeferredShellReload', 'getRetainedRequestCameraSelections', 'hasPendingRequestCameraPhoto', 'isShellReloadHardBlocked', 'isShellReloadBlocked', 'shouldDeferVisibleShellReload', 'navigateToRecoveredShellBuild', 'applyDeferredShellReloadIfHidden', 'forceShellBuildReload', 'recoverStandaloneShellController']) {
     vm.runInContext(functionSource(name), context);
   }
   return { context, calls, evaluate: code => vm.runInContext(code, context) };
@@ -84,6 +86,8 @@ for (const [name, configure] of [
   ['profile startup', c => { c.loginShellPreparing = true; }],
   ['photo upload', c => { c.window.pendingPhotoUploads = new Set(['upload']); }],
   ['unsaved uploaded photo', c => { c.photoDraftPending = true; }],
+  ['retained Request camera File', c => { c.pendingRequestCameraSelection = { files: ['synthetic-local-file'], owner: 'current-fixture' }; }],
+  ['open Request native camera', c => { c.requestCameraPickerOwner = { reviewed: true, owner: 'current-fixture' }; }],
   ['protected evidence save', c => { c.driveEvidenceAbortControllers.set('row', {}); }],
   ['open detail draft after blur', c => { c.view = 'detail'; }],
   ['Request submission', c => { c.requestSubmitInFlight = true; }],

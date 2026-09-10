@@ -11,6 +11,7 @@ export const explicitReleaseUnitTests = Object.freeze([
   'tests/request-entry-source.test.mjs',
   'tests/request-commit-verification.test.mjs',
   'tests/request-on-hand-calculation.test.mjs',
+  'tests/request-detail-proof.test.mjs',
 ]);
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 

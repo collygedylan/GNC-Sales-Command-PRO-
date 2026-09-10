@@ -122,12 +122,13 @@ function detailRuntime({ verified = true, delayed = false, canonicalChanges = nu
   const request = persistedRequest(ctx, {
     initial_ptr: '900', req_initial_ptr: '900', req_spec: 'Request spec',
     req_caliper: '2 inch', av_note: 'Request note', request_note: 'Customer instruction',
-    req_status: 'Pending', source: 'REQUEST-SOURCE',
+    // SOURCE is inherited inventory identity when present on a Request.
+    req_status: 'Pending', source: 'CURRENT',
   });
   request.DOM_ID = 'req_request-1';
   const canonicalRequest = canonicalChanges ? { ...request, ...canonicalChanges } : request;
   const inventory = master({
-    SOURCE: 'MASTER-SOURCE', PTRREVIEWED: '50', INITIAL_PTR: '1200', MATCH: '95',
+    SOURCE: 'CURRENT', PTRREVIEWED: '50', INITIAL_PTR: '1200', MATCH: '95',
     SPEC: 'Master spec', AV_NOTE: 'Master note', PHOTO_LINK: PHOTO.replace('crop', 'master'),
   });
   const fence = { scope: 'quantity-fixture', permissionVersion: 'permissions-1', revision: 'master-1' };
@@ -138,6 +139,7 @@ function detailRuntime({ verified = true, delayed = false, canonicalChanges = nu
     activeItem: request, activeDetailSourceView: 'request', lastView: 'request', detailHydrationToken: 1,
     loginSessionGeneration: 1, currentUser: 'quantity-fixture', currentRole: 'ADMIN', currentUserDivision: '10',
     nativeAuthSessionActive: false,
+    ACTIVE_REQUEST_TABLE: 'ph_active_request',
     productionMasterDetailSession: null,
     productionMasterDetailBindings: new WeakMap(),
     requestsInventory: [canonicalRequest],
@@ -165,6 +167,7 @@ function detailRuntime({ verified = true, delayed = false, canonicalChanges = nu
     source('productionMasterDetailFenceMatches'), source('bindProductionMasterDetailRow'),
     source('isProductionMasterDetailBindingCurrent'), source('hasProductionMasterDetailForItem'),
     source('getProductionMasterDetailIdentity'), source('isProductionMasterDetailSessionCurrent'),
+    source('transferProductionRequestDetailBinding'),
     source('ensureActiveProductionMasterDetail'),
   ].join('\n'), ctx);
   const session = {
@@ -299,6 +302,8 @@ test('a replaced or differently linked canonical Request receives no quantities 
     { UNIQUE_ID: 'another-request' },
     { LOCATIONCODE: 'OTHER-LOCATION' },
     { MASTER_ID: 'another-master', MASTER_UNIQUE_ID: 'another-master' },
+    { SOURCE: 'OTHER-SOURCE' },
+    { source: 'OTHER-SOURCE' },
   ]) {
     const { ctx, session, canonicalRequest } = detailRuntime({ canonicalChanges: change });
     const before = structuredClone(canonicalRequest);

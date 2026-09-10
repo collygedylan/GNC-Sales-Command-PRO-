@@ -117,6 +117,8 @@ jobs:
             config: playwright.verified-data-cache.config.ts
           - suite: request-reliability
             config: playwright.request-reliability.config.ts
+          - suite: request-photo
+            config: playwright.request-photo.config.ts
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests

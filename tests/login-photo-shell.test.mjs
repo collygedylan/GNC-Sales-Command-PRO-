@@ -77,12 +77,23 @@ test('data status retry explains the dataset error without implying account veri
 test('a retained unconfirmed photo blocks shell replacement after the upload itself has finished', () => {
     let pending = true;
     const ctx = { window: { pendingPhotoUploads: new Map() }, pendingRequestArchiveFlushInFlight: false,
+        pendingRequestCameraSelection: null, retainedRequestCameraSelections: [], requestCameraPickerOwner: null,
+        isLoginSessionOwnershipCurrent: owner => owner === 'current-fixture',
         hasPendingProtectedPhotoDrafts: () => pending };
     vm.createContext(ctx);
+    vm.runInContext(section('        function getRetainedRequestCameraSelections(', '        function canReviewRetainedRequestCameraSelection('), ctx);
     vm.runInContext(section('        function isShellReloadHardBlocked(', '        function applyDeferredShellReloadIfHidden('), ctx);
     assert.equal(ctx.isShellReloadHardBlocked(), true);
     pending = false;
     assert.equal(ctx.isShellReloadHardBlocked(), false);
+    ctx.pendingRequestCameraSelection = { files: ['synthetic-local-file'], owner: 'current-fixture' };
+    assert.equal(ctx.isShellReloadHardBlocked(), true, 'selected Request File blocks activation before upload starts');
+    ctx.pendingRequestCameraSelection.owner = 'previous-fixture';
+    assert.equal(ctx.isShellReloadHardBlocked(), false, 'another login cannot hold the new session');
+    ctx.pendingRequestCameraSelection = null;
+    ctx.requestCameraPickerOwner = { reviewed: true, owner: 'current-fixture' };
+    assert.equal(ctx.isShellReloadHardBlocked(), true, 'an open native camera blocks activation');
+    ctx.requestCameraPickerOwner = null;
     ctx.window.pendingPhotoUploads.set('physical-row', {});
     assert.equal(ctx.isShellReloadHardBlocked(), true);
 });
