@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const workflow = fs.readFileSync(new URL('../.github/workflows/release-database.yml', import.meta.url), 'utf8');
 const browserConfig = fs.readFileSync(new URL('../playwright.database.config.ts', import.meta.url), 'utf8');
 const provisioning = fs.readFileSync(new URL('./native-auth-provisioning-local.spec.js', import.meta.url), 'utf8');
+const legacyBaseline = fs.readFileSync(new URL('../supabase/ci/native_auth_legacy_user_baseline.sql', import.meta.url), 'utf8');
 
 test('database reusable workflow is secret-free and has read-only repository permissions', () => {
   assert.match(workflow, /on:\s+workflow_call:/);
@@ -78,4 +79,18 @@ test('native provisioning fixture exercises the two-part password update contrac
   assert.match(provisioning, /expect\(signedIn\.response\.ok/);
   assert.match(provisioning, /expect\(oldPasswordSignIn\.response\.ok\)\.toBeFalsy\(\)/);
   assert.match(provisioning, /invalid_credentials/);
+});
+
+test('native provisioning legacy-table fixture is installed with service-only access', () => {
+  assert.match(workflow, /cp supabase\/ci\/native_auth_legacy_user_baseline\.sql "\$ci_root\/supabase\/migrations\/20260803110000_native_auth_legacy_user_baseline\.sql"/);
+  assert.match(legacyBaseline, /create table public\.ph_app_users/);
+  for (const field of ['id', 'username', 'password', 'role', 'password_hash', 'password_salt', 'password_changed_at', 'must_change_password', 'failed_login_count', 'locked_until', 'disabled_at', 'division', 'language']) {
+    assert.match(legacyBaseline, new RegExp(`\\b${field} (?:integer|text|timestamptz|boolean)\\b`), field);
+  }
+  assert.match(legacyBaseline, /alter table public\.ph_app_users enable row level security/);
+  assert.match(legacyBaseline, /revoke all on table public\.ph_app_users from public, anon, authenticated/);
+  assert.match(legacyBaseline, /revoke all on sequence public\.ph_app_users_id_seq from public, anon, authenticated/);
+  assert.match(legacyBaseline, /grant select, insert, update, delete on table public\.ph_app_users to service_role/);
+  assert.doesNotMatch(legacyBaseline, /grant[^;]+to\s+(?:public|anon|authenticated)\b/i);
+  assert.match(provisioning, /expect\(deniedLegacy\.body\.code\)\.toBe\('42501'\)/);
 });

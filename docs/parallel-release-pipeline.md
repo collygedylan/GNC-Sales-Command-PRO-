@@ -2,6 +2,14 @@
 
 This changes release orchestration, not the app shell, user permissions, inventory, or delivery rules. Faster publication must be demonstrated by measured runs; parallel jobs are not a promise of a particular release time.
 
+## Working protocol before CI
+
+Use one release owner and up to three independently scoped workers when the change warrants it: client/UI, protected server contract, and regression/review. Agree on request/response contracts and file ownership first. Do not have multiple workers edit the same file or let multiple workers publish. Small single-file fixes do not need a full team.
+
+Reproduce the reported failure with a focused fixture while implementation proceeds. Integrate the workers' changes once, then run the targeted regression against the compiled shell before pushing. Preserve unrelated worktree changes and keep unrelated improvements out of an urgent repair. Database, client, and delivery changes still follow their required compatibility order.
+
+Report implementation, validation, publication, and exact-live verification separately. A fast publish step does not make diagnosis or coding instantaneous. Record time spent in each phase so the next bottleneck can be measured rather than guessed. Any failed required check stops publication; fix the cause instead of bypassing it or repeatedly rerunning an unexplained failure.
+
 ## One build; isolated checks
 
 The build lane installs the locked dependencies, builds pilot monitoring, live assets and v2, then runs `scripts/prepare-release-site.mjs`. That script preserves the former Pages static copy list, hidden files, compiled live shell, deployment fingerprints, HTML-size bound, and external-CDN guard.

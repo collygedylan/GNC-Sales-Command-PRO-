@@ -118,6 +118,15 @@ test.describe('Native Auth profile-link provisioning', () => {
         body: JSON.stringify({ email, password: nextPassword })
       });
       expect(signedIn.response.ok, JSON.stringify(signedIn.body)).toBeTruthy();
+      // The isolated legacy fixture must not make this password-bearing table
+      // readable by either an anonymous client or the linked native user.
+      for (const authorization of [anonKey, signedIn.body.access_token]) {
+        const deniedLegacy = await jsonFetch(`${localUrl}/rest/v1/ph_app_users?select=password&id=eq.${legacyUserId}`, {
+          headers: { apikey: anonKey, Authorization: `Bearer ${authorization}` }
+        });
+        expect(deniedLegacy.response.ok).toBeFalsy();
+        expect(deniedLegacy.body.code).toBe('42501');
+      }
       const oldPasswordSignIn = await jsonFetch(`${localUrl}/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: { apikey: anonKey, 'Content-Type': 'application/json' },

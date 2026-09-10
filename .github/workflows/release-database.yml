@@ -29,6 +29,7 @@ jobs:
           : > "$ci_root/supabase/seed.sql"
           cp supabase/ci/request_workflow_baseline.sql "$ci_root/supabase/migrations/20260803100000_request_workflow_baseline.sql"
           cp supabase/ci/historical_report_baseline.sql "$ci_root/supabase/migrations/20260803105000_historical_report_baseline.sql"
+          cp supabase/ci/native_auth_legacy_user_baseline.sql "$ci_root/supabase/migrations/20260803110000_native_auth_legacy_user_baseline.sql"
           cp supabase/migrations/20260803121000_add_request_note_to_ph_active_request.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260803225959_add_csr_request_audit_fields.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260809011735_ph_27f1_hl_po.sql "$ci_root/supabase/migrations/"

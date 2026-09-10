@@ -1299,7 +1299,7 @@ test('Manager Historical Report loads Common Names immediately, drills to ContSi
     try {
       canViewManagerHistoricalReport = () => true;
       activeHomeTab = 'historical-report';
-      managersSearchTerm = 'feather';
+      managersSearchTerm = '';
       supabaseRpc = async (name, body) => {
         calls.push({ name, body: JSON.parse(JSON.stringify(body || {})) });
         if (name === 'search_historical_inventory_common_names') return [{
@@ -1324,8 +1324,8 @@ test('Manager Historical Report loads Common Names immediately, drills to ContSi
       const defaultNames = await loadManagerHistoricalCommonNames('', true);
       const browseCall = calls.filter((call) => call.name === 'search_historical_inventory_common_names').at(-1);
       const browseMarkup = renderManagerHistoricalReportPanel();
-      const names = await loadManagerHistoricalCommonNames('feather', true);
       managersSearchTerm = 'feather';
+      const names = await loadManagerHistoricalCommonNames('feather', true);
       const nameMarkup = renderManagerHistoricalReportPanel();
       await selectManagerHistoricalCommonName('Karl Foerster Feather Reed Grass');
       const sizeMarkup = renderManagerHistoricalReportPanel();
@@ -1419,12 +1419,14 @@ test('an acknowledged assignment immediately leaves the Unassigned filter', asyn
 test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).getRequestChunkRenderOptions === 'function'
+    && typeof (window as any).renderMarkupChunkedByKey === 'function');
 
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
       isIOSDevice?: () => boolean;
-      getRequestChunkRenderOptions?: (options?: Record<string, unknown>) => Record<string, unknown>;
-      renderMarkupChunkedByKey?: (
+      getRequestChunkRenderOptions: (options?: Record<string, unknown>) => Record<string, unknown>;
+      renderMarkupChunkedByKey: (
         key: string,
         container: HTMLElement,
         crumb: HTMLElement,
@@ -1440,8 +1442,8 @@ test('iPhone Request Queue renders all 19 rows instead of only the first adaptiv
     const crumb = document.createElement('div');
     document.body.append(container, crumb);
     const rows = Array.from({ length: 19 }, (_, index) => ({ id: index + 1 }));
-    const options = appWindow.getRequestChunkRenderOptions?.({ onComplete: () => {} }) || {};
-    appWindow.renderMarkupChunkedByKey?.(
+    const options = appWindow.getRequestChunkRenderOptions({ onComplete: () => {} });
+    appWindow.renderMarkupChunkedByKey(
       'request-main-test',
       container,
       crumb,
@@ -1493,6 +1495,7 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
 
 test('Kayla receives standard Admin Request, Drive, and photo access', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const permissions = await page.evaluate(() => {
     window.eval("window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalRequestIdentityTokens=getRequestRepScopedIdentityTokens; window.__qaOriginalGetRequestCapabilities=getRequestCapabilities; currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='ADMIN'; getRequestCapabilities=function(){ return {contractVersion:2,username:'kayla_knepp',scope:'global',canCreateGeneral:true,canCreateAv:true,canViewQueue:true,canTakePhoto:true,canEdit:true,canComplete:true,canArchive:true}; }; getRequestRepScopedIdentityTokens=function(){ return new Set(['kayla_knepp']); }; getRoleAccessState=function(){ return window.__qaOriginalGetRoleAccessState('ADMIN','kayla_knepp'); };");
     const result = window.eval(`({
@@ -1522,6 +1525,7 @@ test('Kayla receives standard Admin Request, Drive, and photo access', async ({ 
 test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).handleRequestSwipeStart === 'function');
   const result = await page.evaluate(() => {
     const requestView = document.getElementById('view-request');
     const container = document.getElementById('request-content');
@@ -1604,6 +1608,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
 
 test('Drive Common Name search keeps the grouped drill-down', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).shouldRenderDriveUniversalDetailedSearch === 'function');
   const result = await page.evaluate(() => {
     const appWindow = window as typeof window & {
       shouldRenderDriveUniversalDetailedSearch?: () => boolean;
@@ -2678,6 +2683,7 @@ test('Request reusable evidence prompt accepts partial exact-row data without au
 test('toast can be closed or swiped up without blocking the rest of the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).showToast === 'function');
   await page.evaluate(() => {
     const button = document.createElement('button');
     button.id = 'toast-underlay-test';
@@ -2696,6 +2702,10 @@ test('toast can be closed or swiped up without blocking the rest of the screen',
 
   await page.evaluate(() => (window as any).showToast('Sync Error', 'Manager diagnostic', true, { fingerprint: 'e2e-toast-2' }));
   await expect(toast).toHaveClass(/show/);
+  // The show class precedes the slide-in transform. Measure the gesture only
+  // after that real transition settles, so its start is inside the viewport.
+  await expect.poll(() => toast.evaluate(element =>
+    element.getAnimations().some(animation => animation.playState === 'running'))).toBe(false);
   await toast.evaluate((element) => {
     const box = element.getBoundingClientRect();
     const pointerId = 91;
