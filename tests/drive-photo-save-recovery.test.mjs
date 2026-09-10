@@ -18,7 +18,9 @@ const row = () => ({ UNIQUE_ID: 'row-a', ITEMCODE: 'item-a', LOCATIONCODE: 'loca
   SOURCE_TABLE: 'ph_master_inventory', LAST_UPDATED: 'v1', SAVED_PHOTO_LINK: '', SAVED_PHOTO_NAME: '', SPEC: 'original spec' });
 const names = ['firstNonEmptyValue', 'appendPhotoCsvValue', 'getDrivePhotoIdentity', 'getDrivePhotoMasterItem',
   'usesProductionMasterListProjection', 'hasProductionMasterDetailForItem',
-  'canUploadRowPhoto', 'getDrivePhotoDraftStorageKey', 'persistDrivePhotoDraftRecord', 'getDrivePhotoDraft',
+  'captureProductionMasterDetailOwnSave', 'continueProductionMasterDetailOwnSave', 'finishProductionMasterDetailOwnSave',
+  'runWithProductionMasterDetailSaveQueue',
+  'canUploadRowPhoto', 'canUploadRowPhotoByRole', 'getDrivePhotoDraftStorageKey', 'persistDrivePhotoDraftRecord', 'getDrivePhotoDraft',
   'hasPendingProtectedPhotoDrafts', 'beginDrivePhotoDraft', 'assertDrivePhotoDraftContext', 'buildDrivePhotoDraftPayload', 'applyConfirmedDrivePhotoFields',
   'persistDrivePhotoDraft', 'retryDrivePhotoSave', 'buildSecureDriveEvidencePayload', 'buildSecureDriveEvidenceBaseline',
   'normalizeDriveEvidenceComparable', 'buildSecureDriveEvidencePatch', 'createDriveEvidenceConflictState', 'getSecureDriveEvidenceWorkflow', 'saveSecureDriveEvidence', 'ensureAppApiWriteProxySession',
@@ -121,6 +123,45 @@ test('photo-only save sends the original baseline through the RPC and waits for 
   assert.equal(r.ctx.getDrivePhotoDraft(item), null);
   assert.equal(r.ctx.hasPendingProtectedPhotoDrafts(), false);
   assert.equal(r.shellResumes(), 1);
+});
+
+test('a confirmed save cannot apply to a new owner after its detail continuation awaits', async () => {
+  const r = runtime(), item = r.ctx.activeItem;
+  r.ctx.captureProductionMasterDetailOwnSave = () => ({ fixture: true, readIdentity: 'same-scope' });
+  r.ctx.getSupabaseReadIdentityScope = () => 'same-scope';
+  r.ctx.continueProductionMasterDetailOwnSave = async () => { r.switchActor(); return false; };
+  r.ctx.finishProductionMasterDetailOwnSave = () => {};
+  const { draft } = r.stage();
+  assert.equal(await r.ctx.persistDrivePhotoDraft(item, 'ssn-', { draft }), false);
+  assert.equal(r.calls.length, 1, 'canonical confirmation is never resent after an auth change');
+  assert.equal(item.SAVED_PHOTO_LINK, '');
+  assert.equal(r.acknowledgements.length, 0);
+});
+
+test('a failed detail continuation does not retry an already canonical-confirmed photo write', async () => {
+  const r = runtime();
+  r.ctx.captureProductionMasterDetailOwnSave = () => ({ fixture: true, readIdentity: 'same-scope' });
+  r.ctx.getSupabaseReadIdentityScope = () => 'same-scope';
+  r.ctx.continueProductionMasterDetailOwnSave = async () => false;
+  r.ctx.finishProductionMasterDetailOwnSave = () => {};
+  r.stage();
+  assert.equal(await r.ctx.persistDrivePhotoDraft(r.ctx.activeItem, 'ssn-'), true);
+  assert.equal(r.calls.length, 1);
+  assert.equal(r.ctx.activeItem.SAVED_PHOTO_LINK, PHOTO);
+  assert.equal(r.ctx.getDrivePhotoDraft(r.ctx.activeItem), null);
+});
+
+test('new permissions after a confirmed write suppress stale scoped photo application without resending', async () => {
+  const r = runtime(); let identity = 'scope-permission-1';
+  r.ctx.captureProductionMasterDetailOwnSave = () => ({ readIdentity: identity });
+  r.ctx.getSupabaseReadIdentityScope = () => identity;
+  r.ctx.continueProductionMasterDetailOwnSave = async () => { identity = 'scope-permission-2'; return false; };
+  r.ctx.finishProductionMasterDetailOwnSave = () => {};
+  r.stage();
+  assert.equal(await r.ctx.persistDrivePhotoDraft(r.ctx.activeItem, 'ssn-'), false);
+  assert.equal(r.calls.length, 1);
+  assert.equal(r.ctx.activeItem.SAVED_PHOTO_LINK, '');
+  assert.equal(r.acknowledgements.length, 0);
 });
 
 test('a pending photo cannot use the client NO_CHANGES shortcut even for a duplicate URL', async () => {

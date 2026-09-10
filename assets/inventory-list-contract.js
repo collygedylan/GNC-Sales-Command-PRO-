@@ -42,6 +42,23 @@
         'tripnumber', 'unique_id', 'varietycode', 'warehousei', 'warehouseid',
         'warehousename',
     ]);
+    // The audited full-row schema is a separate equality contract, not a list
+    // selection. Keep full-only fields available for exact acknowledgement
+    // comparison without changing V1 aliases or inventing values in list rows.
+    const physicalColumns = Object.freeze([
+        ...columns,
+        'altshipcomment', 'avg_price_eunit_shipped', 'carrier', 'combinedprice', 'concat',
+        'consigneeaddress_1', 'consigneeaddress_2', 'consigneecity', 'consigneeidentityid', 'consigneestate',
+        'consigneezip', 'customeridentityid', 'customersku', 'descriptorcode', 'dropweight',
+        'equiv_uom', 'ext_eunit_shipped', 'ext_unit_merch_shipped', 'extunitprice', 'formattedupc',
+        'freightrateperitem', 'generalloadinstr', 'handlingchargeperitem', 'hardinesszone', 'hlloadinstructions',
+        'idgroup', 'internalinvnote', 'invoicedate', 'isreserve', 'landed',
+        'nationalaccount', 'ncloadinstructions', 'okloadinstructions', 'ordertotal', 'purchaseordernumber',
+        'quantityordered', 'quantityshipped', 'requestdate', 'requestdateweek', 'retailprice',
+        'shiptotelephone_1', 'si_available', 'stagename', 'step', 'tagcode',
+        'tagdeptnote', 'taggingchargeperitem', 'transactionnumber', 'txloadinstructions', 'unitprice',
+        'wingdingunits', 'zonecode',
+    ].sort());
     const numericColumns = new Set([
         'flyer_match', 'flyer_loc_match_qty', 'flyer_initial_ptr',
         'eval_task_recount_qty', 'eval_task_moved_up_qty'
@@ -124,6 +141,6 @@
         return (row.unique_id || row.UNIQUE_ID) === fence.uniqueId
             && Object.keys(fence).every((key) => metadata[key] === fence[key]);
     }
-    return Object.freeze({ version, columns, aliases, metadataKey, buildQuery, decodeRow, decodeRows,
+    return Object.freeze({ version, columns, physicalColumns, aliases, metadataKey, buildQuery, decodeRow, decodeRows,
         markListRow, markDetailRow, getCompleteness, isListRow, isDetailRow });
 });

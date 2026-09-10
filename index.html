@@ -26166,6 +26166,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         function canUploadRowPhoto(prefix = '', item = activeItem, sourceView = activeDetailSourceView || lastView || '') {
             if (!hasProductionMasterDetailForItem(item)) return false;
+            return canUploadRowPhotoByRole(prefix, item, sourceView);
+        }
+
+        function canUploadRowPhotoByRole(prefix = '', item = activeItem, sourceView = activeDetailSourceView || lastView || '') {
             const safePrefix = String(prefix || '').trim().toLowerCase();
             if (String(sourceView || '').trim().toLowerCase() === 'av' && !SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix)) return false;
             if (PROTECTED_DRIVE_PHOTO_PREFIXES.has(safePrefix) && !getRoleAccessState().isAdmin) return false;
@@ -26299,18 +26303,35 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (banner.hidden) return;
             const uploaded = draft.entries.some((entry) => entry.publicUrl);
             const retry = uploaded && ['retry', 'review'].includes(draft.state);
-            banner.textContent = draft.state === 'review' ? 'The row changed. Your uploaded photo is kept here for review.'
+            const message = draft.state === 'review' ? 'The row changed. Your uploaded photo is kept here for review.'
                 : retry ? 'Photo uploaded, but its row was not saved. Retry saving without taking it again.'
                 : uploaded ? 'Saving photo to this row…' : 'Uploading photo…';
-            if (retry && canUploadRowPhoto(prefix, item)) {
-                const button = document.createElement('button');
+            let label = banner.querySelector('[data-drive-photo-message]');
+            if (!label) {
+                banner.textContent = '';
+                label = document.createElement('span');
+                label.setAttribute('data-drive-photo-message', '');
+                banner.appendChild(label);
+            }
+            label.textContent = message;
+            // Retention is not write authorization. Keep recovery discoverable
+            // while offline/checking, but never enable it until the exact row
+            // and its current permission/revision fence are verified again.
+            const offerRetry = retry && isLoginSessionOwnershipCurrent(draft.owner)
+                && JSON.stringify(getDrivePhotoIdentity(item)) === JSON.stringify(draft.identity)
+                && canUploadRowPhotoByRole(prefix, item);
+            let button = banner.querySelector('[data-drive-photo-retry]');
+            if (offerRetry) {
+                if (!button) button = document.createElement('button');
                 button.type = 'button';
                 button.setAttribute('data-drive-photo-retry', prefix);
                 button.className = 'mt-2 block rounded-lg bg-amber-600 px-3 py-2 font-bold text-white';
                 button.textContent = draft.state === 'review' ? 'Review & Retry Photo' : 'Retry Save';
+                button.disabled = navigator.onLine === false || !canUploadRowPhoto(prefix, item);
+                button.title = button.disabled ? 'Reconnect and wait for current inventory details to be verified before retrying.' : '';
                 button.onclick = () => retryDrivePhotoSave(prefix);
-                banner.appendChild(button);
-            }
+                if (!button.parentElement) banner.appendChild(button);
+            } else if (button) button.remove();
         }
 
         async function persistDrivePhotoDraft(item, prefix = '', options = {}) {
@@ -26389,7 +26410,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function retryDrivePhotoSave(prefix = '') {
             const item = getDrivePhotoMasterItem(activeItem);
             const draft = getDrivePhotoDraft(item);
-            if (!draft || !canUploadRowPhoto(prefix, item)) return false;
+            if (!draft || navigator.onLine === false || !canUploadRowPhoto(prefix, item)) return false;
             try {
                 assertDrivePhotoDraftContext(draft, item);
                 if (draft.state === 'review') {
@@ -27316,6 +27337,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!isComplete && !Object.keys(evidencePatch).length && saveContext.forceServer !== true) {
                 return { ok: true, code: 'NO_CHANGES', canonicalConfirmed: true, row: item, requestRows: [], noOp: true };
             }
+            let detailContinuation = null;
             const evidenceSignature = JSON.stringify({
                 prefix: String(prefix || '').trim().toLowerCase(),
                 complete: !!isComplete,
@@ -27335,7 +27357,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const controller = new AbortController();
             driveEvidenceAbortControllers.set(masterUid, controller);
             try {
-                return await runWithDriveEvidenceCrossTabLock(masterUid, async () => {
+                return await runWithProductionMasterDetailSaveQueue(masterUid, () => runWithDriveEvidenceCrossTabLock(masterUid, async () => {
+                    // Capture only once this write owns the row lock. A queued
+                    // note/photo write must inherit the previous write's newly
+                    // verified detail instead of losing its continuation.
+                    detailContinuation = captureProductionMasterDetailOwnSave(item, isComplete);
+                    try {
                     let lastError = null;
                     for (let attempt = 0; attempt < 2; attempt += 1) {
                         try {
@@ -27355,6 +27382,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                             assertSaveOwner();
                             const code = String(result && result.code || '').trim().toUpperCase();
                             if (result && result.ok === true && result.canonicalConfirmed === true && result.row) {
+                                // The write is already committed. A failed read
+                                // continuation must never retry that business write.
+                                await continueProductionMasterDetailOwnSave(detailContinuation, result.row);
+                                assertSaveOwner();
+                                if (detailContinuation && detailContinuation.readIdentity !== getSupabaseReadIdentityScope()) {
+                                    const staleScope = new Error('The data permissions changed after this row was saved.');
+                                    staleScope.code = 'DRIVE_SAVE_ABORTED';
+                                    throw staleScope;
+                                }
                                 delete item.__driveEvidenceIdempotencyKey;
                                 delete item.__driveEvidenceIdempotencySignature;
                                 try { delete item.__driveEvidenceBaselineOverride; } catch (error) { item.__driveEvidenceBaselineOverride = null; }
@@ -27392,7 +27428,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     const safeError = new Error('Drive evidence could not be saved. Retry when service is available.');
                     safeError.code = String(lastError && lastError.code || 'DRIVE_SAVE_RETRYABLE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
                     throw safeError;
-                });
+                    } finally {
+                        finishProductionMasterDetailOwnSave(detailContinuation);
+                    }
+                }));
             } finally {
                 if (driveEvidenceAbortControllers.get(masterUid) === controller) driveEvidenceAbortControllers.delete(masterUid);
             }
@@ -34633,6 +34672,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const productionMasterDetailDemands = new Map();
         const productionMasterDetailDisabledControls = new WeakMap();
         const productionMasterReclassDisabledControls = new WeakMap();
+        const productionMasterDetailSaveQueues = new Map();
 
         function usesProductionMasterListProjection() {
             return getDatasetState('master').listProjectionVersion === 'master-list-v1';
@@ -34727,9 +34767,142 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function hasProductionMasterDetailForItem(item = null) {
             if (!usesProductionMasterListProjection()) return true;
+            if (productionMasterDetailSession?.ownSave?.checking && productionMasterDetailSession.ownSave.item === item) return false;
             if (!isProductionMasterDetailBindingCurrent(item)) return false;
             const binding = productionMasterDetailBindings.get(item);
             return !binding?.ids.length || !!getProductionMasterDetailStore()?.getVerifiedRows(binding.ids);
+        }
+
+        async function runWithProductionMasterDetailSaveQueue(uid, runner) {
+            if (!usesProductionMasterListProjection()) return runner();
+            const key = JSON.stringify([getSupabaseReadIdentityScope(), uid]);
+            const previous = productionMasterDetailSaveQueues.get(key);
+            const pending = (previous ? previous.catch(() => {}) : Promise.resolve()).then(runner);
+            productionMasterDetailSaveQueues.set(key, pending);
+            try { return await pending; }
+            finally { if (productionMasterDetailSaveQueues.get(key) === pending) productionMasterDetailSaveQueues.delete(key); }
+        }
+
+        function captureProductionMasterDetailOwnSave(item, isComplete = false) {
+            if (isComplete || !usesProductionMasterListProjection()) return null;
+            const session = productionMasterDetailSession;
+            if (!isProductionMasterDetailSessionCurrent(session) || session.status !== 'ready' || session.ownSave
+                || String(activeItem?.SOURCE_TABLE || '').toLowerCase() !== 'ph_master_inventory'
+                || !hasProductionMasterDetailForItem(activeItem)
+                || getProductionMasterDetailIdentity(item) !== getProductionMasterDetailIdentity(activeItem)) return null;
+            const focused = document.activeElement;
+            const ticket = { session, item: activeItem, owner: captureLoginSessionOwnership(),
+                readIdentity: getSupabaseReadIdentityScope(), fence: { ...getProductionMasterDetailContext() },
+                rowIdentity: getProductionMasterDetailIdentity(activeItem), ids: session.ids.slice(),
+                focused: focused?.closest?.('#view-detail') ? focused : null,
+                selection: focused && typeof focused.selectionStart === 'number'
+                    ? [focused.selectionStart, focused.selectionEnd, focused.selectionDirection] : null,
+                finished: false };
+            ticket.trackFocus = (event) => {
+                if (event.type === 'selectionchange') {
+                    if (document.activeElement === focused && typeof focused?.selectionStart === 'number') {
+                        ticket.selection = [focused.selectionStart, focused.selectionEnd, focused.selectionDirection];
+                    }
+                } else if (event.target !== focused && event.target !== document.body) ticket.focusMoved = true;
+                else if (event.type === 'pointerdown' && event.target !== focused) ticket.focusMoved = true;
+            };
+            ['focusin', 'pointerdown', 'selectionchange'].forEach((name) => document.addEventListener(name, ticket.trackFocus, true));
+            session.ownSave = ticket;
+            return ticket;
+        }
+
+        function isProductionMasterDetailOwnSaveCurrent(ticket) {
+            if (!ticket || ticket.finished || ticket.session.ownSave !== ticket
+                || !isProductionMasterDetailSessionCurrent(ticket.session) || activeItem !== ticket.item
+                || !isLoginSessionOwnershipCurrent(ticket.owner) || getSupabaseReadIdentityScope() !== ticket.readIdentity
+                || getProductionMasterDetailIdentity(activeItem) !== ticket.rowIdentity) return false;
+            const context = getProductionMasterDetailContext();
+            return context.scope === ticket.fence.scope && context.permissionVersion === ticket.fence.permissionVersion
+                && context.online !== false && context.visible !== false;
+        }
+
+        function productionMasterCanonicalRowsMatch(left, right) {
+            const columns = window.AgMetricInventoryList.physicalColumns;
+            if (!Array.isArray(columns) || !left || !right
+                || Object.keys(left).length !== columns.length || Object.keys(right).length !== columns.length) return false;
+            return columns.every((key) => Object.prototype.hasOwnProperty.call(left, key)
+                && Object.prototype.hasOwnProperty.call(right, key) && JSON.stringify(left[key]) === JSON.stringify(right[key]));
+        }
+
+        async function continueProductionMasterDetailOwnSave(ticket, acknowledged) {
+            if (!ticket) return false;
+            let timeout;
+            try {
+                ticket.acknowledged = true;
+                if (!isProductionMasterDetailOwnSaveCurrent(ticket)) return false;
+                ticket.checking = true;
+                applyProductionMasterDetailControlState();
+                const canonicalAck = structuredClone(acknowledged);
+                if (!String(canonicalAck.last_updated || '').trim()) return false;
+                const refresh = async () => {
+                    const coordinator = getProductionLiveSyncCoordinator(), store = getProductionMasterDetailStore();
+                    if (!coordinator || !store) return false;
+                    await coordinator.check('own-master-save');
+                    if (!isProductionMasterDetailOwnSaveCurrent(ticket)) return false;
+                    const full = await store.ensure(ticket.ids);
+                    if (!isProductionMasterDetailOwnSaveCurrent(ticket) || !full
+                        || !canUseVerifiedProductionData(getProductionDetailDatasetKeys())) return false;
+                    const raw = store.getVerifiedCanonicalRows(ticket.ids);
+                    if (!raw || raw.length !== 1 || !productionMasterCanonicalRowsMatch(canonicalAck, raw[0])) return false;
+                    const current = full[0];
+                    if (getProductionMasterDetailIdentity(current) !== ticket.rowIdentity) return false;
+                    // No form renderer runs here. Only the acknowledged server
+                    // baseline advances, in the same turn as its new binding.
+                    // Formatting omits most physical nulls. Clear old physical
+                    // values it omitted, while retaining DOM_ID/CAV display data.
+                    window.AgMetricInventoryList.physicalColumns.forEach((key) => {
+                        [key, key.toUpperCase()].forEach((alias) => {
+                            if (!Object.prototype.hasOwnProperty.call(current, alias)) delete ticket.item[alias];
+                        });
+                    });
+                    Object.assign(ticket.item, current);
+                    bindProductionMasterDetailRow(ticket.item, ticket.ids);
+                    ticket.session.status = 'ready'; ticket.session.error = '';
+                    ticket.session.renderWaitingForVerification = false;
+                    ticket.rebound = true;
+                    ticket.checking = false;
+                    return true;
+                };
+                // Bound UI continuation independently of an already committed
+                // write. Late reads can cache, but cannot bind an expired token.
+                return await Promise.race([refresh(), new Promise((resolve) => {
+                    timeout = setTimeout(() => { ticket.finished = true; resolve(false); }, 15000);
+                })]);
+            } catch (_) {
+                return false;
+            } finally {
+                if (timeout) clearTimeout(timeout);
+            }
+        }
+
+        function finishProductionMasterDetailOwnSave(ticket) {
+            if (!ticket) return;
+            ticket.finished = true;
+            ['focusin', 'pointerdown', 'selectionchange'].forEach((name) => document.removeEventListener(name, ticket.trackFocus, true));
+            if (ticket.session.ownSave !== ticket) return;
+            ticket.session.ownSave = null;
+            if (!isProductionMasterDetailSessionCurrent(ticket.session)) return;
+            if (ticket.acknowledged && !ticket.rebound) {
+                productionMasterDetailBindings.delete(activeItem);
+                ticket.session.status = 'changed';
+            } else if (!ticket.rebound && !isProductionMasterDetailBindingCurrent(activeItem)) ticket.session.status = 'changed';
+            try {
+                refreshProtectedSections();
+                applyCameraPermissions(activeDetailSourceView, activeItem);
+                applyAvDetailReadOnlyState(activeDetailSourceView);
+                applyProductionMasterDetailControlState();
+                const focused = ticket.focused;
+                if (ticket.rebound && !ticket.focusMoved && focused?.isConnected && !focused.disabled
+                    && (document.activeElement === focused || document.activeElement === document.body)) {
+                    focused.focus({ preventScroll: true });
+                    if (ticket.selection) focused.setSelectionRange(...ticket.selection);
+                }
+            } catch (_) { /* A confirmed save must never become a duplicate write because chrome failed to refresh. */ }
         }
 
         function beginProductionMasterDetailDemand(ids, isCurrent, datasetKeys = []) {
@@ -34834,7 +35007,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!detail) return;
             const blocked = usesProductionMasterListProjection() && !hasProductionMasterDetailForItem(activeItem);
             detail.querySelectorAll('input,select,textarea,button').forEach((element) => {
-                if (element.id === 'detail-overview-search' || element.closest('#master-detail-load-state')) return;
+                // Retained-photo recovery owns its disabled state separately:
+                // restoring an old disabled=true snapshot would keep it locked
+                // after an unchanged offline/verification interval.
+                if (element.id === 'detail-overview-search' || element.closest('#master-detail-load-state')
+                    || element.hasAttribute('data-drive-photo-retry')) return;
                 const handler = String(element.getAttribute('onclick') || '');
                 const editable = element.matches('input:not([type="hidden"]),select,textarea')
                     || /saveData|save[A-Z]|submit[A-Z]|complete[A-Z]|approve[A-Z]|reject[A-Z]|removePhoto|movePhotoInSet|clearProtected|persist[A-Z]/.test(handler)
@@ -34848,6 +35025,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     productionMasterDetailDisabledControls.delete(element);
                 }
             });
+            ['ssn-', 'lsn-', 'na-'].forEach((prefix) => refreshDrivePhotoDraftUi(activeItem, prefix));
             renderProductionMasterDetailState();
         }
 
@@ -34943,7 +35121,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 // group is checking unchanged revisions. Keep the editor
                 // locked during that check, but only require reopening after
                 // an actual identity or scope/permission/revision change.
-                if (isProductionMasterDetailSessionCurrent(session) && session.status === 'ready'
+                if (isProductionMasterDetailSessionCurrent(session) && session.status === 'ready' && !session.ownSave
                     && !isProductionMasterDetailBindingCurrent(activeItem)) session.status = 'changed';
                 applyProductionMasterDetailControlState();
                 if (isProductionMasterDetailSessionCurrent(session) && session.status === 'ready'
@@ -104731,7 +104909,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!isProductionMasterDetailSessionCurrent(session)) return false;
                 if (!hasProductionMasterDetailForItem(activeItem)) {
                     if (session.status === 'ready') {
-                        if (!isProductionMasterDetailBindingCurrent(activeItem)) session.status = 'changed';
+                        if (!isProductionMasterDetailBindingCurrent(activeItem) && !session.ownSave) session.status = 'changed';
                         else session.renderWaitingForVerification = true;
                     }
                     applyProductionMasterDetailControlState();

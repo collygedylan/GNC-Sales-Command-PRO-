@@ -304,7 +304,9 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
       if (w.__repair.failSave || !navigator.onLine) throw Object.assign(new Error('ISOLATED_SAVE_UNAVAILABLE'), { status:503 });
       const row = w.__repair.savedRows[payload.p_master_uid];
       if (w.__repair.conflictSave) return { ok:false, code:'DRIVE_FIELD_CONFLICT', conflictFields:['photo_link'], row:structuredClone(row) };
-      Object.assign(row, payload.p_evidence, { last_updated:'2026-09-09T12:05:00Z' });
+      // The protected SQL applies ->> text fields before RETURNING *. Match
+      // that physical schema on both the acknowledgement and later exact read.
+      Object.assign(row, w.__inventoryReadFixture.row({ ...row, ...payload.p_evidence, last_updated:'2026-09-09T12:05:00Z' }));
       w.__repair.revision++;
       return { ok:true, code:'SAVED', canonicalConfirmed:true, row:structuredClone(row), requestRows:[] };
     };
@@ -468,10 +470,18 @@ test('offline after upload retains the photo for a confirmed no-reupload retry',
   try {
     await page.evaluate(() => { const state = (window as any).__repair; state.holdUpload = false; state.releaseUpload(); });
     await expect(page.locator('[data-drive-photo-retry="na-"]')).toBeVisible({ timeout:15000 });
+    await expect(page.locator('[data-drive-photo-retry="na-"]')).toBeDisabled();
+    // The captured upload completion can make the existing bounded protected
+    // save attempts; this fixture rejects them offline before changing a row.
+    const failedAttempts = await page.evaluate(() => (window as any).__repair.saves.length);
+    expect(failedAttempts).toBeLessThanOrEqual(2);
+    expect(await page.evaluate(() => (window as any).retryDrivePhotoSave('na-'))).toBe(false);
+    expect(await page.evaluate(() => (window as any).__repair.saves.length)).toBe(failedAttempts);
     expect(await page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toBe('');
   } finally {
     await context.setOffline(false);
   }
+  await expect(page.locator('[data-drive-photo-retry="na-"]')).toBeEnabled();
   await page.locator('[data-drive-photo-retry="na-"]').click();
   await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toContain('/v2/');
   expect(await page.evaluate(() => (window as any).__repair.uploads.length)).toBe(1);
@@ -485,6 +495,11 @@ test('Drive saves multiple photos while preserving entered AV note data', async 
   await expect(page.locator('#na-av-note')).toHaveValue('FRESH GROWTH');
   await page.evaluate(async () => { await (window as any).saveData(false, 'na-', true); });
   await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].av_note)).toBe('FRESH GROWTH');
+  // Force the acknowledged write's revision to be observed before the next
+  // action. Continuing the same editor cannot depend on beating this check.
+  await page.evaluate(async () => { await (window as any).getProductionLiveSyncCoordinator().check('photo-after-own-note-save'); });
+  await expect.poll(() => page.evaluate(() => window.eval('hasProductionMasterDetailForItem(activeItem)'))).toBe(true);
+  await expect(page.locator('#na-av-note')).toHaveValue('FRESH GROWTH');
   await selectGeneratedPhoto(page, 2);
   await expect.poll(() => page.evaluate(() => String((window as any).__repair.savedRows['photo-fixture-one'].photo_link).split(',').filter(Boolean).length)).toBe(2);
   await page.evaluate(() => (window as any).__repair.reloadCanonical());

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import { JSDOM } from 'jsdom';
 
 // These are integration-style unit tests against the actual R1 coordinator,
 // not a readiness stub. R1 must be merged before this R2 suite is executed.
@@ -345,7 +346,7 @@ function appFunction(name) {
 }
 function bindingFixture(f) {
     const context = vm.createContext({ Map, Set, WeakMap, Object, JSON, String,
-        productionMasterDetailBindings: new WeakMap(), activeItem: null,
+        productionMasterDetailBindings: new WeakMap(), productionMasterDetailSession: null, activeItem: null,
         getDatasetState: () => ({ listProjectionVersion: 'master-list-v1' }),
         getProductionMasterDetailContext: () => f.context,
         getProductionMasterDetailStore: () => f.store,
@@ -356,6 +357,156 @@ function bindingFixture(f) {
         'bindProductionMasterDetailRow', 'isProductionMasterDetailBindingCurrent', 'hasProductionMasterDetailForItem'];
     vm.runInContext(names.map(appFunction).join('\n'), context);
     return context;
+}
+
+async function ownSaveFixture() {
+    const initial = Object.fromEntries(inventory.physicalColumns.map((key) => [key, null]));
+    Object.assign(initial, { unique_id: 'A', itemcode: 'ITEM-A', locationcode: 'LOC', lotcode: 'LOT',
+        last_updated: '2026-09-10T12:00:00Z', app_tab_assignment: 'notes', av_note: '', photo_link: '', spec: 'OLD SPEC' });
+    let ctx, owner = 1, epoch = 1;
+    const f = fixture({ rows: [initial], onVerified: () => ctx?.onProductionMasterDetailsVerified(),
+        formatRows: (rows) => rows.map((raw) => ({ ...Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== null).map(([key, value]) => [key.toUpperCase(), value])),
+            SOURCE_TABLE: 'ph_master_inventory', source_table: 'ph_master_inventory' })) });
+    const adapter = f.activate(['A']); await f.store.ensure(['A']);
+    ctx = bindingFixture(f);
+    const dom = new JSDOM('<div id="view-detail"><input id="na-av-note" value="LOCAL DRAFT"><button id="other">Other</button></div>');
+    const deadlines = new Map();
+    Object.assign(ctx, {
+        window: { AgMetricInventoryList: inventory }, document: dom.window.document, structuredClone, AbortController,
+        productionMasterDetailSaveQueues: new Map(), navigator: { onLine: true },
+        activeDetailSourceView: 'drive', lastView: 'drive', detailHydrationToken: 1,
+        captureLoginSessionOwnership: () => owner, isLoginSessionOwnershipCurrent: (value) => value === owner,
+        getSupabaseReadIdentityScope: () => JSON.stringify([f.context.scope, f.state.permission, epoch]),
+        getCurrentVisibleViewId: () => 'detail', getProductionLiveSyncCoordinator: () => f.coordinator,
+        getProductionDetailDatasetKeys: () => ['master'], canUseVerifiedProductionData: () => f.coordinator.isVerified(adapter),
+        productionMasterDetailDisabledControls: new WeakMap(), argosInventoryTransactionState: null,
+        refreshDrivePhotoDraftUi: () => {}, refreshProtectedSections: () => {}, applyCameraPermissions: () => {}, applyAvDetailReadOnlyState: () => {},
+        renderProductionMasterDetailState: () => {}, scheduleDeferredDetailHydration: () => { throw new Error('Own save must not schedule a form repaint'); },
+        setTimeout: (callback, delay) => { deadlines.set(callback, delay); return callback; }, clearTimeout: (callback) => deadlines.delete(callback),
+    });
+    vm.runInContext(['isProductionMasterDetailSessionCurrent', 'captureProductionMasterDetailOwnSave',
+        'isProductionMasterDetailOwnSaveCurrent', 'productionMasterCanonicalRowsMatch',
+        'continueProductionMasterDetailOwnSave', 'finishProductionMasterDetailOwnSave',
+        'applyProductionMasterDetailControlState', 'onProductionMasterDetailsVerified', 'runDeferredDetailHydration',
+        'runWithProductionMasterDetailSaveQueue'].map(appFunction).join('\n'), ctx);
+    ctx.activeItem = f.store.getVerifiedRows(['A'])[0]; ctx.bindProductionMasterDetailRow(ctx.activeItem, ['A']);
+    ctx.productionMasterDetailSession = { token: 1, owner, sourceView: 'drive', status: 'ready', ids: ['A'],
+        rowIdentity: ctx.getProductionMasterDetailIdentity(ctx.activeItem) };
+    const input = dom.window.document.getElementById('na-av-note'); input.focus(); input.setSelectionRange(2, 5);
+    return { f, ctx, dom, input, initial, deadlines,
+        switchOwner: () => { owner++; epoch++; }, changeEpoch: () => { epoch++; },
+        acknowledge: (patch = {}) => { const ack = { ...f.state.rows[0], av_note: 'SAVED NOTE', last_updated: '2026-09-10T12:01:00Z', ...patch };
+            f.state.rows = [ack]; f.state.revision = String(Number(f.state.revision) + 1); return structuredClone(ack); } };
+}
+
+test('overlapping note/photo RPCs without Web Locks each verify their acknowledgement and release the local queue', async () => {
+    const h = await ownSaveFixture(), { ctx, f } = h;
+    const gate = deferred(); let calls = 0, ids = 0;
+    Object.assign(ctx, {
+        runWithDriveEvidenceCrossTabLock: async (_uid, runner) => runner(),
+        mergePhotoCsvList: (values) => [...new Set(values.flatMap((value) => String(value || '').split(',')).filter(Boolean))].join(','),
+        createStableClientBatchId: () => String(++ids), getDetailRowWriteTimeoutMs: () => 1000,
+        waitForDriveEvidenceRetry: async () => {}, clearDriveEvidenceConflict: () => {},
+        supabaseRpc: async (operation, payload) => {
+            assert.equal(operation, 'save_drive_evidence_v2'); calls++;
+            if (calls === 1) await gate.promise;
+            const ack = h.acknowledge({ ...payload.p_evidence, last_updated: `2026-09-10T12:0${calls}:00Z` });
+            return { ok: true, canonicalConfirmed: true, row: ack, requestRows: [] };
+        },
+    });
+    vm.runInContext(`const SECURE_DRIVE_EVIDENCE_PREFIXES = new Set(['ssn-', 'lsn-', 'na-']);
+        const DRIVE_EVIDENCE_TERMINAL_CONFLICT_CODES = new Set(['DRIVE_FIELD_CONFLICT']);
+        const driveEvidenceAbortControllers = new Map();
+        ${['firstNonEmptyValue', 'buildSecureDriveEvidencePayload', 'buildSecureDriveEvidenceBaseline',
+            'normalizeDriveEvidenceComparable', 'buildSecureDriveEvidencePatch', 'getSecureDriveEvidenceWorkflow',
+            'saveSecureDriveEvidence'].map(appFunction).join('\n')}`, ctx);
+    const original = { ...ctx.activeItem };
+    const first = ctx.saveSecureDriveEvidence(original, 'na-', { av_note: 'SAVED NOTE' }, false);
+    const second = ctx.saveSecureDriveEvidence({ ...original }, 'na-', { photo_link: 'https://photos.invalid/second.webp' }, false);
+    await settle(); assert.equal(calls, 1); assert.equal(ctx.productionMasterDetailSaveQueues.size, 1);
+    gate.resolve(); const results = await Promise.all([first, second]);
+    assert.equal(results.every((result) => result.canonicalConfirmed), true);
+    assert.equal(calls, 2, 'exactly one business write per distinct user operation');
+    assert.equal(ctx.productionMasterDetailSaveQueues.size, 0);
+    assert.equal(ctx.productionMasterDetailSession.ownSave, null);
+    assert.equal(ctx.hasProductionMasterDetailForItem(ctx.activeItem), true, 'the second queued save also advanced its exact binding');
+    assert.equal(ctx.activeItem.AV_NOTE, 'SAVED NOTE');
+    assert.equal(ctx.activeItem.PHOTO_LINK, 'https://photos.invalid/second.webp');
+    assert.equal(h.input.value, 'LOCAL DRAFT');
+    assert.ok(f.state.fetches.length >= 3);
+    const failed = ctx.runWithProductionMasterDetailSaveQueue('A', async () => { throw new Error('controlled-failure'); });
+    await assert.rejects(failed, /controlled-failure/); assert.equal(ctx.productionMasterDetailSaveQueues.size, 0);
+    h.dom.window.close();
+});
+
+test('raw canonical detail reads retain all physical nulls and never expose mutable storage', async () => {
+    const h = await ownSaveFixture();
+    const raw = h.f.store.getVerifiedCanonicalRows(['A']);
+    assert.equal(Object.keys(raw[0]).length, 213); assert.equal(raw[0].carrier, null);
+    raw[0].app_tab_assignment = 'untrusted';
+    assert.equal(h.f.store.getVerifiedCanonicalRows(['A'])[0].app_tab_assignment, 'notes');
+    h.f.context.online = false;
+    assert.equal(h.f.store.getVerifiedCanonicalRows(['A']), null);
+    h.dom.window.close();
+});
+
+for (const revisionBeforeAck of [false, true]) test(`own acknowledged note then photo continues without repaint (${revisionBeforeAck ? 'revision first' : 'ack first'})`, async () => {
+    const h = await ownSaveFixture(), { ctx, f, input } = h;
+    const active = ctx.activeItem;
+    active.DOM_ID = 'stable-dom'; active.CAV_DISPLAY = 'retained display';
+    for (const patch of [{ spec: null }, { photo_link: 'https://photos.invalid/kept.webp', photo_name: 'kept.webp' }]) {
+        const ticket = ctx.captureProductionMasterDetailOwnSave({ ...active }, false);
+        assert.ok(ticket, 'detached photo RPC input matches the verified active physical row');
+        const ack = h.acknowledge(patch);
+        if (revisionBeforeAck) {
+            await f.coordinator.check();
+            assert.equal(ctx.productionMasterDetailSession.status, 'ready', 'own in-flight write defers permanent change classification');
+            assert.equal(ctx.hasProductionMasterDetailForItem(active), false);
+            assert.equal(ctx.runDeferredDetailHydration(1), false);
+        }
+        assert.equal(await ctx.continueProductionMasterDetailOwnSave(ticket, ack), true);
+        ctx.finishProductionMasterDetailOwnSave(ticket);
+        assert.equal(ctx.hasProductionMasterDetailForItem(active), true);
+        assert.equal(ctx.productionMasterDetailSession.status, 'ready');
+        assert.equal(ctx.activeItem, active);
+        assert.equal(active.AV_NOTE, 'SAVED NOTE');
+        assert.equal(Object.hasOwn(active, 'SPEC'), false, 'physical nulls do not retain an old baseline value');
+        assert.equal(active.DOM_ID, 'stable-dom'); assert.equal(active.CAV_DISPLAY, 'retained display');
+        assert.equal(input.value, 'LOCAL DRAFT');
+        assert.equal(h.dom.window.document.activeElement, input);
+        assert.deepEqual([input.selectionStart, input.selectionEnd], [2, 5]);
+    }
+    assert.equal(active.PHOTO_LINK, 'https://photos.invalid/kept.webp');
+    h.dom.window.close();
+});
+
+for (const change of ['evidence', 'assignment-same-signature', 'permission', 'owner', 'same-account-new-epoch', 'navigation', 'timeout']) {
+    test(`held acknowledged-save continuation cannot rebind after ${change}`, async () => {
+        const h = await ownSaveFixture(), { ctx, f, input } = h;
+        const ticket = ctx.captureProductionMasterDetailOwnSave(ctx.activeItem, false);
+        const ack = h.acknowledge();
+        const gate = deferred(); f.state.fetchHook = async () => { await gate.promise; return f.state.rows; };
+        const pending = ctx.continueProductionMasterDetailOwnSave(ticket, ack); await settle();
+        assert.equal(ctx.hasProductionMasterDetailForItem(ctx.activeItem), false);
+        assert.equal(input.disabled, true);
+        if (change === 'evidence') f.state.rows = [{ ...f.state.rows[0], av_note: 'REMOTE NOTE' }];
+        if (change === 'assignment-same-signature') f.state.rows = [{ ...f.state.rows[0], app_tab_assignment: 'hold-release' }];
+        if (change === 'permission') { f.state.permission = 'permission-2'; }
+        if (change === 'owner') h.switchOwner();
+        if (change === 'same-account-new-epoch') h.changeEpoch();
+        if (change === 'navigation') { ctx.detailHydrationToken = 3; }
+        if (change === 'timeout') {
+            assert.equal(h.deadlines.size, 1);
+            const [callback, delay] = h.deadlines.entries().next().value;
+            assert.equal(delay, 15000); callback();
+        }
+        gate.resolve(); assert.equal(await pending, false); await settle();
+        ctx.finishProductionMasterDetailOwnSave(ticket);
+        assert.equal(ticket.rebound, undefined);
+        assert.equal(ctx.hasProductionMasterDetailForItem(ctx.activeItem), false);
+        assert.equal(input.value, 'LOCAL DRAFT');
+        h.dom.window.close();
+    });
 }
 
 test('Tasks NCR list actions retain verified-list assignment policy while editors require exact details', async () => {
@@ -459,6 +610,83 @@ test('an unrelated verified callback during an unchanged detail check locks temp
     assert.equal(editor.disabled, true);
     assert.equal(ctx.activeItem, baseline);
     assert.equal(editor.value, 'USER DRAFT');
+});
+
+test('retained photo recovery stays visible offline and re-enables only for the same genuinely verified detail', async () => {
+    let ctx, owner = 'owner-A', isAdmin = true, saves = 0;
+    const f = fixture({ rows: [row('A', { locationcode: 'LOC', lotcode: 'LOT' })],
+        onVerified: () => ctx?.applyProductionMasterDetailControlState() });
+    f.activate(['A']); await f.store.ensure(['A']);
+    ctx = bindingFixture(f);
+    ctx.activeItem = { ...f.store.getVerifiedRows(['A'])[0], SOURCE_TABLE: 'ph_master_inventory' };
+    ctx.bindProductionMasterDetailRow(ctx.activeItem, ['A']);
+    const baseline = ctx.activeItem;
+    const dom = new JSDOM('<div id="view-detail"><div><button id="camera-btn-na">Photo</button></div><input id="na-av-note" value="RETAINED FORM DRAFT"></div>');
+    Object.assign(ctx, {
+        document: dom.window.document, navigator: { onLine: true },
+        productionMasterDetailDisabledControls: new WeakMap(), activeDetailSourceView: 'drive', lastView: 'drive',
+        isLoginSessionOwnershipCurrent: (value) => value === owner,
+        getRoleAccessState: () => ({ isAdmin }), findLinkedMasterRow: () => null,
+        canEditRowDetails: () => false, renderProductionMasterDetailState: () => {},
+        persistDrivePhotoDraft: async () => { saves++; return true; },
+        showToast: () => { throw new Error('Unexpected photo retry failure'); },
+    });
+    vm.runInContext(`const SECURE_DRIVE_EVIDENCE_PREFIXES = new Set(['ssn-', 'lsn-', 'na-']);
+        const PROTECTED_DRIVE_PHOTO_PREFIXES = new Set(['ssn-', 'lsn-', 'na-', 'flyer-']);
+        ${['firstNonEmptyValue', 'getDrivePhotoIdentity', 'getDrivePhotoMasterItem', 'canUploadRowPhoto',
+            'canUploadRowPhotoByRole', 'assertDrivePhotoDraftContext', 'refreshDrivePhotoDraftUi',
+            'retryDrivePhotoSave', 'applyProductionMasterDetailControlState'].map(appFunction).join('\n')}`, ctx);
+    const draft = { owner, identity: ctx.getDrivePhotoIdentity(baseline), state: 'retry',
+        entries: [{ publicUrl: 'https://photos.invalid/retained.webp' }] };
+    ctx.getDrivePhotoDraft = () => draft;
+    ctx.applyProductionMasterDetailControlState();
+    const button = dom.window.document.querySelector('[data-drive-photo-retry="na-"]');
+    assert.ok(button); assert.equal(button.disabled, false);
+    button.focus();
+    f.context.online = false; ctx.navigator.onLine = false;
+    ctx.applyProductionMasterDetailControlState();
+    assert.equal(button.disabled, true);
+    assert.equal(button.isConnected, true);
+    assert.equal(await ctx.retryDrivePhotoSave('na-'), false);
+    assert.equal(saves, 0, 'programmatic retry cannot bypass offline state');
+    f.context.online = true; ctx.navigator.onLine = true;
+    const gate = deferred();
+    f.context.adapters.push({ id: 'side:held-join', cacheKey: 'join-v1', sourceKeys: ['ph_settings'],
+        stage: async () => { await gate.promise; return []; } });
+    const pending = f.coordinator.check(); await settle();
+    ctx.applyProductionMasterDetailControlState();
+    assert.equal(button.disabled, true, 'online alone does not authorize the pending dependency group');
+    assert.equal(await ctx.retryDrivePhotoSave('na-'), false);
+    assert.equal(saves, 0);
+    gate.resolve(); await pending; await settle();
+    assert.equal(button.disabled, false);
+    assert.equal(dom.window.document.querySelector('[data-drive-photo-retry="na-"]'), button);
+    assert.equal(dom.window.document.activeElement, button, 'metadata refresh preserves the recovery button and its focus');
+    assert.equal(ctx.activeItem, baseline);
+    assert.equal(dom.window.document.getElementById('na-av-note').value, 'RETAINED FORM DRAFT');
+    assert.equal(draft.entries[0].publicUrl, 'https://photos.invalid/retained.webp');
+    await ctx.retryDrivePhotoSave('na-'); assert.equal(saves, 1, 'only the explicit verified retry persists the retained URL');
+    f.state.sourceState = 'denied'; await f.coordinator.check(); ctx.applyProductionMasterDetailControlState();
+    assert.equal(button.disabled, true);
+    await ctx.retryDrivePhotoSave('na-'); assert.equal(saves, 1);
+    f.state.sourceState = 'ready'; f.state.revision = '2'; await f.coordinator.check();
+    assert.equal(button.disabled, true, 'a changed master revision cannot enable the old bound detail');
+    await ctx.retryDrivePhotoSave('na-'); assert.equal(saves, 1);
+    ctx.activeItem = { ...f.store.getVerifiedRows(['A'])[0], SOURCE_TABLE: 'ph_master_inventory' };
+    ctx.bindProductionMasterDetailRow(ctx.activeItem, ['A']); ctx.applyProductionMasterDetailControlState();
+    assert.equal(button.disabled, false, 'reviewing and binding the fresh full row restores recovery');
+    f.state.permission = 'permission-2'; await f.coordinator.check();
+    assert.equal(button.disabled, true, 'new permission metadata cannot bless an old full-row binding');
+    ctx.activeItem = { ...f.store.getVerifiedRows(['A'])[0], SOURCE_TABLE: 'ph_master_inventory' };
+    ctx.bindProductionMasterDetailRow(ctx.activeItem, ['A']); ctx.applyProductionMasterDetailControlState();
+    assert.equal(button.disabled, false);
+    isAdmin = false; ctx.applyProductionMasterDetailControlState();
+    assert.equal(dom.window.document.querySelector('[data-drive-photo-retry]'), null);
+    await ctx.retryDrivePhotoSave('na-'); assert.equal(saves, 1);
+    isAdmin = true; owner = 'owner-B'; ctx.applyProductionMasterDetailControlState();
+    assert.equal(dom.window.document.querySelector('[data-drive-photo-retry]'), null, 'another login cannot recover the prior actor’s draft');
+    await ctx.retryDrivePhotoSave('na-'); assert.equal(saves, 1);
+    dom.window.close();
 });
 
 test('Reclass controls and recipients recover from a same-fence check but not a changed revision', async () => {

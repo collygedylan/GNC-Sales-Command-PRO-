@@ -156,7 +156,7 @@
             adapters.set(cacheKey, adapter);
             return adapter;
         }
-        function getVerifiedRows(ids) {
+        function readVerifiedRows(ids, raw = false) {
             const wanted = normalizeIds(ids);
             if (!wanted.length) return [];
             const current = context();
@@ -169,15 +169,18 @@
             const startedGeneration = generation;
             // A formatter is allowed to normalize its input. It never receives
             // the canonical copy, and no app-owned row receives a freshness tag.
-            const rows = clone(exactRows(formatRows(clone(entry.rows)), wanted, inventoryContract));
+            const rows = clone(exactRows(raw ? entry.rows : formatRows(clone(entry.rows)), wanted, inventoryContract));
             const after = context();
             if (!after || generation !== startedGeneration || after.scope !== fence.scope
                 || after.permissionVersion !== fence.permissionVersion || after.revision !== fence.revision
                 || after.visible === false || after.online === false || !sync.isVerified(adapter)) return null;
+            if (raw) return rows;
             return rows.map((row) => inventoryContract.markDetailRow(row, {
                 scope: fence.scope, permissionVersion: fence.permissionVersion, revision: fence.revision, uniqueId: rowId(row)
             }));
         }
+        function getVerifiedRows(ids) { return readVerifiedRows(ids); }
+        function getVerifiedCanonicalRows(ids) { return readVerifiedRows(ids, true); }
         async function ensure(ids) {
             const wanted = normalizeIds(ids);
             if (!wanted.length) return [];
@@ -193,7 +196,7 @@
             if (!after || after.scope !== expectedScope || generation !== expectedGeneration) return null;
             return getVerifiedRows(wanted);
         }
-        return Object.freeze({ getAdapter, getVerifiedRows, ensure, reset });
+        return Object.freeze({ getAdapter, getVerifiedRows, getVerifiedCanonicalRows, ensure, reset });
     }
     return Object.freeze({ version, sourceKey, createStore });
 });

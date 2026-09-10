@@ -75,6 +75,23 @@ test('full-schema synthetic fixture preserves the observed null profile without 
     assert.equal(fixture.aggregateEvidence.reductionPercent, 53.491);
 });
 
+test('full-row physical equality columns exactly match the audited schema without expanding the list wire contract', () => {
+    const expected = fixture.schema.map((column) => column.name).sort();
+    assert.equal(contract.physicalColumns.length, 213);
+    assert.equal(new Set(contract.physicalColumns).size, 213);
+    assert.ok(Object.isFrozen(contract.physicalColumns));
+    assert.deepEqual(Array.from(contract.physicalColumns), expected);
+    assert.throws(() => { contract.physicalColumns[0] = 'not_a_physical_column'; }, TypeError);
+    assert.throws(() => contract.physicalColumns.push('not_a_physical_column'), { name: 'TypeError' });
+    assert.equal(contract.physicalColumns.filter((name) => !contract.columns.includes(name)).length, 52);
+    assert.ok(contract.physicalColumns.includes('app_tab_assignment'));
+    assert.ok(contract.physicalColumns.includes('last_updated'));
+    assert.ok(contract.physicalColumns.includes('unitprice'));
+    assert.equal(contract.columns.length, 161);
+    assert.equal(new URLSearchParams(contract.buildQuery()).get('select').split(',').length, 161);
+    assert.deepEqual(Object.keys(contract.decodeRow(encode([fullFixtureRows()[0]])[0])), Array.from(contract.columns));
+});
+
 test('same full-schema fixture is at least 50 percent smaller with projection and short aliases', (t) => {
     const full = fullFixtureRows(), encoded = encode(full);
     const fullBytes = Buffer.byteLength(JSON.stringify(full));
