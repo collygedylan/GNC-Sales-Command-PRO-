@@ -137,7 +137,7 @@ async function fixture(page: Page, baseURL: string) {
   return { state, request };
 }
 
-test('Request detail shows verified On Hand and calculates LOC MATCH from Available', async ({ page, baseURL }) => {
+test('Request detail shows verified On Hand and calculates LOC MATCH from Available', async ({ page, baseURL, browserName, isMobile }) => {
   const f = await fixture(page, baseURL!);
   await page.evaluate(() => (window as any).switchView('request'));
   await expect(page.locator('#view-request')).toBeVisible();
@@ -174,7 +174,19 @@ test('Request detail shows verified On Hand and calculates LOC MATCH from Availa
   await expect(panel).toBeVisible();
   await expect(panel.locator('.request-desired-chip').filter({ hasText: 'On hand' })).toContainText('1000');
   await expect(page.locator('#req-match')).toBeEditable();
-  await page.locator('#req-match').fill('60');
+  if (isMobile && browserName === 'chromium') {
+    // Android opens the app keypad and makes the field readonly on focus.
+    // Use its real touch controls instead of inserting text behind the keypad.
+    await page.locator('#req-match').tap();
+    const keypad = page.locator('#detail-measurement-keyboard');
+    await expect(keypad).toBeVisible();
+    await keypad.locator('[data-key-token="__clear"]').tap();
+    await keypad.locator('[data-key-token="6"]').tap();
+    await keypad.locator('[data-key-token="0"]').tap();
+  } else {
+    await page.locator('#req-match').fill('60');
+  }
+  await expect(page.locator('#req-match')).toHaveValue('60');
   await expect(page.locator('#req-match-qty-val')).toHaveText('440');
   expect(await page.evaluate(() => window.eval(`({
     available:activeItem.PTRAVAILABLE,onHand:activeItem.PTRONHAND,baseline:activeItem.INITIAL_PTR,
