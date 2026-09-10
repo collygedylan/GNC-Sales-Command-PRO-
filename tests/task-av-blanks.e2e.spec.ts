@@ -36,11 +36,12 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
   await page.goto('/?post_deploy_access_canary=1&task_av_blanks_canary=1', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
   await installInventoryReadFixture(page);
-  await page.evaluate(async ({ rows, role, username, allowReclass }) => {
+  await page.evaluate(({ rows, role, username, allowReclass }) => {
     (window as any).__taskAv = { rows, role, username, allowReclass, revision: 1, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], saveEvents: [], failed: false,
-      bootstrap: { phase: 'created', events: [], revisionReads: [], datasetReads: [] } };
-    // Keep the cross-evaluation bootstrap strongly owned by the page until it
-    // settles. An unrooted nested eval promise can be collected by Chromium.
+      bootstrap: { status: 'pending', phase: 'created', events: [], revisionReads: [], datasetReads: [] } };
+    // Do not return an asynchronous bootstrap through CDP's awaitPromise path.
+    // Chromium can collect that outer serialization promise even while this
+    // strongly owned inner task completes. Poll its explicit terminal state.
     (window as any).__taskAvReady = window.eval(`(async () => {
       const f = window.__taskAv;
       const phase=name=>{f.bootstrap.phase=name;f.bootstrap.events.push({name,at:Date.now()})};
@@ -157,17 +158,33 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
       const state=ensureViewRenderState('tasks');state.initialized=true;state.dirty=false;
       phase('ready');
     })()`);
-    let deadline: ReturnType<typeof setTimeout> | undefined;
-    try {
-      await Promise.race([(window as any).__taskAvReady, new Promise((_, reject) => {
-        deadline = setTimeout(() => reject(new Error('TASK_FIXTURE_BOOTSTRAP_TIMEOUT:' + JSON.stringify({
-          ...(window as any).__taskAv.bootstrap,
-          status: window.eval('productionLiveSyncCoordinator?.getStatus()'),
-          statistics: window.eval('productionLiveSyncCoordinator?.getStatistics()'),
-        }))), 45_000);
-      })]);
-    } finally { clearTimeout(deadline); }
+    (window as any).__taskAvBootstrapObserver = (window as any).__taskAvReady.then(
+      () => { (window as any).__taskAv.bootstrap.status = 'ready'; },
+      (error: Error) => {
+        const bootstrap = (window as any).__taskAv.bootstrap;
+        bootstrap.status = 'failed';
+        bootstrap.error = { name:error?.name, message:error?.message || String(error), stack:error?.stack };
+      },
+    );
   }, { rows, role, username, allowReclass });
+  let bootstrap: any;
+  try {
+    await expect.poll(async () => {
+      // Each evaluation returns plain data immediately; no browser Promise is
+      // exported. A reset document or rejected task ends polling and fails below.
+      bootstrap = await page.evaluate(() => ({
+        ...(window as any).__taskAv?.bootstrap,
+        status: (window as any).__taskAv?.bootstrap?.status || 'missing',
+        url: location.href,
+        coordinator: window.eval('productionLiveSyncCoordinator?.getStatus()'),
+        statistics: window.eval('productionLiveSyncCoordinator?.getStatistics()'),
+      }));
+      return bootstrap.status;
+    }, { timeout:45_000, intervals:[50, 100, 250] }).not.toBe('pending');
+  } catch (error) {
+    throw new Error('TASK_FIXTURE_BOOTSTRAP_DID_NOT_SETTLE:' + JSON.stringify(bootstrap), { cause:error });
+  }
+  expect(bootstrap, 'TASK_FIXTURE_BOOTSTRAP_FAILED:' + JSON.stringify(bootstrap)).toMatchObject({ status:'ready', phase:'ready' });
   await expect(page.locator('#view-tasks')).toBeVisible();
   expect(await page.evaluate(() => (window as any).__taskAv.bootstrap.datasetReads.some((read: any) =>
     read.table === 'ph_master_inventory' && !read.exact && read.select !== '*' && read.fieldCount === 161)),

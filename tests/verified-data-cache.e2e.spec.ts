@@ -526,7 +526,10 @@ test('an unresolved badge cannot block current data on the active inventory view
   const release = f.gate('ph_sales_credit_requests');
   await f.open(); await drive(page); await saved(page); await verified(page);
   await expect.poll(() => f.state.held.includes('ph_sales_credit_requests')).toBe(true);
-  expect(await page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().isVerified(createProductionCoreLiveAdapter('master'))`))).toBe(true);
+  // A finite independent foreground recheck may start after the initial
+  // current paint. It must finish without releasing the background request.
+  await expect.poll(() => page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().isVerified(createProductionCoreLiveAdapter('master'))`))).toBe(true);
+  expect(f.state.gates.has('ph_sales_credit_requests')).toBe(true);
   release();
   expect(f.state.forbidden).toEqual([]);
 });
