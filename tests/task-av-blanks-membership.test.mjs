@@ -76,3 +76,17 @@ test('AV Blanks waits for confirmed completion and leaves existing exemption/nor
   assert.match(html, /canBypassAvBlanksCompletionRequirementsForCurrentUser\(itemToSave, prefix\)/);
   assert.match(html, /itemToSave.DATE_COMPLETED = previousDateCompleted/);
 });
+
+test('a verified empty CAV key snapshot cannot revive stale rows from the older full-CAV adapter', () => {
+  const previous = context.cavAvBlankKeyInventory;
+  context.cavInventory = previous;
+  context.cavAvBlankKeyInventory = [];
+  context.getDatasetState = () => ({ fullLoaded: true });
+  try {
+    assert.equal(context.getSeasonAvBlankItems([row({})]).length, 0);
+  } finally {
+    context.cavAvBlankKeyInventory = previous;
+    context.cavInventory = [];
+    delete context.getDatasetState;
+  }
+});

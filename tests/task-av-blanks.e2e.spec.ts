@@ -34,14 +34,19 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
   await page.routeWebSocket('**/*', socket => socket.close());
   await page.goto('/?post_deploy_access_canary=1&task_av_blanks_canary=1', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
-  await page.evaluate(({ rows, role, username, allowReclass }) => {
-    (window as any).__taskAv = { rows, role, username, allowReclass, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], failed: false };
-    window.eval(`(() => {
+  await page.evaluate(async ({ rows, role, username, allowReclass }) => {
+    (window as any).__taskAv = { rows, role, username, allowReclass, revision: 1, saves: [], reclass: [], publicCalls: [], replies: [], toasts: [], failed: false };
+    await window.eval(`(async () => {
       const f = window.__taskAv;
+      const profile={id:'isolated-profile-'+f.username,username:f.username,role:f.role,active:true};
+      const session={access_token:'synthetic-not-a-real-token',user:{id:profile.id}};
+      const channel={on:()=>channel,subscribe:()=>channel};
+      const client={auth:{getSession:async()=>({data:{session}}),signInWithPassword:async()=>({data:{session}}),
+        onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
+        from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:profile})})})}),channel:()=>channel,removeChannel:async()=>{}};
+      getSupabaseBrowserClient=()=>client;
+      if(!await tryNativeAuthPasswordLogin(f.username,'isolated-password')) throw new Error('TASK_FIXTURE_AUTH_FAILED');
       installMutationBlockedAccessCanaryIdentity(f.username, 'Isolated Task AV', f.role);
-      nativeAuthSessionActive=true;
-      nativeAuthProfile={id:'isolated-profile-'+f.username,username:f.username,role:f.role,active:true};
-      nativeAuthAccessToken='synthetic-not-a-real-token';
       const permissions=['module.home.view','module.tasks.view','module.drive.view','drive.reclass.submit'].map(key=>({permissionKey:key,kind:key.startsWith('module.')?'module':'action',moduleKey:key.split('.')[1],allowed:key==='drive.reclass.submit'?f.allowReclass:true,scope:f.role==='EVAL'?'assigned':'global'}));
       const snapshot=normalizeAppAccessSnapshot({contractVersion:'app-access-v1',enforcementMode:'enforced',username:f.username,role:f.role,permissions},f.username);
       appAccessSnapshotState={status:'ready',snapshot,stale:false,errorCode:'',loadedAt:Date.now(),username:f.username};
@@ -53,10 +58,19 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
       assignableAppUsersLoaded=true;
       evalAssignableUsers=['eval_fixture','unrelated_person'];evalAssignableUsersDirectoryResolved=true;evalAssignableUsersLastAttemptAt=Date.now();
       taskViewTargetUser=f.role==='EVAL'?f.username:'all';
-      Object.keys(DATASET_DEFINITIONS).forEach(key=>{const s=getDatasetState(key);s.initialLoaded=s.fullLoaded=true;s.lastLoadedAt=new Date().toISOString()});
       ensureViewDataForRender=()=>false;
       loadDatasetTargetsWithLimit=async()=>false;
       ensureAppAccessSnapshotLoaded=async()=>snapshot;
+      // Supply server boundaries to the production coordinator. Seeded app rows
+      // alone must never satisfy the native freshness/mutation gate.
+      fetchAllSupabaseRows=async (table)=>{
+        if(table===APP_SEASON_SETTINGS_TABLE) return [{key:APP_SEASON_SETTINGS_KEY,value:{seasonCode:'F1',salesYear:27}}];
+        if(table==='ph_master_inventory') return structuredClone(f.rows);
+        if(table==='ph_cav_import') return f.rows.map(r=>({ITEMCODE:r.ITEMCODE,SEASON:'F1',HOLDSTOPREASON:''}));
+        if(table===WAREHOUSE_ASSIGNED_ITEMS_TABLE) return f.rows.map(r=>({...r,PRESENT_IN_DRIVE:true}));
+        if(Object.values(DATASET_DEFINITIONS).some(definition=>definition.table===table)) return [];
+        throw new Error('UNEXPECTED_FIXTURE_DATASET:'+table);
+      };
       avRuleColumnsReady=true;
       showToast=(title,message)=>f.toasts.push({title,message});
       postGoogleScriptRawJsonPayload=async payload=>{f.publicCalls.push(payload);throw new Error('PUBLIC_DELIVERY_FORBIDDEN')};
@@ -69,6 +83,8 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
         throw new Error('UNEXPECTED_APP_API:'+payload.action+':'+payload.operation);
       };
       supabaseRpc=async (name,payload)=>{
+        if(name==='get_my_dataset_revisions_v1') return {contractVersion:1,permissionVersion:'task-fixture-policy-v1',
+          sources:payload.p_dataset_keys.map(key=>({key,revision:String(f.revision),state:'ready'}))};
         if(name==='save_drive_evidence_v2'){
           f.saves.push(structuredClone(payload));
           if(f.gate) await f.gate;
@@ -76,6 +92,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
           const current=f.rows.find(r=>r.UNIQUE_ID===payload.p_master_uid);
           const canonical={...current,...Object.fromEntries(Object.entries(payload.p_evidence||{}).map(([key,value])=>[key.toUpperCase(),value])),DATE_COMPLETED:payload.p_complete?'2026-09-09T18:00:00.000Z':current.DATE_COMPLETED,LAST_UPDATED:'2026-09-09T18:00:00.000Z'};
           f.rows=f.rows.map(r=>r.UNIQUE_ID===canonical.UNIQUE_ID?canonical:r);
+          f.revision++;
           return {ok:true,canonicalConfirmed:true,row:canonical,requestRows:[],code:'SAVED'};
         }
         if(name==='get_my_app_permissions_v1') return snapshot;
@@ -83,11 +100,19 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
         if(name==='get_app_user_directory') return [];
         return [];
       };
-      f.importRows=(nextRows)=>{
+      f.importRows=async (nextRows)=>{
         f.rows=structuredClone(nextRows);
-        processAndLoadData({data:structuredClone(f.rows),cavAvBlankKeysData:f.rows.map(r=>({ITEMCODE:r.ITEMCODE,SEASON:'F1',HOLDSTOPREASON:''})),warehouseAssignedItemsData:f.rows.map(r=>({...r,PRESENT_IN_DRIVE:true})),requestsData:[],_fromCache:true});
+        f.revision++;
+        const coordinator=getProductionLiveSyncCoordinator();
+        if(!coordinator || !await coordinator.check('isolated-task-import')) throw new Error('TASK_FIXTURE_VERIFICATION_FAILED:'+JSON.stringify(coordinator?.getStatus()));
+        if(!canUseVerifiedProductionData(['master','cavAvBlankKeys','warehouseAssignedItems'])) throw new Error('TASK_FIXTURE_NOT_VERIFIED');
         invalidateResolvedViewStateCaches();
         renderTasks();
+      };
+      f.verifyDetail=async()=>{
+        const coordinator=getProductionLiveSyncCoordinator();
+        if(!await coordinator.check('isolated-task-detail')) throw new Error('TASK_DETAIL_VERIFICATION_FAILED:'+JSON.stringify(coordinator.getStatus()));
+        if(!canUseVerifiedProductionData(['master'])) throw new Error('TASK_DETAIL_NOT_VERIFIED');
       };
       activeTaskView=f.role==='EVAL'?'eval-task':'av-blanks';
       activeTaskTab=activeTaskView;
@@ -95,10 +120,10 @@ async function harness(page: Page, baseURL: string, rows: Row[], role = 'MANAGER
       activeEvalSimpleFilter='av-blanks';
       selectedTaskGenusNames=new Set();selectedTaskContSizes=new Set();
       taskLocationDetailSearchTerm='';taskViewLevel=0;selectedTaskBlock=selectedTaskLoc=null;
-      f.importRows(f.rows);
       document.getElementById('view-login').style.setProperty('display','none','important');
       document.getElementById('app-wrapper').classList.remove('hidden');
-      showOnlyPrimaryView('tasks');renderTasks();
+      showOnlyPrimaryView('tasks');
+      await f.importRows(f.rows);
       const state=ensureViewRenderState('tasks');state.initialized=true;state.dirty=false;
     })()`);
   }, { rows, role, username, allowReclass });
@@ -168,6 +193,7 @@ test('note-only Mark Done awaits protected confirmation; failure preserves draft
     const other=await harness(second,baseURL!,initial);
     await app.openRows();
     await page.evaluate(()=>window.eval(`openDetail('isolated-av-complete','tasks',{preferredTab:'season'})`));
+    await page.evaluate(()=>(window as any).__taskAv.verifyDetail());
     await expect(page.locator('#ssn-btn-save-complete')).toBeVisible();
     await page.evaluate(()=>{const f=(window as any).__taskAv;f.gate=new Promise<void>(resolve=>f.release=resolve)});
     await page.locator('#ssn-btn-save-complete').click();
@@ -180,6 +206,7 @@ test('note-only Mark Done awaits protected confirmation; failure preserves draft
     await other.importRows(committed);
     await expect.poll(other.ids).not.toContain('isolated-av-complete');
     await page.evaluate(()=>window.eval(`openDetail('isolated-av-failure','tasks',{preferredTab:'season'})`));
+    await page.evaluate(()=>(window as any).__taskAv.verifyDetail());
     await expect(page.locator('#ssn-av-note')).toBeVisible();
     await expect(page.locator('#ssn-av-note')).toHaveValue('DRAFT NOTE');
     // Type through the existing note editor, then freeze the actual entered

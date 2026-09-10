@@ -122,8 +122,8 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
     assert.equal(av.id, 'core:master'); assert.equal(av.cacheKey, master.cacheKey);
     assert.equal((await av.stage()).key, 'master');
     ctx.season = { seasonCode: 'F1', salesYear: 27 };
-    assert.notEqual(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
-        'season changed off-screen cannot retain old derived inventory under unchanged stock revisions');
+    assert.equal(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
+        'the all-season physical query is unchanged; verified settings rebuild derived collections without downloading rows');
 });
 
 function permissionFixture(options = {}) {

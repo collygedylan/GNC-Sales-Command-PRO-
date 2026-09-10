@@ -113,6 +113,8 @@ jobs:
             config: playwright.session-recovery.config.ts
           - suite: assignedto
             config: playwright.review-assignedto.config.ts
+          - suite: verified-cache
+            config: playwright.verified-data-cache.config.ts
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests

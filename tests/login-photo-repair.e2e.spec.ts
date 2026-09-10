@@ -25,7 +25,8 @@ async function isolatedApp(page: Page) {
     w.__repair = { calls: [], toasts: [], frames: [], controls: {}, backgroundSettled: false };
     w.clearLoginStartupWatchdog();
     localStorage.clear(); sessionStorage.clear();
-    const client: any = { auth:{
+    const channel: any = { on:() => channel, subscribe:() => channel };
+    const client: any = { channel:() => channel, removeChannel:async () => {}, auth:{
       signInWithPassword: async () => ({ data:{ session:{ access_token:'isolated-test-token', user:{ id:w.__repair.profile.id } } } }),
       getSession: async () => ({ data:{ session:{ access_token:'isolated-test-token', user:{ id:w.__repair.profile.id } } } }),
       onAuthStateChange: () => ({ data:{ subscription:{ unsubscribe() {} } } }),
@@ -74,6 +75,15 @@ async function isolatedApp(page: Page) {
     }
     w.supabaseRpc = async (operation: string) => {
       w.__repair.calls.push(operation);
+      if (operation === 'get_my_dataset_revisions_v1') {
+        if (w.__repair.backgroundSettled) throw new Error('ISOLATED_BACKGROUND_UNAVAILABLE');
+        return new Promise((_resolve, reject) => {
+          w.__repair.controls.get_my_dataset_revisions_v1 = () => {
+            w.__repair.backgroundSettled = true;
+            reject(new Error('ISOLATED_BACKGROUND_UNAVAILABLE'));
+          };
+        });
+      }
       const identity = w.__repair.snapshot();
       const delay = w.__repair.permissionDelay || 0;
       if (delay) await new Promise(resolve => setTimeout(resolve, delay));
@@ -134,7 +144,9 @@ for (const restored of [false, true]) {
     expect(firstFrames.loginError).toBeUndefined();
     expect(firstFrames.frames.every((frame: any) => frame.count > 0)).toBe(true);
     expect(firstFrames.frames[0].at - firstFrames.accessResolvedAt).toBeLessThan(1000);
-    await page.waitForFunction(() => !!(window as any).__repair.controls.loadEvalWorkAssignments);
+    // Release 1 schedules its central revision check after showing Home; the
+    // retired legacy Eval warmup is no longer the delayed service boundary.
+    await page.waitForFunction(() => !!(window as any).__repair.controls.get_my_dataset_revisions_v1);
     await page.evaluate(() => {
       for (const release of Object.values((window as any).__repair.controls)) (release as Function)();
     });
@@ -235,7 +247,7 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
     w.__repair.start();
   }, { role });
   await expect(page.locator('#view-login')).toBeHidden();
-  await page.evaluate(({ source }) => {
+  await page.evaluate(async ({ source }) => {
     const w = window as any;
     w.ensureDatasetLoaded = async () => true;
     w.ensureViewDataForRender = () => false;
@@ -256,6 +268,19 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
       Object.fromEntries(Object.entries(item).map(([key, value]) => [key.toLowerCase(), value]))]));
     w.__repair.uploads = [];
     w.__repair.saves = [];
+    w.__repair.revision = 1;
+    const settingsTable = w.eval('APP_SEASON_SETTINGS_TABLE');
+    const settingsKey = w.eval('APP_SEASON_SETTINGS_KEY');
+    const definitions = w.eval('DATASET_DEFINITIONS');
+    // Real adapter descriptors, metadata fences, staging and commits verify the
+    // synthetic canonical rows. No readiness/permission predicate is replaced.
+    w.fetchAllSupabaseRows = async (table: string) => {
+      if (table === settingsTable) return [{ key:settingsKey, value:{ seasonCode:season, salesYear:year } }];
+      if (table === 'ph_master_inventory') return structuredClone(Object.values(w.__repair.savedRows));
+      if (table === 'ph_active_request') return w.__repair.requestRow ? [structuredClone(w.__repair.requestRow)] : [];
+      if (Object.values(definitions).some((definition: any) => definition.table === table)) return [];
+      throw new Error('UNEXPECTED_PHOTO_FIXTURE_DATASET:' + table);
+    };
     const scheduleHydration = w.scheduleDeferredDetailHydration;
     w.scheduleDeferredDetailHydration = (token: number, delay: number) => {
       w.__repair.detailHydrationToken = token;
@@ -263,6 +288,8 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
     };
     const previousRpc = w.supabaseRpc;
     w.supabaseRpc = async (operation: string, payload: any) => {
+      if (operation === 'get_my_dataset_revisions_v1') return { contractVersion:1, permissionVersion:'photo-fixture-policy-v1',
+        sources:payload.p_dataset_keys.map((key: string) => ({ key, revision:String(w.__repair.revision), state:'ready' })) };
       if (operation !== 'save_drive_evidence_v2') return previousRpc(operation, payload);
       w.__repair.saves.push(structuredClone(payload));
       if (w.__repair.holdSave) await new Promise(resolve => { w.__repair.releaseSave = resolve; });
@@ -270,6 +297,7 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
       const row = w.__repair.savedRows[payload.p_master_uid];
       if (w.__repair.conflictSave) return { ok:false, code:'DRIVE_FIELD_CONFLICT', conflictFields:['photo_link'], row:structuredClone(row) };
       Object.assign(row, payload.p_evidence, { last_updated:'2026-09-09T12:05:00Z' });
+      w.__repair.revision++;
       return { ok:true, code:'SAVED', canonicalConfirmed:true, row:structuredClone(row), requestRows:[] };
     };
     w.postAppFunctionFormData = async (_url: string, form: FormData) => {
@@ -285,14 +313,24 @@ async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', rol
       w.openDetail(uid, view);
       w.switchDetailTab('notes', { suppressScroll:true });
     };
-    w.__repair.reloadCanonical = () => {
-      w.processAndLoadData({ data:w.formatFetchedRows(Object.values(w.__repair.savedRows), 'ph_master_inventory'), _fromCache:true });
+    w.__repair.verifyData = async () => {
+      const coordinator = w.getProductionLiveSyncCoordinator();
+      if (!coordinator || !await coordinator.check('isolated-photo-data')) throw new Error('PHOTO_FIXTURE_VERIFICATION_FAILED');
+      const keys = ['master', ...(w.__repair.requestRow ? ['requests'] : [])];
+      for (const key of keys) {
+        const adapter = w.createProductionCoreLiveAdapter(key);
+        if (!coordinator.isVerified(adapter) && !await coordinator.ensure(adapter)) throw new Error('PHOTO_FIXTURE_DATASET_NOT_VERIFIED:' + key);
+      }
+      if (!w.canUseVerifiedProductionData(keys)) throw new Error('PHOTO_FIXTURE_NOT_VERIFIED');
+    };
+    w.__repair.reloadCanonical = async () => {
+      w.__repair.revision++;
+      await w.__repair.verifyData();
       w.__repair.open();
     };
     w.processAndLoadData({ data:[row, other], avOpenData:[row, other], _fromCache:true });
-    w.hydrateDatasetLoadState({ master:{initialLoaded:true, fullLoaded:true}, avOpen:{initialLoaded:true, fullLoaded:true},
-      avNotes:{initialLoaded:true, fullLoaded:true} });
     w.__repair.open();
+    await w.__repair.verifyData();
   }, { source });
   await expect(page.locator('#view-detail')).toBeVisible();
   return fixture;
@@ -472,18 +510,22 @@ test('late detail hydration preserves typed AV Note and cursor before its protec
 for (const scenario of ['closed', 'visible-blank', 'hold'] as const) {
   test(`Request render verification distinguishes ${scenario} detail from a genuine loading failure`, async ({ page }) => {
     const fixture = await preparePhotoRow(page);
-    await page.evaluate(scenario => {
+    await page.evaluate(async scenario => {
       const w = window as any;
       w.goBackFromDetail();
       const request = { ...w.__repair.photoRows[0], UNIQUE_ID:'request-render-fixture',
         MASTER_UNIQUE_ID:'photo-fixture-one', SOURCE_TABLE:'ph_active_request',
         REQUEST_STATUS:'Pending', STATUS:'Pending', FOLDER_ID:'isolated-request-folder',
         HOLDSTOPCODE:scenario === 'hold' ? 'H' : '', HOLDSTOPREASON:scenario === 'hold' ? 'Leaf quality' : '' };
-      if (scenario === 'hold') w.__repair.photoRows[0].HOLDSTOPCODE = 'H';
+      if (scenario === 'hold') {
+        w.__repair.photoRows[0].HOLDSTOPCODE = 'H';
+        Object.assign(w.__repair.savedRows['photo-fixture-one'], { holdstopcode:'H', holdstopreason:'Leaf quality' });
+      }
       w.__repair.requestRow = request;
+      w.__repair.revision++;
       w.processAndLoadData({ requestsData:[request], _fromCache:true });
-      w.hydrateDatasetLoadState({ requests:{ initialLoaded:true, fullLoaded:true } });
       w.openDetail(request.UNIQUE_ID, 'request', { skipRequestOpenInfoModal:true });
+      await w.__repair.verifyData();
     }, scenario);
     await expect(page.locator('#req-match')).toBeVisible();
     const result = await page.evaluate(scenario => {
@@ -581,10 +623,10 @@ test('a second isolated client sees the saved photo from canonical data, not the
   try {
     const second = await context.newPage();
     await preparePhotoRow(second);
-    await second.evaluate(rows => {
+    await second.evaluate(async rows => {
       const state = (window as any).__repair;
       state.savedRows = rows;
-      state.reloadCanonical();
+      await state.reloadCanonical();
     }, canonical);
     const evidence = await second.evaluate(() => {
       const w = window as any;

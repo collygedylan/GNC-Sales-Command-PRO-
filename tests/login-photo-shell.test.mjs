@@ -25,6 +25,7 @@ function freshnessFixture() {
             body: { appendChild() { assert.fail('Data status must not become a floating body overlay'); } }
         },
         productionLiveSyncDraftChanged: false,
+        getCurrentVisibleViewId: () => 'home',
         productionLiveSyncCoordinator: { getStatus: () => null, signal: (...args) => signals.push(args) },
         canUseProductionLiveSync: () => true,
         showToast: (...args) => notices.push(args)

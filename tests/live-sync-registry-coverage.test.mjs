@@ -25,9 +25,9 @@ function harness() {
     window: {}, console, Date, JSON, Map, Set, String, Number, Array, Object,
     currentUser: 'fixture', currentRole: 'ADMIN', activeReqTab: 'pending', activeHomeTab: 'orders',
     activeMovesTab: 'office', activeInventoryOfficeApprovalType: 'crop-roll', activeAVTab: 'open',
-    activeTaskView: 'flyer', cropRollDriveSchemaReady: true, productionInventoryTab: 'counting',
+    activeTaskView: 'flyer', activeSalesOfficeTab: 'season', cropRollDriveSchemaReady: true, productionInventoryTab: 'counting',
     productionWorkflowActive: 'spacing', selectedProductivityUser: '', requestDeliveryRecoveryOpen: false,
-    activeDetailTab: '', activeLocationWorkJobId: '', managersSearchTerm: '', evalRole: false,
+    activeDetailTab: '', activeDetailSourceView: '', activeLocationWorkJobId: '', managersSearchTerm: '', evalRole: false,
     managerOrdersState: { rows: [], batches: [], selectedAssigneeKeys: new Set() },
     bloomscapesPendingState: { orders: [] }, inventoryTransactionHistoryState: {},
     managerTransactionsKeyedState: { allDates: [], files: [] },
@@ -63,6 +63,48 @@ test('every rendered route and root DOM view has an explicit registry classifica
   for (const route of routes) assert.ok(registry.views[route], `Unclassified real route: ${route}`);
   for (const id of ['sales', 'qc', 'production', 'office', 'disease-pest']) assert.equal(registry.views[id].kind, 'navigation');
   assert.equal(registry.views.hours.kind, 'static');
+});
+
+test('Task subviews load their own joined data, not unrelated Flyer history or a second CAV snapshot', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  const keys = (taskView, evalSimpleTaskFilter = '') => new Set(registry.getCoreKeys('tasks', { taskView, evalSimpleTaskFilter }));
+  const blanks = keys('av-blanks');
+  assert.ok(blanks.has('master') && blanks.has('warehouseAssignedItems') && blanks.has('cavAvBlankKeys'));
+  for (const unrelated of ['flyerRows', 'flyerHistory', 'cav', 'salesOffice', 'requests', 'avHotPriceKeys']) assert.equal(blanks.has(unrelated), false, unrelated);
+  assert.ok(keys('eval-task', 'av-blanks').has('requests'));
+  assert.ok(keys('notes').has('salesOffice'), 'generic Season/Location exclusion uses Sales Office');
+  assert.ok(keys('hot-price').has('avHotPriceKeys'));
+  assert.ok(keys('flyer').has('flyerRows') && keys('flyer').has('flyerHistory'));
+  assert.ok(keys('reserves').has('reserves'));
+  assert.ok(keys('cust').has('reserves') && keys('cust').has('customerRepMap'));
+  const office = registry.getCoreKeys('sales-office', { salesOfficeTab: 'season' });
+  assert.deepEqual(Array.from(office), ['salesOffice', 'master']);
+});
+
+test('open Detail retains its source joins as critical requirements without footer badges', () => {
+  const context = harness(), registry = context.AgMetricLiveSyncRegistry;
+  context.view = 'detail';
+  context.canAccessView = () => false; // No Queue badge may incidentally provide a missing join.
+  for (const [source, task, expected] of [
+    ['docks', '', ['core:soc', 'side:dockWorkflow']],
+    ['sales-office', '', ['core:salesOffice']],
+    ['tasks', 'flyer', ['core:flyerRows']],
+    ['advertisement', '', ['core:flyerRows']],
+    ['request', '', ['core:requests']]
+  ]) {
+    context.activeDetailSourceView = source;
+    context.activeTaskView = task;
+    const current = context.getProductionLiveSyncSideContext();
+    assert.equal(current.surfaces.some((surface) => surface.startsWith('badge:')), false);
+    const adapters = registry.getViewAdapters('detail', current);
+    for (const id of expected) assert.ok(adapters.includes(id), `${source}/${task}: missing critical Detail adapter ${id}`);
+  }
+  context.activeDetailSourceView = 'drive';
+  context.activeTaskView = 'flyer';
+  const drive = registry.getViewAdapters('detail', context.getProductionLiveSyncSideContext());
+  for (const unrelated of ['core:soc', 'side:dockWorkflow', 'core:salesOffice', 'core:flyerRows', 'core:flyerHistory']) {
+    assert.equal(drive.includes(unrelated), false, `Drive detail must not inherit unrelated ${unrelated}`);
+  }
 });
 
 test('actual loader dependencies remain covered for every route, request tab, task state and Eval role', () => {

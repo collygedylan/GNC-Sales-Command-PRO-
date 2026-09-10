@@ -51,7 +51,7 @@
     const navigation = { kind: 'navigation', datasets: [], adapters: [] };
     const staticView = { kind: 'static', datasets: [], adapters: [] };
     const views = {
-        home: data(['requests', 'salesOffice', 'growerScoutReports', 'warehouseAssignedItems'], ['settings']),
+        home: data([], ['settings']),
         building: data(['master'], ['settings']),
         managers: data(['master', 'warehouseAssignedItems'], ['settings', 'coverage']),
         'crop-roll': data(['cropRollDrive', 'master'], ['cropRoll', 'settings']),
@@ -61,9 +61,9 @@
         docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow']),
         request: data(['requests', 'master', 'customerRepMap']),
         reports: data(['requests', 'requestHistory', 'salesCredits', 'soc', 'master', 'reserves', 'customerRepMap'], ['settings']),
-        'sales-office': data(['salesOffice', 'master', 'flyerRows', 'flyerHistory'], ['settings']),
+        'sales-office': data(['salesOffice', 'master'], ['settings']),
         moves: data(['salesOffice', 'master', 'requests', 'inventoryEditRequests']),
-        tasks: data(['master', 'requests', 'salesOffice', 'flyerRows', 'flyerHistory', 'warehouseAssignedItems', 'cav', 'cavAvBlankKeys', 'avHotPriceKeys', 'avNotes'], ['settings']),
+        tasks: data(['master', 'warehouseAssignedItems', 'avNotes'], ['settings']),
         review: data(['master'], ['ncr']), 'move-up': data(['master', 'salesOffice'], ['ncr']),
         'low-stock': data(['master'], ['settings']), advertisement: data(['master', 'avNotes', 'flyerRows', 'flyerHistory'], ['settings']),
         grower: data(['master', 'growerScoutReports', 'growerScoutAssets']),
@@ -136,6 +136,28 @@
         const view = views[viewId];
         if (!view) throw new Error(`Unregistered live-sync view: ${viewId}`);
         const entries = [view];
+        if (viewId === 'detail') {
+            if (context.detailSourceView === 'docks') entries.push(data(['soc'], ['dockWorkflow']));
+            if (context.detailSourceView === 'sales-office') entries.push(data(['salesOffice']));
+            if (context.detailSourceView === 'advertisement' || (context.taskView === 'flyer' && context.detailSourceView === 'tasks')) entries.push(data(['flyerRows']));
+        }
+        // A Task subtype owns its dependencies. Ordinary AV Blanks must not
+        // download Flyer history, another CAV copy, or another task's queue.
+        if (viewId === 'tasks') {
+            const task = context.taskView || 'flyer';
+            const filter = context.evalSimpleTaskFilter || '';
+            const blanks = task === 'av-blanks' || filter === 'av-blanks';
+            const keys = [];
+            if (blanks) keys.push('cavAvBlankKeys');
+            else keys.push('salesOffice');
+            if (task === 'eval-task') keys.push('requests');
+            if (task === 'flyer') keys.push('flyerRows', 'flyerHistory');
+            if (task === 'reserves' || task === 'cust') keys.push('reserves');
+            if (task === 'cust') keys.push('customerRepMap');
+            if (task === 'hot-price' || filter === 'hot-price' || filter === 'hot-price-ssn') keys.push('avHotPriceKeys');
+            entries.push(data(keys));
+        }
+        if (viewId === 'sales-office' && context.salesOfficeTab === 'orders') entries.push(data(['flyerRows', 'flyerHistory']));
         (context.surfaces || []).forEach((surface) => {
             if (!surfaces[surface]) throw new Error(`Unregistered live-sync surface: ${surface}`);
             entries.push(surfaces[surface]);
