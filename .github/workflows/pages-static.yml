@@ -43,6 +43,7 @@ jobs:
           npm run test:photo
           npm run test:pilot
           npm run test:live-sync
+          node --test tests/eval-review-assignedto-api.test.mjs
           node --test tests/production-probe-read-only.test.mjs
           node --test tests/prepare-ci-playwright-apt.test.mjs
           PLAYWRIGHT_CI_NODE="$(command -v node)"
@@ -109,6 +110,8 @@ jobs:
         run: npx playwright test --config playwright.login-photo.config.ts --project=android
       - name: Verify session recovery and permission retries in the compiled shell
         run: npm run test:session-recovery
+      - name: Verify AssignedTo review assignment in the compiled shell
+        run: npx playwright test --config playwright.review-assignedto.config.ts
 
       - name: Upload isolated pre-publish browser diagnostics
         if: failure()

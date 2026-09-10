@@ -1384,10 +1384,38 @@ async function withEvalWorkOrigins(rows: Record<string, unknown>[]) {
   }));
 }
 
+function evalReviewSource(payload: Record<string, unknown>) {
+  const source = payload.source && typeof payload.source === "object" ? payload.source as Record<string, unknown> : {};
+  return {
+    unique_id: String(source.unique_id || "").trim(),
+    source_table: String(source.source_table || "ph_master_inventory").trim(),
+    itemcode: String(source.itemcode || "").trim(),
+    locationcode: String(source.locationcode || "").trim(),
+    lotcode: String(source.lotcode || "").trim(),
+  };
+}
+
 function evalWorkError(error: unknown) {
   const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const code = String(source.code || "").trim();
   const message = String(source.message || error || "eval_work_failed").trim();
+  const reviewCode = (message.match(/\bREVIEW_[A-Z_]+\b/i) || [""])[0].toUpperCase();
+  const reviewMessages: Record<string, string> = {
+    REVIEW_SOURCE_MISSING: "The opening inventory row is no longer available. Close this review and reopen the current row.",
+    REVIEW_SOURCE_STALE: "The opening row changed. Close this review and reopen the current inventory row.",
+    REVIEW_ASSIGNMENT_MISSING: "This row has no AssignedTo evaluator. Have a manager update its assignment, then retry.",
+    REVIEW_ASSIGNMENT_AMBIGUOUS: "This row has more than one matching assignment. Have a manager resolve its AssignedTo assignment before sending.",
+    REVIEW_ASSIGNEE_INELIGIBLE: "The AssignedTo user is not eligible for Eval Work. Have a manager correct the assignment.",
+    REVIEW_ASSIGNEE_INACTIVE: "The AssignedTo user is inactive, locked, or unavailable. Have a manager review that profile.",
+    REVIEW_ASSIGNEE_EMAIL_MISSING: "The AssignedTo user needs a usable email address before this review can be sent.",
+    REVIEW_ASSIGNMENT_CHANGED: "AssignedTo changed since this review was opened. Review the updated evaluator and confirm again; your instructions and additional recipients are retained.",
+    REVIEW_CONFIRMATION_REQUIRED: "Refresh the AssignedTo evaluator and confirm this review again before sending.",
+    REVIEW_RECIPIENT_INVALID: "An additional completion recipient is inactive, locked, or has no usable email. Review the additional recipients and retry.",
+  };
+  if (reviewCode && reviewMessages[reviewCode]) {
+    const status = /ASSIGNMENT_CHANGED|CONFIRMATION_REQUIRED|SOURCE_STALE/.test(reviewCode) ? 409 : 400;
+    return errorResponse(reviewMessages[reviewCode], status, { code: reviewCode });
+  }
   const safeCode = (message.match(/eval_(?:work|report2)_[a-z0-9_]+/i) || [code || "eval_work_failed"])[0].toLowerCase();
   const status = code === "42501" || /forbidden|not_authorized/.test(safeCode)
     ? 403
@@ -1557,19 +1585,27 @@ async function handleEvalWorkAction(
       const withDelivery = await withEvalWorkDeliveryStatus(row);
       return jsonResponse({ ok: true, data: (await withEvalWorkOrigins([withDelivery]))[0], manager: isEvalWorkManager(session) });
     }
+    if (operation === "review_setup") {
+      if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_create_forbidden" });
+      const source = evalReviewSource(payload);
+      const { data, error } = await supabase.rpc("get_eval_work_review_setup_v1", { p_payload: {
+        actorUsername: actor,
+        source,
+      } });
+      if (error) throw error;
+      return jsonResponse({ ok: true, setup: data });
+    }
     if (operation === "create") {
       if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_create_forbidden" });
-      const assignees = await resolveEvalWorkAssignees(payload.assigneeUsernames || payload.assigneeUsername);
-      const assignee = assignees[0];
-      const source = payload.source && typeof payload.source === "object" ? payload.source as Record<string, unknown> : {};
+      const source = evalReviewSource(payload);
+      // Resolve source AssignedTo and freeze recipients inside the creation transaction.
+      // Do not resolve today's assignment here: an idempotent replay must return its original work first.
       const rpcPayload = {
         actorUsername: actor,
         createToken: String(payload.createToken || "").trim(),
-        assigneeUsername: assignee.username,
-        assigneeEmail: assignee.email,
-        assignees,
+        expectedAssignmentRevision: String(payload.expectedAssignmentRevision || "").trim(),
         instructions: String(payload.instructions || "").trim(),
-        completionRecipients: Array.isArray(payload.completionRecipients) ? payload.completionRecipients : [],
+        additionalCompletionRecipients: Array.isArray(payload.additionalCompletionRecipients) ? payload.additionalCompletionRecipients : [],
         source,
         inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
       };
