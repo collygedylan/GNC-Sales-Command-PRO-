@@ -14,13 +14,18 @@ test('database reusable workflow is secret-free and has read-only repository per
   assert.match(workflow, /node-version: 22\s+cache: npm/);
 });
 
-test('all original migration and sixteen pgTAP test files remain in the isolated database', () => {
+test('all original migrations and pgTAP tests remain alongside the grouped health regression', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 84);
+  assert.equal(migrations.length, 87);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
   }
+  for (const filename of [
+    '20260902002912_flatten_eval_reports_2_and_reconcile_work.sql',
+    '20260902105411_group_eval_report2_assignment_email.sql',
+    '20260910174603_grouped_eval_itemcode_health_contract.sql',
+  ]) assert.ok(migrations.includes(filename), `Grouped health dependency: ${filename}`);
   const sqlTests = [...workflow.matchAll(/cp supabase\/tests\/(\S+)/g)].map(match => match[1]);
   assert.deepEqual([...sqlTests].sort(), [
     'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
@@ -31,6 +36,7 @@ test('all original migration and sixteen pgTAP test files remain in the isolated
     'function_search_path_pinning_test.sql', 'season_sales_done_lifecycle_test.sql',
     'season_sales_av_note_retention_test.sql', 'season_sales_av_note_reset_test.sql',
     'photo_evidence_projection_test.sql',
+    'grouped_eval_itemcode_health_test.sql',
   ].sort());
   for (const filename of sqlTests) {
     assert.ok(fs.existsSync(new URL(`../supabase/tests/${filename}`, import.meta.url)), filename);

@@ -27,8 +27,11 @@ function healthyPayloads() {
   };
 }
 
-async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, withCronSecret = false } = {}) {
+async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, withCronSecret = false,
+  groupedHealth = {}, itemcodeHealth = {}, groupedStatus = 200, groupedResponseText } = {}) {
   const calls = [], output = [], payloads = healthyPayloads();
+  Object.assign(payloads.get_eval_work_assignment_batch_health_v1, groupedHealth);
+  Object.assign(payloads.get_eval_itemcode_work_health_snapshot_v2, itemcodeHealth);
   if (mismatch) payloads.get_request_drive_evidence_health_snapshot_v1.evidence_mismatch_count = 1;
   if (mismatch) payloads.get_request_drive_evidence_health_snapshot_v1.mismatch_request_ids = ['fixture-request'];
   if (unhealthy) payloads.get_drive_evidence_save_health_v2.lockWaits = 1;
@@ -48,6 +51,10 @@ async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, 
       else if (target.pathname === '/rest/v1/rpc/repair_request_drive_evidence_v1') { payload = { ok: true }; payloads.get_request_drive_evidence_health_snapshot_v1.evidence_mismatch_count = 0; }
       else payload = payloads[target.pathname.split('/').at(-1)];
       assert.ok(payload, `Unexpected endpoint: ${target.pathname}`);
+      if (target.pathname.endsWith('/rpc/get_eval_work_assignment_batch_health_v1')) {
+        return { ok: groupedStatus >= 200 && groupedStatus < 300, status: groupedStatus,
+          text: async () => groupedResponseText ?? JSON.stringify(payload) };
+      }
       return { ok: true, status: 200, text: async () => JSON.stringify(payload) };
     }
   };
@@ -78,6 +85,47 @@ test('read-only mismatch fails visibly without attempting evidence repair', asyn
 test('read-only mode still rejects unhealthy production metrics', async () => {
   const f = await runProbe({ readOnly: true, unhealthy: true });
   assert.match(f.error?.message || '', /production_drive_evidence_retry_storm_detected/);
+});
+
+test('read-only probe fails closed for grouped delivery contract violations', async (t) => {
+  for (const groupedHealth of [
+    { contractVersion: 'unsupported' }, { createGrouped: false }, { reassignGuarded: false },
+    { cancelGuarded: false }, { envelopeViolationCount: 1 }, { envelopeViolationCount: 'invalid' },
+    { envelopeViolationCount: undefined }, { healthy: false },
+  ]) {
+    await t.test(JSON.stringify(groupedHealth), async () => {
+      const f = await runProbe({ groupedHealth });
+      assert.match(f.error?.message || '', /production_eval_work_assignment_batch_contract_unhealthy/);
+      assert.equal(f.calls.filter(call => call.path.endsWith('/rpc/get_eval_work_assignment_batch_health_v1')).length, 1);
+      assert.ok(!f.calls.some(call => /request-delivery-worker|run_request_integrity_maintenance|repair_request_drive_evidence/.test(call.path)));
+    });
+  }
+});
+
+test('read-only probe rejects unavailable or malformed grouped health instead of skipping it', async (t) => {
+  for (const options of [{ groupedStatus: 403 }, { groupedStatus: 500 },
+    { groupedResponseText: 'not-json' }, { groupedResponseText: 'null' }]) {
+    await t.test(JSON.stringify(options), async () => {
+      const f = await runProbe(options);
+      assert.match(f.error?.message || '', /production_eval_work_assignment_batch_health_unavailable_HTTP_/);
+      assert.ok(!f.calls.some(call => /request-delivery-worker|run_request_integrity_maintenance|repair_request_drive_evidence/.test(call.path)));
+    });
+  }
+});
+
+test('grouped support does not waive ITEMCODE membership, PDF, attachment, or origin-limit health', async (t) => {
+  for (const itemcodeHealth of [
+    { stored_membership_mismatch_count: 1 }, { pdf_origin_mismatch_count: 1 },
+    { excel_attachment_violation_count: 1 }, { over_limit_assignment_count: 1 },
+    { largest_origin_count: 101 },
+  ]) {
+    await t.test(JSON.stringify(itemcodeHealth), async () => {
+      const f = await runProbe({ itemcodeHealth });
+      assert.match(f.error?.message || '', /production_eval_itemcode_work_contract_unhealthy/);
+      assert.ok(f.calls.some(call => call.path.endsWith('/rpc/get_eval_work_assignment_batch_health_v1')));
+      assert.ok(!f.calls.some(call => /request-delivery-worker|run_request_integrity_maintenance|repair_request_drive_evidence/.test(call.path)));
+    });
+  }
 });
 
 test('scheduled recovery keeps delivery wake, maintenance and evidence repair defaults', async () => {
