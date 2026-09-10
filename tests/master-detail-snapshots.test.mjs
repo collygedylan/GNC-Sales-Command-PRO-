@@ -347,6 +347,10 @@ function appFunction(name) {
 function bindingFixture(f) {
     const context = vm.createContext({ Map, Set, WeakMap, Object, JSON, String,
         productionMasterDetailBindings: new WeakMap(), productionMasterDetailSession: null, activeItem: null,
+        // These Drive/detail fixtures have no selected Request photo or
+        // deferred Request acknowledgement. Shared production chrome still
+        // invokes the real Request lifecycle helpers after verification.
+        pendingRequestCameraSelection: null, requestCameraPickerOwner: null,
         getDatasetState: () => ({ listProjectionVersion: 'master-list-v1' }),
         getProductionMasterDetailContext: () => f.context,
         getProductionMasterDetailStore: () => f.store,
@@ -354,7 +358,8 @@ function bindingFixture(f) {
     });
     const names = ['usesProductionMasterListProjection', 'getProductionMasterDetailIds',
         'getProductionMasterDetailIdentity', 'productionMasterDetailFenceMatches',
-        'bindProductionMasterDetailRow', 'isProductionMasterDetailBindingCurrent', 'hasProductionMasterDetailForItem'];
+        'bindProductionMasterDetailRow', 'isProductionMasterDetailBindingCurrent', 'hasProductionMasterDetailForItem',
+        'renderRequestCameraSelectionState', 'resumeProductionRequestDetailOwnSave'];
     vm.runInContext(names.map(appFunction).join('\n'), context);
     return context;
 }

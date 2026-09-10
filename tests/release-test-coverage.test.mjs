@@ -198,7 +198,9 @@ for (const [name, spec, projects] of compiledSuites) {
     const load = configLoader();
     const config = load(`playwright.${name}.config.ts`);
     const files = selected(config);
-    assert.deepEqual(files, [`tests/${spec}.e2e.spec.ts`]);
+    assert.deepEqual(files, (name === 'verified-data-cache'
+      ? ['tests/request-photo-completion.e2e.spec.ts', `tests/${spec}.e2e.spec.ts`]
+      : [`tests/${spec}.e2e.spec.ts`]).sort());
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));

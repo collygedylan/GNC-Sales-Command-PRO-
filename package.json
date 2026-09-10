@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.09.10.02",
+  "version": "2026.09.10.03",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -21,7 +21,7 @@
     "preview:v2": "vite preview --config vite.v2.config.ts --host 0.0.0.0",
     "test:v2": "vitest run --config vite.v2.config.ts",
     "test:v2:watch": "vitest --config vite.v2.config.ts",
-    "test:photo": "node --test tests/detail-hydration-draft.test.mjs tests/drive-photo-save-recovery.test.mjs tests/login-photo-shell.test.mjs tests/photo-egress.test.mjs tests/photo-history.test.mjs tests/service-worker-isolation.test.mjs",
+    "test:photo": "node --test tests/request-detail-proof.test.mjs tests/detail-hydration-draft.test.mjs tests/drive-photo-save-recovery.test.mjs tests/login-photo-shell.test.mjs tests/photo-egress.test.mjs tests/photo-history.test.mjs tests/service-worker-isolation.test.mjs",
     "test:v2:e2e": "playwright test",
     "test:footer": "playwright test --config playwright.footer.config.ts",
     "test:home-roles": "playwright test --config playwright.home-role.config.ts",
