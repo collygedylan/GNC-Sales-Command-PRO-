@@ -35072,8 +35072,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!store) { session.status = 'error'; session.error = 'Exact inventory verification is unavailable. Refresh the app.'; return false; }
             session.promise = (async () => {
                 try {
-                    const rows = await store.ensure(session.ids);
+                    let rows = await store.ensure(session.ids);
                     if (!isProductionMasterDetailSessionCurrent(session)) return false;
+                    if (rows && !canUseVerifiedProductionData(getProductionDetailDatasetKeys())) {
+                        // Navigation can start a list revision check while the
+                        // exact row finishes loading. Await that check once,
+                        // then obtain exact rows again under its current fence.
+                        const coordinator = getProductionLiveSyncCoordinator();
+                        for (const key of getProductionDetailDatasetKeys()) {
+                            await coordinator.ensure(createProductionCoreLiveAdapter(key));
+                            if (!isProductionMasterDetailSessionCurrent(session)) return false;
+                        }
+                        rows = await store.ensure(session.ids);
+                        if (!isProductionMasterDetailSessionCurrent(session)) return false;
+                    }
                     if (!rows || !canUseVerifiedProductionData(getProductionDetailDatasetKeys())) throw new Error('Exact inventory details could not be verified. Retry after the current data check.');
                     rows.forEach((row) => {
                         const before = session.masterIdentities.get(String(row.UNIQUE_ID));

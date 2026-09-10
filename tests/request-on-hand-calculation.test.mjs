@@ -130,12 +130,14 @@ function detailRuntime({ verified = true, delayed = false, canonicalChanges = nu
     SOURCE: 'MASTER-SOURCE', PTRREVIEWED: '50', INITIAL_PTR: '1200', MATCH: '95',
     SPEC: 'Master spec', AV_NOTE: 'Master note', PHOTO_LINK: PHOTO.replace('crop', 'master'),
   });
-  const owner = {};
   const fence = { scope: 'quantity-fixture', permissionVersion: 'permissions-1', revision: 'master-1' };
+  const verification = { ready: verified, exactReads: 0, ensuredKeys: [] };
   let release;
   const rowPromise = delayed ? new Promise(resolve => { release = () => resolve([inventory]); }) : Promise.resolve([inventory]);
   Object.assign(ctx, {
     activeItem: request, activeDetailSourceView: 'request', lastView: 'request', detailHydrationToken: 1,
+    loginSessionGeneration: 1, currentUser: 'quantity-fixture', currentRole: 'ADMIN', currentUserDivision: '10',
+    nativeAuthSessionActive: false,
     productionMasterDetailSession: null,
     productionMasterDetailBindings: new WeakMap(),
     requestsInventory: [canonicalRequest],
@@ -143,16 +145,22 @@ function detailRuntime({ verified = true, delayed = false, canonicalChanges = nu
     getItemUniqueId: row => String(row.UNIQUE_ID || '').trim(),
     getProductionMasterDetailContext: () => fence,
     getCurrentVisibleViewId: () => 'detail',
-    isLoginSessionOwnershipCurrent: value => value === owner,
     getProductionMasterDetailStore: () => ({ ensure: async ids => {
       assert.deepEqual(Array.from(ids), ['master-1']);
+      verification.exactReads += 1;
       return rowPromise;
-    }, getVerifiedRows: ids => verified && ids.length === 1 && ids[0] === inventory.UNIQUE_ID ? [inventory] : null }),
+    }, getVerifiedRows: ids => verification.ready && ids.length === 1 && ids[0] === inventory.UNIQUE_ID ? [inventory] : null }),
     getProductionDetailDatasetKeys: () => ['master', 'requests'],
-    canUseVerifiedProductionData: () => verified,
+    canUseVerifiedProductionData: () => verification.ready,
+    createProductionCoreLiveAdapter: key => ({ key }),
+    getProductionLiveSyncCoordinator: () => ({ ensure: async adapter => {
+      verification.ensuredKeys.push(adapter.key);
+      return verification.ready;
+    } }),
     applyProductionMasterDetailControlState: () => {},
   });
   vm.runInContext([
+    source('captureLoginSessionOwnership'), source('isLoginSessionIdentityCurrent'), source('isLoginSessionOwnershipCurrent'),
     source('findRequestInventoryRowByUniqueId'), source('getProductionMasterDetailIds'),
     source('productionMasterDetailFenceMatches'), source('bindProductionMasterDetailRow'),
     source('isProductionMasterDetailBindingCurrent'), source('hasProductionMasterDetailForItem'),
@@ -160,13 +168,76 @@ function detailRuntime({ verified = true, delayed = false, canonicalChanges = nu
     source('ensureActiveProductionMasterDetail'),
   ].join('\n'), ctx);
   const session = {
-    token: 1, owner, sourceView: 'request', rowIdentity: ctx.getProductionMasterDetailIdentity(request),
+    token: 1, owner: ctx.captureLoginSessionOwnership(), sourceView: 'request', rowIdentity: ctx.getProductionMasterDetailIdentity(request),
     ids: ['master-1'], status: 'loading', promise: null, error: '',
     masterIdentities: new Map([['master-1', ctx.getProductionMasterDetailIdentity(inventory)]]),
   };
   ctx.productionMasterDetailSession = session;
-  return { ctx, session, request, canonicalRequest, inventory, release };
+  return { ctx, session, request, canonicalRequest, inventory, release, verification };
 }
+
+function pauseDetailVerification() {
+  const detail = detailRuntime({ verified: false });
+  let entered, release;
+  const waiting = new Promise(resolve => { entered = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  detail.ctx.getProductionLiveSyncCoordinator = () => ({ ensure: async adapter => {
+    detail.verification.ensuredKeys.push(adapter.key);
+    entered();
+    await gate;
+    return detail.verification.ready;
+  } });
+  return { ...detail, waiting, finishVerification: () => { detail.verification.ready = true; release(); } };
+}
+
+test('detail awaits temporary dependency verification and reads the exact row again before hydration', async () => {
+  const detail = pauseDetailVerification();
+  const { ctx, session, canonicalRequest, inventory, verification } = detail;
+  const before = structuredClone(canonicalRequest);
+  const firstSnapshot = { ...inventory, PTRONHAND: '500', PTRAVAILABLE: '400' };
+  ctx.getProductionMasterDetailStore = () => ({
+    ensure: async ids => {
+      assert.deepEqual(Array.from(ids), ['master-1']);
+      verification.exactReads += 1;
+      return [verification.exactReads === 1 ? firstSnapshot : inventory];
+    },
+    getVerifiedRows: () => verification.ready ? [inventory] : null,
+  });
+  const pending = ctx.ensureActiveProductionMasterDetail(session);
+  await detail.waiting;
+  assert.equal(session.status, 'loading');
+  assert.deepEqual(structuredClone(canonicalRequest), before, 'the first snapshot cannot hydrate an unverified Request');
+  assert.equal(ctx.productionMasterDetailBindings.has(canonicalRequest), false);
+  detail.finishVerification();
+  assert.equal(await pending, true);
+  assert.deepEqual(verification.ensuredKeys, ['master', 'requests']);
+  assert.equal(verification.exactReads, 2);
+  assert.equal(session.status, 'ready');
+  assert.equal(ctx.getCardPtrOnHandValue(ctx.activeItem), '1000');
+  assert.equal(ctx.getCardPtrAvailableValue(ctx.activeItem), '800');
+  assert.equal(ctx.hasProductionMasterDetailForItem(canonicalRequest), true);
+});
+
+test('navigation or login scope changes during dependency verification cannot hydrate the old Request', async () => {
+  for (const change of [
+    ctx => { ctx.detailHydrationToken += 1; },
+    ctx => { ctx.currentUserDivision = '20'; },
+  ]) {
+    const detail = pauseDetailVerification();
+    const { ctx, session, canonicalRequest, verification } = detail;
+    const before = structuredClone(canonicalRequest);
+    const pending = ctx.ensureActiveProductionMasterDetail(session);
+    await detail.waiting;
+    change(ctx);
+    detail.finishVerification();
+    assert.equal(await pending, false);
+    assert.deepEqual(verification.ensuredKeys, ['master'], 'stale detail stops after the awaited dependency');
+    assert.equal(verification.exactReads, 1, 'stale detail does not start a second exact read');
+    assert.equal(ctx.activeItem, canonicalRequest);
+    assert.deepEqual(structuredClone(canonicalRequest), before);
+    assert.equal(ctx.productionMasterDetailBindings.has(canonicalRequest), false);
+  }
+});
 
 test('verified compact detail fills Request quantities without replacing Request-owned evidence or identity', async () => {
   const { ctx, session, request, inventory } = detailRuntime();
