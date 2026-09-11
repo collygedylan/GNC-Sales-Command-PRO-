@@ -172,7 +172,13 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   const token = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify(claims)).toString('base64url'), 'synthetic'].join('.');
   const profile = { id: hlUserId, username, display_name: username, role: 'ADMIN', division: '10', language: 'English', disabled_at: null, locked_until: null, must_change_password: false };
   const session = { access_token: token, refresh_token: 'synthetic', expires_at: claims.exp, expires_in: 3600, token_type: 'bearer', user: { id: hlUserId, aud: 'authenticated', role: 'authenticated', email: 'hl-test@example.invalid', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } };
-  const json = (route, value, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', ...headers }, body: JSON.stringify(value) });
+  const json = (route, value, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers: {
+    'access-control-allow-origin': origin,
+    'access-control-allow-methods': 'GET, HEAD, POST, OPTIONS',
+    'access-control-allow-headers': route.request().headers()['access-control-request-headers'] || 'authorization, apikey, content-type, x-client-info, prefer, range, accept-profile, content-profile',
+    'access-control-expose-headers': 'content-range',
+    'access-control-allow-credentials': 'true', ...headers
+  }, body: JSON.stringify(value) });
   await page.addLocatorHandler(page.locator('#push-permission-help-modal'), async (modal) => modal.getByRole('button', { name: 'Close', exact: true }).dispatchEvent('click'));
   await page.addLocatorHandler(page.locator('#mobile-push-enable-prompt'), async (prompt) => prompt.getByRole('button', { name: 'Dismiss', exact: true }).dispatchEvent('click'));
   await page.addLocatorHandler(page.locator('#toast-notification.show').filter({ hasText: 'Notifications Blocked' }),

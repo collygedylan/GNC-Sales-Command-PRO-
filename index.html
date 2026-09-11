@@ -90168,6 +90168,7 @@ function toggleDriveQuickRequestItem(domId) {
         let hlOrderDetailKey = null;
         let hlOrderTrackingId = null;
         let hlOrderDetailEdits = new Map();
+        let hlOrderDetailEditRevision = null;
         let hlOrderPollTimer = null;
         let hlOrderPendingCommand = null;
         let hlOrderPdfUrl = '';
@@ -90409,7 +90410,7 @@ function toggleDriveQuickRequestItem(domId) {
             return code ? messages[code] : message;
         }
 
-        async function runHlOrderCommand(action, payload = {}, retryCommand = null) {
+        async function runHlOrderCommand(action, payload = {}, retryCommand = null, expectedRevision = null) {
             if (hlOrderBusy) throw new Error('Wait for the current HL change to finish.');
             if (hlOrderPendingCommand && !retryCommand) throw new Error('Check the previous saved change before making another HL change.');
             if (!canUseHlOrder() || navigator.onLine === false) throw new Error('Reconnect and sign in as dylan_collyge.');
@@ -90417,7 +90418,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!hlOrderStateData) await loadHlOrderState(true);
             if (!hlOrderStateData) throw new Error(hlOrderStateError || 'Saved HL orders could not be verified.');
             const owner = captureLoginSessionOwnership();
-            const command = retryCommand || { p_command_id: crypto.randomUUID(), p_action: action, p_payload: payload, p_expected_revision: hlOrderStateData.revision };
+            const command = retryCommand || { p_command_id: crypto.randomUUID(), p_action: action, p_payload: payload, p_expected_revision: expectedRevision ?? hlOrderStateData.revision };
             hlOrderBusy = true;
             hlOrderPendingCommand = command;
             renderHlOrder(true);
@@ -90499,21 +90500,34 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setHlOrderTab(tab) {
             if (!['needed','orders','needs-review','history','removed'].includes(tab)) return false;
-            hlOrderTab = tab; hlOrderDetailKey = null; hlOrderTrackingId = null; hlOrderDetailEdits.clear();
+            hlOrderTab = tab; hlOrderDetailKey = null; hlOrderTrackingId = null; hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null;
             renderHlOrder(true); void loadHlOrderState(true);
             return false;
         }
 
-        async function refreshHlOrder() { await loadHlOrderState(true); renderHlOrder(true); return false; }
+        async function refreshHlOrder() {
+            const owner = captureLoginSessionOwnership();
+            const result = await loadHlOrderState(true);
+            if (!isLoginSessionOwnershipCurrent(owner)) return false;
+            if (result) { hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null; }
+            renderHlOrder(true); renderHlBloomSection(!!result); return false;
+        }
+
+        function getHlOrderEditRevision(value) {
+            if (value === null || value === undefined || String(value).trim() === '' || !Number.isSafeInteger(Number(value)) || Number(value) < 0) {
+                throw new Error('Refresh HL Order and review the latest quantities before saving.');
+            }
+            return Number(value);
+        }
 
         function toggleHlOrderCard(key) {
             if (!canUseHlOrder()) return false;
-            hlOrderDetailKey = key; hlOrderTrackingId = null; hlOrderDetailEdits.clear();
+            hlOrderDetailKey = key; hlOrderTrackingId = null; hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null;
             renderHlOrder(true);
             return false;
         }
 
-        function backHlOrder() { hlOrderDetailKey = null; hlOrderTrackingId = null; hlOrderDetailEdits.clear(); renderHlOrder(true); return false; }
+        function backHlOrder() { hlOrderDetailKey = null; hlOrderTrackingId = null; hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null; renderHlOrder(true); return false; }
 
         function buildHlOrderDetailsHtml() {
             const group = getHlOrderNeededGroups().find((entry) => entry.key === hlOrderDetailKey);
@@ -90524,6 +90538,7 @@ function toggleDriveQuickRequestItem(domId) {
             const editableRows = group.rows.filter((row) => { const draft = (hlOrderStateData.draft || []).find((entry) => entry.source_id === row.unique_id); return !draft || ['ready','draft'].includes(draft.status || 'draft'); });
             const rows = group.rows.map((row) => {
                 const draft = (hlOrderStateData.draft || []).find((entry) => entry.source_id === row.unique_id);
+                if (hlOrderDetailEditRevision === null) hlOrderDetailEditRevision = Number(hlOrderStateData.revision);
                 if (!hlOrderDetailEdits.has(row.unique_id)) hlOrderDetailEdits.set(row.unique_id, { selected: true, quantity: draft?.quantity ?? row.hl_available_quantity ?? row.quantityordered });
                 const edit = hlOrderDetailEdits.get(row.unique_id);
                 const locked = draft && !['draft','ready'].includes(draft.status || 'draft');
@@ -90569,7 +90584,9 @@ function toggleDriveQuickRequestItem(domId) {
                 const rows = getHlSelectedDetailRows().map((row) => ({ source_id: row.unique_id, quantity: getHlOrderQuantity(hlOrderDetailEdits.get(row.unique_id)?.quantity), limit: getHlOrderQuantity(row.hl_available_quantity ?? row.quantityordered) }));
                 if (!rows.length) throw new Error('Select at least one SOC row.');
                 if (rows.some((row) => !Number.isInteger(row.quantity) || row.quantity <= 0 || row.limit === null || row.quantity > row.limit)) throw new Error('Enter a whole-plant HL quantity greater than zero and no greater than its remaining demand.');
-                await runHlOrderCommand('draft_save', { rows: rows.map(({ source_id, quantity }) => ({ source_id, quantity })) });
+                const revision = getHlOrderEditRevision(hlOrderDetailEditRevision);
+                await runHlOrderCommand('draft_save', { rows: rows.map(({ source_id, quantity }) => ({ source_id, quantity })) }, null, revision);
+                hlOrderDetailEditRevision = Number(hlOrderStateData.revision);
                 cartPanelOpen = true; bloomPickerActionsOpen = true; updateGlobalActionBar();
                 showToast('HL Order', 'Selected rows saved in Bloom Picker.');
             } catch (error) { showToast('HL Order', error.message, true); }
@@ -90582,7 +90599,9 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 const source_ids = getHlSelectedDetailRows().map((row) => row.unique_id);
                 if (!source_ids.length) throw new Error('Select at least one SOC row.');
-                await runHlOrderCommand('dismiss', { source_ids });
+                const revision = getHlOrderEditRevision(hlOrderDetailEditRevision);
+                await runHlOrderCommand('dismiss', { source_ids }, null, revision);
+                hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null; renderHlOrder(true);
                 showToast('HL rows removed', 'Restore these rows any time in Removed.');
             } catch (error) { showToast('HL Order', error.message, true); }
             return false;
@@ -90596,35 +90615,40 @@ function toggleDriveQuickRequestItem(domId) {
             return getHlOrderQuantity(source?.available_quantity ?? disposition?.available_quantity ?? entry.available_quantity ?? getHlOrderSource(entry.source).quantityordered);
         }
 
-        function renderHlBloomSection() {
+        function renderHlBloomSection(force = false) {
             const section = document.getElementById('hl-bloom-section');
             if (!section) return;
             const draft = canUseHlOrder() ? hlOrderStateData?.draft || [] : [];
             section.classList.toggle('hidden', !cartPanelOpen || !draft.length);
             if (!draft.length) { section.innerHTML = ''; return; }
-            if (section.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+            if (!force && section.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
             section.innerHTML = `<h3 class="mb-2 font-bold text-[#007a4d]">HL Order · saved across devices</h3><div class="max-h-[30vh] space-y-2 overflow-y-auto">${draft.map((entry) => {
                 const row = getHlOrderSource(entry.source);
                 const ceiling = getHlDraftQuantityCeiling(entry);
                 const locked = !['draft','ready'].includes(entry.status || 'draft');
-                return `<div data-hl-draft-source-id="${escapeHtml(entry.source_id)}" class="rounded-xl border border-emerald-200 bg-white p-3 text-sm"><strong>${escapeHtml(row.commonname || row.itemcode)} · ${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</strong><p>Plan ${escapeHtml(getHlOrderPlanDate(row.planstartdate) || 'Not provided')} · Dock ${escapeHtml(row.dock || 'Not provided')} · Stop ${escapeHtml(row.stopnumber || 'Not provided')}</p><p>SOC quantity: ${escapeHtml(row.quantityordered)} · ${escapeHtml(entry.status || 'draft')}</p>${!locked && ceiling !== null ? `<p>Remaining HL demand: ${escapeHtml(ceiling)}</p>` : ''}<div class="mt-2 flex flex-wrap items-center gap-2"><label>HL quantity <input data-hl-draft-quantity type="number" inputmode="decimal" step="1" min="0" max="${escapeHtml(ceiling ?? '')}" value="${escapeHtml(entry.quantity)}" class="min-h-[44px] w-24 rounded border p-2" ${locked ? 'disabled' : ''}></label>${hlOrderButton('saveHlDraftQuantity', [entry.source_id], 'Save quantity', true, locked)}${hlOrderButton('removeHlDraftRow', [entry.source_id], 'Remove from Bloom Picker', true, locked)}</div></div>`;
+                return `<div data-hl-draft-source-id="${escapeHtml(entry.source_id)}" data-hl-edit-revision="${escapeHtml(hlOrderStateData.revision)}" class="rounded-xl border border-emerald-200 bg-white p-3 text-sm"><strong>${escapeHtml(row.commonname || row.itemcode)} · ${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</strong><p>Plan ${escapeHtml(getHlOrderPlanDate(row.planstartdate) || 'Not provided')} · Dock ${escapeHtml(row.dock || 'Not provided')} · Stop ${escapeHtml(row.stopnumber || 'Not provided')}</p><p>SOC quantity: ${escapeHtml(row.quantityordered)} · ${escapeHtml(entry.status || 'draft')}</p>${!locked && ceiling !== null ? `<p>Remaining HL demand: ${escapeHtml(ceiling)}</p>` : ''}<div class="mt-2 flex flex-wrap items-center gap-2"><label>HL quantity <input data-hl-draft-quantity type="number" inputmode="decimal" step="1" min="0" max="${escapeHtml(ceiling ?? '')}" value="${escapeHtml(entry.quantity)}" class="min-h-[44px] w-24 rounded border p-2" ${locked ? 'disabled' : ''}></label>${hlOrderButton('saveHlDraftQuantity', [entry.source_id], 'Save quantity', true, locked)}${hlOrderButton('removeHlDraftRow', [entry.source_id], 'Remove from Bloom Picker', true, locked)}</div></div>`;
             }).join('')}</div>`;
         }
 
         async function saveHlDraftQuantity(sourceId) {
             try {
                 const element = [...document.querySelectorAll('[data-hl-draft-source-id]')].find((row) => row.dataset.hlDraftSourceId === sourceId);
+                const revision = getHlOrderEditRevision(element?.dataset.hlEditRevision);
                 const quantity = getHlOrderQuantity(element?.querySelector('[data-hl-draft-quantity]')?.value);
                 const entry = (hlOrderStateData?.draft || []).find((row) => row.source_id === sourceId);
                 const ceiling = entry ? getHlDraftQuantityCeiling(entry) : null;
                 if (!Number.isInteger(quantity) || !(quantity > 0) || !Number.isInteger(ceiling) || quantity > ceiling) throw new Error('Enter a whole-plant HL quantity greater than zero and no more than the remaining HL demand.');
-                await runHlOrderCommand('draft_save', { rows: [{ source_id: sourceId, quantity }] });
+                await runHlOrderCommand('draft_save', { rows: [{ source_id: sourceId, quantity }] }, null, revision);
             } catch (error) { showToast('HL Order', error.message, true); }
             return false;
         }
 
         async function removeHlDraftRow(sourceId) {
-            try { await runHlOrderCommand('draft_clear', { source_ids: [sourceId] }); }
+            try {
+                const element = [...document.querySelectorAll('[data-hl-draft-source-id]')].find((row) => row.dataset.hlDraftSourceId === sourceId);
+                const revision = getHlOrderEditRevision(element?.dataset.hlEditRevision);
+                await runHlOrderCommand('draft_clear', { source_ids: [sourceId] }, null, revision);
+            }
             catch (error) { showToast('HL Order', error.message, true); }
             return false;
         }
@@ -90688,7 +90712,7 @@ function toggleDriveQuickRequestItem(domId) {
             }).join('');
             const receipts = (order.receipts || []).map((entry) => `<li>${esc(entry.created_at || '')} · ${esc(entry.line_id || '')} · Adjustment ${esc(entry.quantity_delta ?? entry.delta ?? '')} · ${esc(entry.reason || '')}</li>`).join('');
             const cancellations = (order.cancellations || []).map((entry) => `<li class="rounded-xl border p-3">${esc(entry.created_at || '')} · ${esc(entry.status || '')}<p>${esc(entry.reason || '')}</p><p>Canceled quantities: ${(entry.lines || []).map((line) => { const original = (order.lines || []).find((row) => row.id === line.line_id); const source = getHlOrderSource(original?.source || {}); return esc(source.itemcode || line.line_id) + ' · ' + esc(source.contsize) + ' · ' + esc(line.quantity); }).join('; ')}</p>${entry.preview_id ? hlOrderButton('viewHlSavedPdf', [entry.preview_id], 'View cancellation PDF', true) : ''}</li>`).join('');
-            return `<section id="hl-order-tracking" class="space-y-3">${hlOrderButton('backHlOrder', [], 'Back', true)}<h2 class="text-xl font-bold">${esc(order.order_number)}</h2><p>${esc(order.status)}</p>${lines}<label class="block text-sm font-bold">Reason for correction or cancellation<textarea id="hl-order-reason" rows="2" class="mt-1 w-full rounded-xl border p-3" placeholder="Required for a correction or cancellation"></textarea></label><p class="text-sm text-slate-600">Select lines, then enter the total received or the unreceived quantity to cancel. Receiving records arrivals; inventory updates through existing imports.</p><div class="flex flex-wrap gap-2">${hlOrderButton('saveHlReceipts', [], 'Save received quantities', false, !editable)}${hlOrderButton('previewHlCancellation', [], 'Review cancellation PDF', true, !editable)}${order.preview_id ? hlOrderButton('viewHlSavedPdf', [order.preview_id], 'View order PDF', true) : ''}</div><h3 class="pt-3 font-bold">Receipt correction history</h3><ul class="space-y-2 break-words text-sm">${receipts || '<li>No receipts recorded.</li>'}</ul><h3 class="font-bold">Cancellation history</h3><ul class="space-y-2 text-sm">${cancellations || '<li>No cancellations.</li>'}</ul></section>`;
+            return `<section id="hl-order-tracking" data-hl-edit-revision="${esc(hlOrderStateData.revision)}" class="space-y-3">${hlOrderButton('backHlOrder', [], 'Back', true)}<h2 class="text-xl font-bold">${esc(order.order_number)}</h2><p>${esc(order.status)}</p>${lines}<label class="block text-sm font-bold">Reason for correction or cancellation<textarea id="hl-order-reason" rows="2" class="mt-1 w-full rounded-xl border p-3" placeholder="Required for a correction or cancellation"></textarea></label><p class="text-sm text-slate-600">Select lines, then enter the total received or the unreceived quantity to cancel. Receiving records arrivals; inventory updates through existing imports.</p><div class="flex flex-wrap gap-2">${hlOrderButton('saveHlReceipts', [], 'Save received quantities', false, !editable)}${hlOrderButton('previewHlCancellation', [], 'Review cancellation PDF', true, !editable)}${order.preview_id ? hlOrderButton('viewHlSavedPdf', [order.preview_id], 'View order PDF', true) : ''}</div><h3 class="pt-3 font-bold">Receipt correction history</h3><ul class="space-y-2 break-words text-sm">${receipts || '<li>No receipts recorded.</li>'}</ul><h3 class="font-bold">Cancellation history</h3><ul class="space-y-2 text-sm">${cancellations || '<li>No cancellations.</li>'}</ul></section>`;
         }
 
         function getHlSelectedTrackingLines(field) {
@@ -90698,9 +90722,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function saveHlReceipts() {
             try {
+                const revision = getHlOrderEditRevision(document.getElementById('hl-order-tracking')?.dataset.hlEditRevision);
                 const lines = getHlSelectedTrackingLines('received');
                 if (!lines.length || lines.some((line) => !Number.isInteger(line.received_quantity) || line.received_quantity < 0)) throw new Error('Select lines and enter valid total received quantities.');
-                await runHlOrderCommand('receive', { order_id: hlOrderTrackingId, lines, reason: document.getElementById('hl-order-reason').value.trim() });
+                await runHlOrderCommand('receive', { order_id: hlOrderTrackingId, lines, reason: document.getElementById('hl-order-reason').value.trim() }, null, revision);
                 showToast('HL receiving', 'Received quantities saved.');
             } catch (error) { showToast('HL receiving', error.message, true); }
             return false;
@@ -90708,10 +90733,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function previewHlCancellation() {
             try {
+                const revision = getHlOrderEditRevision(document.getElementById('hl-order-tracking')?.dataset.hlEditRevision);
                 const lines = getHlSelectedTrackingLines('cancel');
                 const reason = document.getElementById('hl-order-reason').value.trim();
                 if (!lines.length || lines.some((line) => !Number.isInteger(line.quantity) || !(line.quantity > 0)) || !reason) throw new Error('Select unreceived quantities and enter a cancellation reason.');
-                const result = await runHlOrderCommand('cancellation_preview', { order_id: hlOrderTrackingId, lines, reason });
+                const result = await runHlOrderCommand('cancellation_preview', { order_id: hlOrderTrackingId, lines, reason }, null, revision);
                 await showHlOrderPdfPreview(result.preview, 'cancellation_submit');
             } catch (error) { showToast('HL cancellation', error.message, true); }
             return false;
@@ -90790,7 +90816,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function resetHlOrderState() {
             [...selectedItemSources].forEach(([id, source]) => { if (source === 'hl-order') { selectedItems.delete(id); selectedItemSources.delete(id); } });
-            hlOrderSelections.clear(); hlOrderDetailEdits.clear(); hlOrderPreview = null; hlOrderAvailabilityIds = [];
+            hlOrderSelections.clear(); hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null; hlOrderPreview = null; hlOrderAvailabilityIds = [];
             hlOrderStateData = null; hlOrderStatePending = null; hlOrderStateLoadedAt = 0; hlOrderStateError = ''; hlOrderPendingCommand = null;
             hlOrderDetailKey = null; hlOrderTrackingId = null; hlOrderTab = 'needed'; hlOrderBusy = false; hlOrderSending = false;
             if (hlOrderPollTimer) clearTimeout(hlOrderPollTimer);

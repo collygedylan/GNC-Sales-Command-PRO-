@@ -160,14 +160,14 @@ for (const outcome of ['resolved', 'rejected']) {
 test('saved Bloom quantities use remaining demand and reject increases above that ceiling before RPC', async () => {
   const ctx = runtime(), entry = {source_id: 'soc-a', quantity: 4, source: row()};
   ctx.fixtureEntry = entry;
-  vm.runInContext(`hlOrderStateData = {draft: [fixtureEntry], actionable_rows: [{...fixtureEntry.source, available_quantity: 4}], dispositions: []};`, ctx);
+  vm.runInContext(`hlOrderStateData = {revision: 3, draft: [fixtureEntry], actionable_rows: [{...fixtureEntry.source, available_quantity: 4}], dispositions: []};`, ctx);
   assert.equal(ctx.getHlDraftQuantityCeiling(entry), 4);
   vm.runInContext(`hlOrderStateData.actionable_rows = []; hlOrderStateData.dispositions = [{source_id: 'soc-a', available_quantity: 0}];`, ctx);
   assert.equal(ctx.getHlDraftQuantityCeiling(entry), 0, 'zero uncovered demand must not fall back to SOC quantity');
   vm.runInContext(`hlOrderStateData.dispositions[0].available_quantity = 4;`, ctx);
   assert.equal(ctx.getHlDraftQuantityCeiling(entry), 4);
   const input = {value: '5'}, calls = [], notices = [];
-  ctx.document.querySelectorAll = () => [{dataset: {hlDraftSourceId: 'soc-a'}, querySelector: () => input}];
+  ctx.document.querySelectorAll = () => [{dataset: {hlDraftSourceId: 'soc-a', hlEditRevision: '3'}, querySelector: () => input}];
   ctx.runHlOrderCommand = async (action, payload) => calls.push({action, payload});
   ctx.showToast = (...args) => notices.push(args);
   await ctx.saveHlDraftQuantity('soc-a');
@@ -214,4 +214,29 @@ test('a successful state refresh keeps unresolved command recovery visible until
   ctx.applyHlOrderState({revision: 2, draft: [], orders: []});
   assert.equal(vm.runInContext('hlOrderPendingCommand.p_command_id', ctx), 'lost-submit-command');
   assert.match(container.innerHTML, /Check saved change/, 'read-only refresh is not an acknowledgement of the pending command');
+});
+
+test('saving a stale rendered draft sends its original revision and retains the newer saved quantity on conflict', async () => {
+  const ctx = runtime(), calls = [], input = {value: '5'};
+  const element = {dataset: {hlDraftSourceId: 'soc-a', hlEditRevision: '3'}, getAttribute: () => '3', querySelector: () => input};
+  ctx.document.querySelectorAll = () => [element];
+  ctx.fixtureEntry = {source_id: 'soc-a', quantity: 7, status: 'ready', source: row()};
+  vm.runInContext(`hlOrderStateData = {revision: 9, draft: [fixtureEntry], actionable_rows: [], orders: [], dispositions: []};`, ctx);
+  ctx.crypto = {randomUUID: () => '30000000-0000-4000-8000-000000000001'};
+  ctx.captureLoginSessionOwnership = () => 1;
+  ctx.isLoginSessionOwnershipCurrent = () => true;
+  ctx.renderHlOrder = () => {};
+  ctx.renderHlBloomSection = () => {};
+  ctx.showToast = () => {};
+  ctx.supabaseRpc = async (method, command) => {
+    calls.push(command);
+    if (command.p_expected_revision !== 9) throw Object.assign(new Error('HL_ORDER_REVISION_CONFLICT'), {status: 409});
+    vm.runInContext('hlOrderStateData.draft[0].quantity = 5;', ctx);
+    return vm.runInContext('hlOrderStateData', ctx);
+  };
+  ctx.applyHlOrderState = () => {};
+  await ctx.saveHlDraftQuantity('soc-a');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].p_expected_revision, 3, 'the focused input was rendered at revision 3, even though polled state is revision 9');
+  assert.equal(vm.runInContext('hlOrderStateData.draft[0].quantity', ctx), 7);
 });

@@ -3,11 +3,11 @@ import { installHlOrderFixture, hlSoc, hlRecipient } from './fixtures/hl-order-s
 
 async function openHl(page: Page) {
   await expect(page.locator('#view-login')).toBeHidden();
-  await page.locator('#home-tile-hl-order').click();
+  await navigateHl(page, page.locator('#home-tile-hl-order'));
   await expect(page.locator('[data-hl-tab="needed"]')).toBeVisible();
 }
 async function openDetails(page: Page) {
-  await page.locator('[data-hl-group]').first().getByRole('button', { name: 'View HL order details', exact: true }).click();
+  await navigateHl(page, page.locator('[data-hl-group]').first().getByRole('button', { name: 'View HL order details', exact: true }));
   await expect(page.locator('#hl-order-detail')).toBeVisible();
 }
 async function selectOne(page: Page, sourceId = 'hl-a', quantity = '6') {
@@ -30,6 +30,13 @@ async function reloadHl(page: Page) {
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.eval('typeof nativeAuthProfile !== "undefined" && !!nativeAuthProfile'));
   await openHl(page);
+}
+async function closeBloom(page: Page) {
+  if (await page.locator('#global-action-bar').isVisible()) await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
+}
+async function navigateHl(page: Page, target: Locator) {
+  await closeBloom(page);
+  await target.click();
 }
 const actions = (fixture: any, action: string) => fixture.commands.filter((command: any) => command.p_action === action);
 async function assertWithinViewport(page: Page, element: Locator) {
@@ -65,7 +72,7 @@ test('cards use all five grouping fields and detail shows all accessible matchin
   await expect(page.locator('[data-hl-group]')).toHaveCount(6);
   const card = page.locator('[data-hl-group]').filter({ hasText: 'SOC quantity: 25' });
   await expect(card).toContainText('Dock: 4'); await expect(card).toContainText('Stop: 2');
-  await card.getByRole('button', { name: 'View HL order details', exact: true }).click();
+  await navigateHl(page, card.getByRole('button', { name: 'View HL order details', exact: true }));
   const detail = page.locator('#hl-order-detail');
   await expect(detail.locator('[data-hl-source-id]')).toHaveCount(2);
   await expect(detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]')).toHaveValue('10');
@@ -81,7 +88,7 @@ test('cards use all five grouping fields and detail shows all accessible matchin
   await expect(detail.locator('[data-hl-drive-location="A.08.001"]')).toHaveCount(0);
   await assertWithinViewport(page, detail);
   await capture(page, info.outputPath('hl-full-detail.png'));
-  await detail.getByRole('button', { name: 'Back', exact: true }).click();
+  await navigateHl(page, detail.getByRole('button', { name: 'Back', exact: true }));
   await expect(page.locator('[data-hl-group]')).toHaveCount(6);
   expect(fixture.commands).toHaveLength(0); assertIsolated(fixture);
 });
@@ -89,13 +96,13 @@ test('cards use all five grouping fields and detail shows all accessible matchin
 test('selected editable quantities persist through reload and HL removal preserves unrelated Bloom items', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page);
-  await page.waitForFunction(() => window.eval('canUseVerifiedProductionData(["master"]) && fullInventory.some(row => row.UNIQUE_ID === "master-other-item" && row.DOM_ID)'));
-  await page.evaluate(() => window.eval(`
+  await expect.poll(() => page.evaluate(() => window.eval(`(() => {
     const unrelated = fullInventory.find(row => row.UNIQUE_ID === 'master-other-item');
-    if (!unrelated?.DOM_ID) throw new Error('Unrelated Drive fixture did not load');
+    if (!unrelated?.DOM_ID || !canUseVerifiedProductionData(['master']) || !canCurrentUserSelectDriveWorkflowRow(findItemByDomId(unrelated.DOM_ID), 'drive')) return false;
     window.__hlUnrelatedId = unrelated.DOM_ID;
     toggleGlobalItem(unrelated.DOM_ID, true, 'drive');
-  `));
+    return selectedItems.has(unrelated.DOM_ID);
+  })()`))).toBe(true);
   await selectOne(page, 'hl-a', '6');
   expect(actions(fixture, 'draft_save').at(-1).p_payload.rows).toEqual([{ source_id: 'hl-a', quantity: 6 }]);
   expect(fixture.state.draft.map((row: any) => row.source_id)).toEqual(['hl-a']);
@@ -107,8 +114,7 @@ test('selected editable quantities persist through reload and HL removal preserv
   await draft.getByRole('button', { name: 'Remove from Bloom Picker', exact: true }).click();
   await expect.poll(() => fixture.state.draft.length).toBe(0);
   expect(await page.evaluate(() => window.eval('selectedItems.has(window.__hlUnrelatedId)'))).toBe(true);
-  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
-  await page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }).click();
+  await navigateHl(page, page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }));
   await selectOne(page, 'hl-a', '7');
   await reloadHl(page);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toHaveValue('7');
@@ -131,13 +137,13 @@ test('PDF review freezes edited quantities and Needed survives queued delivery u
   expect(actions(fixture, 'submit')).toHaveLength(1);
   expect(fixture.state.orders).toHaveLength(1);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toContainText(/pending|submitting/i);
-  await page.locator('[data-hl-tab="needed"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="needed"]'));
   await expect(page.locator('[data-hl-group]')).toContainText('In Bloom Picker');
   fixture.deliver('sent');
   await reloadHl(page);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toHaveCount(0);
   await expect(page.locator('[data-hl-group]')).not.toContainText('In Bloom Picker');
-  await page.locator('[data-hl-tab="orders"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await expect(page.locator('[data-hl-order-id]')).toContainText('sent');
   assertIsolated(fixture);
 });
@@ -157,7 +163,7 @@ test('failed PDF and changed source never submit, and source review preserves th
   await expect.poll(() => actions(fixture, 'submit').length).toBe(1);
   expect(fixture.state.orders).toHaveLength(0);
   await page.locator('#hl-tags-preview').getByRole('button', { name: 'Close', exact: true }).click();
-  await page.locator('[data-hl-tab="needs-review"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="needs-review"]'));
   await expect(page.locator('[data-hl-review-source-id="hl-a"]')).toContainText('Source row changed');
   expect(fixture.state.draft[0].quantity).toBe(6);
   assertIsolated(fixture);
@@ -171,7 +177,7 @@ test('uncertain delivery remains protected across reload without another submiss
   fixture.deliver('delivery_unknown'); await reloadHl(page);
   await expect(page.locator('#hl-order-content')).toContainText('Delivery could not be confirmed');
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toBeDisabled();
-  await page.locator('[data-hl-tab="orders"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await expect(page.locator('[data-hl-order-id]')).toContainText('delivery_unknown');
   expect(actions(fixture, 'submit')).toHaveLength(1);
   expect(fixture.state.orders).toHaveLength(1);
@@ -217,11 +223,10 @@ test('a lost submit response recovers the same command instead of creating anoth
   await expect(page.locator('#hl-tags-send')).toBeEnabled();
   fixture.loseSubmitResponse = false;
   await page.locator('#hl-tags-preview').getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
   const refreshed = page.waitForResponse((response) => response.url().endsWith('/rpc/hl_order_state'));
-  await page.locator('[data-hl-tab="needed"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="needed"]'));
   await refreshed;
-  await page.getByRole('button', { name: 'Check saved change', exact: true }).click();
+  await navigateHl(page, page.getByRole('button', { name: 'Check saved change', exact: true }));
   await expect.poll(() => actions(fixture, 'submit').length).toBeGreaterThan(1);
   expect(new Set(actions(fixture, 'submit').map((command: any) => command.p_command_id)).size).toBe(1);
   expect(fixture.state.orders).toHaveLength(1);
@@ -253,22 +258,22 @@ test('Remove selected rows is reversible without dismissing the other SOC row', 
   await page.getByRole('button', { name: 'Remove selected rows', exact: true }).click();
   await expect.poll(() => actions(fixture, 'dismiss').length).toBe(1);
   expect(actions(fixture, 'dismiss')[0].p_payload.source_ids).toEqual(['hl-a']);
-  await page.locator('[data-hl-tab="removed"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="removed"]'));
   const removed = page.locator('[data-hl-removed-source-id="hl-a"]');
   await expect(removed).toBeVisible();
   await expect(page.locator('[data-hl-removed-source-id="hl-b"]')).toHaveCount(0);
   await removed.getByRole('button', { name: 'Restore to Needed', exact: true }).click();
-  await page.locator('[data-hl-tab="needed"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="needed"]'));
   await expect(page.locator('[data-hl-group]')).toContainText('SOC quantity: 25');
   assertIsolated(fixture);
 });
 
 test('partial receipts and corrections remain separate from cancellation PDF submission', async ({ page, baseURL }, info) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true });
-  await openHl(page); await page.locator('[data-hl-tab="orders"]').click();
+  await openHl(page); await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await expect(page.locator('[data-hl-order-id]')).toBeVisible();
   await capture(page, info.outputPath('hl-orders.png'));
-  await page.getByRole('button', { name: 'View order', exact: true }).click();
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
   const tracking = page.locator('#hl-order-tracking');
   const line = tracking.locator('[data-hl-order-line-id]').first();
   await line.locator('[data-hl-line-select]').check();
@@ -302,16 +307,60 @@ test('partial receipts and corrections remain separate from cancellation PDF sub
   expect(fixture.state.orders[0].lines[0].received_quantity).toBe(4);
   expect(fixture.state.orders[0].cancellations).toHaveLength(1);
   fixture.confirmCancellation(); await reloadHl(page);
-  await page.locator('[data-hl-tab="orders"]').click();
-  await page.getByRole('button', { name: 'View order', exact: true }).click();
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
   await line.locator('[data-hl-line-select]').check();
   await line.locator('[data-hl-received-quantity]').fill('7');
   await tracking.getByRole('button', { name: 'Save received quantities', exact: true }).click();
   await expect.poll(() => fixture.state.orders[0].fulfillment_status).toBe('received_and_cancelled');
-  await tracking.getByRole('button', { name: 'Back', exact: true }).click();
+  await navigateHl(page, tracking.getByRole('button', { name: 'Back', exact: true }));
   await expect(page.locator('[data-hl-order-id]')).toHaveCount(0);
-  await page.locator('[data-hl-tab="history"]').click();
+  await navigateHl(page, page.locator('[data-hl-tab="history"]'));
   await expect(page.locator('[data-hl-order-id]')).toHaveCount(1);
+  assertIsolated(fixture);
+});
+
+test('a focused draft edit cannot overwrite another device after a newer state poll', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await openHl(page); await selectOne(page, 'hl-a', '6');
+  const draft = page.locator('[data-hl-draft-source-id="hl-a"]');
+  const baseline = await draft.getAttribute('data-hl-edit-revision');
+  expect(baseline).not.toBeNull();
+  await draft.locator('[data-hl-draft-quantity]').fill('5');
+  fixture.command({ p_command_id: '20000000-0000-4000-8000-000000000001', p_action: 'draft_save',
+    p_payload: { rows: [{ source_id: 'hl-a', quantity: 7 }] }, p_expected_revision: fixture.state.revision });
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await expect(draft.locator('[data-hl-draft-quantity]')).toHaveValue('5');
+  await expect(draft).toHaveAttribute('data-hl-edit-revision', baseline!);
+  await draft.getByRole('button', { name: 'Save quantity', exact: true }).click();
+  await expect.poll(() => actions(fixture, 'draft_save').length).toBe(3);
+  expect(actions(fixture, 'draft_save').at(-1).p_expected_revision).toBe(Number(baseline));
+  expect(fixture.state.draft[0].quantity).toBe(7);
+  await expect(page.locator('#hl-order-content')).toContainText(/changed|refresh|review/i);
+  assertIsolated(fixture);
+});
+
+test('a focused receipt correction cannot overwrite a newer receipt after a state poll', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true });
+  await openHl(page); await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
+  const tracking = page.locator('#hl-order-tracking'), line = tracking.locator('[data-hl-order-line-id]').first();
+  const baseline = await tracking.getAttribute('data-hl-edit-revision');
+  expect(baseline).not.toBeNull();
+  await line.locator('[data-hl-line-select]').check();
+  await line.locator('[data-hl-received-quantity]').fill('6');
+  const order = fixture.state.orders[0];
+  fixture.command({ p_command_id: '20000000-0000-4000-8000-000000000002', p_action: 'receive',
+    p_payload: { order_id: order.id, lines: [{ line_id: order.lines[0].id, received_quantity: 4 }], reason: 'Another device received four' }, p_expected_revision: fixture.state.revision });
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await expect(line.locator('[data-hl-received-quantity]')).toHaveValue('6');
+  await expect(tracking).toHaveAttribute('data-hl-edit-revision', baseline!);
+  await tracking.getByRole('button', { name: 'Save received quantities', exact: true }).click();
+  await expect.poll(() => actions(fixture, 'receive').length).toBe(2);
+  expect(actions(fixture, 'receive').at(-1).p_expected_revision).toBe(Number(baseline));
+  expect(fixture.state.orders[0].lines[0].received_quantity).toBe(4);
+  expect(fixture.state.orders[0].receipts).toHaveLength(1);
+  await expect(page.locator('#hl-order-content')).toContainText(/changed|refresh|review/i);
   assertIsolated(fixture);
 });
 

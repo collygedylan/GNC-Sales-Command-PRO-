@@ -17,7 +17,7 @@ HL Order is available only to the active native Supabase account whose trusted p
 
 `hl_order_state()` authenticates the session and reconciles current SOC against saved source dispositions. It returns a global revision, actionable rows, drafts, dispositions, orders, delivery issues and recent activity. It is a workflow read that can record newly detected source changes; production mutation-blocked health probes must not invoke it as a pure read.
 
-`hl_order_command(p_command_id, p_action, p_payload, p_expected_revision)` serializes mutations against that revision. Commands are replayable only with the same identity and payload. Its actions are `draft_save`, `draft_clear`, `preview`, `submit`, `dismiss`, `restore`, `resolve_review`, `receive`, `cancellation_preview`, `cancellation_submit` and `reconcile_delivery`.
+`hl_order_command(p_command_id, p_action, p_payload, p_expected_revision)` serializes mutations against that revision. Commands are replayable only with the same identity and payload. Editable rows retain the revision shown when their values were rendered; background polling cannot authorize an older local edit against newer saved values. A conflict requires reviewing the latest values with Refresh. Its actions are `draft_save`, `draft_clear`, `preview`, `submit`, `dismiss`, `restore`, `resolve_review`, `receive`, `cancellation_preview`, `cancellation_submit` and `reconcile_delivery`.
 
 The `hl_order_private` schema holds workflow records. Public preview records permit no direct authenticated reads or writes; the authenticated Apps Script PDF action verifies ownership before reading them with its service credential. Historical records have no foreign key to an imported SOC row and cannot disappear when a report refresh replaces it.
 
