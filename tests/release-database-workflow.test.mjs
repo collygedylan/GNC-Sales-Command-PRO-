@@ -14,9 +14,9 @@ test('database reusable workflow is secret-free and has read-only repository per
   assert.match(workflow, /node-version: 22\s+cache: npm/);
 });
 
-test('all original migrations and pgTAP tests remain alongside the grouped health regression', () => {
+test('all original migrations and pgTAP tests remain alongside grouped health and HL ordering regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 87);
+  assert.equal(migrations.length, 88);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
@@ -25,6 +25,7 @@ test('all original migrations and pgTAP tests remain alongside the grouped healt
     '20260902002912_flatten_eval_reports_2_and_reconcile_work.sql',
     '20260902105411_group_eval_report2_assignment_email.sql',
     '20260910174603_grouped_eval_itemcode_health_contract.sql',
+    '20260911115037_hl_ordering_system.sql',
   ]) assert.ok(migrations.includes(filename), `Grouped health dependency: ${filename}`);
   const sqlTests = [...workflow.matchAll(/cp supabase\/tests\/(\S+)/g)].map(match => match[1]);
   assert.deepEqual([...sqlTests].sort(), [
@@ -37,6 +38,7 @@ test('all original migrations and pgTAP tests remain alongside the grouped healt
     'season_sales_av_note_retention_test.sql', 'season_sales_av_note_reset_test.sql',
     'photo_evidence_projection_test.sql',
     'grouped_eval_itemcode_health_test.sql',
+    'hl_order_lifecycle_test.sql', 'hl_order_delivery_test.sql',
   ].sort());
   for (const filename of sqlTests) {
     assert.ok(fs.existsSync(new URL(`../supabase/tests/${filename}`, import.meta.url)), filename);
@@ -49,6 +51,7 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'supabase --workdir "$SUPABASE_CI_ROOT" db reset --local --no-seed',
     'supabase --workdir "$SUPABASE_CI_ROOT" test db',
     'CI=true EVAL_REVIEW_TEST_DB_URL="$DB_URL" node scripts/test-reclass-review-concurrency.mjs',
+    'CI=true HL_ORDER_TEST_DB_URL="$DB_URL" node scripts/test-hl-order-concurrency.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
     'deno test --allow-env --allow-net supabase/functions',
   ];
