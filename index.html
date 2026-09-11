@@ -87695,6 +87695,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (!container) return;
             if (!canUseHlOrder()) { setHlOrderContent(container, '', true); return; }
             if (!hlOrderStateData && !hlOrderStatePending && Date.now() - hlOrderStateLoadedAt >= 15000) void loadHlOrderState();
+            // An edited input changes the next HTML even when saved state is unchanged.
+            // Keep its action button attached until the current press can dispatch.
+            if (!force && typeof activeFastPress !== 'undefined' && activeFastPress && /^invoke\|[^|]*Hl/.test(activeFastPress.actionKey)) return;
             if (!force && container.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
             const esc = escapeHtml;
             const tabs = [['needed','Needed'],['orders','Orders'],['needs-review','Needs Review'],['history','History'],['removed','Removed']];

@@ -13,9 +13,10 @@ async function openDetails(page: Page) {
 async function selectOne(page: Page, sourceId = 'hl-a', quantity = '6') {
   await openDetails(page);
   const rows = page.locator('#hl-order-detail [data-hl-source-id]');
-  for (const row of await rows.all()) await row.locator('[data-hl-select]').uncheck();
+  for (const row of await rows.all()) {
+    await row.locator('[data-hl-select]').setChecked(await row.getAttribute('data-hl-source-id') === sourceId);
+  }
   const selected = page.locator(`[data-hl-source-id="${sourceId}"]`);
-  await selected.locator('[data-hl-select]').check();
   await selected.locator('[data-hl-quantity]').fill(quantity);
   await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
   await expect(page.locator(`[data-hl-draft-source-id="${sourceId}"]`)).toBeVisible();
@@ -376,6 +377,26 @@ test('a same-state refresh during a mouse press preserves the HL card activation
   await page.mouse.up();
   await expect(page.locator('#hl-order-detail')).toBeVisible();
   expect(fixture.commands).toHaveLength(0);
+  assertIsolated(fixture);
+});
+
+test('a state refresh during an edited order button press preserves the save', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await openHl(page); await openDetails(page);
+  const selected = page.locator('[data-hl-source-id="hl-a"]');
+  await page.locator('[data-hl-source-id="hl-b"] [data-hl-select]').uncheck();
+  await selected.locator('[data-hl-quantity]').fill('7');
+  const button = page.getByRole('button', { name: 'Order selected rows', exact: true });
+  await button.scrollIntoViewIfNeeded();
+  const box = await button.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await page.mouse.up();
+  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toBeVisible();
+  expect(actions(fixture, 'draft_save')).toHaveLength(1);
+  expect(fixture.state.draft[0].quantity).toBe(7);
   assertIsolated(fixture);
 });
 
