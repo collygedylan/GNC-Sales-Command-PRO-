@@ -8403,7 +8403,244 @@ function collectRequestSubmitterEmails_(payload) {
   return dedupeEmailAddresses_(candidates);
 }
 
+function isHlTagsEmail_(payload) {
+  return String(payload && payload.emailType || '').trim().toLowerCase() === 'bloom_purpose_report'
+    && String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase() === 'hl_tags';
+}
+
+function hlTagsError_(status, code, message) {
+  const error = new Error(message);
+  error.hlTagsStatus = status;
+  error.hlTagsCode = code;
+  return error;
+}
+
+function fetchHlTagsJson_(url, headers, authRequest) {
+  try {
+    const response = UrlFetchApp.fetch(url, { method: 'get', headers: headers, muteHttpExceptions: true });
+    const status = response.getResponseCode();
+    if (authRequest && (status === 401 || status === 403)) {
+      throw hlTagsError_(401, 'hl_tags_auth_required', 'Sign in again before sending HL TAGS.');
+    }
+    if (status < 200 || status >= 300) throw new Error('Read failed');
+    return JSON.parse(response.getContentText());
+  } catch (error) {
+    if (error && error.hlTagsCode) throw error;
+    // Never include auth tokens, request headers, or remote response bodies in errors/logs.
+    throw hlTagsError_(503, 'hl_tags_verification_unavailable', 'HL TAGS could not verify current data. No email was sent.');
+  }
+}
+
+function verifyHlTagsSender_(payload) {
+  const token = String(payload && payload.accessToken || '').trim();
+  if (!token || token.length > 8192 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
+    throw hlTagsError_(401, 'hl_tags_auth_required', 'Sign in again before sending HL TAGS.');
+  }
+  if (!SUPABASE_KEY) throw hlTagsError_(503, 'hl_tags_verification_unavailable', 'HL TAGS verification is unavailable. No email was sent.');
+  const authHeaders = getSupabaseHeadersForKey_(SUPABASE_KEY);
+  authHeaders.Authorization = 'Bearer ' + token;
+  const user = fetchHlTagsJson_(SUPABASE_URL + '/auth/v1/user', authHeaders, true);
+  const userId = String(user && user.id || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    throw hlTagsError_(401, 'hl_tags_auth_required', 'Sign in again before sending HL TAGS.');
+  }
+  const profiles = fetchHlTagsJson_(SUPABASE_URL + '/rest/v1/profiles?select=id,username,disabled_at,locked_until,must_change_password&id=eq.' + encodeURIComponent(userId) + '&limit=2', getSupabaseHeadersForKey_(SUPABASE_KEY), false);
+  const profile = Array.isArray(profiles) && profiles.length === 1 ? profiles[0] : null;
+  const lockedUntil = profile && profile.locked_until;
+  if (!profile || profile.id !== userId || profile.username !== 'dylan_collyge'
+      || profile.disabled_at || profile.must_change_password !== false
+      || (lockedUntil && (!Number.isFinite(Date.parse(lockedUntil)) || Date.parse(lockedUntil) > Date.now()))) {
+    throw hlTagsError_(403, 'hl_tags_forbidden', 'HL TAGS is available only to the active dylan_collyge account.');
+  }
+}
+
+function hlTagsValue_(value) {
+  return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function hlTagsQuantity_(value) {
+  const text = hlTagsValue_(value).replace(/,/g, '');
+  return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text) && Number.isFinite(Number(text)) ? Number(text) : null;
+}
+
+function isHlTagsSocRowEligible_(row) {
+  const location = hlTagsValue_(row && row.locationcode).toUpperCase();
+  return !!(hlTagsValue_(row && row.dock) || hlTagsValue_(row && row.planstartdate))
+    && (location === 'C.05' || location === '0.00.111' || /^(?:C\.12\.|B\.10\.|C\.14\.).+/.test(location));
+}
+
+function hlTagsMasterKey_(row) {
+  return JSON.stringify(['itemcode', 'contsize', 'locationcode', 'lotcode'].map(function(field) {
+    return hlTagsValue_(row && row[field]).toUpperCase();
+  }));
+}
+
+function fetchHlTagsMasterChunk_(filters) {
+  const prefix = SUPABASE_URL + '/rest/v1/ph_master_inventory?select=unique_id,itemcode,contsize,locationcode,lotcode,ptravailable&or='
+    + encodeURIComponent('(' + filters.join(',') + ')') + '&order=unique_id.asc&limit=500&offset=';
+  let expectedTotal = null;
+  let offset = 0;
+  const completeRows = [];
+  try {
+    while (true) {
+      const response = UrlFetchApp.fetch(prefix + offset, { method: 'get', muteHttpExceptions: true,
+        headers: getSupabaseHeadersForKey_(SUPABASE_KEY, { Prefer: 'count=exact' }) });
+      if (response.getResponseCode() !== 200 && response.getResponseCode() !== 206) return null;
+      const rows = JSON.parse(response.getContentText());
+      const headers = response.getHeaders();
+      const rangeHeader = Object.keys(headers).find(function(key) { return key.toLowerCase() === 'content-range'; });
+      const range = String(rangeHeader ? headers[rangeHeader] : '').match(/^(?:(\d+)-(\d+)|\*)\/(\d+)$/);
+      if (!Array.isArray(rows) || !range) return null;
+      const total = Number(range[3]);
+      // A capped, failed, or changing result must not turn a partial match into a unique match.
+      if (!Number.isSafeInteger(total) || total > 10000 || (expectedTotal !== null && expectedTotal !== total)) return null;
+      expectedTotal = total;
+      if (!total) return rows.length === 0 ? [] : null;
+      if (!rows.length || Number(range[1]) !== offset || Number(range[2]) !== offset + rows.length - 1 || offset + rows.length > total) return null;
+      completeRows.push.apply(completeRows, rows);
+      offset += rows.length;
+      if (offset === total) return completeRows;
+    }
+  } catch (error) {
+    // Availability is optional. Keep it unknown if the entire lookup cannot be verified.
+    return null;
+  }
+}
+
+function enrichHlTagsAvailability_(rows) {
+  const itemcodes = Array.from(new Set(rows.map(function(row) { return hlTagsValue_(row.itemcode).toUpperCase(); })))
+    .filter(function(value) { return value && value.indexOf('*') === -1; });
+  const matches = new Map();
+  let filters = [];
+  let filterLength = 250;
+  function readChunk() {
+    const found = fetchHlTagsMasterChunk_(filters);
+    if (found) found.forEach(function(row) {
+      const id = hlTagsValue_(row && row.unique_id);
+      const key = hlTagsMasterKey_(row);
+      if (!matches.has(key)) matches.set(key, new Map());
+      const byId = matches.get(key);
+      const quantityText = hlTagsValue_(row && row.ptravailable).replace(/,/g, '');
+      const quantity = quantityText ? Number(quantityText) : NaN;
+      const available = Number.isFinite(quantity) && quantity >= 0 ? quantity : null;
+      // Missing identities and conflicting duplicate rows cannot prove one available location.
+      if (!id) { byId.set('', null); return; }
+      if (byId.has(id) && byId.get(id) !== available) byId.set(id, null);
+      else if (!byId.has(id)) byId.set(id, available);
+    });
+    filters = [];
+    filterLength = 250;
+  }
+  itemcodes.forEach(function(itemcode) {
+    // Surrounding wildcards admit whitespace/case variants; the full four-field key is checked below.
+    const pattern = '%' + itemcode.replace(/[\\%_]/g, '\\$&') + '%';
+    const filter = 'itemcode.ilike."' + pattern.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    const length = encodeURIComponent(filter).length + 3;
+    if (length > 1400) return;
+    if (filters.length && (filters.length >= 20 || filterLength + length > 1750)) readChunk();
+    filters.push(filter);
+    filterLength += length;
+  });
+  if (filters.length) readChunk();
+  return rows.map(function(row) {
+    const byId = matches.get(hlTagsMasterKey_(row));
+    const available = byId && byId.size === 1 && !byId.has('') ? Array.from(byId.values())[0] : null;
+    return Object.assign({}, row, { ptravailable: available === null || available === undefined ? '' : available });
+  });
+}
+
+function prepareHlTagsEmailPayload_(payload) {
+  verifyHlTagsSender_(payload);
+  const sourceRows = payload && payload.sourceRows;
+  if (!Array.isArray(sourceRows) || !sourceRows.length || sourceRows.length > 500) {
+    throw hlTagsError_(400, 'hl_tags_invalid_selection', 'Select between 1 and 500 SOC rows for HL TAGS.');
+  }
+  const selected = new Map();
+  sourceRows.forEach(function(row) {
+    const id = hlTagsValue_(row && row.unique_id);
+    if (!row || typeof row !== 'object' || !id || id.length > 200 || selected.has(id) || !(hlTagsQuantity_(row.quantityordered) > 0)) {
+      throw hlTagsError_(400, 'hl_tags_invalid_selection', 'HL TAGS selection contains an invalid or duplicate SOC row.');
+    }
+    selected.set(id, row);
+  });
+  const canonical = new Map();
+  const ids = Array.from(selected.keys());
+  const prefix = SUPABASE_URL + '/rest/v1/ph_soc_master?select=*&unique_id=';
+  function readChunk(chunk) {
+    // Quote each PostgREST value before URL encoding; row IDs cannot add filters.
+    const filter = 'in.(' + chunk.map(function(id) { return '"' + id.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }).join(',') + ')';
+    const rows = fetchHlTagsJson_(prefix + encodeURIComponent(filter), getSupabaseHeadersForKey_(SUPABASE_KEY), false);
+    if (!Array.isArray(rows)) throw hlTagsError_(503, 'hl_tags_verification_unavailable', 'HL TAGS could not verify current SOC rows. No email was sent.');
+    rows.forEach(function(row) {
+      const id = hlTagsValue_(row && row.unique_id);
+      if (chunk.indexOf(id) === -1 || canonical.has(id)) throw hlTagsError_(409, 'hl_tags_selection_changed', 'SOC rows changed. Refresh HL Order and review the selection.');
+      canonical.set(id, row);
+    });
+  }
+  let chunk = [];
+  let chunkLength = prefix.length + 20;
+  ids.forEach(function(id) {
+    const encodedLength = encodeURIComponent(id.replace(/\\/g, '\\\\').replace(/"/g, '\\"')).length + 12;
+    if (chunk.length && (chunk.length >= 50 || chunkLength + encodedLength > 1800)) {
+      readChunk(chunk);
+      chunk = [];
+      chunkLength = prefix.length + 20;
+    }
+    chunk.push(id);
+    chunkLength += encodedLength;
+  });
+  if (chunk.length) readChunk(chunk);
+  const criticalFields = ['itemcode', 'contsize', 'locationcode', 'lotcode', 'dock', 'planstartdate'];
+  const rows = ids.map(function(id) {
+    const row = canonical.get(id);
+    const snapshot = selected.get(id);
+    if (!row || !isHlTagsSocRowEligible_(row) || !(hlTagsQuantity_(row.quantityordered) > 0)
+        || hlTagsQuantity_(row.quantityordered) !== hlTagsQuantity_(snapshot.quantityordered)
+        || criticalFields.some(function(field) { return hlTagsValue_(row[field]) !== hlTagsValue_(snapshot[field]); })) {
+      throw hlTagsError_(409, 'hl_tags_selection_changed', 'SOC rows changed or are no longer eligible. Refresh HL Order and review the selection.');
+    }
+    return row;
+  });
+  // Construct a fresh payload: client HTML, subject, recipient overrides and queue flags are discarded.
+  return { type: 'email', emailType: 'bloom_purpose_report', emailSubType: 'hl_tags', fromName: 'GNC PH HL Order', sourceRows: enrichHlTagsAvailability_(rows) };
+}
+
+function buildHlTagsEmailMessage_(rows) {
+  const groups = new Map();
+  rows.forEach(function(row) {
+    const key = JSON.stringify([hlTagsValue_(row.itemcode).toUpperCase(), hlTagsValue_(row.contsize).toUpperCase()]);
+    if (!groups.has(key)) groups.set(key, { itemcode: row.itemcode, contsize: row.contsize, commonname: row.commonname, total: 0 });
+    groups.get(key).total += hlTagsQuantity_(row.quantityordered);
+  });
+  const summaries = Array.from(groups.values());
+  const columns = [
+    ['unique_id', 'SOC row'], ['itemcode', 'Item'], ['contsize', 'Size'], ['commonname', 'Common name'],
+    ['locationcode', 'Location'], ['lotcode', 'Lot'], ['quantityordered', 'Ordered quantity'], ['ptravailable', 'PTR available'],
+    ['dock', 'Dock'], ['planstartdate', 'Planned start'], ['transactionnumber', 'Order'],
+    ['purchaseordernumber', 'PO'], ['tripnumber', 'Trip'], ['stopnumber', 'Stop'],
+    ['customername', 'Customer'], ['consigneename', 'Consignee']
+  ];
+  function display(row, field) { return hlTagsValue_(row[field]) || (field === 'ptravailable' ? 'Unknown' : '—'); }
+  const textBody = ['HL TAGS', 'Item / size totals'].concat(summaries.map(function(group) {
+    return display(group, 'commonname') + ' · ' + display(group, 'itemcode') + ' / ' + display(group, 'contsize') + ': ' + group.total;
+  })).concat(['', 'SOC row details'], rows.map(function(row) {
+    return columns.map(function(column) { return column[1] + ': ' + display(row, column[0]); }).join(' | ');
+  })).join('\n');
+  const htmlBody = buildPhoneSizedEmailHtml_('<div style="font-family:Arial,sans-serif;color:#24352d;padding:16px"><h1>HL TAGS</h1><h2>Item / size totals</h2><ul>'
+    + summaries.map(function(group) { return '<li>' + escapeEmailHtml_(display(group, 'commonname')) + ' · ' + escapeEmailHtml_(display(group, 'itemcode')) + ' / ' + escapeEmailHtml_(display(group, 'contsize')) + ': <strong>' + escapeEmailHtml_(group.total) + '</strong></li>'; }).join('')
+    + '</ul><h2>SOC row details</h2><table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;font-size:12px"><thead><tr>'
+    + columns.map(function(column) { return '<th>' + column[1] + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + rows.map(function(row) {
+      return '<tr>' + columns.map(function(column) { return '<td>' + escapeEmailHtml_(display(row, column[0])) + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>');
+  return { subject: 'HL TAGS', textBody: textBody, htmlBody: htmlBody };
+}
+
 function collectRequestRecipients_(payload) {
+  if (isHlTagsEmail_(payload)) {
+    const recipient = normalizeEmailAddress_(resolveRequestRecipientEmail_('dylan_collyge', ''));
+    return { repEmail: recipient, toArray: recipient ? [recipient] : [], toList: recipient };
+  }
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
   const emailSubType = String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase();
   const isBlockClearingEmail = emailType === 'block_clearing_email' || emailSubType === 'block_clearing_email' || (payload && payload.blockClearingEmail === true);
@@ -13785,6 +14022,7 @@ function buildAdvertisementEmailHeroText_(payload) {
 }
 
 function buildRequestEmailMessage_(payload) {
+  if (isHlTagsEmail_(payload)) return buildHlTagsEmailMessage_(payload.sourceRows);
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const emailSubType = String(payload.emailSubType || payload.email_sub_type || '').trim().toLowerCase();
   const isBlockClearingEmail = emailType === 'block_clearing_email' || emailSubType === 'block_clearing_email' || (payload && payload.blockClearingEmail === true);
@@ -14737,6 +14975,14 @@ function decorateRequestLifecycleEmailResult_(payload, result, recipients) {
 }
 
 function sendRequestEmailWithFallback_(payload) {
+  if (isHlTagsEmail_(payload)) {
+    try {
+      payload = prepareHlTagsEmailPayload_(payload);
+    } catch (error) {
+      return { ok: false, status: error && error.hlTagsStatus || 503, code: error && error.hlTagsCode || 'hl_tags_verification_unavailable', recipients: [], retryable: false,
+        message: error && error.hlTagsCode ? error.message : 'HL TAGS verification failed. No email was sent.' };
+    }
+  }
   if (String(payload && payload.emailType || '').trim().toLowerCase() === 'request_complete') {
     payload = hydrateRequestCompletePayload_(payload);
   }
@@ -14814,6 +15060,10 @@ function sendRequestEmailWithFallback_(payload) {
         mode: 'gmailapp_named'
       };
     } catch (error) {
+      if (isHlTagsEmail_(payload)) {
+        return { ok: false, status: 500, code: 'hl_tags_delivery_uncertain', recipients: recipients.toArray, mode: 'gmailapp_error', retryable: false, deliveryUncertain: true,
+          message: 'HL TAGS delivery could not be confirmed. Check the mailbox before sending again.' };
+      }
       console.error('Bloom purpose report email send failed', error);
       return {
         ok: false,
@@ -16790,6 +17040,7 @@ function doPost(e) {
     }
     
     if (payload.type === "email") {
+    if (isHlTagsEmail_(payload)) return jsonOutput_(sendRequestEmailWithFallback_(payload));
     if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update" || payload.emailType === "bloom_purpose_report" || payload.emailType === "drive_shift_report" || payload.emailType === "block_clearing_email") {
       const emailType = String(payload.emailType || '').trim().toLowerCase();
       const shouldQueueDelayedReply = emailType === 'request_complete' && Math.max(0, Number(payload.delayMs) || 0) > 0;

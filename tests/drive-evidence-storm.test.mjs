@@ -96,9 +96,9 @@ test('hosted health fails on retry-storm thresholds and the isolated CI includes
   assert.match(performanceWorkflow, /drive_evidence_retry_storm_test\.sql/);
 });
 
-test('all shell references release V2026.09.10.05', () => {
+test('all shell references release V2026.09.10.07', () => {
   const release = `V${JSON.parse(read('../package.json')).version}`;
-  assert.equal(release, 'V2026.09.10.05');
+  assert.equal(release, 'V2026.09.10.07');
   assert.equal(html.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1], release);
   assert.equal(serviceWorker.match(/const APP_SHELL_BUILD = '([^']+)'/)?.[1], release);
   assert.equal(JSON.parse(read('../manifest.json')).version, release);

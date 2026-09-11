@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 export const releaseUnitScriptNames = Object.freeze(['test:photo', 'test:pilot', 'test:live-sync']);
 export const explicitReleaseUnitTests = Object.freeze([
+  'tests/hl-order.test.mjs',
+  'tests/hl-tags-email.test.mjs',
   'tests/eval-review-assignedto-api.test.mjs',
   'tests/production-probe-read-only.test.mjs',
   'tests/prepare-ci-playwright-apt.test.mjs',

@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.10.05">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.10.07">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.10.05';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.10.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6809,7 +6809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.10.05">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.10.07">
     <style id="request-mobile-v2-authority">
         /* AV Blanks facets must stay readable and reachable, not squeezed off a phone's one-row rail. */
         @media(max-width:820px){
@@ -6998,14 +6998,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.10.05"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.10.05"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.10.05"></script>
-    <script src="./assets/inventory-list-contract.js?v=V2026.09.10.05"></script>
-    <script src="./assets/master-detail-snapshots.js?v=V2026.09.10.05"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.10.05"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.10.05"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.10.05"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.10.07"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.10.07"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.10.07"></script>
+    <script src="./assets/inventory-list-contract.js?v=V2026.09.10.07"></script>
+    <script src="./assets/master-detail-snapshots.js?v=V2026.09.10.07"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.10.07"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.10.07"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.10.07"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7657,6 +7657,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
         </div>
     </div>
+    <dialog id="hl-tags-preview" class="w-[min(94vw,720px)] max-h-[85dvh] rounded-2xl border border-emerald-200 p-0 text-slate-900" oncancel="if(hlOrderSending)event.preventDefault();else closeHlTagsPreview()">
+        <div class="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-4"><h2 class="text-lg font-black text-[#007a4d]">HL TAGS</h2><button type="button" class="min-h-[44px] px-3 font-bold" onclick="closeHlTagsPreview()">Close</button></div>
+        <div id="hl-tags-preview-content" class="p-4"></div>
+        <div class="sticky bottom-0 border-t bg-white p-4"><button type="button" id="hl-tags-send" class="min-h-[48px] w-full rounded-xl bg-[#007a4d] p-3 font-bold text-white disabled:opacity-50" onclick="sendHlTagsEmail()">Send HL TAGS</button></div>
+    </dialog>
     <div id="bloom-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-start justify-center overflow-y-auto p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col my-4 max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain">
             <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
@@ -7759,7 +7764,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.10.05').trim() || 'V2026.09.10.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.10.07').trim() || 'V2026.09.10.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7822,6 +7827,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <hr class="my-2">
             <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-rep role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-duotone ph-car"></i> Drive Mode</div>
             <div id="drawer-tasks-btn" class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-duotone ph-clipboard-text"></i> My Tasks</div>
+            <div id="drawer-hl-order-btn" class="drawer-item role-access hidden" onclick="switchView('hl-order'); toggleMenu();"><i class="ph-duotone ph-truck"></i> HL Order</div>
             <div id="drawer-docks-btn" class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-duotone ph-truck"></i> Docks</div>
             <div id="drawer-take-back-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" data-role-gated="true" onclick="switchView('take-back'); toggleMenu();"><i class="ph-duotone ph-arrow-u-up-left"></i> Take Back</div>
             <div id="drawer-av-btn" class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-duotone ph-notebook"></i> AV</div>
@@ -7887,6 +7893,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">
                                 <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor hidden"><i class="ph ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                                <div id="home-tile-hl-order" onclick="switchView('hl-order')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm cursor-pointer role-access hidden"><i class="ph ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">HL Order</span></div>
                                 <div id="home-tile-docks" onclick="switchView('docks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
                                 <div id="home-tile-av" onclick="switchView('av')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-communication" onclick="switchView('communication')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
@@ -8207,6 +8214,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="reserves-content"></div>
                 </div>
 
+                <div id="view-hl-order" class="hidden">
+                    <div class="sticky top-0 z-10 border-b border-emerald-100 bg-white p-4"><h1 class="text-xl font-black text-[#007a4d]">HL Order</h1><p class="text-sm text-slate-600">Order ahead from HL. Tap a plant to review locations and availability.</p></div>
+                    <div id="hl-order-content" class="space-y-3 p-4 pb-28"></div>
+                </div>
                 <div id="view-docks" class="hidden">
                     <div class="freeze-panel ops-module-filter-band">
                     <div id="docks-search-container" class="sticky-search relative mb-2">
@@ -9116,6 +9127,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
                 <button id="bloom-picker-actions-toggle" type="button" onclick="return toggleBloomPickerActions(event)" aria-expanded="false" class="mb-2 hidden w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[.99]"><i class="ph-bold ph-lightning"></i><span>Actions</span><i id="bloom-picker-actions-icon" class="ph-bold ph-caret-down"></i></button>
                 <div id="bloom-picker-actions-list" class="hidden flex gap-1 overflow-x-auto overflow-y-visible scrollbar-none pb-1">
+                    <button id="batch-btn-hl-tags" type="button" class="hidden min-h-[44px] min-w-[96px] rounded-xl bg-[#007a4d] px-4 py-3 font-bold text-white" onclick="openHlTagsPreview()">HL TAGS</button>
                     <div id="batch-share-menu-wrap" class="flex-1 min-w-[72px] hidden">
                         <button id="batch-btn-share" type="button" onclick="return toggleBloomShareMenu(event)" aria-haspopup="dialog" aria-expanded="false" class="w-full bg-slate-100 text-slate-700 p-2 rounded-lg text-[10px] font-bold hover:bg-slate-200"><i class="ph-bold ph-share-network block text-lg mb-1"></i> Share</button>
                     </div>
@@ -9265,7 +9277,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.10.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.10.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9561,6 +9573,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         let nativeRoleRefreshOwner = null;
 
         function clearRoleScopedClientCaches(username = currentUser) {
+            if (typeof resetHlOrderState === 'function') resetHlOrderState();
             closeBloomscapesPendingOrders();
             const userKey = String(username || '').trim().toLowerCase();
             [localStorage, sessionStorage].forEach((storage) => {
@@ -10049,12 +10062,12 @@ const FOREGROUND_INVENTORY_POLL_MS = 30000;
 const FOREGROUND_INVENTORY_FULL_MAX_AGE_MS = 30000;
 const FOREGROUND_INVENTORY_INITIAL_MAX_AGE_MS = 15000;
 const FORCE_VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 10000;
-const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
+const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks','hl-order', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
 const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
 const RETIRED_DATASET_KEYS = new Set(['mlJobs']);
 const RETIRED_MANUAL_SYNC_STAGE_KEYS = new Set(['disease', 'lab', 'lab_reports']);
 const MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT = Object.freeze(['drive','soc','reserves','customer_rep_map','warehouse_assigned_items','cav','hl_po_parsed']);
-const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
+const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks','hl-order', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
             home: ['request', 'sales-office', 'tasks', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
             drive: ['inventory', 'av', 'reserves', 'request', 'sales-office', 'customer-rep-map'],
@@ -10068,6 +10081,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             av: ['av', 'inventory', 'reserves'],
             reserves: ['reserves'],
             docks: ['docks'],
+            'hl-order': ['docks'],
             review: ['inventory'],
             'move-up': ['inventory', 'sales-office'],
             grower: ['grower'],
@@ -10098,6 +10112,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             'take-back': { realtimeTables: ['ph_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             reserves: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            'hl-order': { realtimeTables: ['ph_soc_master', 'ph_master_inventory'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             docks: { realtimeTables: ['ph_dock_item_status', 'ph_dock_issue_status', 'ph_dock_issue_allocations'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             reports: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'po-management': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -33068,7 +33083,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.10.05').trim() || 'V2026.09.10.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.10.07').trim() || 'V2026.09.10.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40242,6 +40257,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 obj.SOURCE_TABLE = normalizeAppTableName(firstNonEmptyValue(obj.SOURCE_TABLE, obj.source_table, normalizedSourceTable)) || normalizedSourceTable;
                 obj.source_table = obj.SOURCE_TABLE;
+                if (normalizedSourceTable === 'ph_soc_master') {
+                    const { HL_SOC_SOURCE: savedSource, ...socSource } = obj;
+                    obj.HL_SOC_SOURCE = savedSource || socSource;
+                }
                 if (!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${normalizedSourceTable}_${idx}`;
                 obj.COMMONNAME = obj.COMMONNAME || obj.DESCRIPTION || obj.PLANT_NAME || 'Unknown';
                 obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || '-';
@@ -41315,6 +41334,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified AV season rows from Drive Mode rows...' });
             }
+            if (viewId === 'hl-order') return { required: [{ key: 'soc', mode: 'full' }, { key: 'master', mode: 'full' }], background: [], label: 'Loading HL orders...' };
             if (viewId === 'docks') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'soc', mode: 'full' }], background: [], label: 'Loading all dock rows...' });
             if (viewId === 'request') return getRequestViewLoadingConfig(activeReqTab);
             if (viewId === 'managers') {
@@ -44393,6 +44413,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function findItemByDomId(domId) {
             const safeDomId = String(domId || '').trim();
             if (!safeDomId) return null;
+            if (safeDomId.startsWith('hl-order:')) return canUseHlOrder() ? hlOrderSelections.get(safeDomId) || null : null;
             const cached = getInventoryDomIdLookup().get(safeDomId);
             if (cached) {
                 incrementInternalPerfCounter('detailLookupMapHits');
@@ -63137,11 +63158,12 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','production-workflow','weather-hold','shear-list','sales','managers','building','qc','av','request','reserves','sales-office','office','po-management','sales-inventory','moves','reports','hours','low-stock','review','move-up','advertisement','disease-pest','grower','pest-management','communication','department-calendar','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','hl-order','take-back','production','production-workflow','weather-hold','shear-list','sales','managers','building','qc','av','request','reserves','sales-office','office','po-management','sales-inventory','moves','reports','hours','low-stock','review','move-up','advertisement','disease-pest','grower','pest-management','communication','department-calendar','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn'],
             docks: ['drawer-docks-btn', 'home-tile-docks'],
+            'hl-order': ['drawer-hl-order-btn', 'home-tile-hl-order'],
             'crop-roll': ['drawer-crop-roll-btn'],
             'take-back': ['drawer-take-back-btn'],
             production: ['drawer-production-btn', 'home-tile-production'],
@@ -63177,6 +63199,7 @@ function toggleDriveQuickRequestItem(domId) {
         const HOME_MODULE_REGISTRY = Object.freeze([
             { view: 'drive', label: 'Drive Mode', icon: 'ph-car', action: "switchView('drive')" },
             { view: 'docks', label: 'Docks', icon: 'ph-truck', action: "switchView('docks')" },
+            { view: 'hl-order', label: 'HL Order', icon: 'ph-truck', action: "switchView('hl-order')" },
             { view: 'av', label: 'AV', icon: 'ph-notebook', action: "switchView('av')" },
             { view: 'communication', label: 'Communication', icon: 'ph-chat-circle-dots', action: "switchView('communication')" },
             { view: 'sales', label: 'Sales', icon: 'ph-handshake', action: "switchView('sales')" },
@@ -63353,6 +63376,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!targetView || targetView === 'home') return true;
             if (isLoginModuleAccessBlocked()) return false;
             if (targetView === 'detail') return true;
+            if (targetView === 'hl-order') return (!userOverride || userOverride === currentUser) && typeof canUseHlOrder === 'function' && canUseHlOrder();
             if (targetView === 'managers' && isManagerViewDeniedUser(userOverride)) return false;
             if (targetView === 'pest-management') return isStrictDylanCollygeUser();
             if (targetView === 'disease-pest') return isStrictDylanCollygeUser();
@@ -63563,7 +63587,7 @@ function toggleDriveQuickRequestItem(domId) {
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
                 const isEvalInventoryUser = !!(access && access.isEval && !access.isAdmin);
                 const hideSalesShellDirectEntry = isSalesShellAccess(access) && viewId !== 'sales';
-                const isAllowed = hideSalesShellDirectEntry ? false : ((viewId === 'request' || viewId === 'moves' || viewId === 'disease-pest' || viewId === 'pest-management' || viewId === 'crop-roll') ? canAccessView(viewId) : allowedViews.has(viewId));
+                const isAllowed = hideSalesShellDirectEntry ? false : ((viewId === 'hl-order' || viewId === 'request' || viewId === 'moves' || viewId === 'disease-pest' || viewId === 'pest-management' || viewId === 'crop-roll') ? canAccessView(viewId) : allowedViews.has(viewId));
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
@@ -66055,7 +66079,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','managers','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','managers','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -79278,6 +79302,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (viewId === 'low-stock') {
                 if (forceReset || !state.initialized) resetLowStockView(false);
                 renderLowStock();
+            } else if (viewId === 'hl-order') {
+                renderHlOrder();
             } else if (viewId === 'docks') {
                 if (forceReset || !state.initialized) resetDockView(false);
                 renderDocks();
@@ -90123,6 +90149,285 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        // HL Order selections keep their reviewed SOC snapshot, never an inventory edit row.
+        let hlOrderSelections = new Map();
+        let hlOrderExpanded = new Set();
+        let hlOrderPreview = null;
+        let hlOrderSending = false;
+        let hlOrderAvailabilityPending = null;
+        let hlOrderAvailabilityIds = [];
+        const HL_ORDER_USERNAME = 'dylan_collyge';
+
+        function canUseHlOrder() {
+            const profile = typeof nativeAuthProfile === 'object' && nativeAuthProfile;
+            return currentUser === HL_ORDER_USERNAME && nativeAuthSessionActive && !!profile
+                && profile.username === HL_ORDER_USERNAME && !profile.disabled_at && !profile.must_change_password
+                && !(profile.locked_until && new Date(profile.locked_until).getTime() > Date.now());
+        }
+
+        function getHlOrderSource(row = {}) {
+            const source = row.HL_SOC_SOURCE || row;
+            const result = {};
+            ['unique_id','itemcode','commonname','contsize','locationcode','lotcode','quantityordered','dock','planstartdate',
+                'ptravailable','transactionnumber','purchaseordernumber','stopnumber','tripnumber','customername','consigneename'].forEach((key) => {
+                result[key] = String(source[key.toUpperCase()] ?? source[key] ?? '').trim();
+            });
+            return result;
+        }
+
+        function isHlOrderSourceEligible(source = {}) {
+            const location = String(source.locationcode || '').trim().toUpperCase();
+            return !!(source.unique_id && (source.dock || source.planstartdate))
+                && (location === 'C.05' || location === '0.00.111' || /^(C\.12|B\.10|C\.14)\..+/.test(location));
+        }
+
+        function getHlOrderSourceSignature(source = {}) {
+            return JSON.stringify(['unique_id','itemcode','contsize','locationcode','lotcode','quantityordered','dock','planstartdate']
+                .map((key) => String(source[key] ?? '').trim()));
+        }
+
+        function getHlOrderInventoryKey(row = {}) {
+            return JSON.stringify(['itemcode','contsize','locationcode','lotcode']
+                .map((key) => String(row[key.toUpperCase()] ?? row[key] ?? '').trim().toUpperCase()));
+        }
+
+        function getHlOrderMasterMatches() {
+            const matches = new Map();
+            if (!canUseHlOrder() || !canUseVerifiedProductionData(['master'])) return matches;
+            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
+                const key = getHlOrderInventoryKey(row);
+                const id = String(row.UNIQUE_ID ?? row.unique_id ?? '').trim();
+                if (!matches.has(key)) matches.set(key, new Set());
+                matches.get(key).add(id);
+            });
+            return matches;
+        }
+
+        function getHlOrderAvailability(source, matches) {
+            if (!source.itemcode || source.itemcode.includes('*')) return '';
+            const ids = [...(matches.get(getHlOrderInventoryKey(source)) || [])];
+            if (ids.length !== 1 || !ids[0]) return '';
+            const verifiedIds = hlOrderAvailabilityIds.includes(ids[0]) ? hlOrderAvailabilityIds : ids;
+            const rows = getProductionMasterDetailStore()?.getVerifiedCanonicalRows(verifiedIds)?.filter((row) => String(row.UNIQUE_ID ?? row.unique_id ?? '').trim() === ids[0]);
+            if (!rows?.length || rows.some((row) => getHlOrderInventoryKey(row) !== getHlOrderInventoryKey(source))) return '';
+            const values = new Set(rows.map((row) => parseAppNumber(row.PTRAVAILABLE ?? row.ptravailable)));
+            const quantity = [...values][0];
+            return values.size === 1 && quantity !== null && quantity >= 0 ? String(quantity) : '';
+        }
+
+        async function ensureHlOrderAvailability(rows) {
+            if (hlOrderAvailabilityPending) { try { await hlOrderAvailabilityPending; } catch (_) {} }
+            if (!canUseHlOrder()) return false;
+            const owner = captureLoginSessionOwnership();
+            const current = () => isLoginSessionOwnershipCurrent(owner) && canUseHlOrder();
+            const matches = getHlOrderMasterMatches();
+            const ids = [...new Set(rows.flatMap((row) => {
+                const matching = [...(matches.get(getHlOrderInventoryKey(row)) || [])];
+                return matching.length === 1 && matching[0] ? matching : [];
+            }))].sort();
+            const store = getProductionMasterDetailStore();
+            if (!ids.length || !store) return false;
+            if (store.getVerifiedRows(ids)) { hlOrderAvailabilityIds = ids; return false; }
+            const demandKey = beginProductionMasterDetailDemand(ids, current);
+            const pending = store.ensure(ids);
+            hlOrderAvailabilityPending = pending;
+            try {
+                if (!(await pending) || !current()) return false;
+                hlOrderAvailabilityIds = ids;
+                return true;
+            }
+            catch (_) { return false; }
+            finally {
+                productionMasterDetailDemands.delete(demandKey);
+                if (hlOrderAvailabilityPending === pending) hlOrderAvailabilityPending = null;
+            }
+        }
+
+        function getHlOrderRows() {
+            if (!canUseHlOrder()) return [];
+            const matches = getHlOrderMasterMatches();
+            return (Array.isArray(socInventory) ? socInventory : []).map((row) => {
+                const source = getHlOrderSource(row);
+                const availability = getHlOrderAvailability(source, matches);
+                return { ...source, source, ptravailable: availability, DOM_ID: 'hl-order:' + source.unique_id, SOURCE_TABLE: 'ph_soc_master', HL_ORDER: true,
+                    UNIQUE_ID: source.unique_id, ITEMCODE: source.itemcode, COMMONNAME: source.commonname, CONTSIZE: source.contsize,
+                    LOCATIONCODE: source.locationcode, LOTCODE: source.lotcode, QUANTITYORDERED: source.quantityordered,
+                    PTRAVAILABLE: availability, DOCK_NOTE: '' };
+            }).filter((row) => isHlOrderSourceEligible(row.source));
+        }
+
+        function getHlOrderQuantity(value) {
+            const text = String(value ?? '').trim().replace(/,/g, '');
+            return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text) ? parseAppNumber(text) : null;
+        }
+
+        function groupHlOrderRows(rows = []) {
+            const groups = new Map();
+            rows.forEach((row) => {
+                const key = JSON.stringify([row.itemcode.toUpperCase(), row.contsize.toUpperCase()]);
+                if (!groups.has(key)) groups.set(key, { key, itemcode: row.itemcode, contsize: row.contsize, commonname: row.commonname, rows: [], quantity: 0, invalid: false });
+                const group = groups.get(key);
+                if (group.rows.some((entry) => entry.unique_id === row.unique_id)) return;
+                group.rows.push(row);
+                const quantity = getHlOrderQuantity(row.quantityordered);
+                if (quantity === null || quantity <= 0) group.invalid = true;
+                else group.quantity += quantity;
+            });
+            return [...groups.values()].sort((a, b) => a.commonname.localeCompare(b.commonname) || a.key.localeCompare(b.key));
+        }
+
+        function buildHlOrderDetailsHtml(rows = []) {
+            const esc = escapeHtml;
+            const locations = new Map();
+            rows.forEach((row) => {
+                const key = getHlOrderInventoryKey(row);
+                if (!locations.has(key)) locations.set(key, { row, values: new Set() });
+                locations.get(key).values.add(row.ptravailable);
+            });
+            const availability = [...locations.values()].map(({ row, values }) => {
+                const quantity = values.size === 1 ? parseAppNumber(row.ptravailable) : null;
+                return `<div class="rounded-xl border border-blue-100 bg-blue-50 p-3"><strong>${esc(row.locationcode)}</strong> · Lot ${esc(row.lotcode || '—')}<div>Available: <strong>${quantity === null ? 'Not available' : esc(quantity)}</strong></div></div>`;
+            }).join('');
+            const orders = rows.map((row) => `<div class="rounded-xl border border-slate-200 p-3"><strong>Ordered: ${esc(row.quantityordered || 'Not available')}</strong> · Dock ${esc(row.dock || '—')} · Plan ${esc(row.planstartdate || '—')}<div class="text-xs text-slate-600">${esc(row.locationcode)} · ${esc(row.transactionnumber || row.purchaseordernumber || row.unique_id)} · ${esc(row.customername || '')} ${esc(row.consigneename || '')}</div></div>`).join('');
+            return `<div class="grid gap-2 text-sm">${availability}<div class="mt-2 font-bold">SOC order details</div>${orders}</div>`;
+        }
+
+        function renderHlOrder() {
+            const container = document.getElementById('hl-order-content');
+            if (!container) return;
+            if (!canUseHlOrder()) { container.innerHTML = ''; return; }
+            const groups = groupHlOrderRows(getHlOrderRows());
+            const expandedRows = groups.filter((group) => hlOrderExpanded.has(group.key)).flatMap((group) => group.rows);
+            if (expandedRows.length) void ensureHlOrderAvailability(expandedRows).then((updated) => { if (updated) renderHlOrder(); });
+            container.innerHTML = groups.map((group) => {
+                const selected = group.rows.every((row) => selectedItems.has(row.DOM_ID));
+                const open = hlOrderExpanded.has(group.key);
+                return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-hl-group="${escapeHtml(group.key)}"><div class="flex items-start justify-between gap-3"><button type="button" class="min-w-0 flex-1 text-left" aria-expanded="${open}" ${buildFastInvokeAttrs('toggleHlOrderCard', [group.key], 'View HL locations')}><h2 class="text-lg font-black text-[#007a4d]">${escapeHtml(group.commonname || group.itemcode)}</h2><div class="text-sm text-slate-600">${escapeHtml(group.itemcode)} · ${escapeHtml(group.contsize)}</div><div class="mt-2 font-bold">Ordered: ${group.invalid ? 'Review quantities' : escapeHtml(group.quantity)}</div><div class="mt-1 text-xs text-slate-500">${group.rows.length} SOC rows · ${open ? 'Hide' : 'View'} locations & availability</div></button><button type="button" class="min-h-[44px] rounded-xl bg-[#007a4d] px-4 py-3 font-bold text-white disabled:opacity-50" ${group.invalid ? 'disabled' : ''} ${buildFastInvokeAttrs('orderHlGroup', [group.key], 'Order HL plants')}>${selected ? 'In Bloom Picker' : 'Order'}</button></div>${open ? `<div class="mt-4">${buildHlOrderDetailsHtml(group.rows)}</div>` : ''}</article>`;
+            }).join('') || '<div class="p-8 text-center text-slate-500">No matching HL orders.</div>';
+        }
+
+        function toggleHlOrderCard(key) {
+            if (!canUseHlOrder()) return false;
+            if (hlOrderExpanded.has(key)) hlOrderExpanded.delete(key); else hlOrderExpanded.add(key);
+            renderHlOrder();
+            return false;
+        }
+
+        function orderHlGroup(key) {
+            if (!canUseHlOrder() || hlOrderSending) return false;
+            const group = groupHlOrderRows(getHlOrderRows()).find((entry) => entry.key === key);
+            if (!group || group.invalid) return false;
+            group.rows.forEach((row) => {
+                if (selectedItems.has(row.DOM_ID)) return;
+                hlOrderSelections.set(row.DOM_ID, row);
+                selectedItems.add(row.DOM_ID);
+                selectedItemSources.set(row.DOM_ID, 'hl-order');
+            });
+            cartPanelOpen = true;
+            bloomPickerActionsOpen = true;
+            updateGlobalActionBar();
+            renderHlOrder();
+            return false;
+        }
+
+        function getSelectedHlOrderRows() {
+            if (!canUseHlOrder()) return [];
+            return [...selectedItems].filter((id) => selectedItemSources.get(id) === 'hl-order').map((id) => hlOrderSelections.get(id)).filter(Boolean);
+        }
+
+        async function verifyHlOrderSelection() {
+            const owner = captureLoginSessionOwnership();
+            if (!canUseHlOrder() || navigator.onLine === false) throw new Error('Reconnect and sign in as dylan_collyge to send HL TAGS.');
+            await ensureDatasetLoaded('soc', 'full', { force: true });
+            if (!isLoginSessionOwnershipCurrent(owner) || !canUseHlOrder() || !canUseVerifiedProductionData(['soc'])) throw new Error('SOC data could not be verified. Refresh and try again.');
+            await ensureDatasetLoaded('master', 'full');
+            await ensureHlOrderAvailability(getSelectedHlOrderRows());
+            if (!isLoginSessionOwnershipCurrent(owner) || !canUseHlOrder()) throw new Error('Sign in again to review HL TAGS.');
+            const current = new Map(getHlOrderRows().map((row) => [row.DOM_ID, row]));
+            const rows = getSelectedHlOrderRows();
+            if (!rows.length) throw new Error('Add an HL Order to Bloom Picker first.');
+            if (rows.length > 500) throw new Error('Send up to 500 SOC rows at a time.');
+            for (const row of rows) {
+                const fresh = current.get(row.DOM_ID);
+                if (!fresh || getHlOrderSourceSignature(row.source) !== getHlOrderSourceSignature(fresh.source)) {
+                    throw new Error('An HL order changed or was removed. Remove that selection and review HL Order before adding it again.');
+                }
+                if (!(getHlOrderQuantity(fresh.quantityordered) > 0)) throw new Error('An SOC order quantity is missing or invalid.');
+            }
+            return rows.map((row) => current.get(row.DOM_ID));
+        }
+
+        async function openHlTagsPreview() {
+            if (hlOrderSending || !canUseHlOrder()) return false;
+            try {
+                const rows = await verifyHlOrderSelection();
+                const recipient = resolveRequestRecipientEmail('dylan_collyge');
+                if (!recipient) throw new Error('Your email address could not be resolved.');
+                hlOrderPreview = { rows, owner: captureLoginSessionOwnership() };
+                const dialog = document.getElementById('hl-tags-preview');
+                document.getElementById('hl-tags-preview-content').innerHTML = `<p class="mb-4 break-all text-sm">To: <strong>${escapeHtml(recipient)}</strong></p>` + groupHlOrderRows(rows).map((group) => `<section class="mb-5"><h3 class="mb-2 font-bold">${escapeHtml(group.commonname)} · ${escapeHtml(group.itemcode)} · ${escapeHtml(group.contsize)} · Ordered ${escapeHtml(group.quantity)}</h3>${buildHlOrderDetailsHtml(group.rows)}</section>`).join('');
+                document.getElementById('hl-tags-send').disabled = false;
+                if (!dialog.open) dialog.showModal();
+            } catch (error) { showToast('HL TAGS', error.message, true); }
+            return false;
+        }
+
+        function closeHlTagsPreview() {
+            if (hlOrderSending) return false;
+            document.getElementById('hl-tags-preview')?.close();
+            hlOrderPreview = null;
+            return false;
+        }
+
+        async function sendHlTagsEmail() {
+            if (hlOrderSending || !hlOrderPreview || !canUseHlOrder()) return false;
+            const preview = hlOrderPreview;
+            let deliveryAttempted = false;
+            hlOrderSending = true;
+            document.getElementById('hl-tags-send').disabled = true;
+            try {
+                const rows = await verifyHlOrderSelection();
+                if (!isLoginSessionOwnershipCurrent(preview.owner) || hlOrderPreview !== preview
+                    || JSON.stringify(rows.map((row) => getHlOrderSourceSignature(row.source))) !== JSON.stringify(preview.rows.map((row) => getHlOrderSourceSignature(row.source)))) {
+                    throw new Error('The selection changed. Close this preview and review HL TAGS again.');
+                }
+                // A single attempt: a lost response must never silently resend a farm order.
+                deliveryAttempted = true;
+                const response = await postGoogleScriptJsonPayload({ type: 'email', emailType: 'bloom_purpose_report', emailSubType: 'hl_tags', skipDylanRecipientOverride: true,
+                    accessToken: nativeAuthAccessToken, sourceRows: rows.map((row) => row.source) }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'HL TAGS');
+                if (!response || response.ok !== true || response.mode !== 'gmailapp_named' || !Array.isArray(response.recipients)
+                    || response.recipients.length !== 1 || String(response.recipients[0]).toLowerCase() !== resolveRequestRecipientEmail('dylan_collyge').toLowerCase()) {
+                    throw new Error(getGoogleScriptEmailFailureMessage(response, 'Delivery was not confirmed. Check your inbox before retrying.'));
+                }
+                if (!isLoginSessionOwnershipCurrent(preview.owner)) return false;
+                rows.forEach((row) => {
+                    selectedItems.delete(row.DOM_ID); selectedItemSources.delete(row.DOM_ID); hlOrderSelections.delete(row.DOM_ID);
+                });
+                hlOrderPreview = null;
+                document.getElementById('hl-tags-preview')?.close();
+                updateGlobalActionBar();
+                renderHlOrder();
+                showToast('HL TAGS Sent', 'Order details emailed to dylan_collyge.');
+            } catch (error) {
+                const message = error.message || 'HL TAGS could not be sent.';
+                showToast('HL TAGS', deliveryAttempted ? `${message} Check your inbox before sending again; delivery may have occurred.` : message, true);
+            } finally {
+                hlOrderSending = false;
+                document.getElementById('hl-tags-send').disabled = false;
+            }
+            return false;
+        }
+
+        function resetHlOrderState() {
+            [...selectedItemSources].forEach(([id, source]) => {
+                if (source === 'hl-order') { selectedItems.delete(id); selectedItemSources.delete(id); }
+            });
+            hlOrderSelections.clear(); hlOrderExpanded.clear(); hlOrderPreview = null; hlOrderAvailabilityIds = [];
+            document.getElementById('hl-tags-preview')?.close();
+            const container = document.getElementById('hl-order-content');
+            if (container) container.innerHTML = '';
+        }
+
         function getCartSelectedItems() {
             const items = [];
             selectedItems.forEach((domId) => {
@@ -90144,7 +90449,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function isDockLikeItem(item) {
-            return !!(item && (item.STOPNUMBER != null || item.TRIPNUMBER != null || item.DOCK_NOTE != null));
+            return !!(item && (item.HL_ORDER === true || item.STOPNUMBER != null || item.TRIPNUMBER != null || item.DOCK_NOTE != null));
         }
 
         function isSalesOfficeLikeItem(item) {
@@ -93360,6 +93665,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getBloomPickerActionVisibility(items = getCartSelectedItems()) {
+            if (items.some((item) => item && item.HL_ORDER === true)) return {};
             const access = getRoleAccessState();
             const canUseFullDriveActions = canUseFullDriveBloomPickerActions(items);
             const canUseInventoryActions = canUseCartInventoryActions(items);
@@ -93555,6 +93861,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getBloomPickerTrayRowHtml(item, index = 0) {
             if (!item) return '';
+            if (item.HL_ORDER === true) return `<div class="rounded-xl border border-emerald-200 bg-white p-3"><div class="flex justify-between gap-2"><strong>${escapeHtml(item.commonname)} · ${escapeHtml(item.contsize)}</strong><button type="button" class="min-h-[44px] px-2 text-red-700" ${buildFastInvokeAttrs('removeBloomPickerTrayRow', [item.DOM_ID], 'Remove HL row')}>Remove</button></div><div class="text-sm">HL Order · ${escapeHtml(item.itemcode)} · ${escapeHtml(item.locationcode)} · Ordered ${escapeHtml(item.quantityordered)}</div></div>`;
             const domId = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, '') || '').trim();
             if (!domId) return '';
             const safeDomId = escapeHtml(domId);
@@ -93715,6 +94022,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeDomId = String(domId || '').trim();
             if (!safeDomId || !selectedItems.has(safeDomId)) return false;
             toggleGlobalItem(safeDomId, false);
+            if (safeDomId.startsWith('hl-order:')) { hlOrderSelections.delete(safeDomId); renderHlOrder(); }
             if (cartPanelOpen) renderBloomPickerTrayRows();
             return false;
         }
@@ -99967,6 +100275,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.body.classList.remove('multi-select-mode');
             selectedItems.clear();
             selectedItemSources.clear();
+            if (typeof hlOrderSelections !== 'undefined') hlOrderSelections.clear();
             cartPanelOpen=false;
             bloomPickerActionsOpen=false;
             bloomShareMenuOpen=false;
@@ -136892,8 +137201,11 @@ C.14.043 C.15.000
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
             const actionVisibility=getBloomPickerActionVisibility(items);
+            const hasHlOrders = canUseHlOrder() && getSelectedHlOrderRows().length > 0;
+            const hlButton = document.getElementById('batch-btn-hl-tags');
+            if (hlButton) hlButton.classList.toggle('hidden', !hasHlOrders || !cartPanelOpen);
             const hasShareOptions=!!(actionVisibility.showCopy || actionVisibility.showEmail || actionVisibility.showText);
-            const hasAnyAction=!!(hasShareOptions || actionVisibility.showAssign || actionVisibility.showEvalTask || actionVisibility.showNcr || actionVisibility.showRequest || actionVisibility.showMove || actionVisibility.showFlyer || actionVisibility.showTakeBack || actionVisibility.showEndCap || actionVisibility.showShear || actionVisibility.showBloomOrder);
+            const hasAnyAction=!!(hasHlOrders || hasShareOptions || actionVisibility.showAssign || actionVisibility.showEvalTask || actionVisibility.showNcr || actionVisibility.showRequest || actionVisibility.showMove || actionVisibility.showFlyer || actionVisibility.showTakeBack || actionVisibility.showEndCap || actionVisibility.showShear || actionVisibility.showBloomOrder);
             if(!hasItems || !cartPanelOpen || !hasAnyAction){
                 bloomPickerActionsOpen=false;
                 bloomShareMenuOpen=false;
