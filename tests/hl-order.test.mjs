@@ -198,3 +198,20 @@ test('review restore distinguishes an existing source from a missing original an
   assert.doesNotMatch(render({current_source: row(), review_kind: 'possible_replacement'}), /Restore to Needed/);
   assert.doesNotMatch(render({current_source: row(), replacement_source_id: 'sibling'}), /Restore to Needed/);
 });
+
+test('a successful state refresh keeps unresolved command recovery visible until that exact command is acknowledged', () => {
+  const ctx = runtime(), container = {innerHTML: '', contains: () => false};
+  ctx.document = {getElementById: (id) => id === 'hl-order-content' ? container : null};
+  ctx.buildFastInvokeAttrs = () => '';
+  ctx.syncHlOrderDraftSelections = () => {};
+  ctx.updateGlobalActionBar = () => {};
+  ctx.getHlOrderNeededGroups = () => [];
+  vm.runInContext(`hlOrderStateData = {revision: 1, draft: [], orders: []};
+    hlOrderPendingCommand = {p_command_id: 'lost-submit-command', p_action: 'submit'};
+    hlOrderStateError = 'Connection reset';`, ctx);
+  ctx.renderHlOrder(true);
+  assert.match(container.innerHTML, /Check saved change/);
+  ctx.applyHlOrderState({revision: 2, draft: [], orders: []});
+  assert.equal(vm.runInContext('hlOrderPendingCommand.p_command_id', ctx), 'lost-submit-command');
+  assert.match(container.innerHTML, /Check saved change/, 'read-only refresh is not an acknowledgement of the pending command');
+});

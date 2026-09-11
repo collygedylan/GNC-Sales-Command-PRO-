@@ -218,6 +218,9 @@ test('a lost submit response recovers the same command instead of creating anoth
   fixture.loseSubmitResponse = false;
   await page.locator('#hl-tags-preview').getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
+  const refreshed = page.waitForResponse((response) => response.url().endsWith('/rpc/hl_order_state'));
+  await page.locator('[data-hl-tab="needed"]').click();
+  await refreshed;
   await page.getByRole('button', { name: 'Check saved change', exact: true }).click();
   await expect.poll(() => actions(fixture, 'submit').length).toBeGreaterThan(1);
   expect(new Set(actions(fixture, 'submit').map((command: any) => command.p_command_id)).size).toBe(1);

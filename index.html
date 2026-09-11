@@ -90480,7 +90480,8 @@ function toggleDriveQuickRequestItem(domId) {
             const esc = escapeHtml;
             const tabs = [['needed','Needed'],['orders','Orders'],['needs-review','Needs Review'],['history','History'],['removed','Removed']];
             const nav = `<nav aria-label="HL order views" class="flex flex-wrap gap-2">${tabs.map(([tab, label]) => `<button type="button" data-hl-tab="${tab}" aria-current="${hlOrderTab === tab ? 'page' : 'false'}" class="min-h-[44px] rounded-xl border px-3 py-2 font-bold ${hlOrderTab === tab ? 'border-emerald-700 bg-emerald-100 text-emerald-900' : 'bg-white text-slate-600'}" ${buildFastInvokeAttrs('setHlOrderTab', [tab], label)}>${label}</button>`).join('')}</nav>`;
-            const warning = hlOrderStateError ? `<div role="alert" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">${esc(hlOrderStateError)}<div class="mt-2 flex flex-wrap gap-2">${hlOrderButton('refreshHlOrder', [], 'Refresh', true)}${hlOrderPendingCommand ? hlOrderButton('retryHlOrderCommand', [], 'Check saved change', true) : ''}</div></div>` : '';
+            const warningMessage = hlOrderStateError || (hlOrderPendingCommand && !hlOrderBusy ? 'The previous HL change has not been confirmed. Check its saved result before making another change.' : '');
+            const warning = warningMessage ? `<div role="alert" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">${esc(warningMessage)}<div class="mt-2 flex flex-wrap gap-2">${hlOrderButton('refreshHlOrder', [], 'Refresh', true)}${hlOrderPendingCommand ? hlOrderButton('retryHlOrderCommand', [], 'Check saved change', true) : ''}</div></div>` : '';
             if (!hlOrderStateData) { container.innerHTML = nav + warning + '<p class="p-6 text-slate-600">Loading saved HL orders…</p>'; return; }
             let body = '';
             if (hlOrderTrackingId) body = buildHlOrderTrackingHtml();
