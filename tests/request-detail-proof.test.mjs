@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { Blob, File } from 'node:buffer';
 import test from 'node:test';
 import vm from 'node:vm';
 
@@ -291,6 +292,217 @@ for (const [name, change] of [
     assert.equal(h.proof.fence.permissionVersion, 'permission-a');
   });
 }
+
+function installDurablePhotoStorage(ctx, { held = false, failure = '' } = {}) {
+  const writes = [], committed = [], gate = deferred(), entered = deferred();
+  Object.assign(ctx, {
+    Blob, File, ArrayBuffer, Uint8Array,
+    REQUEST_BLOB_STORE: ctx.REQUEST_BLOB_STORE || 'request_blobs',
+    openDB: async () => ({ transaction(storeName, mode) {
+      const tx = { error: null };
+      tx.objectStore = name => {
+        assert.equal(name, storeName);
+        return {
+          put(record) {
+            assert.equal(mode, 'readwrite');
+            // Reproduce the WebKit limitation at the real IDB boundary. The
+            // Request-only encoder must remove the native Blob before this.
+            if (storeName === ctx.REQUEST_BLOB_STORE && record.blob instanceof Blob) {
+              throw new Error('Synthetic WebKit cannot store native Blob/File');
+            }
+            writes.push({ storeName, record });
+            entered.resolve();
+            if (failure === 'synchronous') throw new Error('Synthetic synchronous storage failure');
+            Promise.resolve(held ? gate.promise : undefined).then(() => {
+              if (failure) {
+                tx.error = new Error(`Synthetic storage ${failure}`);
+                if (failure === 'abort') tx.onabort();
+                else tx.onerror();
+                return;
+              }
+              committed.push({ storeName, record: structuredClone(record) });
+              tx.oncomplete();
+            });
+          },
+          getAll() {
+            assert.equal(mode, 'readonly');
+            const request = {};
+            queueMicrotask(() => {
+              request.result = committed.filter(entry => entry.storeName === storeName)
+                .map(entry => structuredClone(entry.record));
+              request.onsuccess();
+            });
+            return request;
+          },
+        };
+      };
+      return tx;
+    } }),
+  });
+  vm.runInContext(['serializeRequestPhotoBlobRecord', 'deserializeRequestPhotoBlobRecord',
+    'putIndexedDbRecord', 'getAllIndexedDbRecords'].map(appFunction).join('\n'), ctx);
+  return { writes, committed, entered: entered.promise, release: () => gate.resolve() };
+}
+
+const binaryPhotoBytes = Uint8Array.from([0, 255, 137, 80, 78, 71, 13, 10, 0, 26, 10, 64, 128, 254]);
+const originalPhotoModified = 1789063200123;
+function binaryPhoto() {
+  return new File([binaryPhotoBytes], 'original camera photo.png', { type: 'image/png', lastModified: originalPhotoModified });
+}
+
+test('durable Request photo encoding round-trips exact bytes and original File metadata separately from its generated upload name', async () => {
+  const ctx = vm.createContext({});
+  installDurablePhotoStorage(ctx);
+  const file = binaryPhoto();
+  const record = { blobId: 'synthetic-blob', requestId: 'synthetic-request', fileName: 'generated-upload.webp',
+    contentType: file.type, blob: file, acknowledged: false, createdAt: '2026-09-10T22:00:00Z' };
+  const encoded = await ctx.serializeRequestPhotoBlobRecord(record);
+  assert.equal(Object.hasOwn(encoded, 'blob'), false);
+  assert.equal(encoded.blobStorage, 'arraybuffer-v1');
+  assert.deepEqual(new Uint8Array(encoded.blobBytes), binaryPhotoBytes);
+  assert.equal(encoded.blobName, file.name);
+  assert.equal(encoded.blobType, file.type);
+  assert.equal(encoded.blobLastModified, originalPhotoModified);
+  assert.equal(encoded.fileName, 'generated-upload.webp');
+  assert.equal(encoded.requestId, record.requestId);
+  assert.equal(encoded.acknowledged, false);
+  assert.equal(record.blob, file, 'serialization leaves the retained original File untouched');
+  assert.equal(Object.hasOwn(record, 'blobBytes'), false);
+
+  const decoded = ctx.deserializeRequestPhotoBlobRecord(structuredClone(encoded));
+  assert.ok(decoded.blob instanceof File);
+  assert.equal(decoded.blob.name, file.name);
+  assert.equal(decoded.blob.type, file.type);
+  assert.equal(decoded.blob.lastModified, originalPhotoModified);
+  assert.deepEqual(new Uint8Array(await decoded.blob.arrayBuffer()), binaryPhotoBytes);
+  assert.equal(decoded.fileName, 'generated-upload.webp');
+});
+
+test('legacy Blob records and unnamed binary Blobs remain readable, including sliced byte views', async () => {
+  const ctx = vm.createContext({});
+  installDurablePhotoStorage(ctx);
+  const blob = new Blob([binaryPhotoBytes], { type: 'image/jpeg' });
+  const legacy = { blobId: 'legacy', fileName: 'legacy-camera.jpg', blob };
+  assert.equal(ctx.deserializeRequestPhotoBlobRecord(legacy), legacy, 'the existing Blob record shape is unchanged');
+  assert.equal(ctx.deserializeRequestPhotoBlobRecord(legacy).blob, blob);
+  const encoded = await ctx.serializeRequestPhotoBlobRecord(legacy);
+  assert.equal(encoded.blobName, null);
+  const decoded = ctx.deserializeRequestPhotoBlobRecord(encoded);
+  assert.ok(decoded.blob instanceof Blob);
+  assert.equal(decoded.blob instanceof File, false);
+  assert.equal(decoded.blob.type, 'image/jpeg');
+  assert.deepEqual(new Uint8Array(await decoded.blob.arrayBuffer()), binaryPhotoBytes);
+
+  const padded = Uint8Array.from([99, 98, ...binaryPhotoBytes, 97]);
+  const fromView = ctx.deserializeRequestPhotoBlobRecord({ ...encoded, blobBytes: padded.subarray(2, padded.length - 1) });
+  assert.deepEqual(new Uint8Array(await fromView.blob.arrayBuffer()), binaryPhotoBytes,
+    'restoration respects a typed-array view offset and length');
+});
+
+test('unreadable Request photo records fail closed on serialization and restored IDB reads', async () => {
+  const ctx = vm.createContext({});
+  const storage = installDurablePhotoStorage(ctx);
+  await assert.rejects(ctx.serializeRequestPhotoBlobRecord({ blob: {} }), /could not be read/);
+  await assert.rejects(ctx.serializeRequestPhotoBlobRecord({ blob: { arrayBuffer: async () => 'not bytes' } }), /readable binary/);
+  for (const blobBytes of [null, undefined, {}, 'base64-like-text']) {
+    assert.throws(() => ctx.deserializeRequestPhotoBlobRecord({ blobStorage: 'arraybuffer-v1', blobBytes }), /unreadable/);
+  }
+  storage.committed.push({ storeName: ctx.REQUEST_BLOB_STORE,
+    record: { blobId: 'broken', blobStorage: 'arraybuffer-v1', blobBytes: null } });
+  await assert.rejects(ctx.getAllIndexedDbRecords(ctx.REQUEST_BLOB_STORE), /unreadable/);
+  assert.equal(storage.writes.length, 0);
+});
+
+test('IDB serialization is Request-only and decoded reads preserve the existing record.blob contract', async () => {
+  const ctx = vm.createContext({});
+  const storage = installDurablePhotoStorage(ctx);
+  const file = binaryPhoto();
+  const record = { blobId: 'encoded', requestId: 'synthetic-request', fileName: 'generated.png', blob: file };
+  assert.equal(await ctx.putIndexedDbRecord(ctx.REQUEST_BLOB_STORE, record), record,
+    'successful persistence resolves its original caller contract');
+  assert.equal(Object.hasOwn(storage.writes[0].record, 'blob'), false);
+  assert.equal(storage.committed.length, 1);
+  const [read] = await ctx.getAllIndexedDbRecords(ctx.REQUEST_BLOB_STORE);
+  assert.ok(read.blob instanceof File);
+  assert.equal(read.blob.name, file.name);
+  assert.equal(read.blob.lastModified, file.lastModified);
+  assert.deepEqual(new Uint8Array(await read.blob.arrayBuffer()), binaryPhotoBytes);
+  const legacyBlob = new Blob([binaryPhotoBytes], { type: 'image/png' });
+  storage.committed.push({ storeName: ctx.REQUEST_BLOB_STORE, record: { blobId: 'legacy', blob: legacyBlob } });
+  assert.deepEqual(new Uint8Array(await (await ctx.getAllIndexedDbRecords(ctx.REQUEST_BLOB_STORE))[1].blob.arrayBuffer()), binaryPhotoBytes);
+
+  const otherRecord = { clientBatchId: 'synthetic-outbox', blob: file, status: 'pending' };
+  assert.equal(await ctx.putIndexedDbRecord('request_outbox', otherRecord), otherRecord);
+  assert.equal(storage.writes[1].record, otherRecord, 'unrelated stores do not run the photo codec');
+  assert.equal(Object.hasOwn((await ctx.getAllIndexedDbRecords('request_outbox'))[0], 'blobStorage'), false);
+});
+
+test('the actual Request queue waits for durable binary transaction completion before starting HTTP', async () => {
+  const h = await requestCameraFixture();
+  const file = binaryPhoto();
+  h.selection.files = [file];
+  let httpUploads = 0;
+  const q = installPhotoQueueBoundaries(h, async () => { httpUploads++; return h.uploaded; });
+  const storage = installDurablePhotoStorage(h.ctx, { held: true });
+  assert.equal(await h.ctx.retryRetainedRequestCameraSelection(), true);
+  await storage.entered;
+  assert.equal(Object.hasOwn(storage.writes[0].record, 'blob'), false);
+  assert.equal(storage.writes[0].record.blobName, file.name);
+  assert.equal(storage.committed.length, 0);
+  assert.equal(httpUploads, 0);
+  assert.equal(q.publications.length, 0);
+  assert.equal(h.selection.files[0], file);
+  storage.release();
+  assert.equal(await q.uploads[0], h.uploaded.publicUrl);
+  assert.equal(storage.committed.length, 1);
+  assert.equal(httpUploads, 1);
+  assert.equal(q.persists.length, 1);
+  const [restored] = await h.ctx.getAllIndexedDbRecords(h.ctx.REQUEST_BLOB_STORE);
+  assert.equal(restored.blob.name, file.name);
+  assert.equal(restored.blob.lastModified, file.lastModified);
+  assert.deepEqual(new Uint8Array(await restored.blob.arrayBuffer()), binaryPhotoBytes);
+});
+
+for (const failure of ['error', 'abort', 'synchronous']) {
+  test(`a durable Request photo storage ${failure} retains the File and cannot start HTTP or publish photos`, async () => {
+    const h = await requestCameraFixture();
+    const file = binaryPhoto();
+    h.selection.files = [file];
+    let httpUploads = 0;
+    const q = installPhotoQueueBoundaries(h, async () => { httpUploads++; return h.uploaded; });
+    const storage = installDurablePhotoStorage(h.ctx, { failure });
+    const before = photoRows(h);
+    assert.equal(await h.ctx.retryRetainedRequestCameraSelection(), true);
+    await assert.rejects(q.uploads[0], /Synthetic.*storage/);
+    assert.equal(storage.committed.length, 0);
+    assert.equal(httpUploads, 0);
+    assert.equal(q.publications.length, 0);
+    assert.equal(q.persists.length, 0);
+    assert.equal(h.selection.files[0], file);
+    assert.deepEqual(photoRows(h), before);
+  });
+}
+
+test('a login change during durable Request photo storage cannot start an old-session upload', async () => {
+  const h = await requestCameraFixture();
+  const file = binaryPhoto();
+  h.selection.files = [file];
+  let httpUploads = 0;
+  const q = installPhotoQueueBoundaries(h, async () => { httpUploads++; return h.uploaded; });
+  const storage = installDurablePhotoStorage(h.ctx, { held: true });
+  const before = photoRows(h);
+  assert.equal(await h.ctx.retryRetainedRequestCameraSelection(), true);
+  await storage.entered;
+  h.state.loginGeneration++;
+  storage.release();
+  await assert.rejects(q.uploads[0], /could not be verified/);
+  assert.equal(storage.committed.length, 1, 'the original binary recovery record remains durable');
+  assert.equal(httpUploads, 0);
+  assert.equal(q.publications.length, 0);
+  assert.equal(q.persists.length, 0);
+  assert.equal(h.selection.files[0], file);
+  assert.deepEqual(photoRows(h), before);
+});
 
 for (const [name, change] of [
   ['offline state', h => { h.ctx.navigator.onLine = false; h.context.online = false; }],
@@ -1164,3 +1376,127 @@ for (const [name, change] of [
     assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.currentProof);
   });
 }
+
+async function requestCompletionFixture() {
+  const h = await requestCameraFixture({ contsize: '#7' });
+  h.selection.files = [];
+  h.ctx.pendingRequestCameraSelection = null;
+  assert.equal(h.ctx.transferProductionRequestDetailBinding(h.source, h.target), true);
+  const calls = [], timers = new Map();
+  let timerId = 0;
+  Object.assign(h.ctx, {
+    setTimeout: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, delay }); return id; },
+    clearTimeout: id => timers.delete(id),
+    supabaseRpc: async (name, args, options) => {
+      h.ctx.guardProductionDataCommand(name, args);
+      calls.push({ name, args, options });
+      return { row: { unique_id: h.target.UNIQUE_ID, row_version: 8, req_status: 'Complete' } };
+    },
+  });
+  vm.runInContext(['requireVerifiedProductionData', 'guardProductionDataCommand',
+    'captureProductionRequestCompletionContext', 'commitRequestWorkWithVerifiedCompletion'].map(appFunction).join('\n'), h.ctx);
+  const completion = h.ctx.captureProductionRequestCompletionContext(h.target);
+  assert.ok(completion, 'completion starts with actual current detail proof and native capability policy');
+  const args = { request_id: h.target.UNIQUE_ID, expected_version: 7, complete: true,
+    patch: { req_spec: 'REVIEWED SPEC', drive_photo_link: 'https://synthetic.invalid/saved-photo.jpg' } };
+  const rpcOptions = { timeoutMs: 30000 };
+  return { ...h, calls, timers, completion, args, rpcOptions,
+    commit: () => h.ctx.commitRequestWorkWithVerifiedCompletion(completion, h.target, args, rpcOptions) };
+}
+
+async function holdRequestCompletionCheck(h) {
+  const entered = deferred(), held = deferred();
+  h.state.metadataHook = async metadata => { entered.resolve(); await held.promise; return metadata; };
+  const checking = h.coordinator.check('synthetic-completion-confirmation-background-check');
+  await entered.promise;
+  assert.equal(h.ctx.canUseVerifiedProductionData(['master', 'requests']), false,
+    'the real background check withholds readiness while confirmation is open');
+  assert.equal(h.ctx.isProductionMasterDetailBindingCurrent(h.target), true,
+    'temporary verification did not change the reviewed immutable proof');
+  return { checking, release: () => held.resolve() };
+}
+
+test('Request completion waits for an unchanged background check and dispatches exactly one original guarded save', async () => {
+  const h = await requestCompletionFixture(), held = await holdRequestCompletionCheck(h);
+  const rowsBefore = photoRows(h), argsBefore = structuredClone(h.args);
+  const pending = h.commit();
+  await Promise.resolve();
+  assert.equal(h.calls.length, 0, 'no write while real dataset verification is pending');
+  held.release();
+  await held.checking;
+  const result = await pending;
+  assert.equal(result.row.req_status, 'Complete');
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].name, 'save_request_work');
+  assert.equal(h.calls[0].args, h.args, 'the original row, expected version and patch are dispatched unchanged');
+  assert.equal(h.calls[0].options, h.rpcOptions);
+  assert.deepEqual(h.args, argsBefore);
+  assert.deepEqual(photoRows(h), rowsBefore, 'the barrier itself never publishes optimistic row changes');
+  assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof, 'waiting cannot manufacture fresh proof');
+  assert.equal(h.timers.size, 0);
+});
+
+for (const [name, change] of [
+  ['account', h => { h.state.scope = h.context.scope = 'synthetic-account-b'; }],
+  ['login generation', h => { h.state.loginGeneration++; }],
+  ['auth epoch', h => { h.state.authEpoch++; }],
+  ['permission revision', h => { h.state.permission = h.context.permissionVersion = h.dataset.liveVerifiedPermission = 'permission-b'; }],
+  ['master revision', h => { h.state.revision = h.context.revision = h.dataset.liveVerifiedRevision = '2'; }],
+  ['detail generation', h => { h.ctx.detailHydrationToken++; }],
+  ['active Request', h => { h.ctx.activeItem = { ...h.source, UNIQUE_ID: 'OTHER-REQUEST' }; }],
+  ['canonical Request ID', h => { h.target.UNIQUE_ID = 'OTHER-REQUEST'; }],
+  ['canonical master ID', h => { h.target.MASTER_ID = 'OTHER-MASTER'; }],
+  ['canonical master alias', h => { h.target.master_id = 'OTHER-MASTER'; }],
+  ['canonical container', h => { h.target.CONTSIZE = '#15'; }],
+  ['completion capability', h => { h.capabilities.canComplete = false; }],
+  ['edit capability', h => { h.capabilities.canEdit = false; }],
+  ['offline state', h => { h.ctx.navigator.onLine = h.context.online = false; }],
+  ['hidden page', h => { h.ctx.document.hidden = true; h.context.visible = false; }],
+]) {
+  test(`Request completion makes no RPC if ${name} changes during the verification wait`, async () => {
+    const h = await requestCompletionFixture(), held = await holdRequestCompletionCheck(h);
+    const pending = h.commit();
+    const rejected = assert.rejects(pending, error =>
+      ['REQUEST_ABORTED', 'REQUEST_COMPLETION_CHANGED', 'DATA_NOT_VERIFIED'].includes(error.code));
+    await Promise.resolve();
+    assert.equal(h.calls.length, 0);
+    change(h);
+    const rowsBeforeRelease = photoRows(h);
+    held.release();
+    await held.checking;
+    await rejected;
+    assert.equal(h.calls.length, 0, 'changed context cannot dispatch a mutation');
+    assert.deepEqual(photoRows(h), rowsBeforeRelease);
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+    assert.equal(h.timers.size, 0);
+  });
+}
+
+test('Request completion verification timeout cannot send a late save when the read eventually finishes', async () => {
+  const h = await requestCompletionFixture(), held = await holdRequestCompletionCheck(h);
+  const pending = h.commit(), rejected = assert.rejects(pending, error => error.code === 'DATA_NOT_VERIFIED');
+  await Promise.resolve();
+  assert.equal(h.calls.length, 0);
+  const timeout = [...h.timers.values()].find(timer => timer.delay === 15000);
+  assert.ok(timeout, 'the read-only verification barrier is bounded');
+  timeout.callback();
+  await rejected;
+  held.release();
+  await held.checking;
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(h.calls.length, 0, 'the losing verification continuation cannot write after timeout');
+  assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+});
+
+test('Request completion returns a dispatched RPC failure without retrying the mutation', async () => {
+  const h = await requestCompletionFixture();
+  const failure = new Error('Synthetic save failed after dispatch');
+  h.ctx.supabaseRpc = async (name, args) => {
+    h.ctx.guardProductionDataCommand(name, args);
+    h.calls.push({ name, args });
+    throw failure;
+  };
+  await assert.rejects(h.commit(), error => error === failure);
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].args, h.args);
+});

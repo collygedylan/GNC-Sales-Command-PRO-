@@ -30515,13 +30515,44 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }catch(e){ return null; }
         }
 
+        async function serializeRequestPhotoBlobRecord(record) {
+            if (!record || !record.blob) return record;
+            const { blob, ...metadata } = record;
+            if (typeof blob.arrayBuffer !== 'function') throw new Error('The Request photo could not be read for local storage.');
+            const bytes = await blob.arrayBuffer();
+            if (Object.prototype.toString.call(bytes) !== '[object ArrayBuffer]') {
+                throw new Error('The Request photo did not provide readable binary data.');
+            }
+            // WebKit can reject native Blob/File structured cloning. Binary
+            // bytes keep the same durable transaction without that dependency.
+            return { ...metadata, blobStorage: 'arraybuffer-v1', blobBytes: bytes,
+                blobType: String(blob.type || ''), blobName: typeof blob.name === 'string' ? blob.name : null,
+                blobLastModified: Number.isFinite(blob.lastModified) ? blob.lastModified : null };
+        }
+
+        function deserializeRequestPhotoBlobRecord(record) {
+            if (!record || record.blobStorage !== 'arraybuffer-v1') return record;
+            const bytes = record.blobBytes;
+            if (Object.prototype.toString.call(bytes) !== '[object ArrayBuffer]' && !ArrayBuffer.isView(bytes)) {
+                throw new Error('The retained Request photo binary data is unreadable.');
+            }
+            const type = String(record.blobType || '');
+            const blob = typeof record.blobName === 'string' && typeof File === 'function'
+                ? new File([bytes], record.blobName, { type,
+                    ...(Number.isFinite(record.blobLastModified) ? { lastModified: record.blobLastModified } : {}) })
+                : new Blob([bytes], { type });
+            return { ...record, blob };
+        }
+
         async function putIndexedDbRecord(storeName, record) {
+            const storedRecord = storeName === REQUEST_BLOB_STORE ? await serializeRequestPhotoBlobRecord(record) : record;
             const db = await openDB();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(storeName, 'readwrite');
-                tx.objectStore(storeName).put(record);
+                tx.objectStore(storeName).put(storedRecord);
                 tx.oncomplete = () => resolve(record);
                 tx.onerror = () => reject(tx.error || new Error(`Could not save ${storeName}.`));
+                if (storeName === REQUEST_BLOB_STORE) tx.onabort = () => reject(tx.error || new Error(`Could not save ${storeName}.`));
             });
         }
 
@@ -30530,7 +30561,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(storeName, 'readonly');
                 const request = tx.objectStore(storeName).getAll();
-                request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
+                request.onsuccess = () => {
+                    try {
+                        const records = Array.isArray(request.result) ? request.result : [];
+                        resolve(storeName === REQUEST_BLOB_STORE ? records.map(deserializeRequestPhotoBlobRecord) : records);
+                    } catch (error) { reject(error); }
+                };
                 request.onerror = () => reject(request.error || new Error(`Could not read ${storeName}.`));
             });
         }
@@ -35174,6 +35210,83 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             productionMasterDetailSaveQueues.set(key, pending);
             try { return await pending; }
             finally { if (productionMasterDetailSaveQueues.get(key) === pending) productionMasterDetailSaveQueues.delete(key); }
+        }
+
+        function captureProductionRequestCompletionContext(item) {
+            if (!usesProductionMasterListProjection()) return null;
+            return Object.freeze({ owner: captureLoginSessionOwnership(), readIdentity: getSupabaseReadIdentityScope(),
+                session: productionMasterDetailSession, token: detailHydrationToken,
+                rowIdentity: getProductionMasterDetailIdentity(item),
+                ids: Object.freeze(getProductionMasterDetailIds(item).sort()),
+                requestId: String(item.UNIQUE_ID || item.unique_id || ''),
+                source: String(item.SOURCE || item.source || ''),
+                containerSize: String(item.CONTSIZE || item.contsize || '').trim().toUpperCase(),
+                fence: Object.freeze({ ...getProductionMasterDetailContext() }) });
+        }
+
+        async function commitRequestWorkWithVerifiedCompletion(context, item, rpcArgs, rpcOptions) {
+            let timeout;
+            let expired = false;
+            const fail = (message, code = 'REQUEST_COMPLETION_CHANGED') => {
+                const error = new Error(message); error.code = code; throw error;
+            };
+            const container = (row) => {
+                const values = [...new Set([row?.CONTSIZE, row?.contsize]
+                    .map((value) => String(value ?? '').trim().toUpperCase()).filter(Boolean))];
+                return values.length > 1 ? null : (values[0] || '');
+            };
+            const assertCurrent = () => {
+                if (!context || expired || !usesProductionMasterListProjection()) fail('The original Request completion could not be verified.');
+                if (!isLoginSessionOwnershipCurrent(context.owner) || context.readIdentity !== getSupabaseReadIdentityScope()
+                    || context.session !== productionMasterDetailSession || context.token !== detailHydrationToken
+                    || !isProductionMasterDetailSessionCurrent(context.session)) {
+                    fail('The Request or login changed before completion.', 'REQUEST_ABORTED');
+                }
+                if (document.hidden || navigator.onLine === false || context.session.status !== 'ready'
+                    || !productionMasterDetailFenceMatches(context.fence)
+                    || !isProductionMasterDetailBindingCurrent(item) || !isProductionMasterDetailBindingCurrent(activeItem)
+                    || getProductionMasterDetailIdentity(item) !== context.rowIdentity
+                    || getProductionMasterDetailIdentity(activeItem) !== context.rowIdentity
+                    || JSON.stringify(getProductionMasterDetailIds(item).sort()) !== JSON.stringify(context.ids)
+                    || container(item) !== context.containerSize || container(activeItem) !== context.containerSize
+                    || !rpcArgs?.complete || String(rpcArgs.request_id || '') !== context.requestId) {
+                    fail('The reviewed Request changed. Review the current row before completing it.');
+                }
+                const canonical = findRequestRowByUniqueId(context.requestId);
+                if (!canonical || String(canonical.UNIQUE_ID || canonical.unique_id || '') !== context.requestId
+                    || JSON.stringify(getProductionMasterDetailIds(canonical).sort()) !== JSON.stringify(context.ids)
+                    || container(canonical) !== context.containerSize) fail('The current Request refers to different inventory.');
+                // Native Request rows may omit SOURCE. Compare a temporary
+                // identity only; never change a row or manufacture a new proof.
+                const candidate = { ...canonical };
+                if (![candidate.SOURCE, candidate.source].some((value) => String(value ?? '').trim())) candidate.SOURCE = context.source;
+                if (getProductionMasterDetailIdentity(candidate) !== context.rowIdentity) fail('The current Request identity changed.');
+            };
+            assertCurrent();
+            const verify = async () => {
+                const coordinator = getProductionLiveSyncCoordinator();
+                for (const key of getProductionDetailDatasetKeys('req-')) {
+                    await coordinator.ensure(createProductionCoreLiveAdapter(key));
+                    assertCurrent();
+                }
+                await getProductionMasterDetailStore().ensure(context.ids);
+                assertCurrent();
+                return true;
+            };
+            try {
+                const verified = await Promise.race([verify(), new Promise((resolve) => {
+                    timeout = setTimeout(() => { expired = true; resolve(false); }, 15000);
+                })]);
+                if (!verified) fail('Current Request verification timed out. Your entries are retained.', 'DATA_NOT_VERIFIED');
+                assertCurrent();
+                if (!canUseVerifiedProductionData(getProductionDetailDatasetKeys('req-')) || !hasProductionMasterDetailForItem(item)
+                    || !canEditRowDetails('req-', item) || !canCurrentUserWorkRequestItem(item, 'complete')) {
+                    fail('Current Request completion access could not be verified.', 'DATA_NOT_VERIFIED');
+                }
+                // Keep dispatch in this continuation: another await after the
+                // final guard could reopen the confirmation/verification race.
+                return supabaseRpc('save_request_work', rpcArgs, rpcOptions);
+            } finally { clearTimeout(timeout); }
         }
 
         function captureProductionRequestDetailOwnSave(item, patch, isComplete) {
@@ -160031,6 +160144,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
 
+            const requestCompletionContext = prefix === 'req-' && isComplete
+                ? captureProductionRequestCompletionContext(itemToSave) : null;
             markLocalRowSaveRefreshQuiet(`save:${String(prefix || 'row')}`);
 
             if (isComplete || !isCoordinatedAutoSave) clearQueuedLagSensitiveInputSave(prefix);
@@ -161303,12 +161418,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                             requestDetailTicket = captureProductionRequestDetailOwnSave(itemToSave, requestPatch, isComplete);
                             for (let requestSaveAttempt = 0; requestSaveAttempt < 2; requestSaveAttempt += 1) {
                                 try {
-                                    rpcResult = await supabaseRpc('save_request_work', {
+                                    const requestWriteArgs = {
                                         request_id: String(itemToSave.UNIQUE_ID || '').trim(),
                                         expected_version: rpcExpectedVersion,
                                         patch: requestPatch,
                                         complete: !!isComplete
-                                    }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) });
+                                    };
+                                    const requestWriteOptions = { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) };
+                                    rpcResult = requestCompletionContext
+                                        ? await commitRequestWorkWithVerifiedCompletion(requestCompletionContext, itemToSave, requestWriteArgs, requestWriteOptions)
+                                        : await supabaseRpc('save_request_work', requestWriteArgs, requestWriteOptions);
                                     break;
                                 } catch (requestSaveError) {
                                     const errorText = String(requestSaveError && requestSaveError.message || requestSaveError || '').toUpperCase();

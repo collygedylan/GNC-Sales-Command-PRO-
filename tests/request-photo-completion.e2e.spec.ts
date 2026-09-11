@@ -78,9 +78,12 @@ async function fixture(page: Page, baseURL: string, allowed = true) {
   diagnostics.set(page, { report: () => ({ ...state, gate: !!state.gate, saveAckGate: !!state.saveAckGate, uploadGate: !!state.uploadGate }),
     release: () => { state.gate?.release(); state.saveAckGate?.release(); state.uploadGate?.release(); } });
   const json = (route: Route, value: unknown, status = 200, headers: Record<string, string> = {}) => route.fulfill({
-    status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*',
+    status, contentType: 'application/json', headers: { 'access-control-allow-origin': origin,
       'access-control-allow-methods': 'GET, HEAD, POST, PATCH, DELETE, OPTIONS',
-      'access-control-allow-headers': route.request().headers()['access-control-request-headers'] || '*',
+      // Authorization is a CORS non-wildcard header; name it explicitly when
+      // a fulfilled request has no browser-generated preflight header list.
+      'access-control-allow-headers': route.request().headers()['access-control-request-headers']
+        || 'authorization, apikey, content-type, prefer, cache-control, pragma, x-client-info, x-supabase-api-version',
       'access-control-expose-headers': 'content-range', ...headers }, body: JSON.stringify(value) });
   const liveRequest = () => {
     const row = structuredClone(state.requestRow);
@@ -319,7 +322,7 @@ async function fixture(page: Page, baseURL: string, allowed = true) {
           if (name === 'showToast') w.__requestRepairObservations.toasts.push(args.slice(0, 3));
           else w.__requestRepairObservations.calls.push({ name, prefix: typeof args[1] === 'string' ? args[1] : undefined, complete: name === 'saveData' && args[0] === true });
           const observe = (phase: string, result?: unknown) => {
-            if (['showToast', 'saveData', 'handlePhotoUpload'].includes(name)) return;
+            if (['showToast', 'handlePhotoUpload'].includes(name)) return;
             try {
               const rowState = (row: any) => row && typeof row === 'object' ? { uid: row.UNIQUE_ID || row.unique_id,
                 sourceTable: row.SOURCE_TABLE || row.source_table, sourceUpper: row.SOURCE, sourceLower: row.source,
@@ -369,15 +372,21 @@ async function fixture(page: Page, baseURL: string, allowed = true) {
     holdSaveAcknowledgement: () => holdResponse('saveAckGate'), holdUpload: () => holdResponse('uploadGate') };
 }
 
-async function chooseCameraPhoto(page: Page) {
-  await page.locator('#camera-btn-req input[type=file]').evaluate(async element => {
+async function chooseCameraPhoto(page: Page, captureOriginalBytes = false) {
+  return page.locator('#camera-btn-req input[type=file]').evaluate(async (element, captureBytes) => {
     const canvas = document.createElement('canvas'); canvas.width = 60; canvas.height = 40;
     const context = canvas.getContext('2d')!; context.fillStyle = '#39795e'; context.fillRect(0, 0, 60, 40);
     const blob = await new Promise<Blob>(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'));
-    const transfer = new DataTransfer(); transfer.items.add(new File([blob], 'synthetic-camera.png', { type: 'image/png' }));
+    const file = new File([blob], 'synthetic-camera.png', { type: 'image/png' });
+    // Only the durability test needs a byte oracle. Other camera cases must
+    // dispatch the File without an extra test-only read, including offline.
+    const original = { name: file.name, type: file.type, lastModified: file.lastModified,
+      bytes: captureBytes ? Array.from(new Uint8Array(await file.arrayBuffer())) : [] };
+    const transfer = new DataTransfer(); transfer.items.add(file);
     (element as HTMLInputElement).files = transfer.files;
     element.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+    return original;
+  }, captureOriginalBytes);
 }
 
 async function launchCamera(page: Page) {
@@ -447,6 +456,38 @@ test('Request camera return waits for unchanged foreground verification without 
   await expect.poll(() => f.state.uploads.length).toBe(1);
   await expect.poll(() => String(f.state.requestRow.req_photo_link)).toContain('photo-1.webp');
   expect(f.state.unexpectedWrites).toEqual([]);
+});
+
+test('Request Mark Done waits for verification started while its confirmation is open', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!); await f.open();
+  await launchCamera(page);
+  await chooseCameraPhoto(page);
+  await expect.poll(() => String(f.state.requestRow.req_photo_link)).toContain('photo-1.webp');
+  await expect.poll(() => browserState(page)).toMatchObject({ detailVerified: true, datasetsVerified: true });
+  await page.locator('#req-btn-save-complete').click();
+  await expect(page.getByRole('heading', { name: 'Publish in app?', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'NO', exact: true }).click();
+  await expect(page.locator('#mark-done-confirm-modal')).toBeVisible();
+  const releaseMetadata = f.holdMetadata();
+  await page.evaluate(() => {
+    (window as any).__requestCompletionCheck = (window as any).getProductionLiveSyncCoordinator()
+      .check('request-completion-confirmation');
+  });
+  await expect.poll(() => f.state.heldMetadata).toBeGreaterThan(0);
+  await expect.poll(() => browserState(page)).toMatchObject({ datasetsVerified: false });
+  await page.locator('#mark-done-confirm-modal').getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(page.locator('#mark-done-confirm-modal')).not.toBeVisible();
+  expect(f.state.saves.filter(save => save.complete)).toHaveLength(0);
+  expect(f.state.requestRow.req_status).toBe('Pending');
+  releaseMetadata();
+  await expect.poll(() => f.state.saves.filter(save => save.complete).length).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).__requestRepairObservations.settled
+    .some((call: any) => call.name === 'saveData' && call.complete))).toBe(true);
+  expect(f.state.requestRow.req_status).toBe('Complete');
+  expect(f.state.requestRow.req_photo_link).toContain('photo-1.webp');
+  expect(f.state.uploads).toHaveLength(1);
+  expect(f.state.unexpectedWrites).toEqual([]);
+  expect(f.state.errors).toEqual([]);
 });
 
 test('Request photo and completion remain denied when native Request capabilities are denied', async ({ page, baseURL }) => {
@@ -562,6 +603,54 @@ test('Request photo upload response cannot publish or save into a changed review
   expect(stored).toEqual([expect.objectContaining({ requestId: REQUEST_ID, acknowledged: false, bytes: expect.any(Number) })]);
   expect(stored[0].bytes).toBeGreaterThan(0);
   expect(f.state.uploads).toHaveLength(1);
+  expect(f.state.unexpectedWrites).toEqual([]);
+  expect(f.state.errors).toEqual([]);
+});
+
+test('Request photo bytes, MIME and filenames survive reload in native IndexedDB before upload acknowledgement', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!); await f.open();
+  const releaseUpload = f.holdUpload();
+  await launchCamera(page);
+  const original = await chooseCameraPhoto(page, true);
+  // Reaching the held HTTP upload requires the real Request queue to complete
+  // its durable write first. No upload response or Request save is acknowledged.
+  await expect.poll(() => f.state.uploads.length).toBe(1);
+  const readRetainedPhoto = async () => page.evaluate(async requestId => {
+    const w = window as any;
+    const records = await w.getAllIndexedDbRecords('request_blobs');
+    const matches = records.filter((record: any) => record.requestId === requestId);
+    if (matches.length !== 1) throw new Error(`Expected one retained Request photo; found ${matches.length}.`);
+    const record = matches[0], blob = record.blob;
+    const db = await w.openDB();
+    let raw;
+    try {
+      raw = await new Promise<any>((resolve, reject) => {
+        const request = db.transaction('request_blobs', 'readonly').objectStore('request_blobs').get(record.blobId);
+        request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+      });
+    } finally { db.close(); }
+    return { count: matches.length, blobId: record.blobId, requestId: record.requestId,
+      fileName: record.fileName, contentType: record.contentType, acknowledged: record.acknowledged,
+      file: { name: blob.name, type: blob.type, lastModified: blob.lastModified,
+        bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) },
+      native: { storage: raw.blobStorage, hasBlob: Object.prototype.hasOwnProperty.call(raw, 'blob'),
+        bytesType: Object.prototype.toString.call(raw.blobBytes),
+        bytes: Array.from(new Uint8Array(raw.blobBytes)) } };
+  }, REQUEST_ID);
+  const before = await readRetainedPhoto();
+  expect(before).toMatchObject({ count: 1, requestId: REQUEST_ID, contentType: 'image/png', acknowledged: false,
+    file: original, native: { storage: 'arraybuffer-v1', hasBlob: false,
+      bytesType: '[object ArrayBuffer]', bytes: original.bytes } });
+  expect(before.fileName).toMatch(/\.png$/i);
+  expect(before.blobId).toContain(`request:${REQUEST_ID}:`);
+  await page.reload({ waitUntil: 'load' });
+  await expect(page.locator('#view-home')).toBeVisible();
+  releaseUpload();
+  expect(await readRetainedPhoto()).toEqual(before);
+  expect(f.state.requestRow.req_photo_link).toBe('');
+  expect(f.state.uploads).toHaveLength(1);
+  expect(f.state.saves).toHaveLength(0);
+  expect(await page.evaluate(() => (window as any).__requestIndexedDbErrors)).toEqual([]);
   expect(f.state.unexpectedWrites).toEqual([]);
   expect(f.state.errors).toEqual([]);
 });
