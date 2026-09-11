@@ -87733,7 +87733,7 @@ function toggleDriveQuickRequestItem(domId) {
                 HL_ORDER_INVALID_QUANTITY: 'Enter a valid whole-plant quantity within the remaining demand or unreceived balance.',
                 HL_ORDER_CORRECTION_REASON_REQUIRED: 'Enter a reason before reducing a previously recorded receipt.',
                 HL_ORDER_NO_UNCOVERED_QUANTITY: 'This demand is already covered by local stock or existing orders. Review those orders first.',
-                HL_ORDER_SHIP_DATE_REQUIRED: 'This HL row needs a ship date. Review the Plan Start Date before saving or sending.',
+                HL_ORDER_SHIP_DATE_REQUIRED: 'This HL row needs a ship date. Review the Plan Start Date before sending.',
                 HL_ORDER_SELECT_SHIP_DATE: 'Choose one ship date before reviewing HL TAGS.',
                 HL_ORDER_NOT_SENT: 'Receiving and cancellation are available after the original email delivery is confirmed.',
                 HL_ORDER_EMPTY_DRAFT: 'Add rows to the saved HL section in Bloom Picker first.',
@@ -87931,7 +87931,7 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 const rows = getHlSelectedDetailRows().map((row) => ({ source_id: row.unique_id, quantity: getHlOrderQuantity(hlOrderDetailEdits.get(row.unique_id)?.quantity), shipDate: getHlOrderShipDate(row.planstartdate), limit: getHlOrderQuantity(row.hl_available_quantity ?? row.quantityordered) }));
                 if (!rows.length) throw new Error('Select at least one SOC row.');
-                if (rows.some((row) => !Number.isInteger(row.quantity) || row.quantity <= 0 || !row.shipDate || row.limit === null || row.quantity > row.limit)) throw new Error('Every selected row needs a valid ship date and a whole-plant HL quantity within its remaining demand.');
+                if (rows.some((row) => !Number.isInteger(row.quantity) || row.quantity <= 0 || row.limit === null || row.quantity > row.limit)) throw new Error('Every selected row needs a whole-plant HL quantity within its remaining demand.');
                 const revision = getHlOrderEditRevision(hlOrderDetailEditRevision);
                 // The backend persists each row under its PlanStartDate and groups
                 // same-date additions onto the active HL order for that date.

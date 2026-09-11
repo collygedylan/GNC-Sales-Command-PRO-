@@ -191,8 +191,8 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   const second = page.locator('[data-hl-source-id="hl-b"]');
   await second.locator('[data-hl-quantity]').fill('5');
   await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
-  await expect(page.locator('[data-hl-ship-date="2026-09-15"]')).toContainText('Sep 15, 2026');
-  await expect(page.locator('[data-hl-ship-date="2026-09-16"]')).toContainText('Sep 16, 2026');
+  await expect(page.locator('section[data-hl-ship-date="2026-09-15"]')).toContainText('Sep 15, 2026');
+  await expect(page.locator('section[data-hl-ship-date="2026-09-16"]')).toContainText('Sep 16, 2026');
   await page.locator('#batch-btn-hl-tags').click();
   const chooser = page.locator('#hl-tags-date-selector');
   await expect(chooser).toBeVisible();
@@ -202,6 +202,21 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   const report = [...fixture.previews.values()].at(-1).report;
   expect(report.ship_date).toBe('2026-09-16');
   expect(report.lines.map((line: any) => line.source_id)).toEqual(['hl-b']);
+  assertIsolated(fixture);
+});
+
+test('undated HL demand persists as a draft but cannot preview or send', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { planstartdate: '' })] });
+  await openHl(page); await selectOne(page);
+  await reloadHl(page);
+  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toContainText('Ship date needed');
+  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
+  await page.locator('#global-action-bar').getByRole('button', { name: /Actions/ }).click();
+  await page.locator('#batch-btn-hl-tags').click();
+  await expect(page.locator('#toast-notification')).toContainText('HL TAGS needs a ship date');
+  await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
+  expect(actions(fixture, 'preview')).toHaveLength(0);
+  expect(actions(fixture, 'submit')).toHaveLength(0);
   assertIsolated(fixture);
 });
 

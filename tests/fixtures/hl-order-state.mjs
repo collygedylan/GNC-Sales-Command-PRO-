@@ -11,6 +11,18 @@ export const hlMaster = (unique_id, changes = {}) => inventoryReadFixture.row({ 
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const uuid = (index) => `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
+const fixtureShipDate = (value) => {
+  const text = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const parsed = new Date(text + 'T12:00:00Z');
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === text ? text : null;
+  }
+  const parsed = new Date(text);
+  if (!text || !Number.isFinite(parsed.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(parsed);
+  const field = (type) => parts.find((part) => part.type === type).value;
+  return `${field('year')}-${field('month')}-${field('day')}`;
+};
 
 function fixturePdf() {
   const stream = 'BT /F1 12 Tf 30 70 Td (Synthetic HL preview - no email sent) Tj ET';
@@ -57,8 +69,7 @@ export function createHlOrderState(options = {}) {
           || Number(entry.quantity) > Number(source(entry.source_id).available_quantity ?? source(entry.source_id).quantityordered)) problem('HL_ORDER_INVALID_COMMAND');
         if (disposition(entry.source_id)?.status === 'needs_review') problem('HL_ORDER_SOURCE_REVIEW_REQUIRED');
         if (disposition(entry.source_id)?.status === 'submitting') problem('HL_ORDER_DELIVERY_UNKNOWN');
-        const shipDate = String(entry.ship_date || source(entry.source_id).planstartdate || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(shipDate)) problem('HL_ORDER_SHIP_DATE_REQUIRED');
+        const shipDate = fixtureShipDate(source(entry.source_id).planstartdate);
         const active = state.orders.find((order) => order.ship_date === shipDate && !['received', 'cancelled', 'received_and_cancelled'].includes(order.fulfillment_status));
         const saved = { source_id: entry.source_id, quantity: Number(entry.quantity), source: clone(source(entry.source_id)), ship_date: shipDate,
           target_order_id: active?.id || null, target_order_number: active?.order_number || null, status: 'ready' };
@@ -78,6 +89,7 @@ export function createHlOrderState(options = {}) {
     } else if (action === 'preview' || action === 'cancellation_preview') {
       const order = action === 'cancellation_preview' ? state.orders.find((entry) => entry.id === payload.order_id) : null;
       const shipDate = order ? order.ship_date : String(payload.ship_date || state.draft.find((entry) => entry.status === 'ready')?.ship_date || '').slice(0, 10);
+      if (!shipDate) problem('HL_ORDER_SHIP_DATE_REQUIRED');
       const lines = order ? (payload.lines || []).map((line) => ({ ...order.lines.find((entry) => entry.id === line.line_id)?.source, line_id: line.line_id, quantity: Number(line.quantity) }))
         : state.draft.filter((entry) => entry.status === 'ready' && entry.ship_date === shipDate).map((entry) => ({ ...entry.source, source_id: entry.source_id, quantity: entry.quantity }));
       if (!lines.length) problem('HL_ORDER_INVALID_COMMAND');

@@ -37,3 +37,13 @@ test('a pending same-date HL batch blocks a second preview, while another ship d
   assert.equal(other.report.ship_date, '2026-09-16');
   assert.equal(other.report.kind, 'submission');
 });
+
+test('HL fixture saves original date text and canonical Chicago dates, reserving undated rows for review', () => {
+  const raw = 'Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)';
+  const fixture = createHlOrderState({ rows: [hlSoc('raw', { planstartdate: raw }), hlSoc('utc', { planstartdate: '2026-09-16T01:00:00Z' }), hlSoc('missing', { planstartdate: '' })] });
+  command(fixture, 'draft_save', { rows: ['raw', 'utc', 'missing'].map((source_id) => ({ source_id, quantity: 2 })) });
+  assert.deepEqual(fixture.state.draft.map((row) => row.ship_date), ['2026-09-15', '2026-09-15', null]);
+  assert.equal(fixture.state.draft[0].source.planstartdate, raw);
+  const preview = command(fixture, 'preview', { ship_date: '2026-09-15' }).preview;
+  assert.deepEqual(preview.report.lines.map((line) => line.source_id), ['raw', 'utc']);
+});
