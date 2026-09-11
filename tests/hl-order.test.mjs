@@ -2,119 +2,199 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const block = html.slice(html.indexOf('        let hlOrderSelections ='), html.indexOf('        function getCartSelectedItems()'));
-const source = (name) => { const start = html.indexOf(`        function ${name}(`); return html.slice(start, html.indexOf('\n        }', start) + 10); };
-const row = (id='a', change={}) => ({ UNIQUE_ID:id, ITEMCODE:'plant-1', COMMONNAME:'Plant <one>', CONTSIZE:'#3',
-  LOCATIONCODE:'C.12.001', LOTCODE:'27.F1', DOCK:'4', PLANSTARTDATE:'', QUANTITYORDERED:'10', PTRAVAILABLE:'90', ...change });
-function runtime(rows=[row()]) {
-  const dialog = { open:false, showModal(){this.open=true;}, close(){this.open=false;} };
-  const elements = new Map([['hl-tags-preview',dialog],['hl-tags-preview-content',{}],['hl-tags-send',{}]]);
-  const ctx=vm.createContext({ currentUser:'dylan_collyge', nativeAuthSessionActive:true, nativeAuthAccessToken:'fixture-token',
-    nativeAuthProfile:{username:'dylan_collyge'}, socInventory:rows, fullInventory:[row('master-a')],
-    getProductionMasterDetailStore:()=>({getVerifiedRows:ids=>ctx.fullInventory.filter(r=>ids.includes(r.UNIQUE_ID)),getVerifiedCanonicalRows:ids=>ctx.fullInventory.filter(r=>ids.includes(r.UNIQUE_ID))}), selectedItems:new Set(), selectedItemSources:new Map(),
-    cartPanelOpen:false,bloomPickerActionsOpen:false, document:{getElementById:id=>elements.get(id)}, navigator:{onLine:true},
-    captureLoginSessionOwnership:()=>({user:'dylan_collyge'}), isLoginSessionOwnershipCurrent:owner=>owner.user===ctx.currentUser,
-    ensureDatasetLoaded:async()=>true, canUseVerifiedProductionData:()=>true, updateGlobalActionBar:()=>{},
-    escapeHtml:value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'),
-    buildFastInvokeAttrs:()=>'', resolveRequestRecipientEmail:()=> 'dylan@example.invalid', REQUEST_EMAIL_SCRIPT_TIMEOUT_MS:1000,
-    getGoogleScriptEmailFailureMessage:(_response,fallback)=>fallback, errors:[], sends:[], showToast:(_title,message,error)=>{if(error)ctx.errors.push(message);},
-    postGoogleScriptJsonPayload:async payload=>{ctx.sends.push(payload);return {ok:true,mode:'gmailapp_named',recipients:['dylan@example.invalid']};},
+const blockStart = html.indexOf('        // HL selections mirror');
+const blockEnd = html.indexOf('        function getCartSelectedItems()', blockStart);
+assert.ok(blockStart >= 0 && blockEnd > blockStart, 'the HL implementation block must be present');
+const source = (name) => {
+  const start = html.indexOf(`        function ${name}(`);
+  assert.ok(start >= 0, `${name} must be present`);
+  return html.slice(start, html.indexOf('\n        }', start) + 10);
+};
+const row = (unique_id = 'soc-a', changes = {}) => ({ unique_id, itemcode: 'PLANT.003', commonname: 'Synthetic Holly', contsize: '#3',
+  locationcode: 'C.12.001', lotcode: '27.F1', quantityordered: '10', dock: '4', planstartdate: '2026-09-15', stopnumber: '2',
+  transactionnumber: 'SO-1', purchaseordernumber: 'PO-1', tripnumber: '3', customername: 'Synthetic Customer', consigneename: 'Synthetic Consignee', ...changes });
+
+function runtime() {
+  const ctx = vm.createContext({
+    currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthAccessToken: 'synthetic-token',
+    nativeAuthProfile: { id: '12345678-1234-1234-1234-123456789abc', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false },
+    selectedItems: new Set(), selectedItemSources: new Map(), document: { getElementById: () => null },
+    escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
+    navigator: { onLine: true }, console
   });
-  vm.runInContext(source('parseAppNumber')+'\n'+block,ctx);
+  vm.runInContext(source('parseAppNumber') + '\n' + html.slice(blockStart, blockEnd), ctx);
   return ctx;
 }
-function add(ctx){ const group=ctx.groupHlOrderRows(ctx.getHlOrderRows())[0];ctx.orderHlGroup(group.key);return group; }
+const groups = (ctx, rows) => Array.from(ctx.groupHlOrderRows(rows.map((entry) => ctx.getHlOrderSource(entry))));
 
-test('HL eligibility implements exact/prefix boundaries and dock OR plan date',()=>{
-  const ctx=runtime();
-  for(const location of ['C.05','0.00.111','c.12.002',' B.10.011 ','C.14.888']){
-    for(const fields of [{DOCK:'3',PLANSTARTDATE:''},{DOCK:null,PLANSTARTDATE:'2020-01-01'},{DOCK:'3',PLANSTARTDATE:'2026-09-11'}])
-      assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a',{LOCATIONCODE:location,...fields}))),true);
+test('HL eligibility retains exact location boundaries and dock OR planned start', () => {
+  const ctx = runtime();
+  for (const locationcode of ['C.05', '0.00.111', ' c.12.002 ', 'B.10.011', 'C.14.888']) {
+    for (const schedule of [{ dock: '3', planstartdate: '' }, { dock: '', planstartdate: '2020-01-01' }]) {
+      assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a', { locationcode, ...schedule }))), true);
+    }
   }
-  for(const location of ['C.050','C.05.001','0.00.1112','C.12','C.120.001','B.100.001','C.14.','A.01.000',''])
-    assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a',{LOCATIONCODE:location}))),false,location);
-  assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a',{DOCK:'  ',PLANSTARTDATE:null}))),false);
-  assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a',{ITEMCODE:'',CONTSIZE:''}))),true);
-});
-test('only active native Dylan identity can view or select HL data',()=>{
-  const ctx=runtime();assert.equal(ctx.canUseHlOrder(),true);
-  for(const change of [{username:'jd_jones'},{disabled_at:'2026-01-01'},{locked_until:'2999-01-01'},{must_change_password:true}]){
-    ctx.nativeAuthProfile={username:'dylan_collyge',...change}; assert.equal(ctx.getHlOrderRows().length,0);
+  for (const locationcode of ['C.050', 'C.05.001', '0.00.1112', 'C.12', 'C.120.001', 'B.100.001', 'C.14.', 'A.01.000', '']) {
+    assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a', { locationcode }))), false, locationcode);
   }
-  ctx.nativeAuthProfile={username:'dylan_collyge'};ctx.currentUser='jd_jones';assert.equal(ctx.canUseHlOrder(),false);
-  ctx.currentUser='dylan_collyge';ctx.nativeAuthSessionActive=false;assert.equal(ctx.canUseHlOrder(),false);
-});
-test('SOC source stays authoritative after linked master enrichment',()=>{
-  const original=row();const ctx=runtime([{...original,LOCATIONCODE:'A.01.001',QUANTITYORDERED:'999',HL_SOC_SOURCE:original}]);
-  const [record]=ctx.getHlOrderRows();assert.equal(record.locationcode,'C.12.001');assert.equal(record.quantityordered,'10');
-});
-test('grouping sums order quantities once per SOC ID and keeps sizes separate',()=>{
-  const ctx=runtime([row(),row(),row('b',{QUANTITYORDERED:'15'}),row('c',{CONTSIZE:'#7'})]);
-  const groups=ctx.groupHlOrderRows(ctx.getHlOrderRows());assert.equal(groups.length,2);
-  assert.equal(groups.find(g=>g.contsize==='#3').quantity,25);
-});
-test('missing or invalid ordered quantities stay visible for review and cannot be ordered',()=>{
-  for(const value of ['',null,'bad','0','-1','0x10','1e3','Infinity']){const ctx=runtime([row('a',{QUANTITYORDERED:value})]); const group=add(ctx);assert.equal(group.invalid,true);assert.equal(ctx.selectedItems.size,0);}
-});
-test('location availability is displayed once and never summed across SOC orders',()=>{
-  const ctx=runtime([row(),row('b')]);const detail=ctx.buildHlOrderDetailsHtml(ctx.getHlOrderRows());
-  assert.equal((detail.match(/Available:/g)||[]).length,1);assert.ok(detail.includes('<strong>90</strong>'));assert.ok(!detail.includes('180'));
-  ctx.fullInventory=[];assert.match(ctx.buildHlOrderDetailsHtml(ctx.getHlOrderRows()),/Not available/);
-});
-test('Order is duplicate-free and preserves other Bloom selections',()=>{
-  const ctx=runtime();ctx.selectedItems.add('unrelated');ctx.selectedItemSources.set('unrelated','drive');add(ctx);add(ctx);
-  assert.equal(ctx.selectedItems.size,2);assert.equal(ctx.getSelectedHlOrderRows().length,1);
-});
-test('SOC refresh changes and removals require review without replacing saved selection',async()=>{
-  for(const rows of [[],[row('a',{QUANTITYORDERED:'11'})],[row('a',{LOCATIONCODE:'B.10.001'})]]){
-    const ctx=runtime();add(ctx);ctx.socInventory=rows;await assert.rejects(ctx.verifyHlOrderSelection(),/changed or was removed/);
-    assert.equal(ctx.getSelectedHlOrderRows()[0].quantityordered,'10');
-  }
-});
-test('confirmed HL send uses reviewed SOC quantities and clears only those selections',async()=>{
-  const ctx=runtime();ctx.selectedItems.add('other');ctx.selectedItemSources.set('other','drive');add(ctx);
-  await ctx.openHlTagsPreview();await ctx.sendHlTagsEmail();assert.equal(ctx.sends.length,1);
-  assert.equal(ctx.sends[0].emailSubType,'hl_tags');assert.equal(ctx.sends[0].sourceRows[0].quantityordered,'10');
-  assert.equal(ctx.sends[0].skipDylanRecipientOverride,true);assert.deepEqual([...ctx.selectedItems],['other']);assert.deepEqual(ctx.errors,[]);
-});
-test('failed or ambiguous email retains selection and never retries automatically',async()=>{
-  for(const response of [{ok:false},{ok:true},{ok:true,mode:'gmailapp_named',recipients:['other@example.invalid']}]){
-    const ctx=runtime();add(ctx);ctx.postGoogleScriptJsonPayload=async p=>{ctx.sends.push(p);return response;};
-    await ctx.openHlTagsPreview();await ctx.sendHlTagsEmail();assert.equal(ctx.sends.length,1);assert.equal(ctx.selectedItems.size,1);assert.equal(ctx.errors.length,1);
-  }
-});
-test('preview membership changes and logout prevent sending',async()=>{
-  const ctx=runtime([row(),row('b',{ITEMCODE:'other'})]);ctx.orderHlGroup(ctx.groupHlOrderRows(ctx.getHlOrderRows()).find(g=>g.itemcode==='plant-1').key);await ctx.openHlTagsPreview();
-  ctx.orderHlGroup(ctx.groupHlOrderRows(ctx.getHlOrderRows()).find(g=>g.itemcode==='other').key);
-  await ctx.sendHlTagsEmail();assert.equal(ctx.sends.length,0);
-  ctx.currentUser='jd_jones';ctx.resetHlOrderState();assert.equal(ctx.selectedItems.size,0);assert.equal(ctx.getSelectedHlOrderRows().length,0);
+  assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a', { dock: ' ', planstartdate: null }))), false);
+  assert.equal(ctx.isHlOrderSourceEligible(ctx.getHlOrderSource(row('a', { itemcode: '', contsize: '' }))), true);
 });
 
- test('availability requires a unique exact verified master, with no SOC fallback',()=>{
-  const ctx=runtime();
-  for(const masters of [[],[row('master-a',{LOTCODE:'OTHER'})],[row('master-a'),row('master-b')],
-    [row('master-a',{PTRAVAILABLE:null})],[row('master-a',{PTRAVAILABLE:'bad'})],[row('master-a',{PTRAVAILABLE:'-1'})],
-    [row('master-a',{PTRAVAILABLE:'2'}),row('master-a',{PTRAVAILABLE:'3'})]]) {
-    ctx.fullInventory=masters;assert.equal(ctx.getHlOrderRows()[0].ptravailable,'');
+test('HL remains restricted to the active native Dylan identity', () => {
+  const ctx = runtime();
+  assert.equal(ctx.canUseHlOrder(), true);
+  for (const changes of [{ username: 'jd_jones' }, { disabled_at: '2026-01-01' }, { locked_until: '2999-01-01' }, { must_change_password: true }]) {
+    ctx.nativeAuthProfile = { username: 'dylan_collyge', ...changes };
+    assert.equal(ctx.canUseHlOrder(), false);
   }
-  ctx.fullInventory=[row('master-a',{LOCATIONCODE:' c.12.001 ',PTRAVAILABLE:'0'})];
-  assert.equal(ctx.getHlOrderRows()[0].ptravailable,'0');
-  assert.equal(ctx.getHlOrderRows()[0].source.ptravailable,'90');
-  ctx.getProductionMasterDetailStore=()=>({getVerifiedCanonicalRows:()=>null});
-  assert.equal(ctx.getHlOrderRows()[0].ptravailable,'');
+  ctx.nativeAuthProfile = { username: 'dylan_collyge' };
+  ctx.currentUser = 'jd_jones';
+  assert.equal(ctx.canUseHlOrder(), false);
+  ctx.currentUser = 'dylan_collyge'; ctx.nativeAuthSessionActive = false;
+  assert.equal(ctx.canUseHlOrder(), false);
 });
 
+test('raw SOC identity, schedule and order quantity survive linked inventory display enrichment', () => {
+  const ctx = runtime();
+  const original = row();
+  const result = ctx.getHlOrderSource({ HL_SOC_SOURCE: original, UNIQUE_ID: 'master-1', LOCATIONCODE: 'A.01.001', CONTSIZE: '#7',
+    QUANTITYORDERED: '999', DOCK: '99', STOPNUMBER: '99', PLANSTARTDATE: '2030-01-01' });
+  for (const field of ['unique_id', 'itemcode', 'contsize', 'locationcode', 'quantityordered', 'dock', 'stopnumber', 'planstartdate']) {
+    assert.equal(result[field], original[field], field);
+  }
+});
 
-test('binding an already verified availability batch requests one fresh render',async()=>{
-  const ctx=runtime([row(),row('c',{LOCATIONCODE:'C.14.002'})]);
-  const masters=[row('master-a',{PTRAVAILABLE:null}),row('master-c',{LOCATIONCODE:'C.14.002',PTRAVAILABLE:'0'})];
-  ctx.fullInventory=masters;
-  const batch=ids=>ids.length===2 && ids.includes('master-a') && ids.includes('master-c') ? masters : null;
-  ctx.getProductionMasterDetailStore=()=>({getVerifiedRows:batch,getVerifiedCanonicalRows:batch});
-  const rows=ctx.getHlOrderRows();
-  assert.deepEqual(Array.from(rows,r=>r.ptravailable),['','']);
-  assert.equal(await ctx.ensureHlOrderAvailability(rows),true);
-  assert.deepEqual(Array.from(ctx.getHlOrderRows(),r=>r.ptravailable),['','0']);
-  assert.equal(await ctx.ensureHlOrderAvailability(rows),false);
+test('card groups separate item, size, planned date, dock and stop while summing each source once', () => {
+  const ctx = runtime();
+  const result = groups(ctx, [row(), row(), row('same-group', { quantityordered: '15' }),
+    row('item', { itemcode: 'OTHER' }), row('size', { contsize: '#7' }), row('date', { planstartdate: '2026-09-16' }),
+    row('dock', { dock: '5' }), row('stop', { stopnumber: '3' })]);
+  assert.equal(result.length, 6);
+  const combined = result.find((group) => group.rows.some((entry) => entry.unique_id === 'soc-a'));
+  assert.equal(combined.quantity, 25);
+  assert.equal(combined.rows.length, 2);
+  assert.equal(new Set(result.map((group) => group.key)).size, 6);
+});
+
+test('group schedule normalization uses the written ISO calendar date without timezone drift', () => {
+  const ctx = runtime();
+  const result = groups(ctx, [row(), row('b', { itemcode: ' plant.003 ', contsize: ' #3 ', dock: ' 4 ', stopnumber: ' 2 ', planstartdate: '2026-09-15T00:15:00+14:00' }),
+    row('c', { planstartdate: '2026-09-15T23:45:00-12:00' })]);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].quantity, 30);
+});
+
+test('same-item different-lot SOC rows retain separate source identities in one schedule group', () => {
+  const ctx = runtime();
+  const result = groups(ctx, [row(), row('second-lot', { locationcode: 'C.14.002', lotcode: '26.F1' })]);
+  assert.equal(result.length, 1);
+  assert.deepEqual(Array.from(result[0].rows, (entry) => entry.unique_id).sort(), ['second-lot', 'soc-a']);
+  assert.deepEqual(Array.from(result[0].rows, (entry) => entry.lotcode).sort(), ['26.F1', '27.F1']);
+});
+
+test('quantity parsing preserves finite decimals and rejects missing or ambiguous numeric input', () => {
+  const ctx = runtime();
+  for (const value of ['', null, 'bad', '0x10', '1e3', 'Infinity', '1,2', '1,,2']) assert.equal(ctx.getHlOrderQuantity(value), null, String(value));
+  assert.equal(ctx.getHlOrderQuantity('1,250'), 1250);
+  assert.equal(ctx.getHlOrderQuantity('2.5'), 2.5);
+  assert.equal(ctx.getHlOrderQuantity('0'), 0);
+});
+
+test('Drive matches ignore display filters while retaining base access and approval visibility', () => {
+  const ctx = runtime();
+  ctx.fullInventory = [row('visible-f1'), row('visible-s1', { locationcode: 'A.02.001', lotcode: '25.S1' }), row('visible-zero', { locationcode: 'B.01.010', ptravailable: '0' }),
+    row('visible-f1'), row('wrong-size', { contsize: '#7' }), row('wrong-item', { itemcode: 'OTHER' }),
+    row('rep-hidden', { repVisible: false }), row('foreman-hidden', { foremanVisible: false }), row('approval-hidden', { approvalHidden: true })];
+  ctx.filteredInventory = []; ctx.driveSearch = 'unrelated'; ctx.selectedDriveSeason = 'F1';
+  ctx.canUseVerifiedProductionData = () => true;
+  ctx.applyRepU3VisibilityScope = (rows) => rows.filter((entry) => entry.repVisible !== false);
+  ctx.applyForemanPriorityRowScope = (rows) => rows.filter((entry) => entry.foremanVisible !== false);
+  ctx.shouldHideNotOnInventoryApprovalRowFromInventory = (entry) => entry.approvalHidden === true;
+  assert.deepEqual(Array.from(ctx.getHlOrderDriveMatches([row()]), (entry) => entry.unique_id).sort(), ['visible-f1', 'visible-s1', 'visible-zero']);
+  ctx.canUseVerifiedProductionData = () => false;
+  assert.equal(ctx.getHlOrderDriveMatches([row()]).length, 0);
+});
+
+for (const outcome of ['resolved', 'rejected']) {
+  test(`an old-session ${outcome} submission cannot clear the new session's pending command or sending state`, async () => {
+    const ctx = runtime();
+    let settle;
+    const response = new Promise((resolve, reject) => { settle = outcome === 'resolved' ? resolve : reject; });
+    const sendButton = { disabled: false };
+    const effects = [];
+    ctx.document = { getElementById: (id) => id === 'hl-tags-send' ? sendButton : null };
+    ctx.crypto = { randomUUID: () => '10000000-0000-4000-8000-000000000001' };
+    ctx.activeGeneration = 1;
+    ctx.captureLoginSessionOwnership = () => ctx.activeGeneration;
+    ctx.isLoginSessionOwnershipCurrent = (owner) => owner === ctx.activeGeneration;
+    ctx.supabaseRpc = () => response;
+    ctx.renderHlOrder = () => effects.push('render');
+    ctx.renderHlBloomSection = () => effects.push('bloom');
+    ctx.applyHlOrderState = () => effects.push('apply-state');
+    ctx.showToast = () => effects.push('toast');
+    vm.runInContext(`hlOrderStateData = {revision: 1}; hlOrderPreview = {id: 'old-preview', action: 'submit', owner: 1};`, ctx);
+    const sending = ctx.sendHlTagsEmail();
+    assert.equal(sendButton.disabled, true);
+    assert.equal(vm.runInContext('hlOrderBusy && hlOrderSending && !!hlOrderPendingCommand', ctx), true);
+    ctx.activeGeneration = 2;
+    ctx.resetHlOrderState();
+    assert.equal(vm.runInContext('hlOrderBusy || hlOrderSending || !!hlOrderPendingCommand', ctx), false);
+    vm.runInContext(`hlOrderStateData = {revision: 99}; hlOrderStateError = 'new-session-error';
+      hlOrderPendingCommand = {p_command_id: 'new-command'}; hlOrderBusy = true; hlOrderSending = true;
+      hlOrderPreview = {id: 'new-preview', action: 'submit', owner: 2};`, ctx);
+    effects.length = 0;
+    settle(outcome === 'resolved' ? {revision: 2, draft: []} : Object.assign(new Error('Old request failed'), {status: 409}));
+    await sending;
+    assert.equal(vm.runInContext('hlOrderPendingCommand.p_command_id', ctx), 'new-command');
+    assert.equal(vm.runInContext('hlOrderStateError', ctx), 'new-session-error');
+    assert.equal(vm.runInContext('hlOrderBusy && hlOrderSending', ctx), true);
+    assert.equal(vm.runInContext('hlOrderPreview.id', ctx), 'new-preview');
+    assert.equal(sendButton.disabled, true);
+    assert.deepEqual(effects, []);
+  });
+}
+
+test('saved Bloom quantities use remaining demand and reject increases above that ceiling before RPC', async () => {
+  const ctx = runtime(), entry = {source_id: 'soc-a', quantity: 4, source: row()};
+  ctx.fixtureEntry = entry;
+  vm.runInContext(`hlOrderStateData = {draft: [fixtureEntry], actionable_rows: [{...fixtureEntry.source, available_quantity: 4}], dispositions: []};`, ctx);
+  assert.equal(ctx.getHlDraftQuantityCeiling(entry), 4);
+  vm.runInContext(`hlOrderStateData.actionable_rows = []; hlOrderStateData.dispositions = [{source_id: 'soc-a', available_quantity: 0}];`, ctx);
+  assert.equal(ctx.getHlDraftQuantityCeiling(entry), 0, 'zero uncovered demand must not fall back to SOC quantity');
+  vm.runInContext(`hlOrderStateData.dispositions[0].available_quantity = 4;`, ctx);
+  assert.equal(ctx.getHlDraftQuantityCeiling(entry), 4);
+  const input = {value: '5'}, calls = [], notices = [];
+  ctx.document.querySelectorAll = () => [{dataset: {hlDraftSourceId: 'soc-a'}, querySelector: () => input}];
+  ctx.runHlOrderCommand = async (action, payload) => calls.push({action, payload});
+  ctx.showToast = (...args) => notices.push(args);
+  await ctx.saveHlDraftQuantity('soc-a');
+  assert.equal(calls.length, 0);
+  assert.match(notices[0][1], /remaining HL demand/);
+  input.value = '4'; await ctx.saveHlDraftQuantity('soc-a');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].payload.rows[0].quantity, 4);
+});
+
+test('review restore distinguishes an existing source from a missing original and a possible replacement', () => {
+  const ctx = runtime();
+  ctx.buildFastInvokeAttrs = () => '';
+  const render = (entry, tab = 'needs-review') => {
+    ctx.fixtureDisposition = {source_id: 'soc-a', source: row(), status: tab === 'removed' ? 'removed' : 'needs_review', ...entry};
+    vm.runInContext('hlOrderStateData = {dispositions: [fixtureDisposition]};', ctx);
+    return ctx.buildHlOrderDispositionsHtml(tab);
+  };
+  const sibling = {source_id: 'sibling', source: row('sibling')};
+  for (const tab of ['needs-review', 'removed']) {
+    const current = render({current_source: row(), replacement_candidates: [sibling]}, tab);
+    assert.match(current, /Restore to Needed/);
+    assert.doesNotMatch(current, /Review replacement as Needed/);
+  }
+  const missing = render({current_source: null, replacement_candidates: [sibling]});
+  assert.doesNotMatch(missing, /Restore to Needed/);
+  assert.match(missing, /Review replacement as Needed/);
+  assert.doesNotMatch(render({current_source: row(), review_kind: 'possible_replacement'}), /Restore to Needed/);
+  assert.doesNotMatch(render({current_source: row(), replacement_source_id: 'sibling'}), /Restore to Needed/);
 });

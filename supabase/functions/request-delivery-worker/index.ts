@@ -16,6 +16,20 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 type JsonRecord = Record<string, unknown>;
 
+function isHlOrderEvent(event: JsonRecord) {
+  return ["hl_order_submission", "hl_order_cancellation"].includes(String(event.event_type || ""));
+}
+
+function hlOrderRequiresReconciliation(event: JsonRecord) {
+  const channels = event.channel_results as JsonRecord | undefined;
+  const email = channels?.email as JsonRecord | undefined;
+  return isHlOrderEvent(event) && ["sending", "sent", "unknown"].includes(String(email?.status || ""));
+}
+
+class HlOrderDeliveryError extends Error {
+  constructor(code: string, readonly uncertain: boolean, readonly retryable: boolean) { super(code); }
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -131,19 +145,21 @@ async function callAppsScript(event: JsonRecord, rows: unknown[], thread: unknow
     eventId: event.event_id,
     eventKey: event.event_key,
     eventType: event.event_type,
+    leaseToken: event.lease_token,
     requestId: event.request_id,
     requestFolder: event.request_folder,
     messageIdHeader: await stableMessageId(String(event.event_key || event.event_id || "request")),
     payload: event.payload && typeof event.payload === "object" ? event.payload : {},
     rows,
-    thread
+    thread,
+    reconciliationOnly: hlOrderRequiresReconciliation(event)
   };
   const signedBody = JSON.stringify(delivery);
   const timestamp = new Date().toISOString();
   const signature = await hmacSignature(timestamp, signedBody);
   const controller = new AbortController();
   const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
-  const timeoutMs = ["eval-work-assignment-batch-v1", "photo-history-share-v1", "photo-history-share-v2"].includes(String(payload.contractVersion || "")) ? 120000 : 45000;
+  const timeoutMs = isHlOrderEvent(event) || ["eval-work-assignment-batch-v1", "photo-history-share-v1", "photo-history-share-v2"].includes(String(payload.contractVersion || "")) ? 120000 : 45000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
@@ -156,8 +172,18 @@ async function callAppsScript(event: JsonRecord, rows: unknown[], thread: unknow
     const responseText = await response.text();
     let result: JsonRecord = {};
     try { result = responseText ? JSON.parse(responseText) as JsonRecord : {}; } catch { throw new Error("APPS_SCRIPT_INVALID_RESPONSE"); }
-    if (!response.ok || result.ok !== true) throw new Error(`APPS_SCRIPT_EMAIL_FAILED:${String(result.code || result.message || response.status)}`);
+    if (!response.ok || result.ok !== true) {
+      if (isHlOrderEvent(event)) {
+        const knownFailure = result.ok === false && result.deliveryUncertain === false && typeof result.retryable === "boolean";
+        throw new HlOrderDeliveryError(knownFailure ? String(result.code || "HL_ORDER_DELIVERY_FAILED") : "HL_ORDER_DELIVERY_UNKNOWN", !knownFailure, knownFailure && result.retryable === true);
+      }
+      throw new Error(`APPS_SCRIPT_EMAIL_FAILED:${String(result.code || result.message || response.status)}`);
+    }
+    if (isHlOrderEvent(event) && !String(result.gmailMessageId || "").trim()) throw new HlOrderDeliveryError("HL_ORDER_DELIVERY_UNKNOWN", true, false);
     return result;
+  } catch (error) {
+    if (isHlOrderEvent(event) && !(error instanceof HlOrderDeliveryError)) throw new HlOrderDeliveryError("HL_ORDER_DELIVERY_UNKNOWN", true, false);
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -216,6 +242,13 @@ async function finishEvent(eventId: string, leaseToken: string, channelResults: 
     p_channel_results: channelResults
   });
   if (error) throw new Error(`DELIVERY_COMPLETE_FAILED:${error.code || "unknown"}`);
+}
+
+async function recordHlOrderDelivery(event: JsonRecord, status: string, result: JsonRecord) {
+  const { error } = await supabase.rpc("hl_order_delivery_record_v1", {
+    p_event_id: String(event.event_id || ""), p_lease_token: String(event.lease_token || ""), p_status: status, p_result: result
+  });
+  if (error) throw new Error("HL_ORDER_DELIVERY_RECORD_FAILED");
 }
 
 async function failEvent(eventId: string, leaseToken: string, error: unknown) {
@@ -313,6 +346,24 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
+        if (isHlOrderEvent(event)) {
+          // HL is email-only. Apps Script resolves its frozen report and sole recipient
+          // from protected storage and durably records intent before Gmail is called.
+          if (!event.email_delivered_at) {
+            const emailResult = await callAppsScript(event, [], null);
+            channelResults.email = {
+              status: "sent", delivered_at: new Date().toISOString(),
+              gmail_message_id: String(emailResult.gmailMessageId || ""), thread_id: String(emailResult.threadId || ""),
+              message_id: String(emailResult.messageId || ""), message_id_header: String(emailResult.messageIdHeader || ""),
+              mode: String(emailResult.mode || "hl_order_gmail_api"), recipients: Array.isArray(emailResult.recipients) ? emailResult.recipients : []
+            };
+            await recordChannels(eventId, leaseToken, { email: channelResults.email });
+          }
+          await finishEvent(eventId, leaseToken, channelResults);
+          delivered += 1;
+          continue;
+        }
+
         if (["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType)) {
           if (!event.email_delivered_at) {
             const emailResult = await callAppsScript(event, [], null);
@@ -389,7 +440,17 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
       } catch (error) {
         failed += 1;
         const code = sanitizeCode(error);
-        if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(String(event.event_type || ""))
+        if (isHlOrderEvent(event)) {
+          // A local pre-send error (for example ScriptLock contention) cannot
+          // negate another attempt's durable send intent on a reclaimed event.
+          const knownFailure = error instanceof HlOrderDeliveryError && !error.uncertain && !hlOrderRequiresReconciliation(event);
+          await recordHlOrderDelivery(event, knownFailure ? "failed" : "unknown", {
+            code: knownFailure ? code : "HL_ORDER_DELIVERY_UNKNOWN", safe_to_retry: knownFailure,
+            message_id_header: await stableMessageId(String(event.event_key || event.event_id || "request"))
+          });
+          if (knownFailure && error.retryable) await failEvent(eventId, leaseToken, error);
+          else await failEventPermanent(eventId, leaseToken, new Error(knownFailure ? code : "HL_ORDER_DELIVERY_UNKNOWN"), event.attempt_count);
+        } else if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(String(event.event_type || ""))
           && ["RECLASS_CONFLICT", "RECLASS_VALIDATION", "EVAL_WORK_CONFLICT", "EVAL_WORK_VALIDATION", "SHEAR_CONFLICT", "SHEAR_VALIDATION"].includes(code)) {
           await failEventPermanent(eventId, leaseToken, error, event.attempt_count);
         } else {

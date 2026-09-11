@@ -8468,6 +8468,7 @@ function verifyHlTagsSender_(payload) {
       || (lockedUntil && (!Number.isFinite(Date.parse(lockedUntil)) || Date.parse(lockedUntil) > Date.now()))) {
     throw hlTagsError_(403, 'hl_tags_forbidden', 'HL TAGS is available only to the active dylan_collyge account.');
   }
+  return profile;
 }
 
 function hlTagsValue_(value) {
@@ -14992,12 +14993,8 @@ function decorateRequestLifecycleEmailResult_(payload, result, recipients) {
 
 function sendRequestEmailWithFallback_(payload) {
   if (isHlTagsEmail_(payload)) {
-    try {
-      payload = prepareHlTagsEmailPayload_(payload);
-    } catch (error) {
-      return { ok: false, status: error && error.hlTagsStatus || 503, code: error && error.hlTagsCode || 'hl_tags_verification_unavailable', recipients: [], retryable: false,
-        message: error && error.hlTagsCode ? error.message : 'HL TAGS verification failed. No email was sent.' };
-    }
+    return { ok: false, status: 409, code: 'hl_order_update_app_required', recipients: [], retryable: false,
+      message: 'Update the app and use HL Order to preview and submit a saved order. No email was sent.' };
   }
   if (String(payload && payload.emailType || '').trim().toLowerCase() === 'request_complete') {
     payload = hydrateRequestCompletePayload_(payload);
@@ -16478,9 +16475,211 @@ function handleSignedPhotoHistoryShare_(delivery) {
   } finally { lock.releaseLock(); }
 }
 
+// HL orders render only frozen, protected reports. Browser content never becomes mail.
+function hlOrderText_(value, max, required) {
+  if (value !== null && value !== undefined && typeof value !== 'string' && typeof value !== 'number') throw new Error('HL_ORDER_REPORT_INVALID');
+  const text = String(value === null || value === undefined ? '' : value).trim();
+  if ((required && !text) || text.length > max || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)) throw new Error('HL_ORDER_REPORT_INVALID');
+  return text;
+}
+
+function normalizeHlOrderReport_(input) {
+  if (!input || input.contract_version !== 'hl-order-report-v1' || ['submission', 'cancellation'].indexOf(input.kind) === -1
+      || !Array.isArray(input.lines) || !input.lines.length || input.lines.length > 500) throw new Error('HL_ORDER_REPORT_INVALID');
+  const report = {
+    contract_version: 'hl-order-report-v1', kind: input.kind,
+    order_id: hlOrderText_(input.order_id, 36, true), order_number: hlOrderText_(input.order_number, 64, true),
+    original_order_number: hlOrderText_(input.original_order_number, 64, input.kind === 'cancellation'),
+    reason: hlOrderText_(input.reason, 1000, false), created_at: hlOrderText_(input.created_at, 40, true), lines: [], total_quantity: 0
+  };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(report.order_id) || !/^[A-Za-z0-9._-]+$/.test(report.order_number)
+      || (report.original_order_number && !/^[A-Za-z0-9._-]+$/.test(report.original_order_number))
+      || !Number.isFinite(Date.parse(report.created_at))) throw new Error('HL_ORDER_REPORT_INVALID');
+  const identities = Object.create(null);
+  report.lines = input.lines.map(function(raw) {
+    if (!raw || typeof raw !== 'object') throw new Error('HL_ORDER_REPORT_INVALID');
+    const quantity = raw.quantity;
+    if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 1000000000) throw new Error('HL_ORDER_REPORT_INVALID');
+    const line = { source_id: hlOrderText_(raw.source_id, 200, true), quantity: quantity };
+    if (identities[line.source_id]) throw new Error('HL_ORDER_REPORT_INVALID');
+    identities[line.source_id] = true;
+    ['itemcode', 'contsize', 'planstartdate', 'dock', 'stopnumber', 'commonname', 'locationcode', 'lotcode', 'transactionnumber', 'purchaseordernumber', 'customername', 'consigneename'].forEach(function(field) {
+      line[field] = hlOrderText_(raw[field], field === 'commonname' || field === 'customername' || field === 'consigneename' ? 200 : 120, false);
+    });
+    line.ptravailable = raw.ptravailable === null || raw.ptravailable === undefined || raw.ptravailable === '' ? null : Number(raw.ptravailable);
+    if (typeof raw.ptravailable === 'boolean' || (typeof raw.ptravailable === 'object' && raw.ptravailable !== null)) throw new Error('HL_ORDER_REPORT_INVALID');
+    if (line.ptravailable !== null && (!Number.isFinite(line.ptravailable) || line.ptravailable < 0)) throw new Error('HL_ORDER_REPORT_INVALID');
+    report.total_quantity += quantity;
+    return line;
+  });
+  if (!Number.isSafeInteger(report.total_quantity) || Number(input.total_quantity) !== report.total_quantity) throw new Error('HL_ORDER_REPORT_INVALID');
+  report.lines.sort(function(a, b) {
+    return ['dock', 'stopnumber', 'itemcode', 'contsize', 'source_id'].reduce(function(result, key) {
+      return result || a[key].localeCompare(b[key], 'en', { numeric: true, sensitivity: 'base' });
+    }, 0);
+  });
+  return report;
+}
+
+function buildHlOrderPdfHtml_(input) {
+  const report = normalizeHlOrderReport_(input);
+  const escape = escapeEmailHtml_;
+  const title = report.kind === 'cancellation' ? 'HL Order Cancellation' : 'HL Order';
+  const quantityLabel = report.kind === 'cancellation' ? 'Canceled quantity' : 'HL order quantity';
+  const groups = [];
+  report.lines.forEach(function(line) {
+    let group = groups.length ? groups[groups.length - 1] : null;
+    if (!group || group.dock !== line.dock || group.stop !== line.stopnumber) {
+      group = { dock: line.dock, stop: line.stopnumber, lines: [], quantity: 0 };
+      groups.push(group);
+    }
+    group.lines.push(line);
+    group.quantity += line.quantity;
+  });
+  const sections = groups.map(function(group) {
+    const rows = group.lines.map(function(line) {
+      const details = [line.commonname, 'Location: ' + (line.locationcode || '-'), 'Lot: ' + (line.lotcode || '-'),
+        'Availability: ' + (line.ptravailable === null ? 'Unknown' : line.ptravailable),
+        line.transactionnumber ? 'Order ref: ' + line.transactionnumber : '', line.purchaseordernumber ? 'PO: ' + line.purchaseordernumber : '',
+        line.customername ? 'Customer: ' + line.customername : '', line.consigneename ? 'Consignee: ' + line.consigneename : ''].filter(Boolean).map(escape).join(' | ');
+      return '<tbody class="line"><tr><td>' + escape(line.itemcode || '-') + '</td><td>' + escape(line.contsize || '-') + '</td><td class="qty">' + line.quantity
+        + '</td><td>' + escape(line.planstartdate || '-') + '</td><td>' + escape(line.dock || '-') + '</td><td>' + escape(line.stopnumber || '-')
+        + '</td></tr><tr><td class="details" colspan="6">' + details + '</td></tr></tbody>';
+    }).join('');
+    return '<section><table><thead><tr><th colspan="6" class="group">Dock ' + escape(group.dock || 'Unassigned') + ' / Stop ' + escape(group.stop || 'Unassigned')
+      + ' <span>' + group.lines.length + ' lines | ' + quantityLabel + ': ' + group.quantity + '</span></th></tr><tr>'
+      + ['Item Code', 'Container Size', 'HL Order Quantity', 'Plan Start Date', 'Dock', 'Stop Number'].map(function(label) { return '<th>' + label + '</th>'; }).join('')
+      + '</tr></thead>' + rows + '</table></section>';
+  }).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + title + ' ' + escape(report.order_number) + '</title><style>'
+    + '@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | ' + report.order_number + '";font:9px Arial;color:#53635b}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial;color:#53635b}}'
+    + '*{box-sizing:border-box}body{font:11px Arial,sans-serif;color:#18372b;margin:0}.brand{font-size:9px;letter-spacing:1px;color:#537063}h1{font-size:24px;margin:7px 0}.meta{line-height:1.6;font-size:10px}.totals{background:#eaf0eb;padding:9px;margin:12px 0;font-weight:bold}.reason{padding:9px;border-left:3px solid #a94835;white-space:pre-wrap;margin:8px 0;overflow-wrap:anywhere}'
+    + 'section{margin:0 0 12px}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}th,td{border:1px solid #bfcdc4;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{font-size:9px;background:#eef3ef}th.group{background:#244f3e;color:white;font-size:12px;padding:8px}th.group span{float:right;font-size:10px}.qty{font-weight:bold;text-align:right}.details{font-size:9px;color:#51645a;border-top:0;padding:5px 6px 9px}.line{page-break-inside:avoid;break-inside:avoid}tr{page-break-inside:avoid}.note{font-size:9px;color:#53635b;margin:8px 0}'
+    + '</style></head><body><header><div class="brand">GREENLEAF NURSERY COMPANY | PARK HILL</div><h1>' + title + ' ' + escape(report.order_number) + '</h1>'
+    + '<div class="meta">' + (report.kind === 'cancellation' ? '<b>Original order:</b> ' + escape(report.original_order_number) + '<br>' : '')
+    + '<b>Created:</b> ' + escape(Utilities.formatDate(new Date(report.created_at), 'America/Chicago', 'MMM d, yyyy h:mm a z')) + ' | <b>Submitted by:</b> Dylan Collyge</div>'
+    + (report.reason ? '<div class="reason"><b>Cancellation reason:</b> ' + escape(report.reason) + '</div>' : '')
+    + '<div class="totals">Total ' + quantityLabel + ': ' + report.total_quantity + ' | Lines: ' + report.lines.length + ' | Dock / stop groups: ' + groups.length + '</div></header>'
+    + sections + '<p class="note">' + (report.kind === 'cancellation' ? 'Quantities shown are canceled quantities against the original order.' : 'Quantities and source details reflect the saved order snapshot.') + '</p></body></html>';
+}
+
+function buildHlOrderPdfFile_(report) {
+  const name = 'GNC_PH_' + (report.kind === 'cancellation' ? 'HL_Cancellation_' : 'HL_Order_') + report.order_number + '.pdf';
+  try {
+    const blob = HtmlService.createHtmlOutput(buildHlOrderPdfHtml_(report)).getBlob().getAs(MimeType.PDF).setName(name);
+    const bytes = blob.getBytes();
+    if (!bytes || bytes.length < 5 || bytes.slice(0, 5).map(function(byte) { return String.fromCharCode(byte & 255); }).join('') !== '%PDF-') throw new Error('Invalid PDF');
+    return { blob: blob, bytes: bytes, filename: name };
+  } catch (error) { throw new Error('HL_ORDER_PDF_BUILD_FAILED'); }
+}
+
+function hlOrderRecipient_() {
+  const recipient = normalizeEmailAddress_(resolveRequestRecipientEmail_('dylan_collyge', ''));
+  if (!isLikelyEmailAddress_(recipient)) throw new Error('HL_ORDER_RECIPIENT_UNAVAILABLE');
+  return recipient;
+}
+
+function handleHlOrderPreview_(payload) {
+  try {
+    if (Object.keys(payload).some(function(key) { return ['type', 'nativeAuthAccessToken', 'previewId'].indexOf(key) === -1; })) throw new Error('HL_ORDER_PREVIEW_INVALID');
+    const profile = verifyHlTagsSender_({ accessToken: payload.nativeAuthAccessToken });
+    const id = String(payload.previewId || '');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error('HL_ORDER_PREVIEW_INVALID');
+    const rows = requestDeliveryRest_('ph_hl_order_previews', 'GET', 'select=id,created_by,expires_at,report&id=eq.' + encodeURIComponent(id) + '&limit=2', null);
+    const preview = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
+    // Preview expiry limits submission, not read-only access to the saved report.
+    // The protected database commands enforce freshness before enqueueing delivery.
+    if (!preview || preview.created_by !== profile.id) throw new Error('HL_ORDER_PREVIEW_UNAVAILABLE');
+    const report = normalizeHlOrderReport_(preview.report);
+    const pdf = buildHlOrderPdfFile_(report);
+    return { ok: true, previewId: id, pdfBase64: Utilities.base64Encode(pdf.bytes), fileName: pdf.filename, mimeType: 'application/pdf', recipient: hlOrderRecipient_() };
+  } catch (error) {
+    const authStatus = error && error.hlTagsStatus;
+    const code = authStatus === 401 ? 'HL_ORDER_AUTH_REQUIRED' : authStatus === 403 ? 'HL_ORDER_FORBIDDEN'
+      : /^HL_ORDER_[A-Z_]+$/.test(String(error && error.message || '')) ? error.message : 'HL_ORDER_PREVIEW_UNAVAILABLE';
+    return { ok: false, status: authStatus || (code === 'HL_ORDER_PREVIEW_EXPIRED' ? 409 : 503), code: code,
+      message: authStatus === 401 ? 'Sign in again to preview HL Order.' : authStatus === 403 ? 'HL Order is available only to the active Dylan account.' : 'HL Order preview could not be verified. Refresh HL Order and preview again.' };
+  }
+}
+
+function hlOrderDeliveryRecord_(delivery, status, result) {
+  return requestDeliveryRest_('rpc/hl_order_delivery_record_v1', 'POST', '', {
+    p_event_id: delivery.eventId, p_lease_token: delivery.leaseToken, p_status: status, p_result: result || {}
+  });
+}
+
+function hlOrderEmailReceipt_(result, messageIdHeader, recipient) {
+  return { gmail_message_id: String(result.gmailMessageId || result.gmail_message_id || ''), thread_id: String(result.threadId || result.thread_id || ''),
+    message_id: String(result.messageId || result.message_id || messageIdHeader), message_id_header: messageIdHeader, recipients: [recipient], mode: String(result.mode || 'gmail_api') };
+}
+
+function handleSignedHlOrderDelivery_(delivery) {
+  let lock;
+  let sendStarted = false;
+  let recipient = '';
+  try {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuid.test(String(delivery.eventId || '')) || !uuid.test(String(delivery.leaseToken || ''))) throw new Error('HL_ORDER_DELIVERY_INVALID');
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) throw new Error('HL_ORDER_DELIVERY_BUSY');
+    const saved = requestDeliveryRest_('rpc/hl_order_delivery_lookup_v1', 'POST', '', { p_event_id: delivery.eventId });
+    if (!saved || saved.event_id !== delivery.eventId || saved.event_type !== delivery.eventType || saved.event_key !== delivery.eventKey) throw new Error('HL_ORDER_DELIVERY_INVALID');
+    const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(saved.event_key), Utilities.Charset.UTF_8);
+    const expectedId = '<gnc-' + digest.map(function(byte) { return ('0' + (byte & 255).toString(16)).slice(-2); }).join('').slice(0, 40) + '@request-delivery.agdatasolutions.local>';
+    if (delivery.messageIdHeader !== expectedId) throw new Error('HL_ORDER_DELIVERY_INVALID');
+    recipient = hlOrderRecipient_();
+    if (!Array.isArray(saved.recipients) || saved.recipients.length !== 1 || normalizeEmailAddress_(saved.recipients[0]) !== recipient) throw new Error('HL_ORDER_RECIPIENT_INVALID');
+    const profiles = requestDeliveryRest_('profiles', 'GET', 'select=id,username,disabled_at,locked_until,must_change_password&id=eq.' + encodeURIComponent(saved.created_by) + '&limit=2', null);
+    const profile = Array.isArray(profiles) && profiles.length === 1 ? profiles[0] : null;
+    if (!profile || profile.id !== saved.created_by || profile.username !== 'dylan_collyge' || profile.disabled_at || profile.must_change_password !== false
+        || (profile.locked_until && (!Number.isFinite(Date.parse(profile.locked_until)) || Date.parse(profile.locked_until) > Date.now()))) throw new Error('HL_ORDER_FORBIDDEN');
+    const report = normalizeHlOrderReport_(saved.report);
+    if (saved.order_id !== report.order_id) throw new Error('HL_ORDER_DELIVERY_INVALID');
+    if (('hl_order_' + (report.kind === 'submission' ? 'submission' : 'cancellation')) !== delivery.eventType) throw new Error('HL_ORDER_DELIVERY_INVALID');
+    const receipt = saved.receipt && saved.receipt.gmail_message_id ? saved.receipt : getRequestDeliveryReceipt_(expectedId) || findSentRequestDeliveryByMessageId_(expectedId);
+    if (receipt) {
+      const recovered = hlOrderEmailReceipt_(receipt, expectedId, recipient);
+      hlOrderDeliveryRecord_(delivery, 'sent', recovered);
+      return { ok: true, status: 200, recipients: [recipient], gmailMessageId: recovered.gmail_message_id, threadId: recovered.thread_id,
+        messageId: recovered.message_id, messageIdHeader: expectedId, mode: 'hl_order_receipt_recovery', recovered: true };
+    }
+    if (delivery.reconciliationOnly === true || saved.reconciliation_only === true || ['sending', 'sent', 'unknown'].indexOf(saved.delivery_status) !== -1) {
+      sendStarted = true;
+      throw new Error('HL_ORDER_DELIVERY_UNKNOWN');
+    }
+    if (!isGmailAdvancedServiceAvailable_()) throw new Error('HL_ORDER_GMAIL_UNAVAILABLE');
+    const pdf = buildHlOrderPdfFile_(report);
+    const intent = hlOrderDeliveryRecord_(delivery, 'sending', { message_id_header: expectedId, recipients: [recipient] });
+    if (!intent || intent.allow_send !== true) {
+      sendStarted = true;
+      throw new Error('HL_ORDER_DELIVERY_UNKNOWN');
+    }
+    // From this point onward, an error is ambiguous until Sent-mail evidence resolves it.
+    sendStarted = true;
+    const subject = report.kind === 'cancellation' ? 'HL TAGS \u2014 CANCELLATION' : 'HL TAGS';
+    const textBody = subject + '\nOrder: ' + report.order_number + '\n' + (report.kind === 'cancellation' ? 'Original order: ' + report.original_order_number + '\nCanceled quantity: ' : 'HL order quantity: ')
+      + report.total_quantity + '\nLines: ' + report.lines.length + (report.reason ? '\nReason: ' + report.reason : '') + '\n\nThe saved HL order PDF is attached.';
+    const result = sendGmailApiMessage_({ toList: recipient, toArray: [recipient], subject: subject, textBody: textBody,
+      htmlBody: '<div style="font-family:Arial,sans-serif;white-space:pre-line">' + escapeEmailHtml_(textBody) + '</div>',
+      attachments: [pdf.blob], fromName: 'GNC PH HL Order', fromAddress: resolveAutomatedEmailSenderAddress_(), messageIdHeader: expectedId });
+    if (!result || result.ok !== true || !result.gmailMessageId) throw new Error('HL_ORDER_DELIVERY_UNKNOWN');
+    // Either durable database receipt or Sent-mail/Script receipt can recover a lost worker acknowledgement.
+    try { saveRequestDeliveryReceipt_(expectedId, result); } catch (receiptError) {}
+    hlOrderDeliveryRecord_(delivery, 'sent', hlOrderEmailReceipt_(result, expectedId, recipient));
+    return Object.assign({}, result, { ok: true, recipients: [recipient], messageIdHeader: expectedId, mode: 'hl_order_gmail_api' });
+  } catch (error) {
+    const code = sendStarted ? 'HL_ORDER_DELIVERY_UNKNOWN' : /^HL_ORDER_[A-Z_]+$/.test(String(error && error.message || '')) ? error.message : 'HL_ORDER_DELIVERY_UNAVAILABLE';
+    if (sendStarted) { try { hlOrderDeliveryRecord_(delivery, 'unknown', { code: code, message_id_header: String(delivery.messageIdHeader || '') }); } catch (recordError) {} }
+    const permanent = ['HL_ORDER_DELIVERY_INVALID', 'HL_ORDER_REPORT_INVALID', 'HL_ORDER_FORBIDDEN', 'HL_ORDER_RECIPIENT_INVALID'].indexOf(code) !== -1;
+    return { ok: false, status: sendStarted ? 409 : permanent ? 403 : 503, code: code, recipients: [], deliveryUncertain: sendStarted, retryable: !sendStarted && !permanent,
+      message: sendStarted ? 'HL Order delivery is unknown. Reconcile the saved order before sending again.' : 'HL Order could not be sent. The saved order is available for retry.' };
+  } finally { if (lock) { try { lock.releaseLock(); } catch (releaseError) {} } }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
+  if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
   if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);
   if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
     return handleSignedReclassInquiryDelivery_(delivery);
@@ -16604,10 +16803,12 @@ function processRequestDeliveryOutbox_(limit) {
     events = requestDeliveryRest_(
       'ph_request_delivery_outbox',
       'GET',
-      'select=*&event_type=neq.photo_history_share&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
+      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
       null
     );
     events.forEach(function(eventRow) {
+      // The leased Edge worker exclusively owns HL email delivery and reconciliation.
+      if (['hl_order_submission', 'hl_order_cancellation'].indexOf(String(eventRow.event_type || '')) !== -1) return;
       const eventId = String(eventRow.event_id || '');
       const claimedRows = requestDeliveryRest_(
         'ph_request_delivery_outbox',
@@ -16913,6 +17114,10 @@ function doPost(e) {
 
     if (payload.type === 'block_clearing_pdf') {
       return jsonOutput_(handleBlockClearingPdf_(payload));
+    }
+
+    if (payload.type === 'hl_order_preview') {
+      return jsonOutput_(handleHlOrderPreview_(payload));
     }
 
     if (payload.type === 'request_delivery_event') {

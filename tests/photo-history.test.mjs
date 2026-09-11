@@ -99,7 +99,7 @@ test('one event holds all selected photos, one authoritative sales rep and the o
   assert.match(ui,/api\('send',draft.pending\)/);
   assert.match(ui,/draft.pending=null;draft.message=''/);
   assert.match(read('supabase/functions/request-delivery-worker/index.ts'),/\["photo_history_share", "reclass_inquiry"/);
-  assert.match(gs,/event_type=neq.photo_history_share&status=eq.pending/);
+  assert.match(gs,/event_type=not\.in\.\(photo_history_share,hl_order_submission,hl_order_cancellation\)&status=eq.pending/);
 });
 
 function emailHarness(){
