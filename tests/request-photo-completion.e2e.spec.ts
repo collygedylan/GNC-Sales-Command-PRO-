@@ -12,7 +12,7 @@ const person = { id: PROFILE_ID, username: USER, display_name: 'Synthetic Kayla'
   division: '10', language: 'English', disabled_at: null, locked_until: null,
   must_change_password: false, passkey_pilot: false };
 const readMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
-type ResponseGate = { promise: Promise<void>; release: () => void };
+type ResponseGate = { promise: Promise<void>; release: () => void; when?: () => Promise<boolean> };
 const diagnostics = new WeakMap<Page, { report: () => unknown; release: () => void }>();
 
 function authSession() {
@@ -157,7 +157,8 @@ async function fixture(page: Page, baseURL: string, allowed = true) {
         can_complete: state.allowed, can_archive: state.allowed, can_create_general: state.allowed, can_create_av: state.allowed });
       if (operation === 'get_my_dataset_revisions_v1') {
         state.metadata.push(body.p_dataset_keys || []);
-        if (state.gate) { state.heldMetadata++; await state.gate.promise; }
+        const gate = state.gate;
+        if (gate && (!gate.when || await gate.when())) { state.heldMetadata++; await gate.promise; }
         return json(route, { contractVersion: 1, permissionVersion: state.permission,
           sources: (body.p_dataset_keys || []).map((key: string) => ({ key, revision: String(state.revisions[key] || 1), state: 'ready' })) });
       }
@@ -365,13 +366,13 @@ async function fixture(page: Page, baseURL: string, allowed = true) {
     expect(state.reads.some(read => read.table === 'ph_master_inventory' && read.exact && read.fields === 213
       && read.ids.length === 1 && read.ids[0] === UID)).toBe(true);
   };
-  const holdResponse = (key: 'gate' | 'saveAckGate' | 'uploadGate') => {
+  const holdResponse = (key: 'gate' | 'saveAckGate' | 'uploadGate', when?: () => Promise<boolean>) => {
     let release!: () => void;
     const promise = new Promise<void>(resolve => { release = resolve; });
-    state[key] = { promise, release };
+    state[key] = { promise, release, when };
     return () => { state[key] = null; release(); };
   };
-  return { state, open, holdMetadata: () => holdResponse('gate'),
+  return { state, open, holdMetadata: (when?: () => Promise<boolean>) => holdResponse('gate', when),
     holdSaveAcknowledgement: () => holdResponse('saveAckGate'), holdUpload: () => holdResponse('uploadGate') };
 }
 
@@ -606,13 +607,14 @@ test('Request AV-note blur waits for verification and autosaves the valid edit e
   const baselineVersion = f.state.requestRow.row_version;
   const baselineCalls = await page.evaluate(() => (window as any).__requestRepairObservations.calls
     .filter((call: any) => call.name === 'saveData' && !call.complete).length);
-  const releaseMetadata = f.holdMetadata();
-  const editedInput = await note.evaluate(element => {
+  const releaseMetadata = f.holdMetadata(() => page.evaluate(() => !!(window as any).__requestBlurEditStarted));
+  await expect.poll(() => note.evaluate(element => {
     const input = element as HTMLInputElement;
     if (input.disabled || input.readOnly || !window.eval(`hasProductionMasterDetailForItem(activeItem)
       && canUseVerifiedProductionData(getProductionDetailDatasetKeys('req-'))`)) {
-      throw new Error('The Request field must be editable and verified before the edit');
+      return null; // A pre-edit background check must finish before this gate starts.
     }
+    (window as any).__requestBlurEditStarted = true;
     // The edit occurs while enabled. Its native blur starts a real check
     // before the original 200ms autosave, matching the observed camera race.
     element.addEventListener('blur', () => {
@@ -628,8 +630,7 @@ test('Request AV-note blur waits for verification and autosaves the valid edit e
       timerPending: window.eval(`!!detailInputSaveTimers['req-']`) };
     input.blur();
     return edited;
-  });
-  expect(editedInput).toEqual({
+  })).toEqual({
     value: 'HEALTHY VERIFIED BLUR NOTE', editable: true, timerPending: true });
   await expect.poll(() => f.state.heldMetadata).toBeGreaterThan(0);
   // Keep checking through both the 200ms blur save and the real input debounce;
