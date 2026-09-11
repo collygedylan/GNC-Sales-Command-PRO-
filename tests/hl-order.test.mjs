@@ -104,3 +104,17 @@ test('preview membership changes and logout prevent sending',async()=>{
   ctx.getProductionMasterDetailStore=()=>({getVerifiedCanonicalRows:()=>null});
   assert.equal(ctx.getHlOrderRows()[0].ptravailable,'');
 });
+
+
+test('binding an already verified availability batch requests one fresh render',async()=>{
+  const ctx=runtime([row(),row('c',{LOCATIONCODE:'C.14.002'})]);
+  const masters=[row('master-a',{PTRAVAILABLE:null}),row('master-c',{LOCATIONCODE:'C.14.002',PTRAVAILABLE:'0'})];
+  ctx.fullInventory=masters;
+  const batch=ids=>ids.length===2 && ids.includes('master-a') && ids.includes('master-c') ? masters : null;
+  ctx.getProductionMasterDetailStore=()=>({getVerifiedRows:batch,getVerifiedCanonicalRows:batch});
+  const rows=ctx.getHlOrderRows();
+  assert.deepEqual(Array.from(rows,r=>r.ptravailable),['','']);
+  assert.equal(await ctx.ensureHlOrderAvailability(rows),true);
+  assert.deepEqual(Array.from(ctx.getHlOrderRows(),r=>r.ptravailable),['','0']);
+  assert.equal(await ctx.ensureHlOrderAvailability(rows),false);
+});

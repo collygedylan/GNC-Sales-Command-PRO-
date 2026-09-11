@@ -7,7 +7,8 @@ async function fixture(page:Page,baseURL:string,username='dylan_collyge') {
   const origin=new URL(baseURL).origin;
   const state={rows:[soc('hl-a'),soc('hl-b',{quantityordered:'15'}),soc('hl-c',{quantityordered:'5',locationcode:'C.14.002'}),soc('hl-excluded',{locationcode:'C.120.001'})],revision:1,
     master:[inventoryReadFixture.row({unique_id:'master-hl-a',itemcode:'SYNTH.003',commonname:'Synthetic HL Holly',contsize:'#3',locationcode:'C.12.001',lotcode:'27.F1',ptravailable:'90',warehouseid:'10',warehousei:'10',season:'F1',saleyear:'27'}),inventoryReadFixture.row({unique_id:'master-hl-c',itemcode:'SYNTH.003',commonname:'Synthetic HL Holly',contsize:'#3',locationcode:'C.14.002',lotcode:'27.F1',ptravailable:'42',warehouseid:'10',warehousei:'10',season:'F1',saleyear:'27'})],
-    sends:[] as any[],fail:false,errors:[] as string[],mutations:[] as string[],runtime:0};
+    sends:[] as any[],fail:false,errors:[] as string[],mutations:[] as string[],runtime:0,
+    revisionGate:null as Promise<void>|null,revisionReads:0};
   const profile={id,username,display_name:username,role:'ADMIN',division:'10',language:'English',disabled_at:null,locked_until:null,must_change_password:false};
   const claims={sub:id,aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000)};
   const token=[Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'),Buffer.from(JSON.stringify(claims)).toString('base64url'),'synthetic'].join('.');
@@ -33,7 +34,10 @@ async function fixture(page:Page,baseURL:string,username='dylan_collyge') {
     }
     if(url.pathname.startsWith('/rest/v1/rpc/')){
       const op=url.pathname.split('/').pop(),body=req.postDataJSON()||{};
-      if(op==='get_my_dataset_revisions_v1')return json(route,{contractVersion:1,permissionVersion:'hl-policy-1',sources:(body.p_dataset_keys||[]).map((key:string)=>({key,revision:String(state.revision),state:'ready'}))});
+      if(op==='get_my_dataset_revisions_v1'){
+        state.revisionReads++;const gate=state.revisionGate;if(gate)await gate;
+        return json(route,{contractVersion:1,permissionVersion:'hl-policy-1',sources:(body.p_dataset_keys||[]).map((key:string)=>({key,revision:String(state.revision),state:'ready'}))});
+      }
       if(op==='get_my_app_permissions_v1')return json(route,{contractVersion:'app-access-v1',enforcementMode:'enforced',username,role:'ADMIN',permissions:[]});
       if(op==='get_request_capabilities')return json(route,{contract_version:2,username,scope:'global',can_view_queue:true,can_edit:true,can_complete:true});
       if(op==='get_request_schema_compatibility')return json(route,{compatible:true,contract_version:2});
@@ -118,4 +122,41 @@ test('missing master availability stays unknown while a real zero stays zero',as
   await expect(page.locator('[data-hl-group]')).toContainText('Available: 0');
   await expect(page.locator('[data-hl-group]')).toContainText('Available: Not available');
   expect(state.errors).toEqual([]);expect(state.mutations).toEqual([]);
+});
+
+test('expanded HL availability recovers after an unchanged master verification finishes',async({page,baseURL})=>{
+  const state=await fixture(page,baseURL!);
+  state.master[0].ptravailable=null;state.master[1].ptravailable='0';
+  await page.locator('#home-tile-hl-order').click();
+  await expect(page.locator('[data-hl-group]')).toHaveCount(1);
+  await expect.poll(()=>page.evaluate(()=>window.eval('canUseVerifiedProductionData(["soc","master"])'))).toBe(true);
+  // Finish view-entry verification and its delayed first-paint render before
+  // opening the race window; otherwise that render can conceal the defect.
+  await page.evaluate(()=>window.eval('getProductionLiveSyncCoordinator().check("hl-availability-settle")'));
+  await expect.poll(()=>page.evaluate(()=>window.eval('!productionLiveSyncRenderTimer && canUseVerifiedProductionData(["soc","master"])'))).toBe(true);
+
+  let releaseRevisionRead:()=>void=()=>{};
+  state.revisionGate=new Promise<void>(resolve=>{releaseRevisionRead=resolve;});
+  const priorReads=state.revisionReads;
+  try {
+    // Hold an unchanged revision check after it removes the old verification
+    // fence. Expanding now must not expose unverified availability.
+    await page.evaluate(()=>window.eval('void getProductionLiveSyncCoordinator().check("hl-availability-regression")'));
+    await expect.poll(()=>state.revisionReads).toBeGreaterThan(priorReads);
+    await expect.poll(()=>page.evaluate(()=>window.eval('canUseVerifiedProductionData(["master"])'))).toBe(false);
+    await page.getByRole('button',{name:'View HL locations'}).click();
+    await expect(page.locator('[data-hl-group]').getByText('Not available',{exact:true})).toHaveCount(2);
+    // Drain any render already scheduled by view entry while metadata is
+    // still held, so it cannot refresh the card after the release below.
+    await expect.poll(()=>page.evaluate(()=>window.eval('!productionLiveSyncRenderTimer'))).toBe(true);
+
+    // No revision or payload changes, so a commit callback alone cannot
+    // repair the card. Verification completion must refresh the open card.
+    state.revisionGate=null;releaseRevisionRead();
+    await expect(page.locator('[data-hl-group]')).toContainText('Available: 0');
+    await expect(page.locator('[data-hl-group]').getByText('Not available',{exact:true})).toHaveCount(1);
+    expect(state.errors).toEqual([]);expect(state.mutations).toEqual([]);
+  } finally {
+    state.revisionGate=null;releaseRevisionRead();
+  }
 });
