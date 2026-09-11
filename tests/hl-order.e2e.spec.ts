@@ -27,7 +27,8 @@ async function preview(page: Page) {
   await expect(page.locator('#hl-tags-preview-content')).toContainText(hlRecipient);
   await expect(page.getByRole('link', { name: 'Open or download PDF' })).toHaveAttribute('href', /^blob:/);
 }
-async function reloadHl(page: Page) {
+async function reloadHl(page: Page, fixture: any) {
+  await fixture.waitForRevisionIdle();
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.eval('typeof nativeAuthProfile !== "undefined" && !!nativeAuthProfile'));
   await openHl(page);
@@ -119,7 +120,7 @@ test('selected editable quantities persist through reload and HL removal preserv
   expect(await page.evaluate(() => window.eval('selectedItems.has(window.__hlUnrelatedId)'))).toBe(true);
   await navigateHl(page, page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }));
   await selectOne(page, 'hl-a', '7');
-  await reloadHl(page);
+  await reloadHl(page, fixture);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toHaveValue('7');
   await expect(page.locator('[data-hl-group]')).toContainText('In Bloom Picker');
   assertIsolated(fixture);
@@ -175,7 +176,7 @@ test('a same-date addition keeps its sent order number and leaves only the new b
   await expect(lines.nth(0).locator('[data-hl-line-select]')).toBeEnabled();
   await expect(lines.nth(1).locator('[data-hl-line-select]')).toBeDisabled();
   await expect(lines.nth(1)).toContainText('Delivery pending for this addition.');
-  fixture.deliver('sent'); await reloadHl(page);
+  fixture.deliver('sent'); await reloadHl(page, fixture);
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
   await expect(page.locator('#hl-order-tracking [data-hl-order-line-id]').nth(1).locator('[data-hl-line-select]')).toBeEnabled();
@@ -208,7 +209,7 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
 test('undated HL demand persists as a draft but cannot preview or send', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { planstartdate: '' })] });
   await openHl(page); await selectOne(page);
-  await reloadHl(page);
+  await reloadHl(page, fixture);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toContainText('Ship date needed');
   await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
   await page.locator('#global-action-bar').getByRole('button', { name: /Actions/ }).click();
@@ -238,7 +239,7 @@ test('PDF review freezes edited quantities and Needed survives queued delivery u
   await navigateHl(page, page.locator('[data-hl-tab="needed"]'));
   await expect(page.locator('[data-hl-group]')).toContainText('In Bloom Picker');
   fixture.deliver('sent');
-  await reloadHl(page);
+  await reloadHl(page, fixture);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toHaveCount(0);
   await expect(page.locator('[data-hl-group]')).not.toContainText('In Bloom Picker');
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
@@ -272,7 +273,7 @@ test('uncertain delivery remains protected across reload without another submiss
   await openHl(page); await selectOne(page); await preview(page);
   await page.locator('#hl-tags-send').click();
   await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
-  fixture.deliver('delivery_unknown'); await reloadHl(page);
+  fixture.deliver('delivery_unknown'); await reloadHl(page, fixture);
   await expect(page.locator('#hl-order-content')).toContainText('Delivery could not be confirmed');
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toBeDisabled();
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
@@ -305,7 +306,7 @@ test('an older uncertain order stays protected while a different-date ready sour
   await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
   expect(fixture.state.orders).toHaveLength(2);
   expect(fixture.state.orders[0].lines.map((line: any) => line.source_id)).toEqual(['hl-b']);
-  fixture.deliver('sent'); await reloadHl(page);
+  fixture.deliver('sent'); await reloadHl(page, fixture);
   expect(fixture.state.orders.find((order: any) => order.id === oldOrderId).status).toBe('delivery_unknown');
   expect(fixture.state.delivery_issues.map((issue: any) => issue.order_id)).toEqual([oldOrderId]);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toBeDisabled();
@@ -406,7 +407,7 @@ test('partial receipts and corrections remain separate from cancellation PDF sub
   expect(fixture.state.orders[0].lines[0].quantity).toBe(10);
   expect(fixture.state.orders[0].lines[0].received_quantity).toBe(4);
   expect(fixture.state.orders[0].cancellations).toHaveLength(1);
-  fixture.confirmCancellation(); await reloadHl(page);
+  fixture.confirmCancellation(); await reloadHl(page, fixture);
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
   await line.locator('[data-hl-line-select]').check();

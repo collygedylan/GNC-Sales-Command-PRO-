@@ -208,6 +208,29 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   await page.addLocatorHandler(page.locator('#toast-notification.show').filter({ hasText: 'Notifications Blocked' }),
     async (toast) => toast.getByRole('button', { name: 'Dismiss notification', exact: true }).dispatchEvent('click'));
   page.on('pageerror', (error) => control.errors.push(error.message));
+  const pendingRevisionReads = new Set();
+  let revisionReadEpoch = 0;
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1') {
+      pendingRevisionReads.add(request); revisionReadEpoch++;
+    }
+  });
+  page.on('requestfinished', (request) => pendingRevisionReads.delete(request));
+  page.on('requestfailed', (request) => pendingRevisionReads.delete(request));
+  control.waitForRevisionIdle = async () => {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      if (!pendingRevisionReads.size) {
+        const epoch = revisionReadEpoch;
+        // Let response bodies and their browser promise continuations finish
+        // before explicit reload tears down WebKit's cross-origin requests.
+        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        if (!pendingRevisionReads.size && epoch === revisionReadEpoch) return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('HL_FIXTURE_REVISION_READS_DID_NOT_SETTLE');
+  };
   page.on('response', (response) => { if (/\/assets\/live-app-runtime[^/]*\.js/.test(new URL(response.url()).pathname)) control.runtime++; });
   await page.routeWebSocket('**/*', (socket) => socket.close());
   await page.route('**/*', async (route) => {
