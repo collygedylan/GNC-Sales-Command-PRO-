@@ -579,6 +579,7 @@ test('an unrelated verified callback during an unchanged detail check locks temp
         getCurrentVisibleViewId: () => 'detail', isLoginSessionOwnershipCurrent: (owner) => owner === 'owner-A',
         argosInventoryTransactionState: null, document: { getElementById: () => null },
         applyProductionMasterDetailControlState: () => { editor.disabled = !ctx.hasProductionMasterDetailForItem(ctx.activeItem); },
+        refreshProtectedSections() {}, applyCameraPermissions() {}, applyAvDetailReadOnlyState() {},
         scheduleDeferredDetailHydration: (...args) => scheduledRenders.push(args),
     });
     ctx.productionMasterDetailSession = { token: 1, owner: 'owner-A', sourceView: 'drive', status: 'ready',
@@ -600,7 +601,7 @@ test('an unrelated verified callback during an unchanged detail check locks temp
     assert.equal(ctx.productionMasterDetailSession.status, 'ready', 'temporary unverified state is not an observed change');
     assert.equal(ctx.activeItem, baseline);
     assert.equal(editor.value, 'USER DRAFT');
-    gate.resolve(); await pending; await settle();
+    gate.resolve(); assert.equal(await pending, true, JSON.stringify(f.coordinator.getStatus())); await settle();
     assert.equal(editor.disabled, false);
     assert.equal(ctx.productionMasterDetailSession.status, 'ready');
     assert.deepEqual(scheduledRenders, [[1, 0]], 'the deferred full-row paint is resumed only after verification');
