@@ -90472,10 +90472,18 @@ function toggleDriveQuickRequestItem(domId) {
             return groupHlOrderRows([...needed.values()].filter((row) => !handled.has(row.unique_id)));
         }
 
+        function setHlOrderContent(container, html, force = false) {
+            // Preserve live controls when a background read returns the same view.
+            // Replacing a pressed card between mouse-down and mouse-up loses its click.
+            if (!force && container.__hlOrderHtml === html) return;
+            container.innerHTML = html;
+            container.__hlOrderHtml = html;
+        }
+
         function renderHlOrder(force = false) {
             const container = document.getElementById('hl-order-content');
             if (!container) return;
-            if (!canUseHlOrder()) { container.innerHTML = ''; return; }
+            if (!canUseHlOrder()) { setHlOrderContent(container, '', true); return; }
             if (!hlOrderStateData && !hlOrderStatePending && Date.now() - hlOrderStateLoadedAt >= 15000) void loadHlOrderState();
             if (!force && container.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
             const esc = escapeHtml;
@@ -90483,7 +90491,7 @@ function toggleDriveQuickRequestItem(domId) {
             const nav = `<nav aria-label="HL order views" class="flex flex-wrap gap-2">${tabs.map(([tab, label]) => `<button type="button" data-hl-tab="${tab}" aria-current="${hlOrderTab === tab ? 'page' : 'false'}" class="min-h-[44px] rounded-xl border px-3 py-2 font-bold ${hlOrderTab === tab ? 'border-emerald-700 bg-emerald-100 text-emerald-900' : 'bg-white text-slate-600'}" ${buildFastInvokeAttrs('setHlOrderTab', [tab], label)}>${label}</button>`).join('')}</nav>`;
             const warningMessage = hlOrderStateError || (hlOrderPendingCommand && !hlOrderBusy ? 'The previous HL change has not been confirmed. Check its saved result before making another change.' : '');
             const warning = warningMessage ? `<div role="alert" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">${esc(warningMessage)}<div class="mt-2 flex flex-wrap gap-2">${hlOrderButton('refreshHlOrder', [], 'Refresh', true)}${hlOrderPendingCommand ? hlOrderButton('retryHlOrderCommand', [], 'Check saved change', true) : ''}</div></div>` : '';
-            if (!hlOrderStateData) { container.innerHTML = nav + warning + '<p class="p-6 text-slate-600">Loading saved HL orders…</p>'; return; }
+            if (!hlOrderStateData) { setHlOrderContent(container, nav + warning + '<p class="p-6 text-slate-600">Loading saved HL orders…</p>', force); return; }
             let body = '';
             if (hlOrderTrackingId) body = buildHlOrderTrackingHtml();
             else if (hlOrderDetailKey && hlOrderTab === 'needed') body = buildHlOrderDetailsHtml();
@@ -90495,7 +90503,7 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (hlOrderTab === 'removed' || hlOrderTab === 'needs-review') body = buildHlOrderDispositionsHtml(hlOrderTab);
             else body = buildHlOrderHistoryHtml(hlOrderTab === 'history');
             const issues = (hlOrderStateData.delivery_issues || []).map((issue) => `<div role="status" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm"><strong>${esc(issue.order_number || 'HL delivery')} · ${esc(issue.status || 'Needs reconciliation')}</strong><p>${esc(issue.message || issue.last_error || 'Delivery has not been confirmed. This order is protected from duplicate submission.')}</p>${issue.event_id ? `<div class="mt-2">${hlOrderButton('reconcileHlDelivery', [issue.event_id], 'Check delivery status', true)}</div>` : ''}</div>`).join('');
-            container.innerHTML = nav + warning + issues + body;
+            setHlOrderContent(container, nav + warning + issues + body, force);
         }
 
         function setHlOrderTab(tab) {
@@ -90824,7 +90832,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hlOrderPdfUrl) URL.revokeObjectURL(hlOrderPdfUrl);
             hlOrderPdfUrl = '';
             document.getElementById('hl-tags-preview')?.close();
-            const container = document.getElementById('hl-order-content'); if (container) container.innerHTML = '';
+            const container = document.getElementById('hl-order-content'); if (container) setHlOrderContent(container, '', true);
             const section = document.getElementById('hl-bloom-section'); if (section) section.innerHTML = '';
         }
 

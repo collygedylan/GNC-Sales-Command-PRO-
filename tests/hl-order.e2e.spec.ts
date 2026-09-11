@@ -364,6 +364,21 @@ test('a focused receipt correction cannot overwrite a newer receipt after a stat
   assertIsolated(fixture);
 });
 
+test('a same-state refresh during a mouse press preserves the HL card activation', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await openHl(page);
+  const button = page.locator('[data-hl-group]').first().getByRole('button', { name: 'View HL order details', exact: true });
+  await button.hover();
+  await page.mouse.down();
+  // A native read completes while the mouse is held. Its unchanged state must
+  // not replace the pressed node before the browser dispatches mouseup/click.
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await page.mouse.up();
+  await expect(page.locator('#hl-order-detail')).toBeVisible();
+  expect(fixture.commands).toHaveLength(0);
+  assertIsolated(fixture);
+});
+
 test('another admin cannot discover or open HL ordering', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'jd_jones' });
   await expect(page.locator('#home-tile-hl-order')).toBeHidden();
