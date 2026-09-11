@@ -65,6 +65,16 @@ for (const event_type of ['hl_order_submission', 'hl_order_cancellation']) test(
   assert.equal(channel.email.status, 'sent'); assert.deepEqual(Array.from(channel.email.recipients), [dylan]); assert.equal(channel.push, undefined);
 });
 
+test('v2 addition payload keeps its batch identity in the unchanged HL delivery envelope', async () => {
+  const batch_id = '52345678-1234-1234-1234-123456789abc';
+  const h = harness({ event: { event_key: 'hl-order-submission:order-1:' + batch_id,
+    payload: { contract_version: 'hl-order-report-v2', kind: 'addition', batch_id } } });
+  assert.equal((await h.run()).body.delivered, 1);
+  const delivery = JSON.parse(JSON.parse(h.fetches[0].input.body).deliveryJson);
+  assert.equal(delivery.payload.batch_id, batch_id); assert.equal(delivery.payload.kind, 'addition');
+  assert.ok(/120000/.test(worker), 'HL delivery timeout remains bounded well below twelve minutes');
+});
+
 test('worker HTTP timeout, invalid response, missing Gmail receipt and explicit unknown block blind retries', async () => {
   for (const options of [{ fetchError: true }, { invalidResponse: true }, { result: { ok: true } },
     { result: { ok: false, deliveryUncertain: true, retryable: false, code: 'HL_ORDER_DELIVERY_UNKNOWN' } }]) {

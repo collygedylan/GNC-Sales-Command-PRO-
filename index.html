@@ -42,14 +42,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.11.04">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.11.05">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.11.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.11.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6809,7 +6809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.11.04">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.11.05">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6987,12 +6987,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.11.04"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.11.04"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.11.04"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.11.04"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.11.04"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.11.04"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.11.05"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.11.05"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.11.05"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.11.05"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.11.05"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.11.05"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7649,6 +7649,15 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         <div id="hl-tags-preview-content" class="p-4"></div>
         <div class="sticky bottom-0 border-t bg-white p-4"><button type="button" id="hl-tags-send" class="min-h-[48px] w-full rounded-xl bg-[#007a4d] p-3 font-bold text-white disabled:opacity-50" onclick="sendHlTagsEmail()">Send HL TAGS</button></div>
     </dialog>
+    <dialog id="hl-tags-date-selector" class="w-[min(94vw,460px)] rounded-2xl border border-emerald-200 p-0 text-slate-900" oncancel="closeHlTagsDateSelector()">
+        <div class="border-b bg-white p-4"><h2 class="text-lg font-black text-[#007a4d]">Choose ship date</h2><p class="mt-1 text-sm text-slate-600">HL TAGS sends one ship date at a time.</p></div>
+        <div id="hl-tags-date-options" class="space-y-2 p-4"></div>
+        <div class="border-t bg-white p-4"><button type="button" class="min-h-[44px] w-full rounded-xl border border-slate-300 px-3 py-2 font-bold" onclick="closeHlTagsDateSelector()">Cancel</button></div>
+    </dialog>
+    <dialog id="po-inventory-detail" class="w-[min(94vw,720px)] max-h-[85dvh] rounded-2xl border border-emerald-200 p-0 text-slate-900">
+        <div class="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-4"><h2 class="text-lg font-black text-[#007a4d]">Inventory details</h2><button type="button" class="min-h-[44px] px-3 font-bold" onclick="closePoManagementInventory()">Close</button></div>
+        <div id="po-inventory-detail-content" class="p-4" role="status">Verifying inventory…</div>
+    </dialog>
     <div id="bloom-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-start justify-center overflow-y-auto p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col my-4 max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain">
             <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
@@ -7751,7 +7760,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.11.04').trim() || 'V2026.09.11.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.11.05').trim() || 'V2026.09.11.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9265,7 +9274,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.11.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.11.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9456,6 +9465,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 
         function clearRoleScopedClientCaches(username = currentUser) {
             if (typeof resetHlOrderState === 'function') resetHlOrderState();
+            if (typeof resetPoManagementInventoryState === 'function') resetPoManagementInventoryState();
             closeBloomscapesPendingOrders();
             const userKey = String(username || '').trim().toLowerCase();
             [localStorage, sessionStorage].forEach((storage) => {
@@ -22414,6 +22424,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         async function performLogout() {
             if (typeof resetProductionLiveSync === 'function') resetProductionLiveSync();
+            if (typeof resetPoManagementInventoryState === 'function') resetPoManagementInventoryState();
             closeBloomscapesPendingOrders();
             window.GncPhotoHistory?.clear();
             cancelAllDriveEvidenceSaves('logout');
@@ -32285,7 +32296,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.11.04').trim() || 'V2026.09.11.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.11.05').trim() || 'V2026.09.11.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -72005,6 +72016,14 @@ function toggleDriveQuickRequestItem(domId) {
             section: 'home',
             season: '27F1'
         };
+        let poManagementInventoryRequest = 0;
+
+        function resetPoManagementInventoryState() {
+            poManagementInventoryRequest++;
+            const content = document.getElementById('po-inventory-detail-content');
+            if (content) content.textContent = '';
+            document.getElementById('po-inventory-detail')?.close();
+        }
 
         function normalizePoManagementText(value = '') {
             return String(value === null || value === undefined ? '' : value).trim();
@@ -72243,13 +72262,84 @@ function toggleDriveQuickRequestItem(domId) {
             return `<td class="whitespace-nowrap border-b border-slate-100 px-3 py-2.5 text-[11px] ${alignClass} ${emphasisClass}">${escapeHtml(text)}</td>`;
         }
 
+        function getPoManagementInventoryField(row = {}, key = '') {
+            return normalizePoManagementText(row[key] ?? row[key.toUpperCase()] ?? '');
+        }
+
+        // Both PO and HL use this row-level presentation. Their sources differ,
+        // but location, lot and PTRAVAILABLE always come from one verified row.
+        function renderVerifiedInventoryDetailRow(row = {}, options = {}) {
+            const field = (key) => normalizePoManagementText(row[key] ?? row[key.toUpperCase()] ?? '');
+            const available = parsePoManagementNumber(field('ptravailable'));
+            const availability = available === null || available < 0 ? 'Unknown' : formatPoManagementNumber(available);
+            return `<article${options.attributes || ''} class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm"><h4 class="font-bold">${escapeHtml(field('locationcode') || 'Location unknown')}</h4><p>Lot: ${escapeHtml(field('lotcode') || 'Unknown')}</p><p>PTRAVAILABLE: <strong>${escapeHtml(availability)}</strong></p>${options.detailsHtml || ''}</article>`;
+        }
+
+        function renderPoManagementInventoryRows(rows = []) {
+            if (!rows.length) return '<p class="rounded-xl bg-amber-50 p-3 text-sm">No accessible match.</p>';
+            return `<div class="space-y-2">${rows.map((row) => {
+                return renderVerifiedInventoryDetailRow(row);
+            }).join('')}</div>`;
+        }
+
+        function closePoManagementInventory() { document.getElementById('po-inventory-detail')?.close(); return false; }
+
+        async function loadPoManagementInventoryRows(itemcode, contsize, request) {
+            const rows = [];
+            const owner = getSupabaseReadIdentityScope();
+            const limit = 250;
+            let offset = 0;
+            while (true) {
+                // Query only this displayed PO item's exact code and size. RLS
+                // remains the visibility authority; no PO view can borrow HL's
+                // Dylan-specific inventory snapshot or load the master globally.
+                const query = `select=unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable&itemcode=eq.${encodeURIComponent(itemcode)}&contsize=eq.${encodeURIComponent(contsize)}&order=unique_id.asc&limit=${limit}&offset=${offset}`;
+                const page = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', query, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                if (request !== poManagementInventoryRequest || owner !== getSupabaseReadIdentityScope() || !canAccessView('po-management')) return null;
+                const batch = Array.isArray(page?.rows) ? page.rows : [];
+                rows.push(...batch);
+                if (batch.length < limit) return rows;
+                offset += batch.length;
+            }
+        }
+
+        async function openPoManagementInventory(rowIndex) {
+            if (!canAccessView('po-management')) return false;
+            const row = (poManagementState.rows || []).find((entry) => String(entry.row_index) === String(rowIndex));
+            const dialog = document.getElementById('po-inventory-detail');
+            const content = document.getElementById('po-inventory-detail-content');
+            if (!row || !dialog || !content) return false;
+            const itemcode = getPoManagementInventoryField(row, 'itemcode');
+            const contsize = getPoManagementInventoryField(row, 'contsize');
+            const locationcode = getPoManagementInventoryField(row, 'locationcode');
+            const lotcode = getPoManagementInventoryField(row, 'lotcode');
+            const request = ++poManagementInventoryRequest;
+            content.innerHTML = '<p>In Drive Mode · Verifying inventory…</p>';
+            if (!dialog.open) dialog.showModal();
+            if (!itemcode) { content.innerHTML = '<p class="rounded-xl bg-amber-50 p-3 text-sm">No accessible match in Drive Mode.</p>'; return false; }
+            try {
+                if (!contsize) { content.innerHTML = '<p class="rounded-xl bg-amber-50 p-3 text-sm">No accessible match in Drive Mode.</p>'; return false; }
+                const all = await loadPoManagementInventoryRows(itemcode, contsize, request);
+                if (!all || request !== poManagementInventoryRequest || !canAccessView('po-management')) return false;
+                const canIdentifyExact = !!(locationcode && lotcode);
+                const exact = canIdentifyExact ? all.filter((entry) => getPoManagementInventoryField(entry, 'locationcode').toUpperCase() === locationcode.toUpperCase()
+                    && getPoManagementInventoryField(entry, 'lotcode').toUpperCase() === lotcode.toUpperCase()) : [];
+                const related = all.filter((entry) => !exact.includes(entry));
+                const exactHtml = canIdentifyExact ? `<h3 class="mb-2 text-sm font-black text-[#007a4d]">Exact item, size, location and lot match</h3>${renderPoManagementInventoryRows(exact)}` : '<p class="rounded-xl bg-amber-50 p-3 text-sm">The PO row does not identify one location and lot, so no exact inventory match is inferred.</p>';
+                content.innerHTML = `<p class="mb-3 text-sm font-bold">${escapeHtml(itemcode)} · ${escapeHtml(contsize)}</p>${exactHtml}${related.length ? `<h3 class="mb-2 mt-4 text-sm font-black text-slate-700">Related item and size · other locations or lots</h3>${renderPoManagementInventoryRows(related)}` : ''}`;
+            } catch (_) {
+                if (request === poManagementInventoryRequest && canAccessView('po-management')) content.innerHTML = '<p class="rounded-xl bg-red-50 p-3 text-sm">Inventory verification failed. Try again.</p>';
+            }
+            return false;
+        }
+
         function renderPoManagementTable(rows = []) {
             if (!rows.length) {
                 return `<div class="rounded-xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No PO rows found.</div>`;
             }
             const visibleRows = rows.slice(0, poManagementState.visibleCount);
-            const headerHtml = PO_MANAGEMENT_COLUMNS.map((column) => `<th class="sticky top-0 z-10 whitespace-nowrap border-b border-emerald-100 bg-emerald-50 px-3 py-2.5 text-left text-[9px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(column.label)}</th>`).join('');
-            const rowHtml = visibleRows.map((row) => `<tr class="odd:bg-white even:bg-slate-50/70">${PO_MANAGEMENT_COLUMNS.map((column) => renderPoManagementCell(row, column)).join('')}</tr>`).join('');
+            const headerHtml = PO_MANAGEMENT_COLUMNS.map((column) => `<th class="sticky top-0 z-10 whitespace-nowrap border-b border-emerald-100 bg-emerald-50 px-3 py-2.5 text-left text-[9px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(column.label)}</th>`).join('') + '<th class="sticky top-0 z-10 border-b border-emerald-100 bg-emerald-50 px-3 py-2.5"></th>';
+            const rowHtml = visibleRows.map((row) => `<tr class="odd:bg-white even:bg-slate-50/70">${PO_MANAGEMENT_COLUMNS.map((column) => renderPoManagementCell(row, column)).join('')}<td class="border-b border-slate-100 px-3 py-2.5"><button type="button" class="min-h-[36px] whitespace-nowrap rounded-lg border border-emerald-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-800" onclick="return openPoManagementInventory('${escapeHtml(String(row.row_index))}')">View inventory</button></td></tr>`).join('');
             const moreHtml = visibleRows.length < rows.length
                 ? `<button type="button" class="mt-3 w-full rounded-xl border border-green-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[0.99]" onclick="return showMorePoManagementRows()">Show More</button>`
                 : '';
@@ -87308,6 +87398,7 @@ function toggleDriveQuickRequestItem(domId) {
         let hlOrderPollTimer = null;
         let hlOrderPendingCommand = null;
         let hlOrderPdfUrl = '';
+        let hlOrderPreviewShipDate = '';
         const HL_ORDER_USERNAME = 'dylan_collyge';
 
         function canUseHlOrder() {
@@ -87432,7 +87523,25 @@ function toggleDriveQuickRequestItem(domId) {
         function getHlOrderPlanDate(value) {
             const text = String(value || '').trim();
             const iso = /^(\d{4}-\d{2}-\d{2})(?:[T ]|$)/.exec(text);
-            return iso ? iso[1] : text;
+            if (iso) return iso[1];
+            // Apps Script can send a JavaScript Date string. Preserve its written
+            // calendar day instead of parsing it through the browser time zone.
+            const written = /\b([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{4})\b/.exec(text);
+            const months = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+            return written && months[written[1]] ? `${written[3]}-${months[written[1]]}-${String(written[2]).padStart(2, '0')}` : '';
+        }
+
+        function getHlOrderShipDate(value) { return getHlOrderPlanDate(value); }
+
+        function formatHlOrderShipDate(value) {
+            const date = getHlOrderShipDate(value);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Not provided';
+            // Noon makes the ISO calendar date stable in every browser time zone.
+            return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function getHlDraftShipDate(entry = {}) {
+            return getHlOrderShipDate(entry.ship_date || entry.source?.planstartdate || entry.source?.PLANSTARTDATE || '');
         }
 
         function getHlOrderInventoryKey(row = {}) {
@@ -87558,6 +87667,10 @@ function toggleDriveQuickRequestItem(domId) {
                 throw new Error('HL Ordering is not available yet. Refresh the app and try again.');
             }
             if (hlOrderStateData && Number(state.revision) < Number(hlOrderStateData.revision)) return;
+            // Date fields were added after the original state contract. Keep
+            // legacy state readable, but never invent a date for a new preview.
+            state.draft.forEach((entry) => { if (entry && entry.ship_date == null) entry.ship_date = getHlDraftShipDate(entry) || null; });
+            state.orders.forEach((entry) => { if (entry && entry.ship_date == null) entry.ship_date = getHlOrderShipDate(entry.planstartdate || entry.created_ship_date || '') || null; });
             hlOrderStateData = state;
             hlOrderStateLoadedAt = Date.now();
             hlOrderStateError = '';
@@ -87610,6 +87723,8 @@ function toggleDriveQuickRequestItem(domId) {
                 HL_ORDER_INVALID_QUANTITY: 'Enter a valid whole-plant quantity within the remaining demand or unreceived balance.',
                 HL_ORDER_CORRECTION_REASON_REQUIRED: 'Enter a reason before reducing a previously recorded receipt.',
                 HL_ORDER_NO_UNCOVERED_QUANTITY: 'This demand is already covered by local stock or existing orders. Review those orders first.',
+                HL_ORDER_SHIP_DATE_REQUIRED: 'This HL row needs a ship date. Review the Plan Start Date before saving or sending.',
+                HL_ORDER_SELECT_SHIP_DATE: 'Choose one ship date before reviewing HL TAGS.',
                 HL_ORDER_NOT_SENT: 'Receiving and cancellation are available after the original email delivery is confirmed.',
                 HL_ORDER_EMPTY_DRAFT: 'Add rows to the saved HL section in Bloom Picker first.',
                 HL_ORDER_INVALID_LINE: 'The selected order line changed. Refresh and select the line again.',
@@ -87711,7 +87826,7 @@ function toggleDriveQuickRequestItem(domId) {
             else if (hlOrderTab === 'needed') {
                 body = getHlOrderNeededGroups().map((group) => {
                     const selected = group.rows.filter((row) => hlOrderSelections.has('hl-order:' + row.unique_id)).length;
-                    return `<article data-hl-group="${esc(group.key)}" class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><button type="button" class="min-h-[80px] w-full text-left" ${buildFastInvokeAttrs('toggleHlOrderCard', [group.key], 'View HL order details')}><h2 class="text-lg font-black text-[#007a4d]">${esc(group.commonname || group.itemcode)}</h2><p class="text-sm">${esc(group.itemcode)} · ${esc(group.contsize)}</p><div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm"><span>Plan start: <strong>${esc(group.planstartdate || 'Not provided')}</strong></span><span>Dock: <strong>${esc(group.dock || 'Not provided')}</strong></span><span>Stop: <strong>${esc(group.stopnumber || 'Not provided')}</strong></span></div><p class="mt-2 font-bold">SOC quantity: ${group.invalid ? 'Needs quantity review' : esc(group.quantity)}</p><p class="mt-1 text-sm text-emerald-800">${selected ? `In Bloom Picker · ${selected} of ${group.rows.length} rows` : `${group.rows.length} SOC rows · Review inventory and order`}</p></button></article>`;
+                    return `<article data-hl-group="${esc(group.key)}" class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><button type="button" class="min-h-[80px] w-full text-left" ${buildFastInvokeAttrs('toggleHlOrderCard', [group.key], 'View HL order details')}><h2 class="text-lg font-black text-[#007a4d]">${esc(group.commonname || group.itemcode)}</h2><p class="text-sm">${esc(group.itemcode)} · ${esc(group.contsize)}</p><div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm"><span>Ship date: <strong>${esc(formatHlOrderShipDate(group.planstartdate))}</strong></span><span>Dock: <strong>${esc(group.dock || 'Not provided')}</strong></span><span>Stop: <strong>${esc(group.stopnumber || 'Not provided')}</strong></span></div><p class="mt-2 font-bold">SOC quantity: ${group.invalid ? 'Needs quantity review' : esc(group.quantity)}</p><p class="mt-1 text-sm text-emerald-800">${selected ? `In Bloom Picker · ${selected} of ${group.rows.length} rows` : `${group.rows.length} SOC rows · Review inventory and order`}</p></button></article>`;
                 }).join('') || '<p class="p-8 text-center text-slate-600">No rows need an HL order.</p>';
             } else if (hlOrderTab === 'removed' || hlOrderTab === 'needs-review') body = buildHlOrderDispositionsHtml(hlOrderTab);
             else body = buildHlOrderHistoryHtml(hlOrderTab === 'history');
@@ -87760,30 +87875,30 @@ function toggleDriveQuickRequestItem(domId) {
             const rows = group.rows.map((row) => {
                 const draft = (hlOrderStateData.draft || []).find((entry) => entry.source_id === row.unique_id);
                 if (hlOrderDetailEditRevision === null) hlOrderDetailEditRevision = Number(hlOrderStateData.revision);
-                if (!hlOrderDetailEdits.has(row.unique_id)) hlOrderDetailEdits.set(row.unique_id, { selected: true, quantity: draft?.quantity ?? row.hl_available_quantity ?? row.quantityordered });
+                if (!hlOrderDetailEdits.has(row.unique_id)) hlOrderDetailEdits.set(row.unique_id, { selected: true, quantity: draft?.quantity ?? row.hl_available_quantity ?? row.quantityordered, ship_date: getHlDraftShipDate(draft || { source: row.source }) });
                 const edit = hlOrderDetailEdits.get(row.unique_id);
                 const locked = draft && !['draft','ready'].includes(draft.status || 'draft');
                 return `<div data-hl-source-id="${esc(row.unique_id)}" class="rounded-xl border border-slate-200 bg-white p-3"><label class="flex min-h-[44px] items-center gap-3 font-bold"><input type="checkbox" data-hl-select ${edit.selected ? 'checked' : ''} ${locked ? 'disabled' : ''} onchange="editHlOrderRow(this)">SOC quantity: ${esc(row.quantityordered || 'Unknown')}</label>${Number(row.hl_available_quantity) < Number(row.quantityordered) ? `<p class="text-sm font-bold text-amber-800">Remaining HL demand: ${esc(row.hl_available_quantity)}</p>` : ''}<p class="text-sm">${esc(row.locationcode)} · Lot ${esc(row.lotcode || 'Not provided')} · ${esc(row.transactionnumber || row.purchaseordernumber || '')}</p><p class="text-sm text-slate-600">${esc(row.customername)} ${esc(row.consigneename)}</p><label class="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold">HL order quantity <input type="number" inputmode="decimal" min="0" step="1" data-hl-quantity value="${esc(edit.quantity)}" max="${esc(row.hl_available_quantity ?? row.quantityordered)}" ${locked ? 'disabled' : ''} class="min-h-[44px] w-28 rounded-lg border border-slate-300 p-2" oninput="editHlOrderRow(this)"></label>${draft ? `<p class="mt-2 text-sm font-bold text-emerald-800">In Bloom Picker${locked ? ' · Delivery pending or needs review' : ''}</p>` : ''}</div>`;
             }).join('');
-            return `<section id="hl-order-detail" class="space-y-4">${back}<header><h2 class="text-xl font-black text-[#007a4d]">${esc(group.commonname || group.itemcode)}</h2><p>${esc(group.itemcode)} · ${esc(group.contsize)}</p><p class="text-sm">Plan start: ${esc(group.planstartdate || 'Not provided')} · Dock ${esc(group.dock || 'Not provided')} · Stop ${esc(group.stopnumber || 'Not provided')}</p><p class="font-bold">SOC quantity: ${esc(group.quantity)}</p></header><h3 class="font-bold">SOC rows</h3>${rows}<p class="text-sm text-slate-600">Any SOC quantity you do not order from HL is covered locally. Remove dismisses the selected demand and can be undone.</p><div class="flex flex-wrap gap-2">${hlOrderButton('orderHlSelectedRows', [], 'Order selected rows', false, !editableRows.length)}${hlOrderButton('removeHlSelectedRows', [], 'Remove selected rows', true, !editableRows.length)}</div><h3 class="pt-2 font-bold">Park Hill Drive inventory · all matching locations and seasons</h3><p class="text-sm text-slate-600">Availability is current stock, separate from the SOC quantities above.</p>${buildHlOrderDriveHtml(group.rows)}</section>`;
+            return `<section id="hl-order-detail" class="space-y-4">${back}<header><h2 class="text-xl font-black text-[#007a4d]">${esc(group.commonname || group.itemcode)}</h2><p>${esc(group.itemcode)} · ${esc(group.contsize)}</p><p class="text-sm">Ship date: ${esc(formatHlOrderShipDate(group.planstartdate))} · Dock ${esc(group.dock || 'Not provided')} · Stop ${esc(group.stopnumber || 'Not provided')}</p><p class="font-bold">SOC quantity: ${esc(group.quantity)}</p></header><h3 class="font-bold">SOC rows</h3>${rows}<p class="text-sm text-slate-600">Any SOC quantity you do not order from HL is covered locally. Remove dismisses the selected demand and can be undone.</p><div class="flex flex-wrap gap-2">${hlOrderButton('orderHlSelectedRows', [], 'Order selected rows', false, !editableRows.length)}${hlOrderButton('removeHlSelectedRows', [], 'Remove selected rows', true, !editableRows.length)}</div><h3 class="pt-2 font-bold">Park Hill Drive inventory · all matching locations and seasons</h3><p class="text-sm text-slate-600">Availability is current stock, separate from the SOC quantities above.</p>${buildHlOrderDriveHtml(group.rows)}</section>`;
         }
 
         function buildHlOrderDriveHtml(sources) {
-            if (!canUseHlOrderVerifiedData(['master'])) return '<p class="rounded-xl bg-amber-50 p-3">Verifying Drive inventory. Availability is unknown until verification finishes.</p>';
+            if (!canUseHlOrderVerifiedData(['master'])) return '<p class="rounded-xl bg-amber-50 p-3">Verifying inventory in Drive Mode. Availability is unknown until verification finishes.</p>';
             const matches = getHlOrderDriveMatches(sources);
             const ids = matches.map((row) => String(row.UNIQUE_ID ?? row.unique_id)).sort();
-            if (!ids.length) return '<p class="p-3">No accessible Drive inventory matches this item and container size.</p>';
+            if (!ids.length) return '<p class="p-3">No accessible match in Drive Mode for this item and container size.</p>';
             const canonical = getHlOrderVerifiedInventoryRows(ids);
             if (!canonical) return '<p class="p-3">Loading verified Drive details…</p>';
             const byId = new Map(canonical.map((row) => [String(row.UNIQUE_ID ?? row.unique_id), row]));
-            return `<div class="grid gap-3 sm:grid-cols-2">${matches.map((projection) => {
+            return `<p class="mb-2 text-xs font-black uppercase tracking-[0.12em] text-emerald-800">In Drive Mode · verified inventory</p><div class="grid gap-3 sm:grid-cols-2">${matches.map((projection) => {
                 const id = String(projection.UNIQUE_ID ?? projection.unique_id);
                 const row = byId.get(id);
                 if (!row || getHlOrderItemKey(row) !== getHlOrderItemKey(projection)) return '<p class="p-3">Inventory row awaiting verification.</p>';
                 const field = (key) => String(row[key.toUpperCase()] ?? row[key] ?? '').trim();
-                const stock = getHlOrderQuantity(field('ptravailable'));
                 const hold = [field('holdstopcode'), field('holdstopreason'), field('lochold')].filter(Boolean).join(' · ');
-                return `<article data-hl-drive-location="${escapeHtml(field('locationcode'))}" class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm"><h4 class="font-bold">${escapeHtml(field('locationcode') || 'Location unknown')}</h4><p>Lot: ${escapeHtml(field('lotcode') || 'Unknown')}</p><p>Available: <strong>${stock === null || stock < 0 ? 'Unknown' : escapeHtml(stock)}</strong></p><p>Season: ${escapeHtml([field('saleyear'), field('season')].filter(Boolean).join(' ') || 'Unknown')}</p><p>Warehouse: ${escapeHtml([field('warehouseid') || field('warehousei'), field('warehousename')].filter(Boolean).join(' · ') || 'Unknown')}</p><p>Hold: ${escapeHtml(hold || 'No hold reported')}</p>${field('holdstopbegindate') ? `<p>Hold begins: ${escapeHtml(field('holdstopbegindate'))}</p>` : ''}${field('holdstopenddate') ? `<p>Hold ends: ${escapeHtml(field('holdstopenddate'))}</p>` : ''}</article>`;
+                const detailsHtml = `<p>Season: ${escapeHtml([field('saleyear'), field('season')].filter(Boolean).join(' ') || 'Unknown')}</p><p>Warehouse: ${escapeHtml([field('warehouseid') || field('warehousei'), field('warehousename')].filter(Boolean).join(' · ') || 'Unknown')}</p><p>Hold: ${escapeHtml(hold || 'No hold reported')}</p>${field('holdstopbegindate') ? `<p>Hold begins: ${escapeHtml(field('holdstopbegindate'))}</p>` : ''}${field('holdstopenddate') ? `<p>Hold ends: ${escapeHtml(field('holdstopenddate'))}</p>` : ''}`;
+                return renderVerifiedInventoryDetailRow(row, { attributes: ` data-hl-drive-location="${escapeHtml(field('locationcode'))}"`, detailsHtml });
             }).join('')}</div>`;
         }
 
@@ -87802,10 +87917,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function orderHlSelectedRows() {
             try {
-                const rows = getHlSelectedDetailRows().map((row) => ({ source_id: row.unique_id, quantity: getHlOrderQuantity(hlOrderDetailEdits.get(row.unique_id)?.quantity), limit: getHlOrderQuantity(row.hl_available_quantity ?? row.quantityordered) }));
+                const rows = getHlSelectedDetailRows().map((row) => ({ source_id: row.unique_id, quantity: getHlOrderQuantity(hlOrderDetailEdits.get(row.unique_id)?.quantity), shipDate: getHlOrderShipDate(row.planstartdate), limit: getHlOrderQuantity(row.hl_available_quantity ?? row.quantityordered) }));
                 if (!rows.length) throw new Error('Select at least one SOC row.');
-                if (rows.some((row) => !Number.isInteger(row.quantity) || row.quantity <= 0 || row.limit === null || row.quantity > row.limit)) throw new Error('Enter a whole-plant HL quantity greater than zero and no greater than its remaining demand.');
+                if (rows.some((row) => !Number.isInteger(row.quantity) || row.quantity <= 0 || !row.shipDate || row.limit === null || row.quantity > row.limit)) throw new Error('Every selected row needs a valid ship date and a whole-plant HL quantity within its remaining demand.');
                 const revision = getHlOrderEditRevision(hlOrderDetailEditRevision);
+                // The backend persists each row under its PlanStartDate and groups
+                // same-date additions onto the active HL order for that date.
                 await runHlOrderCommand('draft_save', { rows: rows.map(({ source_id, quantity }) => ({ source_id, quantity })) }, null, revision);
                 hlOrderDetailEditRevision = Number(hlOrderStateData.revision);
                 cartPanelOpen = true; bloomPickerActionsOpen = true; updateGlobalActionBar();
@@ -87843,12 +87960,18 @@ function toggleDriveQuickRequestItem(domId) {
             section.classList.toggle('hidden', !cartPanelOpen || !draft.length);
             if (!draft.length) { section.innerHTML = ''; return; }
             if (!force && section.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
-            section.innerHTML = `<h3 class="mb-2 font-bold text-[#007a4d]">HL Order · saved across devices</h3><div class="max-h-[30vh] space-y-2 overflow-y-auto">${draft.map((entry) => {
+            const groups = new Map();
+            draft.forEach((entry) => {
+                const shipDate = getHlDraftShipDate(entry);
+                if (!groups.has(shipDate)) groups.set(shipDate, []);
+                groups.get(shipDate).push(entry);
+            });
+            section.innerHTML = `<h3 class="mb-2 font-bold text-[#007a4d]">HL Order · saved across devices</h3><div class="max-h-[30vh] space-y-3 overflow-y-auto">${[...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([shipDate, entries]) => `<section data-hl-ship-date="${escapeHtml(shipDate)}"><h4 class="mb-2 text-xs font-black uppercase tracking-[0.12em] text-emerald-800">Ship date · ${escapeHtml(formatHlOrderShipDate(shipDate))}</h4>${entries.map((entry) => {
                 const row = getHlOrderSource(entry.source);
                 const ceiling = getHlDraftQuantityCeiling(entry);
                 const locked = !['draft','ready'].includes(entry.status || 'draft');
-                return `<div data-hl-draft-source-id="${escapeHtml(entry.source_id)}" data-hl-edit-revision="${escapeHtml(hlOrderStateData.revision)}" class="rounded-xl border border-emerald-200 bg-white p-3 text-sm"><strong>${escapeHtml(row.commonname || row.itemcode)} · ${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</strong><p>Plan ${escapeHtml(getHlOrderPlanDate(row.planstartdate) || 'Not provided')} · Dock ${escapeHtml(row.dock || 'Not provided')} · Stop ${escapeHtml(row.stopnumber || 'Not provided')}</p><p>SOC quantity: ${escapeHtml(row.quantityordered)} · ${escapeHtml(entry.status || 'draft')}</p>${!locked && ceiling !== null ? `<p>Remaining HL demand: ${escapeHtml(ceiling)}</p>` : ''}<div class="mt-2 flex flex-wrap items-center gap-2"><label>HL quantity <input data-hl-draft-quantity type="number" inputmode="decimal" step="1" min="0" max="${escapeHtml(ceiling ?? '')}" value="${escapeHtml(entry.quantity)}" class="min-h-[44px] w-24 rounded border p-2" ${locked ? 'disabled' : ''}></label>${hlOrderButton('saveHlDraftQuantity', [entry.source_id], 'Save quantity', true, locked)}${hlOrderButton('removeHlDraftRow', [entry.source_id], 'Remove from Bloom Picker', true, locked)}</div></div>`;
-            }).join('')}</div>`;
+                return `<div data-hl-draft-source-id="${escapeHtml(entry.source_id)}" data-hl-ship-date="${escapeHtml(shipDate)}" data-hl-edit-revision="${escapeHtml(hlOrderStateData.revision)}" class="rounded-xl border border-emerald-200 bg-white p-3 text-sm"><strong>${escapeHtml(row.commonname || row.itemcode)} · ${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</strong><p>Ship ${escapeHtml(formatHlOrderShipDate(shipDate))} · Dock ${escapeHtml(row.dock || 'Not provided')} · Stop ${escapeHtml(row.stopnumber || 'Not provided')}</p><p>SOC quantity: ${escapeHtml(row.quantityordered)} · ${escapeHtml(entry.status || 'draft')}</p>${!locked && ceiling !== null ? `<p>Remaining HL demand: ${escapeHtml(ceiling)}</p>` : ''}<div class="mt-2 flex flex-wrap items-center gap-2"><label>HL quantity <input data-hl-draft-quantity type="number" inputmode="decimal" step="1" min="0" max="${escapeHtml(ceiling ?? '')}" value="${escapeHtml(entry.quantity)}" class="min-h-[44px] w-24 rounded border p-2" ${locked ? 'disabled' : ''}></label>${hlOrderButton('saveHlDraftQuantity', [entry.source_id], 'Save quantity', true, locked)}${hlOrderButton('removeHlDraftRow', [entry.source_id], 'Remove from Bloom Picker', true, locked)}</div></div>`;
+            }).join('')}</section>`).join('')}</div>`;
         }
 
         async function saveHlDraftQuantity(sourceId) {
@@ -87859,6 +87982,8 @@ function toggleDriveQuickRequestItem(domId) {
                 const entry = (hlOrderStateData?.draft || []).find((row) => row.source_id === sourceId);
                 const ceiling = entry ? getHlDraftQuantityCeiling(entry) : null;
                 if (!Number.isInteger(quantity) || !(quantity > 0) || !Number.isInteger(ceiling) || quantity > ceiling) throw new Error('Enter a whole-plant HL quantity greater than zero and no more than the remaining HL demand.');
+                const shipDate = getHlOrderShipDate(element?.dataset.hlShipDate || entry?.ship_date || entry?.source?.planstartdate);
+                if (!shipDate) throw new Error('This row has no ship date. Return to HL Order and review the Plan Start Date.');
                 await runHlOrderCommand('draft_save', { rows: [{ source_id: sourceId, quantity }] }, null, revision);
             } catch (error) { showToast('HL Order', error.message, true); }
             return false;
@@ -87908,10 +88033,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildHlOrderHistoryHtml(history) {
-            const orders = (hlOrderStateData.orders || []).filter((order) => history || !['cancelled','received','received_and_cancelled'].includes(order.fulfillment_status));
+            const orders = (hlOrderStateData.orders || []).filter((order) => history || !['cancelled','received','received_and_cancelled'].includes(order.fulfillment_status))
+                .slice().sort((a, b) => getHlOrderShipDate(a.ship_date).localeCompare(getHlOrderShipDate(b.ship_date)) || String(a.order_number || '').localeCompare(String(b.order_number || ''), undefined, { numeric: true }));
             const cards = orders.map((order) => {
                 const sums = (order.lines || []).reduce((total, row) => ({ ordered: total.ordered + Number(row.quantity || 0), received: total.received + Number(row.received_quantity || 0), outstanding: total.outstanding + Number(row.outstanding_quantity || 0) }), { ordered: 0, received: 0, outstanding: 0 });
-                return `<article data-hl-order-id="${escapeHtml(order.id)}" class="rounded-xl border bg-white p-4"><h2 class="font-bold">${escapeHtml(order.order_number)}</h2><p class="text-sm">${escapeHtml(order.status)} · ${escapeHtml(order.fulfillment_status || '')} · ${escapeHtml(order.created_at || '')}</p><p class="my-2 text-sm">Ordered: ${escapeHtml(sums.ordered)} · Received: ${escapeHtml(sums.received)} · Outstanding: ${escapeHtml(sums.outstanding)}</p>${hlOrderButton('openHlOrderTracking', [order.id], 'View order', true)}</article>`;
+                return `<article data-hl-order-id="${escapeHtml(order.id)}" class="rounded-xl border bg-white p-4"><h2 class="font-bold">${escapeHtml(order.order_number)}</h2><p class="text-sm font-bold text-emerald-800">Ship date: ${escapeHtml(formatHlOrderShipDate(order.ship_date))}</p><p class="text-sm">${escapeHtml(order.status)} · ${escapeHtml(order.fulfillment_status || '')} · ${escapeHtml(order.created_at || '')}</p><p class="my-2 text-sm">Ordered: ${escapeHtml(sums.ordered)} · Received: ${escapeHtml(sums.received)} · Outstanding: ${escapeHtml(sums.outstanding)}</p>${hlOrderButton('openHlOrderTracking', [order.id], 'View order', true)}</article>`;
             }).join('') || '<p class="p-8 text-center text-slate-600">No saved orders in this view.</p>';
             if (!history) return cards;
             const activity = (hlOrderStateData.history || []).slice().reverse().map((entry) => `<li class="rounded-xl border bg-white p-3 text-sm"><strong>${escapeHtml(String(entry.action || '').replace(/_/g, ' '))}</strong> · ${escapeHtml(entry.created_at || '')}${entry.payload?.reason ? `<p>${escapeHtml(entry.payload.reason)}</p>` : ''}</li>`).join('');
@@ -87923,17 +88049,18 @@ function toggleDriveQuickRequestItem(domId) {
         function buildHlOrderTrackingHtml() {
             const order = (hlOrderStateData.orders || []).find((entry) => entry.id === hlOrderTrackingId);
             if (!order) return hlOrderButton('backHlOrder', [], 'Back', true);
-            const editable = ['sent','partially_received','completed','cancelled'].includes(order.status);
+            const editable = (order.lines || []).some((line) => ['sent','partially_received','completed','cancelled'].includes(line.delivery_status || order.status));
             const esc = escapeHtml;
             const lines = (order.lines || []).map((line) => {
                 const source = getHlOrderSource(line.source);
+                const lineEditable = ['sent','partially_received','completed','cancelled'].includes(line.delivery_status || order.status);
                 const pendingCancellation = Number(line.pending_cancellation_quantity || 0);
                 const cancellable = Math.max(0, Number(line.outstanding_quantity || 0) - pendingCancellation);
-                return `<article data-hl-order-line-id="${esc(line.id)}" class="rounded-xl border bg-white p-3 text-sm"><label class="flex min-h-[44px] items-center gap-2 font-bold"><input data-hl-line-select type="checkbox" ${editable ? '' : 'disabled'}>${esc(source.commonname || source.itemcode)} · ${esc(source.itemcode)} · ${esc(source.contsize)}</label><p>Plan ${esc(getHlOrderPlanDate(source.planstartdate))} · Dock ${esc(source.dock)} · Stop ${esc(source.stopnumber)} · ${esc(source.locationcode)} · Lot ${esc(source.lotcode)}</p><p class="my-2 font-bold">Ordered: ${esc(line.quantity)} · Received: ${esc(line.received_quantity || 0)} · Outstanding: ${esc(line.outstanding_quantity || 0)} · Canceled: ${esc(line.cancelled_quantity || 0)}</p>${pendingCancellation ? `<p class="my-2 font-bold text-amber-800">Pending cancellation: ${esc(pendingCancellation)}</p>` : ''}<div class="flex flex-wrap gap-3"><label>Total received <input data-hl-received-quantity type="number" inputmode="decimal" step="1" min="0" max="${esc(Number(line.quantity) - Number(line.cancelled_quantity || 0) - pendingCancellation)}" value="${esc(line.received_quantity || 0)}" class="min-h-[44px] w-24 rounded border p-2" ${editable ? '' : 'disabled'}></label><label>Cancel quantity <input data-hl-cancel-quantity type="number" inputmode="decimal" step="1" min="0" max="${esc(cancellable)}" value="${esc(cancellable)}" class="min-h-[44px] w-24 rounded border p-2" ${editable ? '' : 'disabled'}></label></div></article>`;
+                return `<article data-hl-order-line-id="${esc(line.id)}" class="rounded-xl border bg-white p-3 text-sm"><label class="flex min-h-[44px] items-center gap-2 font-bold"><input data-hl-line-select type="checkbox" ${lineEditable ? '' : 'disabled'}>${esc(source.commonname || source.itemcode)} · ${esc(source.itemcode)} · ${esc(source.contsize)}</label><p>Ship ${esc(formatHlOrderShipDate(line.ship_date || order.ship_date || source.planstartdate))} · Dock ${esc(source.dock)} · Stop ${esc(source.stopnumber)} · ${esc(source.locationcode)} · Lot ${esc(source.lotcode)}</p><p class="my-2 font-bold">Ordered: ${esc(line.quantity)} · Received: ${esc(line.received_quantity || 0)} · Outstanding: ${esc(line.outstanding_quantity || 0)} · Canceled: ${esc(line.cancelled_quantity || 0)}</p>${!lineEditable ? `<p class="my-2 font-bold text-amber-800">Delivery pending for this addition.</p>` : ''}${pendingCancellation ? `<p class="my-2 font-bold text-amber-800">Pending cancellation: ${esc(pendingCancellation)}</p>` : ''}<div class="flex flex-wrap gap-3"><label>Total received <input data-hl-received-quantity type="number" inputmode="decimal" step="1" min="0" max="${esc(Number(line.quantity) - Number(line.cancelled_quantity || 0) - pendingCancellation)}" value="${esc(line.received_quantity || 0)}" class="min-h-[44px] w-24 rounded border p-2" ${lineEditable ? '' : 'disabled'}></label><label>Cancel quantity <input data-hl-cancel-quantity type="number" inputmode="decimal" step="1" min="0" max="${esc(cancellable)}" value="${esc(cancellable)}" class="min-h-[44px] w-24 rounded border p-2" ${lineEditable ? '' : 'disabled'}></label></div><h3 class="mt-3 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Verified Drive inventory</h3>${buildHlOrderDriveHtml([source])}</article>`;
             }).join('');
             const receipts = (order.receipts || []).map((entry) => `<li>${esc(entry.created_at || '')} · ${esc(entry.line_id || '')} · Adjustment ${esc(entry.quantity_delta ?? entry.delta ?? '')} · ${esc(entry.reason || '')}</li>`).join('');
             const cancellations = (order.cancellations || []).map((entry) => `<li class="rounded-xl border p-3">${esc(entry.created_at || '')} · ${esc(entry.status || '')}<p>${esc(entry.reason || '')}</p><p>Canceled quantities: ${(entry.lines || []).map((line) => { const original = (order.lines || []).find((row) => row.id === line.line_id); const source = getHlOrderSource(original?.source || {}); return esc(source.itemcode || line.line_id) + ' · ' + esc(source.contsize) + ' · ' + esc(line.quantity); }).join('; ')}</p>${entry.preview_id ? hlOrderButton('viewHlSavedPdf', [entry.preview_id], 'View cancellation PDF', true) : ''}</li>`).join('');
-            return `<section id="hl-order-tracking" data-hl-edit-revision="${esc(hlOrderStateData.revision)}" class="space-y-3">${hlOrderButton('backHlOrder', [], 'Back', true)}<h2 class="text-xl font-bold">${esc(order.order_number)}</h2><p>${esc(order.status)}</p>${lines}<label class="block text-sm font-bold">Reason for correction or cancellation<textarea id="hl-order-reason" rows="2" class="mt-1 w-full rounded-xl border p-3" placeholder="Required for a correction or cancellation"></textarea></label><p class="text-sm text-slate-600">Select lines, then enter the total received or the unreceived quantity to cancel. Receiving records arrivals; inventory updates through existing imports.</p><div class="flex flex-wrap gap-2">${hlOrderButton('saveHlReceipts', [], 'Save received quantities', false, !editable)}${hlOrderButton('previewHlCancellation', [], 'Review cancellation PDF', true, !editable)}${order.preview_id ? hlOrderButton('viewHlSavedPdf', [order.preview_id], 'View order PDF', true) : ''}</div><h3 class="pt-3 font-bold">Receipt correction history</h3><ul class="space-y-2 break-words text-sm">${receipts || '<li>No receipts recorded.</li>'}</ul><h3 class="font-bold">Cancellation history</h3><ul class="space-y-2 text-sm">${cancellations || '<li>No cancellations.</li>'}</ul></section>`;
+            return `<section id="hl-order-tracking" data-hl-edit-revision="${esc(hlOrderStateData.revision)}" class="space-y-3">${hlOrderButton('backHlOrder', [], 'Back', true)}<h2 class="text-xl font-bold">${esc(order.order_number)}</h2><p class="font-bold text-emerald-800">Ship date: ${esc(formatHlOrderShipDate(order.ship_date))}</p><p>${esc(order.status)}</p>${lines}<label class="block text-sm font-bold">Reason for correction or cancellation<textarea id="hl-order-reason" rows="2" class="mt-1 w-full rounded-xl border p-3" placeholder="Required for a correction or cancellation"></textarea></label><p class="text-sm text-slate-600">Select sent lines, then enter the total received or the unreceived quantity to cancel. Receiving records arrivals; inventory updates through existing imports.</p><div class="flex flex-wrap gap-2">${hlOrderButton('saveHlReceipts', [], 'Save received quantities', false, !editable)}${hlOrderButton('previewHlCancellation', [], 'Review cancellation PDF', true, !editable)}${order.preview_id ? hlOrderButton('viewHlSavedPdf', [order.preview_id], 'View order PDF', true) : ''}</div><h3 class="pt-3 font-bold">Receipt correction history</h3><ul class="space-y-2 break-words text-sm">${receipts || '<li>No receipts recorded.</li>'}</ul><h3 class="font-bold">Cancellation history</h3><ul class="space-y-2 text-sm">${cancellations || '<li>No cancellations.</li>'}</ul></section>`;
         }
 
         function getHlSelectedTrackingLines(field) {
@@ -87964,11 +88091,21 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
-        async function verifyHlOrderSelection() {
+        function getHlReadyShipDates() {
+            const dates = new Set((hlOrderStateData?.draft || [])
+                .filter((row) => ['draft','ready'].includes(row.status || 'draft'))
+                .map(getHlDraftShipDate)
+                .filter(Boolean));
+            return [...dates].sort();
+        }
+
+        async function verifyHlOrderSelection(shipDate = '') {
             await loadHlOrderState(true);
             const draft = hlOrderStateData?.draft || [];
             if (!draft.length) throw new Error('Add an HL Order to Bloom Picker first.');
-            const readyIds = new Set(draft.filter((row) => ['draft','ready'].includes(row.status || 'draft')).map((row) => row.source_id));
+            const canonicalDate = getHlOrderShipDate(shipDate);
+            if (!canonicalDate) throw new Error('HL TAGS needs a ship date. Review the Plan Start Date before sending.');
+            const readyIds = new Set(draft.filter((row) => ['draft','ready'].includes(row.status || 'draft') && getHlDraftShipDate(row) === canonicalDate).map((row) => row.source_id));
             if (!readyIds.size) throw new Error('These rows changed or delivery is pending. Review HL Order before submitting again.');
             return getSelectedHlOrderRows().filter((row) => readyIds.has(row.unique_id));
         }
@@ -87976,8 +88113,30 @@ function toggleDriveQuickRequestItem(domId) {
         async function openHlTagsPreview() {
             if (hlOrderSending || hlOrderBusy || !canUseHlOrder()) return false;
             try {
-                await verifyHlOrderSelection();
-                const result = await runHlOrderCommand('preview', {});
+                await loadHlOrderState(true);
+                const dates = getHlReadyShipDates();
+                if (!dates.length) throw new Error('HL TAGS needs a ship date. Review the Plan Start Date before sending.');
+                if (dates.length === 1) return await previewHlTagsForShipDate(dates[0]);
+                const chooser = document.getElementById('hl-tags-date-selector');
+                document.getElementById('hl-tags-date-options').innerHTML = dates.map((date) => `<button type="button" data-hl-tags-ship-date="${escapeHtml(date)}" class="block min-h-[52px] w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-left font-bold text-emerald-900" ${buildFastInvokeAttrs('chooseHlTagsShipDate', [date], `Choose ${formatHlOrderShipDate(date)}`)}>Ship ${escapeHtml(formatHlOrderShipDate(date))}</button>`).join('');
+                if (!chooser.open) chooser.showModal();
+            } catch (error) { showToast('HL TAGS', error.message, true); }
+            return false;
+        }
+
+        function closeHlTagsDateSelector() { document.getElementById('hl-tags-date-selector')?.close(); return false; }
+
+        async function chooseHlTagsShipDate(shipDate) {
+            closeHlTagsDateSelector();
+            return previewHlTagsForShipDate(shipDate);
+        }
+
+        async function previewHlTagsForShipDate(shipDate) {
+            try {
+                const canonicalDate = getHlOrderShipDate(shipDate);
+                await verifyHlOrderSelection(canonicalDate);
+                const result = await runHlOrderCommand('preview', { ship_date: canonicalDate });
+                hlOrderPreviewShipDate = canonicalDate;
                 await showHlOrderPdfPreview(result.preview, 'submit');
             } catch (error) { showToast('HL TAGS', error.message, true); }
             return false;
@@ -87999,10 +88158,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (String.fromCharCode(...bytes.slice(0, 5)) !== '%PDF-') throw new Error('The saved preview did not return a valid PDF.');
             if (hlOrderPdfUrl) URL.revokeObjectURL(hlOrderPdfUrl);
             hlOrderPdfUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-            hlOrderPreview = { ...preview, action, owner };
+            hlOrderPreview = { ...preview, action, owner, ship_date: getHlOrderShipDate(preview.ship_date || preview.report?.ship_date || hlOrderPreviewShipDate) };
             const report = preview.report || {};
             const labels = ['Item Code','Container Size','HL Order Quantity','Plan Start Date','Dock','Stop Number'];
-            document.getElementById('hl-tags-preview-content').innerHTML = `<p class="mb-3 break-all text-sm">To: <strong>${escapeHtml(response.recipient)}</strong></p><p class="font-bold">${escapeHtml(report.order_number || '')}${action === 'cancellation_submit' ? ' · Cancellation' : ''}</p><a class="my-3 inline-block min-h-[44px] rounded-lg border px-3 py-2 font-bold text-emerald-800" href="${hlOrderPdfUrl}" target="_blank" rel="noopener" download="${escapeHtml(response.fileName || 'HL-TAGS.pdf')}">Open or download PDF</a><iframe title="HL order PDF preview" src="${hlOrderPdfUrl}" class="h-[44vh] w-full rounded border"></iframe>${report.lines?.length ? `<div class="mt-4 overflow-x-auto"><table class="w-full text-left text-xs"><thead><tr>${labels.map((label) => `<th class="p-2">${label}</th>`).join('')}</tr></thead><tbody>${report.lines.map((row) => `<tr>${['itemcode','contsize','quantity','planstartdate','dock','stopnumber'].map((key) => `<td class="border-t p-2">${escapeHtml(row[key] ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}`;
+            document.getElementById('hl-tags-preview-content').innerHTML = `<p class="mb-3 break-all text-sm">To: <strong>${escapeHtml(response.recipient)}</strong></p><p class="font-bold">${escapeHtml(report.order_number || '')}${action === 'cancellation_submit' ? ' · Cancellation' : ''}</p>${hlOrderPreview.ship_date ? `<p class="text-sm font-bold text-emerald-800">Ship date: ${escapeHtml(formatHlOrderShipDate(hlOrderPreview.ship_date))}</p>` : ''}<a class="my-3 inline-block min-h-[44px] rounded-lg border px-3 py-2 font-bold text-emerald-800" href="${hlOrderPdfUrl}" target="_blank" rel="noopener" download="${escapeHtml(response.fileName || 'HL-TAGS.pdf')}">Open or download PDF</a><iframe title="HL order PDF preview" src="${hlOrderPdfUrl}" class="h-[44vh] w-full rounded border"></iframe>${report.lines?.length ? `<div class="mt-4 overflow-x-auto"><table class="w-full text-left text-xs"><thead><tr>${labels.map((label) => `<th class="p-2">${label}</th>`).join('')}</tr></thead><tbody>${report.lines.map((row) => `<tr>${['itemcode','contsize','quantity','planstartdate','dock','stopnumber'].map((key) => `<td class="border-t p-2">${escapeHtml(row[key] ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}`;
             const send = document.getElementById('hl-tags-send');
             send.disabled = false; send.classList.toggle('hidden', !action);
             send.textContent = action === 'cancellation_submit' ? 'Send cancellation PDF' : 'Send HL TAGS';
@@ -88014,6 +88173,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hlOrderSending) return false;
             document.getElementById('hl-tags-preview')?.close();
             hlOrderPreview = null;
+            hlOrderPreviewShipDate = '';
             if (hlOrderPdfUrl) URL.revokeObjectURL(hlOrderPdfUrl);
             hlOrderPdfUrl = '';
             return false;
@@ -88039,13 +88199,14 @@ function toggleDriveQuickRequestItem(domId) {
             clearHlOrderInventorySnapshot();
             [...selectedItemSources].forEach(([id, source]) => { if (source === 'hl-order') { selectedItems.delete(id); selectedItemSources.delete(id); } });
             hlOrderSelections.clear(); hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null; hlOrderPreview = null; hlOrderAvailabilityIds = [];
-            hlOrderStateData = null; hlOrderStatePending = null; hlOrderStateLoadedAt = 0; hlOrderStateError = ''; hlOrderPendingCommand = null;
+            hlOrderStateData = null; hlOrderStatePending = null; hlOrderStateLoadedAt = 0; hlOrderStateError = ''; hlOrderPendingCommand = null; hlOrderPreviewShipDate = '';
             hlOrderDetailKey = null; hlOrderTrackingId = null; hlOrderTab = 'needed'; hlOrderBusy = false; hlOrderSending = false;
             if (hlOrderPollTimer) clearTimeout(hlOrderPollTimer);
             hlOrderPollTimer = null;
             if (hlOrderPdfUrl) URL.revokeObjectURL(hlOrderPdfUrl);
             hlOrderPdfUrl = '';
             document.getElementById('hl-tags-preview')?.close();
+            document.getElementById('hl-tags-date-selector')?.close();
             const container = document.getElementById('hl-order-content'); if (container) setHlOrderContent(container, '', true);
             const section = document.getElementById('hl-bloom-section'); if (section) section.innerHTML = '';
         }

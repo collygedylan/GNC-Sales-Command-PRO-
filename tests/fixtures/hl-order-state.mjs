@@ -29,8 +29,8 @@ function fixturePdf() {
 /** Isolated contract fixture. No real backend writes or email delivery are permitted. */
 export function createHlOrderState(options = {}) {
   const sourceRows = options.rows || [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1' })];
-  const state = { revision: 1, draft: [], actionable_rows: clone(sourceRows), dispositions: sourceRows.map((source) => ({ source_id: source.source_id, status: 'needed', source: clone(source), current_source: clone(source), available_quantity: source.available_quantity ?? Number(source.quantityordered) })), orders: [], delivery_issues: [] };
-  const control = { state, rows: sourceRows.map(({ source_id, source_fingerprint, available_quantity, ...row }) => row), master: options.master || [hlMaster('master-a'),
+  const state = { revision: 1, draft: [], actionable_rows: clone(sourceRows), dispositions: sourceRows.map((source) => ({ source_id: source.source_id, status: 'needed', source: clone(source), current_source: clone(source), available_quantity: source.available_quantity ?? Number(source.quantityordered) })), orders: [], batches: [], delivery_issues: [] };
+  const control = { state, rows: sourceRows.map(({ source_id, source_fingerprint, available_quantity, ...row }) => row), poRows: options.poRows || [], master: options.master || [hlMaster('master-a'),
     hlMaster('master-b', { locationcode: 'C.14.002', lotcode: '26.F1', ptravailable: '42', saleyear: '26' }),
     hlMaster('master-other-location', { locationcode: 'A.02.001', lotcode: '25.S1', season: 'S1', saleyear: '25', ptravailable: null }),
     hlMaster('master-zero', { locationcode: 'B.01.010', lotcode: '28.F1', saleyear: '28', ptravailable: '0' }),
@@ -57,7 +57,11 @@ export function createHlOrderState(options = {}) {
           || Number(entry.quantity) > Number(source(entry.source_id).available_quantity ?? source(entry.source_id).quantityordered)) problem('HL_ORDER_INVALID_COMMAND');
         if (disposition(entry.source_id)?.status === 'needs_review') problem('HL_ORDER_SOURCE_REVIEW_REQUIRED');
         if (disposition(entry.source_id)?.status === 'submitting') problem('HL_ORDER_DELIVERY_UNKNOWN');
-        const saved = { source_id: entry.source_id, quantity: Number(entry.quantity), source: clone(source(entry.source_id)), status: 'ready' };
+        const shipDate = String(entry.ship_date || source(entry.source_id).planstartdate || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(shipDate)) problem('HL_ORDER_SHIP_DATE_REQUIRED');
+        const active = state.orders.find((order) => order.ship_date === shipDate && !['received', 'cancelled', 'received_and_cancelled'].includes(order.fulfillment_status));
+        const saved = { source_id: entry.source_id, quantity: Number(entry.quantity), source: clone(source(entry.source_id)), ship_date: shipDate,
+          target_order_id: active?.id || null, target_order_number: active?.order_number || null, status: 'ready' };
         const index = state.draft.findIndex((row) => row.source_id === entry.source_id);
         if (index < 0) state.draft.push(saved); else state.draft[index] = saved;
         disposition(entry.source_id).status = 'draft';
@@ -73,11 +77,14 @@ export function createHlOrderState(options = {}) {
       }
     } else if (action === 'preview' || action === 'cancellation_preview') {
       const order = action === 'cancellation_preview' ? state.orders.find((entry) => entry.id === payload.order_id) : null;
+      const shipDate = order ? order.ship_date : String(payload.ship_date || state.draft.find((entry) => entry.status === 'ready')?.ship_date || '').slice(0, 10);
       const lines = order ? (payload.lines || []).map((line) => ({ ...order.lines.find((entry) => entry.id === line.line_id)?.source, line_id: line.line_id, quantity: Number(line.quantity) }))
-        : state.draft.filter((entry) => entry.status === 'ready').map((entry) => ({ ...entry.source, source_id: entry.source_id, quantity: entry.quantity }));
+        : state.draft.filter((entry) => entry.status === 'ready' && entry.ship_date === shipDate).map((entry) => ({ ...entry.source, source_id: entry.source_id, quantity: entry.quantity }));
       if (!lines.length) problem('HL_ORDER_INVALID_COMMAND');
-      preview = { id: uuid(++control.sequence), report: { contract_version: 'hl-order-report-v1', kind: order ? 'cancellation' : 'order',
-        order_id: order?.id || null, order_number: order?.order_number || `HL-TEST-${control.sequence}`, original_order_number: order?.order_number,
+      const target = !order && state.orders.find((entry) => entry.id === state.draft.find((draft) => draft.ship_date === shipDate && draft.target_order_id)?.target_order_id);
+      if (!order && target && target.status !== 'sent') problem('HL_ORDER_DELIVERY_UNKNOWN');
+      preview = { id: uuid(++control.sequence), ship_date: shipDate, report: { contract_version: 'hl-order-report-v2', kind: order ? 'cancellation' : target ? 'addition' : 'submission', ship_date: shipDate,
+        order_id: order?.id || target?.id || null, order_number: order?.order_number || target?.order_number || `HL-TEST-${control.sequence}`, original_order_number: order?.order_number,
         reason: payload.reason || '', created_at: '2026-09-11T16:00:00Z', lines, total_quantity: lines.reduce((total, line) => total + Number(line.quantity), 0) } };
       control.previews.set(preview.id, { ...clone(preview), revision: state.revision + 1 });
     } else if (action === 'submit' || action === 'cancellation_submit') {
@@ -86,9 +93,11 @@ export function createHlOrderState(options = {}) {
       if (action === 'submit') {
         const selected = saved.report.lines.map((line) => state.draft.find((entry) => entry.source_id === line.source_id));
         if (selected.some((entry) => !entry || entry.status !== 'ready')) problem('HL_ORDER_SOURCE_REVIEW_REQUIRED');
-        const order = { id: uuid(++control.sequence), order_number: saved.report.order_number, preview_id: saved.id, created_at: saved.report.created_at, status: 'queued', fulfillment_status: 'open', receipts: [], cancellations: [],
-          lines: selected.map((entry, index) => ({ id: `line-${control.sequence}-${index}`, source_id: entry.source_id, source: clone(entry.source), quantity: entry.quantity, received_quantity: 0, cancelled_quantity: 0, outstanding_quantity: entry.quantity })) };
-        state.orders.unshift(order);
+        const batch = { id: uuid(++control.sequence), preview_id: saved.id, event_id: null, status: 'queued', kind: saved.report.kind, ship_date: saved.report.ship_date, created_at: saved.report.created_at, sent_at: null };
+        let order = saved.report.order_id ? state.orders.find((entry) => entry.id === saved.report.order_id) : null;
+        if (!order) { order = { id: uuid(++control.sequence), order_number: saved.report.order_number, preview_id: saved.id, ship_date: saved.report.ship_date, created_at: saved.report.created_at, status: 'queued', fulfillment_status: 'open', receipts: [], cancellations: [], lines: [] }; state.orders.unshift(order); }
+        batch.order_id = order.id; state.batches.unshift(batch);
+        order.lines.push(...selected.map((entry, index) => ({ id: `line-${control.sequence}-${index}`, source_id: entry.source_id, source: clone(entry.source), ship_date: entry.ship_date, batch_id: batch.id, delivery_status: 'queued', quantity: entry.quantity, received_quantity: 0, cancelled_quantity: 0, outstanding_quantity: entry.quantity })));
         order.lines.forEach((line) => { disposition(line.source_id).status = 'submitting'; });
         selected.forEach((entry) => { entry.status = 'submitting'; });
       } else {
@@ -124,8 +133,10 @@ export function createHlOrderState(options = {}) {
     const order = state.orders[0];
     if (!order) throw new Error('No synthetic order queued');
     order.status = status;
-    order.lines.forEach((line) => { disposition(line.source_id).status = status === 'sent' ? 'handled' : 'submitting'; });
-    if (status === 'sent') state.draft = state.draft.filter((entry) => !order.lines.some((line) => line.source_id === entry.source_id));
+    const batch = state.batches.find((entry) => entry.order_id === order.id && entry.status === 'queued');
+    if (batch) { batch.status = status; batch.sent_at = status === 'sent' ? '2026-09-11T16:10:00Z' : null; }
+    order.lines.filter((line) => !batch || line.batch_id === batch.id).forEach((line) => { line.delivery_status = status; disposition(line.source_id).status = status === 'sent' ? 'handled' : 'submitting'; });
+    if (status === 'sent') state.draft = state.draft.filter((entry) => !order.lines.some((line) => line.source_id === entry.source_id && line.delivery_status === 'sent'));
     state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id)));
     state.delivery_issues = state.delivery_issues.filter((entry) => entry.order_id !== order.id);
     if (status === 'delivery_unknown') state.delivery_issues.push({ event_id: uuid(++control.sequence), order_id: order.id, status, message: 'Delivery could not be confirmed' });
@@ -226,7 +237,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (table === 'profiles') return json(route, /vnd\.pgrst\.object/.test(req.headers().accept || '') ? profile : [profile]);
       if (table === 'ph_app_settings') return json(route, seasonSettings);
       if (url.searchParams.get('select') === 'filename,last_updated' && url.searchParams.get('last_updated') === 'not.is.null') return json(route, []);
-      const rows = table === 'ph_soc_master' ? control.rows : table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, url.search.slice(1)).rows : [];
+      const rows = table === 'ph_soc_master' ? control.rows : table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, url.search.slice(1)).rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];
       return json(route, rows, 200, { 'content-range': rows.length ? `0-${rows.length - 1}/${rows.length}` : '*/0' });
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {

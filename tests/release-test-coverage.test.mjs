@@ -87,6 +87,7 @@ test('release unit union preserves every existing script and explicit gate exact
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
     'tests/hl-order.test.mjs',
+    'tests/hl-order-ship-date.test.mjs',
     'tests/hl-order-rollback.test.mjs',
     'tests/hl-order-delivery.test.mjs',
     'tests/hl-order-delivery-worker.test.mjs',

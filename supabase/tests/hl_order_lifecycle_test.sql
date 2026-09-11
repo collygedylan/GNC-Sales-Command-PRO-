@@ -72,7 +72,7 @@ begin
   perform pg_temp.hl_check(jsonb_array_length(s->'draft')=3,'draft_save upserts without deleting prior rows and accepts proper thousands');
   perform pg_temp.hl_command('draft_clear','{"source_ids":["HL-THOUSAND"]}');
   preview:=pg_temp.hl_command('preview','{}')->'preview'; frozen:=preview->'report';
-  perform pg_temp.hl_check(frozen->>'contract_version'='hl-order-report-v1' and (frozen->>'total_quantity')::numeric=26,'preview freezes report contract, order number and exact total');
+  perform pg_temp.hl_check(frozen->>'contract_version'='hl-order-report-v2' and (frozen->>'total_quantity')::numeric=26,'preview freezes report contract, order number and exact total');
   perform pg_temp.hl_check((select x->'ptravailable'='0'::jsonb from jsonb_array_elements(frozen->'lines') x where x->>'source_id'='HL-A'),'zero inventory availability is numeric zero');
   perform pg_temp.hl_check((select x->'ptravailable'='null'::jsonb from jsonb_array_elements(frozen->'lines') x where x->>'source_id'='HL-B'),'unknown inventory availability stays null despite stale SOC 999');
   perform pg_temp.hl_check((select report=frozen from public.ph_hl_order_previews where id=(preview->>'id')::uuid),'persisted preview equals client preview exactly');
@@ -164,16 +164,19 @@ begin
   begin update public.ph_hl_order_previews set report='{}' where id=(preview->>'id')::uuid; raise exception 'Expected immutable report';
   exception when sqlstate '55000' then perform pg_temp.hl_check(sqlerrm='HL_ORDER_HISTORY_IMMUTABLE','historical PDF cannot be altered'); end;
   perform pg_temp.hl_command('submit',jsonb_build_object('preview_id',preview->>'id'));
+  update public.ph_soc_master set planstart='2026-09-16' where unique_id='HL-B';
+  perform public.hl_order_state();
+  perform pg_temp.hl_command('resolve_review','{"source_id":"HL-B","resolution":"needed"}');
   perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-B","quantity":2}]}');
   preview:=pg_temp.hl_command('preview','{}')->'preview';
   perform pg_temp.hl_check(jsonb_array_length(preview->'report'->'lines')=1 and preview->'report'->'lines'->0->>'source_id'='HL-B',
-    'older submitting draft does not block an unrelated ready preview or join its PDF');
+    'older submitting draft does not block another ship date or join its PDF');
   s:=pg_temp.hl_command('submit',jsonb_build_object('preview_id',preview->>'id'));
   perform pg_temp.hl_check((select count(*)=2 from jsonb_array_elements(s->'draft') x where x->>'status'='submitting'),
     'unrelated submissions retain independent locked drafts awaiting confirmation');
 
-  insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,transactionnumber)
-    values('HL-LATE-CANCEL','HL-LATE-CANCEL','#3','C.12.4','27.S1','10','D1','LATE-CANCEL-ORDER');
+  insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,transactionnumber,planstart)
+    values('HL-LATE-CANCEL','HL-LATE-CANCEL','#3','C.12.4','27.S1','10','D1','LATE-CANCEL-ORDER','2026-09-17');
   perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-LATE-CANCEL","quantity":6}]}');
   preview:=pg_temp.hl_command('preview','{}')->'preview';
   perform pg_temp.hl_command('submit',jsonb_build_object('preview_id',preview->>'id'));

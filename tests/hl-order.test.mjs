@@ -87,6 +87,19 @@ test('group schedule normalization uses the written ISO calendar date without ti
   assert.equal(result[0].quantity, 30);
 });
 
+test('ship dates retain the written Apps Script calendar date and render without a browser timezone shift', () => {
+  const ctx = runtime();
+  assert.equal(ctx.getHlOrderShipDate('Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)'), '2026-09-15');
+  assert.equal(ctx.formatHlOrderShipDate('Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)'), 'Sep 15, 2026');
+  assert.equal(ctx.getHlOrderShipDate('not a date'), '');
+});
+
+test('ship-date backend errors are surfaced as actionable UI text', () => {
+  const ctx = runtime();
+  assert.match(ctx.getHlOrderErrorMessage(new Error('HL_ORDER_SHIP_DATE_REQUIRED')), /needs a ship date/i);
+  assert.match(ctx.getHlOrderErrorMessage(new Error('HL_ORDER_SELECT_SHIP_DATE')), /Choose one ship date/i);
+});
+
 test('same-item different-lot SOC rows retain separate source identities in one schedule group', () => {
   const ctx = runtime();
   const result = groups(ctx, [row(), row('second-lot', { locationcode: 'C.14.002', lotcode: '26.F1' })]);

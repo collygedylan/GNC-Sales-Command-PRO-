@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Locator } from '@playwright/test';
-import { installHlOrderFixture, hlSoc, hlRecipient } from './fixtures/hl-order-state.mjs';
+import { installHlOrderFixture, hlSoc, hlMaster, hlRecipient } from './fixtures/hl-order-state.mjs';
 
 async function openHl(page: Page) {
   await expect(page.locator('#view-login')).toBeHidden();
@@ -123,6 +123,45 @@ test('selected editable quantities persist through reload and HL removal preserv
   assertIsolated(fixture);
 });
 
+test('PO inventory action pages verified same-size rows and preserves zero availability', async ({ page, baseURL }) => {
+  const master = [hlMaster('po-exact', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', ptravailable: '0' }),
+    ...Array.from({ length: 251 }, (_, index) => hlMaster(`po-related-${String(index).padStart(3, '0')}`, { itemcode: 'PO.TEST', contsize: '#3', locationcode: `C.14.${String(index).padStart(3, '0')}`, lotcode: '27.F1', ptravailable: index === 1 ? null : '3' }))];
+  const fixture = await installHlOrderFixture(page, baseURL!, { master, poRows: [{ row_index: 1, itemcode: 'PO.TEST', commonname: 'PO test', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' }] });
+  await page.evaluate(() => window.eval("switchView('po-management')"));
+  await page.getByRole('button', { name: 'HL PO', exact: true }).click();
+  await page.getByRole('button', { name: '27F1', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'View inventory', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'View inventory', exact: true }).click();
+  const detail = page.locator('#po-inventory-detail-content');
+  await expect(detail).toContainText('Exact item, size, location and lot match');
+  await expect(detail).toContainText('PTRAVAILABLE: 0');
+  await expect(detail).toContainText('Related item and size');
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('HL TAGS separates saved drafts by canonical ship date and previews only the chosen date', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { planstartdate: 'Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)' }),
+    hlSoc('hl-b', { planstartdate: '2026-09-16', locationcode: 'C.14.002', lotcode: '26.F1' })] });
+  await openHl(page); await selectOne(page, 'hl-a', '6');
+  await navigateHl(page, page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }));
+  await navigateHl(page, page.locator('[data-hl-group]').filter({ hasText: 'Sep 16, 2026' }).getByRole('button', { name: 'View HL order details', exact: true }));
+  const second = page.locator('[data-hl-source-id="hl-b"]');
+  await second.locator('[data-hl-quantity]').fill('5');
+  await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
+  await expect(page.locator('[data-hl-ship-date="2026-09-15"]')).toContainText('Sep 15, 2026');
+  await expect(page.locator('[data-hl-ship-date="2026-09-16"]')).toContainText('Sep 16, 2026');
+  await page.locator('#batch-btn-hl-tags').click();
+  const chooser = page.locator('#hl-tags-date-selector');
+  await expect(chooser).toBeVisible();
+  await chooser.getByRole('button', { name: 'Choose Sep 16, 2026', exact: true }).click();
+  await expect(page.locator('#hl-tags-preview')).toBeVisible();
+  expect(actions(fixture, 'preview').at(-1).p_payload).toEqual({ ship_date: '2026-09-16' });
+  const report = [...fixture.previews.values()].at(-1).report;
+  expect(report.ship_date).toBe('2026-09-16');
+  expect(report.lines.map((line: any) => line.source_id)).toEqual(['hl-b']);
+  assertIsolated(fixture);
+});
+
 test('PDF review freezes edited quantities and Needed survives queued delivery until confirmation', async ({ page, baseURL }, info) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page, 'hl-a', '6');
@@ -185,13 +224,15 @@ test('uncertain delivery remains protected across reload without another submiss
   assertIsolated(fixture);
 });
 
-test('an older uncertain order stays protected while a different ready source can be reviewed and ordered', async ({ page, baseURL }) => {
-  const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true, seedDelivery: 'delivery_unknown' });
+test('an older uncertain order stays protected while a different-date ready source can be reviewed and ordered', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1', planstartdate: '2026-09-16' })], seedOrder: true, seedDelivery: 'delivery_unknown' });
   const oldOrderId = fixture.state.orders[0].id;
   await openHl(page); await openDetails(page);
   const oldRow = page.locator('[data-hl-source-id="hl-a"]');
   await expect(oldRow.locator('[data-hl-select]')).toBeDisabled();
   await expect(oldRow.locator('[data-hl-quantity]')).toBeDisabled();
+  await navigateHl(page, page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }));
+  await navigateHl(page, page.locator('[data-hl-group]').filter({ hasText: 'Sep 16, 2026' }).getByRole('button', { name: 'View HL order details', exact: true }));
   const newRow = page.locator('[data-hl-source-id="hl-b"]');
   await newRow.locator('[data-hl-select]').check();
   await newRow.locator('[data-hl-quantity]').fill('5');

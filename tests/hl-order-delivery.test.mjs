@@ -21,6 +21,11 @@ export function reportFixture(overrides = {}) {
       commonname: 'Synthetic Azalea', locationcode: 'C.12.4', lotcode: 'LOT-1', ptravailable: 45, transactionnumber: 'ORDER-12', purchaseordernumber: 'PO-8' }], ...overrides };
 }
 
+function reportFixtureV2(overrides = {}) {
+  return { ...reportFixture(), contract_version: 'hl-order-report-v2', ship_date: '2026-09-15',
+    batch_id: '52345678-1234-1234-1234-123456789abc', ...overrides };
+}
+
 export function createHlBackend(options = {}) {
   const rendered = [], sent = [], reads = [], records = [];
   const properties = new Map([['SUPABASE_SERVICE_ROLE_KEY', key]]);
@@ -35,7 +40,7 @@ export function createHlBackend(options = {}) {
     Utilities: { DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (_, v) => [...createHash('sha256').update(v).digest()], computeHmacSha256Signature: (v, k) => [...createHmac('sha256', k).update(v).digest()],
       base64EncodeWebSafe: (v) => Buffer.from(v).toString('base64url'), base64Encode: (v) => Buffer.from(v).toString('base64'),
-      formatDate: () => 'Sep 11, 2026 7:00 AM CDT' },
+      formatDate: (_, __, format) => format === 'MMM d, yyyy' ? 'Sep 15, 2026' : 'Sep 11, 2026 7:00 AM CDT' },
     LockService: { getScriptLock: () => ({ tryLock: () => options.busy !== true, releaseLock() {} }) },
     HtmlService: { createHtmlOutput: (html) => { if (options.renderError) throw new Error('renderer failed'); rendered.push(html);
       const blob = { getAs() { return this; }, setName(name) { this.name = name; return this; }, getBytes() { return [...Buffer.from('%PDF-1.7\nSynthetic fixture')]; } };
@@ -121,6 +126,32 @@ test('frozen PDF includes all six columns, grouped natural dock/stop order, exac
   assert.match(html, /&lt;img/); assert.doesNotMatch(html, /<img/);
 });
 
+test('v1 frozen reports retain their historical PDF view and filename', () => {
+  const h = createHlBackend(); const result = h.preview();
+  assert.equal(result.fileName, 'GNC_PH_HL_Order_HL-2026-000001.pdf');
+  assert.doesNotMatch(h.rendered[0], /Ship date:|ADDITIONS/);
+});
+
+test('v2 submission, additions, and cancellation show the canonical ship date beneath the order number', () => {
+  const submission = createHlBackend({ saved: { report: reportFixtureV2() } }); assert.equal(submission.send().ok, true);
+  assert.match(submission.rendered[0], /HL Order HL-2026-000001<\/h1><div class="meta"><b>Ship date:<\/b> Sep 15, 2026/);
+  assert.match(submission.sent[0].textBody, /Order: HL-2026-000001\nShip date: Sep 15, 2026\nHL order quantity: 12/);
+
+  const additionLine = { ...reportFixture().lines[0], source_id: 'SOC-ADDITION', quantity: 2, ptravailable: 0 };
+  const additionReport = reportFixtureV2({ kind: 'addition', lines: [additionLine, { ...additionLine, source_id: 'SOC-ADDITION-UNKNOWN', quantity: 1, ptravailable: null }], total_quantity: 3 });
+  const addition = createHlBackend({ saved: { report: additionReport } }); assert.equal(addition.send().ok, true);
+  assert.match(addition.rendered[0], /HL Order ADDITIONS HL-2026-000001/); assert.match(addition.rendered[0], /Ship date:<\/b> Sep 15, 2026/);
+  assert.match(addition.rendered[0], /Added quantity: 3/); assert.match(addition.rendered[0], /Availability: 0/); assert.match(addition.rendered[0], /Availability: Unknown/);
+  assert.match(addition.sent[0].textBody, /Ship date: Sep 15, 2026\nADDITIONS\nAdded quantity: 3/);
+  assert.equal(addition.sent[0].subject, 'HL TAGS'); assert.equal(addition.sent[0].attachments[0].name, 'GNC_PH_HL_Order_HL-2026-000001_ADDITIONS_52345678-1234-1234-1234-123456789abc.pdf');
+
+  const cancellationReport = reportFixtureV2({ kind: 'cancellation', batch_id: '', original_order_number: 'HL-2026-000001', reason: 'Correction' });
+  const cancellation = createHlBackend({ saved: { report: cancellationReport, event_type: 'hl_order_cancellation' } }); assert.equal(cancellation.send().ok, true);
+  assert.match(cancellation.rendered[0], /HL Order Cancellation HL-2026-000001/); assert.match(cancellation.rendered[0], /Ship date:<\/b> Sep 15, 2026/);
+  assert.match(cancellation.sent[0].textBody, /Order: HL-2026-000001\nShip date: Sep 15, 2026\nOriginal order:/);
+  assert.equal(cancellation.sent[0].subject, 'HL TAGS \u2014 CANCELLATION');
+});
+
 test('malformed snapshots fail closed before preview/send: quantities, totals, duplicate identities and bounds', () => {
   for (const quantity of [0, -1, 1.5, NaN, Infinity, '12', 1000000001]) {
     const report = reportFixture(); report.lines[0].quantity = quantity;
@@ -128,6 +159,16 @@ test('malformed snapshots fail closed before preview/send: quantities, totals, d
   }
   for (const mutate of [(r) => { r.total_quantity = 999; }, (r) => { r.lines.push(r.lines[0]); r.total_quantity = 24; }, (r) => { r.lines[0].commonname = 'x'.repeat(201); }]) {
     const report = reportFixture(); mutate(report); const h = createHlBackend({ saved: { report } }); assert.equal(h.preview().ok, false);
+  }
+});
+
+test('v2 rejects forged kinds, malformed ship dates, and missing or forged batch identifiers', () => {
+  for (const changes of [
+    { kind: 'forged' }, { ship_date: '2026-9-15' }, { ship_date: '2026-02-30' }, { ship_date: '0000-00-00' },
+    { batch_id: '' }, { batch_id: 'not-a-uuid' }, { kind: 'addition', batch_id: null }
+  ]) {
+    const h = createHlBackend({ saved: { report: reportFixtureV2(changes) } });
+    assert.equal(h.preview().ok, false); assert.equal(h.rendered.length, 0); assert.equal(h.sent.length, 0);
   }
 });
 

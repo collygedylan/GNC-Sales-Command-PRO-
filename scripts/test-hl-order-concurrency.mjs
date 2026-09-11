@@ -14,7 +14,7 @@ const options = { connectionString, connectionTimeoutMillis: 10_000, statement_t
 const admin = new pg.Client(options);
 const clients = [];
 const actor = randomUUID(), session = randomUUID(), prefix = `HL-CONCURRENT-${randomUUID()}`;
-const ids = [`${prefix}-A`, `${prefix}-B`];
+const ids = [`${prefix}-A`, `${prefix}-B`, `${prefix}-ADDITION`];
 const claims = { role: 'authenticated', sub: actor, session_id: session,
   iss: 'https://kzrnyjsosryejjejliii.supabase.co/auth/v1', exp: Math.floor(Date.now() / 1000) + 3600 };
 const state = async client => (await client.query('select public.hl_order_state() state')).rows[0].state;
@@ -72,6 +72,22 @@ try {
   await clients[2].query("select public.hl_order_delivery_record_v1($1,$2,'sent','{\"gmail_message_id\":\"synthetic-concurrency-receipt\"}')", [order.event_id, lease]);
   assert.equal((await state(clients[0])).orders.find(x => x.id === order.id).status, 'sent');
 
+  // Concurrent previews/additions must share the open order and create one new batch.
+  initial = await state(clients[0]);
+  const additionDraft = await command(clients[0], 'draft_save', { rows: [{ source_id: ids[2], quantity: 3 }] }, initial.revision);
+  const previews = await Promise.allSettled(clients.slice(0, 2).map(client =>
+    command(client, 'preview', { ship_date: '2026-09-15' }, additionDraft.revision)));
+  assert.equal(previews.filter(x => x.status === 'fulfilled').length, 1, 'Only one concurrent addition preview may win CAS');
+  const additionPreview = previews.find(x => x.status === 'fulfilled').value;
+  assert.equal(additionPreview.preview.report.order_id, order.id);
+  assert.equal(additionPreview.preview.report.order_number, order.order_number);
+  assert.equal(additionPreview.preview.report.kind, 'addition');
+  const additions = await Promise.allSettled(clients.slice(0, 2).map(client =>
+    command(client, 'submit', { preview_id: additionPreview.preview.id }, additionPreview.revision)));
+  assert.equal(additions.filter(x => x.status === 'fulfilled').length, 1, 'Concurrent addition sends produce one batch');
+  assert.equal((await admin.query('select count(*)::int n from hl_order_private.orders where created_by=$1', [actor])).rows[0].n, 1);
+  assert.equal((await admin.query('select count(*)::int n from hl_order_private.submission_batches where created_by=$1', [actor])).rows[0].n, 2);
+
   // A committed import must invalidate the old revision before a draft write.
   initial = await state(clients[0]);
   await command(clients[0], 'draft_save', { rows: [{ source_id: ids[1], quantity: 5 }] }, initial.revision);
@@ -91,7 +107,7 @@ try {
   await admin.query('commit');
   await assert.rejects(waitingCommand, /HL_ORDER_REVISION_CONFLICT/);
   assert.equal((await state(clients[0])).draft.find(x => x.source_id === ids[1]).status, 'needs_review');
-  console.log('PASS HL concurrency: 10 identical retries; competing tab CAS; one preview/one event; worker lock ordering; import snapshot race.');
+  console.log('PASS HL concurrency: 10 identical retries; competing tab CAS; one preview/one event; same-order additions; worker lock ordering; import snapshot race.');
 } finally {
   await admin.query('rollback');
   for (const client of clients) { try { await client.query('rollback'); } catch {} }
@@ -105,6 +121,7 @@ try {
     await admin.query('delete from hl_order_private.cancellation_lines where cancellation_id in (select id from hl_order_private.cancellations where created_by=$1)', [actor]);
     await admin.query('delete from hl_order_private.cancellations where created_by=$1', [actor]);
     await admin.query('delete from hl_order_private.order_lines where order_id in (select id from hl_order_private.orders where created_by=$1)', [actor]);
+    await admin.query('delete from hl_order_private.submission_batches where created_by=$1', [actor]);
     await admin.query('delete from hl_order_private.orders where created_by=$1', [actor]);
     await admin.query('delete from hl_order_private.commands where created_by=$1', [actor]);
     await admin.query('delete from public.ph_hl_order_previews where created_by=$1', [actor]);

@@ -49,8 +49,46 @@ try {
   await db.exec(between(worker, '-- Authenticated users may read only delivery metadata.', 'create or replace view public.ph_request_delivery_status'));
   await db.exec(between(worker, 'drop function if exists public.get_request_delivery_recovery_queue();', '-- Server authority stamps the authenticated completing profile.'));
   await db.exec(read('supabase/migrations/20260911115037_hl_ordering_system.sql'));
-  const files = args.includes('--test') ? [args[args.indexOf('--test') + 1]] : [
-    'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql'
+  let historical;
+  if (args.includes('--backfill')) {
+    const fixture = read('supabase/tests/hl_order_lifecycle_test.sql');
+    await db.exec(fixture.slice(0, fixture.indexOf('do $test$')));
+    await db.exec(`
+      update public.ph_soc_master set planstart='Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)' where unique_id in ('HL-A','HL-B');
+      select pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-A","quantity":6},{"source_id":"HL-B","quantity":20}]}');
+      do $$ declare p jsonb; s jsonb; o jsonb; begin
+        p:=pg_temp.hl_command('preview','{}')->'preview';
+        s:=pg_temp.hl_command('submit',jsonb_build_object('preview_id',p->>'id')); o:=s->'orders'->0;
+        perform pg_temp.hl_confirm((o->>'event_id')::uuid);
+        perform pg_temp.hl_command('receive',jsonb_build_object('order_id',o->>'id','lines',
+          jsonb_build_array(jsonb_build_object('line_id',(select id from hl_order_private.order_lines where source_id='HL-A'),'received_quantity',2))));
+      end $$;
+      commit;
+    `);
+    historical = (await db.query(`select
+      (select jsonb_agg(to_jsonb(o) order by id) from hl_order_private.orders o) orders,
+      (select jsonb_agg(to_jsonb(l) order by id) from hl_order_private.order_lines l) lines,
+      (select jsonb_agg(to_jsonb(p) order by id) from public.ph_hl_order_previews p) previews,
+      (select jsonb_agg(to_jsonb(r) order by id) from hl_order_private.receipts r) receipts`)).rows[0];
+  }
+  await db.exec(read('supabase/migrations/20260911203510_hl_ship_date_submission_batches.sql'));
+  if (historical) {
+    const after = (await db.query(`select
+      (select jsonb_agg(to_jsonb(o)-'ship_date' order by id) from hl_order_private.orders o) orders,
+      (select jsonb_agg(to_jsonb(l)-'batch_id' order by id) from hl_order_private.order_lines l) lines,
+      (select jsonb_agg(to_jsonb(p) order by id) from public.ph_hl_order_previews p) previews,
+      (select jsonb_agg(to_jsonb(r) order by id) from hl_order_private.receipts r) receipts`)).rows[0];
+    if (JSON.stringify(after)!==JSON.stringify(historical)) throw new Error('Migration altered legacy history');
+    const proof = (await db.query(`select count(*)::int n from hl_order_private.submission_batches b
+      join hl_order_private.orders o on o.id=b.order_id
+      where b.status='sent' and b.ship_date='2026-09-15' and b.preview_id=o.preview_id and b.event_id=o.event_id
+        and b.delivery_receipt=o.delivery_receipt and o.ship_date='2026-09-15'
+        and (select count(*) from hl_order_private.order_lines l where l.batch_id=b.id)=2`)).rows[0];
+    if (proof.n!==1) throw new Error('Legacy batch provenance or Chicago date failed');
+    console.log('PASS legacy backfill: two sent lines, saved PDFs, quantities, receipt, number, delivery proof unchanged; batch and Sep 15 ship date added.');
+  }
+  const files = historical ? [] : args.includes('--test') ? [args[args.indexOf('--test') + 1]] : [
+    'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql', 'supabase/tests/hl_order_ship_dates_test.sql'
   ];
   for (const file of files) {
     if (!file || !/^supabase\/tests\/hl_order_[a-z_]+\.sql$/.test(file)) throw new Error('Invalid HL SQL test path.');

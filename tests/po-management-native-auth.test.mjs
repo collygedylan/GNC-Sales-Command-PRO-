@@ -44,6 +44,33 @@ test('PO Management loader uses authenticated PostgREST paging with sanitized er
   assert.doesNotMatch(loader, /error && error\.message \? error\.message/);
 });
 
+test('PO inventory detail reads every RLS-visible exact item-and-size row without HL access', () => {
+  const start = html.indexOf('function renderPoManagementInventoryRows(');
+  const end = html.indexOf('function getWeatherHoldNumber(', start);
+  const detail = html.slice(start, end);
+  assert.ok(start > 0 && end > start);
+  assert.match(detail, /fetchAuthenticatedSupabaseReadPage\('ph_master_inventory', query/);
+  assert.match(detail, /itemcode=eq\.\$\{encodeURIComponent\(itemcode\)\}/);
+  assert.match(detail, /contsize=eq\.\$\{encodeURIComponent\(contsize\)\}/);
+  assert.match(detail, /order=unique_id\.asc/);
+  assert.match(detail, /offset=\$\{offset\}/);
+  assert.match(detail, /owner !== getSupabaseReadIdentityScope\(\)/);
+  assert.match(detail, /!canAccessView\('po-management'\)/);
+  assert.match(detail, /Exact item, size, location and lot match/);
+  assert.match(detail, /Related item and size · other locations or lots/);
+  assert.match(detail, /renderVerifiedInventoryDetailRow/);
+  assert.match(html, /PTRAVAILABLE/);
+  assert.doesNotMatch(detail, /canUseHlOrder/);
+  assert.doesNotMatch(detail, /fullInventory/);
+});
+
+test('PO inventory detail is invalidated and cleared on role reset and logout', () => {
+  assert.match(html, /function resetPoManagementInventoryState\(\)[\s\S]*poManagementInventoryRequest\+\+[\s\S]*content\.textContent = ''[\s\S]*po-inventory-detail.*close/);
+  assert.match(html, /function clearRoleScopedClientCaches[\s\S]*resetPoManagementInventoryState\(\)/);
+  assert.match(html, /async function performLogout\(\)[\s\S]*resetPoManagementInventoryState\(\)/);
+  assert.match(html, /Inventory verification failed\. Try again\./);
+});
+
 test('hosted health and exact-live canary cover the PO authorization contract', () => {
   assert.match(migration, /get_po_management_health_snapshot/);
   assert.match(migration, /po-management-native-auth-v1/);

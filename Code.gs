@@ -16483,7 +16483,7 @@ function hlOrderText_(value, max, required) {
   return text;
 }
 
-function normalizeHlOrderReport_(input) {
+function normalizeHlOrderReportV1_(input) {
   if (!input || input.contract_version !== 'hl-order-report-v1' || ['submission', 'cancellation'].indexOf(input.kind) === -1
       || !Array.isArray(input.lines) || !input.lines.length || input.lines.length > 500) throw new Error('HL_ORDER_REPORT_INVALID');
   const report = {
@@ -16521,11 +16521,65 @@ function normalizeHlOrderReport_(input) {
   return report;
 }
 
+function hlOrderCanonicalShipDate_(value) {
+  const shipDate = hlOrderText_(value, 10, true);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(shipDate)) throw new Error('HL_ORDER_REPORT_INVALID');
+  const parsed = new Date(shipDate + 'T12:00:00Z');
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== shipDate) throw new Error('HL_ORDER_REPORT_INVALID');
+  return shipDate;
+}
+
+function normalizeHlOrderReport_(input) {
+  if (input && input.contract_version === 'hl-order-report-v1') return normalizeHlOrderReportV1_(input);
+  if (!input || input.contract_version !== 'hl-order-report-v2' || ['submission', 'addition', 'cancellation'].indexOf(input.kind) === -1
+      || !Array.isArray(input.lines) || !input.lines.length || input.lines.length > 500) throw new Error('HL_ORDER_REPORT_INVALID');
+  const report = {
+    contract_version: 'hl-order-report-v2', kind: input.kind,
+    order_id: hlOrderText_(input.order_id, 36, true), order_number: hlOrderText_(input.order_number, 64, true),
+    original_order_number: hlOrderText_(input.original_order_number, 64, input.kind === 'cancellation'),
+    batch_id: input.batch_id === null || input.batch_id === undefined || input.batch_id === '' ? '' : hlOrderText_(input.batch_id, 36, true),
+    ship_date: hlOrderCanonicalShipDate_(input.ship_date), reason: hlOrderText_(input.reason, 1000, false),
+    created_at: hlOrderText_(input.created_at, 40, true), lines: [], total_quantity: 0
+  };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(report.order_id)
+      || !/^[A-Za-z0-9._-]+$/.test(report.order_number)
+      || (report.original_order_number && !/^[A-Za-z0-9._-]+$/.test(report.original_order_number))
+      || (report.batch_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(report.batch_id))
+      || ((report.kind === 'submission' || report.kind === 'addition') && !report.batch_id)
+      || !Number.isFinite(Date.parse(report.created_at))) throw new Error('HL_ORDER_REPORT_INVALID');
+  const identities = Object.create(null);
+  report.lines = input.lines.map(function(raw) {
+    if (!raw || typeof raw !== 'object') throw new Error('HL_ORDER_REPORT_INVALID');
+    const quantity = raw.quantity;
+    if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 1000000000) throw new Error('HL_ORDER_REPORT_INVALID');
+    const line = { source_id: hlOrderText_(raw.source_id, 200, true), quantity: quantity };
+    if (identities[line.source_id]) throw new Error('HL_ORDER_REPORT_INVALID');
+    identities[line.source_id] = true;
+    ['itemcode', 'contsize', 'planstartdate', 'dock', 'stopnumber', 'commonname', 'locationcode', 'lotcode', 'transactionnumber', 'purchaseordernumber', 'customername', 'consigneename'].forEach(function(field) {
+      line[field] = hlOrderText_(raw[field], field === 'commonname' || field === 'customername' || field === 'consigneename' ? 200 : 120, false);
+    });
+    line.ptravailable = raw.ptravailable === null || raw.ptravailable === undefined || raw.ptravailable === '' ? null : Number(raw.ptravailable);
+    if (typeof raw.ptravailable === 'boolean' || (typeof raw.ptravailable === 'object' && raw.ptravailable !== null)) throw new Error('HL_ORDER_REPORT_INVALID');
+    if (line.ptravailable !== null && (!Number.isFinite(line.ptravailable) || line.ptravailable < 0)) throw new Error('HL_ORDER_REPORT_INVALID');
+    report.total_quantity += quantity;
+    return line;
+  });
+  if (!Number.isSafeInteger(report.total_quantity) || Number(input.total_quantity) !== report.total_quantity) throw new Error('HL_ORDER_REPORT_INVALID');
+  report.lines.sort(function(a, b) {
+    return ['dock', 'stopnumber', 'itemcode', 'contsize', 'source_id'].reduce(function(result, key) {
+      return result || a[key].localeCompare(b[key], 'en', { numeric: true, sensitivity: 'base' });
+    }, 0);
+  });
+  return report;
+}
+
 function buildHlOrderPdfHtml_(input) {
   const report = normalizeHlOrderReport_(input);
   const escape = escapeEmailHtml_;
-  const title = report.kind === 'cancellation' ? 'HL Order Cancellation' : 'HL Order';
-  const quantityLabel = report.kind === 'cancellation' ? 'Canceled quantity' : 'HL order quantity';
+  const isV2 = report.contract_version === 'hl-order-report-v2';
+  const isAddition = report.kind === 'addition';
+  const title = report.kind === 'cancellation' ? 'HL Order Cancellation' : isAddition ? 'HL Order ADDITIONS' : 'HL Order';
+  const quantityLabel = report.kind === 'cancellation' ? 'Canceled quantity' : isAddition ? 'Added quantity' : 'HL order quantity';
   const groups = [];
   report.lines.forEach(function(line) {
     let group = groups.length ? groups[groups.length - 1] : null;
@@ -16556,7 +16610,8 @@ function buildHlOrderPdfHtml_(input) {
     + '*{box-sizing:border-box}body{font:11px Arial,sans-serif;color:#18372b;margin:0}.brand{font-size:9px;letter-spacing:1px;color:#537063}h1{font-size:24px;margin:7px 0}.meta{line-height:1.6;font-size:10px}.totals{background:#eaf0eb;padding:9px;margin:12px 0;font-weight:bold}.reason{padding:9px;border-left:3px solid #a94835;white-space:pre-wrap;margin:8px 0;overflow-wrap:anywhere}'
     + 'section{margin:0 0 12px}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}th,td{border:1px solid #bfcdc4;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{font-size:9px;background:#eef3ef}th.group{background:#244f3e;color:white;font-size:12px;padding:8px}th.group span{float:right;font-size:10px}.qty{font-weight:bold;text-align:right}.details{font-size:9px;color:#51645a;border-top:0;padding:5px 6px 9px}.line{page-break-inside:avoid;break-inside:avoid}tr{page-break-inside:avoid}.note{font-size:9px;color:#53635b;margin:8px 0}'
     + '</style></head><body><header><div class="brand">GREENLEAF NURSERY COMPANY | PARK HILL</div><h1>' + title + ' ' + escape(report.order_number) + '</h1>'
-    + '<div class="meta">' + (report.kind === 'cancellation' ? '<b>Original order:</b> ' + escape(report.original_order_number) + '<br>' : '')
+    + '<div class="meta">' + (isV2 ? '<b>Ship date:</b> ' + escape(Utilities.formatDate(new Date(report.ship_date + 'T12:00:00Z'), 'America/Chicago', 'MMM d, yyyy')) + '<br>' : '')
+    + (report.kind === 'cancellation' ? '<b>Original order:</b> ' + escape(report.original_order_number) + '<br>' : '')
     + '<b>Created:</b> ' + escape(Utilities.formatDate(new Date(report.created_at), 'America/Chicago', 'MMM d, yyyy h:mm a z')) + ' | <b>Submitted by:</b> Dylan Collyge</div>'
     + (report.reason ? '<div class="reason"><b>Cancellation reason:</b> ' + escape(report.reason) + '</div>' : '')
     + '<div class="totals">Total ' + quantityLabel + ': ' + report.total_quantity + ' | Lines: ' + report.lines.length + ' | Dock / stop groups: ' + groups.length + '</div></header>'
@@ -16564,7 +16619,8 @@ function buildHlOrderPdfHtml_(input) {
 }
 
 function buildHlOrderPdfFile_(report) {
-  const name = 'GNC_PH_' + (report.kind === 'cancellation' ? 'HL_Cancellation_' : 'HL_Order_') + report.order_number + '.pdf';
+  const additionSuffix = report.contract_version === 'hl-order-report-v2' && report.kind === 'addition' ? '_ADDITIONS_' + report.batch_id : '';
+  const name = 'GNC_PH_' + (report.kind === 'cancellation' ? 'HL_Cancellation_' : 'HL_Order_') + report.order_number + additionSuffix + '.pdf';
   try {
     const blob = HtmlService.createHtmlOutput(buildHlOrderPdfHtml_(report)).getBlob().getAs(MimeType.PDF).setName(name);
     const bytes = blob.getBytes();
@@ -16635,7 +16691,7 @@ function handleSignedHlOrderDelivery_(delivery) {
         || (profile.locked_until && (!Number.isFinite(Date.parse(profile.locked_until)) || Date.parse(profile.locked_until) > Date.now()))) throw new Error('HL_ORDER_FORBIDDEN');
     const report = normalizeHlOrderReport_(saved.report);
     if (saved.order_id !== report.order_id) throw new Error('HL_ORDER_DELIVERY_INVALID');
-    if (('hl_order_' + (report.kind === 'submission' ? 'submission' : 'cancellation')) !== delivery.eventType) throw new Error('HL_ORDER_DELIVERY_INVALID');
+    if ((report.kind === 'cancellation' ? 'hl_order_cancellation' : 'hl_order_submission') !== delivery.eventType) throw new Error('HL_ORDER_DELIVERY_INVALID');
     const receipt = saved.receipt && saved.receipt.gmail_message_id ? saved.receipt : getRequestDeliveryReceipt_(expectedId) || findSentRequestDeliveryByMessageId_(expectedId);
     if (receipt) {
       const recovered = hlOrderEmailReceipt_(receipt, expectedId, recipient);
@@ -16657,7 +16713,8 @@ function handleSignedHlOrderDelivery_(delivery) {
     // From this point onward, an error is ambiguous until Sent-mail evidence resolves it.
     sendStarted = true;
     const subject = report.kind === 'cancellation' ? 'HL TAGS \u2014 CANCELLATION' : 'HL TAGS';
-    const textBody = subject + '\nOrder: ' + report.order_number + '\n' + (report.kind === 'cancellation' ? 'Original order: ' + report.original_order_number + '\nCanceled quantity: ' : 'HL order quantity: ')
+    const textBody = subject + '\nOrder: ' + report.order_number + (report.contract_version === 'hl-order-report-v2' ? '\nShip date: ' + Utilities.formatDate(new Date(report.ship_date + 'T12:00:00Z'), 'America/Chicago', 'MMM d, yyyy') : '')
+      + (report.kind === 'addition' ? '\nADDITIONS\nAdded quantity: ' : report.kind === 'cancellation' ? '\nOriginal order: ' + report.original_order_number + '\nCanceled quantity: ' : '\nHL order quantity: ')
       + report.total_quantity + '\nLines: ' + report.lines.length + (report.reason ? '\nReason: ' + report.reason : '') + '\n\nThe saved HL order PDF is attached.';
     const result = sendGmailApiMessage_({ toList: recipient, toArray: [recipient], subject: subject, textBody: textBody,
       htmlBody: '<div style="font-family:Arial,sans-serif;white-space:pre-line">' + escapeEmailHtml_(textBody) + '</div>',
