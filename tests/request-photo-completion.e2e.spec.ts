@@ -706,8 +706,19 @@ test('Request AV-note blur waits for verification and coalesces the held edit at
 test('Request camera hidden across AV-note acknowledgement resumes exact verification before using the retained photo', async ({ page, baseURL }) => {
   const f = await fixture(page, baseURL!); await f.open();
   const releaseAck = f.holdSaveAcknowledgement();
-  await page.locator('#req-av-note').focus();
-  await page.locator('#req-av-note').fill('HEALTHY CAMERA NOTE');
+  const note = page.locator('#req-av-note');
+  // Keep this camera fixture's edit in one enabled browser turn: WebKit's
+  // separate select/insert fill can race deferred hydration restoring the cursor.
+  await expect.poll(() => note.evaluate(element => {
+    const input = element as HTMLInputElement;
+    if (input.disabled || input.readOnly || !window.eval(`hasProductionMasterDetailForItem(activeItem)
+      && canUseVerifiedProductionData(getProductionDetailDatasetKeys('req-'))`)) return null;
+    input.focus();
+    input.value = 'HEALTHY CAMERA NOTE';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return input.value;
+  })).toBe('HEALTHY CAMERA NOTE');
+  await expect(note).toHaveValue('HEALTHY CAMERA NOTE');
   await launchCamera(page);
   await page.locator('#req-av-note').evaluate(element => (element as HTMLInputElement).blur());
   await expect.poll(() => f.state.saves.length).toBe(1);
