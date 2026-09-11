@@ -206,7 +206,7 @@ test('inactive production upgrade behavior remains, but active/current and forei
   ]);
   for (const client of h.clients) await h.dispatch('fetch', { clientId: client.id, request: request('/write', { method: 'POST', referrer: '' }) });
   assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
-  assert.match(h.calls.navigated[0].url, /shellv=V2026\.09\.11\.03/);
+  assert.match(h.calls.navigated[0].url, /shellv=V2026\.09\.11\.04/);
   assert.match(h.calls.navigated[0].url, /shellr=photo-egress-r1-scope-r1/);
 });
 

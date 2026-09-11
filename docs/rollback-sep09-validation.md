@@ -1,12 +1,12 @@
 # September 9 client behavior validation
 
-Release V2026.09.11.03 restores client behavior from 9a29cbe6dbc043a624ffdb6693ea160568a0da34, with HL Order deferred at the user’s request. The complete client matches that release byte-for-byte after normalizing line endings and the fresh cache stamp; the local rollback unit fixes its SHA-256 digest. This intentionally removes the later compact inventory/exact-detail, session recovery, Request proof/camera recovery, AV Blanks filter/Reclass, and AssignedTo-review client changes. Backend, database, HL email/PDF delivery, invoice synchronization and release infrastructure tests remain current. Existing HL data and backend contracts are preserved; this release has no HL Home tile, navigation route, cards, Bloom actions or client command interface.
+Release V2026.09.11.04 restores HL Order on the September 9 client behavior from 9a29cbe6dbc043a624ffdb6693ea160568a0da34, with the latest HL Order retained. This intentionally removes the later compact inventory/exact-detail, session recovery, Request proof/camera recovery, AV Blanks filter/Reclass, and AssignedTo-review client changes. Backend, database, HL Order, email delivery, invoice synchronization and release infrastructure tests remain current.
 
-This document records coverage routing, not a passing result. The release owner records the separate exact-commit validation outcome.
+The HL restoration preserves the current rollback outside the HL module. Its compiled browser fixture supplies the required season-settings read and uses the HL verification guard retained by this client. Release results are recorded separately; this document describes coverage routing.
 
 ## Unit coverage
 
-The three existing release product scripts use their complete September 9 file sets and original assertions. Current workflow-source readers and compiled-shell fixtures remain where needed for the current release infrastructure. Added backend, HL delivery/PDF and release safety tests remain in the explicit runner. The removed tests/hl-order.test.mjs and tests/fixtures/hl-order-state.mjs exclusively exercised the intentionally absent HL client; their implementation is retained on rollback/sep09-keep-hl. The combined tests/hl-order-rollback.test.mjs retains exact September 9 camera fingerprints, the complete normalized client hash, and legacy/modern protected API compatibility assertions; the removed HL inventory-sidecar assertions no longer apply. The release coverage manifest additionally fixes each complete September 9 script file set and compares copied browser bodies and complete fixtures with their preserved source suites. Compiled browser coverage checks that active Dylan, another admin and a REP cannot discover or open HL and have no HL Bloom action. It uses the same mutation-blocked canary identity fixture as the existing Home role suite; this is access/navigation coverage, not a claim of native sign-in coverage. Existing authentication suites remain enabled separately. The release artifact seals, exact-commit gate, browser matrices, assertion thresholds and workflow jobs are unchanged.
+The three existing release product scripts use their complete September 9 file sets and original assertions. Current workflow-source readers and compiled-shell fixtures remain where needed for the current release infrastructure. Added backend, HL Order and release safety tests remain in the explicit runner. The release coverage manifest additionally fixes each complete September 9 script file set and compares copied browser bodies and complete fixtures with their preserved source suites. Active Dylan HL Home visibility, disabled-profile denial and account-switch denial are also covered. The release artifact seals, exact-commit gate, browser matrices, assertion thresholds and workflow jobs are unchanged.
 
 The following later-only client suites were removed because their production contracts were deliberately rolled back. Their applicable original protections are exercised by the preserved live-sync, access-control, Request-completion, Request-option, Drive-evidence, photo-egress/history, Reclass, Eval Work and service-worker suites. This does not claim that the September 9 product implements the removed protections.
 
@@ -33,7 +33,7 @@ The following later-only client suites were removed because their production con
 
 ## Browser coverage routing
 
-Every current browser lane and project remains enabled. Replacement files contain complete executable September 9 test bodies or the complete original fixture, with no skipped tests, empty wrappers, weakened assertions or dummy implementations. Some baseline scenarios intentionally execute in additional matrix lanes so existing desktop/mobile coverage remains present. The HL lane retains its five Chromium, Firefox, WebKit, Android and iPhone profiles and now verifies the deliberately absent module instead of exercising a deferred workflow.
+Every current browser lane and project remains enabled. Replacement files contain complete executable September 9 test bodies or the complete original fixture, with no skipped tests, empty wrappers, weakened assertions or dummy implementations. Some baseline scenarios intentionally execute in additional matrix lanes so existing desktop/mobile coverage remains present.
 
 ### tests/login-photo-repair.e2e.spec.ts
 
@@ -84,13 +84,6 @@ Every current browser lane and project remains enabled. Replacement files contai
 ### tests/verified-data-cache.e2e.spec.ts
 
 - tests/docks-filter.e2e.spec.ts: Complete preserved fixture and all assertions
-
-### tests/hl-order.e2e.spec.ts
-
-- Copies the complete exercised Home harness and its deferred-HL access test, without the prior HL state/login fixture.
-- For active Dylan, another admin and a REP, checks every normal Home tile, absence of the HL Home/navigation/detail/Bloom/PDF controls, absence of client HL command/render handlers, rejection of direct HL navigation, fallback to visible Home and the ordinary Bloom button’s native empty-picker response. Every HL read or command attempt fails the fixture, as do unexpected business-data mutations.
-- Runtime loading and zero browser errors or unexpected business-data mutations remain required. A release coverage assertion fixes the complete copied fixture and test body.
-- HL server authentication, saved orders, PDF fields/grouping, recipient rules, delivery failure/acknowledgement handling, concurrency and database tests remain unchanged.
 
 ## Scope limits
 

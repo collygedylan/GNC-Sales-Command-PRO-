@@ -86,6 +86,7 @@ const originalBrowserFiles = [
 test('release unit union preserves every existing script and explicit gate exactly once', () => {
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
+    'tests/hl-order.test.mjs',
     'tests/hl-order-rollback.test.mjs',
     'tests/hl-order-delivery.test.mjs',
     'tests/hl-order-delivery-worker.test.mjs',
@@ -391,19 +392,4 @@ test('rollback browser lanes preserve baseline assertions and fixture implementa
   }
   const replacements = new Set([...september9BrowserBodies, ...september9BrowserFixtures].map(([destination]) => destination));
   for (const file of replacements) assert.doesNotMatch(read(file), /\btest\.(?:skip|fixme|only)\s*\(/, file);
-});
-
-
-test('deferred HL browser lane preserves the exercised Home fixture and access assertions', () => {
-  const read = file => readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
-  const home = read('tests/home-role-visibility.e2e.spec.ts');
-  const deferred = read('tests/hl-order.e2e.spec.ts');
-  const fixture = home.slice(home.indexOf('async function harness('), home.indexOf('// Keep ordered account transitions')).trim();
-  assert.ok(fixture && deferred.includes(fixture), 'HL absence runs the complete Home fixture');
-  const title = 'the deferred HL module is absent for Dylan and other accounts while Home remains usable';
-  const ast = ts.createSourceFile('home.ts', home, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const statement = ast.statements.find(node => ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)
-    && node.expression.expression.getText(ast) === 'test' && node.expression.arguments[0]?.text === title);
-  assert.ok(statement && deferred.includes(statement.getText(ast)), 'complete active-profile, Home, route and Bloom absence assertions');
-  assert.doesNotMatch(deferred, /\btest\.(?:skip|fixme|only)\s*\(/);
 });

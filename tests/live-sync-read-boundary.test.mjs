@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const start = html.indexOf('const supabaseReadInFlight = new Map();');
 const end = html.indexOf('async function getResponseError(', start);
 assert.ok(start > 0 && end > start);
@@ -116,11 +116,14 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
     }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
         season: { seasonCode: 'S1', salesYear: 27 }, getCurrentAppSeasonSettings: () => ctx.season,
-        fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }) };
+        fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }),
+        canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
     vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
     assert.equal(av.id, 'core:master'); assert.equal(av.cacheKey, master.cacheKey);
-    assert.equal((await av.stage()).key, 'master');
+    const staged = await av.stage();
+    assert.equal(staged.key, 'master');
+    assert.equal(staged.hlOrderInventory, null, 'ordinary AV staging does not acquire an HL snapshot');
     ctx.season = { seasonCode: 'F1', salesYear: 27 };
     assert.notEqual(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
         'season changed off-screen cannot retain old derived inventory under unchanged stock revisions');

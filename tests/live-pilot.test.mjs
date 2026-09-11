@@ -68,7 +68,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.11.03';
+  const release = 'V2026.09.11.04';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
@@ -851,14 +851,14 @@ test('first service-worker control does not reload an already-rendered login she
 
 test('V16 Home uses one authorization-backed primary module registry and leaves nested workflows in their hubs', () => {
   assert.match(html, /const HOME_MODULE_REGISTRY = Object\.freeze\(\[/);
-  for (const view of ['drive', 'docks', 'av', 'communication', 'sales', 'managers', 'building', 'qc', 'office', 'sales-inventory', 'production', 'reports']) {
+  for (const view of ['drive', 'docks', 'hl-order', 'av', 'communication', 'sales', 'managers', 'building', 'qc', 'office', 'sales-inventory', 'production', 'reports']) {
     assert.match(html, new RegExp(`\\{ view: '${view}'`));
   }
   const registrySource = html.slice(html.indexOf('const HOME_MODULE_REGISTRY'), html.indexOf('function ensureHomeModuleRegistry'));
   for (const nestedView of ['tasks', 'request', 'crop-roll', 'take-back', 'reserves', 'disease-pest', 'sales-office', 'moves', 'hours', 'low-stock', 'review', 'move-up', 'advertisement', 'grower', 'pest-management']) {
     assert.doesNotMatch(registrySource, new RegExp(`\\{ view: '${nestedView}'`));
   }
-  assert.equal((registrySource.match(/\{ view:/g) || []).length, 12);
+  assert.equal((registrySource.match(/\{ view:/g) || []).length, 13);
   for (const nestedHubControl of ['sales-open-bloom-orders', 'production-open-take-back', 'production-open-disease-pest', 'office-open-sales']) {
     assert.match(html, new RegExp(`id="${nestedHubControl}"`));
   }

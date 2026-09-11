@@ -59,6 +59,7 @@
         av: data(['avOpen', 'master', 'reserves', 'customerRepMap', 'avHotPriceKeys', 'avNotes'], ['settings']),
         reserves: data(['reserves', 'master', 'customerRepMap']),
         docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow']),
+        'hl-order': data(['soc', 'master']),
         request: data(['requests', 'master', 'customerRepMap']),
         reports: data(['requests', 'requestHistory', 'salesCredits', 'soc', 'master', 'reserves', 'customerRepMap'], ['settings']),
         'sales-office': data(['salesOffice', 'master', 'flyerRows', 'flyerHistory'], ['settings']),
