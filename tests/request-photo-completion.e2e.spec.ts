@@ -593,37 +593,62 @@ test('Request camera return does not reuse a reviewed binding after a changed ma
 test('Request AV-note blur waits for verification and autosaves the valid edit exactly once', async ({ page, baseURL }) => {
   const f = await fixture(page, baseURL!); await f.open();
   const note = page.locator('#req-av-note');
+  await expect.poll(() => page.evaluate(() => window.eval(`cellularPushEnrollmentTimer === null`))).toBe(true);
+  for (const [selector, label] of [['#push-permission-help-modal', 'Close'], ['#mobile-push-enable-prompt', 'Dismiss']]) {
+    const prompt = page.locator(selector);
+    await page.removeLocatorHandler(prompt);
+    if (await prompt.isVisible()) await prompt.getByRole('button', { name: label, exact: true }).click();
+  }
   await expect(note).toBeEditable();
-  await note.fill('HEALTHY VERIFIED BLUR NOTE');
-  expect(await page.evaluate(() => window.eval(`!!detailInputSaveTimers['req-']`))).toBe(true);
+  await page.waitForLoadState('networkidle');
+  await expect.poll(() => browserState(page)).toMatchObject({ detailVerified: true, datasetsVerified: true });
+  const baselineSaves = f.state.saves.length;
+  const baselineVersion = f.state.requestRow.row_version;
+  const baselineCalls = await page.evaluate(() => (window as any).__requestRepairObservations.calls
+    .filter((call: any) => call.name === 'saveData' && !call.complete).length);
   const releaseMetadata = f.holdMetadata();
-  await note.evaluate(element => {
+  const editedInput = await note.evaluate(element => {
+    const input = element as HTMLInputElement;
+    if (input.disabled || input.readOnly || !window.eval(`hasProductionMasterDetailForItem(activeItem)
+      && canUseVerifiedProductionData(getProductionDetailDatasetKeys('req-'))`)) {
+      throw new Error('The Request field must be editable and verified before the edit');
+    }
     // The edit occurs while enabled. Its native blur starts a real check
     // before the original 200ms autosave, matching the observed camera race.
     element.addEventListener('blur', () => {
       (window as any).__requestBlurCheck = (window as any).getProductionLiveSyncCoordinator()
         .check('request-note-blur');
     }, { capture: true, once: true });
+    // Keep the input/blur boundary in one browser turn. Both real app handlers
+    // run, including the normal input debounce, before the held check resolves.
+    input.focus();
+    input.value = 'HEALTHY VERIFIED BLUR NOTE';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const edited = { value: input.value, editable: !input.disabled,
+      timerPending: window.eval(`!!detailInputSaveTimers['req-']`) };
+    input.blur();
+    return edited;
   });
-  await note.blur();
+  expect(editedInput).toEqual({
+    value: 'HEALTHY VERIFIED BLUR NOTE', editable: true, timerPending: true });
   await expect.poll(() => f.state.heldMetadata).toBeGreaterThan(0);
   // Keep checking through both the 200ms blur save and the real input debounce;
   // neither may silently consume the draft while its verification is pending.
   await expect.poll(() => page.evaluate(() => (window as any).__requestRepairObservations.calls
-    .filter((call: any) => call.name === 'saveData' && !call.complete).length)).toBeGreaterThanOrEqual(2);
+    .filter((call: any) => call.name === 'saveData' && !call.complete).length)).toBeGreaterThanOrEqual(baselineCalls + 2);
   await expect.poll(() => page.evaluate(() => window.eval(`!!detailInputSaveTimers['req-']`))).toBe(false);
   await expect.poll(() => browserState(page)).toMatchObject({ datasetsVerified: false });
-  expect(f.state.saves).toHaveLength(0);
+  expect(f.state.saves).toHaveLength(baselineSaves);
   releaseMetadata();
-  await expect.poll(() => f.state.saves.length).toBe(1);
+  await expect.poll(() => f.state.saves.length).toBe(baselineSaves + 1);
   await expect.poll(() => page.evaluate(() => (window as any).__requestRepairObservations.settled
     .some((call: any) => call.name === 'saveData' && !call.complete))).toBe(true);
   await expect.poll(() => browserState(page)).toMatchObject({ detailVerified: true, datasetsVerified: true });
   await page.waitForLoadState('networkidle');
   expect(f.state.requestRow.av_note).toBe('HEALTHY VERIFIED BLUR NOTE');
   expect(f.state.master.av_note).toBe('HEALTHY VERIFIED BLUR NOTE');
-  expect(f.state.saves).toHaveLength(1);
-  expect(f.state.saves[0]).toMatchObject({ complete: false, expected_version: 1 });
+  expect(f.state.saves).toHaveLength(baselineSaves + 1);
+  expect(f.state.saves[baselineSaves]).toMatchObject({ complete: false, expected_version: baselineVersion });
   expect(f.state.uploads).toHaveLength(0);
   expect(f.state.unexpectedWrites).toEqual([]);
   expect(f.state.errors).toEqual([]);
