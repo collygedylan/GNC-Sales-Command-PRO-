@@ -4,8 +4,10 @@ import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs
 const USER = 'request_quantity_fixture';
 const MASTER_ID = 'request-quantity-master';
 const REQUEST_ID = 'request-quantity-row';
-const date = new Date().toISOString().slice(0, 10);
-const PHOTO = `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${date}_request.webp`;
+// Date-only photo names represent noon UTC and are future evidence before noon.
+// Use a real past capture timestamp so current evidence is unambiguous all day.
+const PHOTO_NAME = `${Date.now() - 60_000}_request.webp`;
+const PHOTO = `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${PHOTO_NAME}`;
 const profile = { id: '00000000-0000-4000-8000-000000000041', username: USER,
   display_name: 'Request Quantity Fixture', role: 'ADMIN', division: '10', language: 'English',
   disabled_at: null, locked_until: null, must_change_password: false, passkey_pilot: false };
@@ -34,7 +36,7 @@ async function fixture(page: Page, baseURL: string) {
     commonname: 'Request Quantity Plant', contsize: '#3', locationcode: 'A001', lotcode: '27.F1',
     ptravailable: null, initial_ptr: '900', req_qty: '40', req_match: '50',
     req_spec: 'Request-owned spec', req_caliper: '2 inch', av_note: 'REQUEST-OWNED NOTE',
-    request_note: 'Customer instructions', req_photo_link: PHOTO, req_photo_name: `${date}_request.webp`,
+    request_note: 'Customer instructions', req_photo_link: PHOTO, req_photo_name: PHOTO_NAME,
     requested_by: 'Request Quantity Fixture', request_folder: 'QUANTITY-FIXTURE', req_customer: 'Synthetic Customer',
     req_status: 'Pending', req_archived: false, app_tab_assignment: 'location', date_completed: null };
   const state = { errors: [] as string[], exactReads: 0, listReads: 0,

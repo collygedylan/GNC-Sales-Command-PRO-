@@ -148,7 +148,8 @@ test('Request AV Notes use one body-level independently scrollable mobile sheet'
   assert.match(html, /function handleRequestAvNoteInputBlur\(\)[\s\S]*sheet\.contains\(document\.activeElement\)[\s\S]*if \(!focusStayedInsideSheet\) hideAvNoteDropdown\('req-'\)/);
   assert.match(html, /request-av-note-sheet #req-av-dropdown-list\{[\s\S]*overflow-y:auto!important[\s\S]*-webkit-overflow-scrolling:touch!important[\s\S]*touch-action:pan-y!important/);
   assert.match(html, /body\.request-av-note-sheet-open #main-scroll-area\{[\s\S]*overflow:hidden!important/);
-  assert.match(html, /#req-save-action-wrap\{[\s\S]*position:fixed!important[\s\S]*bottom:calc\(var\(--mobile-bottom-nav-reserve/);
+  assert.match(html, /--request-action-clearance:max\(var\(--mobile-bottom-nav-reserve,0px\),var\(--footer-nav-reserve,8\.75rem\),var\(--keyboard-offset,0px\)\)/);
+  assert.match(html, /#req-save-action-wrap\{[\s\S]*position:fixed!important[\s\S]*bottom:calc\(var\(--request-action-clearance\)/);
 });
 
 test('Suspend Tag filters compose in one pass and retain cached content during refresh', () => {

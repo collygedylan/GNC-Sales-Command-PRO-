@@ -6846,14 +6846,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             body.keyboard-open .request-av-note-sheet,body.detail-field-active .request-av-note-sheet{align-items:flex-start;padding-top:6px;padding-bottom:6px}
             body.keyboard-open .request-av-note-sheet__panel,body.detail-field-active .request-av-note-sheet__panel{max-height:calc(var(--mobile-visible-height,var(--visual-height,100dvh)) - 12px)}
             body.viewport-phone #main-scroll-area{overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important}
-            body.viewport-phone #view-detail.detail-request-mode{position:relative!important;display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;touch-action:pan-y!important}
-            body.viewport-phone #view-detail.detail-request-mode #det-request-content:not(.hidden){display:block!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:.35rem 0 calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + 6.5rem + env(safe-area-inset-bottom))!important}
+            body.viewport-phone #view-detail.detail-request-mode{--request-action-clearance:max(var(--mobile-bottom-nav-reserve,0px),var(--footer-nav-reserve,8.75rem),var(--keyboard-offset,0px));position:relative!important;display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;touch-action:pan-y!important}
+            body.viewport-phone #view-detail.detail-request-mode #det-request-content:not(.hidden){display:block!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:.35rem 0 calc(var(--request-action-clearance) + 6.5rem + env(safe-area-inset-bottom))!important}
             body.viewport-phone #view-detail.detail-request-mode :is(#request-photo-section,#global-inputs-container,#detail-shared-panels,#req-input-container){position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;gap:.75rem!important}
             body.viewport-phone #view-detail.detail-request-mode :is(input,select,textarea,button){min-height:44px;max-width:100%;font-size:16px!important}
-            body.viewport-phone #view-detail.detail-request-mode #req-save-action-wrap{position:fixed!important;left:max(10px,env(safe-area-inset-left))!important;right:max(10px,env(safe-area-inset-right))!important;bottom:calc(var(--mobile-bottom-nav-reserve,var(--footer-nav-reserve,8.75rem)) + .35rem)!important;z-index:28000!important;width:auto!important;max-width:none!important;margin:0!important;padding:8px!important;border:1px solid rgba(16,185,129,.5)!important;border-radius:18px!important;background:rgba(248,255,251,.96)!important;box-shadow:0 12px 30px rgba(2,44,29,.24)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important}
+            body.viewport-phone #view-detail.detail-request-mode #req-save-action-wrap{position:fixed!important;left:max(10px,env(safe-area-inset-left))!important;right:max(10px,env(safe-area-inset-right))!important;bottom:calc(var(--request-action-clearance) + .35rem)!important;z-index:28000!important;width:auto!important;max-width:none!important;margin:0!important;padding:8px!important;border:1px solid rgba(16,185,129,.5)!important;border-radius:18px!important;background:rgba(248,255,251,.96)!important;box-shadow:0 12px 30px rgba(2,44,29,.24)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important}
             body.viewport-phone #view-detail.detail-request-mode #req-btn-save-complete{min-height:54px!important;margin:0!important;border-radius:13px!important}
-            body.viewport-phone.keyboard-open #view-detail.detail-request-mode #req-save-action-wrap,body.viewport-phone.detail-field-active #view-detail.detail-request-mode #req-save-action-wrap{bottom:calc(var(--keyboard-offset,0px) + .35rem)!important}
-            body.viewport-phone.keyboard-open #view-detail.detail-request-mode #det-request-content:not(.hidden),body.viewport-phone.detail-field-active #view-detail.detail-request-mode #det-request-content:not(.hidden){padding-bottom:calc(var(--keyboard-offset,0px) + 7rem + env(safe-area-inset-bottom))!important;scroll-padding-bottom:calc(var(--keyboard-offset,0px) + 7rem + env(safe-area-inset-bottom))!important}
+            body.viewport-phone.keyboard-open #view-detail.detail-request-mode #req-save-action-wrap,body.viewport-phone.detail-field-active #view-detail.detail-request-mode #req-save-action-wrap{bottom:calc(var(--request-action-clearance) + .35rem)!important}
+            body.viewport-phone.keyboard-open #view-detail.detail-request-mode #det-request-content:not(.hidden),body.viewport-phone.detail-field-active #view-detail.detail-request-mode #det-request-content:not(.hidden){padding-bottom:calc(var(--request-action-clearance) + 7rem + env(safe-area-inset-bottom))!important;scroll-padding-bottom:calc(var(--request-action-clearance) + 7rem + env(safe-area-inset-bottom))!important}
         }
         body.ops-precision-pilot .request-suspend-search-wrap{display:flex;min-width:0;align-items:center;gap:4px}
         body.ops-precision-pilot .request-suspend-search-wrap input{width:100%;min-width:0;min-height:28px;border:0;background:transparent;color:var(--ui-text,#13221b);font-size:13px;font-weight:800;letter-spacing:0;outline:0;text-transform:none}
@@ -35224,7 +35224,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 fence: Object.freeze({ ...getProductionMasterDetailContext() }) });
         }
 
-        async function commitRequestWorkWithVerifiedCompletion(context, item, rpcArgs, rpcOptions) {
+        async function withVerifiedRequestCompletion(context, item, onVerified = null) {
             let timeout;
             let expired = false;
             const fail = (message, code = 'REQUEST_COMPLETION_CHANGED') => {
@@ -35248,8 +35248,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     || getProductionMasterDetailIdentity(item) !== context.rowIdentity
                     || getProductionMasterDetailIdentity(activeItem) !== context.rowIdentity
                     || JSON.stringify(getProductionMasterDetailIds(item).sort()) !== JSON.stringify(context.ids)
-                    || container(item) !== context.containerSize || container(activeItem) !== context.containerSize
-                    || !rpcArgs?.complete || String(rpcArgs.request_id || '') !== context.requestId) {
+                    || container(item) !== context.containerSize || container(activeItem) !== context.containerSize) {
                     fail('The reviewed Request changed. Review the current row before completing it.');
                 }
                 const canonical = findRequestRowByUniqueId(context.requestId);
@@ -35261,6 +35260,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const candidate = { ...canonical };
                 if (![candidate.SOURCE, candidate.source].some((value) => String(value ?? '').trim())) candidate.SOURCE = context.source;
                 if (getProductionMasterDetailIdentity(candidate) !== context.rowIdentity) fail('The current Request identity changed.');
+                if (!canEditRowDetailsByRole('req-', item) || !canCurrentUserWorkRequestItem(item, 'complete')) {
+                    fail('Current Request completion access could not be verified.', 'DATA_NOT_VERIFIED');
+                }
             };
             assertCurrent();
             const verify = async () => {
@@ -35283,10 +35285,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     || !canEditRowDetails('req-', item) || !canCurrentUserWorkRequestItem(item, 'complete')) {
                     fail('Current Request completion access could not be verified.', 'DATA_NOT_VERIFIED');
                 }
-                // Keep dispatch in this continuation: another await after the
-                // final guard could reopen the confirmation/verification race.
-                return supabaseRpc('save_request_work', rpcArgs, rpcOptions);
+                // Entry preparation and final dispatch run in this continuation:
+                // another await after the guard could reopen the same race.
+                return typeof onVerified === 'function' ? onVerified() : true;
             } finally { clearTimeout(timeout); }
+        }
+
+        async function commitRequestWorkWithVerifiedCompletion(context, item, rpcArgs, rpcOptions) {
+            return withVerifiedRequestCompletion(context, item, () => {
+                if (!rpcArgs?.complete || String(rpcArgs.request_id || '') !== context.requestId) {
+                    const error = new Error('The original Request completion payload changed.');
+                    error.code = 'REQUEST_COMPLETION_CHANGED'; throw error;
+                }
+                return supabaseRpc('save_request_work', rpcArgs, rpcOptions);
+            });
         }
 
         function captureProductionRequestDetailOwnSave(item, patch, isComplete) {
@@ -160108,28 +160120,46 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(itemToSave)) {
                 return saveDockSuspendDcRequestMirrorData(isComplete, itemToSave, isSilentAutoSave, options);
             }
-            if (prefix === 'req-') {
-                const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
-                    || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
-                if (requestSourceRow && requestSourceRow !== itemToSave) {
-                    if (transferProductionRequestDetailBinding(itemToSave, requestSourceRow)) {
-                        mergeRequestPhotoFields(itemToSave, requestSourceRow);
-                        itemToSave = requestSourceRow;
-                        if (!specificItem) activeItem = requestSourceRow;
-                    } else {
-                        const changed = getProductionMasterDetailIdentity(itemToSave) !== getProductionMasterDetailIdentity(requestSourceRow);
-                        if (changed && productionMasterDetailSession && isProductionMasterDetailSessionCurrent(productionMasterDetailSession)) {
-                            productionMasterDetailBindings.delete(activeItem);
-                            productionMasterDetailSession.status = 'changed';
-                            applyProductionMasterDetailControlState();
+            const adoptCanonicalRequest = () => {
+                if (prefix === 'req-') {
+                    const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
+                        || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
+                    if (requestSourceRow && requestSourceRow !== itemToSave) {
+                        if (transferProductionRequestDetailBinding(itemToSave, requestSourceRow)) {
+                            mergeRequestPhotoFields(itemToSave, requestSourceRow);
+                            itemToSave = requestSourceRow;
+                            if (!specificItem) activeItem = requestSourceRow;
+                        } else {
+                            const changed = getProductionMasterDetailIdentity(itemToSave) !== getProductionMasterDetailIdentity(requestSourceRow);
+                            if (changed && productionMasterDetailSession && isProductionMasterDetailSessionCurrent(productionMasterDetailSession)) {
+                                productionMasterDetailBindings.delete(activeItem);
+                                productionMasterDetailSession.status = 'changed';
+                                applyProductionMasterDetailControlState();
+                            }
+                            if (!isSilentAutoSave) showToast(changed ? 'Request Changed' : 'Checking Request', changed
+                                ? 'This Request now refers to different inventory. Review the current row before saving.'
+                                : 'Your draft is retained. Wait for current Request data verification before saving.', true);
+                            return false;
                         }
-                        if (!isSilentAutoSave) showToast(changed ? 'Request Changed' : 'Checking Request', changed
-                            ? 'This Request now refers to different inventory. Review the current row before saving.'
-                            : 'Your draft is retained. Wait for current Request data verification before saving.', true);
-                        return;
                     }
                 }
-            }
+                return true;
+            };
+            const requestCompletionContext = prefix === 'req-' && isComplete
+                ? captureProductionRequestCompletionContext(itemToSave) : null;
+            if (requestCompletionContext) {
+                try {
+                    // Preserve the original reviewed identity even when a
+                    // background check starts just as Mark Done is tapped.
+                    // Adopt its canonical row inside the verified continuation.
+                    if (!await withVerifiedRequestCompletion(requestCompletionContext, itemToSave, adoptCanonicalRequest)) return;
+                } catch (error) {
+                    if (!isSilentAutoSave && error?.code !== 'REQUEST_ABORTED') {
+                        showToast('Request Still Open', error?.message || 'Current Request data could not be verified. Your entries are retained.', true);
+                    }
+                    return;
+                }
+            } else if (!adoptCanonicalRequest()) return;
             rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
             beginFieldSaveActivity(rowSaveKey);
             const saveOptions = options || {};
@@ -160138,14 +160168,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
 
-            if (!canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete'))) {
+            if (!requestCompletionContext && (!canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete')))) {
                 if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                 if (!isSilentAutoSave) showRowEditRestrictedToast(prefix);
                 return;
             }
 
-            const requestCompletionContext = prefix === 'req-' && isComplete
-                ? captureProductionRequestCompletionContext(itemToSave) : null;
             markLocalRowSaveRefreshQuiet(`save:${String(prefix || 'row')}`);
 
             if (isComplete || !isCoordinatedAutoSave) clearQueuedLagSensitiveInputSave(prefix);

@@ -1394,7 +1394,8 @@ async function requestCompletionFixture() {
     },
   });
   vm.runInContext(['requireVerifiedProductionData', 'guardProductionDataCommand',
-    'captureProductionRequestCompletionContext', 'commitRequestWorkWithVerifiedCompletion'].map(appFunction).join('\n'), h.ctx);
+    'captureProductionRequestCompletionContext', 'withVerifiedRequestCompletion',
+    'commitRequestWorkWithVerifiedCompletion'].map(appFunction).join('\n'), h.ctx);
   const completion = h.ctx.captureProductionRequestCompletionContext(h.target);
   assert.ok(completion, 'completion starts with actual current detail proof and native capability policy');
   const args = { request_id: h.target.UNIQUE_ID, expected_version: 7, complete: true,
@@ -1500,3 +1501,98 @@ test('Request completion returns a dispatched RPC failure without retrying the m
   assert.equal(h.calls.length, 1);
   assert.equal(h.calls[0].args, h.args);
 });
+
+async function requestCompletionEntryFixture({ canonicalEditor = false } = {}) {
+  const h = await requestCompletionFixture(), queued = [], activity = [], toasts = [];
+  const button = { innerText: 'MARK DONE' };
+  if (canonicalEditor) h.ctx.activeItem = h.target;
+  Object.assign(h.ctx, {
+    autoSaveTimer: null,
+    beginFieldSaveActivity: key => activity.push(['begin', key]),
+    endFieldSaveActivity: key => activity.push(['end', key]),
+    mergePhotoCsvList: values => [...new Set(values.filter(Boolean))].join(','),
+    normalizeRowPhotoFields: row => row,
+    markLocalRowSaveRefreshQuiet() {}, clearQueuedLagSensitiveInputSave() {},
+    showToast: (...args) => toasts.push(args),
+    showRowEditRestrictedToast: prefix => toasts.push(['Restricted', prefix]),
+    applyProductionMasterDetailControlState() {},
+    // Execute the untouched saveData entry and all real identity/permission
+    // checks. Its existing coordinated-save boundary owns the later form,
+    // confirmation and write stages, which the completion-helper tests cover.
+    runCoordinatedRowSave: async (key, callback, options) => queued.push({ key, callback, options }),
+  });
+  h.ctx.document.getElementById = () => button;
+  vm.runInContext(['getRowSaveCoordinatorKey', 'mergeRequestPhotoFields', 'saveData'].map(appFunction).join('\n'), h.ctx);
+  return { ...h, queued, activity, toasts, button, enter: () => h.ctx.saveData(true, 'req-') };
+}
+
+for (const canonicalEditor of [false, true]) {
+test(`actual Mark Done entry waits for an unchanged background check with ${canonicalEditor ? 'the canonical Request' : 'a distinct reviewed editor'}`, async () => {
+  const h = await requestCompletionEntryFixture({ canonicalEditor }), held = await holdRequestCompletionCheck(h);
+  const before = photoRows(h), pending = h.enter();
+  await Promise.resolve();
+  assert.equal(h.queued.length, 0);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.toasts.length, 0, 'temporary verification is not a native permission denial');
+  assert.equal(h.ctx.activeItem, canonicalEditor ? h.target : h.source, 'the original reviewed editor remains active while verification waits');
+  held.release();
+  await held.checking;
+  await pending;
+  assert.equal(h.queued.length, 1, 'the unchanged authorized click reaches the save coordinator exactly once');
+  assert.equal(h.queued[0].key, 'req-::REQUEST-SYNTHETIC-1');
+  assert.equal(h.queued[0].options.isComplete, true);
+  assert.equal(h.ctx.activeItem, h.target, 'the same canonical Request is adopted only after verification');
+  assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+  assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.proof);
+  assert.deepEqual(photoRows(h), before);
+  assert.equal(h.toasts.length, 0);
+  assert.equal(h.calls.length, 0, 'the entry gate itself dispatches no mutation');
+  assert.equal(h.button.innerText, 'SAVING...');
+});
+}
+
+for (const [name, change] of [
+  ['native complete permission', h => { h.capabilities.canComplete = false; }],
+  ['native edit permission', h => { h.capabilities.canEdit = false; }],
+  ['login owner', h => { h.state.loginGeneration++; }],
+  ['read scope', h => { h.state.authEpoch++; }],
+  ['master fence', h => { h.state.revision = h.context.revision = h.dataset.liveVerifiedRevision = '2'; }],
+  ['permission fence', h => { h.state.permission = h.context.permissionVersion = h.dataset.liveVerifiedPermission = 'permission-b'; }],
+  ['detail session', h => { h.ctx.detailHydrationToken++; }],
+  ['active Request', h => { h.ctx.activeItem = { ...h.source, UNIQUE_ID: 'OTHER-REQUEST' }; }],
+  ['canonical linked master', h => { h.target.MASTER_ID = 'OTHER-MASTER'; }],
+  ['canonical container', h => { h.target.CONTSIZE = '#15'; }],
+]) {
+  test(`actual Mark Done entry cannot queue completion if ${name} changes during verification`, async () => {
+    const h = await requestCompletionEntryFixture(), held = await holdRequestCompletionCheck(h);
+    const pending = h.enter();
+    await Promise.resolve();
+    change(h);
+    const before = photoRows(h);
+    held.release();
+    await held.checking;
+    await pending;
+    assert.equal(h.queued.length, 0, 'an invalidated click cannot enter the later save or confirmation stages');
+    assert.equal(h.calls.length, 0);
+    assert.deepEqual(photoRows(h), before);
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.proof);
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+  });
+}
+
+for (const capability of ['canEdit', 'canComplete']) {
+  test(`actual Mark Done entry preserves an existing native ${capability} denial while data is checking`, async () => {
+    const h = await requestCompletionEntryFixture(), held = await holdRequestCompletionCheck(h);
+    h.capabilities[capability] = false;
+    const before = photoRows(h);
+    await h.enter();
+    assert.equal(h.queued.length, 0);
+    assert.equal(h.calls.length, 0);
+    assert.equal(h.timers.size, 0, 'denied native access does not start a verification timeout');
+    held.release();
+    await held.checking;
+    assert.equal(h.queued.length, 0, 'later data verification cannot revive the denied click');
+    assert.deepEqual(photoRows(h), before);
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.proof);
+  });
+}

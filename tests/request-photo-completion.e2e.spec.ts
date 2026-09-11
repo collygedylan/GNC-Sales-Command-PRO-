@@ -311,6 +311,9 @@ async function fixture(page: Page, baseURL: string, allowed = true) {
           requestOwnSaveChecking:!!productionMasterDetailSession?.requestOwnSave?.checking,
           canonicalIdentity:getProductionMasterDetailIdentity(findRequestRowByUniqueId(activeItem?.UNIQUE_ID)),
           canonicalVerified:hasProductionMasterDetailForItem(findRequestRowByUniqueId(activeItem?.UNIQUE_ID)),
+          nativePhotoAllowed:canCurrentUserWorkRequestItem(activeItem,'photo'),
+          nativeCompleteAllowed:canCurrentUserWorkRequestItem(activeItem,'complete'),
+          detailFence:getProductionMasterDetailContext(),
           datasetsVerified:canUseVerifiedProductionData(getProductionDetailDatasetKeys('req-'))};
       })()`);
       for (const name of ['showToast', 'saveData', 'handlePhotoUpload', 'captureRequestPhotoSelectionOwner',
@@ -405,6 +408,29 @@ async function setCameraPageHidden(page: Page, hidden: boolean) {
   }, hidden);
 }
 
+async function clickMarkDone(page: Page) {
+  const button = page.locator('#req-btn-save-complete');
+  // Center the button above fixed mobile navigation, then retain Playwright's
+  // real visibility, enabled-state and pointer hit-testing for the click.
+  await button.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  const geometry = await button.evaluate(element => {
+    const wrap = document.getElementById('req-save-action-wrap')!, footer = document.getElementById('bottom-nav')!;
+    const rect = element.getBoundingClientRect(), root = getComputedStyle(document.documentElement);
+    const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    const active = document.activeElement as HTMLInputElement;
+    return { bodyClasses: document.body.className, activeId: active?.id, activeTag: active?.tagName, activeType: active?.type,
+      keyboardOffset: root.getPropertyValue('--keyboard-offset'), navReserve: root.getPropertyValue('--mobile-bottom-nav-reserve'),
+      footerReserve: root.getPropertyValue('--footer-nav-reserve'),
+      buttonRect: rect.toJSON(), wrapRect: wrap.getBoundingClientRect().toJSON(), footerRect: footer.getBoundingClientRect().toJSON(),
+      wrapPosition: getComputedStyle(wrap).position, wrapBottom: getComputedStyle(wrap).bottom,
+      footerPointerEvents: getComputedStyle(footer).pointerEvents, footerOpacity: getComputedStyle(footer).opacity,
+      hitId: hit?.id, hitLabel: hit?.getAttribute('aria-label'), receivesPointer: hit === element || element.contains(hit) };
+  });
+  await test.info().attach('request-mark-done-geometry', { contentType: 'application/json', body: JSON.stringify(geometry) });
+  if (!geometry.receivesPointer) console.log('Request Mark Done hit-test diagnostics:', JSON.stringify(geometry));
+  await button.click();
+}
+
 test('Kayla Request AV-note blur then Use Photo retains verification through canonical save and Mark Done', async ({ page, baseURL }) => {
   const f = await fixture(page, baseURL!); await f.open();
   expect((await browserState(page)).rolePhoto).toBe(true);
@@ -431,6 +457,15 @@ test('Kayla Request AV-note blur then Use Photo retains verification through can
   expect(f.state.master.photo_link).toContain('photo-1.webp');
   await expect.poll(() => f.state.productivity.length).toBe(1);
   const acknowledgedVersion = f.state.requestRow.row_version;
+  // Reopen after the completed Request view has published its acknowledged
+  // history and finished deferred reads. The separate durability scenario
+  // intentionally reloads during an unfinished upload acknowledgement.
+  await page.evaluate(() => (window as any).openManagerSalesRepsModule());
+  await expect.poll(() => page.evaluate(() => window.eval(`activeReqTab === 'reps'
+    && canUseVerifiedProductionData(['master','requests','requestHistory','salesCredits'])`))).toBe(true);
+  await expect.poll(() => page.evaluate(id => window.eval(`findRequestRowByUniqueId(${JSON.stringify(id)})?.DATE_COMPLETED`), REQUEST_ID))
+    .toBe(f.state.requestRow.date_completed);
+  await page.waitForLoadState('networkidle');
   await f.open(true);
   await expect(page.locator('#req-av-note')).toHaveValue('HEALTHY LOCAL NOTE');
   await expect.poll(() => browserState(page)).toMatchObject({ photo: expect.stringContaining('photo-1.webp') });
@@ -464,7 +499,7 @@ test('Request Mark Done waits for verification started while its confirmation is
   await chooseCameraPhoto(page);
   await expect.poll(() => String(f.state.requestRow.req_photo_link)).toContain('photo-1.webp');
   await expect.poll(() => browserState(page)).toMatchObject({ detailVerified: true, datasetsVerified: true });
-  await page.locator('#req-btn-save-complete').click();
+  await clickMarkDone(page);
   await expect(page.getByRole('heading', { name: 'Publish in app?', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'NO', exact: true }).click();
   await expect(page.locator('#mark-done-confirm-modal')).toBeVisible();
@@ -480,6 +515,45 @@ test('Request Mark Done waits for verification started while its confirmation is
   expect(f.state.saves.filter(save => save.complete)).toHaveLength(0);
   expect(f.state.requestRow.req_status).toBe('Pending');
   releaseMetadata();
+  await expect.poll(() => f.state.saves.filter(save => save.complete).length).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).__requestRepairObservations.settled
+    .some((call: any) => call.name === 'saveData' && call.complete))).toBe(true);
+  expect(f.state.requestRow.req_status).toBe('Complete');
+  expect(f.state.requestRow.req_photo_link).toContain('photo-1.webp');
+  expect(f.state.uploads).toHaveLength(1);
+  expect(f.state.unexpectedWrites).toEqual([]);
+  expect(f.state.errors).toEqual([]);
+});
+
+test('Request Mark Done waits for current verification before opening its confirmation', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!); await f.open();
+  await launchCamera(page);
+  await chooseCameraPhoto(page);
+  await expect.poll(() => String(f.state.requestRow.req_photo_link)).toContain('photo-1.webp');
+  await expect.poll(() => browserState(page)).toMatchObject({ detailVerified: true, datasetsVerified: true });
+  await expect(page.locator('#req-btn-save-complete')).toBeEnabled();
+  const releaseMetadata = f.holdMetadata();
+  await page.evaluate(() => {
+    // Start the real check at the user's initially enabled click boundary,
+    // before its normal inline saveData handler runs. No action is forced.
+    document.getElementById('req-btn-save-complete')!.addEventListener('click', () => {
+      (window as any).__requestCompletionEntryCheck = (window as any).getProductionLiveSyncCoordinator()
+        .check('request-completion-entry');
+    }, { capture: true, once: true });
+  });
+  await clickMarkDone(page);
+  await expect.poll(() => f.state.heldMetadata).toBeGreaterThan(0);
+  await expect.poll(() => browserState(page)).toMatchObject({ datasetsVerified: false });
+  expect(await page.evaluate(() => window.eval('isProductionMasterDetailBindingCurrent(activeItem)'))).toBe(true);
+  await expect(page.getByRole('heading', { name: 'Publish in app?', exact: true })).not.toBeVisible();
+  expect(f.state.saves.filter(save => save.complete)).toHaveLength(0);
+  expect(await page.evaluate(() => (window as any).__requestRepairObservations.toasts
+    .some((toast: any[]) => toast[0] === 'Restricted'))).toBe(false);
+  releaseMetadata();
+  await expect(page.getByRole('heading', { name: 'Publish in app?', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'NO', exact: true }).click();
+  await expect(page.locator('#mark-done-confirm-modal')).toBeVisible();
+  await page.locator('#mark-done-confirm-modal').getByRole('button', { name: 'OK', exact: true }).click();
   await expect.poll(() => f.state.saves.filter(save => save.complete).length).toBe(1);
   await expect.poll(() => page.evaluate(() => (window as any).__requestRepairObservations.settled
     .some((call: any) => call.name === 'saveData' && call.complete))).toBe(true);
