@@ -43,7 +43,9 @@ async function harness(page: Page, baseURL: string) {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
       const isManualStatusRead = request.method() === 'POST' && url.hostname === 'script.google.com'
         && /^\/macros\/s\/[^/]+\/exec$/.test(url.pathname) && request.postData() === '{"type":"manual_status"}';
-      if (!isManualStatusRead && !['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'].includes(url.pathname)) {
+      const isRevisionRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1';
+      if (!isManualStatusRead && !isRevisionRead && !['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'].includes(url.pathname)) {
         unexpectedMutations.push(`${request.method()}:${url.pathname}`);
       }
       return route.abort('blockedbyclient');

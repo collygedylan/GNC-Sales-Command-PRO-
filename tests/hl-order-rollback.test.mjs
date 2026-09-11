@@ -40,6 +40,42 @@ test('the complete client is the September 9 release with only a fresh cache sta
   assert.doesNotMatch(read('assets/live-sync-registry.js'), /hl-order/);
 });
 
+test('absence fixtures recognize revision reads while blocking every network mutation', async () => {
+  for (const file of ['home-role-visibility', 'session-recovery', 'hl-order']) {
+    const ast = ts.createSourceFile(file + '.ts', read(`tests/${file}.e2e.spec.ts`), ts.ScriptTarget.Latest, true);
+    let callback;
+    const visit = node => {
+      if (ts.isCallExpression(node) && node.expression.getText(ast) === 'page.route'
+        && node.arguments[0]?.text === '**/*') callback = node.arguments[1];
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+    assert.ok(callback, `${file} installs its network boundary`);
+    const unexpectedMutations = [];
+    const code = ts.transpileModule('const handle = ' + callback.getText(ast), {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const context = vm.createContext({ URL, unexpectedMutations, appOrigin: 'http://127.0.0.1:43136' });
+    vm.runInContext(code + '\nglobalThis.handle = handle;', context);
+    for (const [method, host, path, expected] of [
+      ['POST', 'kzrnyjsosryejjejliii.supabase.co', 'get_my_dataset_revisions_v1', 0],
+      ['DELETE', 'kzrnyjsosryejjejliii.supabase.co', 'get_my_dataset_revisions_v1', 1],
+      ['POST', 'other.example.invalid', 'get_my_dataset_revisions_v1', 1],
+      ['POST', 'kzrnyjsosryejjejliii.supabase.co', 'hl_order_command_v1', 1],
+    ]) {
+      unexpectedMutations.length = 0;
+      let aborted = 0;
+      await context.handle({
+        request: () => ({ method: () => method, url: () => `https://${host}/rest/v1/rpc/${path}`, postData: () => '{}' }),
+        abort: () => { aborted++; },
+        continue: () => { throw new Error('The fixture must never send these requests'); },
+      });
+      assert.equal(aborted, 1, `${file}: ${method} ${host}/${path}`);
+      assert.equal(unexpectedMutations.length, expected, `${file}: ${method} ${host}/${path}`);
+    }
+  }
+});
+
 const apiSource = ts.createSourceFile('app-api.ts', read('supabase/functions/app-api/index.ts'), ts.ScriptTarget.Latest, true);
 const apiFunctions = ['evalReviewSource', 'evalWorkError', 'handleEvalWorkAction'];
 const apiCode = ts.transpileModule(apiSource.statements
