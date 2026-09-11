@@ -4660,6 +4660,11 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
   const rawHeaders = rawData[0].map(h => String(h).trim());
   const cleanHeaders = rawHeaders.map(h => String(h).toUpperCase().replace(/\s+/g, '').replace(/_/g, ''));
   const getIdx = (name) => cleanHeaders.indexOf(name.toUpperCase().replace(/\s+/g, '').replace(/_/g, ''));
+  const invoiceColumns = rawHeaders.map(function(header) { return normalizePayloadColumnKey_(header).replace(/_/g, ''); });
+  const invoiceIdx = invoiceColumns.indexOf('invoicedate');
+  if (logicalTable === 'ph_soc_master' && (invoiceIdx < 0 || invoiceColumns.lastIndexOf('invoicedate') !== invoiceIdx)) {
+    throw new Error('SOC report must contain exactly one INVOICEDATE column; no data was changed.');
+  }
 
   let iIdx = getIdx('ITEMCODE'), dockIdx = getIdx('DOCK');
   let custIdx = getIdx('CUSTOMERNAME'), consIdx = getIdx('CONSIGNEENAME');
@@ -4686,8 +4691,6 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     if (!itemCodeVal || itemCodeVal.toUpperCase() === 'NULL') continue;
     if (logicalTable === 'ph_soc_master' && (!dockVal || dockVal === '0' || dockVal === '' || !custVal)) continue;
     if (logicalTable === 'ph_reserves' && !custVal) continue;
-
-    totalRows++;
 
     let contSizeVal = cIdx > -1 ? String(row[cIdx] || '').trim() : '-';
     let consVal = consIdx > -1 ? String(row[consIdx] || '').trim() : '';
@@ -4718,6 +4721,15 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
       continue;
     }
     stats.validIdentityRows++;
+    // Allocate duplicate occurrence IDs before filtering so retained SOC rows
+    // keep their existing app-owned completion state. Valid invoiced identities
+    // still prove that an all-invoiced report is a readable empty snapshot.
+    const invoiceValue = invoiceIdx < 0 ? '' : String(row[invoiceIdx] ?? '').trim();
+    if (logicalTable === 'ph_soc_master' && invoiceValue && invoiceValue.toUpperCase() !== 'NULL') {
+      stats.skippedRows++;
+      continue;
+    }
+    totalRows++;
 
     let obj = { unique_id: uniqueId, last_updated: syncStartTime, contsize: contSizeVal, filename: fileName };
     for (let c = 0; c < rawHeaders.length; c++) {
@@ -4726,6 +4738,7 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
       // than copying a previously fetched value, which could overwrite a Done
       // saved while this import was running. Other tables keep their contracts.
       if (logicalTable === 'ph_soc_master' && key === 'date_completed') continue;
+      if (logicalTable === 'ph_soc_master' && c === invoiceIdx) { obj.invoicedate = null; continue; }
       if (ALLOWED_DB_COLUMNS.has(key)) {
         let val = String(row[c] || '').trim();
         obj[key] = (val === '' || val === 'NULL') ? null : val;
