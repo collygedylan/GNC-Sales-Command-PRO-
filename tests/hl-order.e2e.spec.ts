@@ -80,7 +80,9 @@ test('cards use all five grouping fields and detail shows all accessible matchin
   await expect(detail.locator('[data-hl-source-id="hl-b"] [data-hl-quantity]')).toHaveValue('15');
   await expect(detail.locator('[data-hl-drive-location]')).toHaveCount(4);
   await expect(detail.locator('[data-hl-drive-location="A.02.001"]')).toContainText(/Unknown|Not available/);
-  await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText(/Available:\s*0/);
+  await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText(/PTRAVAILABLE:\s*0/);
+  await expect(detail.locator('[data-hl-drive-location="C.12.001"]')).toContainText('Exact item, size, location and lot match');
+  await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText('Related item and size');
   await expect(detail.locator('[data-hl-drive-location="C.12.001"]')).toContainText(/Season:\s*27 F1/);
   await expect(detail.locator('[data-hl-drive-location="C.14.002"]')).toContainText(/Season:\s*26 F1/);
   await expect(detail.locator('[data-hl-drive-location="A.02.001"]')).toContainText(/Season:\s*25 S1/);
@@ -125,9 +127,12 @@ test('selected editable quantities persist through reload and HL removal preserv
 
 test('PO inventory action pages verified same-size rows and preserves zero availability', async ({ page, baseURL }) => {
   const master = [hlMaster('po-exact', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', ptravailable: '0' }),
-    ...Array.from({ length: 251 }, (_, index) => hlMaster(`po-related-${String(index).padStart(3, '0')}`, { itemcode: 'PO.TEST', contsize: '#3', locationcode: `C.14.${String(index).padStart(3, '0')}`, lotcode: '27.F1', ptravailable: index === 1 ? null : '3' }))];
+    ...Array.from({ length: 251 }, (_, index) => hlMaster(`po-related-${String(index).padStart(3, '0')}`, { itemcode: 'PO.TEST', contsize: '#3', locationcode: `C.14.${String(index).padStart(3, '0')}`, lotcode: '27.F1', ptravailable: index === 1 ? null : '3' })),
+    hlMaster('po-hidden-approval', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.19.999', lotcode: '27.F1', ptravailable: '9', app_tab_assignment: 'Not On Inventory' })];
   const fixture = await installHlOrderFixture(page, baseURL!, { master, poRows: [{ row_index: 1, itemcode: 'PO.TEST', commonname: 'PO test', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' }] });
+  await page.waitForFunction(() => window.eval("canAccessView('po-management')"));
   await page.evaluate(() => window.eval("switchView('po-management')"));
+  await expect(page.locator('#view-po-management')).toBeVisible();
   await page.getByRole('button', { name: 'HL PO', exact: true }).click();
   await page.getByRole('button', { name: '27F1', exact: true }).click();
   await expect(page.getByRole('button', { name: 'View inventory', exact: true })).toBeVisible();
@@ -136,7 +141,43 @@ test('PO inventory action pages verified same-size rows and preserves zero avail
   await expect(detail).toContainText('Exact item, size, location and lot match');
   await expect(detail).toContainText('PTRAVAILABLE: 0');
   await expect(detail).toContainText('Related item and size');
+  await expect(detail.locator('article')).toHaveCount(252);
+  await expect(detail).toContainText('C.14.250');
+  await expect(detail).not.toContainText('C.19.999');
+  await page.evaluate(() => window.eval('clearRoleScopedClientCaches()'));
+  await expect(page.locator('#po-inventory-detail')).not.toBeVisible();
+  await expect(detail).toBeEmpty();
   expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('a same-date addition keeps its sent order number and leaves only the new batch protected', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('hl-b', { locationcode: 'C.14.002', lotcode: '26.F1' })], seedOrder: true });
+  const orderNumber = fixture.state.orders[0].order_number;
+  await openHl(page); await openDetails(page);
+  const addition = page.locator('[data-hl-source-id="hl-b"]');
+  await addition.locator('[data-hl-select]').check();
+  await addition.locator('[data-hl-quantity]').fill('5');
+  await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
+  await preview(page);
+  const report = [...fixture.previews.values()].at(-1).report;
+  expect(report.kind).toBe('addition');
+  expect(report.order_number).toBe(orderNumber);
+  expect(report.lines.map((line: any) => [line.source_id, line.quantity])).toEqual([['hl-b', 5]]);
+  await page.locator('#hl-tags-send').click();
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
+  const tracking = page.locator('#hl-order-tracking');
+  await expect(tracking).toContainText(orderNumber);
+  const lines = tracking.locator('[data-hl-order-line-id]');
+  await expect(lines).toHaveCount(2);
+  await expect(lines.nth(0).locator('[data-hl-line-select]')).toBeEnabled();
+  await expect(lines.nth(1).locator('[data-hl-line-select]')).toBeDisabled();
+  await expect(lines.nth(1)).toContainText('Delivery pending for this addition.');
+  fixture.deliver('sent'); await reloadHl(page);
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
+  await expect(page.locator('#hl-order-tracking [data-hl-order-line-id]').nth(1).locator('[data-hl-line-select]')).toBeEnabled();
+  assertIsolated(fixture);
 });
 
 test('HL TAGS separates saved drafts by canonical ship date and previews only the chosen date', async ({ page, baseURL }) => {

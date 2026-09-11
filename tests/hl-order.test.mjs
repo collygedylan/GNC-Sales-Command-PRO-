@@ -79,12 +79,12 @@ test('card groups separate item, size, planned date, dock and stop while summing
   assert.equal(new Set(result.map((group) => group.key)).size, 6);
 });
 
-test('group schedule normalization uses the written ISO calendar date without timezone drift', () => {
+test('group schedule normalization uses the Chicago calendar date for timestamp offsets', () => {
   const ctx = runtime();
   const result = groups(ctx, [row(), row('b', { itemcode: ' plant.003 ', contsize: ' #3 ', dock: ' 4 ', stopnumber: ' 2 ', planstartdate: '2026-09-15T00:15:00+14:00' }),
     row('c', { planstartdate: '2026-09-15T23:45:00-12:00' })]);
-  assert.equal(result.length, 1);
-  assert.equal(result[0].quantity, 30);
+  assert.deepEqual(result.map((group) => group.planstartdate), ['2026-09-14', '2026-09-15', '2026-09-16']);
+  assert.deepEqual(result.map((group) => group.quantity), [10, 10, 10]);
 });
 
 test('ship dates retain the written Apps Script calendar date and render without a browser timezone shift', () => {
@@ -92,6 +92,9 @@ test('ship dates retain the written Apps Script calendar date and render without
   assert.equal(ctx.getHlOrderShipDate('Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)'), '2026-09-15');
   assert.equal(ctx.formatHlOrderShipDate('Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)'), 'Sep 15, 2026');
   assert.equal(ctx.getHlOrderShipDate('not a date'), '');
+  assert.equal(ctx.getHlOrderShipDate('2026-02-30'), '');
+  assert.equal(ctx.getHlOrderShipDate('2026-09-16T02:00:00Z'), '2026-09-15');
+  assert.equal(ctx.getHlOrderShipDate('2026-09-15'), '2026-09-15');
 });
 
 test('ship-date backend errors are surfaced as actionable UI text', () => {

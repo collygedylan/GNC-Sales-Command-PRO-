@@ -72293,12 +72293,13 @@ function toggleDriveQuickRequestItem(domId) {
                 // Query only this displayed PO item's exact code and size. RLS
                 // remains the visibility authority; no PO view can borrow HL's
                 // Dylan-specific inventory snapshot or load the master globally.
-                const query = `select=unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable&itemcode=eq.${encodeURIComponent(itemcode)}&contsize=eq.${encodeURIComponent(contsize)}&order=unique_id.asc&limit=${limit}&offset=${offset}`;
+                const query = `select=unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,app_tab_assignment,priority,season&itemcode=eq.${encodeURIComponent(itemcode)}&contsize=eq.${encodeURIComponent(contsize)}&order=unique_id.asc&limit=${limit}&offset=${offset}`;
                 const page = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', query, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
                 if (request !== poManagementInventoryRequest || owner !== getSupabaseReadIdentityScope() || !canAccessView('po-management')) return null;
                 const batch = Array.isArray(page?.rows) ? page.rows : [];
                 rows.push(...batch);
-                if (batch.length < limit) return rows;
+                if (batch.length < limit) return applyRepU3VisibilityScope(applyForemanPriorityRowScope(rows)
+                    .filter((entry) => !shouldHideNotOnInventoryApprovalRowFromInventory(entry)));
                 offset += batch.length;
             }
         }
@@ -72314,7 +72315,7 @@ function toggleDriveQuickRequestItem(domId) {
             const locationcode = getPoManagementInventoryField(row, 'locationcode');
             const lotcode = getPoManagementInventoryField(row, 'lotcode');
             const request = ++poManagementInventoryRequest;
-            content.innerHTML = '<p>In Drive Mode · Verifying inventory…</p>';
+            content.innerHTML = '<p>Verifying inventory…</p>';
             if (!dialog.open) dialog.showModal();
             if (!itemcode) { content.innerHTML = '<p class="rounded-xl bg-amber-50 p-3 text-sm">No accessible match in Drive Mode.</p>'; return false; }
             try {
@@ -72326,7 +72327,7 @@ function toggleDriveQuickRequestItem(domId) {
                     && getPoManagementInventoryField(entry, 'lotcode').toUpperCase() === lotcode.toUpperCase()) : [];
                 const related = all.filter((entry) => !exact.includes(entry));
                 const exactHtml = canIdentifyExact ? `<h3 class="mb-2 text-sm font-black text-[#007a4d]">Exact item, size, location and lot match</h3>${renderPoManagementInventoryRows(exact)}` : '<p class="rounded-xl bg-amber-50 p-3 text-sm">The PO row does not identify one location and lot, so no exact inventory match is inferred.</p>';
-                content.innerHTML = `<p class="mb-3 text-sm font-bold">${escapeHtml(itemcode)} · ${escapeHtml(contsize)}</p>${exactHtml}${related.length ? `<h3 class="mb-2 mt-4 text-sm font-black text-slate-700">Related item and size · other locations or lots</h3>${renderPoManagementInventoryRows(related)}` : ''}`;
+                content.innerHTML = `<p class="mb-3 text-sm font-bold">${escapeHtml(itemcode)} · ${escapeHtml(contsize)}</p><p class="mb-3 text-sm font-bold">${all.length ? 'In Drive Mode' : 'No accessible match'}</p>${exactHtml}${related.length ? `<h3 class="mb-2 mt-4 text-sm font-black text-slate-700">Related item and size · other locations or lots</h3>${renderPoManagementInventoryRows(related)}` : ''}`;
             } catch (_) {
                 if (request === poManagementInventoryRequest && canAccessView('po-management')) content.innerHTML = '<p class="rounded-xl bg-red-50 p-3 text-sm">Inventory verification failed. Try again.</p>';
             }
@@ -87523,21 +87524,30 @@ function toggleDriveQuickRequestItem(domId) {
         function getHlOrderPlanDate(value) {
             const text = String(value || '').trim();
             const iso = /^(\d{4}-\d{2}-\d{2})(?:[T ]|$)/.exec(text);
-            if (iso) return iso[1];
-            // Apps Script can send a JavaScript Date string. Preserve its written
-            // calendar day instead of parsing it through the browser time zone.
-            const written = /\b([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{4})\b/.exec(text);
+            const written = /^[A-Za-z]{3} ([A-Z][a-z]{2}) (\d{1,2}) (\d{4}) (\d{2}:\d{2}:\d{2}) GMT([+-]\d{2})(\d{2})(?: \([^)]*\))?$/.exec(text);
             const months = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
-            return written && months[written[1]] ? `${written[3]}-${months[written[1]]}-${String(written[2]).padStart(2, '0')}` : '';
+            const date = iso?.[1] || (written && months[written[1]] ? `${written[3]}-${months[written[1]]}-${written[2].padStart(2, '0')}` : '');
+            if (!date) return '';
+            const [year, month, day] = date.split('-').map(Number);
+            const checked = new Date(Date.UTC(year, month - 1, day));
+            if (checked.getUTCFullYear() !== year || checked.getUTCMonth() !== month - 1 || checked.getUTCDate() !== day) return '';
+            if (text === date) return date;
+            const zoned = written ? `${date}T${written[4]}${written[5]}:${written[6]}`
+                : /(?:Z|[+-]\d{2}:?\d{2})$/.test(text) ? text.replace(' ', 'T') : '';
+            if (!zoned) return /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(text) && Number.isFinite(Date.parse(text.replace(' ', 'T') + 'Z')) ? date : '';
+            const instant = new Date(zoned);
+            if (!Number.isFinite(instant.getTime())) return '';
+            const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(instant);
+            const part = (type) => parts.find((entry) => entry.type === type).value;
+            return `${part('year')}-${part('month')}-${part('day')}`;
         }
 
         function getHlOrderShipDate(value) { return getHlOrderPlanDate(value); }
 
         function formatHlOrderShipDate(value) {
             const date = getHlOrderShipDate(value);
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Not provided';
-            // Noon makes the ISO calendar date stable in every browser time zone.
-            return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Ship date needed';
+            return new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
         }
 
         function getHlDraftShipDate(entry = {}) {
@@ -87898,7 +87908,9 @@ function toggleDriveQuickRequestItem(domId) {
                 const field = (key) => String(row[key.toUpperCase()] ?? row[key] ?? '').trim();
                 const hold = [field('holdstopcode'), field('holdstopreason'), field('lochold')].filter(Boolean).join(' · ');
                 const detailsHtml = `<p>Season: ${escapeHtml([field('saleyear'), field('season')].filter(Boolean).join(' ') || 'Unknown')}</p><p>Warehouse: ${escapeHtml([field('warehouseid') || field('warehousei'), field('warehousename')].filter(Boolean).join(' · ') || 'Unknown')}</p><p>Hold: ${escapeHtml(hold || 'No hold reported')}</p>${field('holdstopbegindate') ? `<p>Hold begins: ${escapeHtml(field('holdstopbegindate'))}</p>` : ''}${field('holdstopenddate') ? `<p>Hold ends: ${escapeHtml(field('holdstopenddate'))}</p>` : ''}`;
-                return renderVerifiedInventoryDetailRow(row, { attributes: ` data-hl-drive-location="${escapeHtml(field('locationcode'))}"`, detailsHtml });
+                const exact = sources.some((source) => getHlOrderInventoryKey(source) === getHlOrderInventoryKey(row));
+                const matchLabel = exact ? 'Exact item, size, location and lot match' : 'Related item and size · other locations or lots';
+                return renderVerifiedInventoryDetailRow(row, { attributes: ` data-hl-drive-location="${escapeHtml(field('locationcode'))}"`, detailsHtml: `<p class="font-bold">${matchLabel}</p>` + detailsHtml });
             }).join('')}</div>`;
         }
 

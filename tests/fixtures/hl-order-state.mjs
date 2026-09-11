@@ -225,7 +225,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         } catch (error) { return json(route, { code: 'P0001', message: error.message }, error.status || 400); }
       }
       if (op === 'get_my_dataset_revisions_v1') return json(route, { contractVersion: 1, permissionVersion: 'hl-policy-1', sources: (body.p_dataset_keys || []).map((key) => ({ key, revision: String(control.datasetRevision), state: 'ready' })) });
-      if (op === 'get_my_app_permissions_v1') return json(route, { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username, role: 'ADMIN', permissions: [] });
+      if (op === 'get_my_app_permissions_v1') return json(route, { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username, role: 'ADMIN', permissions: options.appPermissions || [{ kind: 'module', moduleKey: 'po-management', allowed: true }] });
       if (op === 'get_request_capabilities') return json(route, { contract_version: 2, username, scope: 'global', can_view_queue: true, can_edit: true, can_complete: true });
       if (op === 'get_request_schema_compatibility') return json(route, { compatible: true, contract_version: 2 });
       if (/^(get_|list_|report_app_health_event)/.test(op || '')) return json(route, []);
