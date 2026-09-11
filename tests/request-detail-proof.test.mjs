@@ -956,7 +956,7 @@ function installPhotoQueueBoundaries(h, upload) {
     formatPhotoUploadErrorMessage: error => error.message, showToast() {}
   });
   h.ctx.window.createImageBitmap = makeBitmap;
-  vm.runInContext([appFunction('queueRowPhotoUpload'), appFunction('retryRetainedRequestCameraSelection')].join('\n'), h.ctx);
+  vm.runInContext(['queueRowPhotoUpload', 'retryRetainedRequestCameraSelection', 'settleRequestCameraFile'].map(appFunction).join('\n'), h.ctx);
   // Keep the captured editor as the canonical object in this boundary fixture;
   // proof-transfer cases above separately exercise distinct canonical objects.
   h.ctx.findRequestRowByUniqueId = uid => uid === h.source.UNIQUE_ID ? h.source : null;
@@ -1829,3 +1829,242 @@ test('an already-verified Request autosave keeps its existing queue path without
   assert.equal(h.timers.size, 0);
   assert.equal(h.calls.length, 0);
 });
+
+async function sharedCameraReturnFixture() {
+  const h = await requestCameraFixture(), queued = [], toasts = [], draft = { photos: [] };
+  const access = { allowed: true };
+  Object.assign(h.ctx, {
+    isRestrictedEvalUser: () => false, isDriveModePhotoDataEditContext: () => false,
+    isSalesOfficeLikeItem: () => false, canEditDockWorkflow: () => access.allowed,
+    canEditNcrWorkflow: () => access.allowed && h.ctx.hasProductionMasterDetailForItem(h.source),
+    markCameraActivity() {}, isIOSDevice: () => false, isStandaloneApp: () => false,
+    queueRowPhotoUpload: (item, prefix, file) => { queued.push({ item, prefix, file }); return true; },
+    showToast: (...args) => toasts.push(args), showRowEditRestrictedToast: () => toasts.push(['Restricted']),
+    getNcrDraft: () => draft, renderNcrDraftPhotos() {}, renderPhotoGallery() {},
+    URL: { createObjectURL: file => `blob:synthetic/${file.name}` },
+    createPendingPhotoToken: () => `ncr-${draft.photos.length}`,
+    buildInventoryRowPhotoFileName: (_item, file) => file.name,
+  });
+  vm.runInContext(['ensureDetailPhotoCaptureReady', 'handlePhotoUpload', 'handleNcrPhotoSelect',
+    'handleTaskDetailQuickPhotoUpload'].map(appFunction).join('\n'), h.ctx);
+  const files = [h.file, Object.freeze({ name: 'second-camera.jpg', type: 'image/jpeg' })];
+  const input = { files: files.slice(), value: 'native-camera-files', dataset: { detailPhotoPrefix: 'dock-' } };
+  return { ...h, queued, toasts, draft, access, files, input };
+}
+
+for (const kind of ['shared', 'quick', 'ncr']) {
+  test(`${kind} camera return waits for genuine verification and keeps every originally selected File`, async () => {
+    const h = await sharedCameraReturnFixture(), entered = deferred(), held = deferred();
+    h.coordinator.suspend();
+    h.state.metadataHook = async metadata => { entered.resolve(); await held.promise; return metadata; };
+    const pending = kind === 'shared' ? h.ctx.handlePhotoUpload(h.input, 'dock-')
+      : kind === 'quick' ? h.ctx.handleTaskDetailQuickPhotoUpload(h.input) : h.ctx.handleNcrPhotoSelect(h.input);
+    await entered.promise;
+    assert.equal(h.ctx.hasProductionMasterDetailForItem(h.source), false);
+    assert.equal(h.input.value, 'native-camera-files', 'a pending check must not clear the native selection');
+    assert.equal(h.queued.length + h.draft.photos.length, 0);
+    assert.equal(h.toasts.length, 0, 'verification is not a role denial');
+    h.input.files = [Object.freeze({ name: 'replacement.jpg', type: 'image/jpeg' })];
+    held.resolve();
+    await pending;
+    const selected = kind === 'ncr' ? h.draft.photos.map(photo => photo.file) : h.queued.map(entry => entry.file);
+    assert.deepEqual(selected, h.files, 'the return handler uses its captured Files, not a later input selection');
+    assert.equal(h.input.value, '');
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.proof, 'unchanged verification reuses original proof');
+  });
+}
+
+for (const [name, change] of [
+  ['login generation', h => { h.state.loginGeneration++; }],
+  ['auth epoch', h => { h.state.authEpoch++; }],
+  ['detail session', h => { h.ctx.productionMasterDetailSession = { ...h.ctx.productionMasterDetailSession }; }],
+  ['detail token', h => { h.ctx.detailHydrationToken++; }],
+  ['row identity', h => { h.source.LOCATIONCODE = 'OTHER-LOCATION'; }],
+  ['master revision', h => { h.state.revision = h.context.revision = h.dataset.liveVerifiedRevision = '2'; }],
+  ['permission fence', h => { h.state.permission = h.context.permissionVersion = h.dataset.liveVerifiedPermission = 'permission-b'; }],
+]) {
+  test(`shared camera return keeps its Files and cannot queue after ${name} changes during verification`, async () => {
+    const h = await sharedCameraReturnFixture(), entered = deferred(), held = deferred();
+    h.coordinator.suspend();
+    h.state.metadataHook = async metadata => { entered.resolve(); await held.promise; return metadata; };
+    const pending = h.ctx.handlePhotoUpload(h.input, 'dock-');
+    await entered.promise;
+    change(h);
+    held.resolve();
+    await pending;
+    assert.equal(h.queued.length, 0);
+    assert.equal(h.input.value, 'native-camera-files');
+    assert.deepEqual(h.input.files, h.files);
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.proof, 'recovery cannot stamp a replacement fence');
+  });
+}
+
+test('shared camera return rechecks actual role permission after an unchanged verification', async () => {
+  const h = await sharedCameraReturnFixture(), entered = deferred(), held = deferred();
+  h.coordinator.suspend();
+  h.state.metadataHook = async metadata => { entered.resolve(); await held.promise; return metadata; };
+  const pending = h.ctx.handlePhotoUpload(h.input, 'dock-');
+  await entered.promise;
+  h.access.allowed = false;
+  held.resolve();
+  await pending;
+  assert.equal(h.ctx.hasProductionMasterDetailForItem(h.source), true);
+  assert.equal(h.queued.length, 0);
+  assert.equal(h.toasts.some(([title]) => title === 'Restricted'), true);
+});
+
+function installCameraControlDom(h) {
+  const nodes = new Map();
+  const node = (id, type = '') => {
+    const classes = new Set(), attributes = new Map();
+    const element = { id, type, disabled: false, readOnly: false, value: 'unsaved field draft',
+      style: {}, dataset: {}, innerHTML: '',
+      classList: { add: (...values) => values.forEach(value => classes.add(value)),
+        remove: (...values) => values.forEach(value => classes.delete(value)), contains: value => classes.has(value),
+        toggle: (value, force) => { const enabled = force ?? !classes.has(value); enabled ? classes.add(value) : classes.delete(value); return enabled; } },
+      getAttribute: key => attributes.get(key) || '', hasAttribute: key => attributes.has(key),
+      setAttribute(key, value) { attributes.set(key, value); if (key === 'disabled') this.disabled = true; },
+      removeAttribute(key) { attributes.delete(key); if (key === 'disabled') this.disabled = false; },
+      matches: selector => selector === 'input[type="file"]' ? type === 'file' : !!type && selector.includes('input'),
+      closest: selector => selector === '[id^="camera-btn-"]' && type === 'file' ? nodes.get('camera-btn-req') : null,
+      querySelectorAll: () => [], querySelector: () => null,
+    };
+    nodes.set(id, element);
+    return element;
+  };
+  const field = node('req-spec', 'text'), input = node('request-camera-file', 'file');
+  const camera = node('camera-btn-req'), panel = node('det-request-camera-panel');
+  camera.querySelector = () => input;
+  const container = node('det-request-content'), detail = node('view-detail'), bar = node('request-protected-bar');
+  container.querySelectorAll = selector => selector === 'button' ? [] : [field, input];
+  detail.querySelectorAll = () => [field, input];
+  const config = { containerId: container.id, cameraId: camera.id, inputIds: [field.id] };
+  Object.assign(h.ctx, {
+    PROTECTED_EDIT_CONFIG: { 'req-': config }, getProtectedEditConfig: prefix => prefix === 'req-' ? config : null,
+    ensureProtectedControl: () => bar, isProtectedSectionLocked: () => false,
+    isProtectedUnlocked: () => false, getDrivePhotoMasterItem: () => null,
+    isRestrictedEvalUser: () => false, isDriveModePhotoDataEditContext: () => false,
+    isSalesOfficeLikeItem: () => false, canEditDockWorkflow: () => false,
+    productionMasterDetailDisabledControls: new WeakMap(), argosInventoryTransactionState: null,
+    refreshDrivePhotoDraftUi() {}, renderProductionMasterDetailState() {}, renderRequestCameraSelectionState() {},
+    resumeProductionRequestDetailOwnSave() {},
+    scheduleDeferredDetailHydration: () => { throw new Error('A permission refresh must not repopulate the draft form'); },
+  });
+  h.ctx.document.getElementById = id => nodes.get(id) || null;
+  vm.runInContext(['renderProtectedControls', 'applyProtectedEditState', 'refreshProtectedSections',
+    'updateTaskDetailQuickCameraState', 'applyCameraPermissions', 'applyAvDetailReadOnlyState',
+    'applyProductionMasterDetailControlState', 'onProductionMasterDetailsVerified'].map(appFunction).join('\n'), h.ctx);
+  return { field, input, camera, panel, bar };
+}
+
+for (const revoked of [false, true]) {
+  test(`exact verification restores camera controls without losing drafts${revoked ? ' but preserves genuine role denial' : ''}`, async () => {
+    const h = await requestCameraFixture(), ui = installCameraControlDom(h), entered = deferred(), held = deferred();
+    // List metadata can already be verified while the own-save exact proof is still checking.
+    h.ctx.productionMasterDetailSession.requestOwnSave = { checking: true };
+    h.ctx.renderProtectedControls('req-');
+    assert.match(ui.bar.innerHTML, /Checking for updates/);
+    assert.doesNotMatch(ui.bar.innerHTML, /You cannot update this row/);
+    h.ctx.productionMasterDetailSession.requestOwnSave = null;
+    h.state.metadataHook = async metadata => { entered.resolve(); await held.promise; return metadata; };
+    const checking = h.coordinator.check('camera-control-unchanged-check');
+    await entered.promise;
+    h.ctx.refreshProtectedSections();
+    h.ctx.applyCameraPermissions('request', h.source);
+    h.ctx.applyProductionMasterDetailControlState();
+    assert.equal(ui.camera.classList.contains('hidden'), false, 'temporary readiness is not role denial');
+    assert.equal(ui.camera.style.display, 'none');
+    assert.equal(ui.field.disabled, true);
+    assert.equal(ui.field.readOnly, true);
+    assert.equal(h.ctx.productionMasterDetailDisabledControls.has(ui.input), true);
+    if (revoked) { h.capabilities.canEdit = false; h.capabilities.canTakePhoto = false; }
+    held.resolve();
+    await checking;
+    h.ctx.onProductionMasterDetailsVerified();
+    assert.equal(ui.field.value, 'unsaved field draft');
+    assert.equal(h.ctx.productionMasterDetailDisabledControls.has(ui.input), false);
+    assert.equal(ui.field.disabled, revoked);
+    assert.equal(ui.field.readOnly, revoked);
+    assert.equal(ui.input.disabled, revoked);
+    assert.equal(ui.camera.classList.contains('hidden'), revoked);
+    assert.equal(ui.camera.style.display, revoked ? 'none' : 'flex');
+    assert.equal(ui.panel.classList.contains('hidden'), revoked);
+    if (revoked) assert.match(ui.bar.innerHTML, /You cannot update this row/);
+  });
+}
+
+test('master own-save completion clears stale verification-disabled snapshots before restoring the camera', async () => {
+  const h = await requestCameraFixture(), ui = installCameraControlDom(h), entered = deferred(), held = deferred();
+  h.state.metadataHook = async metadata => { entered.resolve(); await held.promise; return metadata; };
+  const checking = h.coordinator.check('camera-own-save-ui-check');
+  await entered.promise;
+  h.ctx.refreshProtectedSections();
+  h.ctx.applyCameraPermissions('request', h.source);
+  h.ctx.applyProductionMasterDetailControlState();
+  assert.equal(ui.input.disabled, true);
+  held.resolve();
+  await checking;
+  // Exact proof is genuine and unchanged; exercise only the finish callback's
+  // UI responsibility, independently of the RPC acknowledgement tests above.
+  const ticket = { session: h.ctx.productionMasterDetailSession, acknowledged: true, rebound: true, finished: false };
+  ticket.session.ownSave = ticket;
+  h.ctx.document.removeEventListener = () => {};
+  vm.runInContext(appFunction('finishProductionMasterDetailOwnSave'), h.ctx);
+  h.ctx.finishProductionMasterDetailOwnSave(ticket);
+  assert.equal(ticket.session.ownSave, null);
+  assert.equal(h.ctx.productionMasterDetailDisabledControls.has(ui.input), false);
+  assert.equal(ui.input.disabled, false);
+  assert.equal(ui.field.disabled, false);
+  assert.equal(ui.field.readOnly, false);
+  assert.equal(ui.field.value, 'unsaved field draft');
+  assert.equal(ui.camera.style.display, 'flex');
+  assert.equal(ui.camera.classList.contains('hidden'), false);
+});
+
+for (const failFirst of [false, true]) {
+  test(`a second Request capture drains after the first ${failFirst ? 'fails without automatically resending it' : 'succeeds'}, exactly once`, { timeout: 5000 }, async () => {
+    const h = await requestCameraFixture(), firstStarted = deferred(), releaseFirst = deferred(), secondStarted = deferred();
+    const second = Object.freeze({ name: 'second-camera.jpg', type: 'image/jpeg' }), httpFiles = [], storedFiles = [];
+    const q = installPhotoQueueBoundaries(h, async (_prefix, file) => {
+      httpFiles.push(file);
+      if (!failFirst && file === h.file) { firstStarted.resolve(); await releaseFirst.promise; }
+      if (file === second) secondStarted.resolve();
+      return { ...h.uploaded, filePath: file.name, publicUrl: `https://synthetic.invalid/${file.name}` };
+    });
+    h.ctx.putIndexedDbRecord = async (_store, record) => {
+      storedFiles.push(record.blob);
+      if (failFirst && storedFiles.length === 1) {
+        firstStarted.resolve();
+        await releaseFirst.promise;
+        throw new Error('synthetic storage failure before HTTP');
+      }
+    };
+    installCameraReturnHandler(h);
+    assert.equal(await h.ctx.handlePhotoUpload(h.input, 'req-'), true);
+    await firstStarted.promise;
+    const selection = h.ctx.pendingRequestCameraSelection;
+    const secondInput = { addEventListener() {}, files: [second], value: 'second-native-capture' };
+    h.ctx.captureRequestPhotoSelectionOwner(secondInput);
+    await h.ctx.handlePhotoUpload(secondInput, 'req-');
+    assert.equal(h.ctx.pendingRequestCameraSelection, selection);
+    assert.deepEqual(Array.from(selection.files), [h.file, second]);
+    assert.equal(q.uploads.length, 1, 'taking B cannot queue A twice');
+    releaseFirst.resolve();
+    if (failFirst) await assert.rejects(q.uploads[0], /synthetic storage failure/);
+    else await q.uploads[0];
+    await secondStarted.promise;
+    await q.uploads[1];
+    assert.equal(q.uploads.length, 2);
+    assert.deepEqual(storedFiles, [h.file, second]);
+    assert.deepEqual(httpFiles, failFirst ? [second] : [h.file, second]);
+    assert.deepEqual(Array.from(selection.files), failFirst ? [h.file] : []);
+    if (failFirst) {
+      assert.equal(selection.failedFiles.has(h.file), true);
+      assert.equal(await h.ctx.retryRetainedRequestCameraSelection(), true, 'only explicit Retry reattempts failed A');
+      await q.uploads[2];
+      assert.deepEqual(storedFiles, [h.file, second, h.file]);
+      assert.deepEqual(httpFiles, [second, h.file]);
+      assert.equal(selection.files.length, 0);
+    }
+  });
+}
