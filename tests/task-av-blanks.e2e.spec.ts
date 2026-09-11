@@ -289,6 +289,30 @@ test('note-only Mark Done awaits protected confirmation; failure preserves draft
     // while Mark Done queues behind it. Both writes receive the failed reply.
     await expect.poll(()=>page.evaluate(()=>(window as any).__taskAv.saves.some((save:any)=>
       save.p_master_uid==='isolated-av-failure' && !save.p_complete))).toBe(true);
+    // Finish the native editor blur before targeting the sticky action. On
+    // iPhone, blur restores fixed chrome and changes the button's position;
+    // that transition must not occur between this click's pointer down/up.
+    // The actual autosave acknowledgment stays held throughout this settling.
+    await page.locator('#ssn-av-note').blur();
+    await expect.poll(()=>page.evaluate(()=>window.eval(`
+      !document.body.classList.contains('detail-field-active')
+      && !document.body.classList.contains('mobile-text-entry-active')
+      && (!isIOSDevice() || document.body.classList.contains('ios-fixed-top-chrome'))
+      && !isUserActivelyScrolling()
+    `))).toBe(true);
+    await page.locator('#ssn-btn-save-complete').scrollIntoViewIfNeeded();
+    let lastActionBounds='', stableActionBounds=0;
+    await expect.poll(async()=>{
+      const bounds=await page.locator('#ssn-btn-save-complete').evaluate(button=>{
+        const rect=button.getBoundingClientRect();
+        const hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
+        return button.contains(hit) && !window.eval('isUserActivelyScrolling()')
+          ? JSON.stringify([rect.x,rect.y,rect.width,rect.height]) : '';
+      });
+      stableActionBounds=bounds && bounds===lastActionBounds ? stableActionBounds+1 : 0;
+      lastActionBounds=bounds;
+      return stableActionBounds>=2;
+    },{intervals:[100]}).toBe(true);
     await page.locator('#ssn-btn-save-complete').click();
     await expect.poll(()=>page.evaluate(()=>(window as any).__taskAv.saveEvents.filter((event:any)=>
       event.uid==='isolated-av-failure' && event.args[0]===true))).toMatchObject([{allowed:true,verified:true,note:enteredDraft}]);
