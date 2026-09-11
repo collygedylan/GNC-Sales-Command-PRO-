@@ -3006,7 +3006,10 @@ function getPayloadSelectColumns_(tableName, rawData) {
   if (tableName === CUSTOMER_REP_MAP_TABLE) return getCustomerRepMapSelectColumns_();
   if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) return getWarehouseAssignedItemsSelectColumns_();
   if (getSiteSplitLegacyTableName_(tableName) === 'ph_cav_import') return getCavPayloadSelectColumns_();
-  return getStandardPayloadSelectColumns_(rawData);
+  const columns = getStandardPayloadSelectColumns_(rawData);
+  // Invoice aliases still need the stored canonical value for delta comparison.
+  if (getSiteSplitLegacyTableName_(tableName) === 'ph_soc_master' && columns.indexOf('invoicedate') === -1) columns.push('invoicedate');
+  return columns;
 }
 
 function getMasterPayloadContext_(rawData, options) {

@@ -41,7 +41,10 @@ function processSnapshot(ctx, data, existing = []) {
     next: () => { read = true; return { getName: () => 'synthetic.csv', getLastUpdated: () => new Date(0) }; },
   });
   ctx.extractDataFromFile = () => data;
-  ctx.fetchAllSupabaseData = () => existing;
+  ctx.fetchAllSupabaseData = (_, columns) => {
+    const fields = Array.isArray(columns) ? columns : String(columns).split(',');
+    return existing.map(row => Object.fromEntries(fields.filter(key => Object.hasOwn(row, key)).map(key => [key, row[key]])));
+  };
   ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return null; };
   ctx.closeDatasetImportFence_ = () => events.push({ type: 'finish' });
   ctx.failDatasetImportFence_ = () => {};
@@ -235,5 +238,22 @@ test('invoice filtering and required header apply to every SOC site variant only
     assert.equal(result.upserts[0].date_completed, '2026-09-01');
     assert.equal(result.upserts[0].quantityordered, '12');
     assert.equal(build(ctx, csv().map(row => row.slice(0, -1)), [], table).upserts.length, 1);
+  }
+});
+
+test('alternate invoice headers compare the stored invoice value before restoring an uninvoiced row', () => {
+  for (const header of ['Invoice Date', 'invoice_date', 'invoice-date']) {
+    const ctx = context();
+    const existing = plain(build(ctx, csv()).upserts);
+    existing[0].invoicedate = '2026-09-09';
+    existing[0].date_completed = '2026-09-10T17:00:00Z';
+    const { result, events } = processSnapshot(ctx, csv('', '10', 'DATE_COMPLETED', '', header), existing);
+    assert.equal(result.failedFiles, 0);
+    assert.equal(result.deleteCount, 0);
+    assert.equal(result.upsertCount, 1, header);
+    const [updated] = events.find(event => event.type === 'upsert').rows;
+    assert.equal(updated.invoicedate, null);
+    assert.equal(updated.unique_id, existing[0].unique_id);
+    assert.equal(Object.hasOwn(updated, 'date_completed'), false);
   }
 });
