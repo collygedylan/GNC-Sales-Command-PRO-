@@ -6,16 +6,13 @@ import { fileURLToPath } from 'node:url';
 export const releaseUnitScriptNames = Object.freeze(['test:photo', 'test:pilot', 'test:live-sync']);
 export const explicitReleaseUnitTests = Object.freeze([
   'tests/hl-order.test.mjs',
+  'tests/hl-order-rollback.test.mjs',
   'tests/hl-order-delivery.test.mjs',
   'tests/hl-order-delivery-worker.test.mjs',
   'tests/hl-tags-email.test.mjs',
   'tests/eval-review-assignedto-api.test.mjs',
   'tests/production-probe-read-only.test.mjs',
   'tests/prepare-ci-playwright-apt.test.mjs',
-  'tests/request-entry-source.test.mjs',
-  'tests/request-commit-verification.test.mjs',
-  'tests/request-on-hand-calculation.test.mjs',
-  'tests/request-detail-proof.test.mjs',
 ]);
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 

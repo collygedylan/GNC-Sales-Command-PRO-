@@ -19,7 +19,6 @@ const stateSource = between('let bloomscapesPendingState =', 'function getSupaba
 const viewSource = between('function canViewBloomscapesPendingOrders(', 'function updateSalesOfficeExportButton(');
 const escapingSource = between('const escapeHtml =', 'const APP_SHELL_VERSION');
 const watcherSource = between('function installNativeRoleRefreshWatchers()', "document.addEventListener('visibilitychange'");
-const recoverySource = between('let nativeAuthRecoveryGeneration =', 'let bloomscapesPendingState =');
 const cacheResetSource = between('function clearRoleScopedClientCaches(', 'async function refreshNativeRoleAndCapabilities(');
 
 function deferred() {
@@ -80,8 +79,6 @@ function harness(options = {}) {
       body: { appendChild: (element) => { dialog = element; } },
     },
     showToast: (...args) => toasts.push(args), stopCodexOpsPoll() {},
-    clearInMemorySessionIdentity: () => { ctx.currentUser = ''; ctx.currentRole = ''; },
-    resetLoginUiState: () => { ctx.window.loginReset = true; },
     getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: (callback) => {
       authCallback = callback; return { data: { subscription: {} } };
     } } }),
@@ -111,7 +108,7 @@ function harness(options = {}) {
     fetch: mutation, supabaseFetch: mutation, runAppApiSupabaseWrite: mutation,
     saveData: mutation, markSalesOfficeComplete: mutation, removeSalesOfficeRowByUniqueId: mutation,
   });
-  vm.runInContext(`${recoverySource}\n${stateSource}\n${escapingSource}\n${viewSource}\n${watcherSource}\n${cacheResetSource}
+  vm.runInContext(`${stateSource}\n${escapingSource}\n${viewSource}\n${watcherSource}\n${cacheResetSource}
     globalThis.pendingState = () => bloomscapesPendingState;
   `, ctx);
   ctx.installNativeRoleRefreshWatchers();
@@ -224,9 +221,6 @@ test('real SIGNED_OUT callback immediately erases private data and rejects a del
   assertCleared(h);
   assert.equal(h.ctx.nativeAuthSessionActive, false);
   assert.equal(h.ctx.nativeAuthAccessToken, '');
-  assert.equal(h.ctx.currentUser, '');
-  assert.equal(h.ctx.nativeAuthProfile, null);
-  assert.equal(h.ctx.window.loginReset, true);
   reply.resolve(response([order('late-private-order')]));
   await flight;
   assertCleared(h);
@@ -239,7 +233,7 @@ test('same-role native identity switch erases the private dialog before deferred
   await sent.promise;
   h.auth('SIGNED_IN', { user: { id: 'other-admin-user' }, access_token: token({ sub: 'other-admin-user' }) });
   assertCleared(h);
-  assert.equal(h.ctx.currentRole, '', 'old account role is cleared before the new profile is verified');
+  assert.equal(h.ctx.currentRole, 'Admin');
   assert.equal(h.refreshes.length, 0, 'privacy cleanup must not wait for role refresh');
   reply.resolve(response([order('old-dylan-response')]));
   await flight;

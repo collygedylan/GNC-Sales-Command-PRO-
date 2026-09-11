@@ -1597,6 +1597,30 @@ async function handleEvalWorkAction(
     }
     if (operation === "create") {
       if (!isEvalWorkManager(session)) return errorResponse("Only Eval Work managers can create assignments.", 403, { code: "eval_work_create_forbidden" });
+      // Sep 9 clients send manual assignees and completion recipients. Any modern
+      // contract field keeps its existing confirmation path, including blank revisions.
+      const hasField = (key: string) => Object.prototype.hasOwnProperty.call(payload, key);
+      const legacyCreate = !hasField("expectedAssignmentRevision") && !hasField("additionalCompletionRecipients")
+        && (hasField("assigneeUsernames") || hasField("assigneeUsername")) && Array.isArray(payload.completionRecipients);
+      if (legacyCreate) {
+        const assignees = await resolveEvalWorkAssignees(payload.assigneeUsernames || payload.assigneeUsername);
+        const assignee = assignees[0];
+        const source = payload.source && typeof payload.source === "object" ? payload.source as Record<string, unknown> : {};
+        const rpcPayload = {
+          actorUsername: actor,
+          createToken: String(payload.createToken || "").trim(),
+          assigneeUsername: assignee.username,
+          assigneeEmail: assignee.email,
+          assignees,
+          instructions: String(payload.instructions || "").trim(),
+          completionRecipients: Array.isArray(payload.completionRecipients) ? payload.completionRecipients : [],
+          source,
+          inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
+        };
+        const { data, error } = await supabase.rpc("create_eval_work_legacy_sep09_v1", { p_payload: rpcPayload });
+        if (error) throw error;
+        return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
+      }
       const source = evalReviewSource(payload);
       // Resolve source AssignedTo and freeze recipients inside the creation transaction.
       // Do not resolve today's assignment here: an idempotent replay must return its original work first.

@@ -101,7 +101,7 @@ test('activation retires only proven old root shell caches and preserves unrelat
   assert.deepEqual(h.calls.deleted, [previous]);
   for (const name of preserved) assert.equal(await (await (await h.caches.open(name)).match('/sentinel')).text(), name);
   assert.equal(h.calls.claims, 1);
-  assert.deepEqual(h.calls.navigated, []);
+  assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
   assert.deepEqual(h.calls.messages.map(call => call.id), ['root']);
 });
 
@@ -196,7 +196,7 @@ test('all live-sync modules remain available offline in the root cache without c
   }
 });
 
-test('writes never navigate active or hidden clients that may be uploading or saving drafts', async () => {
+test('inactive production upgrade behavior remains, but active/current and foreign clients are untouched', async () => {
   const h = harness([
     { id: 'root', url: `${origin}/index.html` },
     { id: 'active', url: `${origin}/`, focused: true, visibilityState: 'visible' },
@@ -205,7 +205,9 @@ test('writes never navigate active or hidden clients that may be uploading or sa
     { id: 'other', url: 'https://another.test/' },
   ]);
   for (const client of h.clients) await h.dispatch('fetch', { clientId: client.id, request: request('/write', { method: 'POST', referrer: '' }) });
-  assert.deepEqual(h.calls.navigated, []);
+  assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
+  assert.match(h.calls.navigated[0].url, /shellv=V2026\.09\.11\.03/);
+  assert.match(h.calls.navigated[0].url, /shellr=photo-egress-r1-scope-r1/);
 });
 
 test('worker control messages only accept production shell clients', async () => {

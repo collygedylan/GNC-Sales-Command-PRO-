@@ -175,3 +175,28 @@ test('REP Home preserves module denials and shows Request loading and retry stat
   }
   app.assertClean();
 });
+
+test('HL Order Home tile requires the active Dylan native profile and disappears on disable or account change', async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!);
+  await app.seed('dylan_collyge', 'ADMIN');
+  await app.assertTiles(adminViews, false);
+  await expect(page.locator('#home-tile-hl-order')).toBeHidden();
+  await page.evaluate(() => window.eval(`
+    nativeAuthSessionActive = true;
+    nativeAuthProfile = { id: 'synthetic-dylan-hl', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false };
+    applyRolePermissions(); renderHome();
+  `));
+  await app.assertTiles([...adminViews, 'hl-order'], false);
+  await expect(page.locator('#home-tile-hl-order')).toBeVisible();
+  await page.evaluate(() => window.eval(`
+    nativeAuthProfile.disabled_at = '2026-09-09T00:00:00Z';
+    applyRolePermissions(); renderHome();
+  `));
+  await app.assertTiles(adminViews, false);
+  await expect(page.locator('#home-tile-hl-order')).toBeHidden();
+  await page.evaluate(() => window.eval('nativeAuthProfile.disabled_at = null'));
+  await app.seed('home_admin_fixture', 'ADMIN');
+  await app.assertTiles(adminViews, false);
+  await expect(page.locator('#home-tile-hl-order')).toBeHidden();
+  app.assertClean();
+});

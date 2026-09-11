@@ -109,12 +109,12 @@ test('Drive matches ignore display filters while retaining base access and appro
     row('visible-f1'), row('wrong-size', { contsize: '#7' }), row('wrong-item', { itemcode: 'OTHER' }),
     row('rep-hidden', { repVisible: false }), row('foreman-hidden', { foremanVisible: false }), row('approval-hidden', { approvalHidden: true })];
   ctx.filteredInventory = []; ctx.driveSearch = 'unrelated'; ctx.selectedDriveSeason = 'F1';
-  ctx.canUseVerifiedProductionData = () => true;
+  ctx.canUseHlOrderVerifiedData = () => true;
   ctx.applyRepU3VisibilityScope = (rows) => rows.filter((entry) => entry.repVisible !== false);
   ctx.applyForemanPriorityRowScope = (rows) => rows.filter((entry) => entry.foremanVisible !== false);
   ctx.shouldHideNotOnInventoryApprovalRowFromInventory = (entry) => entry.approvalHidden === true;
   assert.deepEqual(Array.from(ctx.getHlOrderDriveMatches([row()]), (entry) => entry.unique_id).sort(), ['visible-f1', 'visible-s1', 'visible-zero']);
-  ctx.canUseVerifiedProductionData = () => false;
+  ctx.canUseHlOrderVerifiedData = () => false;
   assert.equal(ctx.getHlOrderDriveMatches([row()]).length, 0);
 });
 
@@ -128,8 +128,8 @@ for (const outcome of ['resolved', 'rejected']) {
     ctx.document = { getElementById: (id) => id === 'hl-tags-send' ? sendButton : null };
     ctx.crypto = { randomUUID: () => '10000000-0000-4000-8000-000000000001' };
     ctx.activeGeneration = 1;
-    ctx.captureLoginSessionOwnership = () => ctx.activeGeneration;
-    ctx.isLoginSessionOwnershipCurrent = (owner) => owner === ctx.activeGeneration;
+    ctx.captureHlOrderOwnership = () => ctx.activeGeneration;
+    ctx.isHlOrderOwnershipCurrent = (owner) => owner === ctx.activeGeneration;
     ctx.supabaseRpc = () => response;
     ctx.renderHlOrder = () => effects.push('render');
     ctx.renderHlBloomSection = () => effects.push('bloom');
@@ -223,8 +223,8 @@ test('saving a stale rendered draft sends its original revision and retains the 
   ctx.fixtureEntry = {source_id: 'soc-a', quantity: 7, status: 'ready', source: row()};
   vm.runInContext(`hlOrderStateData = {revision: 9, draft: [fixtureEntry], actionable_rows: [], orders: [], dispositions: []};`, ctx);
   ctx.crypto = {randomUUID: () => '30000000-0000-4000-8000-000000000001'};
-  ctx.captureLoginSessionOwnership = () => 1;
-  ctx.isLoginSessionOwnershipCurrent = () => true;
+  ctx.captureHlOrderOwnership = () => 1;
+  ctx.isHlOrderOwnershipCurrent = () => true;
   ctx.renderHlOrder = () => {};
   ctx.renderHlBloomSection = () => {};
   ctx.showToast = () => {};

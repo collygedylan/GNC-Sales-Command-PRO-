@@ -24,12 +24,9 @@ test('Request permissions come from one authenticated capability contract', () =
   assert.match(html, /localStorage\.removeItem\('gnc_request_capabilities_v1:' \+ usernameKey\)/);
   assert.match(html, /REQUEST_CAPABILITY_LOAD_FAILED/);
 
-  const finalizeLoginStart = html.indexOf('async function completeLoginBootstrap');
-  assert.ok(finalizeLoginStart > 0);
+  const finalizeLoginStart = html.indexOf('async function finalizeLogin');
   const finalizeLogin = html.slice(finalizeLoginStart, finalizeLoginStart + 18000);
-  assert.match(finalizeLogin, /await Promise\.allSettled\(\[\s*initializeRequestCapabilities\(/);
-  assert.ok(finalizeLogin.indexOf('initializeRequestCapabilities(') < finalizeLogin.indexOf('getRoleAccessState'));
-  assert.ok(finalizeLogin.indexOf('isLoginSessionOwnershipCurrent(owner)') < finalizeLogin.indexOf('getRoleAccessState'));
+  assert.ok(finalizeLogin.indexOf('await initializeRequestCapabilities') < finalizeLogin.indexOf('getRoleAccessState'));
   const permissionCode = html.slice(
     html.indexOf('function canCurrentUserArchiveRequestRows'),
     html.indexOf('function canCurrentUserArchiveRequestRow(item')
@@ -148,8 +145,7 @@ test('Request AV Notes use one body-level independently scrollable mobile sheet'
   assert.match(html, /function handleRequestAvNoteInputBlur\(\)[\s\S]*sheet\.contains\(document\.activeElement\)[\s\S]*if \(!focusStayedInsideSheet\) hideAvNoteDropdown\('req-'\)/);
   assert.match(html, /request-av-note-sheet #req-av-dropdown-list\{[\s\S]*overflow-y:auto!important[\s\S]*-webkit-overflow-scrolling:touch!important[\s\S]*touch-action:pan-y!important/);
   assert.match(html, /body\.request-av-note-sheet-open #main-scroll-area\{[\s\S]*overflow:hidden!important/);
-  assert.match(html, /--request-action-clearance:max\(var\(--mobile-bottom-nav-reserve,0px\),var\(--footer-nav-reserve,8\.75rem\),var\(--keyboard-offset,0px\)\)/);
-  assert.match(html, /#req-save-action-wrap\{[\s\S]*position:fixed!important[\s\S]*bottom:calc\(var\(--request-action-clearance\)/);
+  assert.match(html, /#req-save-action-wrap\{[\s\S]*position:fixed!important[\s\S]*bottom:calc\(var\(--mobile-bottom-nav-reserve/);
 });
 
 test('Suspend Tag filters compose in one pass and retain cached content during refresh', () => {

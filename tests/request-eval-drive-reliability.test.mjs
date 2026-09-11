@@ -1,4 +1,3 @@
-import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -11,7 +10,7 @@ const currentMembershipHealth = read('../supabase/migrations/20260902165500_curr
 const html = read('../index.html');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const observability = read('../supabase/functions/_shared/observability.ts');
-const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
+const performanceWorkflow = read('../.github/workflows/performance-monitor.yml');
 const sqlTest = read('../supabase/tests/request_eval_drive_reliability_test.sql');
 
 test('folder completion recovery binds the unnested request id and is service-only', () => {
@@ -93,10 +92,9 @@ test('AV choices wait for click and Request rendering gets a bounded settle retr
   assert.doesNotMatch(html, /addEventListener\('touchstart', handleAvNoteOptionPressStart/);
   assert.match(html, /request-av-note-sheet #req-av-dropdown-list\{[\s\S]*overflow-y:auto!important[\s\S]*touch-action:pan-y!important/);
   assert.match(html, /body\.request-av-note-sheet-open #main-scroll-area\{[\s\S]*touch-action:pan-y!important/);
-  assert.match(html, /verifyRequestDetailRendered\(reason = '', attempt = 0, context = captureRequestDetailRenderContext\(\)\)/);
+  assert.match(html, /verifyRequestDetailRendered\(reason = '', attempt = 0\)/);
   assert.match(html, /render-verify-retry/);
-  assert.match(html, /scheduleRequestDetailRenderVerification\('render'\)/);
-  assert.match(html, /requestAnimationFrame\(\(\) => \{\s*if \(!isRequestDetailRenderContextCurrent\(context\)\) return;\s*requestAnimationFrame\(\(\) => verifyRequestDetailRendered/);
+  assert.match(html, /requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => verifyRequestDetailRendered/);
 });
 
 test('Request reuse separates reusable evidence from auto-completion and requires an explicit choice', () => {

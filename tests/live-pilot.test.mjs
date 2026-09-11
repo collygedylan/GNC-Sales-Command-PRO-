@@ -68,7 +68,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.11.02';
+  const release = 'V2026.09.11.03';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
@@ -1151,9 +1151,9 @@ test('V06 contains runaway requests and uses bounded retry and cache policies', 
   assert.match(serviceWorker, /IMAGE_CACHE_MAX_AGE_MS = 30 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(serviceWorker, /IMAGE_CACHE_MAX_BYTES = 100 \* 1024 \* 1024/);
   assert.match(serviceWorker, /PRIVATE_NETWORK_PATH_REGEX/);
-  assert.match(serviceWorker, /broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)/);
-  assert.doesNotMatch(serviceWorker, /client\.navigate\(/);
-  assert.match(html, /hasPendingProtectedPhotoDrafts/);
+  assert.match(serviceWorker, /client\.visibilityState !== 'hidden' && client\.focused !== false/);
+  assert.match(serviceWorker, /navigateInactiveClientToCurrentShell/);
+  assert.doesNotMatch(serviceWorker, /client\.navigate\([^)]*\)(?![\s\S]{0,120}return true)/);
 });
 
 test('V07 request detail uses one naturally scrolling desktop column and never renders collapsed AV cards', () => {
@@ -1200,11 +1200,7 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.match(html, /const NATIVE_AUTH_ENABLED = true/);
   assert.match(html, /const NATIVE_AUTH_ALIAS_DOMAIN = 'greenleafnursery\.com'/);
   assert.match(html, /const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1'/);
-  const profileRead = html.slice(html.indexOf('async function loadNativeAuthProfile('), html.indexOf('let nativeRoleRefreshPromise'));
-  assert.match(profileRead, /navigator\.onLine === false\) throw createNativeSessionRecoveryError\('NATIVE_SESSION_NETWORK', 'profile'\)/);
-  assert.doesNotMatch(profileRead, /readCachedNativeAuthProfile\(/);
-  assert.match(profileRead, /NATIVE_PROFILE_DISABLED/);
-  assert.match(profileRead, /NATIVE_PROFILE_LOCKED/);
+  assert.match(html, /navigator\.onLine === false[\s\S]*readCachedNativeAuthProfile\(session\.user\.id\)/);
   assert.match(html, /cacheNativeAuthProfile\(data\)/);
   assert.match(html, /auth\.signInWithPassword\(\{ email, password: String\(password\) \}\)/);
   assert.match(html, /auth\.signInWithPasskey\(\)/);

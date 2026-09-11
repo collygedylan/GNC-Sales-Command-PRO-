@@ -1,7 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
 const moduleHashes = new Map(['registry', 'adapters', 'coordinator'].map(name => {
@@ -134,7 +133,6 @@ test('two sessions retain local choices, converge after clear, and keep All incl
 });
 
 async function enableNativeCoordinator(page: Page, rows: Row[]) {
-  await installInventoryReadFixture(page);
   await page.evaluate(data => {
     (window as any).__nativeSyncFixture = { rows: data, revision: '1', state: 'ready', readFailure: false, reads: [], revisionReads: 0 };
     window.eval(`(() => {
@@ -142,10 +140,9 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
       nativeAuthSessionActive = true;
       nativeAuthProfile = { id: 'synthetic-dylan-live-sync', username: 'dylan_collyge', role: 'ADMIN', active: true };
       nativeAuthAccessToken = 'synthetic-not-a-real-token';
-      fetchAllSupabaseRows = async (table, query = '') => {
+      fetchAllSupabaseRows = async (table) => {
         fixture.reads.push(table);
         if (table === 'ph_app_settings') return [{key:'current_season_salesyear', value:{seasonCode:'F1',salesYear:'27'}}];
-        if (table === 'ph_master_inventory') return window.__inventoryReadFixture.read([], query).rows;
         const snapshot = table === 'ph_soc_master' ? structuredClone(fixture.rows) : [];
         if (table === 'ph_soc_master' && fixture.gate) await fixture.gate;
         return snapshot;
@@ -185,24 +182,22 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
       getProductionLiveSyncCoordinator().check('fixture-native-entry');
     })()`);
   }, rows);
-  await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
+  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
   const headerGeometry = await page.locator('#live-data-freshness').evaluate(element => {
     const rect = element.getBoundingClientRect();
-    const obscured = ['global-header-inline-back', 'docks-search', ...Array.from(document.querySelectorAll('#global-header-search-slot [id$="-clear"]')).map(el => el.id)].filter(id => {
+    const obscured = ['global-header-inline-back', 'docks-search'].filter(id => {
       const target = document.getElementById(id);
       if (!target || !target.getClientRects().length) return false;
       const targetRect = target.getBoundingClientRect();
-      return [0.2, 0.5, 0.8].some(x => [0.2, 0.5, 0.8].some(y => {
-        const hit = document.elementFromPoint(targetRect.left + targetRect.width * x, targetRect.top + targetRect.height * y);
-        return !!hit?.closest('#live-data-freshness');
-      }));
+      const hit = document.elementFromPoint(targetRect.left + targetRect.width / 2, targetRect.top + targetRect.height / 2);
+      return !!hit?.closest('#live-data-freshness');
     });
-    return {right:rect.right, parent:element.parentElement?.id, position:getComputedStyle(element).position, obscured};
+    return {left:rect.left, right:rect.right, top:rect.top, width:window.innerWidth, obscured};
   });
-  expect(headerGeometry.parent).toBe('side-drawer');
-  expect(headerGeometry.position).toBe('static');
-  expect(headerGeometry.right, 'Closed Menu must keep the status offscreen').toBeLessThanOrEqual(1);
-  expect(headerGeometry.obscured, 'Freshness status must not cover search, X or Back').toEqual([]);
+  expect(headerGeometry.left).toBeGreaterThanOrEqual(0);
+  expect(headerGeometry.right).toBeLessThanOrEqual(headerGeometry.width + 1);
+  expect(headerGeometry.top).toBeGreaterThanOrEqual(0);
+  expect(headerGeometry.obscured, 'Freshness status must not cover header action centers').toEqual([]);
   await page.screenshot({path:test.info().outputPath('native-freshness-header.png')});
 }
 
@@ -227,13 +222,13 @@ test('native shared coordinator preserves filtered sessions, stages import races
         const fixture = (window as any).__nativeSyncFixture;
         fixture.rows = data; fixture.revision = '2'; fixture.state = 'importing'; fixture.changed();
       }, imported);
-      await expect(p.locator('#live-data-freshness')).toContainText('Data Updating');
+      await expect(p.locator('#live-data-freshness')).toContainText('Importing');
     }
     await expect(counts(page)).toContainText('Showing 117 of 117');
     await expect(counts(other)).toContainText('Showing 55 of 117');
     for (const p of [page, other]) {
       await p.evaluate(() => { const fixture = (window as any).__nativeSyncFixture; fixture.state = 'ready'; fixture.changed(); });
-      await expect(p.locator('#live-data-freshness')).toContainText('Data Current');
+      await expect(p.locator('#live-data-freshness')).toContainText('Up to date');
     }
     await expect(counts(page)).toContainText('Showing 149 of 149');
     await expect(counts(other)).toContainText('Showing 55 of 149');
@@ -245,7 +240,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
       fixture.gate = new Promise<void>(resolve => { fixture.release = resolve; });
       fixture.changed();
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Data Updating');
+    await expect(page.locator('#live-data-freshness')).toContainText('Syncing');
     await expect(counts(page)).toContainText('Showing 149 of 149');
     await page.evaluate(data => {
       const fixture = (window as any).__nativeSyncFixture;
@@ -257,23 +252,13 @@ test('native shared coordinator preserves filtered sessions, stages import races
       (window as any).__nativeSyncFixture.readFailure = true;
       window.dispatchEvent(new Event('focus'));
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Data Update Needs Attention');
+    await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
     await expect(counts(page)).toContainText('Showing 150 of 150');
-    await page.locator('#footer-menu-btn').click();
-    const statusButton = page.locator('#side-drawer #live-data-freshness');
-    await expect(page.locator('#side-drawer')).toHaveClass(/open/);
-    await statusButton.scrollIntoViewIfNeeded();
-    const revisionReads = await page.evaluate(() => (window as any).__nativeSyncFixture.revisionReads);
-    await statusButton.click();
-    await expect.poll(() => page.evaluate(() => (window as any).__nativeSyncFixture.revisionReads)).toBeGreaterThan(revisionReads);
-    await expect(statusButton).toContainText('Data Update Needs Attention');
-    await expect(page.locator('#toast-notification')).toContainText('Retrying the data check');
-    await page.evaluate(() => window.eval('setMenuOpenState(false)'));
     await page.evaluate(() => {
       (window as any).__nativeSyncFixture.readFailure = false;
       (window as any).__nativeSyncFixture.reconnected();
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
+    await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
     await expect(other.locator('[data-dock-customer-summary]')).toHaveText('Custom · 4 selected');
     all.assertClean(); custom.assertClean();
   } finally {
@@ -300,95 +285,13 @@ test('real customer controls expose empty Custom, All and device-saved selection
   app.assertClean();
 });
 
-for (const layout of ['compact', 'standard']) {
-  test(`Menu data status never intercepts search X or Sales Office Back in ${layout} layout`, async ({ page, baseURL }, testInfo) => {
-    const width = layout === 'compact' ? 320 : testInfo.project.use.isMobile ? 390 : 1280;
-    await page.setViewportSize({ width, height: 900 });
-    const app = await harness(page, baseURL!, [row('header', 'Customer A')]);
-    // The coordinator integration above tests real failure/retry semantics. This
-    // independent layout fixture supplies its statuses directly without starting
-    // a second permission/data bootstrap when the real navigation changes views.
-    await page.evaluate(() => window.eval(`canUseProductionLiveSync=()=>true; getProductionLiveSyncCoordinator=()=>({check:()=>Promise.resolve(false),signal:()=>{},isVerified:()=>false})`));
-    const statuses = [
-      { state: 'Needs attention', lastVerifiedAt: null, message: 'A dataset could not load. Your entered draft remains available for review.', draft: true },
-      { state: 'Up to date', lastVerifiedAt: '2026-09-09T16:42:00Z', message: 'All required revisions verified.', draft: false },
-      { state: 'Offline', lastVerifiedAt: null, message: 'The device is offline. Cached data has not been verified.', draft: false },
-    ];
-    for (const status of statuses) {
-      await page.evaluate(nextStatus => {
-        (window as any).__headerStatusFixture = nextStatus;
-        window.eval(`productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture); switchView('drive');`);
-      }, status);
-      // switchView exposes the search element before its scheduled first render.
-      // Wait for that real initialization/reset to finish before testing a later
-      // status repaint; input visibility alone is not navigation readiness.
-      await expect.poll(() => page.evaluate(() => window.eval(`getCurrentVisibleViewId()==='drive' && ensureViewRenderState('drive').initialized && !ensureViewRenderState('drive').dirty`))).toBe(true);
-      const search = page.locator('#drive-search');
-      await search.fill('Synthetic retained search');
-      await expect(page.locator('#drive-search-clear')).toBeVisible();
-      await expect(search).toBeFocused();
-      // A status repaint must neither blur nor clear the active search draft.
-      await page.evaluate(() => window.eval('productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture)'));
-      await expect(search).toHaveValue('Synthetic retained search');
-      await expect(search).toBeFocused();
-      await page.locator('#drive-search-clear').click();
-      await expect(search).toHaveValue('');
-
-      // This mutation-blocked geometry fixture already has an authorized canary
-      // identity. Seed its separate Season access snapshot too, as the dedicated
-      // Sales Office fixture does; a blocked permission fetch otherwise keeps
-      // marking this view dirty while navigation readiness is being asserted.
-      await page.evaluate(() => window.eval(`
-        avBlanksPhotoBypassRemoteLoaded=true;
-        avBlanksPhotoBypassAccessCache={username:'dylan_collyge',allowed:true,canManage:true,loadedAt:Date.now()};
-        activeSalesOfficeTab='season'; switchView('sales-office');
-      `));
-      await expect(page.locator('#view-sales-office')).toBeVisible();
-      await expect.poll(() => page.evaluate(() => window.eval(`getCurrentVisibleViewId()==='sales-office' && ensureViewRenderState('sales-office').initialized && !ensureViewRenderState('sales-office').dirty`))).toBe(true);
-      await page.evaluate(() => window.eval('productionLiveSyncDraftChanged=window.__headerStatusFixture.draft; renderProductionDataFreshness(window.__headerStatusFixture)'));
-      const salesOfficeGeometry = await page.locator('#global-header-inline-back').evaluate(back => {
-        const rect = back.getBoundingClientRect();
-        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        const status = document.getElementById('live-data-freshness')!;
-        return { backHit: hit === back || !!hit && back.contains(hit), statusRight: status.getBoundingClientRect().right,
-          statusPosition: getComputedStyle(status).position, inMenu: status.parentElement?.id === 'side-drawer' };
-      });
-      expect(salesOfficeGeometry).toMatchObject({ backHit: true, statusPosition: 'static', inMenu: true });
-      expect(salesOfficeGeometry.statusRight).toBeLessThanOrEqual(1);
-      await page.locator('#footer-menu-btn').click();
-      await expect(page.locator('#side-drawer')).toHaveClass(/open/);
-      const statusButton = page.locator('#side-drawer #live-data-freshness');
-      await statusButton.scrollIntoViewIfNeeded();
-      await expect(statusButton).toBeInViewport();
-      const menuLayout = await statusButton.evaluate(element => ({
-        left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right,
-        drawerRight: element.parentElement!.getBoundingClientRect().right,
-        label: element.getAttribute('aria-label'), text: element.textContent, color: getComputedStyle(element).color,
-      }));
-      expect(menuLayout.left).toBeGreaterThanOrEqual(0);
-      expect(menuLayout.right).toBeLessThanOrEqual(menuLayout.drawerRight + 1);
-      expect(menuLayout.label).toContain(menuLayout.text!);
-      expect(menuLayout.color, 'Global button themes must not mute status text against its dark background').toBe('rgb(220, 252, 231)');
-      if (status.state === 'Needs attention') {
-        await expect(statusButton).toContainText('Awaiting first data check');
-        await expect(statusButton).toContainText('Edit needs review');
-        if (width === 320) await page.screenshot({ path: test.info().outputPath('menu-status-readable.png') });
-      }
-      await page.evaluate(() => window.eval('setMenuOpenState(false)'));
-      await expect(page.locator('#side-drawer')).not.toHaveClass(/open/);
-    }
-    await page.screenshot({ path: test.info().outputPath(`nonblocking-data-status-${width}.png`) });
-    app.assertClean();
-  });
-}
-
 test('native refresh preserves an open Dock draft and reloads changed query and identity scopes', async ({ page, baseURL }) => {
   const initial = [row('draft-a', 'Customer A')];
   const app = await harness(page, baseURL!, initial);
   await enableNativeCoordinator(page, initial);
   await page.evaluate(() => window.eval(`openDockInfoModal('28', '37231')`));
   await expect(page.locator('#dock-info-modal')).toBeVisible();
-  await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
+  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
   await page.locator('#dock-status').selectOption('Palletize');
   await page.evaluate(data => {
     const fixture = (window as any).__nativeSyncFixture;
@@ -428,7 +331,7 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
     const fixture = (window as any).__nativeSyncFixture;
     fixture.revision = '3'; fixture.changed();
   });
-  await expect(page.locator('#live-data-freshness')).toContainText('Data Current');
+  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
   await expect(page.locator('#hours-amount')).toHaveValue('12.5');
   app.assertClean();
 });

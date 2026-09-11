@@ -96,22 +96,24 @@ test('hosted health fails on retry-storm thresholds and the isolated CI includes
   assert.match(performanceWorkflow, /drive_evidence_retry_storm_test\.sql/);
 });
 
-test('all shell references release V2026.09.11.02', () => {
+test('all shell references release V2026.09.11.03', () => {
   const release = `V${JSON.parse(read('../package.json')).version}`;
-  assert.equal(release, 'V2026.09.11.02');
+  assert.equal(release, 'V2026.09.11.03');
   assert.equal(html.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1], release);
   assert.equal(serviceWorker.match(/const APP_SHELL_BUILD = '([^']+)'/)?.[1], release);
   assert.equal(JSON.parse(read('../manifest.json')).version, release);
   assert.doesNotMatch(html, /V2026\.09\.04\.02/);
 });
 
-test('shell activation resumes when editing is idle without interrupting hidden photo saves', () => {
+test('shell activation resumes when editing is idle and upgrades inactive legacy clients', () => {
   assert.match(html, /if \(!isShellReloadBlocked\(\)\) return false;/);
   assert.match(html, /shell-deferred-reload-applying/);
   assert.doesNotMatch(html, /shell-deferred-reload-held/);
   assert.match(html, /scheduleDeferredShellReloadAfterTyping\(1600\)/);
   assert.match(html, /cancelAllDriveEvidenceSaves\('shell-activation'\)/);
-  assert.match(serviceWorker, /GNC_SHELL_ACTIVATED/);
-  assert.doesNotMatch(serviceWorker, /client\.navigate\(|navigateInactiveClient/);
-  assert.match(html, /hasPendingProtectedPhotoDrafts\(\)/);
+  assert.match(serviceWorker, /navigateInactiveClientsToCurrentShell\('sw-activated'\)/);
+  assert.match(serviceWorker, /navigateInactiveClientToCurrentShell\(event\.clientId, 'inactive-network-activity'\)/);
+  assert.match(serviceWorker, /client\.visibilityState !== 'hidden' && client\.focused !== false/);
+  assert.match(serviceWorker, /clientUrl\.searchParams\.get\('shellr'\) === APP_SHELL_RUNTIME_REVISION/);
+  assert.match(serviceWorker, /shellUrl\.searchParams\.set\('shellr', APP_SHELL_RUNTIME_REVISION\)/);
 });

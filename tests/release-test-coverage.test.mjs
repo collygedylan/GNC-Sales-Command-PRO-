@@ -87,16 +87,13 @@ test('release unit union preserves every existing script and explicit gate exact
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
     'tests/hl-order.test.mjs',
+    'tests/hl-order-rollback.test.mjs',
     'tests/hl-order-delivery.test.mjs',
     'tests/hl-order-delivery-worker.test.mjs',
     'tests/hl-tags-email.test.mjs',
     'tests/eval-review-assignedto-api.test.mjs',
     'tests/production-probe-read-only.test.mjs',
     'tests/prepare-ci-playwright-apt.test.mjs',
-    'tests/request-entry-source.test.mjs',
-    'tests/request-commit-verification.test.mjs',
-    'tests/request-on-hand-calculation.test.mjs',
-    'tests/request-detail-proof.test.mjs',
   ]);
   const priorFiles = releaseUnitScriptNames.flatMap(name =>
     [...manifest.scripts[name].matchAll(/tests\/[\w./-]+\.test\.(?:mjs|cjs|js)/g)].map(match => match[0]));
@@ -213,7 +210,7 @@ for (const [name, spec, projects] of compiledSuites) {
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
     if (['verified-data-cache', 'request-photo'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
-    else assert.match(readFileSync(path.join(root, files[0]), 'utf8'), /\/_site\//);
+    else assert.match(config.webServer.command, /startReleaseTestServer/);
   });
 }
 
@@ -255,4 +252,144 @@ test('Block Clearing retains its lexical fixture bridge for source and compiled 
   assert.match(source, /app-script-source/);
   assert.match(source, /\$\{start\}\$\{source\}\$\{lexicalTestBridge\}\$\{end\}/);
   assert.doesNotMatch(source, /writeFile|copyFile/);
+});
+
+// Explicit rollback coverage contract: every original product test stays in the
+// release union, and browser substitutions preserve complete executable bodies.
+const september9ProductScripts = {
+  "test:photo": "node --test tests/photo-egress.test.mjs tests/photo-history.test.mjs tests/service-worker-isolation.test.mjs",
+  "test:pilot": "node --test --test-concurrency=1 tests/docks-filter-sync.test.mjs tests/live-sync-read-boundary.test.mjs tests/live-sync-registry-coverage.test.mjs tests/live-sync-coordinator.test.mjs tests/live-sync-adapters.test.mjs tests/suspend-tag-completion.test.mjs tests/suspend-tag-import.test.mjs tests/bloomscapes-pending-view.test.mjs tests/drive-evidence-storm.test.mjs tests/live-pilot.test.mjs tests/scroll-performance.test.mjs tests/eval-reports-engine.test.mjs tests/reclass-inquiry.test.mjs tests/drive-reclass-protected.test.mjs tests/item-inquiry-coverage.test.mjs tests/eval-work.test.mjs tests/eval-work-folder-v2.test.mjs tests/eval-report2-completion-routing.test.mjs tests/request-eval-drive-reliability.test.mjs tests/request-option-append.test.mjs tests/request-completion-resilience.test.mjs tests/shear-location-inquiry.test.mjs tests/location-work.test.mjs tests/dock-trip-status.test.mjs tests/block-clearing-pdf-backend.test.mjs tests/apps-script-sync.test.mjs tests/apps-script-lifecycle.test.mjs tests/request-ios-swipe.test.mjs tests/transactions-keyed.test.mjs tests/pikes-orders.test.mjs tests/stine-lumber-orders.test.mjs tests/season-sales-office-staging.test.mjs tests/season-sales-office-completion.test.mjs tests/season-sales-office-av-note.test.mjs tests/request-season-sales-office-refresh.test.mjs tests/post-deployment-canary.test.mjs tests/po-management-native-auth.test.mjs tests/access-control-audit.test.mjs tests/kayla-admin-drive-flyer.test.mjs tests/sales-marketing-access.test.mjs tests/codex-operations.test.mjs",
+  "test:live-sync": "node --test tests/live-sync-coordinator.test.mjs tests/live-sync-read-boundary.test.mjs tests/live-sync-registry-coverage.test.mjs tests/live-sync-adapters.test.mjs tests/docks-filter-sync.test.mjs"
+};
+const september9BrowserBodies = [
+  [
+    "tests/login-photo-repair.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "phone login keeps both fields and the submit action visible"
+  ],
+  [
+    "tests/login-photo-repair.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Kayla receives standard Admin Request, Drive, and photo access"
+  ],
+  [
+    "tests/login-photo-repair.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Request AV sheet preserves swipe intent before selecting a later option"
+  ],
+  [
+    "tests/eval-report2-header-filters.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view"
+  ],
+  [
+    "tests/eval-report2-header-filters.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Eval Reports #2 verifies a named user against current assignments before showing cards"
+  ],
+  [
+    "tests/eval-report2-header-filters.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Eval Reports #2 manager search refreshes while the search field remains active"
+  ],
+  [
+    "tests/request-entry-source.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Request rep selection always renders customer choices or a recoverable error state"
+  ],
+  [
+    "tests/request-entry-source.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Queue tab changes load only the canonical datasets needed by that tab"
+  ],
+  [
+    "tests/request-entry-source.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk"
+  ],
+  [
+    "tests/request-on-hand-calculation.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Request quantity and spec fields stay high-contrast and responsive on phones"
+  ],
+  [
+    "tests/request-on-hand-calculation.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Request reusable evidence prompt accepts partial exact-row data without auto-completing"
+  ],
+  [
+    "tests/request-photo-completion.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Kayla receives standard Admin Request, Drive, and photo access"
+  ],
+  [
+    "tests/request-photo-completion.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray"
+  ],
+  [
+    "tests/request-photo-completion.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Request AV sheet preserves swipe intent before selecting a later option"
+  ],
+  [
+    "tests/request-photo-completion.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Request reusable evidence prompt accepts partial exact-row data without auto-completing"
+  ],
+  [
+    "tests/review-assignedto.e2e.spec.ts",
+    "tests/eval-work.e2e.spec.ts",
+    "Reclass Send as Review uses the searchable multi-evaluator Eval roster on phones"
+  ],
+  [
+    "tests/review-assignedto.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Eval assignment dropdown exposes the full managed roster and composite key"
+  ],
+  [
+    "tests/review-assignedto.e2e.spec.ts",
+    "tests/responsive-workflows.e2e.spec.ts",
+    "Phone Drive Reclass skips the recipient picker and strips browser recipient fields"
+  ]
+];
+const september9BrowserFixtures = [
+  [
+    "tests/task-av-blanks.e2e.spec.ts",
+    "tests/sales-marketing-tasks.e2e.spec.ts"
+  ],
+  [
+    "tests/session-recovery.e2e.spec.ts",
+    "tests/home-role-visibility.e2e.spec.ts"
+  ],
+  [
+    "tests/verified-data-cache.e2e.spec.ts",
+    "tests/docks-filter.e2e.spec.ts"
+  ]
+];
+
+test('September 9 product scripts preserve their complete baseline safety file sets', () => {
+  for (const [name, command] of Object.entries(september9ProductScripts)) {
+    assert.deepEqual(testFilesFromPackageScript(name, manifest.scripts[name]), testFilesFromPackageScript(name, command), name);
+  }
+});
+
+test('rollback browser lanes preserve baseline assertions and fixture implementations without new skips', () => {
+  const read = file => readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
+  for (const [destination, source, title] of september9BrowserBodies) {
+    const original = read(source);
+    const ast = ts.createSourceFile(source, original, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const statement = ast.statements.find(node => ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)
+      && node.expression.expression.getText(ast) === 'test' && node.expression.arguments[0]?.text === title);
+    assert.ok(statement, title);
+    assert.ok(read(destination).includes(statement.getText(ast)), destination + ': entire baseline body for ' + title);
+  }
+  for (const [destination, source] of september9BrowserFixtures) {
+    assert.ok(read(destination).includes(read(source).trim()), destination + ': complete baseline fixture');
+  }
+  for (const destination of ['tests/login-photo-repair.e2e.spec.ts', 'tests/request-photo-completion.e2e.spec.ts']) {
+    assert.ok(read(destination).includes(read('tests/photo-egress.e2e.spec.ts').replace(/^import[^\n]*\n/, '').trim()), destination + ': photo assertions and original setup');
+  }
+  const replacements = new Set([...september9BrowserBodies, ...september9BrowserFixtures].map(([destination]) => destination));
+  for (const file of replacements) assert.doesNotMatch(read(file), /\btest\.(?:skip|fixme|only)\s*\(/, file);
 });

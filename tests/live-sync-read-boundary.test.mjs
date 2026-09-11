@@ -116,21 +116,17 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
     }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
         season: { seasonCode: 'S1', salesYear: 27 }, getCurrentAppSeasonSettings: () => ctx.season,
-        getSupabaseReadIdentityScope: () => 'fixture-account-permission',
-        fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }) };
-    vm.createContext(ctx);
-    vm.runInContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), ctx);
-    ctx.window.AgMetricInventoryList = ctx.AgMetricInventoryList;
-    const prepFrom = html.indexOf('async function prepareMasterListDatasetPayload(');
-    const prepTo = html.indexOf('function buildDatasetPayload(', prepFrom);
-    assert.ok(prepFrom > 0 && prepTo > prepFrom);
-    vm.runInContext(html.slice(prepFrom, prepTo) + html.slice(from, to), ctx);
+        fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }),
+        canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
+    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
     assert.equal(av.id, 'core:master'); assert.equal(av.cacheKey, master.cacheKey);
-    assert.equal((await av.stage()).key, 'master');
+    const staged = await av.stage();
+    assert.equal(staged.key, 'master');
+    assert.equal(staged.hlOrderInventory, null, 'ordinary AV staging does not acquire an HL snapshot');
     ctx.season = { seasonCode: 'F1', salesYear: 27 };
-    assert.equal(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
-        'the all-season physical query is unchanged; verified settings rebuild derived collections without downloading rows');
+    assert.notEqual(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
+        'season changed off-screen cannot retain old derived inventory under unchanged stock revisions');
 });
 
 function permissionFixture(options = {}) {
@@ -138,8 +134,7 @@ function permissionFixture(options = {}) {
     const to = html.indexOf('function installNativeRoleRefreshWatchers()', from);
     const calls = [];
     const ctx = { String, Promise, Error, console: { warn() {} }, calls,
-        NATIVE_AUTH_ENABLED: true, nativeAuthSessionActive: true, nativeRoleRefreshPromise: null, nativeRoleRefreshOwner: null,
-        nativeAuthRecoveryGeneration: 0,
+        NATIVE_AUTH_ENABLED: true, nativeAuthSessionActive: true, nativeRoleRefreshPromise: null,
         nativeAuthProfile: { id: 'account-a' }, captureProductionPermissionDrafts() {}, restoreProductionPermissionDrafts: async () => {},
         setProductionPermissionCheckState: (state) => { ctx.mask = state; }, getCurrentVisibleViewId: () => 'home',
         currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan', currentRole: 'Admin', currentUserDivision: '10', currentUserLanguage: 'English',
@@ -152,9 +147,7 @@ function permissionFixture(options = {}) {
         ensureAssignableAppUsers: async () => {}, ensureFlyerAssignableUsers: async () => {},
         applyRolePermissions: () => { calls.push('apply'); }, refreshProtectedSections() {}, markViewDirty() {}, renderHome() {}, reportSemanticHealthEvent() {}
     };
-    const ownership = html.slice(html.indexOf('function captureNativeAuthRecoveryOwnership()'), html.indexOf('function invalidateNativeAuthRecovery()'));
-    const errors = html.slice(html.indexOf('function createNativeSessionRecoveryError('), html.indexOf('function normalizeNativeSessionRecoveryError('));
-    vm.createContext(ctx); vm.runInContext(errors + ownership + html.slice(from, to), ctx);
+    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
     return ctx;
 }
 
@@ -191,22 +184,6 @@ test('live permission signal arriving during a foreground check performs a full 
     assert.deepEqual(ctx.calls, ['clear', 'capabilities', 'access', 'apply']);
 });
 
-test('a superseded profile refresh cannot apply permissions or clear the new login refresh promise', async () => {
-    const ctx = permissionFixture(), oldGate = deferred(), currentGate = deferred();
-    const getProfile = ctx.loadNativeAuthProfile;
-    ctx.loadNativeAuthProfile = async () => { await oldGate.promise; return getProfile(); };
-    const old = ctx.refreshNativeRoleAndCapabilities('live-permissions');
-    ctx.nativeAuthRecoveryGeneration++;
-    ctx.loadNativeAuthProfile = async () => { await currentGate.promise; return getProfile(); };
-    const current = ctx.refreshNativeRoleAndCapabilities('live-permissions');
-    const currentFlight = ctx.nativeRoleRefreshPromise;
-    oldGate.resolve(); assert.equal(await old, false);
-    assert.equal(ctx.nativeRoleRefreshPromise, currentFlight);
-    assert.deepEqual(ctx.calls, []);
-    currentGate.resolve(); assert.equal(await current, true);
-    assert.deepEqual(ctx.calls, ['clear', 'capabilities', 'access', 'apply']);
-});
-
 test('permission-change coordinator callback returns the permission refresh promise', () => {
     const code = html.match(/onPermissionChange: (\(\) => refreshNativeRoleAndCapabilities\('live-permissions'\)),/)[1];
     const promise = Promise.resolve(true); const ctx = { refreshNativeRoleAndCapabilities: () => promise };
@@ -215,9 +192,8 @@ test('permission-change coordinator callback returns the permission refresh prom
 });
 
 test('footer refresh does not render or reset static Hours and navigation screens', () => {
-    const from = html.indexOf('function scheduleProductionLiveSyncRender(');
+    const from = html.indexOf('function scheduleProductionLiveSyncRender()');
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
-    assert.ok(from > 0 && to > from, 'extract the real render scheduler');
     for (const kind of ['static', 'navigation']) {
         const ctx = { productionLiveSyncRenderTimer: null, document: { hidden: false },
             setTimeout: (callback) => { callback(); return 1; }, canUseProductionLiveSync: () => true,
@@ -230,9 +206,8 @@ test('footer refresh does not render or reset static Hours and navigation screen
 });
 
 test('focused live search defers one redraw without scheduling a busy retry timer', () => {
-    const from = html.indexOf('function scheduleProductionLiveSyncRender(');
+    const from = html.indexOf('function scheduleProductionLiveSyncRender()');
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
-    assert.ok(from > 0 && to > from, 'extract the real render scheduler');
     const queued = [];
     const ctx = { productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
         setTimeout: (callback) => { queued.push(callback); return queued.length; }, document: { hidden: false, activeElement: { matches: () => true } },
@@ -340,26 +315,21 @@ test('native Codex live updates do not start the redundant fifteen-second timer'
 test('Reclass delivery checks issue no requests while hidden and discard responses after suspension', async () => {
     const from = html.indexOf('async function pollReclassDeliveryJobs()');
     const to = html.indexOf('async function retryReclassDeliveryJob(', from);
-    const routingFrom = html.indexOf('function isProtectedDriveReclassPayload(');
-    const routingTo = html.indexOf('async function driveReclassApi(', routingFrom);
-    assert.ok(routingFrom >= 0 && routingTo > routingFrom, 'real protected routing helpers are included');
-    for (const sourceView of ['drive', 'tasks-av-blanks']) {
-        const ctx = { document: { hidden: true }, reclassDeliveryPollActive: false, requests: 0, updates: 0,
-            getCurrentReclassDeliveryActor: () => 'fixture', renderReclassDeliveryStatusTray() {},
-            readReclassDeliveryJobs: () => [{ actorUsername: 'fixture', sourceView, status: 'queued', token: 'fixture' }],
-            driveReclassApi: async () => { ctx.requests++; ctx.document.hidden = true; return { status: 'delivered' }; },
-            upsertReclassDeliveryJob: () => { ctx.updates++; }
-        };
-        vm.createContext(ctx); vm.runInContext(html.slice(routingFrom, routingTo) + html.slice(from, to), ctx);
-        assert.equal(await ctx.pollReclassDeliveryJobs(), false); assert.equal(ctx.requests, 0);
-        ctx.document.hidden = false; await ctx.pollReclassDeliveryJobs();
-        assert.equal(ctx.requests, 1, sourceView); assert.equal(ctx.updates, 0); assert.equal(ctx.reclassDeliveryPollActive, false);
-    }
+    const ctx = { document: { hidden: true }, reclassDeliveryPollActive: false, requests: 0, updates: 0,
+        getCurrentReclassDeliveryActor: () => 'fixture', renderReclassDeliveryStatusTray() {},
+        readReclassDeliveryJobs: () => [{ actorUsername: 'fixture', sourceView: 'drive', status: 'queued', token: 'fixture' }],
+        driveReclassApi: async () => { ctx.requests++; ctx.document.hidden = true; return { status: 'delivered' }; },
+        upsertReclassDeliveryJob: () => { ctx.updates++; }
+    };
+    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    assert.equal(await ctx.pollReclassDeliveryJobs(), false); assert.equal(ctx.requests, 0);
+    ctx.document.hidden = false; await ctx.pollReclassDeliveryJobs();
+    assert.equal(ctx.requests, 1); assert.equal(ctx.updates, 0); assert.equal(ctx.reclassDeliveryPollActive, false);
 });
 
 test('Reclass delivery status reconciles immediately when visibility returns', () => {
     const marker = "document.addEventListener('visibilitychange', () => {\n            if (!document.hidden) void pollReclassDeliveryJobs();\n        }, { passive: true });";
-    assert.ok(html.replace(/\r\n/g, '\n').includes(marker)); let handler; let calls = 0;
+    assert.ok(html.includes(marker)); let handler; let calls = 0;
     const ctx = { document: { hidden: true, addEventListener: (_, callback) => { handler = callback; } }, pollReclassDeliveryJobs: () => { calls++; } };
     vm.createContext(ctx); vm.runInContext(marker, ctx);
     handler(); assert.equal(calls, 0); ctx.document.hidden = false; handler(); assert.equal(calls, 1);

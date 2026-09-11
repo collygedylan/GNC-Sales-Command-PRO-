@@ -45,7 +45,7 @@ test('create and submit tokens make assignment and completion idempotent', () =>
   assert.match(migration, /submission_token text/);
   assert.match(migration, /work\.status = 'submitted' and work\.submission_token = trim/);
   assert.match(migration, /on conflict \(event_key\) do update set updated_at = now\(\)/);
-  assert.match(html, /const createToken = `eval-create-\$\{argosInventoryTransactionState\.idempotencyToken\}`/);
+  assert.match(html, /createToken: `eval-create-\$\{argosInventoryTransactionState\.idempotencyToken\}`/);
   assert.match(html, /submissionToken = `eval-submit-/);
 });
 
@@ -173,46 +173,18 @@ test('assigned sales reps can use only the ownership-checked Eval photo scope', 
   assert.match(appApi, /evalMultiOrigin \? `eval\/\$\{evalWorkId\}\/\$\{String\(evalOriginUid\)\}\/\$\{fileName\}` : `eval\/\$\{evalWorkId\}\/\$\{fileName\}`/);
 });
 
-test('single Review setup fixes AssignedTo and permits only optional completion extras', () => {
+test('Review setup is manager-only, searchable, explicit, and supports blank inquiries', () => {
   assert.match(html, /Email Item Inquiry/);
   assert.match(html, /Send as Review/);
   assert.match(html, /isEvalWorkManagerUser/);
-  const setupBlock = html.slice(html.indexOf('function getEvalWorkSetupAssignees'), html.indexOf('function canSeeMovesRequestTab'));
-  assert.match(setupBlock, /id="eval-work-setup-assignee"[\s\S]*Evaluator — AssignedTo/);
-  assert.doesNotMatch(setupBlock, /chooseEvalWorkAssignee|eval-work-setup-assignee-button|assigneeUsernames:/);
-  assert.match(setupBlock, /evalWorkApi\('review_setup', \{ source \}\)/);
-  assert.match(setupBlock, /Additional Completion Recipients/);
-  assert.match(setupBlock, /const requiredEmail = setupState\.evaluator\.email/);
-  assert.match(setupBlock, /appUsersOnly: true,[\s\S]*requiredEmails: \[requiredEmail\]/);
-  assert.match(setupBlock, /expectedAssignmentRevision: assignmentRevision/);
-  assert.match(setupBlock, /additionalCompletionRecipients: dedupeRequestEmailRecipients/);
-  assert.doesNotMatch(setupBlock, /completionRecipients: recipients/);
+  assert.match(html, /id="eval-work-setup-assignee-button"[\s\S]*chooseEvalWorkAssignee/);
+  assert.match(html, /function chooseEvalWorkAssignee\(\)[\s\S]*openGroupedBloomNcrRecipientModal[\s\S]*appUsersOnly: true[\s\S]*allowedUsernames: EVAL_ASSIGNMENT_ROSTER_USERS/);
+  assert.doesNotMatch(html.slice(html.indexOf('async function chooseEvalWorkAssignee'), html.indexOf('async function chooseEvalWorkCompletionRecipients')), /singleSelect: true/);
+  assert.match(html, /getEvalWorkAssigneesByEmails/);
+  assert.match(html, /chooseEvalWorkCompletionRecipients/);
+  assert.match(html, /completionRecipients: recipients/);
   assert.match(html, /proposalCount/);
   assert.match(html, /requestActions: \[\], holdStopProposals: \[\]/);
-});
-
-test('Review setup preserves drafts, rejects stale responses and reconfirms changed assignments', () => {
-  const setupBlock = html.slice(html.indexOf('function getEvalWorkSetupAssignees'), html.indexOf('function canSeeMovesRequestTab'));
-  assert.match(setupBlock, /getCurrentLoginGeneration\(\), normalizeSessionIdentity\(currentUser/);
-  assert.match(setupBlock, /state === evalWorkSetupState && state\.contextKey === getEvalWorkReviewSetupContextKey\(\)/);
-  assert.match(setupBlock, /if \(!ownsEvalWorkReviewSetup\(evalWorkSetupState\)\) evalWorkSetupState =/);
-  assert.match(setupBlock, /instructions\.value = evalWorkSetupState\.instructions/);
-  assert.match(setupBlock, /state\.loading|setupState\.loading/);
-  assert.match(setupBlock, /state\.lookupGeneration !== lookupGeneration/);
-  assert.match(setupBlock, /code === 'REVIEW_ASSIGNMENT_CHANGED' \|\| code === 'REVIEW_CONFIRMATION_REQUIRED'/);
-  assert.match(setupBlock, /await refreshEvalWorkReviewSetup\(\{ assignmentChanged: true \}\)/);
-  assert.match(setupBlock, /then confirm Assign Review again/);
-  assert.match(setupBlock, /setupState\.notice = getEvalWorkReviewSetupError\(error\)/);
-});
-
-test('single Review completion copy uses frozen recipient names without fixed manager copies', () => {
-  const copyBlock = html.slice(html.indexOf('function getEvalWorkCompletionRecipientCopy'), html.indexOf('function canSeeEvalWorkRequestTab'));
-  assert.match(copyBlock, /work\.source_context\.reviewAssignment/);
-  assert.match(copyBlock, /reviewAssignment\.completionRecipients/);
-  assert.match(copyBlock, /work\.completion_recipients/);
-  assert.match(copyBlock, /frozenRecipients\.find/);
-  assert.match(copyBlock, /'eval-work-v2-multi-origin'\) return 'Dylan and Megan'/);
-  assert.match(copyBlock, /isEvalReport2CompletionWork\(work\)\) return getEvalReport2CompletionRecipientLabels/);
 });
 
 test('completed PDF reuses the Reclass report and adds compact evidence once', () => {

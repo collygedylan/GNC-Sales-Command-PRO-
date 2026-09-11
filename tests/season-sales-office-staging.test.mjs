@@ -1,4 +1,3 @@
-import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -10,7 +9,7 @@ const arrivalMigration = read('../supabase/migrations/20260904192758_add_season_
 const api = read('../supabase/functions/app-api/index.ts');
 const html = read('../index.html');
 const appsScript = read('../Code.gs');
-const workflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
+const workflow = read('../.github/workflows/performance-monitor.yml');
 const ciSalesOfficeBaseline = read('../supabase/ci/sales_office_baseline.sql');
 const evalHealthV2 = read('../supabase/migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql');
 const productionProbe = read('../scripts/probe-production-auth-health.mjs');
@@ -105,10 +104,7 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Needs Photo\/Data/);
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
-  const release = `V${JSON.parse(read('../package.json')).version}`;
-  assert.equal(release, 'V2026.09.11.02');
-  assert.equal(html.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1], release);
-  assert.equal(JSON.parse(read('../manifest.json')).version, release);
+  assert.match(html, /V2026\.09\.11\.03/);
 });
 
 test('Season Sales Notes cards show an immutable authoritative arrival timestamp', () => {

@@ -1,670 +1,153 @@
-import { expect, test, type Page } from '@playwright/test';
-import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+// September 9 behavior coverage; see docs/rollback-sep09-validation.md.
+import { expect, test } from '@playwright/test';
 
-// The real browser bootstrap, permission loaders, renderer, optimizer, upload,
-// and evidence coordinator run here. Only authentication and remote boundaries
-// are synthetic. No production requests or WebSockets are allowed through.
-async function isolatedApp(page: Page) {
-  const masterWrites: string[] = [];
-  const appOrigin = new URL(String(test.info().project.use.baseURL || 'http://127.0.0.1:43116')).origin;
-  await page.route('**/*', route => {
-    const request = route.request();
-    const url = new URL(request.url());
-    if (/ph_master_inventory/.test(url.pathname) && !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
-      masterWrites.push(request.method());
-    }
-    const staticAsset = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/manifest.json'
-      || url.pathname.startsWith('/assets/') || /\.(?:png|webp|jpg|jpeg|svg|ico|woff2?)$/i.test(url.pathname);
-    return url.origin === appOrigin && staticAsset && ['GET', 'HEAD'].includes(request.method())
-      ? route.continue() : route.abort('blockedbyclient');
-  });
-  await page.routeWebSocket('**/*', socket => socket.close());
-  await page.goto('/?post_deploy_access_canary=login-photo-repair', { waitUntil: 'load' });
-  await page.waitForFunction(() => typeof (window as any).finalizeLogin === 'function');
-  await page.evaluate(async () => {
-    const w = window as any;
-    w.__repair = { calls: [], toasts: [], frames: [], controls: {}, backgroundSettled: false };
-    w.clearLoginStartupWatchdog();
-    localStorage.clear(); sessionStorage.clear();
-    const channel: any = { on:() => channel, subscribe:() => channel };
-    const client: any = { channel:() => channel, removeChannel:async () => {}, auth:{
-      signInWithPassword: async () => ({ data:{ session:{ access_token:'isolated-test-token', user:{ id:w.__repair.profile.id } } } }),
-      getSession: async () => ({ data:{ session:{ access_token:'isolated-test-token', user:{ id:w.__repair.profile.id } } } }),
-      onAuthStateChange: () => ({ data:{ subscription:{ unsubscribe() {} } } }),
-    }, from:() => ({ select:() => ({ eq:() => ({ maybeSingle:async () => ({ data:w.__repair.profile }) }) }) }) };
-    w.getSupabaseBrowserClient = () => client;
-    w.__repair.identity = async (username: string, role: string) => {
-      if (typeof w.invalidateLoginSessionGeneration === 'function') w.invalidateLoginSessionGeneration();
-      w.clearRoleScopedClientCaches();
-      w.__repair.profile = { id:'profile-' + username, username, display_name:username, role, division:'10' };
-      const authenticated = await w.tryNativeAuthPasswordLogin(username, 'isolated-password');
-      if (!authenticated) throw new Error('SYNTHETIC_NATIVE_AUTH_FAILED');
-      if (!w.installMutationBlockedAccessCanaryIdentity(username, 'Isolated Fixture', role)) throw new Error('SYNTHETIC_APP_IDENTITY_FAILED');
-    };
-    await w.__repair.identity('login_photo_fixture', 'ADMIN');
-    w.__repair.start = (restored = false) => {
-      w.__repair.startedAt = performance.now(); w.__repair.loginDone = false;
-      if (restored) { w.clearInMemorySessionIdentity(); w.clearExplicitLogoutMarker(); }
-      const login = restored ? w.restoreNativeAuthSessionOnStartup()
-        : w.finalizeLogin(w.__repair.profile.username, '', false, { skipBiometricPrompt:true });
-      w.__repair.login = login
-        .then((result: any) => { w.__repair.loginDone = true; return result; })
-        .catch((error: Error) => { w.__repair.loginError = error.message; });
-    };
-    w.__repair.snapshot = () => ({ currentUser:w.captureLoginSessionOwnership().username,
-      role:w.__repair.profile.role, native:!!w.captureLoginSessionOwnership().profileId,
-      accessUser:w.getAppAccessSnapshot()?.username, requestUser:w.getRequestCapabilities()?.username });
-    w.showToast = (title: string, message: string) => w.__repair.toasts.push({ title, message });
-    // Suppress unrelated external integrations, not startup or its data reads.
-    for (const name of ['initializeOpsPilotForCurrentSession', 'ensureLeafAssistantSession',
-      'refreshCurrentSeasonSettingsFromRemote', 'refreshAvBlanksPhotoBypassSettingsFromRemote',
-      'ensureDockAssignableUsers', 'ensureDockTeamStatusLoaded', 'ensureDockItemStatusLoaded',
-      'ensureDockIssueDataLoaded', 'ensureAvRuleColumnsReady', 'warmCachedInventory', 'warmUserScopedDatasetCaches']) {
-      w[name] = async () => false;
-    }
-    for (const name of ['scheduleBackgroundLoginValidation', 'ensureChatBackgroundSync',
-      'installPushEnrollmentListeners', 'scheduleCellularPushEnrollment', 'queueDatasetLoad',
-      'queueVisibleDatasetCatchup', 'scheduleTaskHotCacheWarmup', 'startRealtimeSubscriptions']) {
-      w[name] = () => {};
-    }
-    const deferredRead = (name: string) => () => {
-      w.__repair.calls.push(name);
-      return new Promise((_resolve, reject) => { w.__repair.controls[name] = () => reject(new Error('ISOLATED_BACKGROUND_UNAVAILABLE')); });
-    };
-    for (const name of ['loadEvalWorkAssignments', 'loadLoginReadyDatasets', 'refreshManualSyncStatus', 'loadDepartmentCalendar', 'loadChatMessages']) {
-      w[name] = deferredRead(name);
-    }
-    w.supabaseRpc = async (operation: string) => {
-      w.__repair.calls.push(operation);
-      if (operation === 'get_my_dataset_revisions_v1') {
-        if (w.__repair.backgroundSettled) throw new Error('ISOLATED_BACKGROUND_UNAVAILABLE');
-        return new Promise((_resolve, reject) => {
-          w.__repair.controls.get_my_dataset_revisions_v1 = () => {
-            w.__repair.backgroundSettled = true;
-            reject(new Error('ISOLATED_BACKGROUND_UNAVAILABLE'));
-          };
-        });
-      }
-      const identity = w.__repair.snapshot();
-      const delay = w.__repair.permissionDelay || 0;
-      if (delay) await new Promise(resolve => setTimeout(resolve, delay));
-      if (operation === 'get_my_app_permissions_v1') {
-        if (w.__repair.accessFailure) throw new Error('ISOLATED_ACCESS_UNAVAILABLE');
-        w.__repair.accessResolvedAt = performance.now();
-        return { contractVersion:'app-access-v1', enforcementMode:'enforced', username:identity.currentUser,
-          role:identity.role, permissions:[{ permissionKey:'module.managers.view', kind:'module', moduleKey:'managers', allowed:false }] };
-      }
-      if (operation === 'get_request_capabilities') {
-        if (w.__repair.requestFailure) throw new Error('ISOLATED_REQUEST_ACCESS_UNAVAILABLE');
-        return { contract_version:2, username:identity.currentUser, scope:'global', can_view_queue:true,
-          can_take_photo:true, can_edit:true, can_complete:true, can_create_general:true, can_create_av:true };
-      }
-      return [];
-    };
-    const visible = (element: Element | null) => !!element && getComputedStyle(element).display !== 'none'
-      && getComputedStyle(element).visibility !== 'hidden' && element.getBoundingClientRect().height > 0;
-    const sample = () => {
-      const opened = visible(document.getElementById('app-wrapper')) && !visible(document.getElementById('view-login'));
-      if (opened) {
-        const tiles = [...document.querySelectorAll('#home-dashboard-grid > button, #home-rep-dashboard-grid > button')].filter(visible);
-        w.__repair.frames.push({ at:performance.now(), count:tiles.length,
-          access:visible(document.getElementById('home-module-access-status')),
-          noModules:!!document.querySelector('[data-home-no-modules]'),
-          denied:tiles.some(element => element.id === 'home-tile-managers') });
-      }
-      if (w.__repair.frames.length < 180) requestAnimationFrame(sample);
-    };
-    requestAnimationFrame(sample);
-  });
-  return { masterWrites };
-}
+test('phone login keeps both fields and the submit action visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'load' });
 
-for (const restored of [false, true]) {
-  test(`actual ${restored ? 'restored' : 'fresh'} login reveals populated Home before failed background data`, async ({ page }) => {
-    test.setTimeout(60_000);
-    await page.setViewportSize({ width:390, height:844 });
-    if (page.context().browser()?.browserType().name() === 'chromium') {
-      const session = await page.context().newCDPSession(page);
-      await session.send('Emulation.setCPUThrottlingRate', { rate:4 });
-    }
-    await isolatedApp(page);
-    await page.evaluate(restored => {
-      const w = window as any;
-      w.__repair.permissionDelay = 180;
-      w.__repair.start(restored);
-    }, restored);
-    await expect(page.locator('#view-login')).toBeHidden();
-    await expect(page.locator('#view-home')).toBeVisible();
-    await expect(page.locator('#home-tile-drive')).toBeVisible();
-    await expect(page.locator('#home-tile-managers')).toBeVisible();
-    await page.waitForFunction(() => (window as any).__repair.frames.length >= 4);
-    const firstFrames = await page.evaluate(() => {
-      const state = (window as any).__repair;
-      return { frames:state.frames, accessResolvedAt:state.accessResolvedAt, loginError:state.loginError };
-    });
-    expect(firstFrames.loginError).toBeUndefined();
-    expect(firstFrames.frames.every((frame: any) => frame.count > 0)).toBe(true);
-    expect(firstFrames.frames[0].at - firstFrames.accessResolvedAt).toBeLessThan(1000);
-    // Release 1 schedules its central revision check after showing Home; the
-    // retired legacy Eval warmup is no longer the delayed service boundary.
-    await page.waitForFunction(() => !!(window as any).__repair.controls.get_my_dataset_revisions_v1);
-    await page.evaluate(() => {
-      for (const release of Object.values((window as any).__repair.controls)) (release as Function)();
-    });
-    await expect.poll(() => page.evaluate(() => (window as any).__repair.loginDone)).toBe(true);
-    await expect(page.locator('#view-login')).toBeHidden();
-    await expect(page.locator('#home-tile-drive')).toBeVisible();
-    expect(await page.evaluate(() => (window as any).__repair.snapshot().native)).toBe(true);
-    await page.locator('#footer-menu-btn').click();
-    await expect(page.locator('#side-drawer')).toHaveClass(/open/);
-    const freshness = page.getByRole('button', { name:/^Data status: Data (Updating|Update Needs Attention)/ });
-    await freshness.scrollIntoViewIfNeeded();
-    await expect(freshness).toBeVisible();
-    await expect(freshness).not.toContainText(/not verified|Data Current/i);
-  });
-}
+  const username = page.locator('#username-input');
+  const accessCode = page.locator('#pin-code');
+  const submit = page.locator('#login-button');
+  await expect(username).toBeVisible();
+  await expect(accessCode).toBeVisible();
+  await expect(submit).toBeVisible();
 
-test('module access failure stays authenticated, hides modules, and retry recovers', async ({ page }) => {
-  test.setTimeout(60_000);
-  await isolatedApp(page);
-  await page.evaluate(async () => {
-    const state = (window as any).__repair;
-    await state.identity('restricted_fixture', 'sales/marketing');
-    state.accessFailure = true;
-    state.start();
-  });
-  await expect(page.locator('#view-login')).toBeHidden();
-  const status = page.locator('#home-module-access-status');
-  await expect(status).toBeVisible();
-  await expect(status).toContainText(/signed in/i);
-  await expect(page.locator('#home-dashboard-grid > button:visible, #home-rep-dashboard-grid > button:visible')).toHaveCount(0);
-  await page.evaluate(() => { (window as any).__repair.accessFailure = false; });
-  await status.getByRole('button', { name:'Retry access', exact:true }).click();
-  await expect(status).toBeHidden();
-  await expect(page.locator('#home-tile-drive')).toBeVisible();
-  expect(await page.evaluate(() => (window as any).__repair.snapshot().currentUser)).toBe('restricted_fixture');
+  const controls = await Promise.all([username, accessCode, submit].map((control) => control.boundingBox()));
+  expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
 });
 
-test('Request-only access failure does not hide independently authorized Home modules', async ({ page }) => {
-  test.setTimeout(60_000);
-  await isolatedApp(page);
-  await page.evaluate(() => { const state = (window as any).__repair; state.requestFailure = true; state.start(); });
-  await expect(page.locator('#view-login')).toBeHidden();
-  await expect(page.locator('#home-tile-drive')).toBeVisible();
-  await expect(page.locator('#home-request-capability-status')).toBeVisible();
-  await expect(page.locator('#home-request-capability-status')).toContainText(/retry/i);
+test('Kayla receives standard Admin Request, Drive, and photo access', async ({ page }) => {
+  await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
+  const permissions = await page.evaluate(() => {
+    window.eval("window.__qaOriginalGetRoleAccessState=getRoleAccessState; window.__qaOriginalRequestIdentityTokens=getRequestRepScopedIdentityTokens; window.__qaOriginalGetRequestCapabilities=getRequestCapabilities; currentUser='kayla_knepp'; currentUserDisplay='Kayla Knepp'; currentRole='ADMIN'; getRequestCapabilities=function(){ return {contractVersion:2,username:'kayla_knepp',scope:'global',canCreateGeneral:true,canCreateAv:true,canViewQueue:true,canTakePhoto:true,canEdit:true,canComplete:true,canArchive:true}; }; getRequestRepScopedIdentityTokens=function(){ return new Set(['kayla_knepp']); }; getRoleAccessState=function(){ return window.__qaOriginalGetRoleAccessState('ADMIN','kayla_knepp'); };");
+    const result = window.eval(`({
+      repReadOnly: isRepReadOnlyUser(),
+      globalRequestManager: canUseGlobalRequestAccess(),
+      canArchiveRequestRows: canCurrentUserArchiveRequestRows(),
+      canArchiveRequestRow: canCurrentUserArchiveRequestRow({ UNIQUE_ID: 'REQ-KAYLA-ARCHIVE', REQUEST_HISTORY: false }),
+      requestEditable: canEditRowDetails('req-', { SOURCE_TABLE: 'ph_active_request' }),
+      driveEditable: canEditRowDetails('ssn-', { SOURCE_TABLE: 'ph_master_inventory' }),
+      requestPhotoLabel: getTaskDetailQuickPhotoLabel('req-')
+    })`);
+    window.eval("getRoleAccessState=window.__qaOriginalGetRoleAccessState; getRequestRepScopedIdentityTokens=window.__qaOriginalRequestIdentityTokens; getRequestCapabilities=window.__qaOriginalGetRequestCapabilities; delete window.__qaOriginalGetRoleAccessState; delete window.__qaOriginalRequestIdentityTokens; delete window.__qaOriginalGetRequestCapabilities;");
+    return result;
+  });
+
+  expect(permissions).toEqual({
+    repReadOnly: false,
+    globalRequestManager: true,
+    canArchiveRequestRows: true,
+    canArchiveRequestRow: true,
+    requestEditable: true,
+    driveEditable: true,
+    requestPhotoLabel: 'Take Request Photo',
+  });
 });
 
-test('overlapping login and old account responses cannot reopen or repaint the new account', async ({ page }) => {
-  test.setTimeout(60_000);
-  await isolatedApp(page);
-  await page.evaluate(() => {
-    const state = (window as any).__repair;
-    state.permissionDelay = 600;
-    state.start();
-    state.start();
+test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
+  await page.evaluate(() => window.eval(`(() => {
+    canEditRowDetails = () => true;
+    saveData = () => Promise.resolve({ ok: true });
+    const input = document.getElementById('req-av-note');
+    const list = document.getElementById('req-av-dropdown-list');
+    input.value = '';
+    list.innerHTML = Array.from({ length: 40 }, (_, index) =>
+      '<button type="button" class="av-note-dropdown-option" data-av-note-option="OPTION ' + index + '" data-av-note-prefix="req-" onclick="return selectAvNote(this.dataset.avNoteOption, this.dataset.avNotePrefix, event)">OPTION ' + index + '</button>'
+    ).join('');
+    list.style.height = '240px';
+    openRequestAvNoteSheet(list);
+  })()`));
+
+  const sheet = page.locator('#request-av-note-sheet');
+  const list = page.locator('#req-av-dropdown-list');
+  const first = page.locator('#req-av-dropdown-list .av-note-dropdown-option').first();
+  await expect(sheet).toBeVisible();
+  await first.dispatchEvent('pointerdown', { pointerType: 'touch', clientX: 100, clientY: 650 });
+  await first.dispatchEvent('pointermove', { pointerType: 'touch', clientX: 100, clientY: 500 });
+  await first.dispatchEvent('pointerup', { pointerType: 'touch', clientX: 100, clientY: 500 });
+  await expect(sheet).toBeVisible();
+  await expect(page.locator('#req-av-note')).toHaveValue('');
+
+  const scrollTop = await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
   });
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.calls.filter((name: string) => name === 'get_my_app_permissions_v1').length)).toBe(1);
-  await page.evaluate(async () => {
-    const state = (window as any).__repair;
-    await state.identity('new_restricted_fixture', 'sales/marketing');
-    state.permissionDelay = 0;
-    state.start();
-  });
-  await expect(page.locator('#view-login')).toBeHidden();
-  await expect(page.locator('#home-tile-drive')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.calls.filter((name: string) => name === 'get_my_app_permissions_v1').length)).toBe(2);
-  await page.waitForTimeout(750); // The old account's controlled permission response must arrive.
-  const identity = await page.evaluate(() => (window as any).__repair.snapshot());
-  expect(identity.currentUser).toBe('new_restricted_fixture');
-  expect(identity.accessUser).toBe('new_restricted_fixture');
-  expect(identity.requestUser).toBe('new_restricted_fixture');
-  await expect(page.locator('#home-tile-managers')).toBeHidden();
-  expect(await page.evaluate(() => (window as any).__repair.frames.every((frame: any) => !frame.denied))).toBe(true);
+  expect(scrollTop).toBeGreaterThan(0);
+  const last = page.locator('#req-av-dropdown-list .av-note-dropdown-option').last();
+  await last.click();
+  await expect(page.locator('#req-av-note')).toHaveValue('OPTION 39');
 });
 
-test('logout during permission loading cannot be undone by a late login response', async ({ page }) => {
-  test.setTimeout(60_000);
-  await isolatedApp(page);
-  await page.evaluate(() => { const state = (window as any).__repair; state.permissionDelay = 500; state.start(); });
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.calls.filter((name: string) => name === 'get_my_app_permissions_v1').length)).toBe(1);
-  await page.evaluate(() => {
-    const w = window as any;
-    w.clearInMemorySessionIdentity();
-    w.resetLoginUiState();
-  });
-  await page.waitForTimeout(650); // Deliver the controlled old permission response after logout.
-  await expect(page.locator('#view-login')).toBeVisible();
-  await expect(page.locator('#app-wrapper')).toBeHidden();
-  expect(await page.evaluate(() => (window as any).captureLoginSessionOwnership().username)).toBe('');
-  expect(await page.evaluate(() => (window as any).__repair.frames.length)).toBe(0);
+test.describe('September 9 photo processing', () => {
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('/?e2e=photo-egress-v1', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).getDirectImageUrl === 'function');
 });
 
-async function preparePhotoRow(page: Page, source: 'drive' | 'av' = 'drive', role = 'ADMIN') {
-  const fixture = await isolatedApp(page);
-  await installInventoryReadFixture(page);
-  await page.evaluate(async ({ role }) => {
-    const w = window as any;
-    if (role !== 'ADMIN') await w.__repair.identity('photo_worker_fixture', role);
-    w.__repair.start();
-  }, { role });
-  await expect(page.locator('#view-login')).toBeHidden();
-  await page.evaluate(async ({ source }) => {
-    const w = window as any;
-    w.ensureDatasetLoaded = async () => true;
-    w.ensureViewDataForRender = () => false;
-    w.ensureNativeAppSessionBridge = async () => {
-      w.__repair.bridgeCalls = (w.__repair.bridgeCalls || 0) + 1;
-      throw new Error('ISOLATED_LEGACY_BRIDGE_DOWN');
+test('legacy and V2 card URLs never point at the original object', async ({ page }) => {
+  const urls = await page.evaluate(() => {
+    const hash = 'a'.repeat(64);
+    const legacy = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/2026-09-04/legacy.webp';
+    const v2 = `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${hash}.webp`;
+    return {
+      legacy: (window as any).getDirectImageUrl(legacy, 'card-feature'),
+      v2: (window as any).getDirectImageUrl(v2, 'card-feature'),
+      fallback: (window as any).getDeferredCardPhotoFallbackSrc(legacy),
     };
-    const year = w.getConfiguredCurrentSalesYearCode();
-    const season = w.getConfiguredCurrentSeasonCode();
-    const row = { UNIQUE_ID:'photo-fixture-one', ITEMCODE:'TEST.PHOTO.1', COMMONNAME:'Isolated Photo Plant', GENUSNAME:'Fixture',
-      CONTSIZE:'#1', LOCATIONCODE:'A.01.001', LOTCODE:`${year}.${season}`, SEASON:season, SALESYEAR:year,
-      SALEYEAR:year, SOURCE:'LD', SOURCE_TABLE:'ph_master_inventory', PTRONHAND:20, PTRAVAILABLE:20,
-      ASSIGNEDTO:'photo_worker_fixture', APP_TAB_ASSIGNMENT:'season', LAST_UPDATED:'2026-09-09T12:00:00Z',
-      PHOTO_LINK:'', PHOTO_NAME:'', SAVED_PHOTO_LINK:'', SAVED_PHOTO_NAME:'', SPEC:'N/A', AV_NOTE:'', MATCH:100 };
-    const other = { ...row, UNIQUE_ID:'photo-fixture-two', ITEMCODE:'TEST.PHOTO.2', COMMONNAME:'Different Fixture Plant', LOCATIONCODE:'B.02.001' };
-    w.__repair.photoRows = [row, other];
-    w.__repair.savedRows = Object.fromEntries([row, other].map(item => [item.UNIQUE_ID,
-      w.__inventoryReadFixture.row(item)]));
-    w.__repair.masterReads = [];
-    w.__repair.uploads = [];
-    w.__repair.saves = [];
-    w.__repair.revision = 1;
-    const settingsTable = w.eval('APP_SEASON_SETTINGS_TABLE');
-    const settingsKey = w.eval('APP_SEASON_SETTINGS_KEY');
-    const definitions = w.eval('DATASET_DEFINITIONS');
-    // Real adapter descriptors, metadata fences, staging and commits verify the
-    // synthetic canonical rows. No readiness/permission predicate is replaced.
-    w.fetchAllSupabaseRows = async (table: string, query = '') => {
-      if (table === settingsTable) return [{ key:settingsKey, value:{ seasonCode:season, salesYear:year } }];
-      if (table === 'ph_master_inventory') {
-        const result = w.__inventoryReadFixture.read(Object.values(w.__repair.savedRows), query);
-        w.__repair.masterReads.push({ select:result.select, exact:result.exact, ids:result.uniqueIds,
-          fieldCount:result.rows[0] ? Object.keys(result.rows[0]).length : 0 });
-        return result.rows;
-      }
-      if (table === 'ph_active_request') return w.__repair.requestRow ? [structuredClone(w.__repair.requestRow)] : [];
-      if (Object.values(definitions).some((definition: any) => definition.table === table)) return [];
-      throw new Error('UNEXPECTED_PHOTO_FIXTURE_DATASET:' + table);
-    };
-    const scheduleHydration = w.scheduleDeferredDetailHydration;
-    w.scheduleDeferredDetailHydration = (token: number, delay: number) => {
-      w.__repair.detailHydrationToken = token;
-      return scheduleHydration(token, delay);
-    };
-    const previousRpc = w.supabaseRpc;
-    w.supabaseRpc = async (operation: string, payload: any) => {
-      if (operation === 'get_my_dataset_revisions_v1') return { contractVersion:1, permissionVersion:'photo-fixture-policy-v1',
-        sources:payload.p_dataset_keys.map((key: string) => ({ key, revision:String(w.__repair.revision), state:'ready' })) };
-      if (operation !== 'save_drive_evidence_v2') return previousRpc(operation, payload);
-      w.__repair.saves.push(structuredClone(payload));
-      if (w.__repair.holdSave) await new Promise(resolve => { w.__repair.releaseSave = resolve; });
-      if (w.__repair.failSave || !navigator.onLine) throw Object.assign(new Error('ISOLATED_SAVE_UNAVAILABLE'), { status:503 });
-      const row = w.__repair.savedRows[payload.p_master_uid];
-      if (w.__repair.conflictSave) return { ok:false, code:'DRIVE_FIELD_CONFLICT', conflictFields:['photo_link'], row:structuredClone(row) };
-      // The protected SQL applies ->> text fields before RETURNING *. Match
-      // that physical schema on both the acknowledgement and later exact read.
-      Object.assign(row, w.__inventoryReadFixture.row({ ...row, ...payload.p_evidence, last_updated:'2026-09-09T12:05:00Z' }));
-      w.__repair.revision++;
-      return { ok:true, code:'SAVED', canonicalConfirmed:true, row:structuredClone(row), requestRows:[] };
-    };
-    w.postAppFunctionFormData = async (_url: string, form: FormData) => {
-      const upload = { contract:form.get('uploadContract'), name:form.get('fileName'),
-        fileType:(form.get('file') as File).type, bytes:(form.get('file') as File).size,
-        thumb144:!!form.get('thumbnail144'), thumb320:!!form.get('thumbnail320') };
-      w.__repair.uploads.push(upload);
-      if (w.__repair.holdUpload) await new Promise(resolve => { w.__repair.releaseUpload = resolve; });
-      const publicUrl = `https://photo-fixture.invalid/storage/v1/object/public/plant_photos/v2/${'a'.repeat(63)}${w.__repair.uploads.indexOf(upload) + 1}.webp`;
-      return { ok:true, publicUrl, fileName:upload.name, contentType:upload.fileType };
-    };
-    w.__repair.open = (uid = 'photo-fixture-one', view = source) => {
-      w.openDetail(uid, view);
-      w.switchDetailTab('notes', { suppressScroll:true });
-    };
-    w.__repair.verifyData = async () => {
-      const coordinator = w.getProductionLiveSyncCoordinator();
-      if (!coordinator || !await coordinator.check('isolated-photo-data')) throw new Error('PHOTO_FIXTURE_VERIFICATION_FAILED');
-      const keys = ['master', ...(w.__repair.requestRow ? ['requests'] : [])];
-      for (const key of keys) {
-        const adapter = w.createProductionCoreLiveAdapter(key);
-        if (!coordinator.isVerified(adapter) && !await coordinator.ensure(adapter)) throw new Error('PHOTO_FIXTURE_DATASET_NOT_VERIFIED:' + key);
-      }
-      if (!w.canUseVerifiedProductionData(keys)) throw new Error('PHOTO_FIXTURE_NOT_VERIFIED');
-    };
-    w.__repair.reloadCanonical = async () => {
-      w.__repair.revision++;
-      await w.__repair.verifyData();
-      w.__repair.open();
-    };
-    w.processAndLoadData({ data:[row, other], avOpenData:[row, other], _fromCache:true });
-    w.__repair.open();
-    await w.__repair.verifyData();
-  }, { source });
-  await expect(page.locator('#view-detail')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => window.eval('hasProductionMasterDetailForItem(activeItem)'))).toBe(true);
-  const masterReads = await page.evaluate(() => (window as any).__repair.masterReads);
-  expect(masterReads.some((read: any) => !read.exact && read.select !== '*' && read.fieldCount === 161),
-    'Native fixture must exercise the actual compact projection').toBe(true);
-  expect(masterReads.some((read: any) => read.exact && read.select === '*' && read.fieldCount === 213
-    && read.ids.length === 1 && read.ids[0] === 'photo-fixture-one'),
-    'Photo controls require an exact full master read, not an unscoped fixture response').toBe(true);
-  return fixture;
-}
+  });
+  expect(urls.legacy).toContain('/storage/v1/render/image/public/request_photos/');
+  expect(urls.legacy).toMatch(/[?&]width=(320|640)(?:&|$)/);
+  expect(urls.legacy).toContain('quality=62');
+  expect(urls.legacy).toContain('resize=contain');
+  expect(urls.v2).toContain(`/storage/v1/object/public/request_photos/_thumbs/v2/${'a'.repeat(64)}-w320.webp`);
+  expect(urls.fallback).toBe('');
+});
 
-async function selectGeneratedPhoto(page: Page, count = 1) {
-  // Real browser-generated PNG enters the same file input used by the camera;
-  // the production optimizer must convert it before the mocked upload boundary.
-  await expect(page.locator('#task-detail-camera-quick')).toBeVisible();
-  await page.locator('#camera-btn-na input[type=file]').evaluate(async (element, count) => {
-    const canvas = document.createElement('canvas'); canvas.width = 60; canvas.height = 40;
+test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnails', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1400;
+    canvas.height = 1000;
     const context = canvas.getContext('2d')!;
-    const transfer = new DataTransfer();
-    for (let index = 0; index < count; index++) {
-      context.fillStyle = index % 2 ? '#64a583' : '#1b7855'; context.fillRect(0, 0, 60, 40);
-      const blob = await new Promise<Blob>(resolve => canvas.toBlob(value => resolve(value!), 'image/png'));
-      transfer.items.add(new File([blob], `fixture-${index}.png`, {type:'image/png'}));
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#025f3f');
+    gradient.addColorStop(0.5, '#d4efbc');
+    gradient.addColorStop(1, '#69340c');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    for (let index = 0; index < 140; index += 1) {
+      context.fillStyle = `hsl(${(index * 29) % 360} 70% 50%)`;
+      context.fillRect((index * 83) % 1400, (index * 47) % 1000, 120, 70);
     }
-    (element as HTMLInputElement).files = transfer.files;
-    element.dispatchEvent(new Event('change', {bubbles:true}));
-  }, count);
-}
-
-for (const source of ['drive', 'av'] as const) {
-  test(`${source} photo-only upload waits for canonical save and survives reopen without a legacy bridge`, async ({ page }) => {
-    test.setTimeout(60_000);
-    await page.setViewportSize({ width:390, height:844 });
-    const fixture = await preparePhotoRow(page, source);
-    await expect(page.locator('#camera-btn-na input[type=file]')).toBeEnabled();
-    if (source === 'av') await expect(page.locator('#na-av-note')).toBeDisabled();
-    await page.evaluate(() => { (window as any).__repair.holdSave = true; });
-    await selectGeneratedPhoto(page);
-    await expect.poll(() => page.evaluate(() => (window as any).__repair.saves.length)).toBe(1);
-    const pending = await page.evaluate(() => {
-      const state = (window as any).__repair;
-      return { upload:state.uploads[0], save:state.saves[0], canonical:state.savedRows['photo-fixture-one'].photo_link,
-        toasts:state.toasts, bridgeCalls:state.bridgeCalls || 0 };
-    });
-    expect(pending.canonical).toBe('');
-    expect(pending.save.p_baseline.photo_link).toBe('');
-    expect(pending.save.p_evidence.photo_link).toContain('/v2/');
-    expect(pending.upload.contract).toBe('plant-photo-v2');
-    expect(['image/webp', 'image/jpeg']).toContain(pending.upload.fileType);
-    expect(pending.upload.thumb144 && pending.upload.thumb320).toBe(true);
-    expect(pending.bridgeCalls).toBe(0);
-    expect(pending.toasts.some((toast: any) => /photo saved/i.test(toast.title))).toBe(false);
-    await expect(page.locator('#na-photo-save-state')).toBeVisible();
-    await expect(page.locator('#na-photo-save-state')).toContainText(/Saving Photo/i);
-    await page.evaluate(() => { const state = (window as any).__repair; state.holdSave = false; state.releaseSave(); });
-    await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toContain('/v2/');
-    await page.evaluate(() => (window as any).__repair.reloadCanonical());
-    await expect.poll(() => page.evaluate(() => (window as any).getDetailPhotoUrls((window as any).getEditableDetailItemForPrefix('na-'), 'drive').length)).toBe(1);
-    expect(fixture.masterWrites).toEqual([]);
+    const source = await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('png encode failed')), 'image/png'));
+    const optimized = await (window as any).optimizePhotoBlobOnMainThread(source);
+    return {
+      type: optimized.contentType,
+      displayBytes: optimized.blob.size,
+      displaySignature: await (window as any).getPhotoBlobEncoding(optimized.blob),
+      thumb144Bytes: optimized.thumbnail144Blob.size,
+      thumb144Signature: await (window as any).getPhotoBlobEncoding(optimized.thumbnail144Blob),
+      thumb320Bytes: optimized.thumbnail320Blob.size,
+      thumb320Signature: await (window as any).getPhotoBlobEncoding(optimized.thumbnail320Blob),
+      width: optimized.width,
+      height: optimized.height,
+      hash: optimized.hash,
+    };
   });
-}
-
-test('failed photo save retains uploaded URL and Retry does not upload the file again', async ({ page }) => {
-  test.setTimeout(60_000);
-  const fixture = await preparePhotoRow(page);
-  await page.evaluate(() => { (window as any).__repair.failSave = true; });
-  await selectGeneratedPhoto(page);
-  const retry = page.locator('[data-drive-photo-retry="na-"]');
-  await expect(retry).toBeVisible({ timeout:15000 });
-  expect(await page.evaluate(() => (window as any).__repair.uploads.length)).toBe(1);
-  expect(await page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toBe('');
-  await page.evaluate(() => { (window as any).__repair.failSave = false; });
-  await retry.click();
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toContain('/v2/');
-  expect(await page.evaluate(() => (window as any).__repair.uploads.length)).toBe(1);
-  expect(fixture.masterWrites).toEqual([]);
+  expect(['image/jpeg', 'image/webp']).toContain(result.type);
+  expect(result.displaySignature).toBe(result.type);
+  expect(result.thumb144Signature).toBe(result.type);
+  expect(result.thumb320Signature).toBe(result.type);
+  expect(result.displayBytes).toBeLessThanOrEqual(1_280_000);
+  expect(result.thumb144Bytes).toBeLessThanOrEqual(80 * 1024);
+  expect(result.thumb320Bytes).toBeLessThanOrEqual(160 * 1024);
+  expect(Math.max(result.width, result.height)).toBeLessThanOrEqual(1920);
+  expect(result.hash).toMatch(/^[a-f0-9]{64}$/);
 });
 
-test('navigation during an upload cannot attach that photo to a different row', async ({ page }) => {
-  test.setTimeout(60_000);
-  const fixture = await preparePhotoRow(page);
-  await page.evaluate(() => { (window as any).__repair.holdUpload = true; });
-  await selectGeneratedPhoto(page);
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.uploads.length)).toBe(1);
-  await page.evaluate(() => {
-    const state = (window as any).__repair;
-    state.open('photo-fixture-two', 'drive');
-    state.holdUpload = false; state.releaseUpload();
-  });
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toContain('/v2/');
-  const saved = await page.evaluate(() => {
-    const w = window as any;
-    return { second:w.__repair.savedRows['photo-fixture-two'].photo_link,
-      ids:w.__repair.saves.map((save: any) => save.p_master_uid),
-      active:w.getEditableDetailItemForPrefix('na-').UNIQUE_ID };
-  });
-  expect(saved.second).toBe('');
-  expect(saved.ids.every((uid: string) => uid === 'photo-fixture-one')).toBe(true);
-  expect(saved.active).toBe('photo-fixture-two');
-  expect(fixture.masterWrites).toEqual([]);
-});
-
-test('logout during upload prevents its late completion from saving under another session', async ({ page }) => {
-  const fixture = await preparePhotoRow(page);
-  await page.evaluate(() => { (window as any).__repair.holdUpload = true; });
-  await selectGeneratedPhoto(page);
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.uploads.length)).toBe(1);
-  await page.evaluate(() => {
-    const w = window as any;
-    w.clearInMemorySessionIdentity(); w.resetLoginUiState();
-    w.__repair.holdUpload = false; w.__repair.releaseUpload();
-  });
-  await page.waitForTimeout(1200); // Release and settle the controlled late upload response.
-  await expect(page.locator('#view-login')).toBeVisible();
-  expect(await page.evaluate(() => (window as any).__repair.saves.length)).toBe(0);
-  expect(await page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toBe('');
-  expect(fixture.masterWrites).toEqual([]);
-});
-
-test('offline after upload retains the photo for a confirmed no-reupload retry', async ({ page, context }) => {
-  const fixture = await preparePhotoRow(page);
-  await page.evaluate(() => { (window as any).__repair.holdUpload = true; });
-  await selectGeneratedPhoto(page);
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.uploads.length)).toBe(1);
-  await context.setOffline(true);
-  try {
-    await page.evaluate(() => { const state = (window as any).__repair; state.holdUpload = false; state.releaseUpload(); });
-    await expect(page.locator('[data-drive-photo-retry="na-"]')).toBeVisible({ timeout:15000 });
-    await expect(page.locator('[data-drive-photo-retry="na-"]')).toBeDisabled();
-    // The captured upload completion can make the existing bounded protected
-    // save attempts; this fixture rejects them offline before changing a row.
-    const failedAttempts = await page.evaluate(() => (window as any).__repair.saves.length);
-    expect(failedAttempts).toBeLessThanOrEqual(2);
-    expect(await page.evaluate(() => (window as any).retryDrivePhotoSave('na-'))).toBe(false);
-    expect(await page.evaluate(() => (window as any).__repair.saves.length)).toBe(failedAttempts);
-    expect(await page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toBe('');
-  } finally {
-    await context.setOffline(false);
-  }
-  await expect(page.locator('[data-drive-photo-retry="na-"]')).toBeEnabled();
-  await page.locator('[data-drive-photo-retry="na-"]').click();
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toContain('/v2/');
-  expect(await page.evaluate(() => (window as any).__repair.uploads.length)).toBe(1);
-  expect(fixture.masterWrites).toEqual([]);
-});
-
-test('Drive saves multiple photos while preserving entered AV note data', async ({ page }) => {
-  test.setTimeout(60_000);
-  const fixture = await preparePhotoRow(page);
-  await page.locator('#na-av-note').fill('FRESH GROWTH');
-  await expect(page.locator('#na-av-note')).toHaveValue('FRESH GROWTH');
-  await page.evaluate(async () => { await (window as any).saveData(false, 'na-', true); });
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].av_note)).toBe('FRESH GROWTH');
-  // Force the acknowledged write's revision to be observed before the next
-  // action. Continuing the same editor cannot depend on beating this check.
-  await page.evaluate(async () => { await (window as any).getProductionLiveSyncCoordinator().check('photo-after-own-note-save'); });
-  await expect.poll(() => page.evaluate(() => window.eval('hasProductionMasterDetailForItem(activeItem)'))).toBe(true);
-  await expect(page.locator('#na-av-note')).toHaveValue('FRESH GROWTH');
-  await selectGeneratedPhoto(page, 2);
-  await expect.poll(() => page.evaluate(() => String((window as any).__repair.savedRows['photo-fixture-one'].photo_link).split(',').filter(Boolean).length)).toBe(2);
-  await page.evaluate(() => (window as any).__repair.reloadCanonical());
-  await expect(page.locator('#na-av-note')).toHaveValue('FRESH GROWTH');
-  expect(await page.evaluate(() => (window as any).__repair.uploads.length)).toBe(2);
-  expect(fixture.masterWrites).toEqual([]);
-});
-
-test('late detail hydration preserves typed AV Note and cursor before its protected save', async ({ page }) => {
-  const fixture = await preparePhotoRow(page);
-  const field = page.locator('#na-av-note');
-  const hydration = await field.evaluate(element => {
-    const w = window as any;
-    const input = element as HTMLInputElement;
-    const spec = document.getElementById('na-spec') as HTMLInputElement;
-    // Both input events and the late hydration occur before the 340ms autosave.
-    // Keeping them in one browser task reproduces the fast hosted-WebKit race
-    // without adding sleeps or depending on Playwright transport latency.
-    spec.focus(); spec.value = '24-30 H'; spec.dispatchEvent(new Event('input', { bubbles:true }));
-    input.focus(); input.value = 'FRESH GROWTH'; input.dispatchEvent(new Event('input', { bubbles:true }));
-    input.setSelectionRange(5, 5);
-    const before = input.value;
-    const baseline = w.__repair.savedRows['photo-fixture-one'].av_note;
-    const ran = w.runDeferredDetailHydration(w.__repair.detailHydrationToken);
-    return { before, ran, after:input.value, focused:document.activeElement === input,
-      start:input.selectionStart, end:input.selectionEnd, spec:spec.value, baseline,
-      canonicalAv:w.getEditableDetailItemForPrefix('na-').AV_NOTE };
-  });
-  expect(hydration).toEqual({ before:'FRESH GROWTH', ran:true, after:'FRESH GROWTH', focused:true,
-    start:5, end:5, spec:'24-30 H', baseline:'', canonicalAv:'' });
-  await page.evaluate(async () => { await (window as any).saveData(false, 'na-', true); });
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].av_note)).toBe('FRESH GROWTH');
-  expect(await page.evaluate(() => (window as any).__repair.saves[0].p_baseline.av_note)).toBe('');
-  expect(await page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].spec)).toBe('24-30 H');
-  expect(fixture.masterWrites).toEqual([]);
-});
-
-for (const scenario of ['closed', 'visible-blank', 'hold'] as const) {
-  test(`Request render verification distinguishes ${scenario} detail from a genuine loading failure`, async ({ page }) => {
-    const fixture = await preparePhotoRow(page);
-    await page.evaluate(async scenario => {
-      const w = window as any;
-      w.goBackFromDetail();
-      const request = { ...w.__repair.photoRows[0], UNIQUE_ID:'request-render-fixture',
-        MASTER_UNIQUE_ID:'photo-fixture-one', SOURCE_TABLE:'ph_active_request',
-        REQUEST_STATUS:'Pending', STATUS:'Pending', FOLDER_ID:'isolated-request-folder',
-        HOLDSTOPCODE:scenario === 'hold' ? 'H' : '', HOLDSTOPREASON:scenario === 'hold' ? 'Leaf quality' : '' };
-      if (scenario === 'hold') {
-        w.__repair.photoRows[0].HOLDSTOPCODE = 'H';
-        Object.assign(w.__repair.savedRows['photo-fixture-one'], { holdstopcode:'H', holdstopreason:'Leaf quality' });
-      }
-      w.__repair.requestRow = request;
-      w.__repair.revision++;
-      w.processAndLoadData({ requestsData:[request], _fromCache:true });
-      w.openDetail(request.UNIQUE_ID, 'request', { skipRequestOpenInfoModal:true });
-      await w.__repair.verifyData();
-    }, scenario);
-    await expect(page.locator('#req-match')).toBeVisible();
-    const result = await page.evaluate(scenario => {
-      const w = window as any;
-      const request = w.__repair.requestRow;
-      const events: any[] = [];
-      w.reportSemanticHealthEvent = (...args: any[]) => { events.push(args); };
-      // Hold only the verification callbacks, not rendering or navigation.
-      // This deterministically delivers the real nested rAF/80ms retry after
-      // Back, without sleeps or replacing the verifier with a test double.
-      const nativeFrame = w.requestAnimationFrame;
-      const nativeTimeout = w.setTimeout;
-      const delayed: Array<() => void> = [];
-      let intercepted = 0;
-      const isVerification = (callback: any) => typeof callback === 'function'
-        && String(callback).includes('verifyRequestDetailRendered');
-      w.requestAnimationFrame = (callback: any) => {
-        if (!isVerification(callback)) return nativeFrame(callback);
-        intercepted += 1; delayed.push(() => callback(performance.now())); return -intercepted;
-      };
-      w.setTimeout = (callback: any, delay: number, ...args: any[]) => {
-        if (!isVerification(callback)) return nativeTimeout(callback, delay, ...args);
-        intercepted += 1; delayed.push(() => callback(...args)); return -intercepted;
-      };
-      try {
-        w.renderDetailView({ preferredTab:'request', suppressScroll:true, skipGalleryRender:true });
-        const initiallyVisible = !!document.getElementById('req-match')?.getClientRects().length;
-        if (scenario === 'closed') w.goBackFromDetail();
-        if (scenario === 'visible-blank') document.getElementById('req-spec')?.remove();
-        let drained = 0;
-        while (delayed.length && drained < 12) { drained += 1; delayed.shift()!(); }
-        return { initiallyVisible, intercepted, drained, pending:delayed.length,
-          visibleView:w.getCurrentVisibleViewId(), avRequired:w.requiresAvNoteForCompletion(request),
-          avVisible:!!document.getElementById('req-av-note')?.getClientRects().length,
-          failures:events.filter(event => event[0] === 'request_detail_render_failed'),
-          errorVisible:!!document.querySelector('#request-detail-load-state.request-detail-load-state--error') };
-      } finally { w.requestAnimationFrame = nativeFrame; w.setTimeout = nativeTimeout; }
-    }, scenario);
-    expect(result.initiallyVisible, JSON.stringify(result)).toBe(true);
-    expect(result.intercepted).toBeGreaterThan(0);
-    expect(result.pending).toBe(0);
-    if (scenario === 'visible-blank') {
-      expect(result.visibleView).toBe('detail');
-      expect(result.failures).toHaveLength(1);
-      expect(result.failures[0][2]).toBe('REQUEST_DETAIL_RENDER_FAILED');
-      expect(result.errorVisible).toBe(true);
-    } else {
-      expect(result.failures).toEqual([]);
-      if (scenario === 'closed') expect(result.visibleView).not.toBe('detail');
-      if (scenario === 'hold') { expect(result.avRequired).toBe(false); expect(result.avVisible).toBe(false); }
-    }
-    expect(fixture.masterWrites).toEqual([]);
-  });
-}
-
-test('same-field photo conflict keeps the draft and stops background retries', async ({ page }) => {
-  test.setTimeout(60_000);
-  const fixture = await preparePhotoRow(page);
-  await page.evaluate(() => { (window as any).__repair.conflictSave = true; });
-  await selectGeneratedPhoto(page);
-  await expect(page.locator('[data-drive-photo-retry="na-"]')).toContainText('Review');
-  await page.waitForTimeout(1200); // Longer than the coordinator's bounded network retry delay.
-  const state = await page.evaluate(() => {
-    const w = window as any;
-    const draft = w.getDrivePhotoDraft(w.getEditableDetailItemForPrefix('na-'));
-    return { saves:w.__repair.saves.length, uploads:w.__repair.uploads.length, canonical:w.__repair.savedRows['photo-fixture-one'].photo_link,
-      draftUrls:draft.entries.filter((entry: any) => !!entry.publicUrl).length };
-  });
-  expect(state).toEqual({ saves:1, uploads:1, canonical:'', draftUrls:1 });
-  expect(fixture.masterWrites).toEqual([]);
-});
-
-test('AV does not expose photo editing to a role denied equivalent Drive editing', async ({ page }) => {
-  test.setTimeout(60_000);
-  const fixture = await preparePhotoRow(page, 'av', 'REP');
-  await expect(page.locator('#task-detail-camera-quick')).toBeHidden();
-  await expect(page.locator('#camera-btn-na input[type=file]')).toBeDisabled();
-  const allowed = await page.evaluate(() => {
-    const w = window as any;
-    const row = w.getEditableDetailItemForPrefix('na-');
-    return w.canUploadRowPhoto('na-', row);
-  });
-  expect(allowed).toBe(false);
-  expect(await page.evaluate(() => (window as any).__repair.uploads.length)).toBe(0);
-  expect(fixture.masterWrites).toEqual([]);
-});
-
-test('a second isolated client sees the saved photo from canonical data, not the first client draft', async ({ page, browser }) => {
-  test.setTimeout(60_000);
-  await preparePhotoRow(page);
-  await selectGeneratedPhoto(page);
-  await expect.poll(() => page.evaluate(() => (window as any).__repair.savedRows['photo-fixture-one'].photo_link)).toContain('/v2/');
-  const canonical = await page.evaluate(() => (window as any).__repair.savedRows);
-  const context = await browser.newContext({ baseURL:String(test.info().project.use.baseURL), serviceWorkers:'block' });
-  try {
-    const second = await context.newPage();
-    await preparePhotoRow(second);
-    await second.evaluate(async rows => {
-      const state = (window as any).__repair;
-      state.savedRows = rows;
-      await state.reloadCanonical();
-    }, canonical);
-    const evidence = await second.evaluate(() => {
-      const w = window as any;
-      const row = w.getEditableDetailItemForPrefix('na-');
-      return { photos:w.getDetailPhotoUrls(row, 'drive').length, draft:!!w.getDrivePhotoDraft(row), uploads:w.__repair.uploads.length };
-    });
-    expect(evidence).toEqual({ photos:1, draft:false, uploads:0 });
-  } finally {
-    await context.close();
-  }
 });
