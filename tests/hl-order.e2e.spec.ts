@@ -161,6 +161,13 @@ test('a same-date addition keeps its sent order number and leaves only the new b
   await addition.locator('[data-hl-select]').check();
   await addition.locator('[data-hl-quantity]').fill('5');
   await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await expect(page.locator('[data-hl-order-id]')).toContainText(orderNumber);
+  await expect(page.locator('[data-hl-pending-additions]')).toContainText('Quantity 5');
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
+  await expect(page.locator('#hl-order-tracking')).toContainText('Pending additions');
+  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
+  await page.locator('#global-action-bar').getByRole('button', { name: /Actions/ }).click();
   await preview(page);
   const report = [...fixture.previews.values()].at(-1).report;
   expect(report.kind).toBe('addition');
@@ -180,6 +187,12 @@ test('a same-date addition keeps its sent order number and leaves only the new b
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
   await expect(page.locator('#hl-order-tracking [data-hl-order-line-id]').nth(1).locator('[data-hl-line-select]')).toBeEnabled();
+  await expect(page.locator('[data-hl-pending-additions]')).toHaveCount(0);
+  const savedAddition = fixture.state.batches.find((batch: any) => batch.kind === 'addition');
+  await expect(page.locator(`[data-hl-addition-batch="${savedAddition.id}"]`)).toContainText('sent');
+  await page.getByRole('button', { name: 'View additions PDF', exact: true }).click();
+  await expect(page.locator('#hl-tags-preview')).toBeVisible();
+  expect(fixture.pdfRequests.at(-1).previewId).toBe(savedAddition.preview_id);
   assertIsolated(fixture);
 });
 

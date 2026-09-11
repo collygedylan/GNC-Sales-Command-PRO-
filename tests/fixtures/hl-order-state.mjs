@@ -54,7 +54,11 @@ export function createHlOrderState(options = {}) {
   const source = (id) => sourceMap.get(id);
   const disposition = (id) => state.dispositions.find((entry) => entry.source_id === id);
   const problem = (message) => { const error = new Error(message); error.status = 409; throw error; };
-  control.snapshot = () => clone(state);
+  control.snapshot = () => {
+    const snapshot = clone(state);
+    snapshot.orders.forEach((order) => { order.batches = snapshot.batches.filter((batch) => batch.order_id === order.id); });
+    return snapshot;
+  };
   control.command = (body) => {
     control.commands.push(clone(body));
     if (control.replay.has(body.p_command_id)) return clone(control.replay.get(body.p_command_id));
