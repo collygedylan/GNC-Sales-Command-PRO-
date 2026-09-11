@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHlOrderState, hlSoc } from './fixtures/hl-order-state.mjs';
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+
+test('PO inventory fixture scopes item and size before deterministic paging', () => {
+  const rows = [
+    { unique_id: 'a', itemcode: 'PO.TEST', contsize: '#7', ptravailable: '99' },
+    { unique_id: 'b', itemcode: 'OTHER', contsize: '#3', ptravailable: '99' },
+    { unique_id: 'c', itemcode: 'PO.TEST', contsize: '#3', ptravailable: '0' },
+    { unique_id: 'd', itemcode: 'PO.TEST', contsize: '#3', ptravailable: null },
+  ];
+  const scope = 'select=unique_id,ptravailable&itemcode=eq.PO.TEST&contsize=eq.%233&order=unique_id.asc&limit=1';
+  assert.deepEqual(inventoryReadFixture.read(rows, scope).rows, [{ unique_id: 'c', ptravailable: '0' }]);
+  assert.deepEqual(inventoryReadFixture.read(rows, scope + '&offset=1').rows, [{ unique_id: 'd', ptravailable: null }]);
+  assert.throws(() => inventoryReadFixture.read(rows, 'itemcode=like.*'), /unsupported exact filter/);
+});
 
 let commandSequence = 0;
 const command = (fixture, action, payload = {}) => fixture.command({

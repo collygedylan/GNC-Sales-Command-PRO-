@@ -77,7 +77,7 @@ export function createInventoryReadFixture(schema) {
     if (!Array.isArray(source)) fail('expected source rows');
     const params = new URLSearchParams(query);
     for (const key of params.keys()) {
-      if (!['select', 'order', 'unique_id', 'offset', 'limit'].includes(key)) fail(`unsupported query parameter ${key}`);
+      if (!['select', 'order', 'unique_id', 'itemcode', 'contsize', 'offset', 'limit'].includes(key)) fail(`unsupported query parameter ${key}`);
       if (params.getAll(key).length !== 1) fail(`duplicate query parameter ${key}`);
     }
     const select = params.get('select') || '*';
@@ -92,6 +92,13 @@ export function createInventoryReadFixture(schema) {
     if (filter) {
       const ids = new Set(idsFromFilter(filter));
       matching = matching.filter(item => ids.has(item.unique_id));
+    }
+    for (const name of ['itemcode', 'contsize']) {
+      const scopedFilter = params.get(name);
+      if (scopedFilter === null) continue;
+      if (!columns.has(name) || !scopedFilter.startsWith('eq.')) fail(`unsupported exact filter ${name}`);
+      const [value] = idsFromFilter(scopedFilter);
+      matching = matching.filter(item => item[name] === value);
     }
     const order = params.get('order');
     if (order) {

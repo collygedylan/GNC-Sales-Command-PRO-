@@ -128,18 +128,20 @@ test('selected editable quantities persist through reload and HL removal preserv
 test('PO inventory action pages verified same-size rows and preserves zero availability', async ({ page, baseURL }) => {
   const master = [hlMaster('po-exact', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', ptravailable: '0' }),
     ...Array.from({ length: 251 }, (_, index) => hlMaster(`po-related-${String(index).padStart(3, '0')}`, { itemcode: 'PO.TEST', contsize: '#3', locationcode: `C.14.${String(index).padStart(3, '0')}`, lotcode: '27.F1', ptravailable: index === 1 ? null : '3' })),
-    hlMaster('po-hidden-approval', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.19.999', lotcode: '27.F1', ptravailable: '9', app_tab_assignment: 'Not On Inventory' })];
+    hlMaster('po-hidden-approval', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.19.999', lotcode: '27.F1', ptravailable: '9', app_tab_assignment: 'not_on_inventory_dylan' })];
   const fixture = await installHlOrderFixture(page, baseURL!, { master, poRows: [{ row_index: 1, itemcode: 'PO.TEST', commonname: 'PO test', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' }] });
-  await page.waitForFunction(() => window.eval("canAccessView('po-management')"));
-  await page.evaluate(() => window.eval("switchView('po-management')"));
+  await page.getByRole('button', { name: 'Open Inventory', exact: true }).click();
+  await page.locator('#inventory-open-po-management').click();
   await expect(page.locator('#view-po-management')).toBeVisible();
-  await page.getByRole('button', { name: 'HL PO', exact: true }).click();
-  await page.getByRole('button', { name: '27F1', exact: true }).click();
+  await page.locator('#po-management-hub-grid').getByRole('button', { name: /HL PO/ }).click();
+  await page.locator('#po-management-season-grid').getByRole('button', { name: /27F1/ }).click();
   await expect(page.getByRole('button', { name: 'View inventory', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'View inventory', exact: true }).click();
   const detail = page.locator('#po-inventory-detail-content');
+  await expect(detail).toContainText('In Drive Mode');
   await expect(detail).toContainText('Exact item, size, location and lot match');
   await expect(detail).toContainText('PTRAVAILABLE: 0');
+  await expect(detail).toContainText('PTRAVAILABLE: Unknown');
   await expect(detail).toContainText('Related item and size');
   await expect(detail.locator('article')).toHaveCount(252);
   await expect(detail).toContainText('C.14.250');
