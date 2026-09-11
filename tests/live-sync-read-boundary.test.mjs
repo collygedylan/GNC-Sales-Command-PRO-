@@ -116,14 +116,11 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
     }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
         season: { seasonCode: 'S1', salesYear: 27 }, getCurrentAppSeasonSettings: () => ctx.season,
-        fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }),
-        canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
+        fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }) };
     vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
     assert.equal(av.id, 'core:master'); assert.equal(av.cacheKey, master.cacheKey);
-    const staged = await av.stage();
-    assert.equal(staged.key, 'master');
-    assert.equal(staged.hlOrderInventory, null, 'ordinary AV staging does not acquire an HL snapshot');
+    assert.equal((await av.stage()).key, 'master');
     ctx.season = { seasonCode: 'F1', salesYear: 27 };
     assert.notEqual(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
         'season changed off-screen cannot retain old derived inventory under unchanged stock revisions');

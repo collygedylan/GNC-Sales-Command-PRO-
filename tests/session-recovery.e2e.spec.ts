@@ -178,27 +178,45 @@ test('REP Home preserves module denials and shows Request loading and retry stat
   app.assertClean();
 });
 
-test('HL Order Home tile requires the active Dylan native profile and disappears on disable or account change', async ({ page, baseURL }) => {
+test('the deferred HL module is absent for Dylan and other accounts while Home remains usable', async ({ page, baseURL }) => {
+  const hlRequests: string[] = [];
+  page.on('request', request => {
+    if (/hl_order|hl_tags/.test(request.url() + (request.postData() || ''))) hlRequests.push(request.method() + ':' + request.url());
+  });
   const app = await harness(page, baseURL!);
-  await app.seed('dylan_collyge', 'ADMIN');
-  await app.assertTiles(adminViews, false);
-  await expect(page.locator('#home-tile-hl-order')).toBeHidden();
-  await page.evaluate(() => window.eval(`
-    nativeAuthSessionActive = true;
-    nativeAuthProfile = { id: 'synthetic-dylan-hl', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false };
-    applyRolePermissions(); renderHome();
-  `));
-  await app.assertTiles([...adminViews, 'hl-order'], false);
-  await expect(page.locator('#home-tile-hl-order')).toBeVisible();
-  await page.evaluate(() => window.eval(`
-    nativeAuthProfile.disabled_at = '2026-09-09T00:00:00Z';
-    applyRolePermissions(); renderHome();
-  `));
-  await app.assertTiles(adminViews, false);
-  await expect(page.locator('#home-tile-hl-order')).toBeHidden();
-  await page.evaluate(() => window.eval('nativeAuthProfile.disabled_at = null'));
-  await app.seed('home_admin_fixture', 'ADMIN');
-  await app.assertTiles(adminViews, false);
-  await expect(page.locator('#home-tile-hl-order')).toBeHidden();
+  for (const entry of [
+    { username: 'dylan_collyge', role: 'ADMIN', views: adminViews, dynamic: false },
+    { username: 'home_admin_fixture', role: 'ADMIN', views: adminViews, dynamic: false },
+    { username: 'tony_bono', role: 'REP', views: salesViews, dynamic: true },
+  ]) {
+    await app.seed(entry.username, entry.role);
+    await page.evaluate(username => {
+      (window as any).__deferredHlUsername = username;
+      window.eval(`
+        nativeAuthSessionActive = true;
+        nativeAuthProfile = { id: 'synthetic-deferred-hl', username: window.__deferredHlUsername,
+          disabled_at: null, locked_until: null, must_change_password: false };
+        applyRolePermissions(); renderHome(); updateGlobalActionBar();
+      `);
+    }, entry.username);
+    await app.assertTiles(entry.views, entry.dynamic, false);
+    for (const selector of ['#home-tile-hl-order', '#drawer-hl-order-btn', '#view-hl-order',
+      '#batch-btn-hl-tags', '#hl-tags-preview', '#hl-bloom-section']) {
+      await expect(page.locator(selector)).toHaveCount(0);
+    }
+    expect(await page.evaluate(() => window.eval('canAccessView("hl-order")'))).toBe(false);
+    expect(await page.evaluate(() => window.eval(`({
+      command: typeof hlOrderCommand, submit: typeof submitHlOrderPreview,
+      bloom: typeof renderHlBloomSection,
+      actions: Object.keys(getBloomPickerActionVisibility([])).filter(key => /hl/i.test(key))
+    })`))).toEqual({ command: 'undefined', submit: 'undefined', bloom: 'undefined', actions: [] });
+    await page.evaluate(() => window.eval('switchView("hl-order")'));
+    await expect(page.locator('body')).toHaveAttribute('data-current-view', 'home');
+    await expect(page.locator('#view-home')).toBeVisible();
+    await expect(page.locator('#footer-cart-btn')).toBeVisible();
+  }
+  await page.locator('#footer-cart-btn').click();
+  await expect(page.locator('#toast-notification')).toContainText('Bloom Picker Empty');
+  expect(hlRequests, 'the deferred client must not read or mutate HL records').toEqual([]);
   app.assertClean();
 });
