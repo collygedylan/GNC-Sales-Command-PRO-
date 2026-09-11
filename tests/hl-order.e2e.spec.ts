@@ -366,7 +366,10 @@ test('a focused receipt correction cannot overwrite a newer receipt after a stat
 });
 
 test('a same-state refresh during a mouse press preserves the HL card activation', async ({ page, baseURL }) => {
+  // Browser push is optional for HL. Keep its education overlays out of this held-pointer scenario.
+  await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
   const fixture = await installHlOrderFixture(page, baseURL!);
+  expect(await page.evaluate(() => window.eval('isPushSupported()'))).toBe(false);
   await openHl(page);
   const button = page.locator('[data-hl-group]').first().getByRole('button', { name: 'View HL order details', exact: true });
   await button.hover();
@@ -381,17 +384,17 @@ test('a same-state refresh during a mouse press preserves the HL card activation
 });
 
 test('a state refresh during an edited order button press preserves the save', async ({ page, baseURL }) => {
+  await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
   const fixture = await installHlOrderFixture(page, baseURL!);
+  expect(await page.evaluate(() => window.eval('isPushSupported()'))).toBe(false);
   await openHl(page); await openDetails(page);
   const selected = page.locator('[data-hl-source-id="hl-a"]');
   await page.locator('[data-hl-source-id="hl-b"] [data-hl-select]').uncheck();
   await selected.locator('[data-hl-quantity]').fill('7');
   const button = page.getByRole('button', { name: 'Order selected rows', exact: true });
-  await button.scrollIntoViewIfNeeded();
-  const box = await button.boundingBox();
-  expect(box).not.toBeNull();
-  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await button.hover();
   await page.mouse.down();
+  expect(await page.evaluate(() => window.eval('activeFastPress?.actionKey.startsWith("invoke|orderHlSelectedRows|")'))).toBe(true);
   await page.evaluate(() => window.eval('loadHlOrderState(true)'));
   await page.mouse.up();
   await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toBeVisible();
