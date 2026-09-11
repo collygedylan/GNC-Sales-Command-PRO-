@@ -14,9 +14,9 @@ test('database reusable workflow is secret-free and has read-only repository per
   assert.match(workflow, /node-version: 22\s+cache: npm/);
 });
 
-test('all original migrations and pgTAP tests remain alongside grouped health and HL ordering regressions', () => {
+test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 88);
+  assert.equal(migrations.length, 89);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
@@ -26,7 +26,8 @@ test('all original migrations and pgTAP tests remain alongside grouped health an
     '20260902105411_group_eval_report2_assignment_email.sql',
     '20260910174603_grouped_eval_itemcode_health_contract.sql',
     '20260911115037_hl_ordering_system.sql',
-  ]) assert.ok(migrations.includes(filename), `Grouped health dependency: ${filename}`);
+    '20260911152125_restore_sep09_eval_review_compatibility.sql',
+  ]) assert.ok(migrations.includes(filename), `Required migration: ${filename}`);
   const sqlTests = [...workflow.matchAll(/cp supabase\/tests\/(\S+)/g)].map(match => match[1]);
   assert.deepEqual([...sqlTests].sort(), [
     'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
@@ -39,6 +40,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health an
     'photo_evidence_projection_test.sql',
     'grouped_eval_itemcode_health_test.sql',
     'hl_order_lifecycle_test.sql', 'hl_order_delivery_test.sql',
+    'sep09_eval_review_compatibility_test.sql',
   ].sort());
   for (const filename of sqlTests) {
     assert.ok(fs.existsSync(new URL(`../supabase/tests/${filename}`, import.meta.url)), filename);

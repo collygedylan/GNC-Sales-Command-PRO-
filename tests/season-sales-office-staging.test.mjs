@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql');
@@ -9,7 +10,7 @@ const arrivalMigration = read('../supabase/migrations/20260904192758_add_season_
 const api = read('../supabase/functions/app-api/index.ts');
 const html = read('../index.html');
 const appsScript = read('../Code.gs');
-const workflow = read('../.github/workflows/performance-monitor.yml');
+const workflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const ciSalesOfficeBaseline = read('../supabase/ci/sales_office_baseline.sql');
 const evalHealthV2 = read('../supabase/migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql');
 const productionProbe = read('../scripts/probe-production-auth-health.mjs');
