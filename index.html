@@ -35224,23 +35224,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 fence: Object.freeze({ ...getProductionMasterDetailContext() }) });
         }
 
-        async function withVerifiedRequestCompletion(context, item, onVerified = null) {
+        async function withVerifiedRequestCompletion(context, item, onVerified = null, action = 'complete') {
             let timeout;
             let expired = false;
             const fail = (message, code = 'REQUEST_COMPLETION_CHANGED') => {
                 const error = new Error(message); error.code = code; throw error;
             };
+            if (action !== 'edit' && action !== 'complete') fail('The Request save action is not supported.');
+            const actionLabel = action === 'complete' ? 'completion' : 'save';
             const container = (row) => {
                 const values = [...new Set([row?.CONTSIZE, row?.contsize]
                     .map((value) => String(value ?? '').trim().toUpperCase()).filter(Boolean))];
                 return values.length > 1 ? null : (values[0] || '');
             };
             const assertCurrent = () => {
-                if (!context || expired || !usesProductionMasterListProjection()) fail('The original Request completion could not be verified.');
+                if (!context || expired || !usesProductionMasterListProjection()) fail(`The original Request ${actionLabel} could not be verified.`);
                 if (!isLoginSessionOwnershipCurrent(context.owner) || context.readIdentity !== getSupabaseReadIdentityScope()
                     || context.session !== productionMasterDetailSession || context.token !== detailHydrationToken
                     || !isProductionMasterDetailSessionCurrent(context.session)) {
-                    fail('The Request or login changed before completion.', 'REQUEST_ABORTED');
+                    fail(`The Request or login changed before ${actionLabel}.`, 'REQUEST_ABORTED');
                 }
                 if (document.hidden || navigator.onLine === false || context.session.status !== 'ready'
                     || !productionMasterDetailFenceMatches(context.fence)
@@ -35249,7 +35251,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     || getProductionMasterDetailIdentity(activeItem) !== context.rowIdentity
                     || JSON.stringify(getProductionMasterDetailIds(item).sort()) !== JSON.stringify(context.ids)
                     || container(item) !== context.containerSize || container(activeItem) !== context.containerSize) {
-                    fail('The reviewed Request changed. Review the current row before completing it.');
+                    fail('The reviewed Request changed. Review the current row before saving it.');
                 }
                 const canonical = findRequestRowByUniqueId(context.requestId);
                 if (!canonical || String(canonical.UNIQUE_ID || canonical.unique_id || '') !== context.requestId
@@ -35260,8 +35262,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const candidate = { ...canonical };
                 if (![candidate.SOURCE, candidate.source].some((value) => String(value ?? '').trim())) candidate.SOURCE = context.source;
                 if (getProductionMasterDetailIdentity(candidate) !== context.rowIdentity) fail('The current Request identity changed.');
-                if (!canEditRowDetailsByRole('req-', item) || !canCurrentUserWorkRequestItem(item, 'complete')) {
-                    fail('Current Request completion access could not be verified.', 'DATA_NOT_VERIFIED');
+                if (!canEditRowDetailsByRole('req-', item) || !canCurrentUserWorkRequestItem(item, action)) {
+                    fail(`Current Request ${actionLabel} access could not be verified.`, 'DATA_NOT_VERIFIED');
                 }
             };
             assertCurrent();
@@ -35282,8 +35284,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!verified) fail('Current Request verification timed out. Your entries are retained.', 'DATA_NOT_VERIFIED');
                 assertCurrent();
                 if (!canUseVerifiedProductionData(getProductionDetailDatasetKeys('req-')) || !hasProductionMasterDetailForItem(item)
-                    || !canEditRowDetails('req-', item) || !canCurrentUserWorkRequestItem(item, 'complete')) {
-                    fail('Current Request completion access could not be verified.', 'DATA_NOT_VERIFIED');
+                    || !canEditRowDetails('req-', item) || !canCurrentUserWorkRequestItem(item, action)) {
+                    fail(`Current Request ${actionLabel} access could not be verified.`, 'DATA_NOT_VERIFIED');
                 }
                 // Entry preparation and final dispatch run in this continuation:
                 // another await after the guard could reopen the same race.
@@ -160147,12 +160149,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             const requestCompletionContext = prefix === 'req-' && isComplete
                 ? captureProductionRequestCompletionContext(itemToSave) : null;
-            if (requestCompletionContext) {
+            const requestAutoSaveContext = prefix === 'req-' && !isComplete && isSilentAutoSave
+                && !specificItem && !options?.backgroundPhotoSync
+                && (!canUseVerifiedProductionData(getProductionDetailDatasetKeys('req-'))
+                    || !hasProductionMasterDetailForItem(itemToSave))
+                ? captureProductionRequestCompletionContext(itemToSave) : null;
+            const requestSaveEntryContext = requestCompletionContext || requestAutoSaveContext;
+            if (requestSaveEntryContext) {
                 try {
-                    // Preserve the original reviewed identity even when a
-                    // background check starts just as Mark Done is tapped.
+                    // Preserve the reviewed identity when a background check
+                    // starts between input/blur and autosave or Mark Done.
                     // Adopt its canonical row inside the verified continuation.
-                    if (!await withVerifiedRequestCompletion(requestCompletionContext, itemToSave, adoptCanonicalRequest)) return;
+                    if (!await withVerifiedRequestCompletion(requestSaveEntryContext, itemToSave, adoptCanonicalRequest,
+                        isComplete ? 'complete' : 'edit')) return;
                 } catch (error) {
                     if (!isSilentAutoSave && error?.code !== 'REQUEST_ABORTED') {
                         showToast('Request Still Open', error?.message || 'Current Request data could not be verified. Your entries are retained.', true);
@@ -160168,7 +160177,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
 
-            if (!requestCompletionContext && (!canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete')))) {
+            if (!requestSaveEntryContext && (!canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete')))) {
                 if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                 if (!isSilentAutoSave) showRowEditRestrictedToast(prefix);
                 return;
@@ -161650,7 +161659,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (isLagSensitiveDetailPrefix(prefix)) {
                     await new Promise((resolve) => requestAnimationFrame(resolve));
                 }
-                await executeSave();
+                // A queued autosave must still belong to the original editor
+                // before reading form values after the queue/frame boundary.
+                if (requestAutoSaveContext) {
+                    await withVerifiedRequestCompletion(requestAutoSaveContext, itemToSave, executeSave, 'edit');
+                } else await executeSave();
             };
 
             try {

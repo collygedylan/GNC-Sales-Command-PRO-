@@ -590,11 +590,50 @@ test('Request camera return does not reuse a reviewed binding after a changed ma
   expect((await browserState(page)).detailVerified).toBe(false);
 });
 
+test('Request AV-note blur waits for verification and autosaves the valid edit exactly once', async ({ page, baseURL }) => {
+  const f = await fixture(page, baseURL!); await f.open();
+  const note = page.locator('#req-av-note');
+  await expect(note).toBeEditable();
+  await note.fill('HEALTHY VERIFIED BLUR NOTE');
+  expect(await page.evaluate(() => window.eval(`!!detailInputSaveTimers['req-']`))).toBe(true);
+  const releaseMetadata = f.holdMetadata();
+  await note.evaluate(element => {
+    // The edit occurs while enabled. Its native blur starts a real check
+    // before the original 200ms autosave, matching the observed camera race.
+    element.addEventListener('blur', () => {
+      (window as any).__requestBlurCheck = (window as any).getProductionLiveSyncCoordinator()
+        .check('request-note-blur');
+    }, { capture: true, once: true });
+  });
+  await note.blur();
+  await expect.poll(() => f.state.heldMetadata).toBeGreaterThan(0);
+  // Keep checking through both the 200ms blur save and the real input debounce;
+  // neither may silently consume the draft while its verification is pending.
+  await expect.poll(() => page.evaluate(() => (window as any).__requestRepairObservations.calls
+    .filter((call: any) => call.name === 'saveData' && !call.complete).length)).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => page.evaluate(() => window.eval(`!!detailInputSaveTimers['req-']`))).toBe(false);
+  await expect.poll(() => browserState(page)).toMatchObject({ datasetsVerified: false });
+  expect(f.state.saves).toHaveLength(0);
+  releaseMetadata();
+  await expect.poll(() => f.state.saves.length).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).__requestRepairObservations.settled
+    .some((call: any) => call.name === 'saveData' && !call.complete))).toBe(true);
+  await expect.poll(() => browserState(page)).toMatchObject({ detailVerified: true, datasetsVerified: true });
+  await page.waitForLoadState('networkidle');
+  expect(f.state.requestRow.av_note).toBe('HEALTHY VERIFIED BLUR NOTE');
+  expect(f.state.master.av_note).toBe('HEALTHY VERIFIED BLUR NOTE');
+  expect(f.state.saves).toHaveLength(1);
+  expect(f.state.saves[0]).toMatchObject({ complete: false, expected_version: 1 });
+  expect(f.state.uploads).toHaveLength(0);
+  expect(f.state.unexpectedWrites).toEqual([]);
+  expect(f.state.errors).toEqual([]);
+});
+
 test('Request camera hidden across AV-note acknowledgement resumes exact verification before using the retained photo', async ({ page, baseURL }) => {
   const f = await fixture(page, baseURL!); await f.open();
   const releaseAck = f.holdSaveAcknowledgement();
   await page.locator('#req-av-note').focus();
-  await page.locator('#req-av-note').evaluate(element => { (element as HTMLInputElement).value = 'HEALTHY CAMERA NOTE'; });
+  await page.locator('#req-av-note').fill('HEALTHY CAMERA NOTE');
   await launchCamera(page);
   await page.locator('#req-av-note').evaluate(element => (element as HTMLInputElement).blur());
   await expect.poll(() => f.state.saves.length).toBe(1);

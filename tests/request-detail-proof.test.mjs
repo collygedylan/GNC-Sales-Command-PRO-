@@ -1596,3 +1596,236 @@ for (const capability of ['canEdit', 'canComplete']) {
     assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.proof);
   });
 }
+
+async function requestAutosaveEntryFixture({ canonicalEditor = false } = {}) {
+  const h = await requestCompletionEntryFixture({ canonicalEditor });
+  h.capabilities.canComplete = false;
+  h.ctx.hasPendingRowSaveCompletionIntent = () => false;
+  return { ...h, autosave: () => h.ctx.saveData(false, 'req-', true) };
+}
+
+for (const canonicalEditor of [false, true]) {
+  test(`actual Request autosave waits with ${canonicalEditor ? 'the canonical row' : 'a distinct editor'} and edit permission alone`, async () => {
+    const h = await requestAutosaveEntryFixture({ canonicalEditor }), held = await holdRequestCompletionCheck(h);
+    const before = photoRows(h), pending = h.autosave();
+    await Promise.resolve();
+    assert.equal(h.queued.length, 0);
+    assert.equal(h.calls.length, 0);
+    held.release();
+    await held.checking;
+    await pending;
+    assert.equal(h.queued.length, 1);
+    assert.equal(h.queued[0].key, 'req-::REQUEST-SYNTHETIC-1');
+    assert.deepEqual(structuredClone(h.queued[0].options), { isComplete: false, isAutoSave: true });
+    assert.equal(h.ctx.activeItem, h.target);
+    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.target, 'edit'), true);
+    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.target, 'complete'), false);
+    assert.equal(h.toasts.length, 0);
+    assert.equal(h.calls.length, 0, 'preparing the save never itself issues a mutation');
+    assert.deepEqual(photoRows(h), before);
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+    assert.equal(h.timers.size, 0);
+  });
+}
+
+test('the actual AV-note blur timer survives a metadata check started in its200ms gap', async () => {
+  const h = await requestAutosaveEntryFixture();
+  h.ctx.window.setTimeout = h.ctx.setTimeout;
+  h.ctx.document.getElementById = id => id === 'req-btn-save-complete' ? h.button : null;
+  h.ctx.hideAvNoteDropdown = () => {};
+  const actualSave = h.ctx.saveData, attempted = [];
+  h.ctx.saveData = (...args) => {
+    const promise = actualSave(...args); attempted.push({ args, promise }); return promise;
+  };
+  vm.runInContext(appFunction('handleRequestAvNoteInputBlur'), h.ctx);
+  h.ctx.handleRequestAvNoteInputBlur();
+  const timer = [...h.timers.values()].find(value => value.delay === 200);
+  assert.ok(timer);
+  const held = await holdRequestCompletionCheck(h);
+  timer.callback();
+  assert.equal(attempted.length, 1);
+  assert.deepEqual(attempted[0].args, [false, 'req-', true]);
+  assert.equal(h.queued.length, 0);
+  held.release();
+  await held.checking;
+  await attempted[0].promise;
+  assert.equal(h.queued.length, 1, 'the original blur save reaches coordination once after real verification');
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.toasts.length, 0);
+});
+
+for (const [name, change] of [
+  ['revoked native edit permission', h => { h.capabilities.canEdit = false; }],
+  ['login owner', h => { h.state.loginGeneration++; }],
+  ['username', h => { h.ctx.currentUser = 'synthetic_other_user'; }],
+  ['account scope', h => { h.state.scope = h.context.scope = 'synthetic-account-b'; }],
+  ['auth scope', h => { h.state.authEpoch++; }],
+  ['permission fence', h => { h.state.permission = h.context.permissionVersion = h.dataset.liveVerifiedPermission = 'permission-b'; }],
+  ['master revision fence', h => { h.state.revision = h.context.revision = h.dataset.liveVerifiedRevision = '2'; }],
+  ['detail session', h => { h.ctx.detailHydrationToken++; }],
+  ['active Request', h => { h.ctx.activeItem = { ...h.source, UNIQUE_ID: 'OTHER-REQUEST' }; }],
+  ['canonical master', h => { h.target.MASTER_ID = 'OTHER-MASTER'; }],
+  ['canonical container', h => { h.target.CONTSIZE = '#15'; }],
+  ['canonical source', h => { h.target.SOURCE = 'OTHER-SOURCE'; }],
+  ['visibility', h => { h.ctx.document.hidden = true; h.context.visible = false; }],
+]) {
+  test(`actual Request autosave stays unsent if ${name} changes during its bounded verification`, async () => {
+    const h = await requestAutosaveEntryFixture(), held = await holdRequestCompletionCheck(h);
+    const pending = h.autosave();
+    await Promise.resolve();
+    change(h);
+    const before = photoRows(h);
+    held.release();
+    await held.checking;
+    await pending;
+    assert.equal(h.queued.length, 0);
+    assert.equal(h.calls.length, 0);
+    assert.deepEqual(photoRows(h), before);
+    assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+    assert.equal(h.timers.size, 0);
+  });
+}
+
+test('a timed-out Request autosave cannot queue a late mutation after verification finishes', async () => {
+  const h = await requestAutosaveEntryFixture(), held = await holdRequestCompletionCheck(h);
+  const pending = h.autosave();
+  await Promise.resolve();
+  const timeout = [...h.timers.values()].find(timer => timer.delay === 15000);
+  assert.ok(timeout);
+  timeout.callback();
+  await pending;
+  held.release();
+  await held.checking;
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(h.queued.length, 0);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.ctx.productionMasterDetailBindings.get(h.source), h.proof);
+});
+
+test('Request autosave cannot revive a native edit denial after data becomes verified', async () => {
+  const h = await requestAutosaveEntryFixture(), held = await holdRequestCompletionCheck(h);
+  h.capabilities.canEdit = false;
+  await h.autosave();
+  assert.equal(h.timers.size, 0);
+  held.release();
+  await held.checking;
+  assert.equal(h.queued.length, 0);
+  assert.equal(h.calls.length, 0);
+});
+
+for (const [name, args] of [
+  ['specific Request row', h => [false, 'req-', true, h.source]],
+  ['background photo persistence', () => [false, 'req-', true, null, { backgroundPhotoSync: true }]],
+  ['explicit Request save', () => [false, 'req-', false]],
+  ['non-Request autosave', () => [false, 'ssn-', true]],
+]) {
+  test(`the ${name} path does not gain the active Request autosave wait`, async () => {
+    const h = await requestAutosaveEntryFixture(), held = await holdRequestCompletionCheck(h);
+    let waits = 0;
+    const actualWait = h.ctx.withVerifiedRequestCompletion;
+    h.ctx.withVerifiedRequestCompletion = (...values) => { waits++; return actualWait(...values); };
+    await h.ctx.saveData(...args(h));
+    assert.equal(waits, 0);
+    assert.equal(h.queued.length, 0, 'existing verification rejection remains in effect');
+    assert.equal(h.calls.length, 0);
+    held.release();
+    await held.checking;
+  });
+}
+
+test('the shared edit verification dispatches one original save without requiring complete access or retrying', async () => {
+  const h = await requestAutosaveEntryFixture(), held = await holdRequestCompletionCheck(h);
+  const args = { ...h.args, complete: false };
+  const pending = h.ctx.withVerifiedRequestCompletion(h.completion, h.target,
+    () => h.ctx.supabaseRpc('save_request_work', args, h.rpcOptions), 'edit');
+  await Promise.resolve();
+  assert.equal(h.calls.length, 0);
+  held.release();
+  await held.checking;
+  await pending;
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].args, args);
+  assert.equal(h.calls[0].options, h.rpcOptions);
+  assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+});
+
+test('a queued Request autosave rechecks the original editor before beginning form processing', async () => {
+  const h = await requestAutosaveEntryFixture();
+  h.ctx.isLagSensitiveDetailPrefix = () => false;
+  let formStarts = 0;
+  const reachedForm = new Error('Synthetic form processing boundary');
+  h.ctx.clearScheduledPhotoFieldPersist = () => { formStarts++; throw reachedForm; };
+  const entryCheck = await holdRequestCompletionCheck(h), entry = h.autosave();
+  entryCheck.release();
+  await entryCheck.checking;
+  await entry;
+  assert.equal(h.queued.length, 1);
+  const held = await holdRequestCompletionCheck(h);
+  const pending = h.queued[0].callback();
+  const stoppedAtForm = assert.rejects(pending, error => error === reachedForm);
+  await Promise.resolve();
+  assert.equal(formStarts, 0, 'a new background check also fences the queued form read');
+  held.release();
+  await held.checking;
+  await stoppedAtForm;
+  assert.equal(formStarts, 1);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.ctx.productionMasterDetailBindings.get(h.target), h.proof);
+});
+
+for (const [name, change] of [
+  ['detail navigation', h => { h.ctx.activeItem = { ...h.source, UNIQUE_ID: 'OTHER-REQUEST' }; h.ctx.detailHydrationToken++; }],
+  ['login generation', h => { h.state.loginGeneration++; }],
+  ['edit permission', h => { h.capabilities.canEdit = false; }],
+  ['master revision', h => { h.state.revision = h.context.revision = h.dataset.liveVerifiedRevision = '2'; }],
+]) {
+  test(`the queued Request autosave frame cannot read form values after ${name} changes`, async () => {
+    const h = await requestAutosaveEntryFixture(), frame = deferred();
+    h.ctx.isLagSensitiveDetailPrefix = () => true;
+    h.ctx.requestAnimationFrame = callback => { frame.resolve(callback); };
+    let formStarts = 0;
+    h.ctx.clearScheduledPhotoFieldPersist = () => { formStarts++; };
+    const entryCheck = await holdRequestCompletionCheck(h), entry = h.autosave();
+    entryCheck.release();
+    await entryCheck.checking;
+    await entry;
+    assert.equal(h.queued.length, 1);
+    const pending = h.queued[0].callback();
+    const rejected = assert.rejects(pending, error =>
+      ['REQUEST_ABORTED', 'REQUEST_COMPLETION_CHANGED', 'DATA_NOT_VERIFIED'].includes(error.code));
+    const resumeFrame = await frame.promise;
+    change(h);
+    const before = photoRows(h);
+    resumeFrame();
+    await rejected;
+    assert.equal(formStarts, 0, 'the old queued callback never begins reading another editor');
+    assert.equal(h.calls.length, 0);
+    assert.deepEqual(photoRows(h), before);
+  });
+}
+
+test('the shared Request verifier rejects unsupported actions before any callback or mutation', async () => {
+  const h = await requestAutosaveEntryFixture();
+  let called = 0;
+  await assert.rejects(h.ctx.withVerifiedRequestCompletion(h.completion, h.target,
+    () => { called++; }, 'unsupported-action'), error => error.code === 'REQUEST_COMPLETION_CHANGED');
+  assert.equal(called, 0);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.timers.size, 0);
+});
+
+test('an already-verified Request autosave keeps its existing queue path without capturing a deferred save fence', async () => {
+  const h = await requestAutosaveEntryFixture();
+  let waits = 0, contexts = 0;
+  const actualWait = h.ctx.withVerifiedRequestCompletion;
+  const actualCapture = h.ctx.captureProductionRequestCompletionContext;
+  h.ctx.withVerifiedRequestCompletion = (...args) => { waits++; return actualWait(...args); };
+  h.ctx.captureProductionRequestCompletionContext = (...args) => { contexts++; return actualCapture(...args); };
+  await h.autosave();
+  assert.equal(h.queued.length, 1);
+  assert.deepEqual(structuredClone(h.queued[0].options), { isComplete: false, isAutoSave: true });
+  assert.equal(waits, 0);
+  assert.equal(contexts, 0, 'ordinary queued autosaves do not gain a new fence that could reject a later own-save acknowledgement');
+  assert.equal(h.timers.size, 0);
+  assert.equal(h.calls.length, 0);
+});
