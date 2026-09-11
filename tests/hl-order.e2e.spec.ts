@@ -108,8 +108,17 @@ test('SOC refresh updates grouped cards and blocks emailing changed selected qua
   const state=await fixture(page,baseURL!);await page.locator('#home-tile-hl-order').click();
   await page.getByRole('button',{name:'Order HL plants',exact:true}).click();
   state.rows[0].quantityordered='12';state.revision++;
+  // Capture the displayed warning before unrelated notification onboarding can replace the toast.
+  await page.evaluate(()=>{
+    const messages:string[]=[];(window as any).__hlToastMessages=messages;
+    const toast=document.getElementById('toast-notification')!;
+    new MutationObserver(()=>messages.push(toast.textContent||''))
+      .observe(toast,{childList:true,subtree:true,characterData:true});
+  });
   await page.locator('#batch-btn-hl-tags').click();
-  await expect(page.locator('#toast-notification')).toContainText('changed');
+  await expect.poll(()=>page.evaluate(()=>(window as any).__hlToastMessages.some((text:string)=>text.includes('changed')))).toBe(true);
+  await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
+  await expect(page.locator('#sel-count')).toHaveText('3');
   await expect(page.locator('[data-hl-group]')).toContainText('Ordered: 32');
   expect(state.sends).toHaveLength(0);expect(state.mutations).toEqual([]);
 });
