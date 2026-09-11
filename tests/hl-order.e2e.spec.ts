@@ -5,6 +5,13 @@ const soc=(unique_id:string,changes={})=>({unique_id,itemcode:'SYNTH.003',common
   lotcode:'27.F1',quantityordered:'10',ptravailable:null,dock:'4',planstartdate:null,transactionnumber:'SYNTH-ORDER', ...changes});
 async function fixture(page:Page,baseURL:string,username='dylan_collyge') {
   const origin=new URL(baseURL).origin;
+  // Dismiss notification onboarding through its real controls if it interrupts this data flow.
+  await page.addLocatorHandler(page.locator('#push-permission-help-modal'), async modal => {
+    await modal.getByRole('button',{name:'Close',exact:true}).click();
+  });
+  await page.addLocatorHandler(page.locator('#mobile-push-enable-prompt'), async prompt => {
+    await prompt.getByRole('button',{name:'Dismiss',exact:true}).click();
+  });
   const state={rows:[soc('hl-a'),soc('hl-b',{quantityordered:'15'}),soc('hl-c',{quantityordered:'5',locationcode:'C.14.002'}),soc('hl-excluded',{locationcode:'C.120.001'})],revision:1,
     master:[inventoryReadFixture.row({unique_id:'master-hl-a',itemcode:'SYNTH.003',commonname:'Synthetic HL Holly',contsize:'#3',locationcode:'C.12.001',lotcode:'27.F1',ptravailable:'90',warehouseid:'10',warehousei:'10',season:'F1',saleyear:'27'}),inventoryReadFixture.row({unique_id:'master-hl-c',itemcode:'SYNTH.003',commonname:'Synthetic HL Holly',contsize:'#3',locationcode:'C.14.002',lotcode:'27.F1',ptravailable:'42',warehouseid:'10',warehousei:'10',season:'F1',saleyear:'27'})],
     sends:[] as any[],fail:false,errors:[] as string[],mutations:[] as string[],runtime:0,
