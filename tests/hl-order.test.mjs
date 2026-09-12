@@ -323,3 +323,25 @@ test('saving a stale rendered draft sends its original revision and retains the 
   assert.equal(calls[0].p_expected_revision, 3, 'the focused input was rendered at revision 3, even though polled state is revision 9');
   assert.equal(vm.runInContext('hlOrderStateData.draft[0].quantity', ctx), 7);
 });
+
+test('a state response discarded during permission initialization allows an immediate current-scope read', async () => {
+  const ctx = runtime();
+  let identity = 'initial', finishFirst, reads = 0;
+  ctx.getSupabaseReadIdentityScope = () => identity;
+  ctx.scheduleHlOrderRefresh = () => {};
+  ctx.renderHlOrder = () => {};
+  ctx.updateGlobalActionBar = () => {};
+  ctx.supabaseRpc = () => ++reads === 1
+    ? new Promise(resolve => { finishFirst = resolve; })
+    : Promise.resolve({ revision: 2, draft: [], orders: [] });
+  const first = ctx.loadHlOrderState();
+  identity = 'verified-permissions';
+  finishFirst({ revision: 1, draft: [], orders: [] });
+  await first;
+  assert.equal(vm.runInContext('hlOrderStateData', ctx), null, 'the stale identity response stays discarded');
+  await ctx.loadHlOrderState();
+  assert.equal(reads, 2, 'current permissions do not wait for the fifteen-second poll');
+  assert.equal(vm.runInContext('hlOrderStateData.revision', ctx), 2);
+  await ctx.loadHlOrderState();
+  assert.equal(reads, 2, 'a valid same-scope read still coalesces');
+});

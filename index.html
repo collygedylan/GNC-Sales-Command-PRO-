@@ -87957,7 +87957,15 @@ function toggleDriveQuickRequestItem(domId) {
             })();
             hlOrderStatePending = pending;
             try { return await pending; }
-            finally { if (hlOrderStatePending === pending) hlOrderStatePending = null; if (isHlOrderOwnershipCurrent(owner)) hlOrderStateLoadedAt = Date.now(); renderHlOrder(); }
+            finally {
+                if (hlOrderStatePending === pending) {
+                    hlOrderStatePending = null;
+                    // Startup can establish the permission revision during this
+                    // read. A discarded response must not throttle its replacement.
+                    hlOrderStateLoadedAt = isHlOrderOwnershipCurrent(owner) ? Date.now() : 0;
+                }
+                renderHlOrder();
+            }
         }
 
         function getHlOrderErrorMessage(error) {
