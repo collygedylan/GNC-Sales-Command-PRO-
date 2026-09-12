@@ -30723,6 +30723,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let dashboardSyncMetadataSummaries = [];
         let dashboardSyncMetadataFetchedAt = 0;
         let dashboardSyncMetadataInFlight = null;
+        let dashboardSyncMetadataOwner = '';
+        let dashboardSyncMetadataRequestOwner = '';
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         let pendingEditsCache = null;
@@ -111176,30 +111178,46 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         async function refreshDashboardSyncMetadata(force = false) {
             if (!currentUser || navigator.onLine === false || !canViewDashboardSyncStatus()) return false;
+            const owner = getSupabaseReadIdentityScope();
+            if (dashboardSyncMetadataOwner !== owner) {
+                dashboardSyncMetadataSummaries = [];
+                dashboardSyncMetadataFetchedAt = 0;
+            }
             const now = Date.now();
             if (!force && dashboardSyncMetadataFetchedAt && (now - dashboardSyncMetadataFetchedAt) < DASHBOARD_SYNC_METADATA_TTL_MS) return true;
-            if (dashboardSyncMetadataInFlight) return dashboardSyncMetadataInFlight;
-            dashboardSyncMetadataInFlight = (async () => {
-                try {
-                    const entries = [];
-                    for (const source of getDashboardSyncMetadataSources()) {
-                        try {
-                            const rows = await fetchSupabasePage(source.table, 'select=filename,last_updated&last_updated=not.is.null&order=last_updated.desc', DASHBOARD_SYNC_METADATA_LIMIT, 0);
-                            const formattedRows = formatFetchedRows(rows || [], source.table);
-                            const summary = collectDashboardSyncSource(formattedRows, source.label);
-                            if (summary && (summary.iso || summary.files.length)) entries.push(summary);
-                        } catch (error) {}
-                        await yieldToUiFrame();
-                    }
-                    dashboardSyncMetadataSummaries = mergeDashboardSyncSummaries(entries);
-                    dashboardSyncMetadataFetchedAt = Date.now();
-                    updateDashboardSyncSummary();
-                    return true;
-                } finally {
-                    dashboardSyncMetadataInFlight = null;
+            if (dashboardSyncMetadataInFlight && dashboardSyncMetadataRequestOwner === owner) return dashboardSyncMetadataInFlight;
+            const pending = withProductionLiveSyncSignal(null, async (signal) => {
+                const current = () => !signal.aborted && owner === getSupabaseReadIdentityScope() && canViewDashboardSyncStatus();
+                const entries = [];
+                for (const source of getDashboardSyncMetadataSources()) {
+                    if (!current()) return false;
+                    try {
+                        const { rows } = await fetchAuthenticatedSupabaseReadPage(source.table,
+                            `select=filename,last_updated&last_updated=not.is.null&order=last_updated.desc&limit=${DASHBOARD_SYNC_METADATA_LIMIT}&offset=0`,
+                            { timeoutMs: SUPABASE_READ_TIMEOUT_MS, signal });
+                        if (!current()) return false;
+                        const formattedRows = formatFetchedRows(rows || [], source.table);
+                        const summary = collectDashboardSyncSource(formattedRows, source.label);
+                        if (summary && (summary.iso || summary.files.length)) entries.push(summary);
+                    } catch (error) { if (!current()) return false; }
+                    await yieldToUiFrame();
                 }
-            })();
-            return dashboardSyncMetadataInFlight;
+                if (!current()) return false;
+                dashboardSyncMetadataSummaries = mergeDashboardSyncSummaries(entries);
+                dashboardSyncMetadataFetchedAt = Date.now();
+                dashboardSyncMetadataOwner = owner;
+                updateDashboardSyncSummary();
+                return true;
+            }).catch(() => false);
+            dashboardSyncMetadataInFlight = pending;
+            dashboardSyncMetadataRequestOwner = owner;
+            try { return await pending; }
+            finally {
+                if (dashboardSyncMetadataInFlight === pending) {
+                    dashboardSyncMetadataInFlight = null;
+                    dashboardSyncMetadataRequestOwner = '';
+                }
+            }
         }
 
         function updateDashboardSyncSummary() {
@@ -111211,13 +111229,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const canView = canViewDashboardSyncStatus();
             accordionEl.classList.toggle('hidden', !canView);
             if (!canView) return;
+            const owner = getSupabaseReadIdentityScope();
+            if (dashboardSyncMetadataOwner !== owner) {
+                dashboardSyncMetadataSummaries = [];
+                dashboardSyncMetadataFetchedAt = 0;
+            }
             const sourceSummaries = [
                 collectDashboardSyncSource(fullInventory, 'Drive'),
                 collectDashboardSyncSource(socInventory, 'SOC'),
                 collectDashboardSyncSource(reservesInventory, 'Reserves'),
                 collectDashboardSyncSource(cavInventory, 'CAV')
             ].filter((entry) => entry.iso || entry.files.length);
-            if (!dashboardSyncMetadataInFlight && (!dashboardSyncMetadataFetchedAt || (Date.now() - dashboardSyncMetadataFetchedAt) > DASHBOARD_SYNC_METADATA_TTL_MS)) {
+            if ((!dashboardSyncMetadataInFlight || dashboardSyncMetadataRequestOwner !== owner) && (!dashboardSyncMetadataFetchedAt || (Date.now() - dashboardSyncMetadataFetchedAt) > DASHBOARD_SYNC_METADATA_TTL_MS)) {
                 refreshDashboardSyncMetadata(false).catch(() => {});
             }
             const mergedSummaries = mergeDashboardSyncSummaries([...sourceSummaries, ...dashboardSyncMetadataSummaries]);

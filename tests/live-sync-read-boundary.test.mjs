@@ -10,6 +10,143 @@ assert.ok(start > 0 && end > start);
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
+function dashboardMetadataFixture() {
+    const calls = [];
+    const ctx = { Error, Object, String, Number, Array, Set, Map, Math, JSON, Promise, Date, encodeURIComponent, AbortController,
+        currentUser: 'metadata-user-a', owner: 'metadata-scope-a', allowed: true,
+        navigator: { onLine: true }, document: { hidden: false },
+        productionLiveSyncNavigation: new AbortController(),
+        DASHBOARD_SYNC_METADATA_LIMIT: 30, DASHBOARD_SYNC_METADATA_TTL_MS: 60000, SUPABASE_READ_TIMEOUT_MS: 1000,
+        canViewDashboardSyncStatus: () => ctx.allowed,
+        getSupabaseReadIdentityScope: () => ctx.owner,
+        firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') || '',
+        getValidIsoTimestamp: value => Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : '',
+        formatFetchedRows: rows => rows,
+        yieldToUiFrame: async () => {}, commits: 0,
+        updateDashboardSyncSummary: () => { ctx.commits++; },
+        transport: async table => ({ rows: [{ filename: `${ctx.owner}-${table}.csv`, last_updated: '2026-09-12T12:00:00Z' }] }),
+        fetchAuthenticatedSupabaseReadPage: (table, query, options) => {
+            calls.push({ table, query, options, owner: ctx.owner });
+            return ctx.transport(table, query, options);
+        }
+    };
+    vm.createContext(ctx);
+    const stateStart = html.indexOf('let dashboardSyncMetadataSummaries =');
+    const stateEnd = html.indexOf('let pendingRequestArchiveFlushTimer', stateStart);
+    const signalStart = html.indexOf('async function withProductionLiveSyncSignal(');
+    const metadataStart = html.indexOf('function collectDashboardSyncSource(');
+    const metadataEnd = html.indexOf('function updateDashboardSyncSummary()', metadataStart);
+    assert.ok(stateStart > 0 && stateEnd > stateStart && metadataEnd > metadataStart);
+    vm.runInContext(html.slice(stateStart, stateEnd)
+        + html.slice(signalStart, html.indexOf('function ', signalStart + 15)).trim()
+        + html.slice(metadataStart, metadataEnd)
+        + '\nthis.metadataState = () => ({ summaries: dashboardSyncMetadataSummaries, fetchedAt: dashboardSyncMetadataFetchedAt, pending: dashboardSyncMetadataInFlight });', ctx);
+    return { ctx, calls };
+}
+
+test('dashboard metadata cancellation between reads prevents the next request and commit, then fresh reads resume and cache', async () => {
+    const { ctx, calls } = dashboardMetadataFixture(), uiGate = deferred();
+    ctx.yieldToUiFrame = () => uiGate.promise;
+    const pending = ctx.refreshDashboardSyncMetadata(true);
+    await settle();
+    assert.equal(calls.length, 1);
+    assert.equal(ctx.commits, 0);
+    ctx.productionLiveSyncNavigation.abort(); uiGate.resolve();
+    assert.equal(await pending, false);
+    assert.equal(calls.length, 1, 'the next metadata source must not start after unload');
+    assert.equal(ctx.commits, 0);
+    assert.equal(ctx.metadataState().summaries.length, 0);
+    assert.equal(ctx.metadataState().fetchedAt, 0);
+    assert.equal(ctx.metadataState().pending, null);
+    ctx.productionLiveSyncNavigation = new AbortController();
+    ctx.yieldToUiFrame = async () => {};
+    assert.equal(await ctx.refreshDashboardSyncMetadata(), true);
+    assert.equal(calls.length, 5);
+    assert.equal(ctx.commits, 1);
+    assert.equal(ctx.metadataState().summaries.length, 4);
+    assert.ok(ctx.metadataState().fetchedAt > 0);
+    for (const call of calls) {
+        const query = new URLSearchParams(call.query);
+        assert.equal(query.get('select'), 'filename,last_updated');
+        assert.equal(query.get('last_updated'), 'not.is.null');
+        assert.equal(query.get('order'), 'last_updated.desc');
+        assert.equal(query.get('limit'), '30');
+        assert.equal(query.get('offset'), '0');
+        assert.equal(call.options.timeoutMs, 1000);
+        assert.ok(call.options.signal);
+    }
+    assert.equal(await ctx.refreshDashboardSyncMetadata(), true);
+    assert.equal(calls.length, 5, 'same-owner metadata reuses its valid TTL cache');
+});
+
+test('dashboard metadata never starts transport after navigation is already aborted', async () => {
+    const { ctx, calls } = dashboardMetadataFixture();
+    ctx.productionLiveSyncNavigation.abort();
+    assert.equal(await ctx.refreshDashboardSyncMetadata(true), false);
+    assert.equal(calls.length, 0);
+    assert.equal(ctx.commits, 0);
+    assert.equal(ctx.metadataState().fetchedAt, 0);
+    assert.equal(ctx.metadataState().pending, null);
+});
+
+test('dashboard metadata aborts an in-flight authenticated request while preserving the same-owner cache', async () => {
+    const { ctx, calls } = dashboardMetadataFixture();
+    assert.equal(await ctx.refreshDashboardSyncMetadata(), true);
+    const prior = ctx.metadataState();
+    assert.equal(calls.length, 4);
+    ctx.transport = (_, __, { signal }) => new Promise((_, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+    });
+    const pending = ctx.refreshDashboardSyncMetadata(true);
+    await settle();
+    assert.equal(calls.length, 5);
+    ctx.productionLiveSyncNavigation.abort();
+    assert.equal(await pending, false);
+    assert.equal(calls.at(-1).options.signal.aborted, true);
+    assert.equal(calls.length, 5);
+    assert.equal(ctx.commits, 1, 'only the earlier successful read committed');
+    assert.equal(ctx.metadataState().fetchedAt, prior.fetchedAt);
+    assert.equal(ctx.metadataState().summaries, prior.summaries);
+});
+
+test('dashboard metadata never shares or commits an old account request over a new owner', async () => {
+    const { ctx, calls } = dashboardMetadataFixture(), oldGate = deferred(), freshGate = deferred();
+    let freshReads = 0;
+    ctx.transport = table => ctx.owner === 'metadata-scope-a' ? oldGate.promise
+        : ++freshReads === 1 ? freshGate.promise
+        : Promise.resolve({ rows: [{ filename: `new-${table}.csv`, last_updated: '2026-09-12T12:00:00Z' }] });
+    const old = ctx.refreshDashboardSyncMetadata(true);
+    await settle();
+    ctx.currentUser = 'metadata-user-b'; ctx.owner = 'metadata-scope-b';
+    const fresh = ctx.refreshDashboardSyncMetadata(), shared = ctx.refreshDashboardSyncMetadata();
+    await settle();
+    assert.equal(calls.length, 2, 'the new owner starts once and coalesces only its own reads');
+    oldGate.resolve({ rows: [{ filename: 'old-account.csv', last_updated: '2026-09-12T13:00:00Z' }] });
+    assert.equal(await old, false);
+    assert.equal(ctx.commits, 0);
+    const stillShared = ctx.refreshDashboardSyncMetadata();
+    await settle();
+    assert.equal(calls.length, 2, 'old completion cannot clear the new pending request');
+    freshGate.resolve({ rows: [{ filename: 'new-master.csv', last_updated: '2026-09-12T12:00:00Z' }] });
+    assert.deepEqual(await Promise.all([fresh, shared, stillShared]), [true, true, true]);
+    assert.equal(calls.length, 5);
+    assert.equal(ctx.commits, 1);
+    assert.ok(ctx.metadataState().summaries.every(entry => entry.files.every(file => file.startsWith('new-'))));
+    assert.equal(await ctx.refreshDashboardSyncMetadata(), true);
+    assert.equal(calls.length, 5);
+});
+
+test('dashboard metadata permission loss at the final UI yield prevents a completed batch from committing', async () => {
+    const { ctx, calls } = dashboardMetadataFixture();
+    let yields = 0;
+    ctx.yieldToUiFrame = async () => { if (++yields === 4) ctx.allowed = false; };
+    assert.equal(await ctx.refreshDashboardSyncMetadata(true), false);
+    assert.equal(calls.length, 4);
+    assert.equal(ctx.commits, 0);
+    assert.equal(ctx.metadataState().summaries.length, 0);
+    assert.equal(ctx.metadataState().fetchedAt, 0);
+});
+
 test('health telemetry cancels across navigation during authentication and in flight, then resumes normally', async () => {
     const auth = deferred(), calls = [];
     const sampleMath = Object.create(Math); sampleMath.random = () => 0;

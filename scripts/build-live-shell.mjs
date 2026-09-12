@@ -35,7 +35,9 @@ if (!minified.code || minified.code.length < 500_000) {
 const runtimeName = 'live-app-runtime-v2026082010.min.js';
 const runtimeTarget = path.join(siteRoot, 'assets', runtimeName);
 await mkdir(path.dirname(runtimeTarget), { recursive: true });
-await writeFile(runtimeTarget, `${minified.code}\n`, 'utf8');
+// A downloaded script can still fail during execution. Only its final statement
+// may release the initial shell's login guard.
+await writeFile(runtimeTarget, `${minified.code}\n;window.__gncAppRuntimeExecuted = true;\n`, 'utf8');
 // These synchronous dependencies must accompany the extracted production
 // runtime in local verification as well as the Pages artifact.
 await Promise.all(['live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'inventory-list-contract.js', 'master-detail-snapshots.js'].map((name) =>
@@ -49,10 +51,61 @@ const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" m
 // monopolize the main thread before the already-downloaded LCP image is painted.
 const runtimeTag = `<script>
 (() => {
+  window.__gncAppRuntimeExecuted = false;
+  const login = document.getElementById('login-button');
+  const passwordToggle = document.getElementById('login-password-toggle');
+  const feedback = document.getElementById('login-runtime-feedback');
+  const status = document.getElementById('login-runtime-status');
+  const reload = document.getElementById('login-runtime-reload');
+  let ready = false;
+  let started = false;
+  const guardedEvents = ['click', 'pointerup', 'touchend', 'keydown'];
+  const guardLogin = (event) => {
+    if (ready) return;
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target && target.closest('#login-button, #login-password-toggle');
+    const submitKey = event.type === 'keydown' && event.key === 'Enter' && target && target.id === 'pin-code';
+    if (!button && !submitKey) return;
+    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  guardedEvents.forEach(type => document.addEventListener(type, guardLogin, { capture: true, passive: false }));
+  const offerReload = (message) => {
+    if (ready) return;
+    login.disabled = true;
+    login.setAttribute('aria-disabled', 'true');
+    passwordToggle.disabled = true;
+    status.textContent = message;
+    reload.hidden = false;
+  };
+  const slowTimer = setTimeout(() => offerReload('App is taking longer to load'), 15000);
+  const failed = () => {
+    clearTimeout(slowTimer);
+    offerReload('App could not load');
+  };
   const boot = () => {
+    if (started) return;
+    started = true;
     const runtime = document.createElement('script');
     runtime.src = './assets/${runtimeName}?v=${RELEASE}';
     runtime.defer = true;
+    runtime.onerror = failed;
+    runtime.onload = () => {
+      if (window.__gncAppRuntimeExecuted !== true || typeof window.triggerLoginFromUI !== 'function') {
+        failed();
+        return;
+      }
+      ready = true;
+      clearTimeout(slowTimer);
+      login.disabled = false;
+      login.removeAttribute('aria-disabled');
+      login.removeAttribute('aria-busy');
+      login.removeAttribute('aria-describedby');
+      passwordToggle.disabled = false;
+      feedback.hidden = true;
+      guardedEvents.forEach(type => document.removeEventListener(type, guardLogin, true));
+    };
     document.body.appendChild(runtime);
   };
   const afterPaint = () => requestAnimationFrame(() => requestAnimationFrame(boot));
@@ -63,9 +116,21 @@ const runtimeTag = `<script>
   }
 })();
 </script>`;
-const runtimeDeployedHtml = sourceHtml.slice(0, runtime.index)
+let runtimeDeployedHtml = sourceHtml.slice(0, runtime.index)
   + runtimeTag
   + sourceHtml.slice(runtime.index + runtime.match.length);
+
+// Native disabled markup protects the very first paint, before this bootstrap
+// script runs. The credential fields remain editable throughout loading.
+const replaceLoginMarkup = (before, after) => {
+  if (runtimeDeployedHtml.split(before).length !== 2) throw new Error(`Expected exactly one login shell marker: ${before}`);
+  runtimeDeployedHtml = runtimeDeployedHtml.replace(before, after);
+};
+replaceLoginMarkup('<button id="login-button"', '<button id="login-button" disabled aria-disabled="true" aria-busy="true" aria-describedby="login-runtime-status"');
+replaceLoginMarkup('<button id="login-password-toggle"', '<button id="login-password-toggle" disabled');
+replaceLoginMarkup('onclick="return triggerLoginFromUI(event)"', 'onclick="if(this.disabled || typeof triggerLoginFromUI!==\'function\'){event.preventDefault();return false;}return triggerLoginFromUI(event)"');
+replaceLoginMarkup('onkeydown="if(event.key===\'Enter\'){return triggerLoginFromUI(event);}"', 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();if(!document.getElementById(\'login-button\').disabled && typeof triggerLoginFromUI===\'function\'){return triggerLoginFromUI(event);}return false;}"');
+replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing app…</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
 
 // The legacy shell carries hundreds of kilobytes of route-specific CSS in the
 // document head. Parsing those rules delays the login logo even though none of
@@ -136,6 +201,7 @@ html,body{margin:0}
 img{display:block;max-width:100%}
 button,input{font:inherit}
 .hidden{display:none!important}
+#login-runtime-feedback[hidden],#login-runtime-reload[hidden]{display:none!important}
 `;
 const loginCriticalStyles = loginCriticalReset + pilotCss.slice(loginStylesStart, loginStylesEnd).trim();
 const pilotStylesheetHref = `./assets/ops-precision-pilot.css?v=${RELEASE}`;

@@ -241,6 +241,7 @@ export function createHlOrderState(options = {}) {
 export async function installHlOrderFixture(page, baseURL, options = {}) {
   const control = createHlOrderState(options), username = options.username || 'dylan_collyge', role = options.role || 'ADMIN';
   control.appAccessReads = 0; control.backgroundMasterReads = 0;
+  control.runtimeRequests = 0; control.authTokenRequests = 0;
   if (options.seedOrder) {
     const first = control.state.actionable_rows[0];
     const command = (action, payload) => control.command({ p_command_id: uuid(++control.sequence), p_action: action, p_payload: payload, p_expected_revision: control.state.revision });
@@ -291,9 +292,20 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   await page.routeWebSocket('**/*', (socket) => socket.close());
   await page.route('**/*', async (route) => {
     const req = route.request(), url = new URL(req.url()), method = req.method();
-    if (url.origin === origin && ['GET', 'HEAD'].includes(method)) return route.continue();
+    if (url.origin === origin && ['GET', 'HEAD'].includes(method)) {
+      if (/\/assets\/live-app-runtime[^/]*\.js/.test(url.pathname)) {
+        control.runtimeRequests++;
+        // Opt-in bootstrap tests control only the compiled runtime transport.
+        // All auth and application behavior still comes from the actual app.
+        if (options.runtimeRequest) return options.runtimeRequest(route, control);
+      }
+      return route.continue();
+    }
     if (method === 'OPTIONS') return json(route, {});
-    if (url.pathname.startsWith('/auth/v1/')) return json(route, url.pathname.endsWith('/user') ? session.user : session);
+    if (url.pathname.startsWith('/auth/v1/')) {
+      if (url.pathname.endsWith('/token') && method === 'POST') control.authTokenRequests++;
+      return json(route, url.pathname.endsWith('/user') ? session.user : session);
+    }
     if (url.hostname === 'script.google.com' || url.hostname === 'script.googleusercontent.com') {
       const body = req.postDataJSON() || {};
       if (body.type === 'hl_order_preview') {
@@ -363,7 +375,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     // Production notification behavior and the app's toast assertions stay intact.
     delete window.PushManager;
   }, { ...session, startupMode: options.startupMode || 'restored', username, role });
-  await page.goto('/', { waitUntil: 'load' });
+  // A held runtime may delay load. The shell is usable at DOMContentLoaded,
+  // allowing opt-in tests to inspect it before normal cold-login automation.
+  await page.goto('/', { waitUntil: options.beforeLogin ? 'domcontentloaded' : 'load' });
+  if (options.beforeLogin) await options.beforeLogin(control);
   if (options.startupMode === 'cold') {
     await page.locator('#username-input').fill(username);
     await page.locator('#pin-code').fill('Synthetic-Access-123!');

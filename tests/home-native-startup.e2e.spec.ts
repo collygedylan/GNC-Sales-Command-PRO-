@@ -2,6 +2,88 @@ import { expect, test } from '@playwright/test';
 import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 const tileSelector = (view: string, dynamic: boolean) => dynamic ? `#home-sales-open-${view}` : `#home-tile-${view}`;
 
+test('cold login stays disabled and Enter is safe while the compiled runtime is held', async ({ page, baseURL }) => {
+  let releaseRuntime!: () => void;
+  const runtimeGate = new Promise<void>(resolve => { releaseRuntime = resolve; });
+  const username = 'native_start_admin', accessCode = 'Synthetic-Access-123!';
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    username, role: 'ADMIN', startupMode: 'cold',
+    runtimeRequest: async (route: any) => { await runtimeGate; await route.continue(); },
+    beforeLogin: async (control: any) => {
+      try {
+        await expect.poll(() => control.runtimeRequests).toBe(1);
+        const login = page.locator('#login-button');
+        await expect(login).toBeVisible();
+        await expect(login).toBeDisabled();
+        await expect(page.locator('#login-runtime-status')).toHaveAttribute('role', 'status');
+        await expect(page.locator('#login-runtime-status')).toHaveText('Preparing app…');
+        await expect(page.locator('#login-runtime-reload')).toBeHidden();
+        await page.locator('#username-input').fill(username);
+        await page.locator('#pin-code').fill(accessCode);
+        // A physical click exercises native disabled-button behavior without
+        // waiting for Playwright's enabled check or invoking any app handler.
+        const box = await login.boundingBox();
+        expect(box).not.toBeNull();
+        await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+        await page.locator('#pin-code').press('Enter');
+        await expect(page.locator('#view-login')).toBeVisible();
+        await expect(page.locator('#username-input')).toHaveValue(username);
+        await expect(page.locator('#pin-code')).toHaveValue(accessCode);
+        expect(await page.evaluate(() => (window as any).__gncAppRuntimeExecuted === true)).toBe(false);
+        expect(control.authTokenRequests).toBe(0);
+        expect(control.commands).toEqual([]);
+        expect(control.errors).toEqual([]);
+      } finally {
+        releaseRuntime();
+      }
+      await expect(page.locator('#login-button')).toBeEnabled();
+      expect(await page.evaluate(() => (window as any).__gncAppRuntimeExecuted)).toBe(true);
+      await expect(page.locator('#username-input')).toHaveValue(username);
+      await expect(page.locator('#pin-code')).toHaveValue(accessCode);
+      await expect(page.locator('#view-login')).toBeVisible();
+      expect(control.authTokenRequests).toBe(0, 'an early interaction must not queue a login');
+    }
+  });
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/role-access-ready/);
+  await expect(page.locator('#home-tile-drive')).toBeVisible();
+  expect(fixture.authTokenRequests).toBe(1);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('failed compiled runtime keeps login disabled and Reload app recovers normal login', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    username: 'native_start_admin', role: 'ADMIN', startupMode: 'cold',
+    runtimeRequest: async (route: any, control: any) => control.runtimeRequests === 1
+      ? route.abort('failed') : route.continue(),
+    beforeLogin: async (control: any) => {
+      await expect(page.locator('#login-runtime-status')).toHaveText('App could not load');
+      await expect(page.locator('#login-button')).toBeDisabled();
+      const reload = page.locator('#login-runtime-reload');
+      await expect(reload).toBeVisible();
+      await expect(reload).toHaveAccessibleName('Reload app');
+      expect(control.authTokenRequests).toBe(0);
+      expect(control.errors).toEqual([]);
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        reload.click()
+      ]);
+      await expect.poll(() => control.runtimeRequests).toBe(2);
+      await expect(page.locator('#login-button')).toBeEnabled();
+      await expect(page.locator('#login-runtime-reload')).toBeHidden();
+      expect(await page.evaluate(() => (window as any).__gncAppRuntimeExecuted)).toBe(true);
+      expect(control.authTokenRequests).toBe(0);
+    }
+  });
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/role-access-ready/);
+  await expect(page.locator('#home-tile-drive')).toBeVisible();
+  expect(fixture.authTokenRequests).toBe(1);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
 const nativeStartupCases = [
   { username: 'native_start_admin', role: 'ADMIN', startupMode: 'cold', dynamic: false, visible: ['drive', 'managers'] },
   { username: 'native_start_manager', role: 'MANAGER', startupMode: 'restored', dynamic: false, visible: ['drive', 'managers'] },
