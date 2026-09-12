@@ -142,6 +142,17 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
       nativeAuthSessionActive = true;
       nativeAuthProfile = { id: 'synthetic-dylan-live-sync', username: 'dylan_collyge', role: 'ADMIN', active: true };
       nativeAuthAccessToken = 'synthetic-not-a-real-token';
+      // The canary identity starts before access verification. This native-sync
+      // fixture represents the same identity after access and role startup finish.
+      appAccessSnapshotState = {
+        status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser,
+        snapshot: normalizeAppAccessSnapshot({
+          contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
+          username: currentUser, role: currentRole,
+          permissions: [{ permissionKey: 'module.docks.view', kind: 'module', moduleKey: 'docks', allowed: true }]
+        }, currentUser)
+      };
+      setRoleAccessReadyState(true);
       fetchAllSupabaseRows = async (table) => {
         fixture.reads.push(table);
         if (table === 'ph_app_settings') return [{key:'current_season_salesyear', value:{seasonCode:'F1',salesYear:'27'}}];
