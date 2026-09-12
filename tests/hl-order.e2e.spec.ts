@@ -181,6 +181,7 @@ test('selected editable quantities persist through reload and HL removal preserv
   await draft.locator('[data-hl-draft-quantity]').fill('7');
   await draft.getByRole('button', { name: 'Save quantity', exact: true }).click();
   await expect.poll(() => fixture.state.draft[0].quantity).toBe(7);
+  await expect(draft).toHaveAttribute('data-hl-edit-revision', String(fixture.state.revision));
   await draft.getByRole('button', { name: 'Remove from Bloom Picker', exact: true }).click();
   await expect.poll(() => fixture.state.draft.length).toBe(0);
   expect(await page.evaluate(() => window.eval('selectedItems.has(window.__hlUnrelatedId)'))).toBe(true);
@@ -589,11 +590,57 @@ test('a focused draft edit cannot overwrite another device after a newer state p
   await page.evaluate(() => window.eval('loadHlOrderState(true)'));
   await expect(draft.locator('[data-hl-draft-quantity]')).toHaveValue('5');
   await expect(draft).toHaveAttribute('data-hl-edit-revision', baseline!);
-  await draft.getByRole('button', { name: 'Save quantity', exact: true }).click();
+  const save = draft.getByRole('button', { name: 'Save quantity', exact: true });
+  await save.hover();
+  await page.mouse.down();
+  // A freshness update may finish after mobile focus leaves the quantity field.
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement)?.blur();
+    window.eval('renderHlBloomSection()');
+  });
+  await expect(draft.locator('[data-hl-draft-quantity]')).toHaveValue('5');
+  await expect(draft).toHaveAttribute('data-hl-edit-revision', baseline!);
+  await page.mouse.up();
   await expect.poll(() => actions(fixture, 'draft_save').length).toBe(3);
   expect(actions(fixture, 'draft_save').at(-1).p_expected_revision).toBe(Number(baseline));
   expect(fixture.state.draft[0].quantity).toBe(7);
   await expect(page.locator('#hl-order-content')).toContainText(/changed|refresh|review/i);
+  assertIsolated(fixture);
+});
+
+test('removing one dirty Bloom draft preserves another edit and account reset restores saved drafts', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await openHl(page); await openDetails(page);
+  for (const [sourceId, quantity] of [['hl-a', '3'], ['hl-b', '4']]) {
+    const row = page.locator(`[data-hl-source-id="${sourceId}"]`);
+    await row.locator('[data-hl-select]').check();
+    await row.locator('[data-hl-quantity]').fill(quantity);
+  }
+  await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
+  const first = page.locator('[data-hl-draft-source-id="hl-a"]');
+  const second = page.locator('[data-hl-draft-source-id="hl-b"]');
+  await expect(second).toBeVisible();
+  const baseline = await second.getAttribute('data-hl-edit-revision');
+  await first.locator('[data-hl-draft-quantity]').fill('4');
+  await second.locator('[data-hl-draft-quantity]').fill('5');
+  await first.getByRole('button', { name: 'Remove from Bloom Picker', exact: true }).click();
+  await expect(first).toHaveCount(0);
+  await expect(second.locator('[data-hl-draft-quantity]')).toHaveValue('5');
+  await expect(second).toHaveAttribute('data-hl-edit-revision', baseline!);
+  await second.getByRole('button', { name: 'Save quantity', exact: true }).click();
+  await expect.poll(() => actions(fixture, 'draft_save').length).toBe(2);
+  expect(actions(fixture, 'draft_save').at(-1).p_expected_revision).toBe(Number(baseline));
+  expect(fixture.state.draft[0].quantity).toBe(4);
+  await expect(page.locator('#hl-order-content')).toContainText(/changed|refresh|review/i);
+  // The second reset restores identical markup, exercising signature invalidation.
+  for (let reset = 0; reset < 2; reset++) {
+    await page.evaluate(async () => {
+      window.eval('resetHlOrderState()');
+      await window.eval('loadHlOrderState(true)');
+    });
+    await expect(second).toBeVisible();
+    await expect(second.locator('[data-hl-draft-quantity]')).toHaveValue('4');
+  }
   assertIsolated(fixture);
 });
 

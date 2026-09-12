@@ -88166,8 +88166,7 @@ function toggleDriveQuickRequestItem(domId) {
                 .map((element) => String(element.dataset.domId || '')).filter(Boolean));
         }
 
-        function hasHlOrderUnsavedInputs() {
-            const container = document.getElementById('hl-order-content');
+        function hasHlOrderUnsavedInputs(container = document.getElementById('hl-order-content')) {
             if (!container) return false;
             return [...container.querySelectorAll('input,textarea')].some((input) =>
                 input.type === 'checkbox' || input.type === 'radio'
@@ -88411,20 +88410,24 @@ function toggleDriveQuickRequestItem(domId) {
             if (!section) return;
             const draft = canUseHlOrder() ? hlOrderStateData?.draft || [] : [];
             section.classList.toggle('hidden', !cartPanelOpen || !draft.length);
-            if (!draft.length) { section.innerHTML = ''; return; }
+            if (!draft.length) { setContainerHtmlWithSignature(section, '', ''); return; }
+            if (!force && typeof activeFastPress !== 'undefined' && activeFastPress && /^invoke\|[^|]*Hl/.test(activeFastPress.actionKey)) return;
             if (!force && section.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+            // Mobile blur must not let a freshness render discard an edit or its revision.
+            if (!force && hasHlOrderUnsavedInputs(section)) return;
             const groups = new Map();
             draft.forEach((entry) => {
                 const shipDate = getHlDraftShipDate(entry);
                 if (!groups.has(shipDate)) groups.set(shipDate, []);
                 groups.get(shipDate).push(entry);
             });
-            section.innerHTML = `<h3 class="mb-2 font-bold text-[#007a4d]">HL Order · saved across devices</h3><div class="max-h-[30vh] space-y-3 overflow-y-auto">${[...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([shipDate, entries]) => `<section data-hl-ship-date="${escapeHtml(shipDate)}"><h4 class="mb-2 text-xs font-black uppercase tracking-[0.12em] text-emerald-800">Ship date · ${escapeHtml(formatHlOrderShipDate(shipDate))}</h4>${entries.map((entry) => {
+            const html = `<h3 class="mb-2 font-bold text-[#007a4d]">HL Order · saved across devices</h3><div class="max-h-[30vh] space-y-3 overflow-y-auto">${[...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([shipDate, entries]) => `<section data-hl-ship-date="${escapeHtml(shipDate)}"><h4 class="mb-2 text-xs font-black uppercase tracking-[0.12em] text-emerald-800">Ship date · ${escapeHtml(formatHlOrderShipDate(shipDate))}</h4>${entries.map((entry) => {
                 const row = getHlOrderSource(entry.source);
                 const ceiling = getHlDraftQuantityCeiling(entry);
                 const locked = !['draft','ready'].includes(entry.status || 'draft');
                 return `<div data-hl-draft-source-id="${escapeHtml(entry.source_id)}" data-hl-ship-date="${escapeHtml(shipDate)}" data-hl-edit-revision="${escapeHtml(hlOrderStateData.revision)}" class="rounded-xl border border-emerald-200 bg-white p-3 text-sm"><strong>${escapeHtml(row.commonname || row.itemcode)} · ${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</strong><p>Ship ${escapeHtml(formatHlOrderShipDate(shipDate))} · Dock ${escapeHtml(row.dock || 'Not provided')} · Stop ${escapeHtml(row.stopnumber || 'Not provided')}</p><p>SOC quantity: ${escapeHtml(row.quantityordered)} · ${escapeHtml(entry.status || 'draft')}</p>${buildHlPoBalanceHtml(entry)}${!locked && ceiling !== null ? `<p>Remaining HL demand: ${escapeHtml(ceiling)}</p>` : ''}<div class="mt-2 flex flex-wrap items-center gap-2"><label>HL quantity <input data-hl-draft-quantity type="number" inputmode="decimal" step="1" min="0" max="${escapeHtml(ceiling ?? '')}" value="${escapeHtml(entry.quantity)}" class="min-h-[44px] w-24 rounded border p-2" ${locked ? 'disabled' : ''}></label>${hlOrderButton('saveHlDraftQuantity', [entry.source_id], 'Save quantity', true, locked)}${hlOrderButton('removeHlDraftRow', [entry.source_id], 'Remove from Bloom Picker', true, locked)}</div></div>`;
             }).join('')}</section>`).join('')}</div>`;
+            setContainerHtmlWithSignature(section, html, force ? '' : `hl-bloom:${html}`);
         }
 
         async function saveHlDraftQuantity(sourceId) {
@@ -88437,7 +88440,15 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!Number.isInteger(quantity) || !(quantity > 0) || !Number.isInteger(ceiling) || quantity > ceiling) throw new Error('Enter a whole-plant HL quantity greater than zero and no more than the remaining HL demand.');
                 const shipDate = getHlOrderShipDate(element?.dataset.hlShipDate || entry?.ship_date || entry?.source?.planstartdate);
                 if (!shipDate) throw new Error('This row has no ship date. Return to HL Order and review the Plan Start Date.');
-                await runHlOrderCommand('draft_save', { rows: [{ source_id: sourceId, quantity }] }, null, revision);
+                const result = await runHlOrderCommand('draft_save', { rows: [{ source_id: sourceId, quantity }] }, null, revision);
+                // Acknowledgment applies only to this submitted edit. Other dirty rows
+                // retain their values and original revision until explicitly saved.
+                const input = element?.querySelector('[data-hl-draft-quantity]');
+                if (element?.isConnected && input && getHlOrderQuantity(input.value) === quantity) {
+                    input.defaultValue = input.value;
+                    element.dataset.hlEditRevision = String((result.state || result).revision);
+                }
+                renderHlBloomSection();
             } catch (error) { showToast('HL Order', error.message, true); }
             return false;
         }
@@ -88447,6 +88458,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const element = [...document.querySelectorAll('[data-hl-draft-source-id]')].find((row) => row.dataset.hlDraftSourceId === sourceId);
                 const revision = getHlOrderEditRevision(element?.dataset.hlEditRevision);
                 await runHlOrderCommand('draft_clear', { source_ids: [sourceId] }, null, revision);
+                // Remove only the acknowledged row; retain edits on other drafts.
+                element?.remove();
+                clearContainerRenderSignature(document.getElementById('hl-bloom-section'));
+                renderHlBloomSection();
             }
             catch (error) { showToast('HL Order', error.message, true); }
             return false;
@@ -88685,7 +88700,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('hl-tags-preview')?.close();
             document.getElementById('hl-tags-date-selector')?.close();
             const container = document.getElementById('hl-order-content'); if (container) setHlOrderContent(container, '', true);
-            const section = document.getElementById('hl-bloom-section'); if (section) section.innerHTML = '';
+            const section = document.getElementById('hl-bloom-section'); if (section) setContainerHtml(section, '');
         }
 
 
