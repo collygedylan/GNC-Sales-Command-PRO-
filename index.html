@@ -768,6 +768,9 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-card-bottom-btn--argos-transfer:disabled,
 .app-card-bottom-btn--argos-reclass:disabled{opacity:.72;box-shadow:none}
 .app-smart-card--inventory.app-drive-compact-card{padding:.82rem .95rem !important}
+/* Embedded inventory shares a form with receipt actions. Estimated offscreen
+   heights can move those actions during a press in Firefox. */
+#hl-order-content .app-drive-compact-card{content-visibility:visible!important;contain-intrinsic-size:auto!important}
 .app-smart-card--inventory.app-drive-compact-card.app-card-with-bottom-rail{padding-bottom:.82rem !important}
 .app-drive-card-grid{display:grid;grid-template-columns:minmax(5.65rem,7.7rem) minmax(0,1fr) minmax(4.85rem,5.45rem);grid-template-areas:"photo main actions" "qty qty actions" "bottom bottom bottom";align-items:start;gap:.58rem .85rem;width:100%;min-width:0}
 .app-drive-card-grid--no-actions{grid-template-columns:minmax(5.65rem,7.7rem) minmax(0,1fr);grid-template-areas:"photo main" "qty qty" "bottom bottom"}

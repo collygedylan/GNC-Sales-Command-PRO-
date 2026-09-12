@@ -526,6 +526,8 @@ test('partial receipts and corrections remain separate from cancellation PDF sub
   await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
   const tracking = page.locator('#hl-order-tracking');
   const line = tracking.locator('[data-hl-order-line-id]').first();
+  // Embedded cards need their actual height before scrolling to form actions.
+  await expect(line.locator('.app-drive-compact-card').first()).toHaveCSS('content-visibility', 'visible');
   await line.locator('[data-hl-line-select]').check();
   await line.locator('[data-hl-received-quantity]').fill('6');
   await tracking.getByRole('button', { name: 'Save received quantities', exact: true }).click();
