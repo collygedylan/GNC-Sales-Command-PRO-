@@ -27,8 +27,10 @@
                 id, cacheKey: scope, sourceKeys: registry.getSourceKeys([id]),
                 deploymentRequired: registry.adapters[id]?.deploymentRequired === true,
                 unavailableReason: registry.adapters[id]?.unavailableReason || '',
-                stage: async () => {
-                    const value = await binding.stage(context);
+                stage: async (options = {}) => {
+                    if (options.signal?.aborted) throw Object.assign(new Error(`${id} read cancelled.`), { code: 'REQUEST_ABORTED' });
+                    const value = await binding.stage({ ...context, signal: options.signal });
+                    if (options.signal?.aborted) throw Object.assign(new Error(`${id} read cancelled.`), { code: 'REQUEST_ABORTED' });
                     if (value === undefined) throw new Error(`${id} did not produce a snapshot.`);
                     return value;
                 },

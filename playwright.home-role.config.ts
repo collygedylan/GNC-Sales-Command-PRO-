@@ -5,7 +5,7 @@ const baseURL = remoteBaseURL || 'http://127.0.0.1:43124';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /home-role-visibility\.e2e\.spec\.ts/,
+  testMatch: /home-(?:role-visibility|native-startup)\.e2e\.spec\.ts/,
   fullyParallel: false,
   workers: 2,
   forbidOnly: Boolean(process.env.CI),

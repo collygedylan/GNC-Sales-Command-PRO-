@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const sandbox = { module: { exports: {} }, setTimeout, clearTimeout };
+const sandbox = { module: { exports: {} }, setTimeout, clearTimeout, AbortController };
 vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), sandbox);
 const { createCoordinator } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };

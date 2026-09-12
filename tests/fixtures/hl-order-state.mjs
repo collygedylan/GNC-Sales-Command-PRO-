@@ -239,7 +239,8 @@ export function createHlOrderState(options = {}) {
 }
 
 export async function installHlOrderFixture(page, baseURL, options = {}) {
-  const control = createHlOrderState(options), username = options.username || 'dylan_collyge';
+  const control = createHlOrderState(options), username = options.username || 'dylan_collyge', role = options.role || 'ADMIN';
+  control.appAccessReads = 0; control.backgroundMasterReads = 0;
   if (options.seedOrder) {
     const first = control.state.actionable_rows[0];
     const command = (action, payload) => control.command({ p_command_id: uuid(++control.sequence), p_action: action, p_payload: payload, p_expected_revision: control.state.revision });
@@ -253,7 +254,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   const seasonSettings = [{ key: 'current_season_salesyear', value: { seasonCode: 'F1', salesYear: '27' } }];
   const claims = { sub: hlUserId, aud: 'authenticated', role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000) };
   const token = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify(claims)).toString('base64url'), 'synthetic'].join('.');
-  const profile = { id: hlUserId, username, display_name: username, role: 'ADMIN', division: '10', language: 'English', disabled_at: null, locked_until: null, must_change_password: false };
+  const profile = { id: hlUserId, username, display_name: username, role, division: '10', language: 'English', disabled_at: null, locked_until: null, must_change_password: false };
   const session = { access_token: token, refresh_token: 'synthetic', expires_at: claims.exp, expires_in: 3600, token_type: 'bearer', user: { id: hlUserId, aud: 'authenticated', role: 'authenticated', email: 'hl-test@example.invalid', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } };
   const json = (route, value, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers: {
     'access-control-allow-origin': origin,
@@ -315,7 +316,11 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         } catch (error) { return json(route, { code: 'P0001', message: error.message }, error.status || 400); }
       }
       if (op === 'get_my_dataset_revisions_v1') return json(route, { contractVersion: 1, permissionVersion: 'hl-policy-1', sources: (body.p_dataset_keys || []).map((key) => ({ key, revision: String(control.datasetRevision), state: 'ready' })) });
-      if (op === 'get_my_app_permissions_v1') return json(route, { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username, role: 'ADMIN', permissions: options.appPermissions || [{ permissionKey: 'module.po-management.view', kind: 'module', moduleKey: 'po-management', allowed: true }] });
+      if (op === 'get_my_app_permissions_v1') {
+        control.appAccessReads++;
+        if (Number(options.appAccessDelayMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.appAccessDelayMs)));
+        return json(route, { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username, role, permissions: options.appPermissions || [{ permissionKey: 'module.po-management.view', kind: 'module', moduleKey: 'po-management', allowed: true }] });
+      }
       if (op === 'get_request_capabilities') return json(route, { contract_version: 2, username, scope: 'global', can_view_queue: true, can_edit: true, can_complete: true });
       if (op === 'get_request_schema_compatibility') return json(route, { compatible: true, contract_version: 2 });
       if (/^(get_|list_|report_app_health_event)/.test(op || '')) return json(route, []);
@@ -327,12 +332,16 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (table === 'profiles') return json(route, /vnd\.pgrst\.object/.test(req.headers().accept || '') ? profile : [profile]);
       if (table === 'ph_app_settings') return json(route, seasonSettings);
       if (url.searchParams.get('select') === 'filename,last_updated' && url.searchParams.get('last_updated') === 'not.is.null') return json(route, []);
+      if (table === 'ph_master_inventory') {
+        control.backgroundMasterReads++;
+        if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
+      }
       const rows = table === 'ph_soc_master' ? control.rows : table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, url.search.slice(1)).rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];
       return json(route, rows, 200, { 'content-range': rows.length ? `0-${rows.length - 1}/${rows.length}` : '*/0' });
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};
-      if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role: 'ADMIN' } });
+      if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role } });
       if (body.action === 'db' && String(body.method).toUpperCase() === 'GET') return json(route, { ok: true, data: body.table === 'ph_soc_master' ? control.rows : body.table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, body.query || '').rows : body.table === 'ph_app_settings' ? seasonSettings : [] });
       if (body.action === 'season_sales_office' && body.operation === 'access') return json(route, { ok: true, allowed: false, canManage: false, users: [] });
       if (['list', 'get', 'state'].includes(body.operation) || /get|load|status|preferences|capabilit|health|telemetry|event/.test(body.action || '')) return json(route, { ok: true, data: [], preferences: {}, eligible: false });
@@ -341,13 +350,25 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     return route.abort('blockedbyclient');
   });
   await page.addInitScript((value) => {
-    localStorage.setItem('gnc_supabase_auth_v1', JSON.stringify(value));
+    if (value.startupMode === 'cold') {
+      ['gnc_user_v3', 'gnc_role_v3', 'gnc_division_v1', 'gnc_language_v1', 'gnc_native_auth_profile_v1'].forEach(key => localStorage.removeItem(key));
+    } else {
+      localStorage.setItem('gnc_user_v3', value.username);
+      localStorage.setItem('gnc_role_v3', value.role);
+      localStorage.setItem('gnc_division_v1', '10');
+    }
+    if (value.startupMode !== 'cold') localStorage.setItem('gnc_supabase_auth_v1', JSON.stringify(value));
     // Service workers are blocked in this isolated HL suite. Expose push as
     // unavailable too, so delayed enrollment cannot replace an HL error toast.
     // Production notification behavior and the app's toast assertions stay intact.
     delete window.PushManager;
-  }, session);
+  }, { ...session, startupMode: options.startupMode || 'restored', username, role });
   await page.goto('/', { waitUntil: 'load' });
+  if (options.startupMode === 'cold') {
+    await page.locator('#username-input').fill(username);
+    await page.locator('#pin-code').fill('Synthetic-Access-123!');
+    await page.locator('#login-button').click();
+  }
   await page.waitForFunction(() => window.eval('typeof nativeAuthProfile !== "undefined" && !!nativeAuthProfile'));
   // A profile can exist before initial login opens Home. Navigate only after
   // that initialization has finished, without replacing any authorization state.

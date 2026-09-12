@@ -77,7 +77,7 @@ export function createInventoryReadFixture(schema) {
     if (!Array.isArray(source)) fail('expected source rows');
     const params = new URLSearchParams(query);
     for (const key of params.keys()) {
-      if (!['select', 'order', 'unique_id', 'itemcode', 'contsize', 'offset', 'limit'].includes(key)) fail(`unsupported query parameter ${key}`);
+      if (!['select', 'order', 'unique_id', 'itemcode', 'commonname', 'contsize', 'offset', 'limit'].includes(key)) fail(`unsupported query parameter ${key}`);
       if (params.getAll(key).length !== 1) fail(`duplicate query parameter ${key}`);
     }
     const select = params.get('select') || '*';
@@ -93,7 +93,11 @@ export function createInventoryReadFixture(schema) {
       const ids = new Set(idsFromFilter(filter));
       matching = matching.filter(item => ids.has(item.unique_id));
     }
-    for (const name of ['itemcode', 'contsize']) {
+    // Normal Drive detail resolves a name-only row with PostgREST's exact
+    // commonname filter. Keep this fixture boundary just as strict as the
+    // existing code/size lookups: only an exact physical-column match is
+    // supported here.
+    for (const name of ['itemcode', 'commonname', 'contsize']) {
       const scopedFilter = params.get(name);
       if (scopedFilter === null) continue;
       if (!columns.has(name) || !scopedFilter.startsWith('eq.')) fail(`unsupported exact filter ${name}`);

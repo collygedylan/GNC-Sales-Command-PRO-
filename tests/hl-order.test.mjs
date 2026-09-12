@@ -134,6 +134,33 @@ test('Drive matches ignore display filters while retaining base access and appro
   assert.equal(ctx.getHlOrderDriveMatches([row()]).length, 0);
 });
 
+test('committed HL card markup owns return recognition and ordinary Drive ignores stale HL card identities', () => {
+  const ctx = runtime();
+  let cards = [{ dataset: { domId: 'master-hl-card' } }];
+  const container = { innerHTML: '', __hlOrderHtml: '', querySelectorAll: () => cards };
+  ctx.setHlOrderContent(container, '<section data-hl-drive-instance></section>');
+  assert.equal(ctx.isHlOrderDriveRenderedDomId('master-hl-card'), true);
+  cards = [];
+  ctx.setHlOrderContent(container, '<section data-hl-drive-instance></section>');
+  assert.equal(ctx.isHlOrderDriveRenderedDomId('master-hl-card'), true, 'a skipped replacement retains the attached card identity');
+  ctx.setHlOrderContent(container, '<section>new HL content</section>');
+  assert.equal(ctx.isHlOrderDriveRenderedDomId('master-hl-card'), false, 'a committed replacement drops detached card identities');
+
+  const handleStart = html.indexOf('        function handleCardClick');
+  const handleEnd = html.indexOf('        function reorderVisibleDetailTabs', handleStart);
+  vm.runInContext(html.slice(handleStart, handleEnd), ctx);
+  let captures = 0, opened = 0;
+  ctx.beginDirectNavigationActivity = () => {};
+  ctx.beginInternalPerfMeasure = () => 0;
+  ctx.getCurrentVisibleViewId = () => 'drive';
+  ctx.isHlOrderDriveRenderedDomId = () => true;
+  ctx.captureHlOrderDriveDetailReturnContext = () => { captures++; return {}; };
+  ctx.openDetail = () => { opened++; };
+  ctx.handleCardClick('master-hl-card', 'master-hl-card', 'drive');
+  assert.equal(captures, 0, 'an ordinary Drive card never inherits an HL return parent');
+  assert.equal(opened, 1);
+});
+
 for (const outcome of ['resolved', 'rejected']) {
   test(`an old-session ${outcome} submission cannot clear the new session's pending command or sending state`, async () => {
     const ctx = runtime();
@@ -216,7 +243,7 @@ test('review restore distinguishes an existing source from a missing original an
 });
 
 test('a successful state refresh keeps unresolved command recovery visible until that exact command is acknowledged', () => {
-  const ctx = runtime(), container = {innerHTML: '', contains: () => false};
+  const ctx = runtime(), container = {innerHTML: '', contains: () => false, querySelectorAll: () => []};
   ctx.document = {getElementById: (id) => id === 'hl-order-content' ? container : null};
   ctx.buildFastInvokeAttrs = () => '';
   ctx.syncHlOrderDraftSelections = () => {};

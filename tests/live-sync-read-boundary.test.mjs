@@ -47,7 +47,8 @@ test('navigation stops visible-document reads until restoration or trusted inter
     const handlers = new Map(), signals = [], original = new AbortController();
     const listen = (name, callback) => handlers.set(name, callback);
     const coordinator = { suspend() {}, signal: reason => signals.push(reason) };
-    const ctx = { AbortController, document: { hidden: false, addEventListener: listen }, window: { addEventListener: listen },
+    const ctx = { AbortController, document: { hidden: false, addEventListener: listen, body: { classList: { contains: () => true } } }, window: { addEventListener: listen },
+        appAccessSnapshotState: { status: 'ready', stale: false, username: 'fixture' }, currentUser: 'fixture', getRequestCapabilityUsernameKey: value => value,
         productionLiveSyncNavigation: original, productionLiveSyncCoordinator: coordinator,
         getProductionLiveSyncCoordinator: () => coordinator, canUseProductionLiveSync: () => false,
         observeHlOrderVerificationContext: value => value, navigator: { onLine: true }
@@ -178,9 +179,9 @@ test('settings-only updates rebuild current-season collections from verified inv
 });
 
 test('AV and inventory resolve to one identical authoritative read descriptor', async () => {
-    const from = html.indexOf('function createProductionCoreLiveAdapter(key)');
+    const from = html.indexOf('const productionLiveSyncReadSignalIds');
     const to = html.indexOf('function getProductionLiveSyncContext()', from);
-    const ctx = { JSON, Error, Array, DATASET_DEFINITIONS: {
+    const ctx = { JSON, Error, Array, AbortController, productionLiveSyncNavigation: new AbortController(), DATASET_DEFINITIONS: {
         master: { table: 'ph_master_inventory', fullQuery: 'select=*&order=unique_id.asc' },
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
     }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },

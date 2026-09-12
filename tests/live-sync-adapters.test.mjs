@@ -76,6 +76,25 @@ function harness() {
     return { ctx, calls, rows, api: ctx.createProductionLiveSyncSideAdapters() };
 }
 const context = { scope: 'user:division', username: 'dylan_collyge', productionType: 'spacing', countType: 'spread', productivityUser: 'dylan_collyge', managerOrders: { level: 'sources', sourceKey: '', assignees: [], rowCount: 0, batchCount: 0 }, pendingOrderCount: 0, transactions: {}, transactionsKeyed: { dateCount: 0, fileCount: 0 }, historical: { level: 'names', columns: [], search: '', rowCount: 0 }, accessQuery: {}, codexTaskId: '' };
+
+for (const id of ['side:shear', 'side:evalWork', 'side:chat', 'side:calendar']) {
+    test(`${id} background network reads receive cohort cancellation`, async () => {
+        const h = harness(), controller = new AbortController(), signals = [];
+        const hold = signal => {
+            assert.ok(signal, 'every background transport must receive a signal');
+            signals.push(signal);
+            return new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(new Error('Aborted')), { once: true }));
+        };
+        h.ctx.fetchAllSupabaseRows = (table, query, options) => hold(options?.signal);
+        h.ctx.evalWorkApi = (operation, payload, options) => hold(options?.signal);
+        h.ctx.shearLocationWorkApi = (operation, payload, options) => hold(options?.signal);
+        h.ctx.chatApiGet = (table, query, label, options) => hold(options?.signal);
+        const pending = descriptor(h, id).stage({ signal: controller.signal });
+        assert.ok(signals.length > 0); assert.ok(signals.every(signal => signal === controller.signal));
+        controller.abort(); await assert.rejects(pending, /Aborted|cancelled/);
+    });
+}
+
 function descriptor(h, id, overrides = {}) {
     const registry = h.ctx.AgMetricLiveSyncRegistry;
     const selectedRegistry = { ...registry, getViewAdapters: () => [id] };

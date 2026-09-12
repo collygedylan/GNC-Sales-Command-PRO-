@@ -51,7 +51,7 @@
     const navigation = { kind: 'navigation', datasets: [], adapters: [] };
     const staticView = { kind: 'static', datasets: [], adapters: [] };
     const views = {
-        home: data(['requests', 'salesOffice', 'growerScoutReports', 'warehouseAssignedItems'], ['settings']),
+        home: navigation,
         building: data(['master'], ['settings']),
         managers: data(['master', 'warehouseAssignedItems'], ['settings', 'coverage']),
         'crop-roll': data(['cropRollDrive', 'master'], ['cropRoll', 'settings']),

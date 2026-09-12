@@ -46,6 +46,9 @@ async function navigateHl(page: Page, target: Locator) {
   await closeBloom(page);
   await target.click();
 }
+async function backHl(page: Page) {
+  await navigateHl(page, page.locator('#global-header-inline-back'));
+}
 const actions = (fixture: any, action: string) => fixture.commands.filter((command: any) => command.p_action === action);
 async function assertWithinViewport(page: Page, element: Locator) {
   await expect.poll(async () => {
@@ -90,17 +93,69 @@ test('cards use all five grouping fields and detail shows all accessible matchin
   await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText(/PTRAVAILABLE:\s*0/);
   await expect(detail.locator('[data-hl-drive-location="C.12.001"]')).toContainText('Exact item, size, location and lot match');
   await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText('Related item and size');
-  await expect(detail.locator('[data-hl-drive-location="C.12.001"]')).toContainText(/Season:\s*27 F1/);
-  await expect(detail.locator('[data-hl-drive-location="C.14.002"]')).toContainText(/Season:\s*26 F1/);
-  await expect(detail.locator('[data-hl-drive-location="A.02.001"]')).toContainText(/Season:\s*25 S1/);
-  await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText(/Season:\s*28 F1/);
+  await expect(detail.locator('[data-hl-drive-location="C.12.001"] .app-drive-compact-card')).toHaveCount(1);
+  await expect(detail.locator('[data-hl-drive-location="C.14.002"] .app-drive-compact-card')).toHaveCount(1);
+  await expect(detail.locator('[data-hl-drive-location="A.02.001"] .app-drive-compact-card')).toHaveCount(1);
+  await expect(detail.locator('[data-hl-drive-location="B.01.010"] .app-drive-compact-card')).toHaveCount(1);
   await expect(detail.locator('[data-hl-drive-location="A.07.001"]')).toHaveCount(0);
   await expect(detail.locator('[data-hl-drive-location="A.08.001"]')).toHaveCount(0);
   await assertWithinViewport(page, detail);
   await capture(page, info.outputPath('hl-full-detail.png'));
-  await navigateHl(page, detail.getByRole('button', { name: 'Back', exact: true }));
+  await backHl(page);
   await expect(page.locator('[data-hl-group]')).toHaveCount(6);
   expect(fixture.commands).toHaveLength(0); assertIsolated(fixture);
+});
+
+test('HL verified Drive cards use normal details and global Back restores the edited HL parent', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await openHl(page); await openDetails(page);
+  const detail = page.locator('#hl-order-detail');
+  await detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]').fill('7');
+  await navigateHl(page, detail.locator('[data-hl-drive-location="C.12.001"] .app-drive-compact-card'));
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#global-header-inline-back')).toBeVisible();
+  await backHl(page);
+  await expect(detail).toBeVisible();
+  await expect(detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]')).toHaveValue('7');
+  await backHl(page);
+  await expect(page.locator('[data-hl-group]')).toBeVisible();
+  await backHl(page);
+  await expect(page.locator('#view-home')).toBeVisible();
+  assertIsolated(fixture);
+});
+
+test('HL Drive detail return preserves tracking inputs but keeps their original revision conflict check', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true });
+  await openHl(page);
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
+  const tracking = page.locator('#hl-order-tracking');
+  const line = tracking.locator('[data-hl-order-line-id]').first();
+  const baseline = await tracking.getAttribute('data-hl-edit-revision');
+  expect(baseline).not.toBeNull();
+  await line.locator('[data-hl-line-select]').check();
+  await line.locator('[data-hl-received-quantity]').fill('6');
+  await line.locator('[data-hl-cancel-quantity]').fill('3');
+  await tracking.locator('#hl-order-reason').fill('Customer confirmed the short count');
+  await navigateHl(page, tracking.locator('[data-hl-drive-location="C.12.001"] .app-drive-compact-card'));
+  await expect(page.locator('#view-detail')).toBeVisible();
+  const order = fixture.state.orders[0];
+  fixture.command({ p_command_id: '20000000-0000-4000-8000-000000000003', p_action: 'receive',
+    p_payload: { order_id: order.id, lines: [{ line_id: order.lines[0].id, received_quantity: 4 }], reason: 'Another device received four' }, p_expected_revision: fixture.state.revision });
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await backHl(page);
+  await expect(tracking).toBeVisible();
+  await expect(line.locator('[data-hl-line-select]')).toBeChecked();
+  await expect(line.locator('[data-hl-received-quantity]')).toHaveValue('6');
+  await expect(line.locator('[data-hl-cancel-quantity]')).toHaveValue('3');
+  await expect(tracking.locator('#hl-order-reason')).toHaveValue('Customer confirmed the short count');
+  await expect(tracking).toHaveAttribute('data-hl-edit-revision', baseline!);
+  await tracking.getByRole('button', { name: 'Save received quantities', exact: true }).click();
+  await expect.poll(() => actions(fixture, 'receive').length).toBe(2);
+  expect(actions(fixture, 'receive').at(-1).p_expected_revision).toBe(Number(baseline));
+  expect(fixture.state.orders[0].lines[0].received_quantity).toBe(4);
+  await expect(page.locator('#hl-order-content')).toContainText(/changed|refresh|review/i);
+  assertIsolated(fixture);
 });
 
 test('selected editable quantities persist through reload and HL removal preserves unrelated Bloom items', async ({ page, baseURL }) => {
@@ -124,7 +179,7 @@ test('selected editable quantities persist through reload and HL removal preserv
   await draft.getByRole('button', { name: 'Remove from Bloom Picker', exact: true }).click();
   await expect.poll(() => fixture.state.draft.length).toBe(0);
   expect(await page.evaluate(() => window.eval('selectedItems.has(window.__hlUnrelatedId)'))).toBe(true);
-  await navigateHl(page, page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }));
+  await backHl(page);
   await selectOne(page, 'hl-a', '7');
   await reloadHl(page, fixture);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toHaveValue('7');
@@ -276,7 +331,7 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { planstartdate: 'Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)' }),
     hlSoc('hl-b', { planstartdate: '2026-09-16', locationcode: 'C.14.002', lotcode: '26.F1' })] });
   await openHl(page); await selectOne(page, 'hl-a', '6');
-  await navigateHl(page, page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }));
+  await backHl(page);
   await navigateHl(page, page.locator('[data-hl-group]').filter({ hasText: 'Sep 16, 2026' }).getByRole('button', { name: 'View HL order details', exact: true }));
   const second = page.locator('[data-hl-source-id="hl-b"]');
   await second.locator('[data-hl-quantity]').fill('5');
@@ -379,7 +434,7 @@ test('an older uncertain order stays protected while a different-date ready sour
   const oldRow = page.locator('[data-hl-source-id="hl-a"]');
   await expect(oldRow.locator('[data-hl-select]')).toBeDisabled();
   await expect(oldRow.locator('[data-hl-quantity]')).toBeDisabled();
-  await navigateHl(page, page.locator('#hl-order-detail').getByRole('button', { name: 'Back', exact: true }));
+  await backHl(page);
   await navigateHl(page, page.locator('[data-hl-group]').filter({ hasText: 'Sep 16, 2026' }).getByRole('button', { name: 'View HL order details', exact: true }));
   const newRow = page.locator('[data-hl-source-id="hl-b"]');
   await newRow.locator('[data-hl-select]').check();
@@ -503,7 +558,7 @@ test('partial receipts and corrections remain separate from cancellation PDF sub
   await line.locator('[data-hl-received-quantity]').fill('7');
   await tracking.getByRole('button', { name: 'Save received quantities', exact: true }).click();
   await expect.poll(() => fixture.state.orders[0].fulfillment_status).toBe('received_and_cancelled');
-  await navigateHl(page, tracking.getByRole('button', { name: 'Back', exact: true }));
+  await backHl(page);
   await expect(page.locator('[data-hl-order-id]')).toHaveCount(0);
   await navigateHl(page, page.locator('[data-hl-tab="history"]'));
   await expect(page.locator('[data-hl-order-id]')).toHaveCount(1);

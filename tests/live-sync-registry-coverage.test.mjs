@@ -23,6 +23,7 @@ const routes = [...new Set([
 function harness() {
   const context = {
     window: {}, console, Date, JSON, Map, Set, String, Number, Array, Object,
+    canUseProductionLiveSync: () => true,
     currentUser: 'fixture', currentRole: 'ADMIN', activeReqTab: 'pending', activeHomeTab: 'orders',
     activeMovesTab: 'office', activeInventoryOfficeApprovalType: 'crop-roll', activeAVTab: 'open',
     activeTaskView: 'flyer', cropRollDriveSchemaReady: true, productionInventoryTab: 'counting',
