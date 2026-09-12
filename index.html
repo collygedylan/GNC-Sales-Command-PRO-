@@ -17720,10 +17720,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return text || '0';
         }
 
-        function getCardPtrOnHandValue(item = null) {
-            if (!item || typeof item !== 'object') return '0';
+        function getCardPtrOnHandValue(item = null, options = {}) {
+            const preserveUnknown = options && options.preserveUnknown === true;
+            if (!item || typeof item !== 'object') return preserveUnknown ? null : '0';
             const snapshot = item.SNAPSHOT && typeof item.SNAPSHOT === 'object' ? item.SNAPSHOT : {};
-            return normalizeCardQuantityValue(firstNonEmptyValue(
+            const value = firstNonEmptyValue(
                 item.PTRONHAND,
                 item.ptronhand,
                 item.PTR_ON_HAND,
@@ -17733,15 +17734,16 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 snapshot.PTRONHAND,
                 snapshot.ptronhand,
                 snapshot.PTR_ON_HAND,
-                snapshot.ptr_on_hand,
-                '0'
-            ));
+                snapshot.ptr_on_hand
+            );
+            return value === '' && preserveUnknown ? null : normalizeCardQuantityValue(value);
         }
 
-        function getCardPtrReviewedValue(item = null) {
-            if (!item || typeof item !== 'object') return '0';
+        function getCardPtrReviewedValue(item = null, options = {}) {
+            const preserveUnknown = options && options.preserveUnknown === true;
+            if (!item || typeof item !== 'object') return preserveUnknown ? null : '0';
             const snapshot = item.SNAPSHOT && typeof item.SNAPSHOT === 'object' ? item.SNAPSHOT : {};
-            return normalizeCardQuantityValue(firstNonEmptyValue(
+            const value = firstNonEmptyValue(
                 item.PTRREVIEWED,
                 item.ptrreviewed,
                 item.PTR_REVIEWED,
@@ -17755,15 +17757,16 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 snapshot.PTR_REVIEWED,
                 snapshot.ptr_reviewed,
                 snapshot.PTRREVIEW,
-                snapshot.ptrreview,
-                '0'
-            ));
+                snapshot.ptrreview
+            );
+            return value === '' && preserveUnknown ? null : normalizeCardQuantityValue(value);
         }
 
-        function getCardPtrAvailableValue(item = null) {
-            if (!item || typeof item !== 'object') return '0';
+        function getCardPtrAvailableValue(item = null, options = {}) {
+            const preserveUnknown = options && options.preserveUnknown === true;
+            if (!item || typeof item !== 'object') return preserveUnknown ? null : '0';
             const snapshot = item.SNAPSHOT && typeof item.SNAPSHOT === 'object' ? item.SNAPSHOT : {};
-            return normalizeCardQuantityValue(firstNonEmptyValue(
+            const value = firstNonEmptyValue(
                 item.PTRAVAILABLE,
                 item.ptravailable,
                 item.PRTAVAILABLE,
@@ -17777,21 +17780,22 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 item.AVAILABLE,
                 item.available,
                 snapshot.PTRAVAILABLE,
-                snapshot.ptravailable,
-                '0'
-            ));
+                snapshot.ptravailable
+            );
+            return value === '' && preserveUnknown ? null : normalizeCardQuantityValue(value);
         }
 
-        function getCardOpenStockValue(item = null) {
-            if (!item || typeof item !== 'object') return '0';
+        function getCardOpenStockValue(item = null, options = {}) {
+            const preserveUnknown = options && options.preserveUnknown === true;
+            if (!item || typeof item !== 'object') return preserveUnknown ? null : '0';
             const snapshot = item.SNAPSHOT && typeof item.SNAPSHOT === 'object' ? item.SNAPSHOT : {};
-            return normalizeCardQuantityValue(firstNonEmptyValue(
+            const value = firstNonEmptyValue(
                 item.S_LTS,
                 item.s_lts,
                 snapshot.S_LTS,
-                snapshot.s_lts,
-                '0'
-            ));
+                snapshot.s_lts
+            );
+            return value === '' && preserveUnknown ? null : normalizeCardQuantityValue(value);
         }
 
         function getCardSeasonOhValue(item = null) {
@@ -17841,14 +17845,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const chipClassFor = (index = 0) => `rounded-full border ${quantityToneClasses[index] || quantityToneClasses[0]} ${sizeClasses}`;
             const stackedChipClassFor = (index = 0) => `app-card-qty-chip rounded-full border ${quantityToneClasses[index] || quantityToneClasses[0]} px-1.5 py-1 text-center`;
             const valueClass = 'text-slate-900';
-            const buildChip = ([label, value], className = '', index = 0) => `<span class="${className || chipClassFor(index)}"><span>${escapeHtml(label)}</span><span class="px-1 text-slate-400">-</span><span class="${valueClass}">${escapeHtml(normalizeCardQuantityValue(value))}</span></span>`;
-            const buildStackedChip = ([label, value], index = 0) => `<span class="${stackedChipClassFor(index)}"><span class="app-card-qty-label">${escapeHtml(label)}</span><span class="app-card-qty-separator text-slate-400">-</span><span class="app-card-qty-value ${valueClass}">${escapeHtml(normalizeCardQuantityValue(value))}</span></span>`;
+            const formatQuantity = (value) => safeOptions.preserveUnknown === true && (value === null || typeof value === 'undefined' || String(value).trim() === '') ? 'Unknown' : normalizeCardQuantityValue(value);
+            const buildChip = ([label, value], className = '', index = 0) => `<span class="${className || chipClassFor(index)}"><span>${escapeHtml(label)}</span><span class="px-1 text-slate-400">-</span><span class="${valueClass}">${escapeHtml(formatQuantity(value))}</span></span>`;
+            const buildStackedChip = ([label, value], index = 0) => `<span class="${stackedChipClassFor(index)}"><span class="app-card-qty-label">${escapeHtml(label)}</span><span class="app-card-qty-separator text-slate-400">-</span><span class="app-card-qty-value ${valueClass}">${escapeHtml(formatQuantity(value))}</span></span>`;
             const primaryChips = [
-                ['On hand', getCardPtrOnHandValue(row)],
-                ['Review', getCardPtrReviewedValue(row)],
-                ['Available', getCardPtrAvailableValue(row)]
+                ['On hand', getCardPtrOnHandValue(row, safeOptions)],
+                ['Review', getCardPtrReviewedValue(row, safeOptions)],
+                ['Available', getCardPtrAvailableValue(row, safeOptions)]
             ];
-            const openStockChip = ['Open Stock', getCardOpenStockValue(row)];
+            const openStockChip = ['Open Stock', getCardOpenStockValue(row, safeOptions)];
             const trailingChipsHtml = String(safeOptions.trailingChipsHtml || '').trim();
             if (safeOptions.layout === 'row') {
                 const gridGapClass = safeOptions.compact ? 'gap-1.5' : 'gap-2';
@@ -34132,6 +34137,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (active?.matches?.('textarea,[contenteditable="true"]')) return true;
             const view = getCurrentVisibleViewId();
             if (view === 'detail') return true;
+            if (view === 'hl-order' && hasHlOrderUnsavedInputs()) return true;
             // Preserve all visible data entry dialogs, not only the focused input.
             return Array.from(document.querySelectorAll('dialog[open], [id$="-modal"]')).some((element) =>
                 !element.classList.contains('hidden') && element.getClientRects().length && element.querySelector('input:not([type="hidden"]),textarea,select,[contenteditable="true"]'));
@@ -88147,6 +88153,15 @@ function toggleDriveQuickRequestItem(domId) {
                 .map((element) => String(element.dataset.domId || '')).filter(Boolean));
         }
 
+        function hasHlOrderUnsavedInputs() {
+            const container = document.getElementById('hl-order-content');
+            if (!container) return false;
+            return [...container.querySelectorAll('input,textarea')].some((input) =>
+                input.type === 'checkbox' || input.type === 'radio'
+                    ? input.checked !== input.defaultChecked
+                    : input.value !== input.defaultValue);
+        }
+
         function renderHlOrder(force = false) {
             const container = document.getElementById('hl-order-content');
             if (!container) return;
@@ -88156,6 +88171,7 @@ function toggleDriveQuickRequestItem(domId) {
             // Keep its action button attached until the current press can dispatch.
             if (!force && typeof activeFastPress !== 'undefined' && activeFastPress && /^invoke\|[^|]*Hl/.test(activeFastPress.actionKey)) return;
             if (!force && container.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+            if (!force && hasHlOrderUnsavedInputs()) return;
             const esc = escapeHtml;
             const tabs = [['needed','Needed'],['orders','Orders'],['needs-review','Needs Review'],['history','History'],['removed','Removed'],['po-imports','PO imports']];
             const nav = `<nav aria-label="HL order views" class="flex flex-wrap gap-2">${tabs.map(([tab, label]) => `<button type="button" data-hl-tab="${tab}" aria-current="${hlOrderTab === tab ? 'page' : 'false'}" class="min-h-[44px] rounded-xl border px-3 py-2 font-bold ${hlOrderTab === tab ? 'border-emerald-700 bg-emerald-100 text-emerald-900' : 'bg-white text-slate-600'}" ${buildFastInvokeAttrs('setHlOrderTab', [tab], label)}>${label}</button>`).join('')}</nav>`;
@@ -88322,7 +88338,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const driveCard = { ...projection, ...row, DOM_ID: domId, UNIQUE_ID: id, unique_id: id };
                 const location = String(row.LOCATIONCODE ?? row.locationcode ?? '').trim();
                 const instanceId = `${hlOrderTrackingId ? `order:${hlOrderTrackingId}` : `needed:${hlOrderDetailKey || 'current'}`}:${id}`;
-                return `<section data-hl-drive-instance="${escapeHtml(instanceId)}" data-hl-drive-location="${escapeHtml(location)}" class="space-y-2"><p class="text-xs font-black ${exact ? 'text-emerald-800' : 'text-slate-600'}">${escapeHtml(matchLabel)}</p>${generateCard(driveCard, 'drive')}</section>`;
+                return `<section data-hl-drive-instance="${escapeHtml(instanceId)}" data-hl-drive-location="${escapeHtml(location)}" class="space-y-2"><p class="text-xs font-black ${exact ? 'text-emerald-800' : 'text-slate-600'}">${escapeHtml(matchLabel)}</p>${generateCard(driveCard, 'drive', 'status-green', { preserveUnknownAvailability: true, verifiedQuantityRow: row })}</section>`;
             }).join('')}</div>`;
         }
 
@@ -137295,7 +137311,9 @@ C.14.043 C.15.000
                 if(evalTaskHtml) noteHtml += evalTaskHtml;
                 const hasLocPhotoMatchQty = displayLocMatchQty !== '';
                 const locPhotoMatchChipHtml = hasLocPhotoMatchQty ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900" data-loc-photo-match-value>${esc(normalizeCardQuantityValue(displayLocMatchQty))}</span></span>` : '';
-                const driveQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, trailingChipsHtml: locPhotoMatchChipHtml });
+                // HL's verified raw snapshot owns quantities; the display projection
+                // may already have normalized missing values into zero aliases.
+                const driveQuantityRowHtml = buildInventoryQuantityChipsHtml(renderMeta.verifiedQuantityRow || item, { layout: 'row', compact: true, trailingChipsHtml: locPhotoMatchChipHtml, preserveUnknown: renderMeta && renderMeta.preserveUnknownAvailability === true });
                 const driveAvNoteHtml = displayAvNote && String(displayAvNote).trim() !== '' ? `<div class="rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${esc(displayAvNote)}</div>` : '';
                 const driveSalesNoteText = String(firstNonEmptyValue(salesNoteText, '') || '').trim();
                 const driveSalesNoteHtml = driveSalesNoteText ? `<div class="rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${esc(driveSalesNoteText)}</div>` : '';

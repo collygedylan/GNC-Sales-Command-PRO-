@@ -89,8 +89,8 @@ test('cards use all five grouping fields and detail shows all accessible matchin
   await expect(detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]')).toHaveValue('10');
   await expect(detail.locator('[data-hl-source-id="hl-b"] [data-hl-quantity]')).toHaveValue('15');
   await expect(detail.locator('[data-hl-drive-location]')).toHaveCount(4);
-  await expect(detail.locator('[data-hl-drive-location="A.02.001"]')).toContainText(/Unknown|Not available/);
-  await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText(/PTRAVAILABLE:\s*0/);
+  await expect(detail.locator('[data-hl-drive-location="A.02.001"] .app-drive-compact-card')).toContainText('Available-Unknown');
+  await expect(detail.locator('[data-hl-drive-location="B.01.010"] .app-drive-compact-card')).toContainText('Available-0');
   await expect(detail.locator('[data-hl-drive-location="C.12.001"]')).toContainText('Exact item, size, location and lot match');
   await expect(detail.locator('[data-hl-drive-location="B.01.010"]')).toContainText('Related item and size');
   await expect(detail.locator('[data-hl-drive-location="C.12.001"] .app-drive-compact-card')).toHaveCount(1);
@@ -149,6 +149,11 @@ test('HL Drive detail return preserves tracking inputs but keeps their original 
   await expect(line.locator('[data-hl-received-quantity]')).toHaveValue('6');
   await expect(line.locator('[data-hl-cancel-quantity]')).toHaveValue('3');
   await expect(tracking.locator('#hl-order-reason')).toHaveValue('Customer confirmed the short count');
+  await expect(tracking).toHaveAttribute('data-hl-edit-revision', baseline!);
+  // A background refresh after focus leaves the input must retain the draft too.
+  await tracking.locator('h2').click();
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await expect(line.locator('[data-hl-received-quantity]')).toHaveValue('6');
   await expect(tracking).toHaveAttribute('data-hl-edit-revision', baseline!);
   await tracking.getByRole('button', { name: 'Save received quantities', exact: true }).click();
   await expect.poll(() => actions(fixture, 'receive').length).toBe(2);

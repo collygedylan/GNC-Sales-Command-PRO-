@@ -27,6 +27,24 @@ function runtime() {
   vm.runInContext(source('parseAppNumber') + '\n' + html.slice(blockStart, blockEnd), ctx);
   return ctx;
 }
+function quantityRuntime() {
+  const ctx = vm.createContext({
+    escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+  });
+  vm.runInContext([
+    source('firstNonEmptyValue'),
+    source('normalizeCardQuantityValue'),
+    source('getCardPtrOnHandValue'),
+    source('getCardPtrReviewedValue'),
+    source('getCardPtrAvailableValue'),
+    source('getCardOpenStockValue')
+  ].join('\n'), ctx);
+  const quantityStart = html.indexOf('        function buildInventoryQuantityChipsHtml(');
+  const quantityEnd = html.indexOf('        function isInventoryCardMeaningfulTextValue(', quantityStart);
+  assert.ok(quantityStart >= 0 && quantityEnd > quantityStart, 'shared inventory quantity renderer must be present');
+  vm.runInContext(html.slice(quantityStart, quantityEnd), ctx);
+  return ctx;
+}
 const groups = (ctx, rows) => Array.from(ctx.groupHlOrderRows(rows.map((entry) => ctx.getHlOrderSource(entry))));
 
 test('HL eligibility retains exact location boundaries and dock OR planned start', () => {
@@ -132,6 +150,28 @@ test('Drive matches ignore display filters while retaining base access and appro
   assert.deepEqual(Array.from(ctx.getHlOrderDriveMatches([row()]), (entry) => entry.unique_id).sort(), ['visible-f1', 'visible-s1', 'visible-zero']);
   ctx.canUseHlOrderVerifiedData = () => false;
   assert.equal(ctx.getHlOrderDriveMatches([row()]).length, 0);
+});
+
+test('HL normal Drive quantity cards preserve unknown verified values while retaining numeric zero', () => {
+  const ctx = quantityRuntime();
+  const unknown = ctx.buildInventoryQuantityChipsHtml({ ptravailable: null, ptronhand: null, ptrreviewed: null, s_lts: null }, { layout: 'row', compact: true, preserveUnknown: true });
+  assert.match(unknown, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>Unknown<\/span>/);
+  assert.match(unknown, /app-card-qty-label">Open Stock<\/span>.*?app-card-qty-value[^>]*>Unknown<\/span>/);
+  const zero = ctx.buildInventoryQuantityChipsHtml({ ptravailable: '0', ptronhand: '0', ptrreviewed: '0', s_lts: '0' }, { layout: 'row', compact: true, preserveUnknown: true });
+  assert.match(zero, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>0<\/span>/);
+  assert.doesNotMatch(zero, /Available<\/span>.*?Unknown/);
+});
+
+test('HL dirty inputs remain protected after blur until explicitly saved or reset', () => {
+  const ctx = runtime();
+  const input = { type: 'number', value: '6', defaultValue: '4' };
+  const selection = { type: 'checkbox', checked: true, defaultChecked: false };
+  ctx.document = { activeElement: null, getElementById: () => ({ querySelectorAll: () => [input, selection] }) };
+  assert.equal(ctx.hasHlOrderUnsavedInputs(), true);
+  input.value = input.defaultValue;
+  assert.equal(ctx.hasHlOrderUnsavedInputs(), true, 'selected receipt lines retain their original edit revision too');
+  selection.checked = false;
+  assert.equal(ctx.hasHlOrderUnsavedInputs(), false);
 });
 
 test('committed HL card markup owns return recognition and ordinary Drive ignores stale HL card identities', () => {

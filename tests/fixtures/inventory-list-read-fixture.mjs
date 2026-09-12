@@ -93,14 +93,32 @@ export function createInventoryReadFixture(schema) {
       const ids = new Set(idsFromFilter(filter));
       matching = matching.filter(item => ids.has(item.unique_id));
     }
-    // Normal Drive detail resolves a name-only row with PostgREST's exact
-    // commonname filter. Keep this fixture boundary just as strict as the
-    // existing code/size lookups: only an exact physical-column match is
-    // supported here.
+    // Drive detail also searches common names with PostgREST ILIKE. Model its
+    // wildcard semantics while retaining exact item/size and schema checks.
     for (const name of ['itemcode', 'commonname', 'contsize']) {
       const scopedFilter = params.get(name);
       if (scopedFilter === null) continue;
-      if (!columns.has(name) || !scopedFilter.startsWith('eq.')) fail(`unsupported exact filter ${name}`);
+      if (!columns.has(name)) fail(`nonphysical filter ${name}`);
+      if (name === 'commonname' && scopedFilter.startsWith('ilike.')) {
+        let pattern = scopedFilter.slice(6);
+        if (pattern.startsWith('"')) pattern = JSON.parse(pattern);
+        if (typeof pattern !== 'string') fail('invalid commonname pattern');
+        // PostgREST translates * to the SQL percent wildcard before ILIKE.
+        pattern = pattern.replaceAll('*', '%');
+        let expression = '';
+        const literal = character => character.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        for (let index = 0; index < pattern.length; index++) {
+          const character = pattern[index];
+          if (character === '\\') {
+            if (++index >= pattern.length) fail('unterminated commonname escape');
+            expression += literal(pattern[index]);
+          } else expression += character === '%' ? '[\\s\\S]*' : character === '_' ? '[\\s\\S]' : literal(character);
+        }
+        const matcher = new RegExp(`^(?:${expression})(?![\\s\\S])`, 'iu');
+        matching = matching.filter(item => typeof item[name] === 'string' && matcher.test(item[name]));
+        continue;
+      }
+      if (!scopedFilter.startsWith('eq.')) fail(`unsupported exact filter ${name}`);
       const [value] = idsFromFilter(scopedFilter);
       matching = matching.filter(item => item[name] === value);
     }
