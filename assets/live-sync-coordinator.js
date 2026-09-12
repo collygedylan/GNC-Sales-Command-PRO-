@@ -86,8 +86,19 @@
             const next = options.getContext();
             return epoch === startedEpoch && next?.visible !== false && next?.online !== false && identity(next || {}) === identity(ctx);
         }
-        async function cycle() {
+        function discardCycle(startedEpoch, message = '') {
+            statistics.discardedLoads++;
+            // Suspension/reset invalidates this cycle, not work requested after
+            // it. Never revive an old epoch or clear a newer queued check.
+            if (epoch === startedEpoch) {
+                queued = true;
+                if (message) publish('Syncing', message);
+            }
+            return false;
+        }
+        async function cycle(run) {
             const ctx = context();
+            run.epoch = epoch;
             arm(ctx);
             if (!ctx?.scope || ctx.visible === false) return false;
             if (ctx.online === false) { publish('Offline', 'Showing the last verified data, if available.'); return false; }
@@ -98,12 +109,13 @@
             if (!keys.length) { publish('Up to date', 'This screen has no live data.'); return true; }
             if (keys.length > 64) throw new Error('This screen exceeds the revision request limit.');
             statistics.revisionReads++;
-            const before = snapshot(await options.readRevisions(keys), keys);
-            if (!stillCurrent(ctx, startedEpoch)) { statistics.discardedLoads++; queued = true; return false; }
+            const beforeValue = await options.readRevisions(keys);
+            if (!stillCurrent(ctx, startedEpoch)) return discardCycle(startedEpoch);
+            const before = snapshot(beforeValue, keys);
             if (permission && permission !== before.permissionVersion) {
                 applied.clear(); lastVerifiedAt = null;
                 await options.onPermissionChange?.(before.permissionVersion);
-                if (!stillCurrent(ctx, startedEpoch)) { queued = true; return false; }
+                if (!stillCurrent(ctx, startedEpoch)) return discardCycle(startedEpoch);
             }
             permission = before.permissionVersion;
             const blocked = adapters.filter((adapter) => adapter.sourceKeys.some((key) => before.sources.get(key).state !== 'ready'));
@@ -115,7 +127,7 @@
                 publish('Syncing', 'Checking and loading changed data.');
                 options.onStageStart?.(ctx, before);
                 await Promise.all(Array.from({ length: Math.min(options.concurrency || 2, changed.length) }, async () => {
-                    while (cursor < changed.length) {
+                    while (cursor < changed.length && stillCurrent(ctx, startedEpoch)) {
                         const adapter = changed[cursor++];
                         try {
                             statistics.adapterReads++;
@@ -125,24 +137,25 @@
                         } catch (error) { failure = error; }
                     }
                 }));
+                // An adapter may finish after pagehide suspended this cycle.
+                // Check before starting another fetch in the departing page.
+                if (!stillCurrent(ctx, startedEpoch)) return discardCycle(startedEpoch);
                 statistics.revisionReads++;
-                const after = snapshot(await options.readRevisions(keys), keys);
-                if (!stillCurrent(ctx, startedEpoch) || signature(before, keys) !== signature(after, keys)) {
-                    statistics.discardedLoads++; queued = true;
-                    publish('Syncing', 'Source data changed while loading; checking again.');
-                    return false;
+                const afterValue = await options.readRevisions(keys);
+                if (!stillCurrent(ctx, startedEpoch)) return discardCycle(startedEpoch, 'Source data changed while loading; checking again.');
+                const after = snapshot(afterValue, keys);
+                if (signature(before, keys) !== signature(after, keys)) {
+                    return discardCycle(startedEpoch, 'Source data changed while loading; checking again.');
                 }
                 // No asynchronous work is permitted between final validation and application.
                 if (staged.length) {
                     if (options.commitSnapshots) options.commitSnapshots(staged, ctx, after);
                     else staged.forEach(({ adapter, value }) => adapter.commit(value));
-                    staged.forEach(({ adapter }) => applied.set(adapter.id, { cacheKey: adapter.cacheKey, signature: JSON.stringify([adapter.cacheKey, signature(after, adapter.sourceKeys)]) }));
                     statistics.commits++;
                     if (!stillCurrent(ctx, startedEpoch)) {
-                        queued = true;
-                        publish('Syncing', 'View settings changed; verifying the updated selection.');
-                        return false;
+                        return discardCycle(startedEpoch, 'View settings changed; verifying the updated selection.');
                     }
+                    staged.forEach(({ adapter }) => applied.set(adapter.id, { cacheKey: adapter.cacheKey, signature: JSON.stringify([adapter.cacheKey, signature(after, adapter.sourceKeys)]) }));
                 }
             }
             if (failure) { publish('Needs attention', failure.message || String(failure)); return false; }
@@ -166,8 +179,12 @@
                 let result = false, passes = 0;
                 while (queued && passes++ < 3) {
                     queued = false;
-                    try { result = await cycle(); }
-                    catch (error) { publish('Needs attention', error.message || String(error)); result = false; }
+                    const run = { epoch };
+                    try { result = await cycle(run); }
+                    catch (error) {
+                        if (epoch === run.epoch) publish('Needs attention', error.message || String(error));
+                        result = false;
+                    }
                 }
                 return result;
             })();

@@ -109,6 +109,37 @@ test('hidden sessions stop polling and unsubscribe; returning catches up without
     f.context.visible = true; f.revision = '2'; f.rows = [{ id: 'dock-29' }]; f.coordinator.signal('visible', 0); await f.advance(0);
     assert.deepEqual(f.commits.at(-1), [{ id: 'dock-29' }]); assert.equal(f.subscriptions, 2);
 });
+
+for (const invalidate of ['suspend', 'reset']) {
+    for (const phase of ['first revision', 'adapter load', 'final revision']) {
+        test(`${invalidate} during ${phase} cannot restart reads in a closing document`, async () => {
+            const f = fixture(), gate = deferred(); let revisionCall = 0;
+            if (phase === 'adapter load') f.loadHook = () => gate.promise;
+            else f.metadataHook = () => ++revisionCall === (phase === 'first revision' ? 1 : 2) ? gate.promise : undefined;
+            const running = f.coordinator.check(); await settle();
+            const reads = f.metadataReads;
+            // pagehide can invalidate work before document.hidden changes.
+            assert.equal(f.context.visible, true);
+            f.coordinator[invalidate](); const statusCount = f.statuses.length;
+            gate.resolve(); await running; await f.advance(90000);
+            assert.equal(f.metadataReads, reads, 'invalidated work must not start another request');
+            assert.equal(f.commits.length, 0, 'invalidated snapshots must not commit');
+            assert.equal(f.statuses.length, statusCount, 'invalidated work must not publish completion');
+            assert.equal(f.timers.size, 0, 'invalidated work must not rearm polling');
+        });
+    }
+}
+
+test('an explicit resume queued during a suspended load still verifies fresh data', async () => {
+    const f = fixture(), gate = deferred(); f.loadHook = () => gate.promise;
+    const running = f.coordinator.check(); await settle();
+    f.coordinator.suspend(); f.rows = [{ id: 'resumed-data' }]; f.loadHook = null;
+    const resumed = f.coordinator.check('resume'); gate.resolve();
+    await Promise.all([running, resumed]);
+    assert.deepEqual(f.commits, [[{ id: 'resumed-data' }]]);
+    assert.equal(f.metadataReads, 3, 'skip the stale final read but retain both fresh verification reads');
+    assert.equal(f.coordinator.getStatus().state, 'Up to date');
+});
 test('offline shows offline independently of a previously healthy subscription', async () => {
     const f = fixture(); await f.coordinator.check(); f.context.online = false;
     await f.coordinator.check(); assert.equal(f.coordinator.getStatus().state, 'Offline'); assert.equal(f.reads, 1);

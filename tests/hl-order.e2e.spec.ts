@@ -28,6 +28,12 @@ async function preview(page: Page) {
   await expect(page.getByRole('link', { name: 'Open or download PDF' })).toHaveAttribute('href', /^blob:/);
 }
 async function reloadHl(page: Page, fixture: any) {
+  // A network-idle gap can fall between revision and adapter reads. Finish the
+  // complete verification cycle, then stop this document's polling before reload.
+  await page.evaluate(async () => {
+    const coordinator = window.eval('productionLiveSyncCoordinator');
+    if (coordinator) { await coordinator.check('fixture-reload'); coordinator.suspend(); }
+  });
   await fixture.waitForRevisionIdle();
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.eval('typeof nativeAuthProfile !== "undefined" && !!nativeAuthProfile'));
