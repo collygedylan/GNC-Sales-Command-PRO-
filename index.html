@@ -25315,8 +25315,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
+            if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
             const secureSupabaseResponse = await fetchSupabaseRestViaAppApiIfNeeded(url, options, timeoutMs, label);
             if (secureSupabaseResponse) return secureSupabaseResponse;
+            // Authentication/proxy preparation can outlive the document that
+            // requested a read. Do not start fetch with a cancelled request.
+            if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
             const controller = new AbortController();
             const externalSignal = options && options.signal ? options.signal : null;
             let externallyAborted = !!(externalSignal && externalSignal.aborted);
@@ -26405,6 +26409,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const rpcName = String(functionName || '').trim();
             if (!rpcName) throw new Error('RPC name is required.');
             const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (requestOptions.signal?.aborted) throw Object.assign(new Error(`RPC ${rpcName} cancelled.`), { code: 'REQUEST_ABORTED' });
             if (!nativeHeaders || !nativeHeaders.Authorization) {
                 throw new Error('Authenticated Supabase session required.');
             }
@@ -33966,6 +33971,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         // Native-auth production reads use revision-fenced snapshots. This is separate
         // from socket diagnostics and never considers a connection proof of freshness.
         let productionLiveSyncCoordinator = null;
+        let productionLiveSyncNavigation = new AbortController();
         let productionLiveSyncSideAdapters = null;
         let productionLiveSyncRendering = false;
         let productionLiveSyncRenderTimer = null;
@@ -34005,7 +34011,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getProductionLiveSyncContext() {
-            const visible = !document.hidden;
+            const visible = !document.hidden && !productionLiveSyncNavigation.signal.aborted;
             if (!canUseProductionLiveSync()) return observeHlOrderVerificationContext({ scope: '', visible, online: navigator.onLine !== false, adapters: [] });
             const context = getProductionLiveSyncSideContext();
             const registry = window.AgMetricLiveSyncRegistry;
@@ -34085,7 +34091,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!canUseProductionLiveSync()) return null;
             productionLiveSyncCoordinator = window.AgMetricLiveSync.createCoordinator({
                 getContext: getProductionLiveSyncContext,
-                readRevisions: (keys) => supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000 }),
+                readRevisions: (keys) => supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000, signal: productionLiveSyncNavigation.signal }),
                 concurrency: isTouchConstrainedDevice() ? 1 : 2,
                 onStageStart: (context, metadata) => {
                     productionLiveSyncReadGeneration += 1;
@@ -34145,11 +34151,26 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function signalProductionLiveSync(reason = 'view-entry', delay = 0) {
-            if (document.hidden) { productionLiveSyncCoordinator?.suspend(); return; }
+            if (document.hidden || productionLiveSyncNavigation.signal.aborted) { productionLiveSyncCoordinator?.suspend(); return; }
             getProductionLiveSyncCoordinator()?.signal(reason, delay);
         }
 
+        function suspendProductionLiveSyncForNavigation() {
+            productionLiveSyncNavigation.abort();
+            productionLiveSyncCoordinator?.suspend();
+        }
+
+        function resumeProductionLiveSyncAfterNavigation(reason) {
+            if (document.hidden) return;
+            if (productionLiveSyncNavigation.signal.aborted) productionLiveSyncNavigation = new AbortController();
+            signalProductionLiveSync(reason, 0);
+        }
+
         function resetProductionLiveSync() {
+            if (!productionLiveSyncNavigation.signal.aborted) {
+                productionLiveSyncNavigation.abort();
+                productionLiveSyncNavigation = new AbortController();
+            }
             clearHlOrderInventorySnapshot();
             productionPermissionDrafts = null;
             setProductionPermissionCheckState('');
@@ -34165,11 +34186,24 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (indicator) indicator.hidden = true;
         }
 
-        ['focus', 'pageshow', 'online', 'offline'].forEach((eventName) => {
+        ['focus', 'pageshow'].forEach((eventName) => {
+            window.addEventListener(eventName, (event) => {
+                if (!productionLiveSyncNavigation.signal.aborted || event.isTrusted) resumeProductionLiveSyncAfterNavigation(eventName);
+            }, { passive: true });
+        });
+        ['online', 'offline'].forEach((eventName) => {
             window.addEventListener(eventName, () => signalProductionLiveSync(eventName, 0), { passive: true });
         });
         document.addEventListener('visibilitychange', () => signalProductionLiveSync('visibility', 0), { passive: true });
-        window.addEventListener('pagehide', () => productionLiveSyncCoordinator?.suspend(), { passive: true });
+        window.addEventListener('beforeunload', suspendProductionLiveSyncForNavigation, { passive: true });
+        window.addEventListener('pagehide', suspendProductionLiveSyncForNavigation, { passive: true });
+        // A cancelled navigation may leave the same visible document without
+        // pageshow. Its next user interaction safely resumes verification.
+        ['pointerdown', 'keydown'].forEach((eventName) => {
+            document.addEventListener(eventName, (event) => {
+                if (event.isTrusted && productionLiveSyncNavigation.signal.aborted) resumeProductionLiveSyncAfterNavigation('navigation-cancelled');
+            }, { passive: true });
+        });
         document.addEventListener('focusout', () => {
             if (productionLiveSyncDraftChanged) scheduleProductionLiveSyncRender();
         }, { passive: true });

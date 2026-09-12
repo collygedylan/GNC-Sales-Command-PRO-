@@ -9,6 +9,75 @@ const end = html.indexOf('async function getResponseError(', start);
 assert.ok(start > 0 && end > start);
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
+
+test('a revision read cancelled during auth preparation never starts its RPC', async () => {
+    const from = html.indexOf('async function supabaseRpc(');
+    const to = html.indexOf('const SECURE_DRIVE_EVIDENCE_PREFIXES', from);
+    const gate = deferred(), controller = new AbortController(); let calls = 0;
+    const ctx = { Error, Object, String, Number, Math, JSON, encodeURIComponent,
+        SUPABASE_URL: 'https://fixture.invalid', SUPABASE_WRITE_TIMEOUT_MS: 1000,
+        getNativeAuthRequestHeaders: () => gate.promise,
+        fetchWithTimeout: async () => { calls++; return { ok: true, text: async () => '{}' }; }
+    };
+    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    const pending = ctx.supabaseRpc('get_my_dataset_revisions_v1', {}, { signal: controller.signal });
+    controller.abort(); gate.resolve({ Authorization: 'synthetic' });
+    await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
+    assert.equal(calls, 0);
+    await ctx.supabaseRpc('get_my_dataset_revisions_v1', {}, { signal: new AbortController().signal });
+    assert.equal(calls, 1, 'new document/account reads retain normal authentication');
+});
+
+test('cancellation during proxy preparation prevents a native fetch', async () => {
+    const from = html.indexOf('async function fetchWithTimeout(');
+    const to = html.indexOf('const supabaseReadInFlight', from);
+    const gate = deferred(), controller = new AbortController(); let calls = 0;
+    const ctx = { Error, Object, AbortController, setTimeout, clearTimeout, SUPABASE_WRITE_TIMEOUT_MS: 1000,
+        fetchSupabaseRestViaAppApiIfNeeded: () => gate.promise,
+        fetch: async () => { calls++; return {}; }
+    };
+    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    const pending = ctx.fetchWithTimeout('https://fixture.invalid', { signal: controller.signal });
+    controller.abort(); gate.resolve(null);
+    await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
+    assert.equal(calls, 0);
+});
+
+test('navigation stops visible-document reads until restoration or trusted interaction', () => {
+    const handlers = new Map(), signals = [], original = new AbortController();
+    const listen = (name, callback) => handlers.set(name, callback);
+    const coordinator = { suspend() {}, signal: reason => signals.push(reason) };
+    const ctx = { AbortController, document: { hidden: false, addEventListener: listen }, window: { addEventListener: listen },
+        productionLiveSyncNavigation: original, productionLiveSyncCoordinator: coordinator,
+        getProductionLiveSyncCoordinator: () => coordinator, canUseProductionLiveSync: () => false,
+        observeHlOrderVerificationContext: value => value, navigator: { onLine: true }
+    };
+    vm.createContext(ctx);
+    const contextStart = html.indexOf('function getProductionLiveSyncContext()');
+    vm.runInContext(html.slice(contextStart, html.indexOf('function renderProductionDataFreshness(', contextStart)), ctx);
+    const from = html.indexOf('function signalProductionLiveSync(');
+    vm.runInContext(html.slice(from, html.indexOf('function resetProductionLiveSync()', from)), ctx);
+    const events = html.indexOf("['focus', 'pageshow'].forEach");
+    vm.runInContext(html.slice(events, html.indexOf("document.addEventListener('focusout'", events)), ctx);
+    handlers.get('beforeunload')({ isTrusted: true });
+    assert.equal(original.signal.aborted, true);
+    assert.equal(ctx.getProductionLiveSyncContext().visible, false, 'beforeunload precedes document.hidden');
+    ctx.signalProductionLiveSync('loader');
+    handlers.get('pointerdown')({ isTrusted: false });
+    handlers.get('focus')({ isTrusted: false });
+    assert.deepEqual(signals, []);
+    handlers.get('pointerdown')({ isTrusted: true });
+    assert.equal(ctx.getProductionLiveSyncContext().visible, true);
+    assert.deepEqual(signals, ['navigation-cancelled']);
+    assert.equal(original.signal.aborted, true, 'old reads cannot inherit the resumed signal');
+    handlers.get('pagehide')({ isTrusted: true });
+    ctx.document.hidden = true;
+    handlers.get('pageshow')({ isTrusted: true });
+    assert.equal(ctx.getProductionLiveSyncContext().visible, false);
+    ctx.document.hidden = false;
+    handlers.get('pageshow')({ isTrusted: true });
+    assert.equal(ctx.getProductionLiveSyncContext().visible, true);
+});
 function fixture(concurrency = 3) {
     const ctx = { Map, Promise, JSON, String, Error, SUPABASE_READ_CONCURRENCY_LIMIT: concurrency,
         SUPABASE_URL: 'https://fixture.invalid', currentUser: 'dylan_collyge', currentRole: 'Admin', currentUserDivision: '10',
