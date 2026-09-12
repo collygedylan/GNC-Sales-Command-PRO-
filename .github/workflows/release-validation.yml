@@ -119,8 +119,12 @@ jobs:
             config: playwright.request-reliability.config.ts
           - suite: request-photo
             config: playwright.request-photo.config.ts
-          - suite: hl-order
+          - suite: hl-order-1
             config: playwright.hl-order.config.ts
+            shard: 1/2
+          - suite: hl-order-2
+            config: playwright.hl-order.config.ts
+            shard: 2/2
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
@@ -128,7 +132,7 @@ jobs:
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Compiled shell — ${{ matrix.suite }}
-        run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob
+        run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}

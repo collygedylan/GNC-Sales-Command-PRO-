@@ -30,7 +30,11 @@ test('browser shards and compiled suites use isolated runners without racing per
   assert.equal(validation.jobs.functional.strategy['max-parallel'], 4);
   assert.equal(validation.jobs.functional.strategy['fail-fast'], false);
   assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=/);
-  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home','season','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo', 'hl-order']);
+  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home','season','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo', 'hl-order-1','hl-order-2']);
+  const hl = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.hl-order.config.ts');
+  assert.deepEqual(hl.map(x => x.shard), ['1/2','2/2']);
+  assert.equal(validation.jobs.compiled['timeout-minutes'], 12);
+  assert.match(validation.jobs.compiled.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*matrix.shard.*--shard=/);
   assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-timing.config.ts --workers=1/);
   assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-android.config.ts --project=android --workers=1/);
   assert.equal(validation.jobs.lighthouse['runs-on'], 'ubuntu-latest');
