@@ -262,10 +262,6 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     'access-control-expose-headers': 'content-range',
     'access-control-allow-credentials': 'true', ...headers
   }, body: JSON.stringify(value) });
-  await page.addLocatorHandler(page.locator('#push-permission-help-modal'), async (modal) => modal.getByRole('button', { name: 'Close', exact: true }).dispatchEvent('click'));
-  await page.addLocatorHandler(page.locator('#mobile-push-enable-prompt'), async (prompt) => prompt.getByRole('button', { name: 'Dismiss', exact: true }).dispatchEvent('click'));
-  await page.addLocatorHandler(page.locator('#toast-notification.show').filter({ hasText: 'Notifications Blocked' }),
-    async (toast) => toast.getByRole('button', { name: 'Dismiss notification', exact: true }).dispatchEvent('click'));
   page.on('pageerror', (error) => control.errors.push(error.message));
   const pendingRevisionReads = new Set();
   let revisionReadEpoch = 0;
@@ -344,7 +340,13 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     return route.abort('blockedbyclient');
   });
-  await page.addInitScript((value) => localStorage.setItem('gnc_supabase_auth_v1', JSON.stringify(value)), session);
+  await page.addInitScript((value) => {
+    localStorage.setItem('gnc_supabase_auth_v1', JSON.stringify(value));
+    // Service workers are blocked in this isolated HL suite. Expose push as
+    // unavailable too, so delayed enrollment cannot replace an HL error toast.
+    // Production notification behavior and the app's toast assertions stay intact.
+    delete window.PushManager;
+  }, session);
   await page.goto('/', { waitUntil: 'load' });
   await page.waitForFunction(() => window.eval('typeof nativeAuthProfile !== "undefined" && !!nativeAuthProfile'));
   // A profile can exist before initial login opens Home. Navigate only after
