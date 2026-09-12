@@ -694,6 +694,11 @@ test('a state refresh during an edited order button press preserves the save', a
   const selected = page.locator('[data-hl-source-id="hl-a"]');
   await page.locator('[data-hl-source-id="hl-b"] [data-hl-select]').uncheck();
   await selected.locator('[data-hl-quantity]').fill('7');
+  // Finish mobile text entry before choosing held-mouse coordinates: its
+  // trailing visibility settle can otherwise scroll between hover and down.
+  await selected.locator('[data-hl-quantity]').press('Tab');
+  await expect(page.locator('body')).not.toHaveClass(/mobile-text-entry-active/);
+  await expect(selected.locator('[data-hl-quantity]')).toHaveValue('7');
   const button = page.getByRole('button', { name: 'Order selected rows', exact: true });
   await button.hover();
   await page.mouse.down();
