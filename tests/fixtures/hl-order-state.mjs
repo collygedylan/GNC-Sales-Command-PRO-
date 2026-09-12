@@ -374,7 +374,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           return json(route, result);
         } catch (error) { return json(route, { code: 'P0001', message: error.message }, error.status || 400); }
       }
-      if (op === 'get_my_dataset_revisions_v1') return json(route, { contractVersion: 1, permissionVersion: 'hl-policy-1', sources: (body.p_dataset_keys || []).map((key) => ({ key, revision: String(control.datasetRevision), state: 'ready' })) });
+      if (op === 'get_my_dataset_revisions_v1') {
+        if (Number(options.metadataDelayMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.metadataDelayMs)));
+        return json(route, { contractVersion: 1, permissionVersion: 'hl-policy-1', sources: (body.p_dataset_keys || []).map((key) => ({ key, revision: String(control.datasetRevision), state: 'ready' })) });
+      }
       if (op === 'get_my_app_permissions_v1') {
         control.appAccessReads++;
         if (Number(options.appAccessDelayMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.appAccessDelayMs)));

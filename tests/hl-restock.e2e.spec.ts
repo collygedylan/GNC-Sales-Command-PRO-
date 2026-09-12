@@ -37,7 +37,7 @@ test('Restocking loads on demand without SOC demand and shows verified server qu
 });
 
 test('a partial restocking draft persists after reload and sends the selected snapshot and ship date', async ({ page, baseURL }) => {
-  const fixture = await installHlOrderFixture(page, baseURL!, setup());
+  const fixture = await installHlOrderFixture(page, baseURL!, setup({ metadataDelayMs: 150 }));
   await openRestock(page); await saveRestock(page);
   await expect.poll(() => fixture.state.draft.length).toBe(1);
   const command = fixture.commands.find((entry: any) => entry.p_action === 'restock_draft_save');
@@ -46,6 +46,11 @@ test('a partial restocking draft persists after reload and sends the selected sn
   await page.evaluate(async () => { const coordinator = window.eval('productionLiveSyncCoordinator'); if (coordinator) { await coordinator.check('fixture-reload'); coordinator.suspend(); } });
   await fixture.waitForRevisionIdle(); await page.reload({ waitUntil: 'load' });
   await expect(page.locator('#view-login')).toBeHidden();
+  // Restored Home can paint before the first permission-metadata proof arrives.
+  // Saving before that proof intentionally discards an inventory read whose
+  // account/permission scope changed. Wait for the real initialized scope.
+  await page.waitForFunction(() => document.body.classList.contains('role-access-ready')
+    && window.eval('hasAppliedInitialHomeView === true && productionLiveSyncReadPermissionVersion === "hl-policy-1"'));
   if (!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
   const saved = page.locator('[data-hl-draft-source-id]').first();
   await saved.locator('[data-hl-draft-quantity]').fill('6');
