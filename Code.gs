@@ -1140,6 +1140,8 @@ function runQueuedManualSyncStage_(options) {
         filesProcessed: filesProcessed,
         tempFilesRemoved: tempFilesRemoved,
         failedFiles: failedFiles,
+        importStatus: String(stageResult.importStatus || ''),
+        awaitingReconciliation: stageResult.awaitingReconciliation === true,
         failedFileNames: failedFileNames,
         failedFileErrors: failedFileErrors.map(function(entry) {
           return { errorCode: sanitizeManualSyncErrorCode_(entry && entry.errorCode, 'MANUAL_SYNC_STAGE_FAILED') };
@@ -1165,9 +1167,9 @@ function runQueuedManualSyncStage_(options) {
       const hasMoreStages = status.stageIndex < stageOrder.length;
       const nextStageKey = hasMoreStages ? stageOrder[status.stageIndex] : '';
       const nextStageDef = nextStageKey ? MANUAL_SYNC_STAGE_DEFINITIONS[nextStageKey] : null;
-      const fileSummary = filesProcessed > 0
+      const fileSummary = (filesProcessed > 0
         ? `${filesProcessed} file${filesProcessed === 1 ? '' : 's'} processed`
-        : 'no files found';
+        : 'no files found') + (stageResult.awaitingReconciliation === true ? ', awaiting Dylan receipt reconciliation' : '');
       const tempSummary = tempFilesRemoved > 0
         ? `, ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared`
         : '';
@@ -5449,6 +5451,39 @@ function upsertHlPoParsedRows_(tableName, rows) {
   return payloadRows.length;
 }
 
+// Only an absent RPC permits the pre-migration writer. All other failures stop
+// the run before any report rows or source files are changed.
+function supportsHlPoImportStaging_() {
+  const response = UrlFetchApp.fetch(`${SUPABASE_URL}/rest/v1/rpc/hl_po_import_capabilities`, {
+    method: 'post',
+    headers: getSupabaseHeaders_({ 'Content-Type': 'application/json' }),
+    payload: '{}',
+    muteHttpExceptions: true
+  });
+  const status = response.getResponseCode();
+  let result = null;
+  try { result = JSON.parse(response.getContentText() || 'null'); } catch (_) {}
+  if (status >= 200 && status < 300 && result && result.version === 1) return true;
+  if ((status === 400 || status === 404) && result && (result.code === 'PGRST202' || result.code === '42883')) return false;
+  throw createHlPoParsedError_('HL_PO_IMPORT_CAPABILITY_FAILED', `HL PO import capability verification failed (${status}). The current report was not changed.`);
+}
+
+function stageHlPoParsedRows_(runId, rows, sheetData) {
+  const payloadRows = (Array.isArray(rows) ? rows : []).map(function(row) {
+    const sourceValues = {};
+    const sourceRow = sheetData.values[row.row_index - 1] || [];
+    HL_PO_PARSED_REQUIRED_COLUMNS.forEach(function(columnName) {
+      const value = getHlPoCellValue_(sourceRow, sheetData.indexByColumn, columnName);
+      sourceValues[columnName] = value == null ? null : value;
+    });
+    return Object.assign({}, row, { source_values: sourceValues });
+  });
+  for (let i = 0; i < payloadRows.length; i += 500) {
+    callSupabaseRpc_('hl_po_import_stage', { p_run_id: runId, p_rows: payloadRows.slice(i, i + 500), p_complete: false });
+  }
+  return payloadRows.length;
+}
+
 function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
   const safeTableName = String(tableName || HL_PO_PARSED_TABLE).trim();
   if (String(sourceFolderId || '').trim() === String(processedFolderId || '').trim()) {
@@ -5464,7 +5499,26 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
   let filesProcessed = 0;
   let upsertCount = 0;
   let totalRows = 0;
-  const runId = Utilities.getUuid();
+  let runId = Utilities.getUuid();
+  const stagedFiles = [];
+  let stageCompleted = false;
+  let awaitingReconciliation = false;
+  let finalizedImportStatus = 'awaiting_reconciliation';
+  const importProperties = PropertiesService.getScriptProperties();
+  const archiveKey = 'HL_PO_IMPORT_ARCHIVE_' + String(sourceFolderId || '').trim();
+  const savedArchive = importProperties.getProperty(archiveKey);
+  let archiveManifest = null;
+  if (savedArchive) {
+    try { archiveManifest = JSON.parse(savedArchive); } catch (_) {}
+    if (!archiveManifest || archiveManifest.processedFolderId !== processedFolderId ||
+        !Array.isArray(archiveManifest.fileIds) || !archiveManifest.fileIds.length ||
+        archiveManifest.fileIds.some(function(id) { return typeof id !== 'string' || !id; }) || !archiveManifest.runId) {
+      throw createHlPoParsedError_('HL_PO_ARCHIVE_RECOVERY_REQUIRED', 'The saved HL PO import archive manifest needs repair before another report can be imported.');
+    }
+    runId = archiveManifest.runId;
+    awaitingReconciliation = archiveManifest.awaitingReconciliation !== false;
+    finalizedImportStatus = archiveManifest.importStatus || 'awaiting_reconciliation';
+  }
 
   while (files.hasNext()) {
     const file = files.next();
@@ -5488,7 +5542,16 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
     return String(a.getName() || '').localeCompare(String(b.getName() || ''));
   });
 
-  pendingFiles.forEach(function(file) {
+  // A finalized run survives partial Drive moves or an interrupted invocation.
+  // Finish only those moves first; newly arrived files wait for the next run.
+  if (archiveManifest) {
+    pendingFiles.forEach(function(file) {
+      if (archiveManifest.fileIds.indexOf(String(file.getId() || '')) >= 0) stagedFiles.push(file);
+    });
+    stageCompleted = true;
+  }
+  const useStaging = !!archiveManifest || (pendingFiles.length > 0 && supportsHlPoImportStaging_());
+  if (!archiveManifest) pendingFiles.forEach(function(file) {
     const fileName = String(file.getName() || '').trim();
     console.log(`[HL PO] Processing ${fileName} -> ${safeTableName}`);
     try {
@@ -5498,12 +5561,16 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
       if (!rows.length) {
         throw createHlPoParsedError_('HL_PO_NO_IMPORTABLE_ROWS', `No importable HL PO rows found in ${fileName} on sheet ${sheetData.sourceSheetName}. The sheet has a valid header but no nonblank data rows.`);
       }
-      const uploadedRows = upsertHlPoParsedRows_(safeTableName, rows);
-      moveDriveFileToFolderWithRetry_(file, processedFolder, `${safeTableName} processed file ${fileName}`);
-      filesProcessed++;
+      const uploadedRows = useStaging ? stageHlPoParsedRows_(runId, rows, sheetData) : upsertHlPoParsedRows_(safeTableName, rows);
+      if (useStaging) {
+        stagedFiles.push(file);
+      } else {
+        moveDriveFileToFolderWithRetry_(file, processedFolder, `${safeTableName} processed file ${fileName}`);
+        filesProcessed++;
+      }
       upsertCount += uploadedRows;
       totalRows += rows.length;
-      console.log(`[HL PO] Uploaded ${uploadedRows} row${uploadedRows === 1 ? '' : 's'} from ${fileName}; moved to processed.`);
+      console.log(`[HL PO] ${useStaging ? 'Staged' : 'Uploaded'} ${uploadedRows} row${uploadedRows === 1 ? '' : 's'} from ${fileName}.`);
     } catch (err) {
       const errorMessage = err && err.message ? err.message : String(err);
       const errorCode = String(err && err.code || 'HL_PO_PARSE_FAILED').trim().toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
@@ -5512,6 +5579,45 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
       console.warn(`[HL PO] Keeping ${fileName} in source folder for correction/retry.`);
     }
   });
+
+  // Do not finalize a partial report or archive its files. The current active
+  // report remains authoritative until Dylan reconciles a complete staged run.
+  if (useStaging && !archiveManifest && failedFiles.length === 0 && stagedFiles.length === pendingFiles.length) {
+    try {
+      const finalized = callSupabaseRpc_('hl_po_import_stage', { p_run_id: runId, p_rows: [], p_complete: true });
+      awaitingReconciliation = !finalized || finalized.awaitingReconciliation !== false;
+      finalizedImportStatus = finalized && finalized.status === 'duplicate' ? 'duplicate' : 'awaiting_reconciliation';
+      importProperties.setProperty(archiveKey, JSON.stringify({
+        runId: runId,
+        processedFolderId: processedFolderId,
+        awaitingReconciliation: awaitingReconciliation,
+        importStatus: finalizedImportStatus,
+        fileIds: stagedFiles.map(function(file) { return String(file.getId() || ''); })
+      }));
+      stageCompleted = true;
+    } catch (err) {
+      const message = err && err.message ? err.message : String(err);
+      stagedFiles.forEach(function(file) {
+        failedFiles.push({ name: String(file.getName() || ''), error: message, errorCode: 'HL_PO_STAGE_INCOMPLETE' });
+      });
+      console.error(`[HL PO] Complete report staging failed; all source files remain for retry: ${message}`);
+    }
+  }
+  if (stageCompleted) {
+    stagedFiles.forEach(function(file) {
+      const fileName = String(file.getName() || '').trim();
+      try {
+        moveDriveFileToFolderWithRetry_(file, processedFolder, `${safeTableName} processed file ${fileName}`);
+        filesProcessed++;
+      } catch (err) {
+        failedFiles.push({ name: fileName, error: err && err.message ? err.message : String(err), errorCode: 'HL_PO_ARCHIVE_FAILED' });
+      }
+    });
+    if (failedFiles.length === 0) importProperties.deleteProperty(archiveKey);
+    console.log(awaitingReconciliation
+      ? '[HL PO] Report staged and awaiting Dylan receipt reconciliation. The active report is unchanged.'
+      : '[HL PO] Report already imported. The active report and receipt accounting are unchanged.');
+  }
 
   if (!pendingFiles.length) {
     console.log(`[HL PO] No supported pending files found for ${safeTableName}.`);
@@ -5525,7 +5631,7 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
     `${tempFilesRemoved ? ` | ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared` : ''}.`
   );
 
-  if (filesProcessed > 0) {
+  if (filesProcessed > 0 && !useStaging) {
     emitTableSyncLiveEvent_(safeTableName, {
       filesProcessed: filesProcessed,
       tempFilesRemoved: tempFilesRemoved,
@@ -5547,6 +5653,8 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
     upsertCount: upsertCount,
     deleteCount: 0,
     totalRows: totalRows,
+    importStatus: useStaging ? (stageCompleted ? finalizedImportStatus : 'incomplete') : (filesProcessed > 0 ? 'legacy_applied' : 'no_files'),
+    awaitingReconciliation: stageCompleted && awaitingReconciliation,
     runId: runId
   };
 }

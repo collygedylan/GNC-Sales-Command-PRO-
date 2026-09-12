@@ -48,6 +48,17 @@ values('HL-INVOICED','HL-INVOICED','#3','C.05','10','D1','2026-09-10'),
 insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable)
 values('HL-INV-A','HL-A','#3','C.12.4','27.S1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.S1',null);
 
+-- Explicit current PO fixture; never infer membership from SOC in production.
+do $po$ begin
+ if to_regclass('hl_order_private.po_control') is not null then
+  insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain)
+  select 'hl-fixture',row_number() over(order by itemcode)::int,'hl-fixture',itemcode,'#3','27.F1',2000,2000
+  from (select distinct itemcode from public.ph_soc_master where nullif(itemcode,'') is not null union select 'HL-LATE-CANCEL' union select 'HL-UNDATED') q
+  on conflict(source_file_id,row_index) do update set item_code=excluded.item_code,po_remain=2000,imported_po_remain=2000;
+  update hl_order_private.po_control set active_scope='hl-fixture',receipt_cutoff='1970-01-01' where singleton;
+ end if;
+end $po$;
+
 do $test$
 <<hl_test>>
 declare s jsonb; first_result jsonb; preview jsonb; frozen jsonb; ord jsonb; cancellation jsonb;
@@ -56,7 +67,7 @@ begin
   select jsonb_agg(to_jsonb(t) order by unique_id) into before_soc from public.ph_soc_master t;
   select jsonb_agg(to_jsonb(t) order by unique_id) into before_inventory from public.ph_master_inventory t;
   s:=public.hl_order_state(); rev:=(s->>'revision')::bigint;
-  perform pg_temp.hl_check(exists(select 1 from jsonb_array_elements(s->'actionable_rows') x where x->>'source_id'='HL-BLANK'),'blank item remains visible under original eligibility');
+  perform pg_temp.hl_check(not exists(select 1 from jsonb_array_elements(s->'actionable_rows') x where x->>'source_id'='HL-BLANK'),'blank item excluded because it has no PO membership');
   perform pg_temp.hl_check(not exists(select 1 from jsonb_array_elements(s->'actionable_rows') x where x->>'source_id' in ('HL-INVOICED','HL-NODOCK')),'invoice and dock/plan eligibility enforced');
   perform pg_temp.hl_reject('draft_save','{"rows":[{"source_id":"HL-INVALID","quantity":1}]}','HL_ORDER_INVALID_QUANTITY');
   perform pg_temp.hl_reject('draft_save','{"rows":[{"source_id":"HL-FRACTION","quantity":1}]}','HL_ORDER_INVALID_QUANTITY');

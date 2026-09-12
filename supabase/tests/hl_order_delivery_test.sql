@@ -44,6 +44,17 @@ insert into public.ph_request_delivery_outbox(event_id,event_key,event_type,stat
 values('98000000-0000-0000-0000-000000000005','hl-test-normal','request_created','failed','{}');
 
 select pg_temp.hld_identity();
+-- Explicit current PO fixture; never infer membership from SOC in production.
+do $po$ begin
+ if to_regclass('hl_order_private.po_control') is not null then
+  insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain)
+  select 'hl-fixture',row_number() over(order by itemcode)::int,'hl-fixture',itemcode,'#3','27.F1',2000,2000
+  from (select distinct itemcode from public.ph_soc_master where nullif(itemcode,'') is not null union select 'HL-LATE-CANCEL' union select 'HL-UNDATED') q
+  on conflict(source_file_id,row_index) do update set item_code=excluded.item_code,po_remain=2000,imported_po_remain=2000;
+  update hl_order_private.po_control set active_scope='hl-fixture',receipt_cutoff='1970-01-01' where singleton;
+ end if;
+end $po$;
+
 do $test$
 declare preview jsonb; state jsonb; expired uuid:=gen_random_uuid(); event_id uuid; order_id uuid; line_id uuid;
 begin

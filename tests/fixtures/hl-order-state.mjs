@@ -41,7 +41,23 @@ function fixturePdf() {
 /** Isolated contract fixture. No real backend writes or email delivery are permitted. */
 export function createHlOrderState(options = {}) {
   const sourceRows = options.rows || [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1' })];
-  const state = { revision: 1, draft: [], actionable_rows: clone(sourceRows), dispositions: sourceRows.map((source) => ({ source_id: source.source_id, status: 'needed', source: clone(source), current_source: clone(source), available_quantity: source.available_quantity ?? Number(source.quantityordered) })), orders: [], batches: [], delivery_issues: [] };
+  const keyFor = (row) => JSON.stringify([String(row.itemcode).trim().toUpperCase(), String(row.size ?? row.contsize).trim().toUpperCase()]);
+  const sharedBalances = (rows) => {
+    const groups = new Map();
+    rows.forEach((row) => { const key = keyFor(row); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(row); });
+    return [...groups].map(([key, copies]) => {
+      const importedValues = copies.map((row) => row.imported === undefined ? row.remaining : row.imported);
+      const known = importedValues.filter((value) => value !== null && value !== undefined && Number.isFinite(Number(value))).map(Number);
+      const values = new Set(known);
+      const status = values.size > 1 || copies.some((row) => row.status === 'conflict') ? 'conflict'
+        : known.length !== copies.length || copies.some((row) => row.status === 'unknown') ? 'unknown' : 'ready';
+      const imported = status === 'ready' ? known[0] : null, adjustment = Number(copies[0].receipt_adjustment || 0);
+      return [key, { ...clone(copies[0]), lot: '27.F1', status, imported, receipt_adjustment: adjustment, remaining: imported === null ? null : imported - adjustment }];
+    });
+  };
+  const membership = new Set((options.poMembership ?? sourceRows.map((row) => row.itemcode)).map((item) => String(item).toUpperCase()));
+  const poBalances = new Map(sharedBalances(options.poBalances ?? sourceRows.map((row) => ({ itemcode: row.itemcode, size: row.contsize, remaining: 1000, imported: 1000, status: 'ready' }))));
+  const state = { revision: 1, draft: [], actionable_rows: clone(sourceRows).filter((row) => membership.has(row.itemcode.toUpperCase())), dispositions: sourceRows.map((source) => ({ source_id: source.source_id, status: 'needed', source: clone(source), current_source: clone(source), available_quantity: source.available_quantity ?? Number(source.quantityordered) })), orders: [], batches: [], delivery_issues: [], po_imports: clone(options.poImports || []) };
   const control = { state, rows: sourceRows.map(({ source_id, source_fingerprint, available_quantity, ...row }) => row), poRows: options.poRows || [], master: options.master || [hlMaster('master-a'),
     hlMaster('master-b', { locationcode: 'C.14.002', lotcode: '26.F1', ptravailable: '42', saleyear: '26' }),
     hlMaster('master-other-location', { locationcode: 'A.02.001', lotcode: '25.S1', season: 'S1', saleyear: '25', ptravailable: null }),
@@ -49,14 +65,26 @@ export function createHlOrderState(options = {}) {
     hlMaster('master-other-size', { contsize: '#7', locationcode: 'A.07.001' }),
     hlMaster('master-other-item', { itemcode: 'UNRELATED', locationcode: 'A.08.001' })],
     commands: [], pdfRequests: [], blockedMutations: [], errors: [], runtime: 0, datasetRevision: 1,
-    failAction: null, failPreview: false, loseSubmitResponse: false, replay: new Map(), previews: new Map(), sequence: 0 };
+    failAction: null, failPreview: false, loseSubmitResponse: false, replay: new Map(), previews: new Map(), sequence: 0,
+    poBalances, receiptAdjustments: [], importPreviews: new Map(), activeCutoff: options.poCutoff || null };
   const sourceMap = new Map(sourceRows.map((row) => [row.source_id, clone(row)]));
   const source = (id) => sourceMap.get(id);
   const disposition = (id) => state.dispositions.find((entry) => entry.source_id === id);
   const problem = (message) => { const error = new Error(message); error.status = 409; throw error; };
+  const latestImport = () => state.po_imports.filter((entry) => ['pending', 'reconciled'].includes(entry.status))
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')) || String(b.id).localeCompare(String(a.id)))[0];
   control.snapshot = () => {
     const snapshot = clone(state);
-    snapshot.orders.forEach((order) => { order.batches = snapshot.batches.filter((batch) => batch.order_id === order.id); });
+    const newest = latestImport();
+    snapshot.po_imports = newest?.status === 'pending' ? [clone(newest)] : [];
+    const annotate = (row) => {
+      const identity = row.source || row;
+      row.po_match = membership.has(String(identity.itemcode).toUpperCase());
+      row.po_balance = clone(poBalances.get(keyFor(identity)) || { itemcode: identity.itemcode, size: identity.contsize, lot: '27.F1', status: 'missing', remaining: null, imported: null, receipt_adjustment: 0 });
+    };
+    snapshot.actionable_rows = snapshot.actionable_rows.filter((row) => membership.has(row.itemcode.toUpperCase()));
+    snapshot.actionable_rows.forEach(annotate); snapshot.draft.forEach(annotate);
+    snapshot.orders.forEach((order) => { order.batches = snapshot.batches.filter((batch) => batch.order_id === order.id); order.lines.forEach(annotate); });
     return snapshot;
   };
   control.command = (body) => {
@@ -66,9 +94,10 @@ export function createHlOrderState(options = {}) {
     if (control.failAction === body.p_action) problem('HL_ORDER_REVISION_CONFLICT');
     if (Number(body.p_expected_revision) !== state.revision) problem('HL_ORDER_REVISION_CONFLICT');
     const action = body.p_action, payload = body.p_payload || {};
-    let preview;
+    let preview, poImportPreview;
     if (action === 'draft_save') {
       for (const entry of payload.rows || []) {
+        if (!membership.has(String(source(entry.source_id)?.itemcode).toUpperCase())) problem('HL_ORDER_SOURCE_REVIEW_REQUIRED');
         if (!source(entry.source_id) || !Number.isInteger(Number(entry.quantity)) || !(Number(entry.quantity) > 0)
           || Number(entry.quantity) > Number(source(entry.source_id).available_quantity ?? source(entry.source_id).quantityordered)) problem('HL_ORDER_INVALID_COMMAND');
         if (disposition(entry.source_id)?.status === 'needs_review') problem('HL_ORDER_SOURCE_REVIEW_REQUIRED');
@@ -127,6 +156,11 @@ export function createHlOrderState(options = {}) {
         const line = order.lines.find((entry) => entry.id === input.line_id);
         const quantity = Number(input.received_quantity);
         if (!line || !Number.isInteger(quantity) || quantity < 0 || quantity > line.quantity - line.cancelled_quantity) problem('HL_ORDER_INVALID_COMMAND');
+        const delta = quantity - line.received_quantity, key = keyFor(line.source), balance = poBalances.get(key);
+        control.receiptAdjustments.push({ key, quantity_delta: delta, created_at: '2026-09-11T16:05:00Z' });
+        if (balance) { balance.receipt_adjustment = Number(balance.receipt_adjustment || 0) + delta; if (balance.status === 'ready') balance.remaining -= delta; }
+        control.poRows.filter((row) => keyFor(row) === key).forEach((row) => { row.po_remain = balance?.status === 'ready' ? balance.remaining : null; });
+        control.datasetRevision++;
         order.receipts.push({ id: uuid(++control.sequence), line_id: line.id, quantity_delta: quantity - line.received_quantity, received_quantity: quantity, reason: payload.reason || '', created_at: '2026-09-11T16:05:00Z' });
         line.received_quantity = quantity;
         line.outstanding_quantity = line.quantity - line.cancelled_quantity - quantity;
@@ -134,6 +168,27 @@ export function createHlOrderState(options = {}) {
       order.fulfillment_status = order.lines.every((line) => !line.outstanding_quantity)
         ? order.lines.some((line) => line.cancelled_quantity > 0) ? 'received_and_cancelled' : 'received'
         : order.lines.some((line) => line.received_quantity > 0) ? 'partially_received' : 'open';
+    } else if (action === 'po_import_preview') {
+      const pending = state.po_imports.find((entry) => entry.id === payload.import_id && entry.status === 'pending');
+      const cutoff = new Date(payload.receipt_cutoff);
+      if (!pending) problem('HL_PO_IMPORT_NOT_PENDING');
+      if (!Number.isFinite(cutoff.getTime()) || cutoff.getTime() > Date.now() || (pending.created_at && cutoff > new Date(pending.created_at))
+        || (control.activeCutoff && cutoff < new Date(control.activeCutoff))) problem('HL_PO_INVALID_CUTOFF');
+      if (pending.id !== latestImport()?.id) problem('HL_PO_IMPORT_SUPERSEDED');
+      poImportPreview = { id: uuid(++control.sequence), import_id: pending.id, receipt_cutoff: cutoff.toISOString(), expires_at: new Date(Date.now() + 900000).toISOString(), balances: sharedBalances(pending.balances || []).map(([, row]) => {
+        const adjustment = control.receiptAdjustments.filter((entry) => entry.key === keyFor(row) && new Date(entry.created_at) > cutoff).reduce((sum, entry) => sum + entry.quantity_delta, 0);
+        return { ...row, receipt_adjustment: adjustment, remaining: row.status === 'ready' ? Number(row.imported) - adjustment : null };
+      }) };
+      control.importPreviews.set(poImportPreview.id, { ...clone(poImportPreview), revision: state.revision + 1 });
+    } else if (action === 'po_import_confirm') {
+      const saved = control.importPreviews.get(payload.preview_id);
+      if (!saved || saved.revision !== state.revision || new Date(saved.expires_at).getTime() <= Date.now()) problem('HL_PO_PREVIEW_STALE');
+      const pending = state.po_imports.find((entry) => entry.id === saved.import_id);
+      if (pending?.status !== 'pending' || pending.id !== latestImport()?.id) problem('HL_PO_IMPORT_SUPERSEDED');
+      if (control.activeCutoff && new Date(saved.receipt_cutoff) < new Date(control.activeCutoff)) problem('HL_PO_PREVIEW_STALE');
+      pending.status = 'reconciled'; control.activeCutoff = saved.receipt_cutoff;
+      membership.clear(); poBalances.clear(); saved.balances.forEach((row) => { membership.add(row.itemcode.toUpperCase()); poBalances.set(keyFor(row), clone(row)); });
+      control.datasetRevision++;
     } else if (action === 'resolve_review') {
       const entry = disposition(payload.source_id);
       if (!entry) problem('HL_ORDER_INVALID_COMMAND');
@@ -141,7 +196,7 @@ export function createHlOrderState(options = {}) {
     } else if (action !== 'reconcile_delivery') problem('HL_ORDER_INVALID_COMMAND');
     state.revision++;
     state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id)));
-    const result = { ...control.snapshot(), ...(preview ? { preview } : {}) };
+    const result = { ...control.snapshot(), ...(preview ? { preview } : {}), ...(poImportPreview ? { po_import_preview: poImportPreview } : {}) };
     control.replay.set(body.p_command_id, clone(result));
     return result;
   };

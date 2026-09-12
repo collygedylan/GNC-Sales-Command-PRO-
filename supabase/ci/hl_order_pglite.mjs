@@ -42,6 +42,7 @@ try {
   `);
   await db.exec(between(read('supabase/ci/request_workflow_baseline.sql'), 'create table if not exists public.ph_master_inventory', 'create table if not exists public.ph_active_request'));
   await db.exec(read('supabase/ci/hl_order_baseline.sql'));
+  await db.exec(read('supabase/migrations/20260809011735_ph_27f1_hl_po.sql'));
   await db.exec(between(read('supabase/migrations/20260820114722_request_integrity_and_eval_assignments.sql'), 'create table if not exists public.ph_request_delivery_outbox', 'create table if not exists public.ph_app_health_events'));
   await db.exec('alter table public.ph_request_delivery_outbox enable row level security; grant all on public.ph_request_delivery_outbox to service_role;');
   const worker = read('supabase/migrations/20260820230245_reliable_request_delivery_worker.sql');
@@ -72,6 +73,7 @@ try {
       (select jsonb_agg(to_jsonb(r) order by id) from hl_order_private.receipts r) receipts`)).rows[0];
   }
   await db.exec(read('supabase/migrations/20260911203510_hl_ship_date_submission_batches.sql'));
+  await db.exec(read('supabase/migrations/20260912002734_hl_po_receipt_balances.sql'));
   if (historical) {
     const after = (await db.query(`select
       (select jsonb_agg(to_jsonb(o)-'ship_date' order by id) from hl_order_private.orders o) orders,
@@ -88,7 +90,7 @@ try {
     console.log('PASS legacy backfill: two sent lines, saved PDFs, quantities, receipt, number, delivery proof unchanged; batch and Sep 15 ship date added.');
   }
   const files = historical ? [] : args.includes('--test') ? [args[args.indexOf('--test') + 1]] : [
-    'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql', 'supabase/tests/hl_order_ship_dates_test.sql'
+    'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql', 'supabase/tests/hl_order_ship_dates_test.sql', 'supabase/tests/hl_order_po_receipts_test.sql'
   ];
   for (const file of files) {
     if (!file || !/^supabase\/tests\/hl_order_[a-z_]+\.sql$/.test(file)) throw new Error('Invalid HL SQL test path.');

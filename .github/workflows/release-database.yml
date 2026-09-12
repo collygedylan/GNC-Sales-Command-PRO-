@@ -125,6 +125,7 @@ jobs:
           cp supabase/ci/hl_order_baseline.sql "$ci_root/supabase/migrations/20260911115000_hl_order_baseline.sql"
           cp supabase/migrations/20260911115037_hl_ordering_system.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260911203510_hl_ship_date_submission_batches.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260912002734_hl_po_receipt_balances.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260911152125_restore_sep09_eval_review_compatibility.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
@@ -147,6 +148,7 @@ jobs:
           cp supabase/tests/hl_order_lifecycle_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/hl_order_delivery_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/hl_order_ship_dates_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/hl_order_po_receipts_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         run: supabase --workdir "$SUPABASE_CI_ROOT" start

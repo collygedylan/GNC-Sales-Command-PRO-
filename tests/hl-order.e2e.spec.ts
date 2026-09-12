@@ -134,7 +134,13 @@ test('PO inventory action pages verified same-size rows and preserves zero avail
   await page.getByRole('button', { name: 'Open Inventory', exact: true }).click();
   await page.locator('#inventory-open-po-management').click();
   await expect(page.locator('#view-po-management')).toBeVisible();
-  await page.locator('#po-management-hub-grid').getByRole('button', { name: /HL PO/ }).click();
+  const hlPoButton = page.locator('#po-management-hub-grid').getByRole('button', { name: /HL PO/ });
+  // A verified data refresh can repaint PO while the mouse is held down.
+  // Keep the unchanged navigation button attached so Firefox receives its click.
+  await hlPoButton.hover();
+  await page.mouse.down();
+  await page.evaluate(() => window.eval('renderPoManagement()'));
+  await page.mouse.up();
   await page.locator('#po-management-season-grid').getByRole('button', { name: /27F1/ }).click();
   await expect(page.getByRole('button', { name: 'View inventory', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'View inventory', exact: true }).click();
@@ -151,6 +157,70 @@ test('PO inventory action pages verified same-size rows and preserves zero avail
   await expect(page.locator('#po-inventory-detail')).not.toBeVisible();
   await expect(detail).toBeEmpty();
   expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('PO eligibility is authoritative and a shortage requires fresh acknowledgement for each preview', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('not-po', { itemcode: 'NOT.IN.PO' })], poMembership: ['SYNTH.003'],
+    poBalances: [{ itemcode: 'SYNTH.003', size: '#3', status: 'ready', imported: 2, remaining: 2 }] });
+  await openHl(page);
+  await expect(page.locator('[data-hl-group]')).toHaveCount(1);
+  await expect(page.locator('#hl-order-content')).not.toContainText('NOT.IN.PO');
+  await selectOne(page, 'hl-a', '6'); await preview(page);
+  await expect(page.locator('#hl-tags-preview-content')).toContainText('ordering 6 exceeds PO remaining 2');
+  await expect(page.locator('#hl-tags-send')).toBeDisabled();
+  await page.locator('#hl-po-warning-ack').check();
+  await expect(page.locator('#hl-tags-send')).toBeEnabled();
+  await page.locator('#hl-tags-preview').getByRole('button', { name: 'Close', exact: true }).click();
+  await preview(page);
+  await expect(page.locator('#hl-po-warning-ack')).not.toBeChecked();
+  await expect(page.locator('#hl-tags-send')).toBeDisabled();
+  await page.locator('#hl-po-warning-ack').check(); await page.locator('#hl-tags-send').click();
+  await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
+  expect([...fixture.poBalances.values()][0].remaining).toBe(2);
+  fixture.deliver();
+  expect([...fixture.poBalances.values()][0].remaining).toBe(2);
+  assertIsolated(fixture);
+});
+
+test('PO remaining follows receipt differences including corrections and negative balances', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true,
+    poBalances: [{ itemcode: 'SYNTH.003', size: '#3', status: 'ready', imported: 2, remaining: 2 }] });
+  await openHl(page); await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
+  const tracking = page.locator('#hl-order-tracking'), line = tracking.locator('[data-hl-order-line-id]').first();
+  await expect(line.locator('[data-hl-po-balance]')).toContainText('PO remaining: 2');
+  for (const [received, remaining] of [[5, -3], [8, -6], [6, -4]]) {
+    await line.locator('[data-hl-line-select]').check();
+    await line.locator('[data-hl-received-quantity]').fill(String(received));
+    await page.locator('#hl-order-reason').fill('Verified receiving count');
+    await tracking.getByRole('button', { name: 'Save received quantities', exact: true }).click();
+    await expect(line.locator('[data-hl-po-balance]')).toContainText(`PO remaining: ${remaining}`);
+  }
+  expect(fixture.receiptAdjustments.map((entry: any) => entry.quantity_delta)).toEqual([5, 3, -2]);
+  fixture.poBalances.clear();
+  await page.locator('[data-hl-tab="orders"]').click();
+  await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
+  await expect(line.locator('[data-hl-po-balance]')).toContainText('No current PO match; receiving remains available');
+  await expect(line.locator('[data-hl-received-quantity]')).toBeEnabled();
+  assertIsolated(fixture);
+});
+
+test('PO reconciliation previews Chicago cutoff balances and changes eligibility only after confirmation', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { poImports: [{ id: 'po-import-1', status: 'pending', created_at: '2026-09-11T17:00:00Z', report_date: '2026-09-11', row_count: 2,
+    balances: [{ itemcode: 'NEXT.PO', size: '#3', status: 'ready', imported: 30 }] }], poCutoff: '2026-09-10T15:00:00Z' });
+  await openHl(page); await page.locator('[data-hl-tab="po-imports"]').click();
+  await page.locator('#hl-po-receipt-cutoff').fill('2026-09-11T10:00');
+  await page.getByRole('button', { name: 'Review PO balances', exact: true }).click();
+  await expect(page.locator('#hl-po-import-preview')).toContainText('NEXT.PO');
+  expect(actions(fixture, 'po_import_preview').at(-1).p_payload.receipt_cutoff).toBe('2026-09-11T15:00:00.000Z');
+  expect(fixture.state.po_imports[0].status).toBe('pending');
+  await page.getByRole('button', { name: 'Confirm PO report', exact: true }).click();
+  await expect(page.locator('#hl-po-imports')).toContainText('No PO report is awaiting confirmation');
+  await page.locator('[data-hl-tab="needed"]').click();
+  await expect(page.locator('[data-hl-group]')).toHaveCount(0);
+  await page.evaluate(() => window.eval('clearRoleScopedClientCaches()'));
+  await expect(page.locator('#hl-po-import-preview')).toHaveCount(0);
+  assertIsolated(fixture);
 });
 
 test('a same-date addition keeps its sent order number and leaves only the new batch protected', async ({ page, baseURL }) => {

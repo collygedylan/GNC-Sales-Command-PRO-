@@ -35,6 +35,8 @@ try {
   await admin.query("insert into public.profiles(id,username,display_name,role,must_change_password) values($1,'dylan_collyge','HL concurrency','ADMIN',false)", [actor]);
   await admin.query("insert into auth.sessions(id,user_id,not_after) values($1,$2,now()+interval '1 hour')", [session, actor]);
   for (const id of ids) await admin.query("insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,planstart,transactionnumber) values($1,$1,'#3','C.12.4','27.S1','10','D1','2026-09-15',$1)", [id]);
+  for (const [i,id] of ids.entries()) await admin.query("insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain) values($1,$2,$1,$3,'#3','27.F1',20,20)",[prefix,i,id]);
+  await admin.query("update hl_order_private.po_control set active_scope=$1,receipt_cutoff='1970-01-01' where singleton",[prefix]);
   await admin.query('commit'); committed = true;
   for (let i = 0; i < 10; i++) {
     const client = new pg.Client(options); clients.push(client); await client.connect(); await authenticate(client);
@@ -72,6 +74,41 @@ try {
   await clients[2].query("select public.hl_order_delivery_record_v1($1,$2,'sent','{\"gmail_message_id\":\"synthetic-concurrency-receipt\"}')", [order.event_id, lease]);
   assert.equal((await state(clients[0])).orders.find(x => x.id === order.id).status, 'sent');
 
+  // Receipt replay uses the same state lock as imports and cannot double-debit.
+  initial = await state(clients[0]);
+  const receiveLine=initial.orders.find(x=>x.id===order.id).lines.find(x=>x.source_id===ids[0]);
+  const receiptId=randomUUID(), receiptPayload={order_id:order.id,lines:[{line_id:receiveLine.id,received_quantity:2}]};
+  const receipts=await Promise.all(clients.slice(0,2).map(client=>command(client,'receive',receiptPayload,initial.revision,receiptId)));
+  assert.deepEqual(receipts[0],receipts[1]);
+  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2',[prefix,ids[0]])).rows[0].balance,18);
+  assert.equal((await admin.query('select count(*)::int n from hl_order_private.po_receipt_adjustments where itemcode=$1',[ids[0].toUpperCase()])).rows[0].n,1);
+  initial=await state(clients[0]);
+  const corrections=await Promise.allSettled(clients.slice(0,2).map((client,i)=>command(client,'receive',{order_id:order.id,lines:[{line_id:receiveLine.id,received_quantity:3+i}]},initial.revision)));
+  assert.equal(corrections.filter(x=>x.status==='fulfilled').length,1,'Only one concurrent receipt correction wins CAS');
+  const received=(await admin.query('select received_quantity::int n from hl_order_private.order_lines where id=$1',[receiveLine.id])).rows[0].n;
+  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2',[prefix,ids[0]])).rows[0].balance,20-received);
+
+  // Confirming a reconciled report races with a receipt under one CAS lock.
+  const cutoff=(await admin.query('select clock_timestamp() t')).rows[0].t.toISOString();
+  const importRows=ids.map((id,i)=>({source_file_id:prefix,row_index:i,item_code:id,size:'#3',lot:'27.F1',po_remain:20,report_date:'2026-09-11'}));
+  const staged=(await clients[2].query('select public.hl_po_import_stage($1,$2::jsonb,true) result',[prefix+'-import',JSON.stringify(importRows)])).rows[0].result;
+  initial=await state(clients[0]);
+  let importPreview=await command(clients[0],'po_import_preview',{import_id:staged.id,receipt_cutoff:cutoff},initial.revision);
+  const correctionPayload={order_id:order.id,reason:'Concurrent count correction',lines:[{line_id:receiveLine.id,received_quantity:received-1}]};
+  const racing=await Promise.allSettled([
+    command(clients[0],'po_import_confirm',{preview_id:importPreview.po_import_preview.id},importPreview.revision),
+    command(clients[1],'receive',correctionPayload,importPreview.revision)
+  ]);
+  assert.equal(racing.filter(x=>x.status==='fulfilled').length,1,'Import and receipt share revision serialization');
+  assert.equal(racing.find(x=>x.status==='rejected').reason.message,'HL_ORDER_REVISION_CONFLICT');
+  initial=await state(clients[0]);
+  if(racing[0].status==='fulfilled') await command(clients[1],'receive',correctionPayload,initial.revision);
+  else {
+    importPreview=await command(clients[0],'po_import_preview',{import_id:staged.id,receipt_cutoff:cutoff},initial.revision);
+    await command(clients[0],'po_import_confirm',{preview_id:importPreview.po_import_preview.id},importPreview.revision);
+  }
+  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2',[prefix,ids[0]])).rows[0].balance,21,'Only post-cutoff correction applies to imported balance');
+
   // Concurrent previews/additions must share the open order and create one new batch.
   initial = await state(clients[0]);
   const additionDraft = await command(clients[0], 'draft_save', { rows: [{ source_id: ids[2], quantity: 3 }] }, initial.revision);
@@ -107,7 +144,7 @@ try {
   await admin.query('commit');
   await assert.rejects(waitingCommand, /HL_ORDER_REVISION_CONFLICT/);
   assert.equal((await state(clients[0])).draft.find(x => x.source_id === ids[1]).status, 'needs_review');
-  console.log('PASS HL concurrency: 10 identical retries; competing tab CAS; one preview/one event; same-order additions; worker lock ordering; import snapshot race.');
+  console.log('PASS HL concurrency: 10 identical retries; competing tab CAS; one preview/one event; same-order additions; receipt replay/CAS; receipt versus PO import reconciliation; worker lock ordering; import snapshot race.');
 } finally {
   await admin.query('rollback');
   for (const client of clients) { try { await client.query('rollback'); } catch {} }
@@ -117,6 +154,7 @@ try {
     // Test-only cleanup bypasses append-only triggers in this isolated CI DB.
     await admin.query('set local session_replication_role=replica');
     await admin.query('delete from hl_order_private.history where created_by=$1 or payload->>\'event_id\' in (select event_id::text from hl_order_private.orders where created_by=$1)', [actor]);
+    await admin.query('delete from hl_order_private.po_receipt_adjustments where receipt_id in (select id from hl_order_private.receipts where created_by=$1)', [actor]);
     await admin.query('delete from hl_order_private.receipts where created_by=$1', [actor]);
     await admin.query('delete from hl_order_private.cancellation_lines where cancellation_id in (select id from hl_order_private.cancellations where created_by=$1)', [actor]);
     await admin.query('delete from hl_order_private.cancellations where created_by=$1', [actor]);
@@ -129,6 +167,11 @@ try {
     await admin.query('delete from hl_order_private.drafts where source_id=any($1::text[])', [ids]);
     await admin.query('delete from hl_order_private.dispositions where source_id=any($1::text[])', [ids]);
     await admin.query('delete from public.ph_soc_master where unique_id=any($1::text[])', [ids]);
+    await admin.query('delete from public.ph_27f1_hl_po where source_file_id=$1', [prefix]);
+    await admin.query('update hl_order_private.po_control set active_scope=null,active_import_id=null where active_import_id in (select id from hl_order_private.po_imports where run_id=$1)',[prefix+'-import']);
+    await admin.query('delete from hl_order_private.po_import_previews where created_by=$1',[actor]);
+    await admin.query('delete from hl_order_private.po_import_rows where import_id in (select id from hl_order_private.po_imports where run_id=$1)',[prefix+'-import']);
+    await admin.query('delete from hl_order_private.po_imports where run_id=$1',[prefix+'-import']);
     await admin.query('delete from private.app_access_user_overrides where profile_id=$1', [actor]);
     await admin.query('delete from private.app_access_legacy_baseline where profile_id=$1', [actor]);
     await admin.query('delete from public.profiles where id=$1', [actor]);

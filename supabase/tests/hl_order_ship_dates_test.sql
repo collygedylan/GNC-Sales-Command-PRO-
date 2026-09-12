@@ -48,6 +48,17 @@ values('HL-INVOICED','HL-INVOICED','#3','C.05','10','D1','2026-09-10'),
 insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable)
 values('HL-INV-A','HL-A','#3','C.12.4','27.S1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.S1',null);
 
+-- Explicit current PO fixture; never infer membership from SOC in production.
+do $po$ begin
+ if to_regclass('hl_order_private.po_control') is not null then
+  insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain)
+  select 'hl-fixture',row_number() over(order by itemcode)::int,'hl-fixture',itemcode,'#3','27.F1',2000,2000
+  from (select distinct itemcode from public.ph_soc_master where nullif(itemcode,'') is not null union select 'HL-LATE-CANCEL' union select 'HL-UNDATED') q
+  on conflict(source_file_id,row_index) do update set item_code=excluded.item_code,po_remain=2000,imported_po_remain=2000;
+  update hl_order_private.po_control set active_scope='hl-fixture',receipt_cutoff='1970-01-01' where singleton;
+ end if;
+end $po$;
+
 do $test$
 declare s jsonb; p jsonb; first_order jsonb; first_id uuid; first_number text; first_pdf jsonb;
   add_event uuid; add_batch uuid; add_line uuid; old_line uuid; cmd uuid; rev bigint; saved jsonb;
@@ -96,6 +107,7 @@ begin
   perform pg_temp.hl_check(p->'report'->>'kind'='submission' and p->'report'->>'order_number'<>first_number,'same date after completion gets new number');
   perform pg_temp.hl_command('submit',jsonb_build_object('preview_id',p->>'id'));
   perform pg_temp.hl_command('draft_clear','{"source_ids":["HL-CHANGE"]}');
+  update public.ph_soc_master set itemcode='HL-UNDATED',contsize='#3' where unique_id='HL-BLANK';
   perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-BLANK","quantity":1}]}');
   perform pg_temp.hl_reject('preview','{}','HL_ORDER_SHIP_DATE_REQUIRED');
   perform pg_temp.hl_check((select ship_date is null from hl_order_private.drafts where source_id='HL-BLANK'),'undated demand stays saved for correction');
