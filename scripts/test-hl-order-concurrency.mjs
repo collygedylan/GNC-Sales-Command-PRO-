@@ -15,9 +15,12 @@ const admin = new pg.Client(options);
 const clients = [];
 const actor = randomUUID(), session = randomUUID(), prefix = `HL-CONCURRENT-${randomUUID()}`;
 const ids = [`${prefix}-A`, `${prefix}-B`, `${prefix}-ADDITION`];
+const restockItem = `${prefix}-RESTOCK`;
+const restockMasterId = `${prefix}-RESTOCK-MASTER`;
 const claims = { role: 'authenticated', sub: actor, session_id: session,
   iss: 'https://kzrnyjsosryejjejliii.supabase.co/auth/v1', exp: Math.floor(Date.now() / 1000) + 3600 };
 const state = async client => (await client.query('select public.hl_order_state() state')).rows[0].state;
+const restockState = async client => (await client.query('select public.hl_order_restock_state() state')).rows[0].state;
 const command = async (client, action, payload, revision, id = randomUUID()) =>
   (await client.query('select public.hl_order_command($1,$2,$3::jsonb,$4) state', [id, action, JSON.stringify(payload), revision])).rows[0].state;
 const authenticate = async (client, service = false) => {
@@ -144,7 +147,86 @@ try {
   await admin.query('commit');
   await assert.rejects(waitingCommand, /HL_ORDER_REVISION_CONFLICT/);
   assert.equal((await state(clients[0])).draft.find(x => x.source_id === ids[1]).status, 'needs_review');
-  console.log('PASS HL concurrency: 10 identical retries; competing tab CAS; one preview/one event; same-order additions; receipt replay/CAS; receipt versus PO import reconciliation; worker lock ordering; import snapshot race.');
+
+  // Genuine restock intent: the fixture adds no SOC row for this item. Use the
+  // active confirmed report and actual dataset revision triggers in native CI.
+  const activeScope = (await admin.query('select active_scope from hl_order_private.po_control where singleton')).rows[0].active_scope;
+  await admin.query("insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_ordered,po_remain,imported_po_remain) values($1,100,$2,$3,'#3','27.F1',100,100,100)", [prefix, activeScope, restockItem]);
+  await admin.query("insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable) values($1,$2,'#3','C.12.004','27.F1','10')", [restockMasterId, restockItem]);
+  await authenticate(clients[2]);
+  let restocking = await restockState(clients[0]);
+  const restockCode = restockItem.toUpperCase();
+  const itemState = snapshot => snapshot.items.find(item => item.itemcode === restockCode && item.size === '#3');
+  assert.equal(itemState(restocking).status, 'ready');
+  assert.equal(itemState(restocking).suggested_quantity, 20);
+  const restockPayload = { ship_date: '2026-09-17', inventory_snapshot: restocking.inventory_snapshot,
+    rows: [{ itemcode: restockItem, size: '#3', quantity: 5 }] };
+  const restockReplayId = randomUUID();
+  const restockRetries = await Promise.all(clients.map(client =>
+    command(client, 'restock_draft_save', restockPayload, restocking.revision, restockReplayId)));
+  for (const response of restockRetries) assert.deepEqual(response, restockRetries[0], 'Concurrent restock replay must not add the quantity again');
+  assert.equal((await admin.query('select count(*)::int n from hl_order_private.commands where command_id=$1', [restockReplayId])).rows[0].n, 1);
+  assert.equal((await admin.query('select count(*)::int n from hl_order_private.restock_intents where created_by=$1 and itemcode=$2', [actor, restockCode])).rows[0].n, 1);
+  assert.equal((await admin.query('select count(*)::int n from public.ph_soc_master where itemcode=$1', [restockItem])).rows[0].n, 0);
+  restocking = await restockState(clients[0]);
+  assert.equal(itemState(restocking).saved_quantity, 5);
+  const restockCompeting = await Promise.allSettled(clients.slice(0, 2).map((client, index) =>
+    command(client, 'restock_draft_save', { ...restockPayload, inventory_snapshot: restocking.inventory_snapshot,
+      rows: [{ itemcode: restockItem, size: '#3', quantity: index ? 6 : 4 }] }, restocking.revision)));
+  assert.equal(restockCompeting.filter(result => result.status === 'fulfilled').length, 1, 'Only one competing restock addition wins CAS');
+  assert.equal(restockCompeting.find(result => result.status === 'rejected').reason.message, 'HL_ORDER_REVISION_CONFLICT');
+  const restockQuantity = restockCompeting[0].status === 'fulfilled' ? 9 : 11;
+  restocking = await restockState(clients[0]);
+  assert.equal(itemState(restocking).saved_quantity, restockQuantity, 'Winning addition must reuse and increase one date-scoped draft');
+  assert.equal(itemState(restocking).suggested_quantity, 20 - restockQuantity);
+  assert.equal((await admin.query('select count(*)::int n from hl_order_private.restock_intents where created_by=$1 and itemcode=$2', [actor, restockCode])).rows[0].n, 1);
+
+  const restockPreview = await command(clients[0], 'preview', { ship_date: '2026-09-17' }, restocking.revision);
+  assert.equal(restockPreview.preview.report.contract_version, 'hl-order-report-v3');
+  const restockSubmitted = await command(clients[0], 'submit', { preview_id: restockPreview.preview.id }, restockPreview.revision);
+  const restockOrder = restockSubmitted.orders.find(entry => entry.id === restockPreview.preview.report.order_id);
+  const restockLine = restockOrder.lines.find(entry => entry.source_kind === 'restock');
+  assert.equal(restockLine.quantity, restockQuantity);
+  const restockLease = randomUUID();
+  await admin.query("update public.ph_request_delivery_outbox set status='processing',lease_token=$2,lease_expires_at=now()+interval '2 minutes' where event_id=$1", [restockOrder.event_id, restockLease]);
+  await authenticate(clients[2], true);
+  await clients[2].query("select public.hl_order_delivery_record_v1($1,$2,'sending','{}')", [restockOrder.event_id, restockLease]);
+  await clients[2].query("select public.hl_order_delivery_record_v1($1,$2,'sent','{\"gmail_message_id\":\"synthetic-restock-concurrency-receipt\"}')", [restockOrder.event_id, restockLease]);
+  initial = await state(clients[0]);
+  await command(clients[0], 'receive', { order_id: restockOrder.id, lines: [{ line_id: restockLine.id, received_quantity: 2 }] }, initial.revision);
+  await admin.query("update public.ph_master_inventory set ptravailable='12' where unique_id=$1", [restockMasterId]);
+  restocking = await restockState(clients[0]);
+  assert.equal(itemState(restocking).can_confirm_inventory, true, 'Only a newer complete inventory revision permits confirmation');
+  assert.equal(itemState(restocking).receipts.length, 1);
+  const confirmationPayload = { itemcode: restockItem, size: '#3', inventory_snapshot: restocking.inventory_snapshot,
+    receipt_watermark: itemState(restocking).receipt_watermark };
+  const restockCorrection = { order_id: restockOrder.id, lines: [{ line_id: restockLine.id, received_quantity: 3 }] };
+  const confirmationRace = await Promise.allSettled([
+    command(clients[0], 'restock_inventory_confirm', confirmationPayload, restocking.revision),
+    command(clients[1], 'receive', restockCorrection, restocking.revision)
+  ]);
+  assert.equal(confirmationRace.filter(result => result.status === 'fulfilled').length, 1, 'Inventory confirmation and a new receipt serialize under the same revision');
+  assert.equal(confirmationRace.find(result => result.status === 'rejected').reason.message, 'HL_ORDER_REVISION_CONFLICT');
+  if (confirmationRace[0].status === 'fulfilled') {
+    initial = await state(clients[0]);
+    await command(clients[1], 'receive', restockCorrection, initial.revision);
+  }
+  restocking = await restockState(clients[0]);
+  assert.equal(itemState(restocking).status, 'receipt_pending', 'The newly received stock must require its own confirmation');
+  assert.equal(itemState(restocking).can_confirm_inventory, false);
+  assert.equal(itemState(restocking).incoming_quantity, restockQuantity - 3);
+  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2', [prefix, restockItem])).rows[0].balance, 97);
+  assert.equal((await admin.query('select count(*)::int n from hl_order_private.po_receipt_adjustments where itemcode=$1', [restockCode])).rows[0].n, 2);
+  await admin.query("update public.ph_master_inventory set ptravailable='13' where unique_id=$1", [restockMasterId]);
+  restocking = await restockState(clients[0]);
+  await assert.rejects(command(clients[0], 'restock_inventory_confirm', { ...confirmationPayload, inventory_snapshot: restocking.inventory_snapshot }, restocking.revision), /HL_RESTOCK_CONFIRMATION_STALE/);
+  await command(clients[0], 'restock_inventory_confirm', { ...confirmationPayload, inventory_snapshot: restocking.inventory_snapshot,
+    receipt_watermark: itemState(restocking).receipt_watermark }, restocking.revision);
+  restocking = await restockState(clients[0]);
+  assert.equal(itemState(restocking).status, 'ready');
+  assert.equal(itemState(restocking).receipts.length, 0, 'Confirmation clears only receipts covered by the verified watermark');
+  assert.equal(itemState(restocking).suggested_quantity, 20 - restockQuantity, 'Received stock and incoming quantity must not be counted twice');
+  console.log('PASS HL concurrency: 10 identical retries; competing tab CAS; one preview/one event; same-order additions; receipt replay/CAS; receipt versus PO import reconciliation; worker lock ordering; import snapshot race; 10 restock retries; concurrent restock additions; receipt versus inventory confirmation with stale watermark rejection.');
 } finally {
   await admin.query('rollback');
   for (const client of clients) { try { await client.query('rollback'); } catch {} }
@@ -164,8 +246,11 @@ try {
     await admin.query('delete from hl_order_private.commands where created_by=$1', [actor]);
     await admin.query('delete from public.ph_hl_order_previews where created_by=$1', [actor]);
     await admin.query("delete from public.ph_request_delivery_outbox where payload->>'created_by'=$1", [actor]);
-    await admin.query('delete from hl_order_private.drafts where source_id=any($1::text[])', [ids]);
-    await admin.query('delete from hl_order_private.dispositions where source_id=any($1::text[])', [ids]);
+    await admin.query('delete from hl_order_private.drafts where source_id=any($1::text[]) or source_id in (select source_id from hl_order_private.restock_intents where created_by=$2)', [ids, actor]);
+    await admin.query('delete from hl_order_private.dispositions where source_id=any($1::text[]) or source_id in (select source_id from hl_order_private.restock_intents where created_by=$2)', [ids, actor]);
+    await admin.query('delete from hl_order_private.restock_intents where created_by=$1 and itemcode=$2', [actor, restockItem.toUpperCase()]);
+    await admin.query('delete from hl_order_private.restock_inventory_gates where itemcode=$1', [restockItem.toUpperCase()]);
+    await admin.query('delete from public.ph_master_inventory where unique_id=$1', [restockMasterId]);
     await admin.query('delete from public.ph_soc_master where unique_id=any($1::text[])', [ids]);
     await admin.query('delete from public.ph_27f1_hl_po where source_file_id=$1', [prefix]);
     await admin.query('update hl_order_private.po_control set active_scope=null,active_import_id=null where active_import_id in (select id from hl_order_private.po_imports where run_id=$1)',[prefix+'-import']);

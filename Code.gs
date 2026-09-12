@@ -16639,10 +16639,11 @@ function hlOrderCanonicalShipDate_(value) {
 
 function normalizeHlOrderReport_(input) {
   if (input && input.contract_version === 'hl-order-report-v1') return normalizeHlOrderReportV1_(input);
-  if (!input || input.contract_version !== 'hl-order-report-v2' || ['submission', 'addition', 'cancellation'].indexOf(input.kind) === -1
+  if (!input || ['hl-order-report-v2', 'hl-order-report-v3'].indexOf(input.contract_version) === -1 || ['submission', 'addition', 'cancellation'].indexOf(input.kind) === -1
       || !Array.isArray(input.lines) || !input.lines.length || input.lines.length > 500) throw new Error('HL_ORDER_REPORT_INVALID');
+  const isV3 = input.contract_version === 'hl-order-report-v3';
   const report = {
-    contract_version: 'hl-order-report-v2', kind: input.kind,
+    contract_version: input.contract_version, kind: input.kind,
     order_id: hlOrderText_(input.order_id, 36, true), order_number: hlOrderText_(input.order_number, 64, true),
     original_order_number: hlOrderText_(input.original_order_number, 64, input.kind === 'cancellation'),
     batch_id: input.batch_id === null || input.batch_id === undefined || input.batch_id === '' ? '' : hlOrderText_(input.batch_id, 36, true),
@@ -16661,11 +16662,18 @@ function normalizeHlOrderReport_(input) {
     const quantity = raw.quantity;
     if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 1000000000) throw new Error('HL_ORDER_REPORT_INVALID');
     const line = { source_id: hlOrderText_(raw.source_id, 200, true), quantity: quantity };
-    if (identities[line.source_id]) throw new Error('HL_ORDER_REPORT_INVALID');
-    identities[line.source_id] = true;
+    if (isV3) {
+      if (['soc', 'restock'].indexOf(raw.source_kind) === -1) throw new Error('HL_ORDER_REPORT_INVALID');
+      line.source_kind = raw.source_kind;
+    }
+    const identity = isV3 ? line.source_kind + ':' + line.source_id : line.source_id;
+    if (identities[identity]) throw new Error('HL_ORDER_REPORT_INVALID');
+    identities[identity] = true;
     ['itemcode', 'contsize', 'planstartdate', 'dock', 'stopnumber', 'commonname', 'locationcode', 'lotcode', 'transactionnumber', 'purchaseordernumber', 'customername', 'consigneename'].forEach(function(field) {
       line[field] = hlOrderText_(raw[field], field === 'commonname' || field === 'customername' || field === 'consigneename' ? 200 : 120, false);
     });
+    if (isV3 && (!line.itemcode || !line.contsize)) throw new Error('HL_ORDER_REPORT_INVALID');
+    if (isV3 && line.source_kind === 'restock' && ['dock', 'stopnumber', 'transactionnumber', 'purchaseordernumber', 'customername', 'consigneename'].some(function(field) { return !!line[field]; })) throw new Error('HL_ORDER_REPORT_INVALID');
     line.ptravailable = raw.ptravailable === null || raw.ptravailable === undefined || raw.ptravailable === '' ? null : Number(raw.ptravailable);
     if (typeof raw.ptravailable === 'boolean' || (typeof raw.ptravailable === 'object' && raw.ptravailable !== null)) throw new Error('HL_ORDER_REPORT_INVALID');
     if (line.ptravailable !== null && (!Number.isFinite(line.ptravailable) || line.ptravailable < 0)) throw new Error('HL_ORDER_REPORT_INVALID');
@@ -16674,7 +16682,7 @@ function normalizeHlOrderReport_(input) {
   });
   if (!Number.isSafeInteger(report.total_quantity) || Number(input.total_quantity) !== report.total_quantity) throw new Error('HL_ORDER_REPORT_INVALID');
   report.lines.sort(function(a, b) {
-    return ['dock', 'stopnumber', 'itemcode', 'contsize', 'source_id'].reduce(function(result, key) {
+    return (isV3 ? ['source_kind', 'dock', 'stopnumber', 'itemcode', 'contsize', 'source_id'] : ['dock', 'stopnumber', 'itemcode', 'contsize', 'source_id']).reduce(function(result, key) {
       return result || a[key].localeCompare(b[key], 'en', { numeric: true, sensitivity: 'base' });
     }, 0);
   });
@@ -16684,15 +16692,17 @@ function normalizeHlOrderReport_(input) {
 function buildHlOrderPdfHtml_(input) {
   const report = normalizeHlOrderReport_(input);
   const escape = escapeEmailHtml_;
-  const isV2 = report.contract_version === 'hl-order-report-v2';
+  const isV3 = report.contract_version === 'hl-order-report-v3';
+  const hasShipDate = report.contract_version !== 'hl-order-report-v1';
+  const columnCount = isV3 ? 7 : 6;
   const isAddition = report.kind === 'addition';
   const title = report.kind === 'cancellation' ? 'HL Order Cancellation' : isAddition ? 'HL Order ADDITIONS' : 'HL Order';
   const quantityLabel = report.kind === 'cancellation' ? 'Canceled quantity' : isAddition ? 'Added quantity' : 'HL order quantity';
   const groups = [];
   report.lines.forEach(function(line) {
     let group = groups.length ? groups[groups.length - 1] : null;
-    if (!group || group.dock !== line.dock || group.stop !== line.stopnumber) {
-      group = { dock: line.dock, stop: line.stopnumber, lines: [], quantity: 0 };
+    if (!group || group.dock !== line.dock || group.stop !== line.stopnumber || group.source_kind !== line.source_kind) {
+      group = { dock: line.dock, stop: line.stopnumber, source_kind: line.source_kind, lines: [], quantity: 0 };
       groups.push(group);
     }
     group.lines.push(line);
@@ -16700,17 +16710,20 @@ function buildHlOrderPdfHtml_(input) {
   });
   const sections = groups.map(function(group) {
     const rows = group.lines.map(function(line) {
-      const details = [line.commonname, 'Location: ' + (line.locationcode || '-'), 'Lot: ' + (line.lotcode || '-'),
+      const isRestock = isV3 && line.source_kind === 'restock';
+      const details = [line.commonname, isRestock ? '' : 'Location: ' + (line.locationcode || '-'), 'Lot: ' + (line.lotcode || '-'),
         'Availability: ' + (line.ptravailable === null ? 'Unknown' : line.ptravailable),
         line.transactionnumber ? 'Order ref: ' + line.transactionnumber : '', line.purchaseordernumber ? 'PO: ' + line.purchaseordernumber : '',
         line.customername ? 'Customer: ' + line.customername : '', line.consigneename ? 'Consignee: ' + line.consigneename : ''].filter(Boolean).map(escape).join(' | ');
-      return '<tbody class="line"><tr><td>' + escape(line.itemcode || '-') + '</td><td>' + escape(line.contsize || '-') + '</td><td class="qty">' + line.quantity
-        + '</td><td>' + escape(line.planstartdate || '-') + '</td><td>' + escape(line.dock || '-') + '</td><td>' + escape(line.stopnumber || '-')
-        + '</td></tr><tr><td class="details" colspan="6">' + details + '</td></tr></tbody>';
+      return '<tbody class="line"><tr>' + (isV3 ? '<td>' + (isRestock ? 'Restocking' : 'Customer order') + '</td>' : '')
+        + '<td>' + escape(line.itemcode || '-') + '</td><td>' + escape(line.contsize || '-') + '</td><td class="qty">' + line.quantity
+        + '</td><td>' + escape(isV3 ? report.ship_date : line.planstartdate || '-') + '</td><td>' + escape(line.dock || '-') + '</td><td>' + escape(line.stopnumber || '-')
+        + '</td></tr><tr><td class="details" colspan="' + columnCount + '">' + details + '</td></tr></tbody>';
     }).join('');
-    return '<section><table><thead><tr><th colspan="6" class="group">Dock ' + escape(group.dock || 'Unassigned') + ' / Stop ' + escape(group.stop || 'Unassigned')
+    const groupLabel = isV3 && group.source_kind === 'restock' ? 'Restocking' : 'Dock ' + escape(group.dock || 'Unassigned') + ' / Stop ' + escape(group.stop || 'Unassigned');
+    return '<section><table><thead><tr><th colspan="' + columnCount + '" class="group">' + groupLabel
       + ' <span>' + group.lines.length + ' lines | ' + quantityLabel + ': ' + group.quantity + '</span></th></tr><tr>'
-      + ['Item Code', 'Container Size', 'HL Order Quantity', 'Plan Start Date', 'Dock', 'Stop Number'].map(function(label) { return '<th>' + label + '</th>'; }).join('')
+      + (isV3 ? ['Purpose', 'Item Code', 'Container Size', 'HL Order Quantity', 'Ship Date', 'Dock', 'Stop Number'] : ['Item Code', 'Container Size', 'HL Order Quantity', 'Plan Start Date', 'Dock', 'Stop Number']).map(function(label) { return '<th>' + label + '</th>'; }).join('')
       + '</tr></thead>' + rows + '</table></section>';
   }).join('');
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + title + ' ' + escape(report.order_number) + '</title><style>'
@@ -16718,16 +16731,16 @@ function buildHlOrderPdfHtml_(input) {
     + '*{box-sizing:border-box}body{font:11px Arial,sans-serif;color:#18372b;margin:0}.brand{font-size:9px;letter-spacing:1px;color:#537063}h1{font-size:24px;margin:7px 0}.meta{line-height:1.6;font-size:10px}.totals{background:#eaf0eb;padding:9px;margin:12px 0;font-weight:bold}.reason{padding:9px;border-left:3px solid #a94835;white-space:pre-wrap;margin:8px 0;overflow-wrap:anywhere}'
     + 'section{margin:0 0 12px}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}th,td{border:1px solid #bfcdc4;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{font-size:9px;background:#eef3ef}th.group{background:#244f3e;color:white;font-size:12px;padding:8px}th.group span{float:right;font-size:10px}.qty{font-weight:bold;text-align:right}.details{font-size:9px;color:#51645a;border-top:0;padding:5px 6px 9px}.line{page-break-inside:avoid;break-inside:avoid}tr{page-break-inside:avoid}.note{font-size:9px;color:#53635b;margin:8px 0}'
     + '</style></head><body><header><div class="brand">GREENLEAF NURSERY COMPANY | PARK HILL</div><h1>' + title + ' ' + escape(report.order_number) + '</h1>'
-    + '<div class="meta">' + (isV2 ? '<b>Ship date:</b> ' + escape(Utilities.formatDate(new Date(report.ship_date + 'T12:00:00Z'), 'America/Chicago', 'MMM d, yyyy')) + '<br>' : '')
+    + '<div class="meta">' + (hasShipDate ? '<b>Ship date:</b> ' + escape(Utilities.formatDate(new Date(report.ship_date + 'T12:00:00Z'), 'America/Chicago', 'MMM d, yyyy')) + '<br>' : '')
     + (report.kind === 'cancellation' ? '<b>Original order:</b> ' + escape(report.original_order_number) + '<br>' : '')
     + '<b>Created:</b> ' + escape(Utilities.formatDate(new Date(report.created_at), 'America/Chicago', 'MMM d, yyyy h:mm a z')) + ' | <b>Submitted by:</b> Dylan Collyge</div>'
     + (report.reason ? '<div class="reason"><b>Cancellation reason:</b> ' + escape(report.reason) + '</div>' : '')
-    + '<div class="totals">Total ' + quantityLabel + ': ' + report.total_quantity + ' | Lines: ' + report.lines.length + ' | Dock / stop groups: ' + groups.length + '</div></header>'
+    + '<div class="totals">Total ' + quantityLabel + ': ' + report.total_quantity + ' | Lines: ' + report.lines.length + (isV3 ? ' | Groups: ' : ' | Dock / stop groups: ') + groups.length + '</div></header>'
     + sections + '<p class="note">' + (report.kind === 'cancellation' ? 'Quantities shown are canceled quantities against the original order.' : 'Quantities and source details reflect the saved order snapshot.') + '</p></body></html>';
 }
 
 function buildHlOrderPdfFile_(report) {
-  const additionSuffix = report.contract_version === 'hl-order-report-v2' && report.kind === 'addition' ? '_ADDITIONS_' + report.batch_id : '';
+  const additionSuffix = report.contract_version !== 'hl-order-report-v1' && report.kind === 'addition' ? '_ADDITIONS_' + report.batch_id : '';
   const name = 'GNC_PH_' + (report.kind === 'cancellation' ? 'HL_Cancellation_' : 'HL_Order_') + report.order_number + additionSuffix + '.pdf';
   try {
     const blob = HtmlService.createHtmlOutput(buildHlOrderPdfHtml_(report)).getBlob().getAs(MimeType.PDF).setName(name);
@@ -16821,9 +16834,12 @@ function handleSignedHlOrderDelivery_(delivery) {
     // From this point onward, an error is ambiguous until Sent-mail evidence resolves it.
     sendStarted = true;
     const subject = report.kind === 'cancellation' ? 'HL TAGS \u2014 CANCELLATION' : 'HL TAGS';
-    const textBody = subject + '\nOrder: ' + report.order_number + (report.contract_version === 'hl-order-report-v2' ? '\nShip date: ' + Utilities.formatDate(new Date(report.ship_date + 'T12:00:00Z'), 'America/Chicago', 'MMM d, yyyy') : '')
+    const textBody = subject + '\nOrder: ' + report.order_number + (report.contract_version !== 'hl-order-report-v1' ? '\nShip date: ' + Utilities.formatDate(new Date(report.ship_date + 'T12:00:00Z'), 'America/Chicago', 'MMM d, yyyy') : '')
       + (report.kind === 'addition' ? '\nADDITIONS\nAdded quantity: ' : report.kind === 'cancellation' ? '\nOriginal order: ' + report.original_order_number + '\nCanceled quantity: ' : '\nHL order quantity: ')
-      + report.total_quantity + '\nLines: ' + report.lines.length + (report.reason ? '\nReason: ' + report.reason : '') + '\n\nThe saved HL order PDF is attached.';
+      + report.total_quantity + '\nLines: ' + report.lines.length + (report.reason ? '\nReason: ' + report.reason : '')
+      + (report.contract_version === 'hl-order-report-v3' ? '\n\n' + report.lines.map(function(line) {
+        return (line.source_kind === 'restock' ? 'Restocking' : 'Customer order') + ' | ' + line.itemcode + ' | ' + line.contsize + ' | Quantity: ' + line.quantity;
+      }).join('\n') : '') + '\n\nThe saved HL order PDF is attached.';
     const result = sendGmailApiMessage_({ toList: recipient, toArray: [recipient], subject: subject, textBody: textBody,
       htmlBody: '<div style="font-family:Arial,sans-serif;white-space:pre-line">' + escapeEmailHtml_(textBody) + '</div>',
       attachments: [pdf.blob], fromName: 'GNC PH HL Order', fromAddress: resolveAutomatedEmailSenderAddress_(), messageIdHeader: expectedId });

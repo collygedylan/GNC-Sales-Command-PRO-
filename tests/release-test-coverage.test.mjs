@@ -89,6 +89,7 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/live-sync-priority-cache.test.mjs',
     'tests/inventory-list-read-fixture.test.mjs',
     'tests/hl-order.test.mjs',
+    'tests/hl-order-restock.test.mjs',
     'tests/hl-order-ship-date.test.mjs',
     'tests/hl-po-import-staging.test.mjs',
     'tests/hl-po-receipt-ui.test.mjs',
@@ -202,6 +203,7 @@ const compiledSuites = [
   ['review-assignedto', 'review-assignedto', ['chromium', 'firefox', 'webkit']],
   ['verified-data-cache', 'verified-data-cache', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
   ['request-photo', 'request-photo-completion', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
+  ['hl-restock', 'hl-restock', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
 ];
 
 for (const [name, spec, projects] of compiledSuites) {
@@ -213,7 +215,7 @@ for (const [name, spec, projects] of compiledSuites) {
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
-    if (['verified-data-cache', 'request-photo'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
+    if (['verified-data-cache', 'request-photo', 'hl-restock'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
     else assert.match(config.webServer.command, /startReleaseTestServer/);
   });

@@ -26,6 +26,12 @@ function reportFixtureV2(overrides = {}) {
     batch_id: '52345678-1234-1234-1234-123456789abc', ...overrides };
 }
 
+function reportFixtureV3(overrides = {}) {
+  return reportFixtureV2({ contract_version: 'hl-order-report-v3', lines: [{ source_id: 'RESTOCK-1', source_kind: 'restock',
+    itemcode: '000748.010.1', contsize: '#3', quantity: 12, planstartdate: '2026-09-15',
+    commonname: 'Synthetic Restocking <Holly>', lotcode: '27.F1', ptravailable: 0 }], ...overrides });
+}
+
 export function createHlBackend(options = {}) {
   const rendered = [], sent = [], reads = [], records = [];
   const properties = new Map([['SUPABASE_SERVICE_ROLE_KEY', key]]);
@@ -170,6 +176,64 @@ test('v2 rejects forged kinds, malformed ship dates, and missing or forged batch
     const h = createHlBackend({ saved: { report: reportFixtureV2(changes) } });
     assert.equal(h.preview().ok, false); assert.equal(h.rendered.length, 0); assert.equal(h.sent.length, 0);
   }
+});
+
+test('v3 restocking preview and delivery label purpose without fabricated customer or dock details', () => {
+  const h = createHlBackend({ saved: { report: reportFixtureV3() } });
+  assert.equal(h.preview().ok, true); assert.equal(h.sent.length, 0);
+  assert.equal(h.send().ok, true);
+  const html = h.rendered[0];
+  assert.match(html, /HL Order HL-2026-000001<\/h1><div class="meta"><b>Ship date:<\/b> Sep 15, 2026/);
+  assert.match(html, /<th>Purpose<\/th>/); assert.match(html, /<td>Restocking<\/td>/);
+  assert.match(html, /<th>Ship Date<\/th>/); assert.match(html, /Availability: 0/); assert.match(html, /Lot: 27.F1/);
+  assert.match(html, /Synthetic Restocking &lt;Holly&gt;/);
+  assert.doesNotMatch(html, /Dock Unassigned|Customer:|Consignee:|Order ref:|PO:|Location: -|<Holly>/);
+  assert.equal(h.sent[0].subject, 'HL TAGS'); assert.equal(h.sent[0].toList, dylan);
+  assert.match(h.sent[0].textBody, /Order: HL-2026-000001\nShip date: Sep 15, 2026\nHL order quantity: 12/);
+  assert.match(h.sent[0].textBody, /Restocking \| 000748\.010\.1 \| #3 \| Quantity: 12/);
+  assert.equal(h.sent[0].attachments[0].name, 'GNC_PH_HL_Order_HL-2026-000001.pdf');
+  assert.equal(h.send().recovered, true); assert.equal(h.sent.length, 1);
+});
+
+test('v3 mixed batches retain customer details and separate source namespaces and purpose totals', () => {
+  const restock = reportFixtureV3().lines[0];
+  const soc = { ...reportFixture().lines[0], source_id: restock.source_id, source_kind: 'soc', customername: 'Synthetic Customer' };
+  const h = createHlBackend({ saved: { report: reportFixtureV3({ lines: [soc, restock], total_quantity: 24 }) } });
+  assert.equal(h.send().ok, true);
+  assert.match(h.rendered[0], /<td>Restocking<\/td>/); assert.match(h.rendered[0], /<td>Customer order<\/td>/);
+  assert.match(h.rendered[0], /Dock 3 \/ Stop 4/); assert.match(h.rendered[0], /Customer: Synthetic Customer/);
+  assert.match(h.rendered[0], /Order ref: ORDER-12/); assert.match(h.rendered[0], /Total HL order quantity: 24/);
+  assert.match(h.sent[0].textBody, /Restocking \|/); assert.match(h.sent[0].textBody, /Customer order \|/);
+});
+
+test('v3 additions and cancellations retain existing subjects, batch filenames, and uncertain-delivery protection', () => {
+  const report = reportFixtureV3({ kind: 'addition', total_quantity: 3,
+    lines: [{ ...reportFixtureV3().lines[0], quantity: 3 }] });
+  const h = createHlBackend({ saved: { report } }); assert.equal(h.send().ok, true);
+  assert.match(h.rendered[0], /HL Order ADDITIONS HL-2026-000001/); assert.match(h.rendered[0], /Added quantity: 3/);
+  assert.match(h.sent[0].textBody, /Ship date: Sep 15, 2026\nADDITIONS\nAdded quantity: 3/);
+  assert.equal(h.sent[0].subject, 'HL TAGS');
+  assert.equal(h.sent[0].attachments[0].name, 'GNC_PH_HL_Order_HL-2026-000001_ADDITIONS_52345678-1234-1234-1234-123456789abc.pdf');
+  const cancellation = createHlBackend({ saved: { report: { ...report, kind: 'cancellation', batch_id: '',
+    original_order_number: report.order_number, reason: 'Restock correction' }, event_type: 'hl_order_cancellation' } });
+  assert.equal(cancellation.send().ok, true);
+  assert.equal(cancellation.sent[0].subject, 'HL TAGS \u2014 CANCELLATION');
+  assert.match(cancellation.sent[0].textBody, /Original order: HL-2026-000001\nCanceled quantity: 3/);
+  assert.match(cancellation.sent[0].textBody, /Restocking \|/);
+  const uncertain = createHlBackend({ saved: { report }, sendError: true });
+  assert.equal(uncertain.send().deliveryUncertain, true);
+  assert.equal(uncertain.send().code, 'HL_ORDER_DELIVERY_UNKNOWN'); assert.equal(uncertain.sent.length, 1);
+});
+
+test('v3 rejects missing purpose, duplicate same-kind identities and fabricated restocking SOC details', () => {
+  for (const changes of [{ source_kind: undefined }, { source_kind: 'other' }, { itemcode: '' }, { contsize: '' },
+    ...['dock', 'stopnumber', 'transactionnumber', 'purchaseordernumber', 'customername', 'consigneename'].map((key) => ({ [key]: 'fabricated' }))]) {
+    const report = reportFixtureV3(); Object.assign(report.lines[0], changes);
+    const h = createHlBackend({ saved: { report } });
+    assert.equal(h.preview().ok, false, JSON.stringify(changes)); assert.equal(h.rendered.length, 0); assert.equal(h.sent.length, 0);
+  }
+  const report = reportFixtureV3(); report.lines.push({ ...report.lines[0] }); report.total_quantity = 24;
+  const h = createHlBackend({ saved: { report } }); assert.equal(h.preview().ok, false); assert.equal(h.rendered.length, 0);
 });
 
 test('signed submission uses one canonical PDF and only Dylan; untrusted payload/rows/recipients are ignored', () => {

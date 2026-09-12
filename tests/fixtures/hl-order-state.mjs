@@ -71,6 +71,20 @@ export function createHlOrderState(options = {}) {
   const source = (id) => sourceMap.get(id);
   const disposition = (id) => state.dispositions.find((entry) => entry.source_id === id);
   const problem = (message) => { const error = new Error(message); error.status = 409; throw error; };
+  control.restockItems = clone(options.restockItems || []);
+  control.restockReads = 0;
+  control.inventorySnapshot = { revision: 'restock-master-1', completed_at: '2026-09-12T12:00:00Z' };
+  control.restockSnapshot = () => ({ revision: state.revision, inventory_snapshot: clone(control.inventorySnapshot),
+    items: control.restockItems.map((item) => {
+      const matches = (row) => row.source?.source_kind === 'restock' && keyFor(row.source) === keyFor(item);
+      const drafts = state.draft.filter(matches);
+      const lines = state.orders.flatMap(order => order.lines).filter(matches);
+      const saved = drafts.filter(draft => !lines.some(line => line.source_id === draft.source_id)).reduce((sum, row) => sum + row.quantity, 0);
+      const incoming = lines.reduce((sum, line) => sum + line.outstanding_quantity, 0);
+      return { ...clone(item), source_id: drafts.find(row => row.status === 'ready')?.source_id,
+        saved_quantity: saved, incoming_quantity: incoming,
+        suggested_quantity: item.status === 'ready' ? Math.max(0, Math.ceil(item.target - item.available - saved - incoming)) : null };
+    }) });
   const latestImport = () => state.po_imports.filter((entry) => ['pending', 'reconciled'].includes(entry.status))
     .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')) || String(b.id).localeCompare(String(a.id)))[0];
   control.snapshot = () => {
@@ -95,7 +109,33 @@ export function createHlOrderState(options = {}) {
     if (Number(body.p_expected_revision) !== state.revision) problem('HL_ORDER_REVISION_CONFLICT');
     const action = body.p_action, payload = body.p_payload || {};
     let preview, poImportPreview;
-    if (action === 'draft_save') {
+    if (action === 'restock_draft_save') {
+      if (JSON.stringify(payload.inventory_snapshot) !== JSON.stringify(control.inventorySnapshot)) problem('HL_RESTOCK_SNAPSHOT_STALE');
+      const shipDate = fixtureShipDate(payload.ship_date);
+      if (!shipDate) problem('HL_ORDER_SHIP_DATE_REQUIRED');
+      for (const entry of payload.rows || []) {
+        const item = control.restockSnapshot().items.find(row => keyFor(row) === keyFor(entry));
+        const previous = entry.source_id && state.draft.find(row => row.source_id === entry.source_id && row.source.source_kind === 'restock');
+        const sameDate = !entry.source_id && state.draft.find(row => row.status === 'ready' && row.ship_date === shipDate && row.source.source_kind === 'restock' && keyFor(row.source) === keyFor(entry));
+        if (!item || item.status !== 'ready') problem('HL_RESTOCK_REVIEW_REQUIRED');
+        if (!Number.isInteger(Number(entry.quantity)) || entry.quantity <= 0 || entry.quantity > item.suggested_quantity + (previous?.quantity || 0)) problem('HL_ORDER_INVALID_QUANTITY');
+        const id = previous?.source_id || sameDate?.source_id || `restock:${uuid(++control.sequence)}`;
+        const identity = { source_kind: 'restock', source_id: id, unique_id: id, itemcode: item.itemcode, contsize: item.size,
+          commonname: item.commonname, lotcode: '27.F1', planstartdate: shipDate, quantityordered: String(item.target),
+          locationcode: '', dock: '', stopnumber: '', source_fingerprint: `restock-${state.revision}` };
+        sourceMap.set(id, identity);
+        if (!disposition(id)) state.dispositions.push({ source_id: id, source_kind: 'restock', status: 'draft', source: clone(identity), current_source: clone(identity) });
+        const active = state.orders.find(order => order.ship_date === shipDate && !['received','cancelled','received_and_cancelled'].includes(order.fulfillment_status));
+        const draft = { source_id: id, source_kind: 'restock', quantity: Number(entry.quantity) + (sameDate?.quantity || 0), source: clone(identity), ship_date: shipDate,
+          status: 'ready', target_order_id: active?.id || null, target_order_number: active?.order_number || null };
+        state.draft = state.draft.filter(row => row.source_id !== id); state.draft.push(draft);
+      }
+    } else if (action === 'restock_inventory_confirm') {
+      const item = control.restockItems.find(row => keyFor(row) === keyFor(payload));
+      if (!item?.can_confirm_inventory || JSON.stringify(payload.inventory_snapshot) !== JSON.stringify(control.inventorySnapshot)
+        || JSON.stringify(payload.receipt_watermark) !== JSON.stringify(item.receipt_watermark)) problem('HL_RESTOCK_SNAPSHOT_STALE');
+      item.status = 'ready'; item.can_confirm_inventory = false;
+    } else if (action === 'draft_save') {
       for (const entry of payload.rows || []) {
         if (!membership.has(String(source(entry.source_id)?.itemcode).toUpperCase())) problem('HL_ORDER_SOURCE_REVIEW_REQUIRED');
         if (!source(entry.source_id) || !Number.isInteger(Number(entry.quantity)) || !(Number(entry.quantity) > 0)
@@ -131,6 +171,7 @@ export function createHlOrderState(options = {}) {
       preview = { id: uuid(++control.sequence), ship_date: shipDate, report: { contract_version: 'hl-order-report-v2', kind: order ? 'cancellation' : target ? 'addition' : 'submission', ship_date: shipDate,
         order_id: order?.id || target?.id || null, order_number: order?.order_number || target?.order_number || `HL-TEST-${control.sequence}`, original_order_number: order?.order_number,
         reason: payload.reason || '', created_at: '2026-09-11T16:00:00Z', lines, total_quantity: lines.reduce((total, line) => total + Number(line.quantity), 0) } };
+      if (lines.some(line => line.source_kind === 'restock')) preview.report.contract_version = 'hl-order-report-v3';
       control.previews.set(preview.id, { ...clone(preview), revision: state.revision + 1 });
     } else if (action === 'submit' || action === 'cancellation_submit') {
       const saved = control.previews.get(payload.preview_id);
@@ -164,6 +205,11 @@ export function createHlOrderState(options = {}) {
         order.receipts.push({ id: uuid(++control.sequence), line_id: line.id, quantity_delta: quantity - line.received_quantity, received_quantity: quantity, reason: payload.reason || '', created_at: '2026-09-11T16:05:00Z' });
         line.received_quantity = quantity;
         line.outstanding_quantity = line.quantity - line.cancelled_quantity - quantity;
+        if (line.source.source_kind === 'restock' && delta) {
+          const item = control.restockItems.find(row => keyFor(row) === keyFor(line.source));
+          item.status = 'receipt_pending'; item.can_confirm_inventory = false;
+          item.receipt_watermark = String(control.sequence); item.receipts = clone(order.receipts);
+        }
       }
       order.fulfillment_status = order.lines.every((line) => !line.outstanding_quantity)
         ? order.lines.some((line) => line.cancelled_quantity > 0) ? 'received_and_cancelled' : 'received'
@@ -195,7 +241,7 @@ export function createHlOrderState(options = {}) {
       entry.status = payload.resolution === 'remove' ? 'removed' : 'needed';
     } else if (action !== 'reconcile_delivery') problem('HL_ORDER_INVALID_COMMAND');
     state.revision++;
-    state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id)));
+    state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id))).filter(row => row.source_kind !== 'restock');
     const result = { ...control.snapshot(), ...(preview ? { preview } : {}), ...(poImportPreview ? { po_import_preview: poImportPreview } : {}) };
     control.replay.set(body.p_command_id, clone(result));
     return result;
@@ -208,7 +254,7 @@ export function createHlOrderState(options = {}) {
     if (batch) { batch.status = status; batch.sent_at = status === 'sent' ? '2026-09-11T16:10:00Z' : null; }
     order.lines.filter((line) => !batch || line.batch_id === batch.id).forEach((line) => { line.delivery_status = status; disposition(line.source_id).status = status === 'sent' ? 'handled' : 'submitting'; });
     if (status === 'sent') state.draft = state.draft.filter((entry) => !order.lines.some((line) => line.source_id === entry.source_id && line.delivery_status === 'sent'));
-    state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id)));
+    state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id))).filter(row => row.source_kind !== 'restock');
     state.delivery_issues = state.delivery_issues.filter((entry) => entry.order_id !== order.id);
     if (status === 'delivery_unknown') state.delivery_issues.push({ event_id: uuid(++control.sequence), order_id: order.id, status, message: 'Delivery could not be confirmed' });
     state.revision++;
@@ -232,7 +278,7 @@ export function createHlOrderState(options = {}) {
     const entry = disposition(sourceId);
     Object.assign(entry, { status: 'needs_review', source: old, current_source: clone(source(sourceId)), reason: 'Source row changed', replacement_candidates: [] });
     state.draft.forEach((row) => { if (row.source_id === sourceId) row.status = 'needs_review'; });
-    state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id)));
+    state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id))).filter(row => row.source_kind !== 'restock');
     state.revision++; control.datasetRevision++;
   };
   return control;
@@ -318,9 +364,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const op = url.pathname.split('/').pop(), body = req.postDataJSON() || {};
-      if (op === 'hl_order_state' || op === 'hl_order_command') {
+      if (op === 'hl_order_state' || op === 'hl_order_command' || op === 'hl_order_restock_state') {
         if (username !== 'dylan_collyge') return json(route, { message: 'HL_ORDER_FORBIDDEN' }, 403);
         if (op === 'hl_order_state') return json(route, control.snapshot());
+        if (op === 'hl_order_restock_state') { control.restockReads++; return json(route, control.restockSnapshot()); }
         try {
           const result = control.command(body);
           if (body.p_action === 'submit' && control.loseSubmitResponse) return route.abort('connectionreset');

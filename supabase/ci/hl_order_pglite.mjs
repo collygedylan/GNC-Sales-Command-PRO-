@@ -89,8 +89,12 @@ try {
     if (proof.n!==1) throw new Error('Legacy batch provenance or Chicago date failed');
     console.log('PASS legacy backfill: two sent lines, saved PDFs, quantities, receipt, number, delivery proof unchanged; batch and Sep 15 ship date added.');
   }
+  await db.exec(read('supabase/ci/hl_restock_revision_baseline.sql'));
+  await db.exec(read('supabase/migrations/20260908185903_live_dataset_revisions.sql'));
+  await db.exec(read('supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
+  await db.exec(read('supabase/migrations/20260912170906_hl_restocking.sql'));
   const files = historical ? [] : args.includes('--test') ? [args[args.indexOf('--test') + 1]] : [
-    'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql', 'supabase/tests/hl_order_ship_dates_test.sql', 'supabase/tests/hl_order_po_receipts_test.sql'
+    'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql', 'supabase/tests/hl_order_ship_dates_test.sql', 'supabase/tests/hl_order_po_receipts_test.sql', 'supabase/tests/hl_order_restock_test.sql'
   ];
   for (const file of files) {
     if (!file || !/^supabase\/tests\/hl_order_[a-z_]+\.sql$/.test(file)) throw new Error('Invalid HL SQL test path.');

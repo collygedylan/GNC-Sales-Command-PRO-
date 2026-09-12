@@ -125,6 +125,8 @@ jobs:
           - suite: hl-order-2
             config: playwright.hl-order.config.ts
             shard: 2/2
+          - suite: hl-restock
+            config: playwright.hl-restock.config.ts
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests

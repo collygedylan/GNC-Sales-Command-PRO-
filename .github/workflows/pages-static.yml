@@ -110,6 +110,8 @@ jobs:
             command: npm run test:docks-filter -- --workers=1
           - suite: login-photo
             command: npx playwright test --config playwright.login-photo.config.ts --project=chromium --project=webkit --project=android --workers=1
+          - suite: hl-restock
+            command: npx playwright test --config playwright.hl-restock.config.ts --project=cache-chromium --project=cache-webkit --project=cache-android --project=cache-iphone --workers=1
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
@@ -126,6 +128,7 @@ jobs:
           SUSPEND_TAG_BASE_URL: https://agmetricapp.com
           DOCKS_FILTER_BASE_URL: https://agmetricapp.com
           LOGIN_PHOTO_BASE_URL: https://agmetricapp.com
+          HL_RESTOCK_BASE_URL: https://agmetricapp.com
         run: ${{ matrix.command }}
       - uses: actions/upload-artifact@v4
         if: failure()

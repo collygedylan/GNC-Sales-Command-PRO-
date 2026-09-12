@@ -8,6 +8,7 @@ export const explicitReleaseUnitTests = Object.freeze([
   'tests/live-sync-priority-cache.test.mjs',
   'tests/inventory-list-read-fixture.test.mjs',
   'tests/hl-order.test.mjs',
+  'tests/hl-order-restock.test.mjs',
   'tests/hl-order-ship-date.test.mjs',
   'tests/hl-po-import-staging.test.mjs',
   'tests/hl-po-receipt-ui.test.mjs',

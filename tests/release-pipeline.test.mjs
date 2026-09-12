@@ -30,7 +30,7 @@ test('browser shards and compiled suites use isolated runners without racing per
   assert.equal(validation.jobs.functional.strategy['max-parallel'], 4);
   assert.equal(validation.jobs.functional.strategy['fail-fast'], false);
   assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=/);
-  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home','season','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo', 'hl-order-1','hl-order-2']);
+  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home','season','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo', 'hl-order-1','hl-order-2','hl-restock']);
   const hl = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.hl-order.config.ts');
   assert.deepEqual(hl.map(x => x.shard), ['1/2','2/2']);
   assert.equal(validation.jobs.compiled['timeout-minutes'], 12);
@@ -72,7 +72,7 @@ test('live probes await exact commit and all retained suites run with writes blo
   assert.equal(pages.jobs['exact-live'].needs, 'deploy');
   assert.deepEqual(pages.jobs['post-deployment-canary'].needs, ['deploy','exact-live']);
   const matrix = pages.jobs['post-deployment-canary'].strategy.matrix.include;
-  assert.deepEqual(matrix.map(x=>x.suite), ['requests','session','assignedto','footer','home','season','suspend','docks','login-photo']);
+  assert.deepEqual(matrix.map(x=>x.suite), ['requests','session','assignedto','footer','home','season','suspend','docks','login-photo','hl-restock']);
   assert.match(matrix.find(x=>x.suite==='requests').command, /production-request-canary.spec.ts/);
   const health = validation.jobs['production-health'].steps.find(s=>s.name === 'Probe production login bridge and Data API');
   assert.equal(health.env.PRODUCTION_PROBE_READ_ONLY, '1');
