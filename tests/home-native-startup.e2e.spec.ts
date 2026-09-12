@@ -44,7 +44,21 @@ for (const entry of nativeStartupCases) {
 }
 
 test('verified raw cache survives reload and changed revisions reload its dependencies', async ({ page, baseURL }) => {
+  const reloadHealthRequests: string[] = [];
+  page.on('request', request => {
+    if (request.url().endsWith('/rest/v1/rpc/report_app_health_event')
+        && request.postDataJSON()?.event_name === 'fixture_reload') reloadHealthRequests.push(request.url());
+  });
   const fixture = await installHlOrderFixture(page, baseURL!);
+  expect(await page.evaluate(() => (window as any).reportSemanticHealthEvent('fixture_live_control', 'test'))).toBe(true);
+  const reload = async () => {
+    // Register after the app's unload guard. Once navigation has started,
+    // even a late health event must not create a request from the old document.
+    await page.evaluate(() => window.addEventListener('beforeunload', () => {
+      void (window as any).reportSemanticHealthEvent('fixture_reload', 'test');
+    }, { once: true }));
+    await page.reload({ waitUntil: 'load' });
+  };
   const openDrive = async () => {
     await page.locator('#view-login').waitFor({ state: 'hidden' });
     await page.locator('#home-tile-drive').click();
@@ -61,13 +75,14 @@ test('verified raw cache survives reload and changed revisions reload its depend
     return cached?.format === 'verified-raw-v1' && cached.rawRows.length === cached.rowCount;
   })()`))).toBe(true);
   const beforeReload = fixture.backgroundMasterReads;
-  await page.reload({ waitUntil: 'load' });
+  await reload();
   await openDrive();
   expect(fixture.backgroundMasterReads).toBe(beforeReload);
   fixture.datasetRevision++;
-  await page.reload({ waitUntil: 'load' });
+  await reload();
   await openDrive();
   expect(fixture.backgroundMasterReads).toBeGreaterThan(beforeReload);
+  expect(reloadHealthRequests).toEqual([]);
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);
 });

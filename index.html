@@ -26870,7 +26870,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const safeSeverity = ['info', 'warning', 'error', 'critical'].includes(String(severity || '').trim().toLowerCase())
                 ? String(severity).trim().toLowerCase()
                 : 'error';
-            return supabaseRpc('report_app_health_event', {
+            return withProductionLiveSyncSignal(null, (signal) => supabaseRpc('report_app_health_event', {
                 event_name: String(eventName || 'semantic_failure').slice(0, 120),
                 area: String(area || 'app').slice(0, 80),
                 severity: safeSeverity,
@@ -26879,12 +26879,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 sample_rate: 1,
                 app_build: APP_SHELL_BUILD,
                 metadata: sanitizeHealthMetadata(metadata)
-            }).then(() => true).catch(() => false);
+            }, { signal })).then(() => true).catch(() => false);
         }
 
         function reportPerformanceHealthEvent(eventName, area = 'app', durationMs = 0, metadata = {}) {
             if (!currentUser || navigator.onLine === false || Math.random() >= 0.10) return Promise.resolve(false);
-            return supabaseRpc('report_app_health_event', {
+            return withProductionLiveSyncSignal(null, (signal) => supabaseRpc('report_app_health_event', {
                 event_name: String(eventName || 'performance_trace').slice(0, 120),
                 area: String(area || 'app').slice(0, 80),
                 severity: 'info',
@@ -26893,7 +26893,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 sample_rate: 0.10,
                 app_build: APP_SHELL_BUILD,
                 metadata: sanitizeHealthMetadata(metadata)
-            }).then(() => true).catch(() => false);
+            }, { signal })).then(() => true).catch(() => false);
         }
 
         window.reportSemanticHealthEvent = reportSemanticHealthEvent;
@@ -72651,7 +72651,9 @@ function toggleDriveQuickRequestItem(domId) {
                 pill.classList.toggle('hidden', !allRows.length);
             }
             const html = `<div class="space-y-3"><div class="grid grid-cols-2 gap-2 lg:grid-cols-4">${statsHtml}</div>${renderPoManagementTable(rows)}</div>`;
-            setContainerHtml(container, html);
+            // Keep a pressed inventory action attached during unchanged refreshes.
+            // Changed rows, balances, and filters still produce a new signature.
+            setContainerHtmlWithSignature(container, html, `po-management-table:${html}`);
             setContainerUiState(container, 'content');
         }
 

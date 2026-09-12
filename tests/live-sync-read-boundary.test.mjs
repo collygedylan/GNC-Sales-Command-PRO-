@@ -10,6 +10,42 @@ assert.ok(start > 0 && end > start);
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
+test('health telemetry cancels across navigation during authentication and in flight, then resumes normally', async () => {
+    const auth = deferred(), calls = [];
+    const sampleMath = Object.create(Math); sampleMath.random = () => 0;
+    const ctx = { Error, Object, String, Number, Set, Math: sampleMath, JSON, Promise, encodeURIComponent,
+        AbortController, currentUser: 'fixture', navigator: { onLine: true }, APP_SHELL_BUILD: 'fixture',
+        SUPABASE_URL: 'https://fixture.invalid', SUPABASE_WRITE_TIMEOUT_MS: 1000,
+        productionLiveSyncNavigation: new AbortController(), getNativeAuthRequestHeaders: () => auth.promise,
+        sanitizeHealthMetadata: value => value,
+        fetchWithTimeout: async (_, options) => { calls.push(options); return { ok: true, text: async () => '[]' }; }
+    };
+    vm.createContext(ctx);
+    const signalStart = html.indexOf('async function withProductionLiveSyncSignal(');
+    vm.runInContext(html.slice(signalStart, html.indexOf('function ', signalStart + 15)).trim(), ctx);
+    const rpcStart = html.indexOf('async function supabaseRpc(');
+    vm.runInContext(html.slice(rpcStart, html.indexOf('const SECURE_DRIVE_EVIDENCE_PREFIXES', rpcStart)), ctx);
+    const healthStart = html.indexOf('function reportSemanticHealthEvent(');
+    vm.runInContext(html.slice(healthStart, html.indexOf('window.reportSemanticHealthEvent', healthStart)), ctx);
+    const reports = () => [ctx.reportSemanticHealthEvent('fixture', 'test'), ctx.reportPerformanceHealthEvent('fixture', 'test', 1)];
+    let pending = reports();
+    ctx.productionLiveSyncNavigation.abort(); auth.resolve({ Authorization: 'synthetic' });
+    assert.deepEqual(await Promise.all(pending), [false, false]);
+    assert.equal(calls.length, 0, 'unloading during auth preparation must not start telemetry requests');
+    ctx.productionLiveSyncNavigation = new AbortController();
+    ctx.fetchWithTimeout = (_, options) => new Promise((_, reject) => {
+        calls.push(options); options.signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+    });
+    pending = reports(); await settle();
+    assert.equal(calls.length, 2);
+    ctx.productionLiveSyncNavigation.abort();
+    assert.deepEqual(await Promise.all(pending), [false, false]);
+    assert.ok(calls.every(options => options.signal.aborted));
+    ctx.productionLiveSyncNavigation = new AbortController();
+    ctx.fetchWithTimeout = async () => ({ ok: true, text: async () => '[]' });
+    assert.deepEqual(await Promise.all(reports()), [true, true], 'active-document health reporting remains enabled');
+});
+
 test('a revision read cancelled during auth preparation never starts its RPC', async () => {
     const from = html.indexOf('async function supabaseRpc(');
     const to = html.indexOf('const SECURE_DRIVE_EVIDENCE_PREFIXES', from);

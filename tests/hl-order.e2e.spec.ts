@@ -208,8 +208,13 @@ test('PO inventory action pages verified same-size rows and preserves zero avail
   await page.evaluate(() => window.eval('renderPoManagement()'));
   await page.mouse.up();
   await page.locator('#po-management-season-grid').getByRole('button', { name: /27F1/ }).click();
-  await expect(page.getByRole('button', { name: 'View inventory', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'View inventory', exact: true }).click();
+  const inventoryButton = page.getByRole('button', { name: 'View inventory', exact: true });
+  await expect(inventoryButton).toBeVisible();
+  await inventoryButton.hover();
+  await page.mouse.down();
+  await page.evaluate(() => window.eval('renderPoManagement()'));
+  await page.mouse.up();
+  await expect(page.locator('#po-inventory-detail')).toBeVisible();
   const detail = page.locator('#po-inventory-detail-content');
   await expect(detail).toContainText('In Drive Mode');
   await expect(detail).toContainText('Exact item, size, location and lot match');
