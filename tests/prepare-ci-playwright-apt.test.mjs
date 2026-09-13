@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { prepareCiPlaywrightApt, validateChromeSource, validateChromeDeb822Source } from '../scripts/prepare-ci-playwright-apt.mjs';
+import { prepareCiPlaywrightApt, validateChromeSource, validateChromeDeb822Source, prepareCiUbuntuMirrors, withoutAzureUbuntuMirror } from '../scripts/prepare-ci-playwright-apt.mjs';
 
 const source = '/etc/apt/sources.list.d/google-chrome.list';
 const valid = '# Managed by system Chrome\ndeb [arch=amd64] https://dl.google.com/linux/chrome-stable/deb/ stable main\n';
@@ -102,3 +102,72 @@ test('Deb822 URI continuation remains constrained to exact Chrome origins', () =
   assert.equal(validateChromeDeb822Source(deb822.replace('URIs: https:', 'URIs:\n https:')), true);
   assert.throws(() => validateChromeDeb822Source(deb822.replace('Suites:', ' https://archive.ubuntu.com/ubuntu\nSuites:')), /UNEXPECTED_CONTENT/);
 });
+
+const mirrorsPath = '/etc/apt/apt-mirrors.txt';
+const officialMirrors = '# Runner mirrors\nhttp://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n';
+const httpsMirrors = '# Runner mirrors\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n';
+function mirrorFixture(options = {}) {
+  const writes = [];
+  const renames = [];
+  const fs = {
+    lstatSync(target) {
+      if (options.missing && target === mirrorsPath) throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+      return { isSymbolicLink: () => Boolean(options.link), isDirectory: () => !options.directoryFile,
+        isFile: () => !options.directoryFile, size: options.size || 144 };
+    },
+    realpathSync: target => options.redirect ? target + '-elsewhere' : target,
+    readFileSync: () => options.content ?? officialMirrors,
+    writeFileSync(target, content, settings) {
+      if (options.backup && target.endsWith('.playwright-original')) throw Object.assign(new Error('exists'), { code: 'EEXIST' });
+      if (options.pending && target.endsWith('.playwright-pending')) throw Object.assign(new Error('exists'), { code: 'EEXIST' });
+      writes.push([target, content, settings]);
+    },
+    renameSync: (...args) => renames.push(args)
+  };
+  return { fs, writes, renames };
+}
+
+test('runner Ubuntu mirror preparation removes only Azure and preserves HTTPS sources and comments', () => {
+  const f = mirrorFixture();
+  assert.deepEqual(prepareCiUbuntuMirrors(f.fs), { changed: true });
+  assert.deepEqual(f.writes, [
+    [mirrorsPath + '.playwright-original', officialMirrors, { flag: 'wx', mode: 0o644 }],
+    [mirrorsPath + '.playwright-pending', httpsMirrors, { flag: 'wx', mode: 0o644 }]
+  ]);
+  assert.deepEqual(f.renames, [[mirrorsPath + '.playwright-pending', mirrorsPath]]);
+  assert.equal(withoutAzureUbuntuMirror(officialMirrors.replaceAll('\n', '\r\n')), httpsMirrors.replaceAll('\n', '\r\n'));
+});
+
+test('already configured Ubuntu HTTPS mirrors are an idempotent no-op', () => {
+  const f = mirrorFixture({ content: httpsMirrors });
+  assert.deepEqual(prepareCiUbuntuMirrors(f.fs), { changed: false });
+  assert.deepEqual(f.writes, []);
+  assert.deepEqual(f.renames, []);
+});
+
+test('an existing pending mirror file cannot replace the active mirror list', () => {
+  const f = mirrorFixture({ pending: true });
+  assert.throws(() => prepareCiUbuntuMirrors(f.fs), { code: 'EEXIST' });
+  assert.equal(f.writes.length, 1);
+  assert.equal(f.writes[0][0], mirrorsPath + '.playwright-original');
+  assert.deepEqual(f.renames, []);
+});
+
+for (const content of ['', '# no mirrors\n', officialMirrors.replace('archive.ubuntu.com/ubuntu/\tpriority:2', 'archive.ubuntu.com.evil/ubuntu/\tpriority:2'),
+  officialMirrors + 'https://archive.ubuntu.com/ubuntu/\tpriority:4\n',
+  officialMirrors.replace('https://security.ubuntu.com/ubuntu/\tpriority:3\n', ''),
+  officialMirrors.replace('priority:2', 'trusted:yes'), officialMirrors + 'https://example.com/ubuntu/\tpriority:4\n']) {
+  test(`unexpected Ubuntu mirror content prevents all writes: ${content.slice(-45)}`, () => {
+    const f = mirrorFixture({ content });
+    assert.throws(() => prepareCiUbuntuMirrors(f.fs), /CI_UBUNTU_MIRRORS_/);
+    assert.deepEqual(f.writes, []);
+  });
+}
+
+for (const options of [{ link: true }, { redirect: true }, { directoryFile: true }, { size: 5000 }, { missing: true }, { backup: true }]) {
+  test(`unsafe or missing Ubuntu mirror file is preserved: ${JSON.stringify(options)}`, () => {
+    const f = mirrorFixture(options);
+    assert.throws(() => prepareCiUbuntuMirrors(f.fs));
+    assert.deepEqual(f.writes, []);
+  });
+}

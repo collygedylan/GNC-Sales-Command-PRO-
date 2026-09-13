@@ -1,13 +1,57 @@
 // CI runners already contain system Chrome. Playwright uses its own browsers,
 // so its Ubuntu dependency installation must not depend on Google's apt index.
 // Disable only the validated, dedicated source file; never weaken apt checks.
-import { lstatSync, readFileSync, readdirSync, realpathSync, renameSync } from 'node:fs';
+import { lstatSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const SOURCE_DIRECTORY = '/etc/apt/sources.list.d';
 const CHROME_URL = /^https?:\/\/dl\.google\.com\/linux\/chrome(?:-stable)?\/deb\/?$/;
 const CHROME_REFERENCE = /(?:^|\s)https?:\/\/dl\.google\.com\/linux\/chrome(?:-stable)?\/deb\/?(?=\s|$)/m;
+
+const UBUNTU_MIRRORS = '/etc/apt/apt-mirrors.txt';
+const AZURE_MIRROR = 'http://azure.archive.ubuntu.com/ubuntu/';
+const UBUNTU_ARCHIVES = ['https://archive.ubuntu.com/ubuntu/', 'https://security.ubuntu.com/ubuntu/'];
+
+// GitHub's runner mirror list prioritizes Azure even after a failed download.
+// Keep its existing official HTTPS fallbacks; do not alter sources or apt trust.
+// Shape: actions/runner-images/images/ubuntu/scripts/build/configure-apt-sources.sh.
+export function withoutAzureUbuntuMirror(content) {
+  const seen = new Set();
+  const lines = String(content).split('\n');
+  const retained = lines.filter(line => {
+    const active = line.trim();
+    if (!active || active.startsWith('#')) return true;
+    const match = /^(\S+)\s+priority:([1-9][0-9]*)$/.exec(active);
+    if (!match || ![AZURE_MIRROR, ...UBUNTU_ARCHIVES].includes(match[1]) || seen.has(match[1])) {
+      throw new Error('CI_UBUNTU_MIRRORS_UNEXPECTED_CONTENT');
+    }
+    seen.add(match[1]);
+    return match[1] !== AZURE_MIRROR;
+  });
+  if (!UBUNTU_ARCHIVES.every(uri => seen.has(uri))) throw new Error('CI_UBUNTU_MIRRORS_MISSING_ARCHIVE');
+  return retained.join('\n');
+}
+
+export function prepareCiUbuntuMirrors(fs = { lstatSync, readFileSync, realpathSync, writeFileSync, renameSync }) {
+  const directory = fs.lstatSync('/etc/apt');
+  if (directory.isSymbolicLink() || !directory.isDirectory() || fs.realpathSync('/etc/apt') !== '/etc/apt') {
+    throw new Error('CI_UBUNTU_MIRRORS_UNSAFE_DIRECTORY');
+  }
+  const stat = fs.lstatSync(UBUNTU_MIRRORS);
+  if (stat.isSymbolicLink() || !stat.isFile() || fs.realpathSync(UBUNTU_MIRRORS) !== UBUNTU_MIRRORS || stat.size > 4096) {
+    throw new Error('CI_UBUNTU_MIRRORS_UNSAFE_FILE');
+  }
+  const original = fs.readFileSync(UBUNTU_MIRRORS, 'utf8');
+  const updated = withoutAzureUbuntuMirror(original);
+  if (original === updated) return { changed: false };
+  // Exclusive backup creation prevents replacing any prior recovery copy.
+  fs.writeFileSync(UBUNTU_MIRRORS + '.playwright-original', original, { flag: 'wx', mode: 0o644 });
+  const pending = UBUNTU_MIRRORS + '.playwright-pending';
+  fs.writeFileSync(pending, updated, { flag: 'wx', mode: 0o644 });
+  fs.renameSync(pending, UBUNTU_MIRRORS);
+  return { changed: true };
+}
 
 export function validateChromeSource(content) {
   const active = String(content).split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith('#'));
@@ -76,4 +120,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   if (process.platform !== 'linux' || process.argv.length !== 2) throw new Error('CI_CHROME_SOURCE_LINUX_ONLY');
   const result = prepareCiPlaywrightApt();
   console.log(`Playwright CI apt preparation: ${result.disabled} dedicated Chrome source(s) disabled${result.files.length ? ': ' + result.files.join(', ') : ''}.`);
+  const mirrors = prepareCiUbuntuMirrors();
+  console.log(`Playwright CI Ubuntu mirrors: ${mirrors.changed ? 'removed the Azure entry; retained official HTTPS archives' : 'official HTTPS archives already configured'}.`);
 }
