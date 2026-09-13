@@ -87,6 +87,14 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
       if (reply.abort) return route.abort('connectionfailed');
       return fulfill(route, acknowledgment);
     }
+    if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
+      const body = request.postDataJSON() || {};
+      // Opening Queue > Location Moves performs this authenticated read. Keep
+      // every Location Work mutation blocked while allowing the navigation.
+      if (body.action === 'location_work' && body.operation === 'list' && body.status === 'all') {
+        return fulfill(route, { ok: true, data: [] });
+      }
+    }
     if (!['GET', 'HEAD'].includes(request.method())) {
       const safeReadOrTelemetry = ['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'];
       if (!safeReadOrTelemetry.includes(url.pathname)) {
@@ -199,6 +207,73 @@ test('canceling confirmation retains the row and makes no completion request', a
   await page.locator('#app-prompt-dialog').getByRole('button', { name: 'Keep Pending', exact: true }).tap();
   await expect(app.done()).toBeEnabled();
   expect(app.requests).toHaveLength(0);
+  app.assertClean();
+});
+
+test('Suspend filters stay in the view, preserve a restored choice across Queue tabs, and Clear Filters restores rows on phone', async ({ page, baseURL }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const app = await harness(page, baseURL!);
+  const shell = page.locator('#request-suspend-tag-filter-shell');
+  const category = (name: string) => page.locator(`#request-filter-toolbar [data-request-category="${name}"]`);
+  const controls = [
+    shell.locator('#request-suspend-tag-common-search'),
+    shell.locator('#request-suspend-tag-assigned-filter'),
+    shell.locator('#request-suspend-tag-contsize-filter'),
+    shell.locator('#request-suspend-tag-dock-filter'),
+  ];
+
+  await expect(shell).toBeVisible();
+  await expect(page.locator('#request-search-container')).toBeHidden();
+  await expect(page.locator('#request-filter-toolbar .workflow-control')).toHaveCount(0);
+  await expect(category('suspend-tag')).toContainText('2');
+  for (const control of controls) await expect(control).toBeInViewport();
+
+  // Dylan's old shared Queue filter is deliberately nonmatching. It remains
+  // available to Request/reps, but cannot narrow Suspend rows or its badge.
+  await page.evaluate(() => window.eval(`(() => {
+    requestDylanFilterMode = 'salesrep';
+    requestDylanFilterValue = '["not-a-suspend-fixture"]';
+    requestDylanLocationValue = '["NO.SUCH.LOCATION"]';
+    renderRequest();
+  })()`));
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card(fixtures[1])).toHaveCount(1);
+  await expect(category('suspend-tag')).toContainText('2');
+
+  // Simulate restoring a valid saved Suspend-only choice whose source rows no
+  // longer exist.  The actual capture/restore path must retain that selection.
+  await page.evaluate(() => window.eval(`(() => {
+    requestSuspendTagDockFilter = 'dock:99';
+    const saved = captureRequestViewState();
+    requestSuspendTagDockFilter = 'all';
+    restoreRequestViewState(saved);
+    renderRequest();
+  })()`));
+  await expect(shell.locator('#request-suspend-tag-dock-filter')).toHaveValue('dock:99');
+  await expect(page.locator('#request-suspend-tag-results')).toContainText('No suspend tag rows match these filters.');
+  await expect(category('suspend-tag')).toContainText('2');
+  await page.screenshot({ path: info.outputPath('suspend-empty-filter-phone.png'), fullPage: true });
+  const clear = shell.locator('#request-suspend-tag-clear-filters');
+  await expect(clear).toBeInViewport();
+
+  // Category navigation remains in the global header.  Suspend-only state
+  // neither changes Request/Moves nor disappears when returning to Suspend.
+  await category('pending').click();
+  await expect(category('pending')).toHaveAttribute('aria-pressed', 'true');
+  await expect(shell).toHaveCount(0);
+  await expect(page.locator('#request-content')).not.toContainText('No suspend tag rows match these filters.');
+  await category('moves').click();
+  await expect(category('moves')).toHaveAttribute('aria-pressed', 'true');
+  await expect(shell).toHaveCount(0);
+  await category('suspend-tag').click();
+  await expect(shell.locator('#request-suspend-tag-dock-filter')).toHaveValue('dock:99');
+  await expect(page.locator('#request-suspend-tag-results')).toContainText('No suspend tag rows match these filters.');
+
+  await clear.click();
+  await expect(shell.locator('#request-suspend-tag-dock-filter')).toHaveValue('all');
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card(fixtures[1])).toHaveCount(1);
+  await expect(page.locator('#request-suspend-tag-results')).not.toContainText('No suspend tag rows match these filters.');
   app.assertClean();
 });
 

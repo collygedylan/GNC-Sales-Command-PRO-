@@ -159,6 +159,12 @@ test('Suspend Tag filters compose in one pass and retain cached content during r
   assert.match(html, /request-suspend-tag-dock-filter/);
   assert.match(html, /request-suspend-tag-common-search/);
   assert.match(html, /request-suspend-tag-clear-filters/);
+  assert.match(html, /return `<div class="request-view-filters" role="group" aria-label="Suspend filters">/);
+  const suspendToolbar = html.slice(html.indexOf('function renderRequestCategoryToolbar'), html.indexOf('let requestDeliveryRecoveryOpen'));
+  assert.match(suspendToolbar, /toolbar\.innerHTML = `<div class="request-category-options"[\s\S]*\$\{categoryButtonsHtml\}/);
+  assert.doesNotMatch(suspendToolbar, /extraControlsHtml/);
+  assert.match(html, /function getRequestDylanViewerFilter\(\)[\s\S]*\['pending', 'reps'\]\.includes\(activeReqTab\)/);
+  assert.match(html, /counts\['suspend-tag'\] = getSuspendTagRequestItems\(baseItems\)\.length/);
   assert.match(html, /if \(item\.key === 'soc' && item\.mode === 'full'\) return getDatasetRenderRowCount\('soc'\) > 0/);
   assert.match(html, /const suspendRefreshToken = safeTab === 'suspend-tag' \? \+\+requestSuspendTagRefreshToken : 0/);
   assert.match(html, /suspendRefreshToken !== requestSuspendTagRefreshToken/);

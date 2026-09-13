@@ -68,7 +68,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = 'V2026.09.12.01';
+  const release = 'V2026.09.12.02';
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
   assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
@@ -359,14 +359,15 @@ test('light and dark modes provide theme-aware command, pill, chat, form, and na
   assert.match(css, /#bottom-nav[\s\S]*var\(--ops-chat-shadow\)/);
 });
 
-test('precision shell keeps one persistent module back control and promotes queue search into the header', () => {
+test('precision shell keeps one persistent module back control and keeps Suspend filters in the Queue view', () => {
   assert.match(css, /#global-header-search-row\.hidden[\s\S]*display: flex !important/);
   assert.match(css, /#global-header-inline-back\.hidden[\s\S]*display: inline-flex !important/);
   assert.match(css, /#view-wrapper \.back-btn[\s\S]*display: none !important/);
-  assert.match(html, /classList\.contains\('ops-precision-pilot'\) && activeReqTab === 'suspend-tag'/);
-  assert.match(html, /mode === 'suspend-tag' \? 'Search common name\.\.\.'/);
+  const requestHeaderSearch = html.slice(html.indexOf('function getRequestHeaderSearchMode'), html.indexOf('function syncRequestHeaderSearchChrome'));
+  assert.doesNotMatch(requestHeaderSearch, /suspend-tag/);
+  assert.match(html, /id="request-suspend-tag-filter-shell"/);
   assert.match(html, /const commonSearchHtml = `<label class="workflow-control"><span>Common Name<\/span>/);
-  assert.match(html, /renderRequestCategoryToolbar\(`\$\{commonSearchHtml\}\$\{assignedHtml\}\$\{contSizeHtml\}\$\{dockHtml\}/);
+  assert.match(html, /return `<div class="request-view-filters" role="group" aria-label="Suspend filters">/);
   assert.match(html, /currentView === 'po-management'[\s\S]*goBackPoManagementDrilldown\(\)/);
 });
 
