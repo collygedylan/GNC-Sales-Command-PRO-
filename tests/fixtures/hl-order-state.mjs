@@ -288,6 +288,28 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   const control = createHlOrderState(options), username = options.username || 'dylan_collyge', role = options.role || 'ADMIN';
   control.appAccessReads = 0; control.backgroundMasterReads = 0;
   control.runtimeRequests = 0; control.authTokenRequests = 0;
+  // Tests can arm this after bootstrap, then release precisely the master read
+  // whose asynchronous completion is under test.  Keeping the gate dormant by
+  // default avoids making initial login timing part of an HL assertion.
+  let holdNextBackgroundMasterRead = false;
+  let heldBackgroundMasterReadStarted = null;
+  let resolveHeldBackgroundMasterReadStarted = null;
+  let releaseHeldBackgroundMasterRead = null;
+  control.holdNextBackgroundMasterRead = () => {
+    if (holdNextBackgroundMasterRead || releaseHeldBackgroundMasterRead) throw new Error('HL_FIXTURE_MASTER_READ_ALREADY_HELD');
+    holdNextBackgroundMasterRead = true;
+    heldBackgroundMasterReadStarted = new Promise((resolve) => { resolveHeldBackgroundMasterReadStarted = resolve; });
+  };
+  control.waitForHeldBackgroundMasterRead = async () => {
+    if (!heldBackgroundMasterReadStarted) throw new Error('HL_FIXTURE_MASTER_READ_NOT_ARMED');
+    await heldBackgroundMasterReadStarted;
+  };
+  control.releaseHeldBackgroundMasterRead = () => {
+    if (!releaseHeldBackgroundMasterRead) throw new Error('HL_FIXTURE_MASTER_READ_NOT_HELD');
+    const release = releaseHeldBackgroundMasterRead;
+    releaseHeldBackgroundMasterRead = null;
+    release();
+  };
   if (options.seedOrder) {
     const first = control.state.actionable_rows[0];
     const command = (action, payload) => control.command({ p_command_id: uuid(++control.sequence), p_action: action, p_payload: payload, p_expected_revision: control.state.revision });
@@ -396,6 +418,11 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (url.searchParams.get('select') === 'filename,last_updated' && url.searchParams.get('last_updated') === 'not.is.null') return json(route, []);
       if (table === 'ph_master_inventory') {
         control.backgroundMasterReads++;
+        if (holdNextBackgroundMasterRead) {
+          holdNextBackgroundMasterRead = false;
+          resolveHeldBackgroundMasterReadStarted();
+          await new Promise((resolve) => { releaseHeldBackgroundMasterRead = resolve; });
+        }
         if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
       }
       const rows = table === 'ph_soc_master' ? control.rows : table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, url.search.slice(1)).rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];

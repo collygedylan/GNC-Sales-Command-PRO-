@@ -124,6 +124,39 @@ test('HL verified Drive cards use normal details and global Back restores the ed
   assertIsolated(fixture);
 });
 
+test('a held verified master refresh adds HL Drive cards without replacing a focused Needed edit', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await openHl(page);
+  // Arm after login so the controlled response is the availability refresh
+  // requested by this detail, rather than a bootstrap inventory read.
+  await fixture.waitForRevisionIdle();
+  fixture.datasetRevision++;
+  fixture.holdNextBackgroundMasterRead();
+  await page.evaluate(() => window.eval('clearHlOrderInventorySnapshot()'));
+  await openDetails(page);
+  await fixture.waitForHeldBackgroundMasterRead();
+
+  const detail = page.locator('#hl-order-detail');
+  const quantity = detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]');
+  await quantity.fill('7');
+  // A renderer replacement cannot retain an arbitrary runtime attribute, so
+  // this proves the live field remains attached while its Drive region updates.
+  await quantity.evaluate((input) => input.setAttribute('data-hl-preserved-edit', 'yes'));
+  fixture.releaseHeldBackgroundMasterRead();
+
+  const driveCard = detail.locator('[data-hl-drive-location="C.12.001"] .app-drive-compact-card');
+  await expect(driveCard).toBeVisible();
+  await expect(quantity).toHaveValue('7');
+  await expect(quantity).toHaveAttribute('data-hl-preserved-edit', 'yes');
+  await navigateHl(page, driveCard);
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await backHl(page);
+  await expect(detail).toBeVisible();
+  await expect(detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]')).toHaveValue('7');
+  expect(fixture.commands).toHaveLength(0);
+  assertIsolated(fixture);
+});
+
 test('HL Drive detail return preserves tracking inputs but keeps their original revision conflict check', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true });
   await openHl(page);
