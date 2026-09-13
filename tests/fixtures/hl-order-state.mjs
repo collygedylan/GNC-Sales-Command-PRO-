@@ -295,6 +295,16 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   let heldBackgroundMasterReadStarted = null;
   let resolveHeldBackgroundMasterReadStarted = null;
   let releaseHeldBackgroundMasterRead = null;
+  let holdNextRestockStateRead = false;
+  let heldRestockStateReadStarted = null;
+  let resolveHeldRestockStateReadStarted = null;
+  let releaseHeldRestockStateRead = null;
+  let metadataGateReleased = !options.holdInitialMetadataRead;
+  let heldMetadataReadStarted = null;
+  let resolveHeldMetadataReadStarted = null;
+  let releaseHeldMetadataReads = null;
+  if (!metadataGateReleased) heldMetadataReadStarted = new Promise((resolve) => { resolveHeldMetadataReadStarted = resolve; });
+  const metadataGate = metadataGateReleased ? Promise.resolve() : new Promise((resolve) => { releaseHeldMetadataReads = resolve; });
   control.holdNextBackgroundMasterRead = () => {
     if (holdNextBackgroundMasterRead || releaseHeldBackgroundMasterRead) throw new Error('HL_FIXTURE_MASTER_READ_ALREADY_HELD');
     holdNextBackgroundMasterRead = true;
@@ -309,6 +319,31 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     const release = releaseHeldBackgroundMasterRead;
     releaseHeldBackgroundMasterRead = null;
     release();
+  };
+  control.holdNextRestockStateRead = () => {
+    if (holdNextRestockStateRead || releaseHeldRestockStateRead) throw new Error('HL_FIXTURE_RESTOCK_READ_ALREADY_HELD');
+    holdNextRestockStateRead = true;
+    heldRestockStateReadStarted = new Promise((resolve) => { resolveHeldRestockStateReadStarted = resolve; });
+  };
+  control.waitForHeldRestockStateRead = async () => {
+    if (!heldRestockStateReadStarted) throw new Error('HL_FIXTURE_RESTOCK_READ_NOT_ARMED');
+    await heldRestockStateReadStarted;
+  };
+  control.releaseHeldRestockStateRead = () => {
+    if (!releaseHeldRestockStateRead) throw new Error('HL_FIXTURE_RESTOCK_READ_NOT_HELD');
+    const release = releaseHeldRestockStateRead;
+    releaseHeldRestockStateRead = null;
+    release();
+  };
+  control.waitForHeldInitialMetadataRead = async () => {
+    if (metadataGateReleased || !heldMetadataReadStarted) throw new Error('HL_FIXTURE_METADATA_READ_NOT_HELD');
+    await heldMetadataReadStarted;
+  };
+  control.releaseInitialMetadataRead = () => {
+    if (metadataGateReleased || !releaseHeldMetadataReads) throw new Error('HL_FIXTURE_METADATA_READ_NOT_HELD');
+    metadataGateReleased = true;
+    releaseHeldMetadataReads();
+    releaseHeldMetadataReads = null;
   };
   if (options.seedOrder) {
     const first = control.state.actionable_rows[0];
@@ -389,7 +424,15 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (op === 'hl_order_state' || op === 'hl_order_command' || op === 'hl_order_restock_state') {
         if (username !== 'dylan_collyge') return json(route, { message: 'HL_ORDER_FORBIDDEN' }, 403);
         if (op === 'hl_order_state') return json(route, control.snapshot());
-        if (op === 'hl_order_restock_state') { control.restockReads++; return json(route, control.restockSnapshot()); }
+        if (op === 'hl_order_restock_state') {
+          control.restockReads++;
+          if (holdNextRestockStateRead) {
+            holdNextRestockStateRead = false;
+            resolveHeldRestockStateReadStarted();
+            await new Promise((resolve) => { releaseHeldRestockStateRead = resolve; });
+          }
+          return json(route, control.restockSnapshot());
+        }
         try {
           const result = control.command(body);
           if (body.p_action === 'submit' && control.loseSubmitResponse) return route.abort('connectionreset');
@@ -397,6 +440,17 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         } catch (error) { return json(route, { code: 'P0001', message: error.message }, error.status || 400); }
       }
       if (op === 'get_my_dataset_revisions_v1') {
+        // An initial permission proof can be concurrent with several startup
+        // and navigation reads. Keep each one behind this same gate so the
+        // test models one real metadata arrival rather than a mutable client
+        // scope or a race between synthetic responses.
+        if (!metadataGateReleased) {
+          if (resolveHeldMetadataReadStarted) {
+            resolveHeldMetadataReadStarted();
+            resolveHeldMetadataReadStarted = null;
+          }
+          await metadataGate;
+        }
         if (Number(options.metadataDelayMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.metadataDelayMs)));
         return json(route, { contractVersion: 1, permissionVersion: 'hl-policy-1', sources: (body.p_dataset_keys || []).map((key) => ({ key, revision: String(control.datasetRevision), state: 'ready' })) });
       }

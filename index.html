@@ -88199,20 +88199,36 @@ function toggleDriveQuickRequestItem(domId) {
             if (!canUseHlOrder() || navigator.onLine === false) return null;
             if (hlRestockStatePending) return hlRestockStatePending;
             if (!force && hlRestockState && Date.now() - hlRestockLoadedAt < 15000) return hlRestockState;
-            const owner = captureHlOrderOwnership();
+            const initialPermission = productionLiveSyncReadPermissionVersion;
+            const authEpoch = productionLiveSyncReadAuthEpoch;
+            const profileId = nativeAuthProfile?.id;
+            const username = currentUser;
             const pending = (async () => {
-                try {
-                    const result = await supabaseRpc('hl_order_restock_state', {});
-                    if (!isHlOrderOwnershipCurrent(owner)) return null;
-                    const state = result?.state || result;
-                    if (!state || !Number.isFinite(Number(state.revision)) || !Array.isArray(state.items) || !Object.prototype.hasOwnProperty.call(state, 'inventory_snapshot')) throw new Error('Restocking is not available yet. Refresh and try again.');
-                    hlRestockState = state;
-                    hlRestockStateError = '';
-                    hlRestockLoadedAt = Date.now();
-                    return state;
-                } catch (error) {
-                    if (isHlOrderOwnershipCurrent(owner)) hlRestockStateError = getHlOrderErrorMessage(error);
-                    return null;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    const owner = captureHlOrderOwnership();
+                    try {
+                        const result = await supabaseRpc('hl_order_restock_state', {});
+                        if (!isHlOrderOwnershipCurrent(owner)) {
+                            // First login metadata can arrive during this read.
+                            // Discard it, then request fresh data once under the
+                            // established scope; never retry across sessions.
+                            if (attempt === 0 && !initialPermission && productionLiveSyncReadPermissionVersion
+                                && authEpoch === productionLiveSyncReadAuthEpoch && profileId === nativeAuthProfile?.id
+                                && username === currentUser && canUseHlOrder() && !document.hidden && navigator.onLine !== false
+                                && getCurrentVisibleViewId() === 'hl-order' && hlOrderTab === 'restocking'
+                                && hlRestockStatePending === pending) continue;
+                            return null;
+                        }
+                        const state = result?.state || result;
+                        if (!state || !Number.isFinite(Number(state.revision)) || !Array.isArray(state.items) || !Object.prototype.hasOwnProperty.call(state, 'inventory_snapshot')) throw new Error('Restocking is not available yet. Refresh and try again.');
+                        hlRestockState = state;
+                        hlRestockStateError = '';
+                        hlRestockLoadedAt = Date.now();
+                        return state;
+                    } catch (error) {
+                        if (isHlOrderOwnershipCurrent(owner)) hlRestockStateError = getHlOrderErrorMessage(error);
+                        return null;
+                    }
                 }
             })();
             hlRestockStatePending = pending;

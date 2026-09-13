@@ -8,20 +8,37 @@ const start = html.indexOf('        // HL selections mirror');
 const end = html.indexOf('\n\n        function getCartSelectedItems()', start);
 assert.ok(start >= 0 && end > start, 'HL implementation block must be present');
 
-function runtime() {
+function runtime(overrides = {}) {
   const ctx = vm.createContext({
     Map, Set, Object, JSON, String, Number, Date, Intl, Promise, Array, Math, console,
+    setTimeout, clearTimeout, queueMicrotask,
     navigator: { onLine: true },
     document: { hidden: false, getElementById: () => null, querySelectorAll: () => [] },
     currentUser: 'dylan_collyge', nativeAuthSessionActive: true,
-    nativeAuthProfile: { username: 'dylan_collyge' },
+    nativeAuthProfile: { id: 'restock-profile', username: 'dylan_collyge' },
+    productionLiveSyncReadAuthEpoch: 1, productionLiveSyncReadPermissionVersion: '',
     getSupabaseReadIdentityScope: () => 'restock-test',
     escapeHtml: value => String(value ?? ''), buildFastInvokeAttrs: () => '',
     selectedItems: new Set(), selectedItemSources: new Map(),
-    getCurrentVisibleViewId: () => 'hl-order', renderHlOrder: () => {}, showToast: () => {}
+    getCurrentVisibleViewId: () => 'hl-order', renderHlOrder: () => {}, showToast: () => {},
+    ...overrides
   });
   vm.runInContext(html.slice(start, end), ctx);
   return ctx;
+}
+
+const deferred = () => {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+};
+
+async function waitFor(check, message = 'condition did not settle') {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    if (check()) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.fail(message);
 }
 
 test('restock quantities retain a true zero and block unknown or negative inventory confirmation', () => {
@@ -87,4 +104,89 @@ test('inventory confirmation submits the exact receipt snapshot that the dialog 
   assert.equal(commands[0][1].inventory_snapshot, shownSnapshot);
   assert.equal(commands[0][1].receipt_watermark, 'receipt-1');
   assert.equal(commands[0][3], 3);
+});
+
+test('initial permission metadata retries a discarded restock response once under the current scope', async () => {
+  let scope = 'restock-scope:permission-pending';
+  const ctx = runtime({ getSupabaseReadIdentityScope: () => scope });
+  vm.runInContext("hlOrderTab = 'restocking';", ctx);
+  const first = deferred();
+  let reads = 0;
+  ctx.supabaseRpc = async () => {
+    reads++;
+    if (reads === 1) {
+      await first.promise;
+      return { revision: 1, inventory_snapshot: { version: 'discarded' }, items: [{ itemcode: 'OLD' }] };
+    }
+    return { revision: 2, inventory_snapshot: { version: 'current' }, items: [{ itemcode: 'CURRENT' }] };
+  };
+
+  const pending = ctx.loadHlRestockState(true);
+  await waitFor(() => reads === 1, 'first protected restock read should begin');
+  scope = 'restock-scope:permission-ready';
+  ctx.productionLiveSyncReadPermissionVersion = 'hl-policy-1';
+  first.resolve();
+
+  const state = await pending;
+  assert.equal(reads, 2, 'only the initial permission transition retries');
+  assert.equal(state.revision, 2);
+  assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(hlRestockState)', ctx)), {
+    revision: 2, inventory_snapshot: { version: 'current' }, items: [{ itemcode: 'CURRENT' }]
+  }, 'the discarded response never commits');
+});
+
+test('a discarded restock response never retries after account, auth epoch, or HL navigation changes', async (t) => {
+  const cases = [
+    ['account', (ctx, changeScope) => { ctx.currentUser = 'another-user'; changeScope(); }],
+    ['auth epoch', (ctx, changeScope) => { ctx.productionLiveSyncReadAuthEpoch = 2; changeScope(); }],
+    ['navigation', (ctx, changeScope) => { ctx.getCurrentVisibleViewId = () => 'home'; changeScope(); }]
+  ];
+  for (const [name, invalidate] of cases) await t.test(name, async () => {
+    let scope = 'restock-scope:permission-pending';
+    const ctx = runtime({ getSupabaseReadIdentityScope: () => scope });
+    vm.runInContext("hlOrderTab = 'restocking';", ctx);
+    const first = deferred();
+    let reads = 0;
+    ctx.supabaseRpc = async () => {
+      reads++;
+      await first.promise;
+      return { revision: 1, inventory_snapshot: { version: 'discarded' }, items: [] };
+    };
+    const pending = ctx.loadHlRestockState(true);
+    await waitFor(() => reads === 1, `${name} case should begin one read`);
+    invalidate(ctx, () => { scope = 'restock-scope:permission-ready'; ctx.productionLiveSyncReadPermissionVersion = 'hl-policy-1'; });
+    first.resolve();
+    assert.equal(await pending, null);
+    assert.equal(reads, 1, `${name} change must not retry with a different owner`);
+    assert.equal(vm.runInContext('hlRestockState', ctx), null);
+  });
+});
+
+test('the initial-permission retry cannot chain into a third read after another ownership change', async () => {
+  let scope = 'restock-scope:permission-pending';
+  const ctx = runtime({ getSupabaseReadIdentityScope: () => scope });
+  vm.runInContext("hlOrderTab = 'restocking';", ctx);
+  const first = deferred();
+  const second = deferred();
+  let reads = 0;
+  ctx.supabaseRpc = async () => {
+    reads++;
+    if (reads === 1) await first.promise;
+    else await second.promise;
+    return { revision: reads, inventory_snapshot: { version: reads }, items: [] };
+  };
+
+  const pending = ctx.loadHlRestockState(true);
+  await waitFor(() => reads === 1);
+  scope = 'restock-scope:permission-ready';
+  ctx.productionLiveSyncReadPermissionVersion = 'hl-policy-1';
+  first.resolve();
+  await waitFor(() => reads === 2, 'the initial transition should permit one fresh read');
+  scope = 'restock-scope:permission-changed-again';
+  ctx.productionLiveSyncReadPermissionVersion = 'hl-policy-2';
+  second.resolve();
+
+  assert.equal(await pending, null);
+  assert.equal(reads, 2, 'a changed retry owner must not schedule a third read');
+  assert.equal(vm.runInContext('hlRestockState', ctx), null);
 });

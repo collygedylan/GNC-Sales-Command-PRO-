@@ -36,6 +36,25 @@ test('Restocking loads on demand without SOC demand and shows verified server qu
   isolated(fixture);
 });
 
+test('Restocking retries once when initial permission metadata arrives during its protected read', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, setup({ holdInitialMetadataRead: true }));
+  await fixture.waitForHeldInitialMetadataRead();
+  await expect(page.locator('#view-login')).toBeHidden();
+  await page.locator('#home-tile-hl-order').click();
+  fixture.holdNextRestockStateRead();
+  await page.locator('[data-hl-tab="restocking"]').click();
+  await fixture.waitForHeldRestockStateRead();
+  // Release the actual initial metadata response only after the protected
+  // Restock read has captured its permission-empty ownership scope.
+  fixture.releaseInitialMetadataRead();
+  await page.waitForFunction(() => window.eval('productionLiveSyncReadPermissionVersion === "hl-policy-1"'));
+  fixture.releaseHeldRestockStateRead();
+  await expect(page.locator('#hl-restock-ship-date')).toBeVisible();
+  await expect(item(page)).toContainText('Synthetic HL Holly');
+  await expect.poll(() => fixture.restockReads).toBe(2);
+  isolated(fixture);
+});
+
 test('a partial restocking draft persists after reload and sends the selected snapshot and ship date', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ metadataDelayMs: 150 }));
   await openRestock(page); await saveRestock(page);
