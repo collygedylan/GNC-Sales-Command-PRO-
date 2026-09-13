@@ -67,6 +67,17 @@ export function createHlOrderState(options = {}) {
     commands: [], pdfRequests: [], blockedMutations: [], errors: [], runtime: 0, datasetRevision: 1,
     failAction: null, failPreview: false, loseSubmitResponse: false, replay: new Map(), previews: new Map(), sequence: 0,
     poBalances, receiptAdjustments: [], importPreviews: new Map(), activeCutoff: options.poCutoff || null };
+  // These rows are intentionally separate from the HL state source rows. Drive
+  // demand details read the imported source tables on demand, while HL state is
+  // supplied by its protected RPC contract.
+  control.reserveRows = clone(options.reserveRows || []);
+  control.demandSocRows = options.demandSocRows === undefined ? null : clone(options.demandSocRows);
+  control.demandReads = { reserves: 0, openOrders: 0 };
+  control.datasetSourceStates = new Map(Object.entries(options.datasetSourceStates || {}));
+  control.setDatasetSourceState = (source, state) => {
+    control.datasetSourceStates.set(String(source || ''), String(state || 'ready'));
+    control.datasetRevision++;
+  };
   const sourceMap = new Map(sourceRows.map((row) => [row.source_id, clone(row)]));
   const source = (id) => sourceMap.get(id);
   const disposition = (id) => state.dispositions.find((entry) => entry.source_id === id);
@@ -299,6 +310,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   let heldRestockStateReadStarted = null;
   let resolveHeldRestockStateReadStarted = null;
   let releaseHeldRestockStateRead = null;
+  let holdNextDemandFinalPage = false;
+  let heldDemandFinalPageStarted = null;
+  let resolveHeldDemandFinalPageStarted = null;
+  let releaseHeldDemandFinalPage = null;
   let metadataGateReleased = !options.holdInitialMetadataRead;
   let heldMetadataReadStarted = null;
   let resolveHeldMetadataReadStarted = null;
@@ -333,6 +348,21 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     if (!releaseHeldRestockStateRead) throw new Error('HL_FIXTURE_RESTOCK_READ_NOT_HELD');
     const release = releaseHeldRestockStateRead;
     releaseHeldRestockStateRead = null;
+    release();
+  };
+  control.holdNextDemandFinalPage = () => {
+    if (holdNextDemandFinalPage || releaseHeldDemandFinalPage) throw new Error('HL_FIXTURE_DEMAND_PAGE_ALREADY_HELD');
+    holdNextDemandFinalPage = true;
+    heldDemandFinalPageStarted = new Promise((resolve) => { resolveHeldDemandFinalPageStarted = resolve; });
+  };
+  control.waitForHeldDemandFinalPage = async () => {
+    if (!heldDemandFinalPageStarted) throw new Error('HL_FIXTURE_DEMAND_PAGE_NOT_ARMED');
+    await heldDemandFinalPageStarted;
+  };
+  control.releaseHeldDemandFinalPage = () => {
+    if (!releaseHeldDemandFinalPage) throw new Error('HL_FIXTURE_DEMAND_PAGE_NOT_HELD');
+    const release = releaseHeldDemandFinalPage;
+    releaseHeldDemandFinalPage = null;
     release();
   };
   control.waitForHeldInitialMetadataRead = async () => {
@@ -452,7 +482,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           await metadataGate;
         }
         if (Number(options.metadataDelayMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.metadataDelayMs)));
-        return json(route, { contractVersion: 1, permissionVersion: 'hl-policy-1', sources: (body.p_dataset_keys || []).map((key) => ({ key, revision: String(control.datasetRevision), state: 'ready' })) });
+        return json(route, { contractVersion: 1, permissionVersion: 'hl-policy-1', sources: (body.p_dataset_keys || []).map((key) => ({ key, revision: String(control.datasetRevision), state: control.datasetSourceStates.get(String(key)) || 'ready' })) });
       }
       if (op === 'get_my_app_permissions_v1') {
         control.appAccessReads++;
@@ -479,13 +509,30 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         }
         if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
       }
-      const rows = table === 'ph_soc_master' ? control.rows : table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, url.search.slice(1)).rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];
-      return json(route, rows, 200, { 'content-range': rows.length ? `0-${rows.length - 1}/${rows.length}` : '*/0' });
+      const isDemandTable = table === 'ph_reserves' || table === 'ph_soc_master';
+      if (table === 'ph_reserves') control.demandReads.reserves++;
+      if (table === 'ph_soc_master') control.demandReads.openOrders++;
+      const allRows = table === 'ph_soc_master' ? (control.demandSocRows ?? control.rows) : table === 'ph_reserves' ? control.reserveRows : table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, url.search.slice(1)).rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];
+      const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
+      const demandPageSize = isDemandTable ? Math.max(0, Number(options.demandPageSize) || 0) : 0;
+      const rows = demandPageSize ? allRows.slice(offset, offset + demandPageSize) : allRows;
+      if (isDemandTable && holdNextDemandFinalPage && offset > 0 && rows.length && offset + rows.length >= allRows.length) {
+        holdNextDemandFinalPage = false;
+        resolveHeldDemandFinalPageStarted();
+        await new Promise((resolve) => { releaseHeldDemandFinalPage = resolve; });
+      }
+      const start = rows.length ? (demandPageSize ? offset : 0) : 0;
+      const total = allRows.length;
+      return json(route, rows, 200, { 'content-range': rows.length ? `${start}-${start + rows.length - 1}/${total}` : `*/${total}` });
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};
       if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role } });
-      if (body.action === 'db' && String(body.method).toUpperCase() === 'GET') return json(route, { ok: true, data: body.table === 'ph_soc_master' ? control.rows : body.table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, body.query || '').rows : body.table === 'ph_app_settings' ? seasonSettings : [] });
+      if (body.action === 'db' && String(body.method).toUpperCase() === 'GET') {
+        if (body.table === 'ph_reserves') control.demandReads.reserves++;
+        if (body.table === 'ph_soc_master') control.demandReads.openOrders++;
+        return json(route, { ok: true, data: body.table === 'ph_soc_master' ? (control.demandSocRows ?? control.rows) : body.table === 'ph_reserves' ? control.reserveRows : body.table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, body.query || '').rows : body.table === 'ph_app_settings' ? seasonSettings : [] });
+      }
       if (body.action === 'season_sales_office' && body.operation === 'access') return json(route, { ok: true, allowed: false, canManage: false, users: [] });
       if (['list', 'get', 'state'].includes(body.operation) || /get|load|status|preferences|capabilit|health|telemetry|event/.test(body.action || '')) return json(route, { ok: true, data: [], preferences: {}, eligible: false });
       control.blockedMutations.push(`API ${body.action}:${body.operation || ''}`); return json(route, { ok: false, error: 'Blocked' }, 403);

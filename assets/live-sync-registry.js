@@ -19,6 +19,8 @@
     };
     const side = {
         settings: ['ph_app_settings'],
+        driveReserves: ['ph_reserves', 'ph_master_inventory'],
+        driveOpenOrders: ['ph_soc_master', 'ph_master_inventory'],
         coverage: ['ph_item_inquiry_coverage'],
         dockWorkflow: ['ph_dock_trip_status', 'ph_dock_item_status', 'ph_dock_issue_status', 'ph_dock_issue_allocations'],
         users: ['profiles'],
@@ -83,6 +85,8 @@
     };
     // A surface is a data-bearing subview, badge or dialog. These are not separate routes.
     const surfaces = {
+        'detail:reserves': data([], ['driveReserves']),
+        'detail:open-orders': data([], ['driveOpenOrders']),
         'request:pending': data(['requests', 'requestHistory', 'salesCredits', 'inventoryEditRequests']),
         'request:reps': data(['requests', 'requestHistory', 'salesCredits']),
         'request:suspend-tag': data(['soc', 'master']),

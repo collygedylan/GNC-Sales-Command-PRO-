@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const registryCode = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
+const demandDetailCode = readFileSync(new URL('../assets/drive-demand-detail.js', import.meta.url), 'utf8');
 // Extract real top-level functions without copying implementation into the test.
 function functionSource(name) {
   const start = html.indexOf(`        function ${name}(`);
@@ -28,7 +29,7 @@ function harness() {
     activeMovesTab: 'office', activeInventoryOfficeApprovalType: 'crop-roll', activeAVTab: 'open',
     activeTaskView: 'flyer', cropRollDriveSchemaReady: true, productionInventoryTab: 'counting',
     productionWorkflowActive: 'spacing', selectedProductivityUser: '', requestDeliveryRecoveryOpen: false,
-    activeDetailTab: '', activeLocationWorkJobId: '', managersSearchTerm: '', evalRole: false,
+    activeDetailTab: '', activeDetailSourceView: '', activeItem: null, activeLocationWorkJobId: '', managersSearchTerm: '', evalRole: false,
     managerOrdersState: { rows: [], batches: [], selectedAssigneeKeys: new Set() },
     bloomscapesPendingState: { orders: [] }, inventoryTransactionHistoryState: {},
     managerTransactionsKeyedState: { allDates: [], files: [] },
@@ -45,14 +46,17 @@ function harness() {
     isInventoryOfficeBlankShellTab: () => false, isCropRollManagerReviewActive: () => false,
     shouldUseRepAvOpenDataset: () => true, shouldPrepareAvRepCustomerFilterData: () => true,
     canAccessView: () => false, canManageRequestDeliveryRecovery: () => false,
-    canUseWeatherHoldRiskTools: () => false, canViewBloomscapesPendingOrders: () => false
+    canUseWeatherHoldRiskTools: () => false, canViewBloomscapesPendingOrders: () => false,
+    canViewDriveCustomerConsigneeRows: () => true
   };
   for (const match of html.matchAll(/const (MANAGER_[A-Z0-9_]+_VIEW) = '([^']+)';/g)) context[match[1]] = match[2];
   vm.createContext(context);
   vm.runInContext(registryCode, context);
+  vm.runInContext(demandDetailCode, context);
   context.window.AgMetricLiveSyncRegistry = context.AgMetricLiveSyncRegistry;
+  context.window.AgMetricDriveDemandDetail = context.AgMetricDriveDemandDetail;
   for (const name of ['shouldLoadInventoryEditRequestsForEvalRows', 'withEvalInventoryEditRequestsForRowView',
-    'getRequestViewLoadingConfig', 'getViewLoadingConfig', 'getProductionLiveSyncSideContext']) {
+    'getRequestViewLoadingConfig', 'getViewLoadingConfig', 'getDriveDemandContext', 'getProductionLiveSyncSideContext']) {
     vm.runInContext(functionSource(name), context);
   }
   return context;
@@ -104,6 +108,18 @@ test('every implemented request subview has an explicit surface instead of silen
   const tabs = [...new Set([...functionSource('renderRequest').matchAll(/activeReqTab === '([^']+)'/g)].map(match => match[1]))];
   assert.ok(tabs.includes('reps') && tabs.includes('suspend-tag'));
   for (const tab of tabs) assert.ok(registry.surfaces[`request:${tab}`], `Unclassified Que surface request:${tab}`);
+});
+
+test('demand revision surfaces are Drive-detail-only and do not alter AV detail loading', () => {
+  const context = harness();
+  Object.assign(context, {
+    view: 'detail', activeDetailTab: 'customer', activeItem: { itemcode: 'SYNTH.003', season: 'F1', saleyear: '27' }
+  });
+  context.activeDetailSourceView = 'drive';
+  assert.ok(context.getProductionLiveSyncSideContext().surfaces.includes('detail:reserves'));
+  context.activeDetailSourceView = 'av';
+  assert.ok(!context.getProductionLiveSyncSideContext().surfaces.some((surface) => surface.startsWith('detail:')),
+    'AV keeps its existing detail path and never starts a Drive demand read');
 });
 
 test('NCR completion indexes used to remove completed rows participate in review freshness', () => {

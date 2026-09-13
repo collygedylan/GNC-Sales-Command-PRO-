@@ -6,10 +6,15 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const registrySource = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
 const adapterSource = readFileSync(new URL('../assets/live-sync-adapters.js', import.meta.url), 'utf8');
+const demandDetailSource = readFileSync(new URL('../assets/drive-demand-detail.js', import.meta.url), 'utf8');
 const start = html.indexOf('function createProductionLiveSyncSideAdapters()');
 const end = html.indexOf('async function loadAvOptionEvalRequests(', start);
 assert.ok(start > 0 && end > start);
 const factorySource = html.slice(start, end);
+const demandStart = html.indexOf('function getDriveDemandContext(');
+const demandEnd = html.indexOf('function refreshDriveDemandDetail(', demandStart);
+assert.ok(demandStart > 0 && demandEnd > demandStart);
+const demandBindingSource = html.slice(demandStart, demandEnd);
 function harness() {
     const calls = [];
     const rows = [{ unique_id: 'new', source_unique_id: 'new', id: 'new', tripnumber: 'T1', issueSourceUniqueId: 'new', allocationUniqueId: 'new', UNIQUE_ID: 'new', conversationId: 'new' }];
@@ -62,7 +67,11 @@ function harness() {
         departmentCalendarState: {}, weatherHoldState: {}, poManagementState: {}, managerOrdersState: { draft: 'preserve' },
         managerEvalReportSettingsState: {}, productivityState: {}, productivityHistoryByUser: new Map(),
         inventoryTransactionHistoryState: {}, bloomscapesPendingState: {}, managerTransactionsKeyedState: {}, managerHistoricalReportState: {},
-        accessControlAdminState: { editor: { draft: 'keep' } }, codexOpsState: { draft: 'keep' }, activeChatConversationId: 'new'
+        accessControlAdminState: { editor: { draft: 'keep' } }, codexOpsState: { draft: 'keep' }, activeChatConversationId: 'new',
+        activeDetailTab: '', activeDetailSourceView: '', activeItem: null, driveDemandSnapshots: new Map(),
+        getCurrentVisibleViewId: () => 'home', getSupabaseReadIdentityScope: () => 'native:dylan',
+        getRoleAccessState: () => ({ isRep: false, isAdmin: true }), isMyRep: () => true,
+        canViewDriveCustomerConsigneeRows: () => true
     };
     const constantNames = [...factorySource.matchAll(/\b[A-Z][A-Z0-9_]{3,}\b/g)].map((entry) => entry[0]);
     for (const name of constantNames) if (!(name in ctx)) ctx[name] = name.toLowerCase();
@@ -72,10 +81,13 @@ function harness() {
     vm.runInContext(`${registrySource}\n${adapterSource}`, ctx);
     ctx.window.AgMetricLiveSyncRegistry = ctx.AgMetricLiveSyncRegistry;
     ctx.window.AgMetricLiveSyncAdapters = ctx.AgMetricLiveSyncAdapters;
-    vm.runInContext(factorySource, ctx);
+    vm.runInContext(demandDetailSource, ctx);
+    ctx.window.AgMetricDriveDemandDetail = ctx.AgMetricDriveDemandDetail;
+    vm.runInContext(`${demandBindingSource}\n${factorySource}`, ctx);
     return { ctx, calls, rows, api: ctx.createProductionLiveSyncSideAdapters() };
 }
 const context = { scope: 'user:division', username: 'dylan_collyge', productionType: 'spacing', countType: 'spread', productivityUser: 'dylan_collyge', managerOrders: { level: 'sources', sourceKey: '', assignees: [], rowCount: 0, batchCount: 0 }, pendingOrderCount: 0, transactions: {}, transactionsKeyed: { dateCount: 0, fileCount: 0 }, historical: { level: 'names', columns: [], search: '', rowCount: 0 }, accessQuery: {}, codexTaskId: '' };
+const driveDemandContext = (kind = 'reserves') => ({ kind, key: { itemcode: 'SYNTH.003', season: 'F1', salesyear: 2027 }, query: 'select=*&itemcode=ilike.*SYNTH.003*', cacheKey: JSON.stringify([kind, 'SYNTH.003']) });
 
 for (const id of ['side:shear', 'side:evalWork', 'side:chat', 'side:calendar']) {
     test(`${id} background network reads receive cohort cancellation`, async () => {
@@ -117,9 +129,10 @@ test('all root production views are classified and every declared adapter has ph
 });
 
 test('every side adapter executes a read-only stage and a synchronous commit', async () => {
-    const h = harness();
-    for (const id of Object.keys(h.ctx.AgMetricLiveSyncRegistry.side)) {
-        const item = descriptor(h, `side:${id}`, { countType: id === 'bunchCounts' ? 'bunch' : 'spread' });
+  const h = harness();
+  for (const id of Object.keys(h.ctx.AgMetricLiveSyncRegistry.side)) {
+        const driveDemand = id === 'driveReserves' ? driveDemandContext('reserves') : id === 'driveOpenOrders' ? driveDemandContext('open-orders') : undefined;
+        const item = descriptor(h, `side:${id}`, { countType: id === 'bunchCounts' ? 'bunch' : 'spread', driveDemand });
         assert.ok(item, id);
         const staged = await item.stage();
         assert.notEqual(staged, undefined, id);
@@ -154,6 +167,50 @@ test('side load failures and malformed payloads do not become empty successful s
     assert.equal(h.ctx.dockIssueStatusByUid.has('old'), true);
     h.ctx.evalWorkApi = async () => ({ ok: true });
     await assert.rejects(descriptor(h, 'side:evalWork').stage(), /invalid response/);
+});
+
+test('Drive demand adapters use the matching source, preserve identity scope, enforce REP visibility, and forward cancellation', async () => {
+    const h = harness(), controller = new AbortController();
+    const seen = [];
+    h.ctx.getRoleAccessState = () => ({ isRep: true, isAdmin: false });
+    h.ctx.isMyRep = (name) => name === 'My Rep';
+    h.ctx.fetchAllSupabaseRows = async (table, query, options) => {
+        seen.push({ table, query, signal: options?.signal });
+        return [
+            { unique_id: 'exact', itemcode: ' SYNTH.003 ', lotcode: '27.F1', salesrepname: 'My Rep', invoicedate: null, quantityordered: 0 },
+            { unique_id: 'other-rep', itemcode: 'SYNTH.003', lotcode: '27.F1', salesrepname: 'Other Rep', invoicedate: null },
+            { unique_id: 'invoiced', itemcode: 'SYNTH.003', lotcode: '27.F1', salesrepname: 'My Rep', invoicedate: '2026-09-01' },
+            { unique_id: 'other-season', itemcode: 'SYNTH.003', lotcode: '26.F1', salesrepname: 'My Rep', invoicedate: null }
+        ];
+    };
+    const reserves = descriptor(h, 'side:driveReserves', { scope: 'scope-a', driveDemand: driveDemandContext('reserves') });
+    const reserveValue = await reserves.stage({ signal: controller.signal });
+    assert.equal(seen[0].table, 'ph_reserves'); assert.equal(seen[0].signal, controller.signal);
+    assert.deepEqual(JSON.parse(JSON.stringify(reserveValue.rows)).map((row) => row.unique_id), ['exact', 'invoiced'],
+        'Reserves retain their raw imported rows; only Open Orders applies invoice exclusion');
+    reserves.commit(reserveValue);
+    assert.ok(h.ctx.driveDemandSnapshots.has(JSON.stringify(['scope-a', reserveValue.cacheKey])));
+
+    const orders = descriptor(h, 'side:driveOpenOrders', { scope: 'scope-b', driveDemand: driveDemandContext('open-orders') });
+    const orderValue = await orders.stage({ signal: controller.signal });
+    assert.equal(seen[1].table, 'ph_soc_master'); assert.equal(seen[1].signal, controller.signal);
+    assert.deepEqual(JSON.parse(JSON.stringify(orderValue.rows)).map((row) => row.unique_id), ['exact']);
+    orders.commit(orderValue);
+    assert.ok(h.ctx.driveDemandSnapshots.has(JSON.stringify(['scope-b', orderValue.cacheKey])));
+    assert.notEqual(reserveValue.cacheKey, orderValue.cacheKey, 'source kind cannot reuse an adjacent tab snapshot');
+
+    h.ctx.canViewDriveCustomerConsigneeRows = () => false;
+    assert.equal(descriptor(h, 'side:driveReserves', { driveDemand: driveDemandContext('reserves') }), undefined,
+        'a denied detail eligibility cannot schedule a protected source read');
+
+    h.ctx.canViewDriveCustomerConsigneeRows = () => true;
+    h.ctx.fetchAllSupabaseRows = async (table, query, options) => new Promise((resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(new Error('Aborted')), { once: true });
+    });
+    const cancelled = new AbortController();
+    const pending = descriptor(h, 'side:driveReserves', { driveDemand: driveDemandContext('reserves') }).stage({ signal: cancelled.signal });
+    cancelled.abort();
+    await assert.rejects(pending, /Aborted|cancelled/);
 });
 
 test('private pending orders remain Dylan-only without blocking assigned Location Work readers', async () => {

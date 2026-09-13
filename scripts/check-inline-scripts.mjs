@@ -27,6 +27,7 @@ for (const relativePath of [
   'assets/ops-precision-pilot.js',
   'assets/eval-reports-engine.js',
   'assets/photo-history-v2026090401.js',
+  'assets/drive-demand-detail.js',
   'assets/live-sync-registry.js',
   'assets/live-sync-adapters.js',
   'assets/live-sync-coordinator.js',
@@ -43,4 +44,4 @@ for (const relativePath of [
 }
 
 if (parsed < 3) throw new Error(`Expected at least 3 inline scripts, parsed ${parsed}.`);
-console.log(`Parsed ${parsed} inline scripts and 9 shell assets.`);
+console.log(`Parsed ${parsed} inline scripts and 10 shell assets.`);

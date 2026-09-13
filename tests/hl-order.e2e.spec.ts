@@ -49,6 +49,14 @@ async function navigateHl(page: Page, target: Locator) {
 async function backHl(page: Page) {
   await navigateHl(page, page.locator('#global-header-inline-back'));
 }
+async function selectDriveDetailTab(page: Page, tab: string) {
+  const mobileSelect = page.locator('#det-mobile-tab-select');
+  if (await mobileSelect.isVisible()) {
+    await mobileSelect.selectOption(tab);
+  } else {
+    await navigateHl(page, page.locator(`#dtab-${tab}`));
+  }
+}
 const actions = (fixture: any, action: string) => fixture.commands.filter((command: any) => command.p_action === action);
 async function assertWithinViewport(page: Page, element: Locator) {
   await expect.poll(async () => {
@@ -121,6 +129,105 @@ test('HL verified Drive cards use normal details and global Back restores the ed
   await expect(page.locator('[data-hl-group]')).toBeVisible();
   await backHl(page);
   await expect(page.locator('#view-home')).toBeVisible();
+  assertIsolated(fixture);
+});
+
+test('Drive demand tabs use exact item and lot-derived season/year rows, then return to the edited HL detail', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    demandPageSize: 2,
+    reserveRows: [
+      { unique_id: 'reserve-exact', itemcode: ' synth.003 ', lotcode: '27.f1', customername: 'Exact Customer', consigneename: 'Exact Consignee', quantityordered: '0', quantityshipped: null },
+      { unique_id: 'reserve-other-season', itemcode: 'SYNTH.003', lotcode: '26.F1', customername: 'Other season', quantityordered: '99' },
+      { unique_id: 'reserve-other-item', itemcode: 'SYNTH.0030', lotcode: '27.F1', customername: 'Other item', quantityordered: '99' },
+      { unique_id: 'reserve-invalid-lot', itemcode: 'SYNTH.003', lotcode: 'unparsed', customername: 'Bad lot', quantityordered: '99' }
+    ],
+    demandSocRows: [
+      { unique_id: 'order-exact', itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Open Customer', consigneename: 'Open Consignee', quantityordered: '0', quantityshipped: null, invoicedate: null, planstartdate: '2024-01-01' },
+      { unique_id: 'order-empty-invoice', itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Still Open', quantityordered: '3', invoicedate: '   ', planstartdate: '2032-01-01' },
+      { unique_id: 'order-invoiced', itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Already invoiced', quantityordered: '9', invoicedate: '2026-09-01' },
+      { unique_id: 'order-other-season', itemcode: 'SYNTH.003', lotcode: '26.F1', customername: 'Other season', quantityordered: '9', invoicedate: null }
+    ]
+  });
+  await openHl(page); await openDetails(page);
+  const hlDetail = page.locator('#hl-order-detail');
+  await hlDetail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]').fill('7');
+  await navigateHl(page, hlDetail.locator('[data-hl-drive-location="C.12.001"] .app-drive-compact-card'));
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#dtab-inventory-edit')).toBeHidden();
+  await expect(page.locator('#dtab-notes')).toBeHidden();
+  await expect(page.locator('#dtab-customer')).toHaveText('Reserves');
+  await expect(page.locator('#dtab-open-orders')).toHaveText('Open Orders');
+
+  fixture.holdNextDemandFinalPage();
+  await selectDriveDetailTab(page, 'customer');
+  await fixture.waitForHeldDemandFinalPage();
+  const reservesPanel = page.locator('#det-customer-panel [data-drive-demand-kind="reserves"]');
+  const reserves = page.locator('#det-customer-panel [data-drive-demand-kind="reserves"] [data-drive-demand-row]');
+  await expect(reserves).toHaveCount(0);
+  await expect(reservesPanel).toContainText(/Loading verified rows|verified data/i);
+  fixture.releaseHeldDemandFinalPage();
+  await expect(reserves).toHaveCount(1);
+  await expect(reserves.first()).toContainText('Exact Customer');
+  await expect(reserves.first()).toContainText(/Ordered quantity\s*0/i);
+  await expect(reserves.first()).toContainText(/Shipped quantity\s*Unknown/i);
+
+  await selectDriveDetailTab(page, 'open-orders');
+  const ordersPanel = page.locator('#det-open-orders-panel [data-drive-demand-kind="open-orders"]');
+  const orders = ordersPanel.locator('[data-drive-demand-row]');
+  await expect(orders).toHaveCount(2);
+  await expect(ordersPanel).toContainText('Open Customer');
+  await expect(ordersPanel).toContainText('Still Open');
+  await expect(ordersPanel).not.toContainText('Already invoiced');
+  await expect(ordersPanel).not.toContainText('Other season');
+  expect(fixture.demandReads.reserves).toBeGreaterThan(0);
+  expect(fixture.demandReads.openOrders).toBeGreaterThan(0);
+
+  await backHl(page);
+  await expect(hlDetail).toBeVisible();
+  await expect(hlDetail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]')).toHaveValue('7');
+  assertIsolated(fixture);
+});
+
+test('Open Orders waits for an importing revision and cannot commit an obsolete held page after reset', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    demandPageSize: 1,
+    reserveRows: [{ unique_id: 'reserve-read-only', itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Read only reserve', quantityordered: '0' }],
+    demandSocRows: [
+      { unique_id: 'order-first', itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'First order', quantityordered: '1', invoicedate: null },
+      { unique_id: 'order-last', itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Last order', quantityordered: '2', invoicedate: null }
+    ]
+  });
+  await openHl(page); await openDetails(page);
+  await navigateHl(page, page.locator('#hl-order-detail [data-hl-drive-location="C.12.001"] .app-drive-compact-card'));
+  const openReadsBeforeImport = fixture.demandReads.openOrders;
+  fixture.setDatasetSourceState('ph_soc_master', 'importing');
+  await selectDriveDetailTab(page, 'open-orders');
+  const openPanel = page.locator('#det-open-orders-panel [data-drive-demand-kind="open-orders"]');
+  await expect(openPanel).toContainText(/Import in progress/i);
+  expect(fixture.demandReads.openOrders).toBe(openReadsBeforeImport,
+    'the importing source cannot start an item-scoped Open Orders read');
+
+  fixture.setDatasetSourceState('ph_soc_master', 'ready');
+  await page.evaluate(async () => { await window.eval('productionLiveSyncCoordinator.check("fixture-open-orders-ready")'); });
+  await expect(openPanel.locator('[data-drive-demand-row]')).toHaveCount(2);
+
+  await selectDriveDetailTab(page, 'customer');
+  const reservePanel = page.locator('#det-customer-panel [data-drive-demand-kind="reserves"]');
+  await expect(reservePanel.locator('[data-drive-demand-row]')).toHaveCount(1);
+  await expect(reservePanel.locator('input,button')).toHaveCount(0);
+
+  await selectDriveDetailTab(page, 'open-orders');
+  fixture.holdNextDemandFinalPage();
+  fixture.datasetRevision++;
+  const refresh = page.evaluate(async () => { await window.eval('productionLiveSyncCoordinator.check("fixture-open-orders-refresh")'); });
+  await fixture.waitForHeldDemandFinalPage();
+  await page.evaluate(() => window.eval("switchView('home'); productionLiveSyncCoordinator.suspend(); resetProductionLiveSync()"));
+  await expect(page.locator('#view-home')).toBeVisible();
+  fixture.releaseHeldDemandFinalPage();
+  await refresh;
+  await expect(page.locator('#det-open-orders-panel [data-drive-demand-row]')).toHaveCount(0);
+  await expect(page.locator('#det-open-orders-panel')).not.toContainText('First order');
+  await expect(page.locator('#det-open-orders-panel')).not.toContainText('Last order');
   assertIsolated(fixture);
 });
 
