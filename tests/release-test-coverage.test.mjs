@@ -86,6 +86,7 @@ const originalBrowserFiles = [
 test('release unit union preserves every existing script and explicit gate exactly once', () => {
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
+    'tests/drive-demand-detail.test.mjs',
     'tests/live-sync-priority-cache.test.mjs',
     'tests/inventory-list-read-fixture.test.mjs',
     'tests/hl-order.test.mjs',

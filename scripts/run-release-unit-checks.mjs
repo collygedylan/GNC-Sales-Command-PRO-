@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 export const releaseUnitScriptNames = Object.freeze(['test:photo', 'test:pilot', 'test:live-sync']);
 export const explicitReleaseUnitTests = Object.freeze([
+  'tests/drive-demand-detail.test.mjs',
   'tests/live-sync-priority-cache.test.mjs',
   'tests/inventory-list-read-fixture.test.mjs',
   'tests/hl-order.test.mjs',
