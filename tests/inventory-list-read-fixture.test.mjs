@@ -42,3 +42,21 @@ test('ILIKE treats regex punctuation literally and preserves SQL escaping and si
   assert.throws(() => lookup('holly\\'), /unterminated commonname escape/);
   assert.throws(() => inventoryReadFixture.read(rows, 'itemcode=ilike.*Holly*'), /unsupported exact filter itemcode/);
 });
+
+
+test('immutable fixture memoization retains validation and mutable corrections remain observable', () => {
+  const frozen = Object.freeze({ unique_id: 'frozen', ptravailable: '0' });
+  assert.equal(inventoryReadFixture.row(frozen), inventoryReadFixture.row(frozen));
+  assert.throws(() => inventoryReadFixture.row(Object.freeze({ unique_id: 'bad', unknown_column: 'not physical' })), /nonphysical/);
+  const mutable = { unique_id: 'mutable', ptravailable: '1' };
+  assert.equal(inventoryReadFixture.read([mutable]).rows[0].ptravailable, '1');
+  mutable.ptravailable = '2';
+  assert.equal(inventoryReadFixture.read([mutable]).rows[0].ptravailable, '2');
+});
+
+
+test('historical AV season scoping filters before calculating the total and paging', () => {
+  const rows = ['F1', 'S1', 'X'].map((season, index) => ({ unique_id: String(index), season }));
+  const result = inventoryReadFixture.read(rows, 'season=in.(F1,S1,U1,U2)&order=unique_id.asc&limit=1&offset=1');
+  assert.equal(result.total, 2); assert.equal(result.rows[0].season, 'S1');
+});

@@ -33,6 +33,10 @@
         let backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
         const statistics = { revisionReads: 0, adapterReads: 0, discardedLoads: 0, commits: 0, signals: 0, cacheHits: 0 };
         function publish(state, message = '', extra = {}) {
+            if (state === 'Syncing' && currentStatus.state === 'Needs attention'
+                && (!extra.contextKey || extra.contextKey === currentStatus.contextKey)) {
+                state = 'Needs attention'; message = currentStatus.message;
+            }
             currentStatus = { state, message, lastVerifiedAt, ...extra };
             options.onStatus?.(currentStatus);
         }
@@ -173,11 +177,23 @@
                 const unavailableReason = blocked.filter(adapter => adapter.sourceKeys.some(key => before.sources.get(key).state === 'unavailable')).map(adapter => adapter.unavailableReason).filter(Boolean).join(' ');
                 emit(states.includes('interrupted') || states.includes('unavailable') ? 'Needs attention' : 'Importing',
                     states.includes('interrupted') ? `An import was interrupted.${retained}` : states.includes('unavailable') ? (unavailableReason || 'Some data could not be verified for your current access.') : `An import is in progress.${retained}`,
-                    { blockedSources: unique(blocked.flatMap(adapter => adapter.sourceKeys)) });
+                    { blockedSources: unique(blocked.flatMap(adapter => adapter.sourceKeys)), unavailableSources: keys.filter(key => before.sources.get(key).state === 'unavailable') });
                 return false;
             }
             const changed = adapters.filter(adapter => applied.get(adapter.id)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]));
             const staged = [];
+            const display = new Map(adapters.filter(adapter => applied.get(adapter.id)?.cacheKey === adapter.cacheKey)
+                .map(adapter => [adapter.id, { adapter, value: applied.get(adapter.id).value }]));
+            const preview = (adapter, value) => {
+                if (!ctx.progressive || background || !options.previewSnapshots || !current() || value === undefined) return;
+                const old = display.get(adapter.id)?.value;
+                if (value.partial && old && !old.partial) return;
+                display.set(adapter.id, { adapter, value });
+                const visibleAdapters = ctx.adapters || [];
+                if (visibleAdapters.length && visibleAdapters.every(item => display.get(item.id)?.value !== undefined)) {
+                    options.previewSnapshots(visibleAdapters.map(item => display.get(item.id)), ctx, before);
+                }
+            };
             let failure = null, cursor = 0;
             if (changed.length) {
                 emit('Syncing', 'Checking and loading changed data.');
@@ -190,9 +206,14 @@
                             const cached = options.readCachedSnapshot ? await Promise.resolve().then(() => options.readCachedSnapshot(adapter, meta)).catch(() => null) : null;
                             if (!current()) return;
                             let value;
+                            if (ctx.progressive && !background && !cacheMatches(cached, meta) && options.readDisplaySnapshot) {
+                                const displayValue = await options.readDisplaySnapshot(adapter, meta).catch(() => null);
+                                if (displayValue) preview(adapter, displayValue);
+                            }
                             if (cacheMatches(cached, meta)) { value = cached.value; statistics.cacheHits++; }
-                            else { statistics.adapterReads++; value = await adapter.stage({ signal: run.controller?.signal }); }
+                            else { statistics.adapterReads++; value = await adapter.stage({ signal: run.controller?.signal, preview: ctx.progressive && !background ? value => preview(adapter, value) : undefined }); }
                             if (value === undefined) throw new Error(`${adapter.id} did not return a snapshot.`);
+                            if (!display.has(adapter.id) || !adapter.id.startsWith('core:')) preview(adapter, value);
                             staged.push({ adapter, value });
                         } catch (error) { failure = error; }
                     }
@@ -217,7 +238,7 @@
                     if (!current()) {
                         return discard('View settings changed; verifying the updated selection.');
                     }
-                    staged.forEach(({ adapter }) => applied.set(adapter.id, { cacheKey: adapter.cacheKey, signature: JSON.stringify([adapter.cacheKey, signature(after, adapter.sourceKeys)]) }));
+                    staged.forEach(({ adapter, value }) => applied.set(adapter.id, { value, cacheKey: adapter.cacheKey, signature: JSON.stringify([adapter.cacheKey, signature(after, adapter.sourceKeys)]) }));
                     staged.forEach(({ adapter, value }) => {
                         try { Promise.resolve(options.writeCachedSnapshot?.(adapter, value, cacheMeta(adapter, ctx, after))).catch(() => {}); }
                         catch (error) { /* Cache persistence must not invalidate an authoritative commit. */ }

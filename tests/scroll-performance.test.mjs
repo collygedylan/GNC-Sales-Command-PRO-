@@ -65,7 +65,7 @@ test('Common Name preparation rejects changed ownership, permissions, navigation
   const changes = [
     c => { c.currentUser = 'bob'; }, c => { c.currentUser = ''; }, c => { c.currentRole = 'REP'; },
     c => { c.canUseProductionLiveSync = () => false; }, c => { c.getCurrentVisibleViewId = () => 'home'; },
-    c => { c.productionLiveSyncVerifiedView = ''; }, c => { c.productionLiveSyncReadGeneration++; },
+    c => { c.productionVerifiedViewKey = () => 'another-navigation'; }, c => { c.productionLiveSyncReadGeneration++; },
     c => { c.driveVisibleItemsStateCacheKey = 'other filters'; }, c => { c.document.hidden = true; },
     c => { c.document.getElementById = () => ({ value: 'new search' }); }
   ];

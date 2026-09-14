@@ -69,7 +69,7 @@ function harness(options = {}) {
   class FixedDate extends Date { static now() { return NOW; } }
   const mutation = () => { throw new Error('Pending review must not mutate inventory or use legacy order actions'); };
   const ctx = vm.createContext({
-    Date: FixedDate, Intl, atob: (value) => Buffer.from(value, 'base64').toString('binary'),
+    invalidateNativeAuthRecovery() {}, productionDisplayGroups: new Set(), Date: FixedDate, Intl, atob: (value) => Buffer.from(value, 'base64').toString('binary'),
     currentUser: 'dylan_collyge', currentRole: 'Admin', nativeAuthProfile: profile(),
     nativeAuthSessionActive: true, nativeAuthAccessToken: token(),
     navigator: { onLine: true }, window: {}, localStorage: storage(), sessionStorage: storage(),

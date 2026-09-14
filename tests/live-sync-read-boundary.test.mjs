@@ -428,8 +428,8 @@ test('live permission signal arriving during a foreground check performs a full 
 });
 
 test('permission-change coordinator callback returns the permission refresh promise', () => {
-    const code = html.match(/onPermissionChange: (\(\) => refreshNativeRoleAndCapabilities\('live-permissions'\)),/)[1];
-    const promise = Promise.resolve(true); const ctx = { refreshNativeRoleAndCapabilities: () => promise };
+    const code = html.match(/onPermissionChange: (\(\) => \{[^\n]+\}),/)[1];
+    const promise = Promise.resolve(true); const groups = new Set(['prior']); const ctx = { productionDisplayGroups: groups, refreshNativeRoleAndCapabilities: () => promise };
     vm.createContext(ctx); vm.runInContext(`this.callback = ${code}`, ctx);
     assert.equal(ctx.callback(), promise);
 });
@@ -576,4 +576,111 @@ test('Reclass delivery status reconciles immediately when visibility returns', (
     const ctx = { document: { hidden: true, addEventListener: (_, callback) => { handler = callback; } }, pollReclassDeliveryJobs: () => { calls++; } };
     vm.createContext(ctx); vm.runInContext(marker, ctx);
     handler(); assert.equal(calls, 0); ctx.document.hidden = false; handler(); assert.equal(calls, 1);
+});
+
+function nativeRecoveryFixture() {
+    const gate = deferred(); let sessions = 0, refreshes = 0;
+    const session = { access_token: 'native-token', user: { id: 'account-a' } };
+    const ctx = { Error, Object, String, Promise, NATIVE_AUTH_ENABLED: true, SUPABASE_KEY: 'public-key',
+        nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: '',
+        getSupabaseBrowserClient: () => ({ auth: {
+            getSession: async () => { sessions++; return { data: { session: null } }; },
+            refreshSession: async () => { refreshes++; await gate.promise; return { data: { session } }; }
+        } })
+    };
+    vm.createContext(ctx);
+    vm.runInContext(html.slice(html.indexOf('let nativeAuthSessionRead ='), html.indexOf('function readCachedNativeAuthProfile')), ctx);
+    return { ctx, gate, session, get sessions() { return sessions; }, get refreshes() { return refreshes; } };
+}
+
+test('native module reads share one restoration and refresh without changing auth mode', async () => {
+    const f = nativeRecoveryFixture();
+    const reads = Array.from({ length: 12 }, () => f.ctx.getNativeAuthRequestHeaders());
+    await settle();
+    assert.equal(f.sessions, 1); assert.equal(f.refreshes, 1);
+    assert.equal(f.ctx.nativeAuthSessionActive, true);
+    f.gate.resolve();
+    const headers = await Promise.all(reads);
+    assert.ok(headers.every(value => value.Authorization === 'Bearer native-token'));
+});
+
+test('logout and account changes invalidate delayed native token restoration', async () => {
+    for (const change of ['nativeAuthRecoveryEpoch++', "nativeAuthProfile = { id: 'account-b' }"]) {
+        const f = nativeRecoveryFixture(); const pending = f.ctx.getNativeAuthRequestHeaders();
+        await settle(); vm.runInContext(change, f.ctx); f.gate.resolve();
+        assert.equal(await pending, null);
+        assert.equal(f.ctx.nativeAuthAccessToken, '');
+    }
+});
+
+test('native database helpers never fall through to the prohibited legacy proxy', async () => {
+    const calls = [], ctx = { Error, Object, String, Number, Math, JSON, Array, Promise,
+        SUPABASE_READ_TIMEOUT_MS: 1000, SUPABASE_URL: 'https://test.invalid',
+        normalizeAppTableName: value => value, nativeReadRequiresRls: () => true,
+        nativeSessionRecoveryError: () => Object.assign(new Error('Recover session'), { code: 'NATIVE_SESSION_RECOVERY_REQUIRED' }),
+        getNativeAuthRequestHeaders: async () => null,
+        fetchWithTimeout: async (_, options) => { calls.push(options); return { ok: true, text: async () => '[{"unique_id":"one"}]' }; },
+        parseSupabaseContentRangeTotal: () => 1
+    };
+    vm.createContext(ctx);
+    vm.runInContext(html.slice(html.indexOf('async function fetchAuthenticatedSupabaseReadPage('), html.indexOf('async function fetchSupabaseRowsPage(')), ctx);
+    vm.runInContext(html.slice(html.indexOf('async function runAppApiSupabaseWrite('), html.indexOf('async function supabaseFetch(')), ctx);
+    await assert.rejects(ctx.runAppApiSupabaseWrite('ph_master_inventory', 'GET', null, 'select=*'), error => error.code === 'NATIVE_SESSION_RECOVERY_REQUIRED');
+    assert.equal(calls.length, 0);
+    ctx.getNativeAuthRequestHeaders = async () => ({ Authorization: 'Bearer native-token' });
+    const rows = await ctx.runAppApiSupabaseWrite('ph_master_inventory', 'GET', null, 'select=*', { count: true });
+    assert.equal(rows.length, 1); assert.equal(calls.length, 1);
+    assert.equal(calls[0].headers.Prefer, 'count=exact');
+    assert.equal(calls[0].headers.Authorization, 'Bearer native-token');
+});
+
+
+test('progressive disk display accepts an older revision only with the same account, query and permissions', async () => {
+    const meta = { scope: 'account-a', adapterId: 'core:master', cacheKey: 'master/all', signature: JSON.stringify(['permission-a', ['master', '2', 'ready']]) };
+    let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) }, rawRows: [{ id: 'old-row' }], rowCount: 1 };
+    const ctx = { JSON, Array, loadCacheValue: async () => saved, verifiedSnapshotCacheKey: () => 'scope-key', buildDatasetPayload: (_, rows) => ({ data: rows }) };
+    vm.createContext(ctx);
+    const from = html.indexOf('async function readProductionDisplaySnapshot(');
+    vm.runInContext(html.slice(from, html.indexOf('function previewProductionSnapshots(', from)), ctx);
+    const read = () => ctx.readProductionDisplaySnapshot({ id: 'core:master' }, meta);
+    assert.equal((await read()).cached, true);
+    const original = saved;
+    for (const change of [
+        { meta: { ...saved.meta, scope: 'account-b' } },
+        { meta: { ...saved.meta, cacheKey: 'other/query' } },
+        { meta: { ...saved.meta, signature: JSON.stringify(['permission-b']) } },
+        { format: 'legacy-unscoped' }, { rowCount: 2 }
+    ]) { saved = { ...original, ...change }; assert.equal(await read(), null); }
+});
+
+test('SIGNED_OUT watcher invalidates pending native recovery before clearing the session', () => {
+    const calls = []; let callback;
+    const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: 'old',
+        getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
+        invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
+        closeBloomscapesPendingOrders: () => calls.push('close') };
+    vm.createContext(ctx);
+    const from = html.indexOf('function installNativeRoleRefreshWatchers()');
+    vm.runInContext(html.slice(from, html.indexOf("document.addEventListener('visibilitychange'", from)), ctx);
+    ctx.installNativeRoleRefreshWatchers(); callback('SIGNED_OUT', null);
+    assert.deepEqual(calls.slice(0, 2), ['invalidate', 'reset']);
+    assert.equal(ctx.nativeAuthSessionActive, false); assert.equal(ctx.nativeAuthAccessToken, '');
+});
+
+
+test('native background validation refreshes the existing session without signing in again or persisting a password', async () => {
+    let callback; const calls = [];
+    const ctx = { String, currentUser: 'alice', nativeAuthRecoveryEpoch: 4, navigator: { onLine: true },
+        normalizeSessionIdentity: value => value.trim().toLowerCase(), nativeReadRequiresRls: () => true,
+        setTimeout: fn => { callback = fn; }, getNativeAuthRequestHeaders: async () => { calls.push('headers'); return {}; },
+        refreshNativeRoleAndCapabilities: async () => { calls.push('roles'); },
+        fetchRemoteLoginUser: async () => { calls.push('forbidden-password-login'); },
+        persistVerifiedLoginRecord: () => { calls.push('forbidden-password-storage'); } };
+    vm.createContext(ctx);
+    const from = html.indexOf('function scheduleBackgroundLoginValidation(');
+    vm.runInContext(html.slice(from, html.indexOf('function getLoginReadHeaders()', from)), ctx);
+    ctx.scheduleBackgroundLoginValidation('alice', 'synthetic'); await callback();
+    assert.deepEqual(calls, ['headers', 'roles']);
+    calls.length = 0; ctx.scheduleBackgroundLoginValidation('alice', 'synthetic'); ctx.currentUser = 'bob'; await callback();
+    assert.deepEqual(calls, []);
 });

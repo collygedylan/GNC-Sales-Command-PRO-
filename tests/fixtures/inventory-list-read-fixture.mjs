@@ -7,8 +7,10 @@ const inventorySchema = JSON.parse(readFileSync(new URL('./inventory-list-schema
 export function createInventoryReadFixture(schema) {
   const columns = new Map(schema.map(column => [column.name, column]));
   const fail = message => { throw new Error(`INVENTORY_READ_FIXTURE_INVALID: ${message}`); };
+  const immutableRows = new WeakMap();
   const derivedFields = new Set(['source_table', 'saved_photo_link', 'saved_photo_name']);
   function row(values = {}) {
+    if (immutableRows.has(values)) return immutableRows.get(values);
     const result = Object.fromEntries(schema.map(column => [column.name, null]));
     const supplied = new Set();
     for (const [key, raw] of Object.entries(values)) {
@@ -34,6 +36,7 @@ export function createInventoryReadFixture(schema) {
       result[name] = value;
     }
     if (typeof result.unique_id !== 'string' || !result.unique_id.trim()) fail('missing unique_id');
+    if (Object.isFrozen(values)) immutableRows.set(values, Object.freeze(result));
     return result;
   }
   function idsFromFilter(filter) {
@@ -77,7 +80,7 @@ export function createInventoryReadFixture(schema) {
     if (!Array.isArray(source)) fail('expected source rows');
     const params = new URLSearchParams(query);
     for (const key of params.keys()) {
-      if (!['select', 'order', 'unique_id', 'itemcode', 'commonname', 'contsize', 'offset', 'limit'].includes(key)) fail(`unsupported query parameter ${key}`);
+      if (!['select', 'order', 'unique_id', 'itemcode', 'commonname', 'contsize', 'season', 'offset', 'limit'].includes(key)) fail(`unsupported query parameter ${key}`);
       if (params.getAll(key).length !== 1) fail(`duplicate query parameter ${key}`);
     }
     const select = params.get('select') || '*';
@@ -95,10 +98,15 @@ export function createInventoryReadFixture(schema) {
     }
     // Drive detail also searches common names with PostgREST ILIKE. Model its
     // wildcard semantics while retaining exact item/size and schema checks.
-    for (const name of ['itemcode', 'commonname', 'contsize']) {
+    for (const name of ['itemcode', 'commonname', 'contsize', 'season']) {
       const scopedFilter = params.get(name);
       if (scopedFilter === null) continue;
       if (!columns.has(name)) fail(`nonphysical filter ${name}`);
+      if (name === 'season' && scopedFilter.startsWith('in.(')) {
+        const seasons = new Set(idsFromFilter(scopedFilter));
+        matching = matching.filter(item => seasons.has(item.season));
+        continue;
+      }
       if (name === 'commonname' && scopedFilter.startsWith('ilike.')) {
         let pattern = scopedFilter.slice(6);
         if (pattern.startsWith('"')) pattern = JSON.parse(pattern);

@@ -314,7 +314,7 @@ test('a canceled read waiting for a concurrency slot cannot start its first page
 
 test('secure fallback reads cancel after session preparation without changing writes', async () => {
     const controller = new AbortController(), gate = deferred(), calls = [];
-    const ctx = { Error, Object, String, Math, Number, SUPABASE_WRITE_TIMEOUT_MS: 1000, APP_API_FUNCTION_URL: 'https://fixture.invalid',
+    const ctx = { nativeReadRequiresRls: () => false, Error, Object, String, Math, Number, SUPABASE_WRITE_TIMEOUT_MS: 1000, APP_API_FUNCTION_URL: 'https://fixture.invalid',
         normalizeAppTableName: value => value, ensureAppApiWriteProxySession: () => gate.promise,
         postAppFunctionJson: async (url, body, options) => { calls.push(options); return { ok: true, data: [] }; }
     };
@@ -374,6 +374,7 @@ test('navigation clears the previous proof before immediately requesting require
     const calls = [];
     const ctx = { productionLiveSyncNavigationGeneration: 7, productionLiveSyncVerifiedView: 'old',
         productionLiveSyncViewLoad: { pending: true }, productionLiveSyncRenderTimer: 4,
+        renderProductionDataFreshness: status => assert.equal(status.state, 'Syncing'),
         clearTimeout: id => calls.push(['cancel', id]), ensureViewDataForRender: view => {
             assert.equal(ctx.productionLiveSyncVerifiedView, ''); assert.equal(ctx.productionLiveSyncViewLoad, null); calls.push(['ensure', view]); },
         getProductionLiveSyncCoordinator: () => ({ check: reason => calls.push(['check', reason]) }) };

@@ -35,8 +35,8 @@ test('Request completion derives the completing user server-side without a legac
 });
 
 test('native auth refreshes once before protected Request reads or writes fail', () => {
-  assert.match(nativeHeaders, /client\.auth\.refreshSession\(\)/);
-  assert.match(nativeHeaders, /nativeAuthAccessToken = String\(refreshedSession\.access_token/);
+  assert.match(nativeHeaders, /client\?\.auth\?\.refreshSession\?\.\(\)/);
+  assert.match(nativeHeaders, /nativeAuthAccessToken = String\(session\.access_token/);
 });
 
 test('Request completion retries one current row-version conflict with the canonical version', () => {

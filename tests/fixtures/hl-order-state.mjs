@@ -361,6 +361,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   // failure would allow a retry to publish the otherwise withheld list.
   control.failNextMasterLaterPage = () => { failNextMasterLaterPage = true; };
   control.emptyMasterLaterPage = () => { emptyMasterLaterPage = true; };
+  control.clearMasterPageFaults = () => { emptyMasterLaterPage = failNextMasterLaterPage = false; };
   control.holdNextRestockStateRead = () => {
     if (holdNextRestockStateRead || releaseHeldRestockStateRead) throw new Error('HL_FIXTURE_RESTOCK_READ_ALREADY_HELD');
     holdNextRestockStateRead = true;
@@ -571,10 +572,9 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};
       if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role } });
-      if (body.action === 'db' && String(body.method).toUpperCase() === 'GET') {
-        if (body.table === 'ph_reserves') control.demandReads.reserves++;
-        if (body.table === 'ph_soc_master') control.demandReads.openOrders++;
-        return json(route, { ok: true, data: body.table === 'ph_soc_master' ? (control.demandSocRows ?? control.rows) : body.table === 'ph_reserves' ? control.reserveRows : body.table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, body.query || '').rows : body.table === 'ph_app_settings' ? seasonSettings : [] });
+      if (body.action === 'db') {
+        control.blockedMutations.push(`PROHIBITED_NATIVE_DB:${body.method}:${body.table}`);
+        return json(route, { ok: false, error: 'Native Auth sessions must use PostgREST with RLS for database access.', code: 'DIRECT_RLS_REQUIRED' }, 410);
       }
       if (body.action === 'season_sales_office' && body.operation === 'access') return json(route, { ok: true, allowed: false, canManage: false, users: [] });
       if (['list', 'get', 'state'].includes(body.operation) || /get|load|status|preferences|capabilit|health|telemetry|event/.test(body.action || '')) return json(route, { ok: true, data: [], preferences: {}, eligible: false });

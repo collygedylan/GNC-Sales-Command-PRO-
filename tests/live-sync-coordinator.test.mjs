@@ -176,3 +176,54 @@ test('two visible aliases of the same physical snapshot issue one full read', as
     const f = fixture(); f.context.adapters.push({ ...f.adapter });
     await f.coordinator.check(); assert.equal(f.reads, 1); assert.equal(f.commits.length, 1);
 });
+
+for (const finalFailure of [false, true]) test(`progressive display precedes completion and never creates proof on failure=${finalFailure}`, async () => {
+    const gate = deferred(), shown = [], committed = [], statuses = [];
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'],
+        stage: async ({ preview }) => {
+            preview({ rows: ['first'], partial: true }); await gate.promise;
+            if (finalFailure) throw new Error('Later page failed');
+            return { rows: ['first', 'last'] };
+        }, commit: value => committed.push(value) };
+    const context = { scope: 'account-permissions', viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [adapter] };
+    const coordinator = createCoordinator({ getContext: () => context,
+        setTimeout: () => 1, clearTimeout() {}, onStatus: status => statuses.push(status.state),
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }),
+        previewSnapshots: entries => shown.push(entries[0].value) });
+    const pending = coordinator.check('visible-view'); await settle();
+    assert.equal(shown.length, 1); assert.equal(shown[0].partial, true);
+    assert.equal(committed.length, 0); assert.notEqual(statuses.at(-1), 'Up to date');
+    gate.resolve(); assert.equal(await pending, !finalFailure);
+    assert.equal(committed.length, finalFailure ? 0 : 1);
+    assert.equal(statuses.at(-1), finalFailure ? 'Needs attention' : 'Up to date');
+    coordinator.reset();
+});
+
+test('progressive callbacks cannot display an obsolete account response', async () => {
+    const gate = deferred(), shown = [];
+    const context = { scope: 'a', viewKey: 'drive', progressive: true, visible: true, online: true,
+        adapters: [{ id: 'core:master', cacheKey: 'all', sourceKeys: ['inventory'], stage: async ({ preview }) => {
+            await gate.promise; preview({ rows: ['old'], partial: true }); return { rows: ['old'] };
+        }, commit() {} }] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }),
+        previewSnapshots: entries => shown.push(entries) });
+    const pending = coordinator.check(); await settle(); context.scope = 'b'; coordinator.suspend(); gate.resolve();
+    assert.equal(await pending, false); assert.equal(shown.length, 0);
+});
+
+
+test('progressive display does not wait for an extra requested startup dependency', async () => {
+    const gate = deferred(), shown = [];
+    const inventory = { id: 'inventory', cacheKey: 'all', sourceKeys: ['inventory'], stage: async ({ preview }) => {
+        preview({ rows: ['first'], partial: true }); await gate.promise; return { rows: ['first', 'last'] };
+    }, commit() {} };
+    const extra = { id: 'startup-extra', cacheKey: 'all', sourceKeys: ['extra'], stage: async () => [], commit() {} };
+    const context = { scope: 'a', viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [inventory] };
+    const coordinator = createCoordinator({ getContext: () => context, concurrency: 1, setTimeout: () => 1, clearTimeout() {},
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }),
+        previewSnapshots: entries => shown.push(entries.map(item => item.adapter.id)) });
+    const pending = coordinator.ensure(extra); await settle();
+    assert.equal(shown.length, 1); assert.equal(shown[0].join(','), 'inventory');
+    gate.resolve(); assert.equal(await pending, true); coordinator.reset();
+});

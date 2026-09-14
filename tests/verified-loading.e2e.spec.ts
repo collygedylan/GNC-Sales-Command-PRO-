@@ -131,147 +131,97 @@ async function installColdFixture(page: Page, baseURL: string, options: Record<s
   });
 }
 
-const COMMON_NAME_TOTAL = 1561;
+const COMMON_NAME_TOTAL = 1581;
 const commonNameAt = (index: number) => `Common Name ${String(index).padStart(4, '0')}`;
 function commonNameMasterRows() {
-  const rows = Array.from({ length: COMMON_NAME_TOTAL }, (_, index) => {
-    const number = index + 1;
-    return hlMaster(`common-name-${String(number).padStart(4, '0')}`, {
+  return Array.from({ length: 9366 }, (_, index) => {
+    const number = index % COMMON_NAME_TOTAL + 1;
+    return Object.freeze(hlMaster(`common-row-${String(index + 1).padStart(5, '0')}`, {
       itemcode: `CN.${String(number).padStart(4, '0')}`,
-      commonname: commonNameAt(number),
-      locationcode: `A.${String((number % 98) + 1).padStart(2, '0')}.001`
-    });
+      commonname: commonNameAt(number), locationcode: `A.${String(index + 1).padStart(5, '0')}`
+    }));
   });
-  // A second physical row must stay within its one Common Name group, while
-  // pushing the authenticated inventory reader past its 1,000-row first page.
-  rows.push(hlMaster('common-name-duplicate-0781', {
-    itemcode: 'CN.0781-B', commonname: commonNameAt(781), locationcode: 'B.01.001'
-  }));
-  return rows;
 }
 
 const commonNameState = (page: Page) => page.locator('#drive-content');
 const commonNameButtons = (page: Page) => page.locator('#drive-content').getByRole('button', { name: /^Open Common Name / });
 
-test('Common Name waits for every inventory page, survives an identical Drive render, and exposes the complete selectable list', async ({ page, baseURL }, info) => {
+test('Common Name displays early rows, finishes all 9366 rows, and survives identical refreshes', async ({ page, baseURL }, info) => {
   const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
   fixture.holdNextMasterLaterPage();
   const coldStartedAt = Date.now();
   try {
     await page.locator('#home-tile-drive').click();
     await fixture.waitForHeldMasterLaterPage();
-    await expect(commonNameState(page)).not.toHaveAttribute('data-drive-commonname-state', 'complete');
-    await expect(commonNameButtons(page), 'no partial Common Name groups may become selectable').toHaveCount(0);
-
+    try { await expect.poll(() => commonNameButtons(page).count()).toBeGreaterThan(0); }
+    catch (error) {
+      const detail = await page.evaluate(() => window.eval(`JSON.stringify({ context: getProductionLiveSyncContext().adapters.map(a=>a.id), surfaces:getProductionLiveSyncContext().surfaces, progressive:getProductionLiveSyncContext().progressive, canDisplay:hasProgressiveViewData(), groups:[...productionDisplayGroups], draft:hasProductionLiveSyncDraft(), active:document.activeElement?.id, rows:fullInventory.length, status:productionLiveSyncCoordinator.getStatus(), pending:!!driveCommonNamePreparation })`));
+      throw new Error(`${String(error)}\nPreview diagnostic: ${detail}`);
+    }
+    const firstMs = Date.now() - coldStartedAt;
+    expect(await commonNameButtons(page).count()).toBeLessThan(COMMON_NAME_TOTAL);
+    await expect(page.locator('#live-data-freshness')).not.toContainText('Up to date');
+    await page.evaluate(() => { window.eval('renderDrive(); renderDrive();'); });
+    await expect.poll(() => commonNameButtons(page).count()).toBeGreaterThan(0);
     fixture.releaseHeldMasterLaterPage();
-    // Run the equivalent render while preparation owns a queued animation-frame
-    // batch. This was the cancellation path that left a complete group count with
-    // only its first rendered chunk.
-    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
-    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => {
-      window.eval('renderDrive(); renderDrive();');
-      resolve();
-    })));
-    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
-    await expect(commonNameButtons(page)).toHaveCount(0);
-
-    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+    await waitForVerifiedDrive(page);
     await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
-    const cold = { completeMs: Date.now() - coldStartedAt, masterReads: fixture.backgroundMasterReads, laterPageReads: fixture.masterLaterPageReads };
-
+    const completeMs = Date.now() - coldStartedAt;
     await returnHome(page, true);
-    const repeatStartedAt = Date.now();
-    const repeatReadsBefore = { master: fixture.backgroundMasterReads, later: fixture.masterLaterPageReads };
+    const before = fixture.backgroundMasterReads, repeatStart = Date.now();
     await page.locator('#home-tile-drive').click();
-    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
     await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
-    expect(fixture.backgroundMasterReads, 'unchanged large-list return must not download inventory again').toBe(repeatReadsBefore.master);
-    expect(fixture.masterLaterPageReads).toBe(repeatReadsBefore.later);
-    await info.attach('drive-commonname-complete.json', {
-      body: JSON.stringify({ cold, repeat: { completeMs: Date.now() - repeatStartedAt, before: repeatReadsBefore,
-        after: { master: fixture.backgroundMasterReads, later: fixture.masterLaterPageReads } } }, null, 2),
-      contentType: 'application/json'
-    });
-
+    await waitForVerifiedDrive(page);
+    expect(fixture.backgroundMasterReads).toBe(before);
+    await info.attach('progressive-loading.json', { body: JSON.stringify({ firstMs, completeMs, repeatMs: Date.now() - repeatStart,
+      rows: 9366, names: COMMON_NAME_TOTAL, masterReads: before }), contentType: 'application/json' });
     for (const index of [1, 781, COMMON_NAME_TOTAL]) {
-      const button = page.locator('#drive-content').getByRole('button', { name: `Open ${commonNameAt(index)}`, exact: true });
-      await expect(button).toBeEnabled();
-      await button.click();
+      await page.locator('#drive-content').getByRole('button', { name: `Open ${commonNameAt(index)}`, exact: true }).click();
       await expect(page.locator('#drive-crumb')).toContainText(commonNameAt(index));
       await page.locator('#global-header-inline-back').click();
-      await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+      await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
     }
-    await expect(page.locator('#drive-content').getByRole('button', { name: `Open ${commonNameAt(781)}`, exact: true })).toContainText('2 Rows');
-  } finally {
-    try { fixture.releaseHeldMasterLaterPage(); } catch (_) {}
-  }
+    await expect(page.locator('#drive-content').getByRole('button', { name: `Open ${commonNameAt(781)}`, exact: true })).toContainText('6 Rows');
+  } finally { try { fixture.releaseHeldMasterLaterPage(); } catch (_) {} }
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Common Name cancels an obsolete prepared list for search or navigation and restarts after visibility resumes', async ({ page, baseURL }) => {
+test('Common Name replaces obsolete search and navigation work and resumes after visibility changes', async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
   await page.locator('#home-tile-drive').click();
-  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
-  await expect(commonNameButtons(page)).toHaveCount(0);
-
-  // A changed search invalidates the in-flight full list: it must not publish
-  // any old card before its replacement list is complete.
-  await page.locator('#drive-search').fill(commonNameAt(781));
-  await expect(page.locator('#drive-content [role="button"][aria-label^="Open Common Name "]:not([aria-label="Open Common Name 0781"])')).toHaveCount(0);
-  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
-  await expect(commonNameButtons(page)).toHaveCount(1);
-
-  await page.locator('#drive-search').fill('');
-  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
-  await page.locator('#global-header-inline-back').click();
-  await expect(page.locator('#view-home')).toBeVisible();
-  await page.locator('#home-tile-drive').click();
-  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+  await waitForVerifiedDrive(page);
   await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
-
-  // The lifecycle listener must restart a list invalidated by an actual
-  // foreground transition; DOM cards remain withheld until that restart ends.
   await page.locator('#drive-search').fill(commonNameAt(781));
   await expect(commonNameButtons(page)).toHaveCount(1);
   await page.locator('#drive-search').fill('');
-  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
-  await expect(commonNameButtons(page)).toHaveCount(0);
+  await page.locator('#global-header-inline-back').click();
+  await page.locator('#home-tile-drive').click();
   await page.evaluate(() => {
     let hidden = true;
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => hidden ? 'hidden' : 'visible' });
     document.dispatchEvent(new Event('visibilitychange'));
-    hidden = false;
-    document.dispatchEvent(new Event('visibilitychange'));
+    hidden = false; document.dispatchEvent(new Event('visibilitychange'));
     delete (document as unknown as Record<string, unknown>).hidden;
-    delete (document as unknown as Record<string, unknown>).visibilityState;
   });
-  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
   await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Common Name never publishes a partial list when a later authenticated inventory page fails', async ({ page, baseURL }) => {
+for (const failure of ['failed', 'empty'] as const) test(`Common Name retains early rows with Retry when a later page is ${failure}`, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
-  fixture.failNextMasterLaterPage();
+  if (failure === 'failed') fixture.failNextMasterLaterPage(); else fixture.emptyMasterLaterPage();
   await page.locator('#home-tile-drive').click();
-  await expect.poll(() => fixture.masterLaterPageReads, { timeout: 20000 }).toBeGreaterThan(0);
-  await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
-  await expect(commonNameState(page)).not.toHaveAttribute('data-drive-commonname-state', 'complete');
-  await expect(commonNameButtons(page)).toHaveCount(0);
-  expect(fixture.blockedMutations).toEqual([]);
-});
-
-test('Common Name rejects an empty later inventory page that claims more rows', async ({ page, baseURL }) => {
-  const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
-  fixture.emptyMasterLaterPage();
-  await page.locator('#home-tile-drive').click();
-  await expect.poll(() => fixture.masterLaterPageReads, { timeout: 20000 }).toBeGreaterThan(0);
-  await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
-  await expect(commonNameState(page)).not.toHaveAttribute('data-drive-commonname-state', 'complete');
-  await expect(commonNameButtons(page)).toHaveCount(0);
+  await expect(page.locator('#live-data-freshness')).toContainText('Needs attention', { timeout: 20000 });
+  await expect.poll(() => commonNameButtons(page).count()).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView'))).toBe('');
+  if (failure === 'failed') {
+    fixture.clearMasterPageFaults();
+    await page.locator('#live-data-freshness').click();
+    await waitForVerifiedDrive(page);
+    await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
+  }
   expect(fixture.blockedMutations).toEqual([]);
 });
 
@@ -384,7 +334,7 @@ test('Tasks verifies both AV Blank inputs without waiting for unopened task cate
 });
 
 
-test('returning to Drive masks cached rows until this visit verifies current revisions', async ({ page, baseURL }) => {
+test('returning to Drive shows same-account cached rows while this visit checks revisions', async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!);
   await page.locator('#home-tile-drive').click(); await waitForVerifiedDrive(page);
   const reads = fixture.backgroundMasterReads;
@@ -399,11 +349,99 @@ test('returning to Drive masks cached rows until this visit verifies current rev
   });
   try {
     await page.locator('#home-tile-drive').click(); await seen;
-    await expect(page.locator('#drive-content .skeleton').first()).toBeVisible();
-    await expect(page.locator('#drive-content').getByRole('button', { name: /^Open / })).toHaveCount(0);
+    await expect(page.locator('#drive-content .skeleton')).toHaveCount(0);
+    await expect.poll(() => page.locator('#drive-content').getByRole('button', { name: /^Open / }).count()).toBeGreaterThan(0);
+    await expect(page.locator('#live-data-freshness')).not.toContainText('Up to date');
     expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
     release(); await waitForVerifiedDrive(page);
     expect(fixture.backgroundMasterReads).toBe(reads);
   } finally { release(); }
   expect(fixture.errors).toEqual([]); expect(fixture.blockedMutations).toEqual([]);
+});
+
+
+test('native session recovery is shared by module reads and never calls the legacy database proxy', async ({ page, baseURL }) => {
+  const fixture = await installColdFixture(page, baseURL!);
+  let release!: () => void, refreshes = 0;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/auth/v1/token?grant_type=refresh_token', async route => {
+    refreshes++; await gate; await route.fallback();
+  });
+  await page.evaluate(() => {
+    const client = window.eval('getSupabaseBrowserClient()');
+    (window as any).__originalGetSession = client.auth.getSession.bind(client.auth);
+    client.auth.getSession = async () => ({ data: { session: null }, error: null });
+  });
+  try {
+    await page.locator('#home-tile-drive').click();
+    await expect.poll(() => refreshes).toBe(1);
+    expect(fixture.blockedMutations).toEqual([]);
+    await expect(page.locator('#drive-content')).not.toContainText('Native Auth sessions must use PostgREST');
+    await page.evaluate(() => { window.eval('getSupabaseBrowserClient()').auth.getSession = (window as any).__originalGetSession; });
+    release(); await waitForVerifiedDrive(page);
+    expect(refreshes).toBe(1);
+    expect(fixture.blockedMutations).toEqual([]);
+  } finally { release(); }
+  expect(fixture.errors).toEqual([]);
+});
+
+test('failed native session recovery shows recovery guidance without a legacy database request', async ({ page, baseURL }) => {
+  const fixture = await installColdFixture(page, baseURL!);
+  await page.evaluate(() => {
+    const client = window.eval('getSupabaseBrowserClient()');
+    client.auth.getSession = async () => ({ data: { session: null }, error: null });
+    client.auth.refreshSession = async () => ({ data: { session: null }, error: new Error('Expired synthetic session') });
+  });
+  await page.locator('#home-tile-drive').click();
+  await expect(page.locator('#drive-content')).toContainText(/session.*(restored|required)/i);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+
+test('progressive loader reference timing uses three cold sessions and repeat visits', async ({ browser, baseURL }, info) => {
+  test.skip(process.env.PROGRESSIVE_LOADING_BENCHMARK !== '1', 'Timing runs are isolated from functional browser work');
+  test.setTimeout(240000);
+  const samples: any[] = [];
+  for (let trial = 0; trial < 3; trial++) {
+    const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = info.project.use;
+    const context = await browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, serviceWorkers: 'block' });
+    const page = await context.newPage();
+    let requests = 0, bytes = 0;
+    const responses: Promise<void>[] = [];
+    page.on('response', response => {
+      if (new URL(response.url()).pathname.startsWith('/rest/v1/')) {
+        requests++;
+        responses.push(response.body().then(body => { bytes += body.length; }).catch(() => {}));
+      }
+    });
+    const started = Date.now(), sample: any = { trial };
+    try {
+      const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
+      sample.loginMs = Date.now() - started;
+      sample.release = await page.evaluate(() => window.eval('APP_SHELL_VERSION'));
+      const navigate = async () => {
+        const begin = Date.now(), reads = fixture.backgroundMasterReads, requestsBefore = requests, bytesBefore = bytes;
+        await page.locator('#home-tile-drive').click();
+        await expect.poll(() => commonNameButtons(page).count(), { timeout: 20000 }).toBeGreaterThan(0);
+        const firstMs = Date.now() - begin;
+        await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
+        await page.waitForFunction(() => window.eval('typeof productionLiveSyncVerifiedView === "undefined" ? getDatasetState("master").fullLoaded : productionLiveSyncVerifiedView === productionVerifiedViewKey()'), null, { timeout: 20000 });
+        await Promise.all(responses.splice(0));
+        return { firstMs, completeMs: Date.now() - begin, inventoryReads: fixture.backgroundMasterReads - reads,
+          requests: requests - requestsBefore, bytes: bytes - bytesBefore };
+      };
+      sample.cold = await navigate();
+      sample.sessionCompleteMs = Date.now() - started;
+      await page.locator('#global-header-inline-back').click();
+      await expect(page.locator('#view-home')).toBeVisible();
+      sample.repeat = await navigate();
+      if (process.env.PROGRESSIVE_LOADING_BASELINE !== '1') expect(sample.repeat.inventoryReads).toBe(0);
+      sample.prohibitedReads = fixture.blockedMutations.filter(value => value.startsWith('PROHIBITED_NATIVE_DB'));
+      sample.totalRequests = requests; sample.totalBytes = bytes;
+    } catch (error) {
+      sample.failure = String(error).split('\n')[0];
+      if (process.env.PROGRESSIVE_LOADING_BASELINE !== '1') throw error;
+    } finally { samples.push(sample); await context.close(); }
+  }
+  await info.attach('progressive-reference-timing.json', { body: JSON.stringify({ profile: info.project.name, samples }, null, 2), contentType: 'application/json' });
 });
