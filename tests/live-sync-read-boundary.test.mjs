@@ -684,3 +684,20 @@ test('native background validation refreshes the existing session without signin
     calls.length = 0; ctx.scheduleBackgroundLoginValidation('alice', 'synthetic'); ctx.currentUser = 'bob'; await callback();
     assert.deepEqual(calls, []);
 });
+
+
+test('initial restored auth event keeps its pending session read while a known account change invalidates it', () => {
+    const calls = []; let callback;
+    const ctx = { window: {}, nativeAuthProfile: null,
+        getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
+        invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
+        closeBloomscapesPendingOrders: () => {}, setTimeout: () => {} };
+    vm.createContext(ctx);
+    const from = html.indexOf('function installNativeRoleRefreshWatchers()');
+    vm.runInContext(html.slice(from, html.indexOf("document.addEventListener('visibilitychange'", from)), ctx);
+    ctx.installNativeRoleRefreshWatchers(); callback('INITIAL_SESSION', { user: { id: 'account-a' } });
+    assert.deepEqual(calls, []);
+    ctx.nativeAuthProfile = { id: 'account-a' };
+    callback('SIGNED_IN', { user: { id: 'account-b' } });
+    assert.deepEqual(calls, ['invalidate', 'reset']);
+});

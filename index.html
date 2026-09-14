@@ -9682,7 +9682,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             const client = getSupabaseBrowserClient();
             if (client && client.auth && typeof client.auth.onAuthStateChange === 'function' && !window.__gncNativeRoleAuthWatcher) {
                 const subscription = client.auth.onAuthStateChange((event, session) => {
-                    if (event === 'SIGNED_OUT' || (session?.user?.id && session.user.id !== nativeAuthProfile?.id)) {
+                    // The first restored session arrives before its profile exists.
+                    // Invalidate only a known account switch, or any sign-out.
+                    if (event === 'SIGNED_OUT' || (nativeAuthProfile?.id && session?.user?.id && session.user.id !== nativeAuthProfile.id)) {
                         invalidateNativeAuthRecovery();
                         if (typeof resetProductionLiveSync === 'function') resetProductionLiveSync();
                     }
@@ -9718,6 +9720,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (!client || !email || !password) return null;
             const { data, error } = await client.auth.signInWithPassword({ email, password: String(password) });
             if (error || !data || !data.session) return null;
+            invalidateNativeAuthRecovery();
             nativeAuthSessionActive = true;
             nativeAuthAccessToken = String(data.session.access_token || '').trim();
             nativeAuthProfile = null;
@@ -9791,6 +9794,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             try {
                 const { data, error } = await client.auth.signInWithPasskey();
                 if (error || !data || !data.session) throw error || new Error('Passkey sign-in failed.');
+                invalidateNativeAuthRecovery();
                 nativeAuthReadRequired = true;
                 nativeAuthSessionActive = true;
                 nativeAuthAccessToken = String(data.session.access_token || '').trim();

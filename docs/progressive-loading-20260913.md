@@ -45,3 +45,13 @@ Three cold sessions and three repeat visits per profile used identical 9,366-row
 All six candidate samples completed with all names and no prohibited native database-proxy reads. Cold inventory pagination required 10 desktop / 11 mobile reads; cold REST response bytes were approximately 43.08 MB. Evidence: `artifacts/progressive-candidate-timing.json`.
 
 The separately compiled August 31 reference failed the full-name count in all six historical samples under the same native-auth fixture. Its older season-scoped query was supported and tested before these recorded trials. These failures are not valid completion timing samples, and no percentage improvement over August 31 is claimed. Evidence: `artifacts/august31-timing-corrected.json`.
+
+## First candidate corrections
+
+Candidate `1cc4c698932a2b2a7ae521f29602000d23ec56b0`, run `34806809510`, was not promoted. Two held-refresh tests still expected the old `Syncing` label. Their assertions now require `Showing available rows · Refreshing` and independently require the coordinator to remain in `Syncing`, retaining all row, import, failure, reconnect, and final-proof checks.
+
+Full Home validation also exposed a restored-session regression: the first `INITIAL_SESSION` event arrived before a profile existed and invalidated its own pending session read. Account mismatch now requires a known previous profile identity. Sign-out still always invalidates; successful password/passkey sign-in explicitly invalidates old reads before replacing identity. This is covered by a new unit regression and 16 passing restored-login/reload browser cases across all four Home profiles.
+
+After correction, 985 required unit checks passed. All three focused Docks profiles passed. Four of five traced cache profiles passed; local desktop WebKit exhausted the overall 60-second budget at its final already-visible summary assertion. Its trace showed successful preceding correctness assertions. The unchanged test passed in 8.6 seconds with local tracing disabled as a diagnostic; required CI tracing, all assertions, and time limits remain unchanged. No gate is waived by that diagnostic.
+
+The initial Home, HL order, and restocking jobs exhausted their job limits after the same restored-profile wait timed out; their logs point to `hl-order-state.mjs:608`. Six focused HL draft-reload and receipt-correction cases passed after the correction in Chromium, Firefox, and iPhone. The corrected candidate retains V2026.09.13.04 and uses the one additional full validation allowed by the release plan.

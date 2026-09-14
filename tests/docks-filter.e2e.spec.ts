@@ -251,7 +251,8 @@ test('native shared coordinator preserves filtered sessions, stages import races
       fixture.gate = new Promise<void>(resolve => { fixture.release = resolve; });
       fixture.changed();
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Syncing');
+    await expect(page.locator('#live-data-freshness')).toContainText('Showing available rows · Refreshing');
+    expect(await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().getStatus().state'))).toBe('Syncing');
     await expect(counts(page)).toContainText('Showing 149 of 149');
     await page.evaluate(data => {
       const fixture = (window as any).__nativeSyncFixture;
