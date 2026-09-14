@@ -27,7 +27,8 @@
         const requested = new Map();
         let epoch = 0, scope = '', permission = '', running = null, queued = false;
         let activeRun = null, backgroundRunning = null, backgroundGeneration = 0, backgroundTimer = null, backgroundController = null;
-        let pollTimer = null, signalTimer = null, signalAt = Infinity, unsubscribe = null, subscribedScope = '';
+        let pollTimer = null, signalTimer = null, signalAt = Infinity, signalReason = '', signalIdentity = '', unsubscribe = null, subscribedScope = '';
+        const readinessReasons = new Set(['visible-view', 'view-entry', 'login-shell-open', 'drive-detail-tab', 'av-notes-input']);
         let lastVerifiedAt = null, currentStatus = { state: 'Syncing', lastVerifiedAt: null };
         let backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
         const statistics = { revisionReads: 0, adapterReads: 0, discardedLoads: 0, commits: 0, signals: 0, cacheHits: 0 };
@@ -132,7 +133,7 @@
             if (background) backgroundController = run.controller;
             if (!background) arm(ctx);
             if (!ctx?.scope || ctx.visible === false) return false;
-            const emit = background ? publishBackground : publish;
+            const emit = background ? publishBackground : (state, message = '', extra = {}) => publish(state, message, { ...extra, contextKey: identity(ctx) });
             if (ctx.online === false) { emit('Offline', 'Showing the last verified data, if available.'); return false; }
             const startedEpoch = epoch;
             const current = () => stillCurrent(ctx, startedEpoch) && (!background || run.generation === backgroundGeneration
@@ -251,6 +252,15 @@
             }, Math.max(0, options.backgroundDelayMs ?? 250));
         }
         function check(reason = 'check') {
+            const nextIdentity = identity(options.getContext() || {});
+            if (readinessReasons.has(reason)) {
+                if (signalTimer !== null && readinessReasons.has(signalReason) && signalIdentity === nextIdentity) {
+                    cancel(signalTimer); signalTimer = null; signalAt = Infinity;
+                }
+                // Rendering and navigation ask for the same proof. Real source,
+                // permission and reconnect signals still queue another pass.
+                if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === nextIdentity) return running;
+            }
             invalidateBackground();
             if (activeRun && (activeRun.epoch !== epoch || identity(activeRun.context || {}) !== identity(options.getContext() || {}))) activeRun.controller?.abort();
             queued = true;
@@ -282,12 +292,14 @@
             statistics.signals++;
             const ctx = options.getContext();
             if (!ctx?.scope || ctx.visible === false) { clearTimers(); closeSubscription(); epoch++; return; }
+            if (readinessReasons.has(reason) && running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)) return;
             if (activeRun && identity(activeRun.context || {}) !== identity(ctx)) activeRun.controller?.abort();
             if (backgroundRunning) invalidateBackground();
             const due = now() + Math.max(0, delay);
             if (signalTimer !== null && signalAt <= due) return;
             if (signalTimer !== null) cancel(signalTimer);
             signalAt = due;
+            signalReason = reason; signalIdentity = identity(ctx);
             signalTimer = later(() => { signalTimer = null; signalAt = Infinity; check(reason); }, Math.max(0, delay));
         }
         function ensure(adapter, force = false) {

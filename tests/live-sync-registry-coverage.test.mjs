@@ -40,6 +40,7 @@ function harness() {
     getActiveSpreadCountType: () => 'spread', normalizeProductivityUsername: value => value,
     normalizeInventoryOfficeApprovalType: value => value,
     getRoleAccessState: () => ({ isAdmin: !context.evalRole, isEval: context.evalRole, isRep: false }),
+    isAlwaysDriveCardOptionsUser: () => false,
     getActiveEvalSimpleTaskFilterValue: () => context.activeTaskView,
     isInventoryChecksApprovalTaskView: value => value === 'inventory-checks',
     isTaskDiagnosticsView: () => false, isManagerApprovalTab: () => false,
@@ -128,4 +129,36 @@ test('NCR completion indexes used to remove completed rows participate in review
     assert.match(functionSource(builder), /ensureNcrCompletionIndexLoaded/);
     assert.ok(registry.getViewAdapters(view).includes('side:ncr'), `${view} must track its NCR completion source`);
   }
+});
+
+test('Drive verifies its displayed stock without waiting for unopened detail sources', () => {
+  const context = harness(), registry = context.AgMetricLiveSyncRegistry;
+  assert.deepEqual(Array.from(registry.getViewAdapters('drive')), ['core:master', 'side:settings']);
+  const assigned = registry.getViewAdapters('drive', { driveAssignmentsRequired: true, evalInventoryRows: true });
+  assert.ok(assigned.includes('core:warehouseAssignedItems'));
+  assert.ok(assigned.includes('core:inventoryEditRequests'));
+  for (const id of ['core:reserves', 'core:avNotes']) assert.ok(!assigned.includes(id));
+  assert.ok(registry.getViewAdapters('drive', { surfaces: ['dialog:av-notes'] }).includes('core:avNotes'));
+});
+
+test('Tasks verifies each selected category including empty-key fallbacks and joined reserves', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  const base = Array.from(registry.getCoreKeys('tasks'));
+  assert.deepEqual(base, ['master', 'requests', 'salesOffice', 'warehouseAssignedItems']);
+  for (const [taskView, extra] of [
+    ['flyer', ['flyerRows', 'flyerHistory']], ['hot-price', ['avHotPriceKeys']],
+    ['av-blanks', ['cavAvBlankKeys', 'cav']], ['reserves', ['reserves', 'customerRepMap']]
+  ]) assert.deepEqual(Array.from(registry.getCoreKeys('tasks', { taskView })), [...base, ...extra]);
+  assert.ok(registry.getCoreKeys('tasks', { taskView: 'eval', taskFilter: 'av-blanks' }).includes('cav'));
+  assert.ok(registry.getCoreKeys('tasks', { taskView: 'eval', taskFilter: 'hot-price-ssn' }).includes('avHotPriceKeys'));
+});
+
+test('Drive detail defers its source panels while AV and Docks retain their complete joins', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  assert.deepEqual(Array.from(registry.getCoreKeys('detail', { driveDetail: true })), ['master']);
+  assert.deepEqual(Array.from(registry.getCoreKeys('detail')), ['master', 'reserves', 'avNotes']);
+  const demand = registry.getViewAdapters('detail', { driveDetail: true, surfaces: ['detail:reserves'] });
+  assert.ok(demand.includes('side:driveReserves'));
+  assert.ok(!demand.includes('core:reserves'));
+  assert.deepEqual(Array.from(registry.getViewAdapters('docks')), ['core:soc', 'core:master', 'core:customerRepMap', 'side:dockWorkflow', 'side:settings']);
 });

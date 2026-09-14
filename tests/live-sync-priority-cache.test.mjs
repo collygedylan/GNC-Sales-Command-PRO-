@@ -53,6 +53,34 @@ test('ensure calls covered by a current cohort share its verification without an
     assert.equal(f.metadata.length, 2); assert.deepEqual(f.reads, ['inventory']);
 });
 
+test('navigation and rendering share one proof but a real revision event still rechecks', async () => {
+    const f = fixture(), gate = deferred(); f.context.backgroundAdapters = [];
+    f.gates.set('inventory', gate.promise);
+    f.coordinator.signal('view-entry', 0);
+    const first = f.coordinator.check('visible-view'); await settle();
+    f.coordinator.signal('view-entry', 0);
+    const joined = f.coordinator.check('visible-view');
+    gate.resolve(); await Promise.all([first, joined]);
+    await f.backgroundTick();
+    assert.equal(f.metadata.length, 2); assert.deepEqual(f.reads, ['inventory']);
+    assert.equal(f.coordinator.getStatus().contextKey, JSON.stringify(['user-a', 'inventory', [['inventory', 'inventory/all']]]));
+    f.revision = '2'; f.coordinator.signal('metadata', 0); await f.backgroundTick();
+    assert.deepEqual(f.reads, ['inventory', 'inventory']);
+});
+
+test('returning to a verified group checks metadata without downloading or recommitting its rows', async () => {
+    const f = fixture(); f.context.backgroundAdapters = [];
+    await f.coordinator.check('view-entry');
+    f.context.viewKey = 'other'; f.context.adapters = [f.adapter('other')];
+    await f.coordinator.check('view-entry');
+    const before = f.metadata.length;
+    f.context.viewKey = 'inventory'; f.context.adapters = [f.foreground];
+    await f.coordinator.check('visible-view');
+    assert.equal(f.metadata.length - before, 1);
+    assert.deepEqual(f.reads, ['inventory', 'other']);
+    assert.deepEqual(f.commits.map(value => value.id), ['inventory', 'other']);
+});
+
 test('navigation reprioritizes immediately and discards the old held background', async () => {
     const f = fixture(), gate = deferred(); f.gates.set('badges', gate.promise);
     await f.coordinator.check(); await f.backgroundTick();
@@ -193,6 +221,46 @@ test('a navigation-only Home opens before its badge cohort and still loads those
 });
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+test('a loading placeholder cannot retain the Drive render key and suppress unchanged rows on return', () => {
+    const container = { dataset: { driveRenderKey: 'same-snapshot' }, innerHTML: 'verified rows' };
+    const context = { String, VIEW_LOAD_UI: { drive: { container: 'rows' } },
+        document: { getElementById: () => container },
+        getViewLoadingRenderSignature: () => 'loading', containerHasRenderableContent: () => true,
+        setContainerHtml: (element, markup) => { element.innerHTML = markup; },
+        setContainerRenderSignature() {}, setContainerUiState() {}, syncDriveCrumb() {}
+    };
+    vm.createContext(context);
+    vm.runInContext(html.slice(html.indexOf('        function showViewLoadingState('), html.indexOf('        function showViewErrorState(')), context);
+    vm.runInContext(html.slice(html.indexOf('        function applyDriveRenderMarkup('), html.indexOf('        function isDriveSpreadsheetGridMode(')), context);
+    context.showViewLoadingState('drive', 'Verifying current data...', true);
+    assert.equal(container.dataset.driveRenderKey, undefined);
+    assert.equal(context.applyDriveRenderMarkup(container, null, 'Drive', 'verified rows', 'same-snapshot'), true);
+    assert.equal(container.innerHTML, 'verified rows');
+    assert.equal(context.applyDriveRenderMarkup(container, null, 'Drive', 'verified rows', 'same-snapshot'), false);
+});
+
+test('focused AV note choices cannot use previously loaded notes before current proof', async () => {
+    const gate = deferred(), list = { innerHTML: '' }, item = { UNIQUE_ID: 'one' };
+    let checks = 0;
+    const context = { Map, JSON, String, Promise, activeItem: item, holdReleasePromptItem: null,
+        verifiedAvNoteLoads: new Map(), productionLiveSyncVerifiedView: 'previous-group',
+        canUseProductionLiveSync: () => true,
+        getProductionLiveSyncContext: () => ({ surfaces: ['dialog:av-notes'] }),
+        productionVerifiedViewKey: () => 'current-group',
+        document: { getElementById: () => list },
+        getProductionLiveSyncCoordinator: () => ({ check: () => { checks++; return gate.promise; } }),
+        isDatasetLoaded: () => { throw new Error('Unverified choices must never render'); }
+    };
+    vm.createContext(context);
+    vm.runInContext(html.slice(html.indexOf('        function ensureVerifiedAvNoteChoices('), html.indexOf('        function selectAvNote(')), context);
+    context.filterAvNotes(''); context.filterAvNotes('');
+    assert.equal(checks, 1); assert.match(list.innerHTML, /Loading verified AV notes/);
+    gate.resolve(false); await settle();
+    assert.match(list.innerHTML, /could not be verified/);
+    assert.doesNotMatch(list.innerHTML, /No saved AV notes/);
+});
+
 function transportFixture(overrides = {}) {
     const calls = [], navigation = new AbortController();
     const ctx = { AbortController, WeakMap, Set, Error, Object, Math, Number, String, JSON,
@@ -268,4 +336,23 @@ test('fallback app-function auth cannot start a read after cancellation', async 
     const pending = ctx.postAppFunctionJson('https://fixture.invalid', {}, { signal: controller.signal });
     controller.abort(); gate.resolve({ Authorization: 'synthetic' });
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED'); assert.equal(calls, 0);
+});
+
+
+test('initial verified content skips the background render debounce and retains draft guards', () => {
+    for (const [state, immediate, expectedDelay] of [['loading', false, 0], ['ready', false, 150], ['ready', true, 0]]) {
+        let callback, delay, renders = 0;
+        const context = { productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
+            productionLiveSyncRendering: false, VIEW_LOAD_UI: { drive: { container: 'drive-content' } },
+            getCurrentVisibleViewId: () => 'drive', getContainerUiState: () => state,
+            document: { hidden: false, getElementById: () => ({}), activeElement: null },
+            window: { AgMetricLiveSyncRegistry: { views: { drive: { kind: 'data' } } } },
+            canUseProductionLiveSync: () => true, hasProductionLiveSyncDraft: () => false,
+            setTimeout: (fn, ms) => { callback = fn; delay = ms; return 1; }, clearTimeout() {},
+            markViewDirty() {}, renderViewContent: () => { renders++; } };
+        vm.createContext(context);
+        vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), context);
+        context.scheduleProductionLiveSyncRender(immediate); assert.equal(delay, expectedDelay);
+        callback(); assert.equal(renders, 1);
+    }
 });

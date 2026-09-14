@@ -57,7 +57,7 @@
         building: data(['master'], ['settings']),
         managers: data(['master', 'warehouseAssignedItems'], ['settings', 'coverage']),
         'crop-roll': data(['cropRollDrive', 'master'], ['cropRoll', 'settings']),
-        drive: data(['master', 'reserves', 'avNotes', 'warehouseAssignedItems'], ['settings']),
+        drive: data(['master'], ['settings']),
         av: data(['avOpen', 'master', 'reserves', 'customerRepMap', 'avHotPriceKeys', 'avNotes'], ['settings']),
         reserves: data(['reserves', 'master', 'customerRepMap']),
         docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow']),
@@ -66,7 +66,7 @@
         reports: data(['requests', 'requestHistory', 'salesCredits', 'soc', 'master', 'reserves', 'customerRepMap'], ['settings']),
         'sales-office': data(['salesOffice', 'master', 'flyerRows', 'flyerHistory'], ['settings']),
         moves: data(['salesOffice', 'master', 'requests', 'inventoryEditRequests']),
-        tasks: data(['master', 'requests', 'salesOffice', 'flyerRows', 'flyerHistory', 'warehouseAssignedItems', 'cav', 'cavAvBlankKeys', 'avHotPriceKeys', 'avNotes'], ['settings']),
+        tasks: data(['master', 'requests', 'salesOffice', 'warehouseAssignedItems'], ['settings']),
         review: data(['master'], ['ncr']), 'move-up': data(['master', 'salesOffice'], ['ncr']),
         'low-stock': data(['master'], ['settings']), advertisement: data(['master', 'avNotes', 'flyerRows', 'flyerHistory'], ['settings']),
         grower: data(['master', 'growerScoutReports', 'growerScoutAssets']),
@@ -85,6 +85,7 @@
     };
     // A surface is a data-bearing subview, badge or dialog. These are not separate routes.
     const surfaces = {
+        'dialog:av-notes': data(['avNotes']),
         'detail:reserves': data([], ['driveReserves']),
         'detail:open-orders': data([], ['driveOpenOrders']),
         'request:pending': data(['requests', 'requestHistory', 'salesCredits', 'inventoryEditRequests']),
@@ -140,7 +141,20 @@
     function getEntries(viewId, context = {}) {
         const view = views[viewId];
         if (!view) throw new Error(`Unregistered live-sync view: ${viewId}`);
-        const entries = [view];
+        const entries = [viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
+        if ((viewId === 'drive' || viewId === 'detail' && context.driveDetail) && context.driveAssignmentsRequired) {
+            entries.push(data(['warehouseAssignedItems']));
+        }
+        if (viewId === 'tasks') {
+            const task = String(context.taskView || '').toLowerCase();
+            const filter = String(context.taskFilter || '').toLowerCase();
+            if (task === 'flyer') entries.push(data(['flyerRows', 'flyerHistory']));
+            if ([task, filter].some(value => value === 'hot-price' || value === 'hot-price-ssn')) entries.push(data(['avHotPriceKeys']));
+            // Empty explicit keys still consult the CAV fallback. Both sources
+            // must be complete before claiming there are no AV Blank rows.
+            if ([task, filter].includes('av-blanks')) entries.push(data(['cavAvBlankKeys', 'cav']));
+            if (task === 'reserves') entries.push(data(['reserves', 'customerRepMap']));
+        }
         (context.surfaces || []).forEach((surface) => {
             if (!surfaces[surface]) throw new Error(`Unregistered live-sync surface: ${surface}`);
             entries.push(surfaces[surface]);
@@ -151,7 +165,7 @@
         const selected = getEntries(viewId, context).flatMap((entry) => [
             ...entry.datasets.map((id) => `core:${id}`), ...entry.adapters.map((id) => `side:${id}`)
         ]);
-        if (context.evalInventoryRows && evalRowViews.has(viewId)) selected.push('core:inventoryEditRequests');
+        if (context.evalInventoryRows && (evalRowViews.has(viewId) || viewId === 'detail' && context.driveDetail)) selected.push('core:inventoryEditRequests');
         // Badge-only dependencies must not cause static forms or Chat to take on
         // inventory settings; direct inventory views and dialogs do depend on them.
         const dataEntries = getEntries(viewId, { ...context, surfaces: (context.surfaces || []).filter((id) => !id.startsWith('badge:')) });
