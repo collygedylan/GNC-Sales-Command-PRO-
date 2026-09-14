@@ -416,7 +416,8 @@ test('progressive loader reference timing uses three cold sessions and repeat vi
     });
     const started = Date.now(), sample: any = { trial };
     try {
-      const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
+      const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows(),
+        historicalReferenceVersion: process.env.PROGRESSIVE_LOADING_HISTORICAL === '1' ? 'V2026.08.24.01' : null });
       sample.loginMs = Date.now() - started;
       sample.release = await page.evaluate(() => window.eval('APP_SHELL_VERSION'));
       const navigate = async () => {

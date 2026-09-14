@@ -609,7 +609,9 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   // A profile can exist before initial login opens Home. Navigate only after
   // that initialization has finished, without replacing any authorization state.
   await page.locator('#view-login').waitFor({ state: 'hidden' });
-  await page.waitForFunction(() => document.body.classList.contains('role-access-ready')
-    && window.eval('hasAppliedInitialHomeView === true'));
+  await page.waitForFunction(reference => document.body.classList.contains('role-access-ready')
+    && (reference === 'V2026.08.24.01'
+      ? window.__APP_SHELL_VERSION__ === reference && !!document.getElementById('view-home')?.getClientRects().length
+      : window.eval('hasAppliedInitialHomeView === true')), options.historicalReferenceVersion || null);
   return control;
 }

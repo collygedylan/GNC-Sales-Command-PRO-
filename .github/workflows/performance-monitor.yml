@@ -8,13 +8,14 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: performance-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# A main push is validated once by Pages. PR, scheduled and manual checks reuse
-# the identical lanes without publishing or duplicating main-push verification.
+# Manual candidate checks run every required lane once against one sealed build.
+# Main Pages verifies this run's proof and deploys its artifact without rebuilding.
 jobs:
   validation:
     uses: ./.github/workflows/release-validation.yml

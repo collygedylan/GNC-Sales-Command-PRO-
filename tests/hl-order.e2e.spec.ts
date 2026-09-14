@@ -78,6 +78,54 @@ function assertIsolated(fixture: any) {
   expect(fixture.blockedMutations).toEqual([]);
 }
 
+test('HL statement timeout keeps saved rows, pauses polling, and Retry preserves edits', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a')] });
+  await openHl(page); await openDetails(page);
+  const input = page.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]');
+  await input.fill('4');
+  let attempts=0;
+  await page.route('**/rest/v1/rpc/hl_order_state', async route => {
+    attempts++;
+    if (attempts===1) return route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({code:'57014',message:'canceling statement due to statement timeout'})});
+    return route.fallback();
+  });
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await expect(page.locator('#hl-order-content [role="alert"]')).toContainText('last confirmed data');
+  await expect(input).toHaveValue('4');
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  expect(attempts).toBe(1);
+  await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await expect(page.locator('#hl-order-content [role="alert"]')).toHaveCount(0);
+  await expect(input).toHaveValue('4');
+  expect(attempts).toBe(2);
+  assertIsolated(fixture);
+});
+
+test('fresh HL tab navigation reuses state and loads Restocking only on demand', async ({page,baseURL})=>{
+  const reads={state:0,restock:0};
+  page.on('request',request=>{
+    if(request.url().endsWith('/rpc/hl_order_state')) reads.state++;
+    if(request.url().endsWith('/rpc/hl_order_restock_state')) reads.restock++;
+  });
+  const fixture=await installHlOrderFixture(page,baseURL!);
+  await openHl(page);
+  // Establish the current permission/source scope before measuring fresh tabs.
+  await page.evaluate(async()=>window.eval('getProductionLiveSyncCoordinator().check("fixture-startup-ready")'));
+  await page.waitForFunction(()=>window.eval('!!hlOrderStateData && !hlOrderStatePending'));
+  const initial=reads.state;
+  for(const tab of ['orders','history','needed']) await navigateHl(page,page.locator(`[data-hl-tab="${tab}"]`));
+  expect(reads.state).toBe(initial);
+  expect(reads.restock).toBe(0);
+  await navigateHl(page,page.locator('[data-hl-tab="restocking"]'));
+  await expect.poll(()=>reads.restock).toBe(1);
+  await page.waitForFunction(()=>window.eval('!!hlRestockState && !hlRestockStatePending'));
+  await navigateHl(page,page.locator('[data-hl-tab="needed"]'));
+  await navigateHl(page,page.locator('[data-hl-tab="restocking"]'));
+  expect(reads.restock).toBe(1);
+  expect(reads.state).toBe(initial);
+  assertIsolated(fixture);
+});
+
 test('cards use all five grouping fields and detail shows all accessible matching Drive seasons despite search filters', async ({ page, baseURL }, info) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1' }),
     hlSoc('date', { planstartdate: '2026-09-16' }), hlSoc('dock', { dock: '5' }), hlSoc('stop', { stopnumber: '3' }), hlSoc('size', { contsize: '#7' }), hlSoc('item', { itemcode: 'OTHER' })] });

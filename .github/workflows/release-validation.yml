@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   unit:
@@ -25,6 +26,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node scripts/prepare-release-version.mjs --check
       - run: npm run check:inline
       - run: node scripts/run-release-unit-checks.mjs
       - run: npm run test:v2
@@ -37,6 +39,7 @@ jobs:
     timeout-minutes: 12
     outputs:
       digest: ${{ steps.seal.outputs.digest }}
+      artifact-id: ${{ steps.site.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,7 +53,8 @@ jobs:
       - run: node scripts/prepare-release-site.mjs
       - id: seal
         run: node scripts/release-artifact.mjs seal
-      - uses: actions/upload-artifact@v4
+      - id: site
+        uses: actions/upload-artifact@v4
         with:
           name: release-site-${{ github.sha }}
           path: _site
@@ -235,3 +239,37 @@ jobs:
           if (!/^[a-f0-9]{64}$/.test(jobs.build.outputs.digest || '')) throw new Error('RELEASE_DIGEST_MISSING');
           console.log('Every required lane passed for the sealed release.');
           NODE
+      - name: Record the passing immutable candidate
+        env:
+          RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
+          RELEASE_SITE_ID: ${{ needs.build.outputs.artifact-id }}
+        run: |
+          mkdir -p proof
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          fs.writeFileSync('proof/release-proof.json', JSON.stringify({
+            schemaVersion:'gnc-release-proof-v1', repository:process.env.GITHUB_REPOSITORY,
+            commit:process.env.GITHUB_SHA, runId:Number(process.env.GITHUB_RUN_ID),
+            attempt:Number(process.env.GITHUB_RUN_ATTEMPT), siteArtifactId:Number(process.env.RELEASE_SITE_ID),
+            digest:process.env.RELEASE_DIGEST
+          }));
+          NODE
+      - uses: actions/checkout@v4
+        with:
+          path: candidate-source
+          sparse-checkout: package.json
+          sparse-checkout-cone-mode: false
+      - name: Bind the release version
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const file='proof/release-proof.json', proof=JSON.parse(fs.readFileSync(file));
+          proof.release='V'+JSON.parse(fs.readFileSync('candidate-source/package.json')).version;
+          fs.writeFileSync(file,JSON.stringify(proof));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-proof-${{ github.sha }}-${{ github.run_attempt }}
+          path: proof/release-proof.json
+          if-no-files-found: error
+          retention-days: 7

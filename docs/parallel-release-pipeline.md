@@ -4,13 +4,15 @@ This changes release orchestration, not the app shell, user permissions, invento
 
 ## Working protocol before CI
 
-Use one release owner and up to three independently scoped workers when the change warrants it: client/UI, protected server contract, and regression/review. Agree on request/response contracts and file ownership first. Do not have multiple workers edit the same file or let multiple workers publish. Small single-file fixes do not need a full team.
+Use one implementation/release owner and one bounded independent reviewer. Keep the 30-minute active-repair checkpoint separate from automated check time. Stop when a failure repeats after a verified fix. Allow one complete candidate validation and at most one corrected candidate validation; preserve progress and identify the blocker when the limit is reached.
 
 Reproduce the reported failure with a focused fixture while implementation proceeds. Integrate the workers' changes once, then run the targeted regression against the compiled shell before pushing. Preserve unrelated worktree changes and keep unrelated improvements out of an urgent repair. Database, client, and delivery changes still follow their required compatibility order.
 
 Report implementation, validation, publication, and exact-live verification separately. A fast publish step does not make diagnosis or coding instantaneous. Record time spent in each phase so the next bottleneck can be measured rather than guessed. Any failed required check stops publication; fix the cause instead of bypassing it or repeatedly rerunning an unexplained failure.
 
 ## One build; isolated checks
+
+Set `package.json` to the next unused `YYYY.MM.DD.NN` version, then run `npm run release:version` before committing. This synchronizes the manifest, shell, service worker, compiler and lockfile to `VYYYY.MM.DD.NN`. `npm run release:version -- --check` verifies the markers without writing. Read-only production health must be checked before lengthy candidate validation and immediately before publication.
 
 The build lane installs the locked dependencies, builds pilot monitoring, live assets and v2, then runs `scripts/prepare-release-site.mjs`. That script preserves the former Pages static copy list, hidden files, compiled live shell, deployment fingerprints, HTML-size bound, and external-CDN guard.
 
@@ -36,6 +38,10 @@ All required lanes must succeed; a missing, cancelled, failed or unexpectedly sk
 
 Main releases are serialized with cancellation disabled. Immediately before publishing, the workflow checks that its candidate is still the current main commit. Superseded candidates do not publish. Branch workflow dispatch runs validation without deployment, providing a safe benchmark path. A benchmark branch does not enable production health mutations or deploy to Pages.
 
+Run the full validation workflow once for the exact candidate build. After every required lane passes, the release gate publishes `release-proof-COMMIT-ATTEMPT`, recording the repository, commit, version, run/attempt, site artifact ID and manifest digest. Main's validation job uses `scripts/release-proof.mjs` to verify GitHub's latest exact-commit manual candidate run and current-attempt jobs, then downloads that proof and the original sealed site artifact. Main does not rebuild or repeat candidate suites. All existing hosted suites and health checks remain required.
+
+Failed, pending, superseded, incomplete, expired, ambiguous or mismatched evidence blocks publication. There is no fallback rebuild under old results. A changed commit requires a new candidate validation; a missing artifact requires new validation, subject to the agreed attempt limit. The proof is rechecked immediately before artifact publication, and the full artifact manifest is verified after download.
+
 After deployment, exact-live release and commit verification runs before parallel mutation-blocked production canaries. Post-deployment failure remains visible in hosted health. Publishing quickly is not equivalent to completing those checks.
 
 ## Local candidate preflight
@@ -57,7 +63,7 @@ The helper requires a named branch other than `main`, a clean index/worktree inc
 
 `--dispatch` is the only remote write: it requests `performance-monitor.yml` on the already-pushed branch at the checked HEAD. It never dispatches on main. GitHub resolves the branch during dispatch, so the helper rechecks refs immediately afterwards and treats dispatch as a request, not a successful validation. `check` separately requires the remote branch and the latest manual benchmark to match the exact local SHA, branch, repository, workflow ID and workflow path. PR merge runs, schedules, another branch's success, an older green run beneath a newer failed/pending run, and earlier rerun attempts do not satisfy the gate. It checks the current attempt's complete job list and the successful sealed release-gate step; only the intentionally skipped branch production-health job is exempt. Incomplete or ambiguous API responses fail closed.
 
-A passing check prints the immutable candidate SHA, benchmark run/attempt, main base, and the normal fast-forward push command for a release owner to execute when authorized. It performs no main push. Worktree, branch, origin and remote refs are checked again before reporting success; the latest run is also reread after job inspection. This remains a point-in-time preflight, not an atomic lock on GitHub. Rerun it immediately before publishing, and integrate/rebenchmark if main or the candidate changes. Main's sealed Pages validation, current-main deployment guard, production health and exact-live canaries remain required.
+A passing check prints the immutable candidate SHA, benchmark run/attempt, main base, and the normal fast-forward push command for a release owner to execute when authorized. It performs no main push. Worktree, branch, origin and remote refs are checked again before reporting success; the latest run is also reread after job inspection. This remains a point-in-time preflight, not an atomic lock on GitHub. Rerun it immediately before publishing, and integrate/rebenchmark if main or the candidate changes. Main's candidate-proof verification, sealed artifact verification, current-main deployment guard, production health and exact-live canaries remain required. Deploy compatible database/reporting dependencies before the frontend. Record the proof identity and exact-live results with the release report; reaching main alone is not completion.
 
 ## Measuring the result
 

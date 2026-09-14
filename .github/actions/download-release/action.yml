@@ -4,13 +4,26 @@ inputs:
   digest:
     description: SHA256 of the manifest sealed by the build job.
     required: true
+  run-id:
+    description: Validated workflow run; empty for this run.
+    default: ''
+  artifact-id:
+    description: Verified cross-run artifact identity; empty for this run.
+    default: ''
+  token:
+    description: Read-only Actions token for cross-run downloads.
+    default: ''
 runs:
   using: composite
   steps:
     - uses: actions/download-artifact@v4
       with:
-        name: release-site-${{ github.sha }}
+        name: ${{ inputs.artifact-id == '' && format('release-site-{0}', github.sha) || '' }}
+        artifact-ids: ${{ inputs.artifact-id }}
+        run-id: ${{ inputs.run-id }}
+        github-token: ${{ inputs.token }}
         path: _site
+        merge-multiple: true
     - name: Verify exact build bytes and commit
       shell: bash
       env:

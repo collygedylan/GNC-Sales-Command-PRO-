@@ -15,7 +15,8 @@ const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
 test('all safety lanes must succeed before the sealed release can deploy', () => {
   assert.equal(pages.jobs.deploy.needs, 'validation');
-  assert.equal(pages.jobs.validation.uses, './.github/workflows/release-validation.yml');
+  assert.ok(pages.jobs.validation.steps.some(s => s.run === 'node scripts/release-proof.mjs verify'));
+  assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
   assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','functional','compiled','timing','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
@@ -60,9 +61,11 @@ test('main runs validation once and a feature benchmark cannot publish or change
   assert.equal(performance.on.push, undefined);
   assert.ok('pull_request' in performance.on);
   assert.ok('schedule' in performance.on);
-  assert.equal(performance.jobs.validation.uses, pages.jobs.validation.uses);
+  assert.equal(performance.jobs.validation.uses, './.github/workflows/release-validation.yml');
+  assert.doesNotMatch(pages.jobs.validation.steps.map(s=>s.run||'').join('\n'), /build:|playwright|run-release-unit/);
   assert.equal(pages.concurrency['cancel-in-progress'], false);
-  assert.match(pages.jobs.validation.with['production-health'], /github.ref == 'refs\/heads\/main'/);
+  assert.match(pages.jobs.validation.if, /github.ref == 'refs\/heads\/main'/);
+  assert.equal(pages.jobs.validation.steps.find(s=>s.name === 'Probe production login bridge and Data API').env.PRODUCTION_PROBE_READ_ONLY, '1');
   assert.match(pages.jobs['report-production-health'].if, /github.ref == 'refs\/heads\/main'/);
   const current = pages.jobs.deploy.steps.find(s=>s.id === 'current');
   assert.match(current.with.script, /ref.data.object.sha === context.sha/);

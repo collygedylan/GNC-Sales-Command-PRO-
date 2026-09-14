@@ -349,3 +349,42 @@ test('a state response discarded during permission initialization allows an imme
   await ctx.loadHlOrderState();
   assert.equal(reads, 2, 'a valid same-scope read still coalesces');
 });
+
+test('HL timeout retains data, pauses reads, and a manual retry recovers', async () => {
+  const ctx=runtime(); let reads=0;
+  ctx.canUseProductionLiveSync=()=>true; ctx.scheduleProductionLiveSyncRender=()=>{};
+  ctx.getSupabaseReadIdentityScope=()=> 'account'; ctx.scheduleHlOrderRefresh=()=>{};
+  ctx.renderHlOrder=()=>{}; ctx.renderHlBloomSection=()=>{}; ctx.updateGlobalActionBar=()=>{};
+  ctx.supabaseRpc=async()=>{reads++;if(reads===2)throw Object.assign(new Error('canceling statement due to statement timeout'),{status:500});return {revision:reads,draft:[],orders:[]};};
+  await ctx.loadHlOrderState(); await ctx.loadHlOrderState(true);
+  assert.equal(vm.runInContext('hlOrderStateData.revision',ctx),1);
+  assert.match(vm.runInContext('hlOrderStateError',ctx),/last confirmed data/);
+  await ctx.loadHlOrderState(true);assert.equal(reads,2);
+  await ctx.refreshHlOrder();assert.equal(reads,3);
+  assert.equal(vm.runInContext('hlOrderTimeoutPaused',ctx),false);
+});
+
+test('a timed-out command retains its identity even with an HTTP error status', async () => {
+  const ctx=runtime();const calls=[];
+  ctx.canUseProductionLiveSync=()=>true;ctx.scheduleProductionLiveSyncRender=()=>{};ctx.getSupabaseReadIdentityScope=()=> 'account';
+  ctx.renderHlOrder=()=>{};ctx.renderHlBloomSection=()=>{};ctx.updateGlobalActionBar=()=>{};
+  ctx.crypto={randomUUID:()=> 'same-command'};
+  vm.runInContext('hlOrderStateData={revision:1,draft:[],orders:[]}',ctx);
+  ctx.supabaseRpc=async(_name,command)=>{calls.push(command);if(calls.length===1)throw Object.assign(new Error('statement timeout'),{status:500});return {revision:2,draft:[],orders:[]};};
+  await assert.rejects(ctx.runHlOrderCommand('receive',{quantity:1}),/too long/);
+  const command=vm.runInContext('hlOrderPendingCommand',ctx);assert.equal(command.p_command_id,'same-command');
+  await ctx.runHlOrderCommand(command.p_action,command.p_payload,command);
+  assert.equal(calls[1].p_command_id,calls[0].p_command_id);
+  assert.equal(vm.runInContext('hlOrderPendingCommand',ctx),null);
+});
+
+test('stale restock blocks Bloom and TAGS actions independently of the active tab',async()=>{
+  const ctx=runtime();
+  vm.runInContext("hlOrderTab='needed'; hlRestockStateError='Restocking needs Retry'; hlOrderStateData={revision:1,draft:[{source_kind:'restock',ship_date:'2026-09-20'}],orders:[]};",ctx);
+  let calls=0; ctx.supabaseRpc=async()=>{calls++;};
+  await assert.rejects(ctx.runHlOrderCommand('restock_draft_save',{}),/needs Retry/);
+  await assert.rejects(ctx.runHlOrderCommand('preview',{ship_date:'2026-09-20'}),/needs Retry/);
+  vm.runInContext("hlOrderPreview={id:'p',ship_date:'2026-09-20'}",ctx);
+  await assert.rejects(ctx.runHlOrderCommand('submit',{preview_id:'p'}),/needs Retry/);
+  assert.equal(calls,0);
+});

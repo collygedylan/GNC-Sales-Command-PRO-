@@ -37,6 +37,12 @@ export function readReleaseWorkflowSources(entry, { root = repositoryRoot } = {}
       if (/(?:^\s*(?:-\s*)?run:\s*|^\s+)node\s+scripts\/prepare-release-site\.mjs(?:\s|$)/m.test(source)) {
         read('scripts/prepare-release-site.mjs');
       }
+      // Main consumes the benchmark's proof instead of invoking its jobs again.
+      // Follow that actual verifier dependency so coverage remains inspectable.
+      if (/run:\s*node scripts\/release-proof\.mjs (?:select|verify)/.test(source)) {
+        read('scripts/release-proof.mjs');
+        read('.github/workflows/performance-monitor.yml');
+      }
     }
   }
   read(entry instanceof URL ? path.relative(base, fileURLToPath(entry)) : entry);

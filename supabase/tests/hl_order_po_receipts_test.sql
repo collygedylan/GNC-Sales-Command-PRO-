@@ -6,6 +6,29 @@ begin
   if ok is distinct from true then raise exception 'HL lifecycle: %',description; end if;
   insert into hl_checks(description) values(description);
 end $$;
+create function pg_temp.hl_reference_state() returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+declare s jsonb; o jsonb; d jsonb; a jsonb; orders jsonb:='[]'; drafts jsonb:='[]'; actionable jsonb:='[]'; lines jsonb; l jsonb;
+begin
+  s:=hl_order_private.state_json_before_po();
+  for a in select value from jsonb_array_elements(s->'actionable_rows') loop
+    actionable:=actionable||jsonb_build_array(a||jsonb_build_object('po_match',true,'po_balance',hl_order_private.po_balance(a)));
+  end loop;
+  for d in select value from jsonb_array_elements(s->'draft') loop
+    drafts:=drafts||jsonb_build_array(d||jsonb_build_object('po_match',hl_order_private.po_match(d->'source'->>'itemcode'),'po_balance',hl_order_private.po_balance(d->'source')));
+  end loop;
+  for o in select value from jsonb_array_elements(s->'orders') loop
+    lines:='[]';
+    for l in select value from jsonb_array_elements(o->'lines') loop
+      lines:=lines||jsonb_build_array(l||jsonb_build_object('po_match',hl_order_private.po_match(l->'source'->>'itemcode'),'po_balance',hl_order_private.po_balance(l->'source')));
+    end loop;
+    orders:=orders||jsonb_build_array(o||jsonb_build_object('lines',lines));
+  end loop;
+  return s||jsonb_build_object('actionable_rows',actionable,'draft',drafts,'orders',orders,
+    'po_receipt_cutoff',(select receipt_cutoff from hl_order_private.po_control),
+    'po_imports',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'status',i.status,'created_at',i.created_at,
+      'report_date',i.report_date,'row_count',i.row_count) order by i.created_at desc,i.id desc) from hl_order_private.po_imports i where status='pending' and i.id=(select id from hl_order_private.po_imports where status in ('pending','reconciled') order by created_at desc,id desc limit 1)),'[]'));
+end $$;
 create function pg_temp.hl_command(action text,payload jsonb,command_id uuid default gen_random_uuid(),expected bigint default null)
 returns jsonb language plpgsql as $$
 begin
@@ -141,6 +164,7 @@ begin
     and not has_table_privilege('service_role','public.ph_27f1_hl_po','UPDATE'),'direct balance mutation is not exposed');
   perform pg_temp.hl_check(not has_function_privilege('authenticated','public.hl_po_import_stage(text,jsonb,boolean)','EXECUTE')
     and has_function_privilege('service_role','public.hl_po_import_stage(text,jsonb,boolean)','EXECUTE'),'import staging is service-only');
+  perform pg_temp.hl_check(hl_order_private.state_json_before_restock()=pg_temp.hl_reference_state(),'batched PO state exactly preserves scalar response, order, nulls and saved history');
 end $test$;
 select '1..'||count(*) from hl_checks;
 select 'ok '||id||' - '||description from hl_checks order by id;
