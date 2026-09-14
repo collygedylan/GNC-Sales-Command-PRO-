@@ -339,6 +339,22 @@ test('fallback app-function auth cannot start a read after cancellation', async 
 });
 
 
+function installRefreshRenderFixture(ctx) {
+    Object.assign(ctx, {
+        productionLiveSyncRenderGeneration: 0, productionLiveSyncRenderPending: false, productionLiveSyncActiveRender: null,
+        latestViewRenderTokensByView: { drive: 1, docks: 1 }, captureProductionRefreshAnchor: () => null,
+        restoreProductionRefreshAnchor() {}, isProductionRefreshCurrent: () => true,
+        finishProductionRefresh: () => { ctx.productionLiveSyncRenderPending = false; },
+        cancelProductionRefresh: () => { ctx.productionLiveSyncRenderGeneration++; ctx.productionLiveSyncRenderPending = false; },
+        scheduleTypingAwareUiRender: (_key, fn, delay) => {
+            if (ctx.refreshFixtureTimer) ctx.clearTimeout(ctx.refreshFixtureTimer);
+            ctx.refreshFixtureTimer = ctx.setTimeout(fn, delay);
+        }
+    });
+    ctx.window ||= { AgMetricLiveSyncRegistry: { views: {} } };
+    return ctx;
+}
+
 test('initial verified content skips the background render debounce and retains draft guards', () => {
     for (const [state, immediate, expectedDelay] of [['loading', false, 0], ['ready', false, 150], ['ready', true, 0]]) {
         let callback, delay, renders = 0;
@@ -350,6 +366,7 @@ test('initial verified content skips the background render debounce and retains 
             canUseProductionLiveSync: () => true, hasProductionLiveSyncDraft: () => false,
             setTimeout: (fn, ms) => { callback = fn; delay = ms; return 1; }, clearTimeout() {},
             markViewDirty() {}, renderViewContent: () => { renders++; } };
+        installRefreshRenderFixture(context);
         vm.createContext(context);
         vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), context);
         context.scheduleProductionLiveSyncRender(immediate); assert.equal(delay, expectedDelay);
@@ -378,10 +395,12 @@ test('navigation clears the previous proof before immediately requesting require
         clearTimeout: id => calls.push(['cancel', id]), ensureViewDataForRender: view => {
             assert.equal(ctx.productionLiveSyncVerifiedView, ''); assert.equal(ctx.productionLiveSyncViewLoad, null); calls.push(['ensure', view]); },
         getProductionLiveSyncCoordinator: () => ({ check: reason => calls.push(['check', reason]) }) };
+    installRefreshRenderFixture(ctx);
     vm.createContext(ctx); vm.runInContext(html.slice(html.indexOf('        function beginProductionVerifiedNavigation('), html.indexOf('        function signalProductionLiveSync(')), ctx);
     ctx.beginProductionVerifiedNavigation('drive'); assert.equal(ctx.productionLiveSyncNavigationGeneration, 8);
     ctx.beginProductionVerifiedNavigation('home'); ctx.beginProductionVerifiedNavigation('drive');
     assert.equal(ctx.productionLiveSyncNavigationGeneration, 10);
+    assert.equal(ctx.productionLiveSyncRenderGeneration, 3);
     assert.deepEqual(calls, [['cancel', 4], ['ensure', 'drive'], ['check', 'view-entry'], ['ensure', 'drive']]);
 });
 
@@ -394,10 +413,12 @@ test('a queued verified render cannot paint after navigation or an account chang
             document: { hidden: false }, canUseProductionLiveSync: () => true,
             setTimeout: fn => { callback = fn; return 1; }, clearTimeout() {},
             renderViewContent: () => { renders++; } };
+        installRefreshRenderFixture(ctx);
         vm.createContext(ctx); vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), ctx);
         ctx.scheduleProductionLiveSyncRender(true);
         if (change === 'navigation') currentView = 'tasks'; else key = 'account-b:drive:1';
         callback(); assert.equal(renders, 0);
+        assert.equal(ctx.productionLiveSyncRenderPending, false, 'obsolete navigation cannot strand the pending-update status');
     }
 });
 
@@ -414,6 +435,7 @@ test('closing a Dock editor replaces its captured dialog render and releases hid
         canUseProductionLiveSync: () => true, hasProductionLiveSyncDraft: () => open,
         setTimeout: fn => { timers.set(++nextId, fn); return nextId; }, clearTimeout: id => timers.delete(id),
         markViewDirty() {}, renderViewContent: () => { renders++; } };
+    installRefreshRenderFixture(ctx);
     vm.createContext(ctx);
     vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), ctx);
     vm.runInContext(html.slice(html.indexOf('        function closeDockInfoModal()'), html.indexOf('        function openDockInfoModal(')), ctx);
@@ -422,4 +444,26 @@ test('closing a Dock editor replaces its captured dialog render and releases hid
     assert.equal(timers.size, 1); assert.equal(ctx.document.activeElement, null);
     [...timers.values()][0]();
     assert.equal(renders, 1); assert.equal(ctx.productionLiveSyncDraftChanged, false);
+});
+
+test('an obsolete Eval refresh cannot restore its old account cache after a failed read', async () => {
+    let owner = 'account-a:permissions-a', rejectRead, renders = 0;
+    const read = new Promise((_, reject) => { rejectRead = reject; });
+    const ctx = {
+        managerEvalReport2LoadState: {}, managerEvalReport2Cache: { privateRows: ['account-a'] }, managerEvalReport2CacheKey: 'old',
+        canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => owner,
+        getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: () => read,
+        loadManagerEvalReportSettings: async () => {}, scheduleManagersRender: () => { renders++; }
+    };
+    const start = html.indexOf('        async function loadManagerEvalReports2(');
+    const end = html.indexOf('        function getManagerEvalReport2CacheKeyValue(', start);
+    vm.createContext(ctx); vm.runInContext(html.slice(start, end), ctx);
+    const pending = ctx.loadManagerEvalReports2();
+    owner = 'account-b:permissions-b';
+    ctx.managerEvalReport2Cache = null;
+    rejectRead(new Error('obsolete request cancelled'));
+    assert.equal(await pending, null);
+    assert.equal(ctx.managerEvalReport2Cache, null);
+    assert.equal(ctx.managerEvalReport2LoadState.loading, false);
+    assert.equal(renders, 1, 'only the initial refresh may request a render');
 });

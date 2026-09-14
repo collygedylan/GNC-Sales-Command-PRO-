@@ -127,6 +127,8 @@ jobs:
             shard: 2/2
           - suite: hl-restock
             config: playwright.hl-restock.config.ts
+          - suite: stable-refresh
+            config: playwright.stable-background-refresh.config.ts
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests

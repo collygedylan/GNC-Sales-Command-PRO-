@@ -327,6 +327,9 @@ test('saving a stale rendered draft sends its original revision and retains the 
 test('a state response discarded during permission initialization allows an immediate current-scope read', async () => {
   const ctx = runtime();
   let identity = 'initial', finishFirst, reads = 0;
+  let scheduledRenders = 0;
+  ctx.canUseProductionLiveSync = () => true;
+  ctx.scheduleProductionLiveSyncRender = () => { scheduledRenders++; };
   ctx.getSupabaseReadIdentityScope = () => identity;
   ctx.scheduleHlOrderRefresh = () => {};
   ctx.renderHlOrder = () => {};
@@ -342,6 +345,7 @@ test('a state response discarded during permission initialization allows an imme
   await ctx.loadHlOrderState();
   assert.equal(reads, 2, 'current permissions do not wait for the fifteen-second poll');
   assert.equal(vm.runInContext('hlOrderStateData.revision', ctx), 2);
+  assert.ok(scheduledRenders > 0, 'polled state uses the interaction-aware render owner');
   await ctx.loadHlOrderState();
   assert.equal(reads, 2, 'a valid same-scope read still coalesces');
 });

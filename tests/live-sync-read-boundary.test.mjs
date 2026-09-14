@@ -330,6 +330,7 @@ test('settings-only updates rebuild current-season collections from verified inv
     const calls = [], state = { fullLoaded: true, liveVerifiedScope: 'actor-a', liveVerifiedPermission: 'policy-a', liveVerifiedRevision: '10' };
     const context = { scope: 'actor-a' }, metadata = { permissionVersion: 'policy-a', sources: new Map([['ph_master_inventory', { state: 'ready', revision: '10' }]]) };
     const ctx = { Object, Array, Date, fullInventory: previous, season: 'S1', calls,
+        getProductionLiveSyncContext: () => ({ adapters: [{ id: 'side:settings' }] }),
         getDatasetState: () => state, TRACKED_VIEW_IDS: [], invalidateResolvedViewStateCaches() {}, markViewDirty() {}, persistCurrentCache() {}, scheduleProductionLiveSyncRender() {},
         processAndLoadData: (payload) => { calls.push(payload); ctx.visibleRows = payload.data.filter((row) => row.SEASON === ctx.season); }
     };
@@ -453,6 +454,8 @@ test('focused live search defers one redraw without scheduling a busy retry time
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
     const queued = [];
     const ctx = { productionVerifiedViewKey: () => 'visit', VIEW_LOAD_UI: {}, productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
+        productionLiveSyncRenderGeneration: 0, productionLiveSyncRenderPending: false,
+        scheduleTypingAwareUiRender: (_key, callback) => { queued.push(callback); },
         setTimeout: (callback) => { queued.push(callback); return queued.length; }, document: { hidden: false, activeElement: { matches: () => true } },
         canUseProductionLiveSync: () => true, getCurrentVisibleViewId: () => 'docks', hasProductionLiveSyncDraft: () => false,
         window: { AgMetricLiveSyncRegistry: { views: { docks: { kind: 'data' } } } }
