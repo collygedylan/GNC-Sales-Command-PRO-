@@ -146729,7 +146729,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selection: getDriveDrillSelectionStateKey(), search: String(document.getElementById('drive-search')?.value || ''),
                 filterKey: driveVisibleItemsStateCacheKey, user: String(currentUser || ''), role: String(currentRole || '') };
             driveCommonNamePreparation = pending;
-            const batchSize = isTouchConstrainedDevice() ? 32 : 64;
+            const firstBatchSize = isTouchConstrainedDevice() ? 32 : 64;
+            const continuationBatchSize = isTouchConstrainedDevice() ? 128 : 256;
             const prepareBatch = () => {
                 if (!isDriveCommonNamePreparationCurrent(pending)) {
                     if (driveCommonNamePreparation === pending) cancelDriveCommonNamePreparation();
@@ -146737,8 +146738,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
                 try {
                     const started = performance.now();
+                    // Paint a small first batch promptly, then amortize growing-list
+                    // layout across larger slices while yielding between frames.
+                    const batchSize = pending.index === 0 ? firstBatchSize : continuationBatchSize;
+                    const budgetMs = pending.index === 0 ? 4 : 8;
                     let html = '', count = 0;
-                    while (pending.index < entries.length && count < batchSize && (count === 0 || performance.now() - started < 4)) {
+                    while (pending.index < entries.length && count < batchSize && (count === 0 || performance.now() - started < budgetMs)) {
                         html += renderEntry(entries[pending.index++]); count++;
                     }
                     const template = document.createElement('template');

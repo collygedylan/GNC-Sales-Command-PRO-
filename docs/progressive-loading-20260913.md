@@ -55,3 +55,22 @@ Full Home validation also exposed a restored-session regression: the first `INIT
 After correction, 985 required unit checks passed. All three focused Docks profiles passed. Four of five traced cache profiles passed; local desktop WebKit exhausted the overall 60-second budget at its final already-visible summary assertion. Its trace showed successful preceding correctness assertions. The unchanged test passed in 8.6 seconds with local tracing disabled as a diagnostic; required CI tracing, all assertions, and time limits remain unchanged. No gate is waived by that diagnostic.
 
 The initial Home, HL order, and restocking jobs exhausted their job limits after the same restored-profile wait timed out; their logs point to `hl-order-state.mjs:608`. Six focused HL draft-reload and receipt-correction cases passed after the correction in Chromium, Firefox, and iPhone. The corrected candidate retains V2026.09.13.04 and uses the one additional full validation allowed by the release plan.
+
+## Resumed Common Name completion repair — September 14
+
+The user authorized resuming the failed release. Main remained `96a1112b`, so V2026.09.13.04 remains the target. The saved corrected candidate had passed all 22 other validation lanes; its Home job failed the 20-second Common Name completion checks on iPhone/iPad and then exhausted the 12-minute job cap.
+
+The renderer appended only 32 names per touch-device animation frame. The 1,581-name list required roughly 50 live DOM updates. This repair keeps the initial 32/64-name mobile/desktop slice under 4ms, then uses 128/256-name continuation slices under an 8ms generation budget. It continues yielding between animation frames and preserves every ownership, navigation, account, generation, count, status, and error guard. The bounded independent diff review passed.
+
+Fresh compiled checks passed all eight iPhone/iPad Common Name cases with tracing enabled, including early display, complete counts, repeated refreshes, beginning/middle/end navigation, filter changes, visibility restore, failed later pages, and retry. The full-list cases completed in 9.564s on iPhone and 10.390s on iPad. The existing three scroll/render-ownership unit cases also passed.
+
+Three isolated cold and repeat trials per profile used the same 9,366-row / 1,581-name fixtures. All six completed, with no prohibited native database-proxy reads and zero repeat inventory downloads. Medians:
+
+| Measurement | Desktop Chromium | iPhone WebKit |
+| --- | ---: | ---: |
+| First available names | 2.308s | 2.613s |
+| Complete verified list | 6.926s | 8.519s |
+| Repeat first available names | 1.116s | 2.033s |
+| Repeat complete verified list | 1.464s | 2.384s |
+
+These are local fixture results, not promised production times. The earlier candidate's completion medians were 20.565s desktop and 19.657s iPhone. Evidence: `artifacts/commonname-resume-focused.json` and `artifacts/commonname-resume-timing.json`. Existing 20-second assertions, all CI time limits, tracing, and release gates remain unchanged. Full candidate validation, promotion, deployment, and real authenticated live checks are still required.
