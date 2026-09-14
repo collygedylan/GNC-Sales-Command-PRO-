@@ -103,8 +103,12 @@ jobs:
         include:
           - suite: footer
             config: playwright.footer.config.ts
-          - suite: home
+          - suite: home-1
             config: playwright.home-role.config.ts
+            shard: 1/2
+          - suite: home-2
+            config: playwright.home-role.config.ts
+            shard: 2/2
           - suite: season
             config: playwright.season-sales-office.config.ts
           - suite: suspend

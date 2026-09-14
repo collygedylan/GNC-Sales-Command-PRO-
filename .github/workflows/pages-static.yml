@@ -156,8 +156,10 @@ jobs:
             command: npx playwright test --config playwright.review-assignedto.config.ts --project=chromium --project=webkit --workers=1
           - suite: footer
             command: npm run test:footer -- --project=footer-android-chromium --project=footer-iphone-webkit --workers=1
-          - suite: home
-            command: npm run test:home-roles -- --workers=1
+          - suite: home-1
+            command: npm run test:home-roles -- --workers=1 --shard=1/2
+          - suite: home-2
+            command: npm run test:home-roles -- --workers=1 --shard=2/2
           - suite: season
             command: npm run test:season-sales-office -- --workers=1
           - suite: suspend

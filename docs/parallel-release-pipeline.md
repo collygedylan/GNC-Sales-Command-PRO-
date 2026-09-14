@@ -22,7 +22,7 @@ Independent checks run in parallel:
 
 - Four functional browser shards, with **one Playwright worker per runner**.
 - Compiled-shell suites in a matrix with at most **six concurrent jobs**, also one worker per runner.
-- The HL browser suite uses two complementary Playwright shards of the same configuration. Both are required; this preserves every project and test while retaining the 12-minute compiled-job timeout.
+- The Home and HL browser suites each use two complementary Playwright shards of their unchanged configuration. Both shards are required; this preserves every project and test while retaining the 12-minute compiled-job timeout. Hosted Home checks use the same two shards so their setup and final checks also fit within the existing limit.
 - A separate timing runner for scrolling, throttled startup, and Android login/photo saves.
 - A separate database/functions runner for the composed migration, pgTAP/RLS, protected transactions, deliberate concurrency fixture, and Edge Function tests.
 - A separate Lighthouse runner so browser contention does not corrupt performance thresholds.
