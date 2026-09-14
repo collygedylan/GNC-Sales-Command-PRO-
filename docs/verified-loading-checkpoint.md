@@ -38,3 +38,9 @@ Ignored evidence: `artifacts/resumed-baseline-timing.json`, `artifacts/resumed-c
 - Complete candidate validation is limited to one attempt plus at most one corrected attempt. Promote only its exact passing commit after the required candidate check. Main validation, sealed artifact verification, deployment, exact .02 version/commit verification, and hosted checks remain required.
 
 No database, reporting, or public API changes are required. The active-repair checkpoint and repeat-failure stopping rule remain in force. Main must still match the stated base before promotion.
+
+## First candidate correction
+
+Candidate `5ffceedb5f8359a47be3035ddc5de6d8b9a3ee0a`, run `34795216203`, exposed the existing Dock editor refresh assertion on Android and iPhone: the list retained one row after Cancel instead of showing the two newly verified rows. The capture-phase event could schedule a render using the open-dialog context; closing invalidated that callback, and a hidden select could retain focus. Cancel now closes and blurs the editor before scheduling the current-context render. A deterministic unit exercises the stale dialog callback replacement and preserved focus guard. No Drive/Tasks loading or measurement behavior changed in this correction.
+
+The first candidate completed with every lane passing except Docks and its aggregate release gate. The corrected fresh build passed all 12 Docks cases across Android, iPhone, and desktop, 69 focused verification/render unit checks, and inline parsing. This correction consumes the single additional candidate validation allowance.

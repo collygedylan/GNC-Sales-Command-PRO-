@@ -7236,7 +7236,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </select>
             </div>
             <div class="flex gap-2">
-                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button>
+                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="closeDockInfoModal()">CANCEL</button>
                 <button id="dock-info-save-button" class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="saveDockInfoModal(this)">SAVE & CONTINUE</button>
             </div>
         </div>
@@ -85880,6 +85880,16 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedDockStop = normalizedStop;
                 dockViewLevel = 2;
             }, { delay: 0, typingDelay: 180 });
+        }
+
+        function closeDockInfoModal() {
+            const modal = document.getElementById('dock-info-modal');
+            const focused = document.activeElement;
+            modal?.classList.add('hidden');
+            if (modal?.contains(focused)) focused.blur();
+            // Capture the post-close dependency context, after the editor and
+            // its focus no longer protect the discarded draft from refresh.
+            if (canUseProductionLiveSync()) scheduleProductionLiveSyncRender(true);
         }
 
         function openDockInfoModal(dockNum, tripNumber) {
