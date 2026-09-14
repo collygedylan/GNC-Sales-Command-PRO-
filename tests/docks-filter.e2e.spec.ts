@@ -303,7 +303,10 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   await enableNativeCoordinator(page, initial);
   await page.evaluate(() => window.eval(`openDockInfoModal('28', '37231')`));
   await expect(page.locator('#dock-info-modal')).toBeVisible();
-  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  // Verification may finish while displaying its replacement waits for the editor.
+  await expect.poll(() => page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().getStatus().state`))).toBe('Up to date');
+  await expect(page.locator('#live-data-freshness')).toContainText('Updates ready · Waiting for display');
+  await expect(page.locator('#live-data-freshness')).toContainText('Edit needs review');
   await page.locator('#dock-status').selectOption('Palletize');
   await page.evaluate(data => {
     const fixture = (window as any).__nativeSyncFixture;
@@ -314,6 +317,8 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 1 of 1');
   await page.locator('#dock-info-modal').getByRole('button', { name: 'CANCEL', exact: true }).click();
   await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 2 of 2');
+  await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
+  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
 
   // Exercise real side-adapter cache keys and commits, with the read-only Apps
   // Script boundary replaced. Metadata revisions deliberately do not change.
