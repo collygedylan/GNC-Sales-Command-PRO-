@@ -8,6 +8,50 @@ const root = process.cwd();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const code = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
 
+test('Reclass action views scope valid seasons and normalized current or older years without changing inquiry rows', () => {
+  let settings = { seasonCode: 'F1', salesYear: 27 };
+  const state = { actionView: 'priority_change' };
+  const context = {
+    argosInventoryTransactionState: state,
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
+    RECLASS_ACTION_WORKFLOW_V2_SEASONS: ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'],
+    APP_SEASON_SETTINGS_STORAGE_KEY: 'settings',
+    localStorage: { getItem: () => JSON.stringify(settings) },
+    firstNonEmptyValue,
+  };
+  vm.createContext(context);
+  const start = html.indexOf('function normalizeArgosReclassViewYear(');
+  const end = html.indexOf('function renderArgosReclassActionViewControls(', start);
+  vm.runInContext(html.slice(start, end), context);
+  const rows = [
+    ['old', 'F1', '26'], ['current', 'f1', '2027'], ['equivalent', 'F1', '27'],
+    ['future', 'F1', '28'], ['other', 'S1', '27'], ['missing', '', ''],
+    ['bad-year', 'F1', 'year27'], ['bad-season', 'unknown', '27'],
+  ].map(([unique_id, season, saleyear]) => ({ unique_id, values: { season, saleyear } }));
+  const original = JSON.stringify(rows);
+  for (const action of ['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
+    state.actionView = action;
+    const result = context.getArgosReclassActionViewState(rows);
+    assert.deepEqual(Array.from(result.rows, row => row.unique_id), ['old', 'current', 'equivalent']);
+    assert.equal(result.invalid, 3);
+    assert.equal(result.settings.salesYear, 2027);
+  }
+  for (const action of ['move_up', 'move_down', 'recount']) {
+    state.actionView = action;
+    assert.equal(context.getArgosReclassActionViewState(rows).rows, rows);
+  }
+  state.actionView = 'priority_change';
+  for (const invalid of [null, {}, { seasonCode: 'F1' }, { seasonCode: 'F1', salesYear: 'bad27' }, { seasonCode: '?', salesYear: 27 }]) {
+    settings = invalid;
+    const result = context.getArgosReclassActionViewState(rows);
+    assert.equal(result.rows.length, 0);
+    assert.equal(result.settings, null);
+  }
+  settings = { seasonCode: 'U1', salesYear: 2027 };
+  assert.equal(context.getArgosReclassActionViewState(rows).rows.length, 0);
+  assert.equal(JSON.stringify(rows), original);
+});
+
 function firstNonEmptyValue(...values) {
   return values.find((value) => value !== null && value !== undefined && String(value).trim() !== '') ?? '';
 }

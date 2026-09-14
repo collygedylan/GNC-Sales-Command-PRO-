@@ -2029,6 +2029,64 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
   }
 });
 
+test('Desktop Reclass action views preserve combined requests and show missing-settings review', async ({ page }) => {
+  test.setTimeout(90_000);
+  page.on('dialog', dialog => dialog.accept());
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/?e2e=reclass-action-views', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).openArgosInventoryTransactionModal === 'function');
+  await page.evaluate(() => {
+    const rows = [
+      ['old', 'F1', '26', 'H', '10'], ['current', 'F1', '2027', 'S', '0'],
+      ['future', 'F1', '28', '', '10'], ['other', 'S1', '27', '', '10'],
+      ['unknown', 'F1', 'bad27', '', '10'],
+    ].map(([id, season, year, code, oh]) => ({ UNIQUE_ID: id, ITEMCODE: 'RECLASS-VIEW', COMMONNAME: 'Reclass view fixture', CONTSIZE: '3G',
+      LOTCODE: `${year}.${season}`, LOCATIONCODE: id, SEASON: season, SALEYEAR: year,
+      PRIORITY: '5', HOLDSTOPCODE: code, HOLDSTOPREASON: 'existing reason', PTRONHAND: oh, PTRAVAILABLE: oh, SOURCE_TABLE: 'ph_master_inventory' }));
+    (window as any).processAndLoadData({ data: rows, _fromCache: true });
+    (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: 27 });
+    (window as any).openArgosInventoryTransactionModal('old', 'reclass', '');
+  });
+  const modal = page.locator('#argos-inventory-transaction-modal');
+  const view = modal.locator('#argos-reclass-action-view');
+  const old = modal.locator('[data-reclass-row-card="old"]');
+  const current = modal.locator('[data-reclass-row-card="current"]');
+  await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(2);
+  await expect(modal.locator('#argos-reclass-view-status')).toContainText('1 row(s) need season / sales year review');
+  await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(8);
+  await expect(current.locator('[data-reclass-v3-action="move_up"]')).toBeDisabled();
+  await expect(current.locator('[data-reclass-v3-action="move_up"]')).toContainText('Requires positive original OH');
+  await old.locator('[data-reclass-v3-action="priority_change"]').click();
+  await old.locator('[data-reclass-v3-proposal-field="priority"]').fill('');
+  await old.locator('[data-reclass-v3-action="recount"]').click();
+  for (const action of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
+    await view.selectOption(action);
+    await old.locator(`[data-reclass-v3-action="${action}"]`).click();
+    if (action === 'hold' || action === 'stop_ship') await old.locator('[data-reclass-v3-proposal-field="reason"]').fill('reviewed');
+    const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
+    expect(draft.holdStopProposals).toHaveLength(1);
+    expect(draft.holdStopProposals[0].action).toBe(action);
+    expect(draft.requestActions).toEqual(expect.arrayContaining(['priority_change', 'recount', action]));
+    expect(draft.rowOverlays.find((row: any) => row.unique_id === 'old')?.proposals).toEqual(expect.arrayContaining([{ action: 'priority_change', priority: '' }]));
+    // Deselect explicitly so the following choice needs no replacement confirmation.
+    await old.locator(`[data-reclass-v3-action="${action}"]`).click();
+  }
+  await page.evaluate(() => localStorage.removeItem('gnc_current_season_settings_v1'));
+  await view.selectOption('priority_change');
+  await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(0);
+  await expect(modal.locator('#argos-reclass-view-status')).toContainText('Season settings need review');
+  await expect(modal.locator('#argos-reclass-pending-summary')).toContainText('Priority Change: 1 row(s) (1 outside this view)');
+  await view.selectOption('move_down');
+  await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
+  await expect(old.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveValue('');
+  const evalMarkup = await page.evaluate(() => (window as any).eval(`(() => {
+    argosInventoryTransactionState.sourceView = 'eval-work';
+    return renderArgosReclassInquiryEditor(argosInventoryTransactionState.inquiryModel, 'old');
+  })()`));
+  expect(evalMarkup).not.toContain('id="argos-reclass-action-view"');
+  expect(evalMarkup).toContain('Mark Done');
+});
+
 test('Phone Reclass V3 supports all eight direct actions without row checkboxes or horizontal overflow', async ({ page }) => {
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
@@ -2138,6 +2196,21 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
     await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(0);
 
+    const actionView = modal.locator('#argos-reclass-action-view');
+    await expect(actionView).toHaveValue('priority_change');
+    await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(39);
+    await expect(second).toBeHidden();
+    await expect(modal.locator('[data-reclass-row-card="row-40"]')).toBeHidden();
+    await expect(modal.locator('#argos-reclass-view-status')).toContainText('F1 · Sales year 2027 and older');
+    await expect(modal.locator('#argos-reclass-pending-summary')).toHaveText('No pending actions.');
+    for (const view of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
+      await actionView.selectOption(view);
+      await expect(second).toBeHidden();
+      await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(39);
+      await expect(modal.locator('#argos-reclass-pending-summary')).toHaveText('No pending actions.');
+    }
+    await actionView.selectOption('move_up');
+    await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
@@ -2169,6 +2242,22 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(secondPriority).toHaveValue('1');
     await expect(holdReason).toHaveValue('sheared');
+
+    await actionView.selectOption('priority_change');
+    await expect(second).toBeHidden();
+    await expect(modal.locator('#argos-reclass-pending-summary')).toContainText('On Hold: 39 eligible rows');
+    await expect(modal.locator('#argos-reclass-pending-summary')).toContainText('Priority Change: 1 row(s) (1 outside this view)');
+    const mirroredReason = modal.locator('#argos-reclass-hidden-hold textarea');
+    await expect(mirroredReason).toHaveValue('sheared');
+    await mirroredReason.fill('sheared and reviewed');
+    await actionView.selectOption('move_down');
+    await expect(holdReason).toHaveValue('sheared and reviewed');
+    await holdReason.fill('sheared');
+    await expect(secondPriority).toHaveValue('1');
+    await expect(second.locator('[data-reclass-v3-proposal-field="moveQuantity"]')).toHaveValue('150');
+    await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
+    await actionView.selectOption('recount');
+    await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
 
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up']);
