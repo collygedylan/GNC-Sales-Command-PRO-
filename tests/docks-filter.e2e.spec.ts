@@ -300,6 +300,10 @@ test('real customer controls expose empty Custom, All and device-saved selection
 test('native refresh preserves an open Dock draft and reloads changed query and identity scopes', async ({ page, baseURL }) => {
   const initial = [row('draft-a', 'Customer A')];
   const app = await harness(page, baseURL!, initial);
+  // The editor display case requires a foreground page after multi-context tests.
+  // Leave those multi-session fixtures' visibility and refresh behavior intact.
+  await page.bringToFront();
+  await page.waitForFunction(() => document.visibilityState === 'visible');
   await enableNativeCoordinator(page, initial);
   await page.evaluate(() => window.eval(`openDockInfoModal('28', '37231')`));
   await expect(page.locator('#dock-info-modal')).toBeVisible();
