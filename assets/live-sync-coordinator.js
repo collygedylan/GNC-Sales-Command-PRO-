@@ -260,6 +260,7 @@
                 // Rendering and navigation ask for the same proof. Real source,
                 // permission and reconnect signals still queue another pass.
                 if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === nextIdentity) return running;
+                if (!running && !queued && signalTimer === null && currentStatus.state === 'Up to date' && currentStatus.contextKey === nextIdentity) return Promise.resolve(true);
             }
             invalidateBackground();
             if (activeRun && (activeRun.epoch !== epoch || identity(activeRun.context || {}) !== identity(options.getContext() || {}))) activeRun.controller?.abort();
@@ -293,6 +294,7 @@
             const ctx = options.getContext();
             if (!ctx?.scope || ctx.visible === false) { clearTimers(); closeSubscription(); epoch++; return; }
             if (readinessReasons.has(reason) && running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)) return;
+            if (readinessReasons.has(reason) && !running && !queued && currentStatus.state === 'Up to date' && currentStatus.contextKey === identity(ctx)) return;
             if (activeRun && identity(activeRun.context || {}) !== identity(ctx)) activeRun.controller?.abort();
             if (backgroundRunning) invalidateBackground();
             const due = now() + Math.max(0, delay);

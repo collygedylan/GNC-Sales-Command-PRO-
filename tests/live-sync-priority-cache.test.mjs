@@ -344,7 +344,7 @@ test('initial verified content skips the background render debounce and retains 
         let callback, delay, renders = 0;
         const context = { productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
             productionLiveSyncRendering: false, VIEW_LOAD_UI: { drive: { container: 'drive-content' } },
-            getCurrentVisibleViewId: () => 'drive', getContainerUiState: () => state,
+            productionVerifiedViewKey: () => 'visit', getCurrentVisibleViewId: () => 'drive', getContainerUiState: () => state,
             document: { hidden: false, getElementById: () => ({}), activeElement: null },
             window: { AgMetricLiveSyncRegistry: { views: { drive: { kind: 'data' } } } },
             canUseProductionLiveSync: () => true, hasProductionLiveSyncDraft: () => false,
@@ -354,5 +354,48 @@ test('initial verified content skips the background render debounce and retains 
         vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), context);
         context.scheduleProductionLiveSyncRender(immediate); assert.equal(delay, expectedDelay);
         callback(); assert.equal(renders, 1);
+    }
+});
+
+
+test('late readiness callbacks reuse this visit but every new visit verifies again', async () => {
+    const f = fixture(); f.context.backgroundAdapters = [];
+    f.context.viewKey = 'drive:1'; await f.coordinator.check('visible-view');
+    const before = f.metadata.length;
+    f.coordinator.signal('view-entry', 0); await f.coordinator.check('visible-view'); await f.backgroundTick();
+    assert.equal(f.metadata.length, before);
+    f.context.viewKey = 'drive:2'; await f.coordinator.check('visible-view');
+    assert.equal(f.metadata.length, before + 1); assert.equal(f.reads.length, 1); assert.equal(f.commits.length, 1);
+    f.coordinator.signal('metadata', 0); await f.backgroundTick();
+    assert.equal(f.metadata.length, before + 2, 'real invalidation is not suppressed by this visit proof');
+});
+
+test('navigation clears the previous proof before immediately requesting required data', () => {
+    const calls = [];
+    const ctx = { productionLiveSyncNavigationGeneration: 7, productionLiveSyncVerifiedView: 'old',
+        productionLiveSyncViewLoad: { pending: true }, productionLiveSyncRenderTimer: 4,
+        clearTimeout: id => calls.push(['cancel', id]), ensureViewDataForRender: view => {
+            assert.equal(ctx.productionLiveSyncVerifiedView, ''); assert.equal(ctx.productionLiveSyncViewLoad, null); calls.push(['ensure', view]); },
+        getProductionLiveSyncCoordinator: () => ({ check: reason => calls.push(['check', reason]) }) };
+    vm.createContext(ctx); vm.runInContext(html.slice(html.indexOf('        function beginProductionVerifiedNavigation('), html.indexOf('        function signalProductionLiveSync(')), ctx);
+    ctx.beginProductionVerifiedNavigation('drive'); assert.equal(ctx.productionLiveSyncNavigationGeneration, 8);
+    ctx.beginProductionVerifiedNavigation('home'); ctx.beginProductionVerifiedNavigation('drive');
+    assert.equal(ctx.productionLiveSyncNavigationGeneration, 10);
+    assert.deepEqual(calls, [['cancel', 4], ['ensure', 'drive'], ['check', 'view-entry'], ['ensure', 'drive']]);
+});
+
+
+test('a queued verified render cannot paint after navigation or an account change', () => {
+    for (const change of ['navigation', 'account']) {
+        let callback, currentView = 'drive', key = 'account-a:drive:1', renders = 0;
+        const ctx = { productionLiveSyncRenderTimer: null, VIEW_LOAD_UI: {},
+            getCurrentVisibleViewId: () => currentView, productionVerifiedViewKey: () => key,
+            document: { hidden: false }, canUseProductionLiveSync: () => true,
+            setTimeout: fn => { callback = fn; return 1; }, clearTimeout() {},
+            renderViewContent: () => { renders++; } };
+        vm.createContext(ctx); vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), ctx);
+        ctx.scheduleProductionLiveSyncRender(true);
+        if (change === 'navigation') currentView = 'tasks'; else key = 'account-b:drive:1';
+        callback(); assert.equal(renders, 0);
     }
 });

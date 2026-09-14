@@ -23117,6 +23117,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function showOnlyPrimaryView(viewId = '') {
             const safeViewId = String(viewId || '').trim();
             if (!safeViewId) return null;
+            const previousViewId = getCurrentVisibleViewId();
             const leavingDetail = safeViewId !== 'detail' && isViewVisible('detail');
             if (leavingDetail && typeof teardownDetailPresentation === 'function') {
                 teardownDetailPresentation('primary-view-change', { preserveDraft: true });
@@ -23136,6 +23137,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             syncCurrentViewBodyClass(safeViewId);
             if (typeof syncRequestDetailScrollMode === 'function') syncRequestDetailScrollMode();
             repairAppShellScrollState(`show-view:${safeViewId}`);
+            if (targetView && previousViewId !== safeViewId && canUseProductionLiveSync()) beginProductionVerifiedNavigation(safeViewId);
             return targetView;
         }
 
@@ -34022,6 +34024,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const driveDemandSnapshots = new Map();
         let driveDemandStatus = { state: 'Syncing' };
         let productionLiveSyncViewLoad = null;
+        let productionLiveSyncNavigationGeneration = 0;
 
         function productionVerifiedViewKey(context = getProductionLiveSyncContext()) {
             return JSON.stringify([context.scope, context.viewKey, context.adapters.map(adapter => [adapter.id, adapter.cacheKey])]);
@@ -34108,7 +34111,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const foregroundIds = new Set(adapters.map(adapter => adapter.id));
             const backgroundContext = { ...context, surfaces: context.surfaces.filter(id => id.startsWith('badge:')) };
             const backgroundAdapters = descriptors('home', backgroundContext).filter(adapter => !foregroundIds.has(adapter.id));
-            return observeHlOrderVerificationContext({ ...foregroundContext, scope: context.scope, viewKey: JSON.stringify([view, foregroundContext.surfaces]), visible, online: navigator.onLine !== false, adapters, backgroundAdapters });
+            return observeHlOrderVerificationContext({ ...foregroundContext, scope: context.scope, viewKey: JSON.stringify([view, foregroundContext.surfaces, productionLiveSyncNavigationGeneration]), visible, online: navigator.onLine !== false, adapters, backgroundAdapters });
         }
 
         function verifiedSnapshotCacheKey(meta) {
@@ -34168,7 +34171,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function scheduleProductionLiveSyncRender(immediate = false) {
-            const ui = VIEW_LOAD_UI[getCurrentVisibleViewId()];
+            const targetView = getCurrentVisibleViewId();
+            const contextKey = productionVerifiedViewKey();
+            const ui = VIEW_LOAD_UI[targetView];
             const waitingForContent = ui && getContainerUiState(document.getElementById(ui.container)) === 'loading';
             if (productionLiveSyncRenderTimer) {
                 if (!immediate && !waitingForContent) return;
@@ -34178,6 +34183,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 productionLiveSyncRenderTimer = null;
                 if (document.hidden || !canUseProductionLiveSync()) return;
                 const view = getCurrentVisibleViewId();
+                if (view !== targetView || productionVerifiedViewKey() !== contextKey) return;
                 const viewKind = window.AgMetricLiveSyncRegistry.views[view]?.kind;
                 // Footer refreshes must never rebuild static entry forms such as Hours.
                 if (viewKind === 'static' || viewKind === 'navigation') return;
@@ -34222,7 +34228,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     driveDemandStatus = status;
                     const demand = getDriveDemandContext();
                     if (demand) renderDriveDemandPanel(demand.kind);
-                    if (status.state === 'Up to date' && previousVerifiedView !== productionLiveSyncVerifiedView) scheduleProductionLiveSyncRender(true);
+                    if (status.state === 'Up to date' && previousVerifiedView !== productionLiveSyncVerifiedView) {
+                        cancelScheduledUiRenderByPrefix(`view-switch-render:${getCurrentVisibleViewId()}`);
+                        scheduleProductionLiveSyncRender(true);
+                    }
                     if (canUseHlOrder() && status.state === 'Up to date') {
                         if (getCurrentVisibleViewId() === 'hl-order') { void loadHlOrderState(); scheduleProductionLiveSyncRender(); }
                         if (cartPanelOpen) renderHlBloomSection();
@@ -34271,6 +34280,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
             });
             return productionLiveSyncCoordinator;
+        }
+
+        function beginProductionVerifiedNavigation(viewId) {
+            // A return to the same view is a new visit, not proof that its old
+            // snapshot still matches current permissions and source revisions.
+            productionLiveSyncNavigationGeneration++;
+            productionLiveSyncVerifiedView = '';
+            productionLiveSyncViewLoad = null;
+            if (productionLiveSyncRenderTimer) clearTimeout(productionLiveSyncRenderTimer);
+            productionLiveSyncRenderTimer = null;
+            if (viewId === 'drive' || viewId === 'tasks') ensureViewDataForRender(viewId);
+            else if (viewId === 'home') void getProductionLiveSyncCoordinator().check('view-entry');
         }
 
         function signalProductionLiveSync(reason = 'view-entry', delay = 0) {
@@ -39276,8 +39297,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     }).catch(() => { load.failed = true; }).finally(() => {
                         load.pending = false;
                         if (productionLiveSyncViewLoad !== load || !isViewVisible(viewId)) return;
-                        markViewDirty(viewId);
-                        queueInteractiveViewRender(viewId, false, true, 0, 120);
+                        if (load.failed) showViewErrorState(viewId, productionLiveSyncCoordinator.getStatus().message || 'Current data could not be verified. Please retry.', true);
+                        // Successful publication is rendered once by onStatus.
                     });
                 }
                 return true;

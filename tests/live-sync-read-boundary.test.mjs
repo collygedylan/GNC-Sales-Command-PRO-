@@ -438,7 +438,7 @@ test('footer refresh does not render or reset static Hours and navigation screen
     const from = html.indexOf('function scheduleProductionLiveSyncRender(');
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
     for (const kind of ['static', 'navigation']) {
-        const ctx = { VIEW_LOAD_UI: {}, productionLiveSyncRenderTimer: null, document: { hidden: false },
+        const ctx = { productionVerifiedViewKey: () => 'visit', VIEW_LOAD_UI: {}, productionLiveSyncRenderTimer: null, document: { hidden: false },
             setTimeout: (callback) => { callback(); return 1; }, canUseProductionLiveSync: () => true,
             getCurrentVisibleViewId: () => 'hours', window: { AgMetricLiveSyncRegistry: { views: { hours: { kind } } } },
             hasProductionLiveSyncDraft: () => { throw new Error('Static form should not enter redraw handling.'); }
@@ -452,7 +452,7 @@ test('focused live search defers one redraw without scheduling a busy retry time
     const from = html.indexOf('function scheduleProductionLiveSyncRender(');
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
     const queued = [];
-    const ctx = { VIEW_LOAD_UI: {}, productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
+    const ctx = { productionVerifiedViewKey: () => 'visit', VIEW_LOAD_UI: {}, productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
         setTimeout: (callback) => { queued.push(callback); return queued.length; }, document: { hidden: false, activeElement: { matches: () => true } },
         canUseProductionLiveSync: () => true, getCurrentVisibleViewId: () => 'docks', hasProductionLiveSyncDraft: () => false,
         window: { AgMetricLiveSyncRegistry: { views: { docks: { kind: 'data' } } } }
