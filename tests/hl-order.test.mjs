@@ -45,6 +45,108 @@ function quantityRuntime() {
   vm.runInContext(html.slice(quantityStart, quantityEnd), ctx);
   return ctx;
 }
+
+function bloomRemovalRuntime() {
+  const ctx = runtime();
+  ctx.cartPanelOpen = true;
+  const elements = ['soc-a','soc-b'].map(id => ({dataset:{hlDraftSourceId:id,hlEditRevision:'4'}, removed:false, remove(){this.removed=true;}}));
+  ctx.document.querySelectorAll = () => elements;
+  for (const name of ['refreshHlBloomStatus','renderHlBloomSection','renderHlOrder','refreshHlOrderWarning','updateGlobalActionBar',
+    'refreshCartButtons','syncDriveReturnedSelectionToolbar','clearContainerRenderSignature','closeBloomPickerTraySwipe']) ctx[name] = () => {};
+  ctx.clearSelection = () => {};
+  ctx.owner = 'first';
+  ctx.captureHlOrderOwnership = () => ctx.owner;
+  ctx.isHlOrderOwnershipCurrent = owner => ctx.owner === owner;
+  ctx.crypto = {randomUUID:()=> '30000000-0000-4000-8000-000000000099'};
+  ctx.entries = [
+    {source_id:'soc-a',status:'ready',quantity:3,ship_date:'2026-09-15',source:row('soc-a'),po_balance:{status:'unknown'}},
+    {source_id:'soc-b',status:'needs_review',quantity:4,ship_date:'2026-09-16',source:row('soc-b')},
+  ];
+  vm.runInContext('hlOrderStateData={revision:4,draft:entries,orders:[]}; syncHlOrderDraftSelections();',ctx);
+  ctx.selectedItems.add('ordinary-a'); ctx.selectedItemSources.set('ordinary-a','drive');
+  return {ctx,elements};
+}
+
+test('explicit Bloom clear is one revision-checked command, keeps locked rows and awaits acknowledgment before removing local selections', async () => {
+  const {ctx,elements}=bloomRemovalRuntime(); let finish; const calls=[];
+  ctx.supabaseRpc=async (_method,command)=>{calls.push(command);return new Promise(resolve=>{finish=resolve;});};
+  const first=ctx.clearBloomPickerSelection();
+  await ctx.clearBloomPickerSelection();
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].p_action,'draft_clear');
+  assert.equal(JSON.stringify(calls[0].p_payload),JSON.stringify({source_ids:['soc-a']}));
+  assert.equal(calls[0].p_expected_revision,4);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),true);
+  assert.equal(elements[0].removed,false);
+  ctx.selectedItems.add('ordinary-added-during-request');
+  finish({revision:5,draft:[ctx.entries[1]],orders:[]});
+  await first;
+  assert.equal(elements[0].removed,true);
+  assert.equal(elements[1].removed,false);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),false);
+  assert.equal(ctx.selectedItems.has('ordinary-added-during-request'),true);
+  assert.equal(ctx.selectedItems.has('hl-order:soc-b'),true);
+});
+
+test('failed or stale Bloom clears retain every selection and the original displayed revision', async () => {
+  const {ctx,elements}=bloomRemovalRuntime(); const calls=[];
+  vm.runInContext('hlOrderStateData.revision=6;',ctx);
+  ctx.supabaseRpc=async (_method,command)=>{calls.push(command);throw Object.assign(new Error('HL_ORDER_REVISION_CONFLICT'),{status:409});};
+  await ctx.clearBloomPickerSelection();
+  assert.equal(calls[0].p_expected_revision,4);
+  assert.equal(elements.some(row=>row.removed),false);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),true);
+  assert.equal(vm.runInContext('hlBloomClearIntent',ctx),null);
+  assert.match(vm.runInContext('hlBloomRemovalError',ctx),/changed.*review/i);
+});
+
+test('uncertain Bloom clear keeps its identity and completes local cleanup only after replay acknowledgment', async () => {
+  const {ctx,elements}=bloomRemovalRuntime(); const calls=[];
+  ctx.supabaseRpc=async (_method,command)=>{
+    calls.push(command);
+    if(calls.length===1) throw Object.assign(new Error('statement timeout'),{status:500,code:'57014'});
+    return {revision:5,draft:[ctx.entries[1]],orders:[]};
+  };
+  ctx.loadHlOrderState=async()=>vm.runInContext('hlOrderStateData',ctx);
+  await ctx.clearBloomPickerSelection();
+  assert.equal(elements[0].removed,false);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),true);
+  await ctx.retryHlOrderCommand();
+  assert.equal(calls.length,2);
+  assert.equal(calls[1].p_command_id,calls[0].p_command_id);
+  assert.equal(elements[0].removed,true);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),false);
+  assert.equal(vm.runInContext('hlBloomClearIntent',ctx),null);
+});
+
+test('an old-account Bloom acknowledgment cannot clear the current account selections', async () => {
+  const {ctx,elements}=bloomRemovalRuntime(); let finish;
+  ctx.supabaseRpc=async()=>new Promise(resolve=>{finish=resolve;});
+  const pending=ctx.clearBloomPickerSelection();
+  ctx.owner='second';
+  vm.runInContext('hlBloomClearIntent=null;hlOrderPendingCommand=null;',ctx);
+  ctx.selectedItems.clear(); ctx.selectedItems.add('second-account-selection');
+  finish({revision:5,draft:[],orders:[]});
+  await pending;
+  assert.equal(elements.some(row=>row.removed),false);
+  assert.deepEqual([...ctx.selectedItems],['second-account-selection']);
+});
+
+test('a definite rejection during Bloom reconciliation releases the pending UI without deleting selections', async () => {
+  const {ctx,elements}=bloomRemovalRuntime(); let calls=0;
+  ctx.showToast=()=>{};
+  ctx.supabaseRpc=async()=>{
+    if(++calls===1) throw Object.assign(new Error('statement timeout'),{status:500,code:'57014'});
+    throw Object.assign(new Error('HL_ORDER_REVISION_CONFLICT'),{status:409});
+  };
+  await ctx.clearBloomPickerSelection();
+  await ctx.retryHlOrderCommand();
+  assert.equal(calls,2);
+  assert.equal(vm.runInContext('hlBloomClearIntent',ctx),null);
+  assert.equal(vm.runInContext('hlOrderPendingCommand',ctx),null);
+  assert.equal(elements.some(row=>row.removed),false);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),true);
+});
 const groups = (ctx, rows) => Array.from(ctx.groupHlOrderRows(rows.map((entry) => ctx.getHlOrderSource(entry))));
 
 test('HL eligibility retains exact location boundaries and dock OR planned start', () => {

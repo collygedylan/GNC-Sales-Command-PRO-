@@ -378,6 +378,88 @@ test('selected editable quantities persist through reload and HL removal preserv
   await reloadHl(page, fixture);
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toHaveValue('7');
   await expect(page.locator('[data-hl-group]')).toContainText('In Bloom Picker');
+  if (!await page.locator('#global-action-bar').isVisible()) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
+  const swipeRow = page.locator('[data-hl-draft-source-id="hl-a"]');
+  await expect(swipeRow).toBeVisible();
+  await swipeRow.evaluate(row => {
+    const surface = row.querySelector('.bloom-picker-tray-surface')!;
+    const fire = (type: string, x: number, y: number) => {
+      const event = new Event(type,{bubbles:true,cancelable:true});
+      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:y}]});
+      surface.dispatchEvent(event);
+    };
+    fire('touchstart',300,200); fire('touchmove',295,260); fire('touchend',295,260);
+  });
+  await expect(swipeRow).not.toHaveClass(/swipe-open/);
+  await swipeRow.evaluate(row => {
+    const surface = row.querySelector('.bloom-picker-tray-surface')!;
+    for(const [type,x,y] of [['touchstart',300,200],['touchmove',220,202],['touchend',220,202]] as const) {
+      const event=new Event(type,{bubbles:true,cancelable:true});
+      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:y}]});
+      surface.dispatchEvent(event);
+    }
+  });
+  await expect(swipeRow).toHaveClass(/swipe-open/);
+  const swipeRemove=swipeRow.getByRole('button',{name:'Remove HL row via swipe',exact:true});
+  if(test.info().project.use.hasTouch) await swipeRemove.tap(); else await swipeRemove.click();
+  await expect.poll(()=>fixture.state.draft.length).toBe(0);
+  expect(actions(fixture,'draft_clear')).toHaveLength(2);
+  assertIsolated(fixture);
+});
+
+test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves locked rows', async ({page,baseURL}) => {
+  const fixture=await installHlOrderFixture(page,baseURL!,{restockItems:[{itemcode:'SYNTH.003',size:'#3',commonname:'Synthetic HL Holly',
+    po_ordered:100,target:30,available:12,status:'ready',po_balance:{status:'ready',remaining:100}}]});
+  let sequence=0;
+  const seed=(action:string,payload:any)=>fixture.command({p_command_id:`20000000-0000-4000-8000-${String(++sequence).padStart(12,'0')}`,
+    p_action:action,p_payload:payload,p_expected_revision:fixture.state.revision});
+  seed('draft_save',{rows:[{source_id:'hl-a',quantity:6},{source_id:'hl-b',quantity:5}]});
+  seed('restock_draft_save',{ship_date:'2026-09-16',rows:[{itemcode:'SYNTH.003',size:'#3',quantity:8}],inventory_snapshot:fixture.inventorySnapshot});
+  fixture.state.draft.find((row:any)=>row.source_id==='hl-b').status='needs_review';
+  fixture.state.dispositions.find((row:any)=>row.source_id==='hl-b').status='needs_review';
+  await openHl(page);
+  await expect.poll(()=>page.evaluate(()=>window.eval(`(() => {
+    const row=fullInventory.find(row=>row.UNIQUE_ID==='master-other-item');
+    if(!row?.DOM_ID || !canUseHlOrderVerifiedData() || !canCurrentUserSelectDriveWorkflowRow(findItemByDomId(row.DOM_ID),'drive')) return false;
+    window.__clearLocalId=row.DOM_ID; toggleGlobalItem(row.DOM_ID,true,'drive'); return selectedItems.has(row.DOM_ID);
+  })()`))).toBe(true);
+  if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(3);
+  const locked=page.locator('[data-hl-draft-source-id="hl-b"]');
+  await expect(locked).toContainText('Needs Review');
+  await expect(locked.getByRole('button',{name:'Remove from Bloom Picker',exact:true})).toBeDisabled();
+  await locked.evaluate(row => {
+    const surface=row.querySelector('.bloom-picker-tray-surface')!;
+    for(const [type,x,y] of [['touchstart',300,200],['touchmove',220,202],['touchend',220,202]] as const) {
+      const event=new Event(type,{bubbles:true,cancelable:true});
+      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:y}]});
+      surface.dispatchEvent(event);
+    }
+  });
+  await expect(locked).not.toHaveClass(/swipe-open/);
+  let release!:()=>void; let waiting=false;
+  const held=new Promise<void>(resolve=>{release=resolve;});
+  await page.route('**/rest/v1/rpc/hl_order_command',async route=>{
+    if(route.request().postDataJSON()?.p_action==='draft_clear'){waiting=true;await held;}
+    await route.fallback();
+  });
+  await page.locator('#bloom-picker-clear').click();
+  await expect.poll(()=>waiting).toBe(true);
+  await expect(page.locator('#hl-bloom-status')).toContainText('Removing saved HL rows');
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(3);
+  expect(await page.evaluate(()=>window.eval('selectedItems.has(window.__clearLocalId)'))).toBe(true);
+  release();
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(1);
+  await expect(locked).toBeVisible();
+  expect(actions(fixture,'draft_clear')).toHaveLength(1);
+  expect(actions(fixture,'draft_clear')[0].p_payload.source_ids).not.toContain('hl-b');
+  expect(await page.evaluate(()=>window.eval('selectedItems.has(window.__clearLocalId)'))).toBe(false);
+  await expect.poll(()=>page.evaluate(()=>window.eval('hlRestockState?.items[0]?.saved_quantity'))).toBe(0);
+  expect(actions(fixture,'submit')).toHaveLength(0); expect(actions(fixture,'receive')).toHaveLength(0);
+  await reloadHl(page,fixture);
+  if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(1);
+  await expect(locked).toContainText('Needs Review');
   assertIsolated(fixture);
 });
 
@@ -540,12 +622,34 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   await page.locator('#batch-btn-hl-tags').click();
   const chooser = page.locator('#hl-tags-date-selector');
   await expect(chooser).toBeVisible();
+  expect(await chooser.evaluate(el => el.matches(':modal'))).toBe(true);
+  const box = await chooser.boundingBox();
+  expect(Math.abs(box!.x + box!.width / 2 - page.viewportSize()!.width / 2)).toBeLessThanOrEqual(2);
+  expect(await chooser.evaluate(el => getComputedStyle(el, '::backdrop').backgroundColor)).toBe('rgba(2, 6, 23, 0.65)');
+  const beforeCancel = fixture.state.draft.map((row: any) => [row.source_id,row.quantity]);
+  await page.keyboard.press('Escape');
+  await expect(chooser).not.toBeVisible();
+  await expect(page.locator('#global-action-bar')).toBeVisible();
+  expect(fixture.state.draft.map((row: any) => [row.source_id,row.quantity])).toEqual(beforeCancel);
+  await page.locator('#batch-btn-hl-tags').click();
+  await expect(chooser).toBeVisible();
+  await page.evaluate(() => window.eval('goBackUniversal()'));
+  await expect(chooser).not.toBeVisible();
+  await expect(page.locator('#global-action-bar')).toBeVisible();
+  await page.locator('#batch-btn-hl-tags').click();
+  await expect(chooser).toBeVisible();
   await chooser.getByRole('button', { name: 'Choose Sep 16, 2026', exact: true }).click();
   await expect(page.locator('#hl-tags-preview')).toBeVisible();
   expect(actions(fixture, 'preview').at(-1).p_payload).toEqual({ ship_date: '2026-09-16' });
   const report = [...fixture.previews.values()].at(-1).report;
   expect(report.ship_date).toBe('2026-09-16');
   expect(report.lines.map((line: any) => line.source_id)).toEqual(['hl-b']);
+  await page.locator('#hl-tags-preview').getByRole('button',{name:'Close',exact:true}).click();
+  await page.locator('#batch-btn-hl-tags').click();
+  await chooser.getByRole('button',{name:'Cancel',exact:true}).click();
+  await page.locator('[data-hl-draft-source-id="hl-a"]').getByRole('button',{name:'Remove from Bloom Picker',exact:true}).click();
+  await expect.poll(()=>fixture.state.draft.map((row:any)=>row.source_id)).toEqual(['hl-b']);
+  expect(actions(fixture,'submit')).toHaveLength(0);
   assertIsolated(fixture);
 });
 
