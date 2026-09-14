@@ -298,6 +298,7 @@ export function createHlOrderState(options = {}) {
 export async function installHlOrderFixture(page, baseURL, options = {}) {
   const control = createHlOrderState(options), username = options.username || 'dylan_collyge', role = options.role || 'ADMIN';
   control.appAccessReads = 0; control.backgroundMasterReads = 0;
+  control.masterLaterPageReads = 0;
   control.runtimeRequests = 0; control.authTokenRequests = 0;
   // Tests can arm this after bootstrap, then release precisely the master read
   // whose asynchronous completion is under test.  Keeping the gate dormant by
@@ -306,6 +307,12 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   let heldBackgroundMasterReadStarted = null;
   let resolveHeldBackgroundMasterReadStarted = null;
   let releaseHeldBackgroundMasterRead = null;
+  let holdNextMasterLaterPage = false;
+  let heldMasterLaterPageStarted = null;
+  let resolveHeldMasterLaterPageStarted = null;
+  let releaseHeldMasterLaterPage = null;
+  let failNextMasterLaterPage = false;
+  let emptyMasterLaterPage = false;
   let holdNextRestockStateRead = false;
   let heldRestockStateReadStarted = null;
   let resolveHeldRestockStateReadStarted = null;
@@ -335,6 +342,25 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     releaseHeldBackgroundMasterRead = null;
     release();
   };
+  control.holdNextMasterLaterPage = () => {
+    if (holdNextMasterLaterPage || releaseHeldMasterLaterPage) throw new Error('HL_FIXTURE_MASTER_LATER_PAGE_ALREADY_HELD');
+    holdNextMasterLaterPage = true;
+    heldMasterLaterPageStarted = new Promise((resolve) => { resolveHeldMasterLaterPageStarted = resolve; });
+  };
+  control.waitForHeldMasterLaterPage = async () => {
+    if (!heldMasterLaterPageStarted) throw new Error('HL_FIXTURE_MASTER_LATER_PAGE_NOT_ARMED');
+    await heldMasterLaterPageStarted;
+  };
+  control.releaseHeldMasterLaterPage = () => {
+    if (!releaseHeldMasterLaterPage) throw new Error('HL_FIXTURE_MASTER_LATER_PAGE_NOT_HELD');
+    const release = releaseHeldMasterLaterPage;
+    releaseHeldMasterLaterPage = null;
+    release();
+  };
+  // Keep the synthetic fault active across coordinator retries. A one-shot
+  // failure would allow a retry to publish the otherwise withheld list.
+  control.failNextMasterLaterPage = () => { failNextMasterLaterPage = true; };
+  control.emptyMasterLaterPage = () => { emptyMasterLaterPage = true; };
   control.holdNextRestockStateRead = () => {
     if (holdNextRestockStateRead || releaseHeldRestockStateRead) throw new Error('HL_FIXTURE_RESTOCK_READ_ALREADY_HELD');
     holdNextRestockStateRead = true;
@@ -509,10 +535,27 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         }
         if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
       }
+      const masterRead = table === 'ph_master_inventory'
+        ? inventoryReadFixture.read(control.master, url.search.slice(1))
+        : null;
+      if (masterRead && masterRead.offset > 0) {
+        control.masterLaterPageReads++;
+        if (failNextMasterLaterPage) {
+          return json(route, { message: 'Synthetic later master page failure' }, 500);
+        }
+        if (emptyMasterLaterPage) {
+          return json(route, [], 200, { 'content-range': `*/${masterRead.total}` });
+        }
+        if (holdNextMasterLaterPage) {
+          holdNextMasterLaterPage = false;
+          resolveHeldMasterLaterPageStarted();
+          await new Promise((resolve) => { releaseHeldMasterLaterPage = resolve; });
+        }
+      }
       const isDemandTable = table === 'ph_reserves' || table === 'ph_soc_master';
       if (table === 'ph_reserves') control.demandReads.reserves++;
       if (table === 'ph_soc_master') control.demandReads.openOrders++;
-      const allRows = table === 'ph_soc_master' ? (control.demandSocRows ?? control.rows) : table === 'ph_reserves' ? control.reserveRows : table === 'ph_master_inventory' ? inventoryReadFixture.read(control.master, url.search.slice(1)).rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];
+      const allRows = table === 'ph_soc_master' ? (control.demandSocRows ?? control.rows) : table === 'ph_reserves' ? control.reserveRows : masterRead ? masterRead.rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];
       const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
       const demandPageSize = isDemandTable ? Math.max(0, Number(options.demandPageSize) || 0) : 0;
       const rows = demandPageSize ? allRows.slice(offset, offset + demandPageSize) : allRows;
@@ -521,8 +564,8 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         resolveHeldDemandFinalPageStarted();
         await new Promise((resolve) => { releaseHeldDemandFinalPage = resolve; });
       }
-      const start = rows.length ? (demandPageSize ? offset : 0) : 0;
-      const total = allRows.length;
+      const start = rows.length ? (masterRead ? masterRead.offset : (demandPageSize ? offset : 0)) : 0;
+      const total = masterRead ? masterRead.total : allRows.length;
       return json(route, rows, 200, { 'content-range': rows.length ? `${start}-${start + rows.length - 1}/${total}` : `*/${total}` });
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {

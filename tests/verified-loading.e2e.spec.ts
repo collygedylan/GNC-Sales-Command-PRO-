@@ -131,6 +131,150 @@ async function installColdFixture(page: Page, baseURL: string, options: Record<s
   });
 }
 
+const COMMON_NAME_TOTAL = 1561;
+const commonNameAt = (index: number) => `Common Name ${String(index).padStart(4, '0')}`;
+function commonNameMasterRows() {
+  const rows = Array.from({ length: COMMON_NAME_TOTAL }, (_, index) => {
+    const number = index + 1;
+    return hlMaster(`common-name-${String(number).padStart(4, '0')}`, {
+      itemcode: `CN.${String(number).padStart(4, '0')}`,
+      commonname: commonNameAt(number),
+      locationcode: `A.${String((number % 98) + 1).padStart(2, '0')}.001`
+    });
+  });
+  // A second physical row must stay within its one Common Name group, while
+  // pushing the authenticated inventory reader past its 1,000-row first page.
+  rows.push(hlMaster('common-name-duplicate-0781', {
+    itemcode: 'CN.0781-B', commonname: commonNameAt(781), locationcode: 'B.01.001'
+  }));
+  return rows;
+}
+
+const commonNameState = (page: Page) => page.locator('#drive-content');
+const commonNameButtons = (page: Page) => page.locator('#drive-content').getByRole('button', { name: /^Open Common Name / });
+
+test('Common Name waits for every inventory page, survives an identical Drive render, and exposes the complete selectable list', async ({ page, baseURL }, info) => {
+  const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
+  fixture.holdNextMasterLaterPage();
+  const coldStartedAt = Date.now();
+  try {
+    await page.locator('#home-tile-drive').click();
+    await fixture.waitForHeldMasterLaterPage();
+    await expect(commonNameState(page)).not.toHaveAttribute('data-drive-commonname-state', 'complete');
+    await expect(commonNameButtons(page), 'no partial Common Name groups may become selectable').toHaveCount(0);
+
+    fixture.releaseHeldMasterLaterPage();
+    // Run the equivalent render while preparation owns a queued animation-frame
+    // batch. This was the cancellation path that left a complete group count with
+    // only its first rendered chunk.
+    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => {
+      window.eval('renderDrive(); renderDrive();');
+      resolve();
+    })));
+    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
+    await expect(commonNameButtons(page)).toHaveCount(0);
+
+    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+    await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
+    const cold = { completeMs: Date.now() - coldStartedAt, masterReads: fixture.backgroundMasterReads, laterPageReads: fixture.masterLaterPageReads };
+
+    await returnHome(page, true);
+    const repeatStartedAt = Date.now();
+    const repeatReadsBefore = { master: fixture.backgroundMasterReads, later: fixture.masterLaterPageReads };
+    await page.locator('#home-tile-drive').click();
+    await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+    await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
+    expect(fixture.backgroundMasterReads, 'unchanged large-list return must not download inventory again').toBe(repeatReadsBefore.master);
+    expect(fixture.masterLaterPageReads).toBe(repeatReadsBefore.later);
+    await info.attach('drive-commonname-complete.json', {
+      body: JSON.stringify({ cold, repeat: { completeMs: Date.now() - repeatStartedAt, before: repeatReadsBefore,
+        after: { master: fixture.backgroundMasterReads, later: fixture.masterLaterPageReads } } }, null, 2),
+      contentType: 'application/json'
+    });
+
+    for (const index of [1, 781, COMMON_NAME_TOTAL]) {
+      const button = page.locator('#drive-content').getByRole('button', { name: `Open ${commonNameAt(index)}`, exact: true });
+      await expect(button).toBeEnabled();
+      await button.click();
+      await expect(page.locator('#drive-crumb')).toContainText(commonNameAt(index));
+      await page.locator('#global-header-inline-back').click();
+      await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+    }
+    await expect(page.locator('#drive-content').getByRole('button', { name: `Open ${commonNameAt(781)}`, exact: true })).toContainText('2 Rows');
+  } finally {
+    try { fixture.releaseHeldMasterLaterPage(); } catch (_) {}
+  }
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('Common Name cancels an obsolete prepared list for search or navigation and restarts after visibility resumes', async ({ page, baseURL }) => {
+  const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
+  await page.locator('#home-tile-drive').click();
+  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
+  await expect(commonNameButtons(page)).toHaveCount(0);
+
+  // A changed search invalidates the in-flight full list: it must not publish
+  // any old card before its replacement list is complete.
+  await page.locator('#drive-search').fill(commonNameAt(781));
+  await expect(page.locator('#drive-content [role="button"][aria-label^="Open Common Name "]:not([aria-label="Open Common Name 0781"])')).toHaveCount(0);
+  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+  await expect(commonNameButtons(page)).toHaveCount(1);
+
+  await page.locator('#drive-search').fill('');
+  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
+  await page.locator('#global-header-inline-back').click();
+  await expect(page.locator('#view-home')).toBeVisible();
+  await page.locator('#home-tile-drive').click();
+  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+  await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
+
+  // The lifecycle listener must restart a list invalidated by an actual
+  // foreground transition; DOM cards remain withheld until that restart ends.
+  await page.locator('#drive-search').fill(commonNameAt(781));
+  await expect(commonNameButtons(page)).toHaveCount(1);
+  await page.locator('#drive-search').fill('');
+  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'preparing');
+  await expect(commonNameButtons(page)).toHaveCount(0);
+  await page.evaluate(() => {
+    let hidden = true;
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => hidden ? 'hidden' : 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    hidden = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete (document as unknown as Record<string, unknown>).hidden;
+    delete (document as unknown as Record<string, unknown>).visibilityState;
+  });
+  await expect(commonNameState(page)).toHaveAttribute('data-drive-commonname-state', 'complete', { timeout: 20000 });
+  await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('Common Name never publishes a partial list when a later authenticated inventory page fails', async ({ page, baseURL }) => {
+  const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
+  fixture.failNextMasterLaterPage();
+  await page.locator('#home-tile-drive').click();
+  await expect.poll(() => fixture.masterLaterPageReads, { timeout: 20000 }).toBeGreaterThan(0);
+  await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
+  await expect(commonNameState(page)).not.toHaveAttribute('data-drive-commonname-state', 'complete');
+  await expect(commonNameButtons(page)).toHaveCount(0);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('Common Name rejects an empty later inventory page that claims more rows', async ({ page, baseURL }) => {
+  const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
+  fixture.emptyMasterLaterPage();
+  await page.locator('#home-tile-drive').click();
+  await expect.poll(() => fixture.masterLaterPageReads, { timeout: 20000 }).toBeGreaterThan(0);
+  await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
+  await expect(commonNameState(page)).not.toHaveAttribute('data-drive-commonname-state', 'complete');
+  await expect(commonNameButtons(page)).toHaveCount(0);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
 test('Drive verifies cards before unopened reserves and AV-note sources are requested', async ({ page, baseURL }) => {
   let releaseOptional!: () => void;
   const optionalGate = new Promise<void>(resolve => { releaseOptional = resolve; });
