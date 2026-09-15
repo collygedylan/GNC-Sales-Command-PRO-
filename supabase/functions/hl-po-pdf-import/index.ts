@@ -73,7 +73,7 @@ return async (request:Request)=>{
     if(error) throw new Error(error.message?.match(/HL_PO_[A-Z_]+/)?.[0] || 'HL_PO_PDF_FINALIZE_FAILED');
     return response({ok:true,...data,run_id:runId,next_page:null,page_count:pdf.numPages,total_rows:pages.reduce((n,p)=>n+p.rows.length,0)});
   } catch(error) {
-    const code=String(error instanceof Error?error.message:'').match(/^HL_PO_PDF_[A-Z_]+/)?.[0] || 'HL_PO_PDF_IMPORT_FAILED';
+    const code=String(error instanceof Error?error.message:'').match(/^HL_PO_[A-Z_]+(?::page_\d+)?$/)?.[0].split(':')[0] || 'HL_PO_PDF_IMPORT_FAILED';
     return response({ok:false,code},422);
   }
 };

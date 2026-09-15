@@ -132,6 +132,7 @@ jobs:
           cp supabase/migrations/20260912170906_hl_restocking.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260914164706_hl_state_balances_once.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260915021525_hl_po_seasons_pdf.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260915115800_hl_po_negative_pdf_balances.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260911152125_restore_sep09_eval_review_compatibility.sql "$ci_root/supabase/migrations/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"

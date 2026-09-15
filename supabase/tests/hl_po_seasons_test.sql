@@ -128,6 +128,22 @@ begin
  perform pg_temp.hl_check(not has_function_privilege('authenticated','public.hl_po_import_capabilities()','EXECUTE') and not has_function_privilege('anon','public.hl_po_import_capabilities()','EXECUTE') and has_function_privilege('service_role','public.hl_po_import_capabilities()','EXECUTE'),'PDF authentication probe is executable only by service role');
  perform pg_temp.hl_check(not has_function_privilege('authenticated','public.hl_po_pdf_stage(text,jsonb,integer,jsonb,boolean)','EXECUTE'),'Authenticated client cannot stage PDF reports');
  perform pg_temp.hl_check(not has_table_privilege('authenticated','public.ph_27s1_hl_po','UPDATE'),'S1 PO read model rejects browser writes');
+ -- Preserve valid signed printed quantities. A positive offset must not hide review.
+ meta:=meta||jsonb_build_object('source_file_id','pdf-negative','fingerprint',repeat('d',64),'report_printed_at','2026-09-11T16:17:27-05:00','page_count',1);
+ dup:=public.hl_po_pdf_stage('pdf-negative',meta,1,jsonb_build_array(
+  line||'{"item_code":"NEG-OFFSET","lot":"27.F1","po_ordered":102,"po_remain":-831}'::jsonb,
+  line||'{"item_code":"NEG-OFFSET","lot":"27.F1","po_ordered":1000,"po_remain":1000}'::jsonb,
+  line||'{"item_code":"NEG-ONLY","lot":"27.F1","po_ordered":102,"po_remain":-831}'::jsonb),true);
+ perform pg_temp.hl_check(dup->>'status'='pending' and (dup->>'row_count')::integer=3,'Negative printed lines stage completely for review');
+ perform pg_temp.hl_check((select remaining=169 and status='review' from hl_order_private.po_balances_v2((dup->>'id')::uuid) where itemcode='NEG-OFFSET'),'Positive offset preserves negative-line review status');
+ perform pg_temp.hl_check((select remaining=-831 and status='review' from hl_order_private.po_balances_v2((dup->>'id')::uuid) where itemcode='NEG-ONLY'),'Negative balance is preserved without clamping');
+ p:=pg_temp.hl_command('po_import_preview',jsonb_build_object('import_id',dup->>'id','receipt_cutoff','1970-01-01T00:00:00Z'))->'po_import_preview';
+ perform pg_temp.hl_command('po_import_confirm',jsonb_build_object('preview_id',p->>'id'));
+ perform pg_temp.hl_check(not exists(select 1 from hl_order_private.restock_targets where itemcode like 'NEG-%'),'Review balances never initialize restocking targets');
+ s:=public.hl_order_restock_state_v2('27.F1');
+ perform pg_temp.hl_check((select count(*)=2 and bool_and(i->>'status'='po_unknown' and i->>'suggested_quantity' is null) from jsonb_array_elements(s->'items') i where i->>'itemcode' like 'NEG-%'),'Review balances block restocking calculations');
+ perform pg_temp.hl_reject('restock_target_preview','{"lot":"27.F1","items":[{"itemcode":"NEG-OFFSET","size":"#3"}]}','HL_RESTOCK_REVIEW_REQUIRED');
+ perform pg_temp.hl_check((select target=238 from hl_order_private.restock_targets where itemcode='000310.030.1' and lot='27.S1'),'Review import preserves previously fixed targets');
 end $test$;
 select '1..'||count(*) from hl_checks;
 select 'ok '||id||' - '||description from hl_checks order by id;

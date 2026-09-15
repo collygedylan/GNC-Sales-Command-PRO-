@@ -48,6 +48,18 @@ Deno.test('PDF importer validates method and original PDF before any staging',as
  assertEquals(result.status,422); assertEquals((await result.json()).code,'HL_PO_PDF_INVALID_FILE');
 });
 
+Deno.test('PDF worker returns safe database review codes without exposing database details',async()=>{
+ for(const [message,expected] of [['HL_PO_INVALID_PDF_LINE','HL_PO_INVALID_PDF_LINE'],['private database details','HL_PO_PDF_STAGE_FAILED']]) {
+  const handler=createHlPoPdfHandler(async()=>({rpc:async()=>({data:null,error:{message}})}));
+  const result=await handler(new Request('https://fixture.invalid',{method:'POST',body:JSON.stringify({source_file_id:'synthetic-error-file',source_file_name:'PO.pdf',pdf_base64:reportFixture(['9/11/2026 4:17:26 PM'])})}));
+  assertEquals(result.status,422);assertEquals(await result.json(),{ok:false,code:expected});
+ }
+ const handler=createHlPoPdfHandler(async()=>client);
+ const malformed=btoa(atob(reportFixture(['9/11/2026 4:17:26 PM'])).replace('(Remaining)','(Unknownxx)'));
+ const result=await handler(new Request('https://fixture.invalid',{method:'POST',body:JSON.stringify({source_file_id:'synthetic-missing-column',source_file_name:'PO.pdf',pdf_base64:malformed})}));
+ assertEquals(await result.json(),{ok:false,code:'HL_PO_PDF_MISSING_COLUMNS'});
+});
+
 Deno.test('service authentication uses caller credentials and protected PostgREST grants for legacy and secret keys',async()=>{
  const credentials:Array<Record<string,string>>=[{authorization:'Bearer existing-legacy-key',apikey:'existing-legacy-key'},{apikey:'sb_secret_existing'}];
  for(const headers of credentials) {

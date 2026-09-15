@@ -106,6 +106,7 @@ try {
       legacySeason=(await db.query(`select (select jsonb_agg(to_jsonb(l)) from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
     }
     await db.exec(read('supabase/migrations/20260915021525_hl_po_seasons_pdf.sql'));
+    await db.exec(read('supabase/migrations/20260915115800_hl_po_negative_pdf_balances.sql'));
     if(legacySeason) {
       const after=(await db.query(`select (select jsonb_agg(to_jsonb(l)-'po_lot') from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
       if(JSON.stringify(after)!==JSON.stringify(legacySeason)) throw new Error('Season migration changed historical lines or PDFs');
