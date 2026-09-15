@@ -190,3 +190,52 @@ test('the initial-permission retry cannot chain into a third read after another 
   assert.equal(reads, 2, 'a changed retry owner must not schedule a third read');
   assert.equal(vm.runInContext('hlRestockState', ctx), null);
 });
+
+test('F1 and S1 keep independent controls and reject a late response from the other lot', async () => {
+  const ctx = runtime();
+  ctx.renderHlOrder = () => {};
+  const first = deferred();
+  const calls = [];
+  ctx.supabaseRpc = async (name, body) => {
+    calls.push([name, body.p_lot]);
+    if (body.p_lot === '27.F1') await first.promise;
+    return { revision: 1, inventory_snapshot: { lot: body.p_lot }, items: [{ itemcode: 'SHARED.1', size: '#3', lot: body.p_lot, available: body.p_lot === '27.S1' ? 5 : 99 }] };
+  };
+  vm.runInContext("hlRestockSearch = 'juniper'; hlRestockFilter = 'all'; hlRestockShipDate = '2026-09-20'; hlRestockEdits.set('SHARED.1|#3', '7');", ctx);
+  const pendingF1 = ctx.loadHlRestockState();
+  ctx.setHlRestockLot('27.S1');
+  await waitFor(() => vm.runInContext('hlRestockState?.items?.[0]?.lot', ctx) === '27.S1');
+  first.resolve(); await pendingF1;
+  assert.equal(ctx.getHlRestockItems()[0].available, 5);
+  assert.equal(vm.runInContext('hlRestockSearch', ctx), '');
+  assert.equal(ctx.getHlRestockItemKey({ itemcode: 'SHARED.1', size: '#3', lot: '27.S1' }), 'SHARED.1|#3|27.S1');
+  ctx.setHlRestockLot('27.F1');
+  assert.equal(vm.runInContext('hlRestockSearch', ctx), 'juniper');
+  assert.equal(vm.runInContext('hlRestockFilter', ctx), 'all');
+  assert.equal(vm.runInContext('hlRestockShipDate', ctx), '2026-09-20');
+  assert.equal(ctx.getHlRestockQuantityInput({ itemcode: 'SHARED.1', size: '#3' }), '7');
+  assert.deepEqual(calls[0], ['hl_order_restock_state_v2', '27.F1']);
+});
+
+test('target confirmation uses the reviewed server preview and its revision, without computing a client target', async () => {
+  const ctx = runtime();
+  const nodes = new Map();
+  const dialog = { open: false, innerHTML: '', showModal() { this.open = true; }, close() { this.open = false; } };
+  ctx.document = { hidden: false, getElementById: id => nodes.get(id) || null, createElement: () => dialog, body: { appendChild: node => nodes.set(node.id, node) }, querySelectorAll: () => [] };
+  vm.runInContext("hlRestockLot = '27.S1'; hlRestockState = { revision: 11, inventory_snapshot: {}, items: [{ itemcode: '000310.030.1', size: '#3', lot: '27.S1', target: 239 }] };", ctx);
+  const commands = [];
+  ctx.runHlOrderCommand = async (...args) => {
+    commands.push(args);
+    return { state: { revision: 12 }, restock_target_preview: { id: 'protected-preview', items: [{ itemcode: '000310.030.1', size: '#3', lot: '27.S1', previous_target: 239, basis_quantity: 794, target: 239 }] } };
+  };
+  ctx.loadHlRestockState = async () => null;
+  await ctx.previewHlRestockTarget('000310.030.1|#3|27.S1');
+  assert.match(dialog.innerHTML, /794/); assert.match(dialog.innerHTML, /239/); assert.match(dialog.innerHTML, /27.S1/);
+  assert.equal(commands[0][1].lot, '27.S1');
+  assert.equal(commands[0][3], 11);
+  await ctx.confirmHlRestockTarget();
+  assert.equal(commands[1][0], 'restock_target_confirm');
+  assert.equal(commands[1][1].preview_id, 'protected-preview');
+  assert.equal(commands[1][3], 12);
+  assert.equal(dialog.open, false);
+});

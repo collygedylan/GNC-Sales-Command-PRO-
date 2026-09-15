@@ -6,21 +6,42 @@ begin
   if ok is distinct from true then raise exception 'HL lifecycle: %',description; end if;
   insert into hl_checks(description) values(description);
 end $$;
+
+create function pg_temp.pdf_report(run text, rows jsonb, complete boolean) returns jsonb language plpgsql as $$
+declare meta jsonb; normalized jsonb; result jsonb;
+begin
+ if jsonb_array_length(rows)=0 then
+  select metadata into meta from hl_order_private.po_imports where run_id=run;
+  return public.hl_po_pdf_stage(run,meta,null,'[]',complete);
+ end if;
+ select jsonb_agg((r-'source_file_id'-'row_index')||jsonb_build_object('po_ordered',r->'po_remain','po_received',0,'po_number','FIXTURE','vendor','823517')) into normalized from jsonb_array_elements(rows) r;
+ meta:=jsonb_build_object('source_file_id',rows->0->>'source_file_id','source_file_name','Synthetic PO.pdf','fingerprint',hl_order_private.fingerprint(normalized),'page_count',1,
+  'report_printed_at',case run when 'receipt-import-two' then '2026-09-12T21:17:26Z' when 'receipt-import-three' then '2026-09-13T21:17:26Z' else '2026-09-11T21:17:26Z' end,'report_date',rows->0->>'report_date','parser_version','greenleaf-po-pdf-v1');
+ return public.hl_po_pdf_stage(run,meta,1,normalized,complete);
+end $$;
+create function pg_temp.balance(s jsonb,lot text) returns jsonb language plpgsql as $$
+declare b jsonb;
+begin
+ select to_jsonb(v) into b from hl_order_private.po_balances_v2() v where v.itemcode=upper(btrim(s->>'itemcode')) and v.size=upper(btrim(s->>'contsize')) and v.lot=balance.lot;
+ return coalesce(b,jsonb_build_object('itemcode',upper(btrim(s->>'itemcode')),'size',upper(btrim(s->>'contsize')),'lot',lot,'status','missing','remaining',null,'imported',null,'receipt_adjustment',coalesce((select sum(quantity_delta) from hl_order_private.po_receipt_adjustments a cross join hl_order_private.po_control c where a.itemcode=upper(btrim(s->>'itemcode')) and a.size=upper(btrim(s->>'contsize')) and a.lot=balance.lot and a.created_at>c.receipt_cutoff),0)));
+end $$;
+
 create function pg_temp.hl_reference_state() returns jsonb
 language plpgsql stable security definer set search_path='' as $$
 declare s jsonb; o jsonb; d jsonb; a jsonb; orders jsonb:='[]'; drafts jsonb:='[]'; actionable jsonb:='[]'; lines jsonb; l jsonb;
 begin
   s:=hl_order_private.state_json_before_po();
   for a in select value from jsonb_array_elements(s->'actionable_rows') loop
-    actionable:=actionable||jsonb_build_array(a||jsonb_build_object('po_match',true,'po_balance',hl_order_private.po_balance(a)));
+    actionable:=actionable||jsonb_build_array(a||jsonb_build_object('po_match',true,'po_balance',pg_temp.balance(a,a->>'lotcode')));
   end loop;
   for d in select value from jsonb_array_elements(s->'draft') loop
-    drafts:=drafts||jsonb_build_array(d||jsonb_build_object('po_match',hl_order_private.po_match(d->'source'->>'itemcode'),'po_balance',hl_order_private.po_balance(d->'source')));
+    d:=d||jsonb_build_object('po_lot',(select po_lot from hl_order_private.drafts where source_id=d->>'source_id'));
+    drafts:=drafts||jsonb_build_array(d||jsonb_build_object('po_match',hl_order_private.po_match(d->'source'->>'itemcode'),'po_balance',pg_temp.balance(d->'source',d->>'po_lot')));
   end loop;
   for o in select value from jsonb_array_elements(s->'orders') loop
     lines:='[]';
     for l in select value from jsonb_array_elements(o->'lines') loop
-      lines:=lines||jsonb_build_array(l||jsonb_build_object('po_match',hl_order_private.po_match(l->'source'->>'itemcode'),'po_balance',hl_order_private.po_balance(l->'source')));
+      lines:=lines||jsonb_build_array(l||jsonb_build_object('po_match',hl_order_private.po_match(l->'source'->>'itemcode'),'po_balance',pg_temp.balance(l->'source',l->>'po_lot')));
     end loop;
     orders:=orders||jsonb_build_array(o||jsonb_build_object('lines',lines));
   end loop;
@@ -63,13 +84,13 @@ select set_config('request.jwt.claims',jsonb_build_object('role','authenticated'
   'iss','https://kzrnyjsosryejjejliii.supabase.co/auth/v1','session_id','97000000-0000-0000-0000-000000000002','exp',extract(epoch from now()+interval '1 hour'))::text,true);
 select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,stopnumber,planstart,transactionnumber,customername,ptravailable)
-select id,id,'#3','C.12.4','27.S1',qty,'D1','S1','2026-09-15','ORDER-'||id,'Fixture customer','999'
+select id,id,'#3','C.12.4','27.F1',qty,'D1','S1','2026-09-15','ORDER-'||id,'Fixture customer','999'
 from (values('HL-A','10'),('HL-B','20'),('HL-CHANGE','12'),('HL-REPLACE','10'),('HL-INVALID','1,2'),('HL-FRACTION','2.5'),('HL-THOUSAND','1,250')) f(id,qty);
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,quantityordered,dock,invoicedate)
 values('HL-INVOICED','HL-INVOICED','#3','C.05','10','D1','2026-09-10'),
  ('HL-BLANK','','','C.05','10','D1',null),('HL-NODOCK','HL-NODOCK','#3','C.05','10',null,null);
 insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable)
-values('HL-INV-A','HL-A','#3','C.12.4','27.S1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.S1',null);
+values('HL-INV-A','HL-A','#3','C.12.4','27.F1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.F1',null);
 
 -- Explicit current PO fixture; never infer membership from SOC in production.
 do $po$ begin
@@ -78,7 +99,7 @@ do $po$ begin
   select 'hl-fixture',row_number() over(order by itemcode)::int,'hl-fixture',itemcode,'#3','27.F1',2000,2000
   from (select distinct itemcode from public.ph_soc_master where nullif(itemcode,'') is not null union select 'HL-LATE-CANCEL' union select 'HL-UNDATED') q
   on conflict(source_file_id,row_index) do update set item_code=excluded.item_code,po_remain=2000,imported_po_remain=2000;
-  update hl_order_private.po_control set active_scope='hl-fixture',receipt_cutoff='1970-01-01' where singleton;
+  update hl_order_private.po_control set active_scope='hl-fixture',receipt_cutoff='1970-01-01T00:00:00Z' where singleton;
  end if;
 end $po$;
 
@@ -116,16 +137,23 @@ begin
   perform pg_temp.hl_check((select min(po_remain)=2 from public.ph_27f1_hl_po where item_code='HL-A' and lot='27.F1'),'5 to 8 deducts only another 3');
   perform pg_temp.hl_command('receive',jsonb_build_object('order_id',o->>'id','reason','Count correction','lines',jsonb_build_array(jsonb_build_object('line_id',line_a,'received_quantity',6))));
   perform pg_temp.hl_check((select min(po_remain)=4 from public.ph_27f1_hl_po where item_code='HL-A' and lot='27.F1'),'8 to 6 restores 2');
-  perform pg_temp.hl_check((select po_remain=77 from public.ph_27f1_hl_po where item_code='HL-A' and lot='26.F1'),'SOC lot does not redirect receipt away from 27.F1');
+  perform pg_temp.hl_check((select po_remain=77 from public.ph_27f1_hl_po where item_code='HL-A' and lot='26.F1'),'receipt leaves other PO lots unchanged');
   perform pg_temp.hl_check((select min(imported_po_remain)=10 from public.ph_27f1_hl_po where item_code='HL-A' and lot='27.F1'),'original imported balance retained');
+  -- Unknown/contradictory balances are never converted into invented values.
+  insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain)
+    select 'extra-copy',1,active_scope,'HL-A','#3','27.F1',null,null from hl_order_private.po_control;
+  perform pg_temp.hl_check(hl_order_private.po_balance('{"itemcode":"HL-A","contsize":"#3"}')->>'status'='unknown','mixed blank and numeric copies remain unknown');
+  update public.ph_27f1_hl_po set imported_po_remain=99 where source_file_id='extra-copy';
+  perform pg_temp.hl_check(hl_order_private.po_balance('{"itemcode":"HL-A","contsize":"#3"}')->>'status'='conflict','conflicting copied balances require reconciliation');
+  delete from public.ph_27f1_hl_po where source_file_id='extra-copy';
   select max(created_at) into cutoff from hl_order_private.po_receipt_adjustments;
   select active_scope into baseline_scope from hl_order_private.po_control;
   import_rows:=jsonb_build_array(jsonb_build_object('source_file_id','po-report','row_index',1,'item_code','HL-A','size','#3','lot','27.F1',
     'po_remain',7,'report_date','2026-09-11','source_values',jsonb_build_object('po_remain',' 7 ')));
-  imp:=public.hl_po_import_stage(run,import_rows,false);
+  imp:=pg_temp.pdf_report(run,import_rows,false);
   perform pg_temp.hl_check(imp->>'status'='staging' and (select active_scope=baseline_scope from hl_order_private.po_control),'incomplete import leaves active report unchanged');
   perform pg_temp.hl_reject('po_import_preview',jsonb_build_object('import_id',imp->>'id','receipt_cutoff',cutoff),'HL_PO_IMPORT_NOT_PENDING');
-  imp:=public.hl_po_import_stage(run,'[]',true);
+  imp:=pg_temp.pdf_report(run,'[]',true);
   perform pg_temp.hl_check(imp->>'status'='pending' and (select min(po_remain)=4 from public.ph_27f1_hl_po where item_code='HL-A' and lot='27.F1'),'completed import awaits Dylan without resetting receipt deductions');
   perform pg_temp.hl_reject('po_import_preview',jsonb_build_object('import_id',imp->>'id','receipt_cutoff',clock_timestamp()+interval '1 hour'),'HL_PO_INVALID_CUTOFF');
   ip:=pg_temp.hl_command('po_import_preview',jsonb_build_object('import_id',imp->>'id','receipt_cutoff',cutoff))->'po_import_preview';
@@ -135,31 +163,25 @@ begin
   ip:=pg_temp.hl_command('po_import_preview',jsonb_build_object('import_id',imp->>'id','receipt_cutoff',cutoff))->'po_import_preview';
   perform pg_temp.hl_check((ip->'balances'->0->>'remaining')::numeric=5 and (ip->'balances'->0->>'receipt_adjustment')::numeric=2,'later receipt delta remains deducted from new baseline');
   perform pg_temp.hl_command('po_import_confirm',jsonb_build_object('preview_id',ip->>'id'));
-  perform pg_temp.hl_check((select po_remain=5 and imported_po_remain=7 from public.ph_27f1_hl_po where source_file_id='po-report'),'confirmation atomically installs adjusted raw column');
+  perform pg_temp.hl_check((select po_remain=5 and imported_po_remain=7 from public.ph_27f1_hl_po where run_id=(select active_scope from hl_order_private.po_control) and item_code='HL-A' and lot='27.F1'),'confirmation atomically installs adjusted raw column');
   perform pg_temp.hl_check((select source->'source_values'->>'po_remain'=' 7 ' from hl_order_private.po_import_rows where import_id=(imp->>'id')::uuid),'original imported source values preserved');
-  duplicate:=public.hl_po_import_stage('receipt-import-copy',jsonb_set(import_rows,'{0,source_file_id}','"new-drive-copy"'),true);
+  duplicate:=pg_temp.pdf_report('receipt-import-copy',jsonb_set(import_rows,'{0,source_file_id}','"new-drive-copy"'),true);
   perform pg_temp.hl_check(duplicate->>'status'='duplicate' and duplicate->>'duplicate_of'=imp->>'id','copy of same report deduplicates regardless of Drive ID');
-  perform pg_temp.hl_check((select po_remain=5 from public.ph_27f1_hl_po where source_file_id='po-report'),'duplicate import cannot reset balance');
-  imp2:=public.hl_po_import_stage('receipt-import-two',jsonb_set(import_rows,'{0,po_remain}','9'),true);
+  perform pg_temp.hl_check((select po_remain=5 from public.ph_27f1_hl_po where run_id=(select active_scope from hl_order_private.po_control) and item_code='HL-A' and lot='27.F1'),'duplicate import cannot reset balance');
+  imp2:=pg_temp.pdf_report('receipt-import-two',jsonb_set(import_rows,'{0,po_remain}','9'),true);
   perform pg_temp.hl_reject('po_import_preview',jsonb_build_object('import_id',imp2->>'id','receipt_cutoff',cutoff-interval '1 second'),'HL_PO_INVALID_CUTOFF');
   perform pg_temp.hl_command('receive',jsonb_build_object('order_id',o->>'id','lines',jsonb_build_array(jsonb_build_object('line_id',line_b,'received_quantity',2))));
   perform pg_temp.hl_check((hl_order_private.po_balance('{"itemcode":"HL-B","contsize":"#3"}')->>'status')='missing','saved unmatched line remains receivable with unresolved ledger adjustment');
   perform pg_temp.hl_check(exists(select 1 from hl_order_private.po_receipt_adjustments where itemcode='HL-B' and quantity_delta=2),'unmatched receipt retains audit');
   -- A newer reconciled report must not expose an older pending report again.
-  duplicate:=public.hl_po_import_stage('receipt-import-three',jsonb_set(import_rows,'{0,po_remain}','1'),true);
+  duplicate:=pg_temp.pdf_report('receipt-import-three',jsonb_set(import_rows,'{0,po_remain}','1'),true);
   ip:=pg_temp.hl_command('po_import_preview',jsonb_build_object('import_id',duplicate->>'id','receipt_cutoff',cutoff))->'po_import_preview';
   perform pg_temp.hl_command('po_import_confirm',jsonb_build_object('preview_id',ip->>'id'));
-  perform pg_temp.hl_check((select po_remain=-1 from public.ph_27f1_hl_po where source_file_id='po-report'),'negative remaining is retained without clamping');
+  perform pg_temp.hl_check((select po_remain=-1 from public.ph_27f1_hl_po where run_id=(select active_scope from hl_order_private.po_control) and item_code='HL-A' and lot='27.F1'),'negative remaining is retained without clamping');
   perform pg_temp.hl_reject('po_import_preview',jsonb_build_object('import_id',imp2->>'id','receipt_cutoff',cutoff),'HL_PO_IMPORT_SUPERSEDED');
   perform pg_temp.hl_check((public.hl_order_state()->'po_imports')='[]'::jsonb,'older pending imports stay unavailable after newer confirmation');
   perform pg_temp.hl_check((select report=before_pdf from public.ph_hl_order_previews where id=(p->>'id')::uuid),'saved order PDF remains unchanged');
   perform pg_temp.hl_check((select order_number=before_number from hl_order_private.orders where id=(o->>'id')::uuid),'saved order number remains unchanged');
-  -- Unknown/contradictory balances are never converted into invented values.
-  insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain)
-    select 'extra-copy',1,active_scope,'HL-A','#3','27.F1',null,null from hl_order_private.po_control;
-  perform pg_temp.hl_check(hl_order_private.po_balance('{"itemcode":"HL-A","contsize":"#3"}')->>'status'='unknown','mixed blank and numeric copies remain unknown');
-  update public.ph_27f1_hl_po set imported_po_remain=99 where source_file_id='extra-copy';
-  perform pg_temp.hl_check(hl_order_private.po_balance('{"itemcode":"HL-A","contsize":"#3"}')->>'status'='conflict','conflicting copied balances require reconciliation');
   perform pg_temp.hl_check(not has_table_privilege('authenticated','public.ph_27f1_hl_po','UPDATE')
     and not has_table_privilege('service_role','public.ph_27f1_hl_po','UPDATE'),'direct balance mutation is not exposed');
   perform pg_temp.hl_check(not has_function_privilege('authenticated','public.hl_po_import_stage(text,jsonb,boolean)','EXECUTE')

@@ -93,11 +93,35 @@ try {
   await db.exec(read('supabase/migrations/20260908185903_live_dataset_revisions.sql'));
   await db.exec(read('supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
   await db.exec(read('supabase/migrations/20260912170906_hl_restocking.sql'));
-  const files = historical ? [] : args.includes('--test') ? [args[args.indexOf('--test') + 1]] : [
+  if (args.includes('--seasons')) {
+    await db.exec(read('supabase/migrations/20260914164706_hl_state_balances_once.sql'));
+    let legacySeason;
+    if(args.includes('--season-backfill')) {
+      const fixture=read('supabase/tests/hl_order_lifecycle_test.sql');
+      await db.exec(fixture.slice(0,fixture.indexOf('do $test$')));
+      await db.exec(`update public.ph_soc_master set lotcode='27.S1' where unique_id in ('HL-A','HL-B');
+        select pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-A","quantity":6}]}');
+        do $$ declare p jsonb;s jsonb;begin p:=pg_temp.hl_command('preview','{}')->'preview';s:=pg_temp.hl_command('submit',jsonb_build_object('preview_id',p->>'id'));perform pg_temp.hl_confirm((s->'orders'->0->>'event_id')::uuid);end $$;
+        select pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-B","quantity":4}]}');commit;`);
+      legacySeason=(await db.query(`select (select jsonb_agg(to_jsonb(l)) from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
+    }
+    await db.exec(read('supabase/migrations/20260915021525_hl_po_seasons_pdf.sql'));
+    if(legacySeason) {
+      const after=(await db.query(`select (select jsonb_agg(to_jsonb(l)-'po_lot') from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
+      if(JSON.stringify(after)!==JSON.stringify(legacySeason)) throw new Error('Season migration changed historical lines or PDFs');
+      const proof=(await db.query(`select bool_and(d.po_lot='27.F1' and d.source->>'lotcode'='27.S1') ok from hl_order_private.drafts d`)).rows[0];
+      if(!proof.ok) throw new Error('Legacy saved draft accounting moved seasons');
+      const draft=(await db.query(`select hl_order_private.state_json()->'draft'->0 d`)).rows[0].d;
+      if(draft.po_lot!=='27.F1'||draft.po_balance?.lot!=='27.F1') throw new Error('Legacy draft display used source lot instead of accounting lot');
+      console.log('PASS legacy season migration: saved lines and PDFs unchanged; historical S1 source retains F1 accounting in storage and response.');
+    }
+
+  }
+  const files = historical || args.includes('--season-backfill') ? [] : args.includes('--test') ? [args[args.indexOf('--test') + 1]] : [
     'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql', 'supabase/tests/hl_order_ship_dates_test.sql', 'supabase/tests/hl_order_po_receipts_test.sql', 'supabase/tests/hl_order_restock_test.sql'
   ];
   for (const file of files) {
-    if (!file || !/^supabase\/tests\/hl_order_[a-z_]+\.sql$/.test(file)) throw new Error('Invalid HL SQL test path.');
+    if (!file || !/^supabase\/tests\/hl_(?:order|po)_[a-z_]+\.sql$/.test(file)) throw new Error('Invalid HL SQL test path.');
     const results = await db.exec(read(file));
     const tap = results.flatMap((result) => result.rows).flatMap((row) => Object.values(row)).filter((value) => typeof value === 'string' && /^(?:ok|not ok|1\.\.)/.test(value));
     if (!tap.some((line) => /^1\.\.[1-9]\d*$/.test(line)) || tap.some((line) => /^not ok/.test(line))) throw new Error('SQL tests did not produce a passing TAP plan: ' + file);

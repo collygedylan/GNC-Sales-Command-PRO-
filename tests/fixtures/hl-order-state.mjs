@@ -41,7 +41,7 @@ function fixturePdf() {
 /** Isolated contract fixture. No real backend writes or email delivery are permitted. */
 export function createHlOrderState(options = {}) {
   const sourceRows = options.rows || [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1' })];
-  const keyFor = (row) => JSON.stringify([String(row.itemcode).trim().toUpperCase(), String(row.size ?? row.contsize).trim().toUpperCase()]);
+  const keyFor = (row) => JSON.stringify([String(row.itemcode).trim().toUpperCase(), String(row.size ?? row.contsize).trim().toUpperCase(), String(row.po_lot || row.lot || (row.lotcode === '27.S1' ? '27.S1' : '27.F1'))]);
   const sharedBalances = (rows) => {
     const groups = new Map();
     rows.forEach((row) => { const key = keyFor(row); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(row); });
@@ -52,7 +52,7 @@ export function createHlOrderState(options = {}) {
       const status = values.size > 1 || copies.some((row) => row.status === 'conflict') ? 'conflict'
         : known.length !== copies.length || copies.some((row) => row.status === 'unknown') ? 'unknown' : 'ready';
       const imported = status === 'ready' ? known[0] : null, adjustment = Number(copies[0].receipt_adjustment || 0);
-      return [key, { ...clone(copies[0]), lot: '27.F1', status, imported, receipt_adjustment: adjustment, remaining: imported === null ? null : imported - adjustment }];
+      return [key, { ...clone(copies[0]), lot: copies[0].lot || '27.F1', status, imported, receipt_adjustment: adjustment, remaining: imported === null ? null : imported - adjustment }];
     });
   };
   const membership = new Set((options.poMembership ?? sourceRows.map((row) => row.itemcode)).map((item) => String(item).toUpperCase()));
@@ -119,20 +119,31 @@ export function createHlOrderState(options = {}) {
     if (control.failAction === body.p_action) problem('HL_ORDER_REVISION_CONFLICT');
     if (Number(body.p_expected_revision) !== state.revision) problem('HL_ORDER_REVISION_CONFLICT');
     const action = body.p_action, payload = body.p_payload || {};
-    let preview, poImportPreview;
-    if (action === 'restock_draft_save') {
+    let preview, poImportPreview, restockTargetPreview;
+    if (action === 'restock_target_preview') {
+      const items = (payload.items || []).map(entry => {
+        const item = control.restockItems.find(row => keyFor(row) === keyFor({ ...entry, lot: payload.lot }));
+        if (!item || item.po_balance?.status !== 'ready' || item.po_balance.remaining < 0) problem('HL_RESTOCK_REVIEW_REQUIRED');
+        return { itemcode: item.itemcode, size: item.size, lot: payload.lot, previous_target: item.target, target: Math.ceil(item.po_balance.remaining * .3), basis_quantity: item.po_balance.remaining, basis_import_id: 'fixture-import' };
+      });
+      restockTargetPreview = { id: uuid(++control.sequence), items }; control.targetPreview = clone(restockTargetPreview);
+    } else if (action === 'restock_target_confirm') {
+      if (!control.targetPreview || payload.preview_id !== control.targetPreview.id) problem('HL_ORDER_PREVIEW_STALE');
+      for (const row of control.targetPreview.items) Object.assign(control.restockItems.find(item => keyFor(item) === keyFor(row)), { target: row.target, basis_quantity: row.basis_quantity, target_initialized: true });
+      control.targetPreview = null;
+    } else if (action === 'restock_draft_save') {
       if (JSON.stringify(payload.inventory_snapshot) !== JSON.stringify(control.inventorySnapshot)) problem('HL_RESTOCK_SNAPSHOT_STALE');
       const shipDate = fixtureShipDate(payload.ship_date);
       if (!shipDate) problem('HL_ORDER_SHIP_DATE_REQUIRED');
       for (const entry of payload.rows || []) {
-        const item = control.restockSnapshot().items.find(row => keyFor(row) === keyFor(entry));
+        const item = control.restockSnapshot().items.find(row => keyFor(row) === keyFor({ ...entry, lot: payload.lot || entry.lot || '27.F1' }));
         const previous = entry.source_id && state.draft.find(row => row.source_id === entry.source_id && row.source.source_kind === 'restock');
-        const sameDate = !entry.source_id && state.draft.find(row => row.status === 'ready' && row.ship_date === shipDate && row.source.source_kind === 'restock' && keyFor(row.source) === keyFor(entry));
+        const sameDate = !entry.source_id && state.draft.find(row => row.status === 'ready' && row.ship_date === shipDate && row.source.source_kind === 'restock' && keyFor(row.source) === keyFor({ ...entry, lot: payload.lot || entry.lot || '27.F1' }));
         if (!item || item.status !== 'ready') problem('HL_RESTOCK_REVIEW_REQUIRED');
         if (!Number.isInteger(Number(entry.quantity)) || entry.quantity <= 0 || entry.quantity > item.suggested_quantity + (previous?.quantity || 0)) problem('HL_ORDER_INVALID_QUANTITY');
         const id = previous?.source_id || sameDate?.source_id || `restock:${uuid(++control.sequence)}`;
         const identity = { source_kind: 'restock', source_id: id, unique_id: id, itemcode: item.itemcode, contsize: item.size,
-          commonname: item.commonname, lotcode: '27.F1', planstartdate: shipDate, quantityordered: String(item.target),
+          commonname: item.commonname, lotcode: item.lot || '27.F1', planstartdate: shipDate, quantityordered: String(item.target),
           locationcode: '', dock: '', stopnumber: '', source_fingerprint: `restock-${state.revision}` };
         sourceMap.set(id, identity);
         if (!disposition(id)) state.dispositions.push({ source_id: id, source_kind: 'restock', status: 'draft', source: clone(identity), current_source: clone(identity) });
@@ -253,7 +264,7 @@ export function createHlOrderState(options = {}) {
     } else if (action !== 'reconcile_delivery') problem('HL_ORDER_INVALID_COMMAND');
     state.revision++;
     state.actionable_rows = state.dispositions.filter((entry) => ['needed', 'draft', 'submitting'].includes(entry.status)).map((entry) => clone(source(entry.source_id))).filter(row => row.source_kind !== 'restock');
-    const result = { ...control.snapshot(), ...(preview ? { preview } : {}), ...(poImportPreview ? { po_import_preview: poImportPreview } : {}) };
+    const result = { ...control.snapshot(), ...(preview ? { preview } : {}), ...(poImportPreview ? { po_import_preview: poImportPreview } : {}), ...(restockTargetPreview ? { restock_target_preview: restockTargetPreview } : {}) };
     control.replay.set(body.p_command_id, clone(result));
     return result;
   };
@@ -478,17 +489,17 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const op = url.pathname.split('/').pop(), body = req.postDataJSON() || {};
-      if (op === 'hl_order_state' || op === 'hl_order_command' || op === 'hl_order_restock_state') {
+      if (op === 'hl_order_state' || op === 'hl_order_command' || op === 'hl_order_restock_state' || op === 'hl_order_restock_state_v2') {
         if (username !== 'dylan_collyge') return json(route, { message: 'HL_ORDER_FORBIDDEN' }, 403);
         if (op === 'hl_order_state') return json(route, control.snapshot());
-        if (op === 'hl_order_restock_state') {
+        if (op === 'hl_order_restock_state' || op === 'hl_order_restock_state_v2') {
           control.restockReads++;
           if (holdNextRestockStateRead) {
             holdNextRestockStateRead = false;
             resolveHeldRestockStateReadStarted();
             await new Promise((resolve) => { releaseHeldRestockStateRead = resolve; });
           }
-          return json(route, control.restockSnapshot());
+          const snapshot = control.restockSnapshot(); snapshot.items = snapshot.items.filter(item => (item.lot || '27.F1') === (body.p_lot || '27.F1')); return json(route, snapshot);
         }
         try {
           const result = control.command(body);
@@ -556,7 +567,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       const isDemandTable = table === 'ph_reserves' || table === 'ph_soc_master';
       if (table === 'ph_reserves') control.demandReads.reserves++;
       if (table === 'ph_soc_master') control.demandReads.openOrders++;
-      const allRows = table === 'ph_soc_master' ? (control.demandSocRows ?? control.rows) : table === 'ph_reserves' ? control.reserveRows : masterRead ? masterRead.rows : table === 'ph_view_po_27f1_hl' ? control.poRows : [];
+      const allRows = table === 'ph_soc_master' ? (control.demandSocRows ?? control.rows) : table === 'ph_reserves' ? control.reserveRows : masterRead ? masterRead.rows : table === 'ph_view_po_27f1_hl' || table === 'ph_view_po_27s1_hl' ? control.poRows.filter(row => String(row.lotcode || '27.F1') === (table === 'ph_view_po_27s1_hl' ? '27.S1' : '27.F1')) : [];
       const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
       const demandPageSize = isDemandTable ? Math.max(0, Number(options.demandPageSize) || 0) : 0;
       const rows = demandPageSize ? allRows.slice(offset, offset + demandPageSize) : allRows;

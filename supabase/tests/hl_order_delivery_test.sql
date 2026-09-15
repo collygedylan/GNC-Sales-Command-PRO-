@@ -39,7 +39,7 @@ insert into auth.sessions(id,user_id,not_after) values
  ('98000000-0000-0000-0000-000000000002','98000000-0000-0000-0000-000000000001',now()+interval '1 hour'),
  ('98000000-0000-0000-0000-000000000004','98000000-0000-0000-0000-000000000003',now()+interval '1 hour');
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,stopnumber,planstart)
-values('HL-DELIVERY-SOC','HL-DELIVERY','#3','C.12.4','27.S1','20','Dock 2','Stop 3','2026-09-15');
+values('HL-DELIVERY-SOC','HL-DELIVERY','#3','C.12.4','27.F1','20','Dock 2','Stop 3','2026-09-15');
 insert into public.ph_request_delivery_outbox(event_id,event_key,event_type,status,payload)
 values('98000000-0000-0000-0000-000000000005','hl-test-normal','request_created','failed','{}');
 

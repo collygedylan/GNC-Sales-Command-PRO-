@@ -40,13 +40,13 @@ select set_config('request.jwt.claims',jsonb_build_object('role','authenticated'
   'iss','https://kzrnyjsosryejjejliii.supabase.co/auth/v1','session_id','97000000-0000-0000-0000-000000000002','exp',extract(epoch from now()+interval '1 hour'))::text,true);
 select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,stopnumber,planstart,transactionnumber,customername,ptravailable)
-select id,id,'#3','C.12.4','27.S1',qty,'D1','S1','2026-09-15','ORDER-'||id,'Fixture customer','999'
+select id,id,'#3','C.12.4','27.F1',qty,'D1','S1','2026-09-15','ORDER-'||id,'Fixture customer','999'
 from (values('HL-A','10'),('HL-B','20'),('HL-CHANGE','12'),('HL-REPLACE','10'),('HL-INVALID','1,2'),('HL-FRACTION','2.5'),('HL-THOUSAND','1,250')) f(id,qty);
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,quantityordered,dock,invoicedate)
 values('HL-INVOICED','HL-INVOICED','#3','C.05','10','D1','2026-09-10'),
  ('HL-BLANK','','','C.05','10','D1',null),('HL-NODOCK','HL-NODOCK','#3','C.05','10',null,null);
 insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable)
-values('HL-INV-A','HL-A','#3','C.12.4','27.S1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.S1',null);
+values('HL-INV-A','HL-A','#3','C.12.4','27.F1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.F1',null);
 
 -- Explicit current PO fixture; never infer membership from SOC in production.
 do $po$ begin
@@ -123,7 +123,7 @@ begin
   perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-CHANGE","quantity":5}]}');
   preview:=pg_temp.hl_command('preview','{}')->'preview';
   insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,transactionnumber,customername)
-    values('HL-LIVE-SIBLING','HL-CHANGE','#3','C.12.4','27.S2','7','D2','ORDER-HL-CHANGE','Fixture customer');
+    values('HL-LIVE-SIBLING','HL-CHANGE','#3','C.12.5','27.F1','7','D2','ORDER-HL-CHANGE','Fixture customer');
   update public.ph_soc_master set quantityordered='14' where unique_id='HL-CHANGE';
   s:=public.hl_order_state();
   perform pg_temp.hl_check((select x->>'status'='needs_review' from jsonb_array_elements(s->'draft') x where x->>'source_id'='HL-CHANGE'),'changed source retains draft and blocks it for review');
@@ -165,7 +165,7 @@ begin
 
   perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-A","quantity":2}]}');
   insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable)
-    values('HL-INV-A-DUP','HL-A','#3','C.12.4','27.S1','100');
+    values('HL-INV-A-DUP','HL-A','#3','C.12.4','27.F1','100');
   preview:=pg_temp.hl_command('preview','{}')->'preview';
   perform pg_temp.hl_check((select x->'ptravailable'='null'::jsonb from jsonb_array_elements(preview->'report'->'lines') x where x->>'source_id'='HL-A'),'ambiguous exact inventory never supplies a guessed availability');
   insert into public.ph_hl_order_previews(id,created_by,expires_at,state_revision,source_fingerprint,report)
@@ -187,7 +187,7 @@ begin
     'unrelated submissions retain independent locked drafts awaiting confirmation');
 
   insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,transactionnumber,planstart)
-    values('HL-LATE-CANCEL','HL-LATE-CANCEL','#3','C.12.4','27.S1','10','D1','LATE-CANCEL-ORDER','2026-09-17');
+    values('HL-LATE-CANCEL','HL-LATE-CANCEL','#3','C.12.4','27.F1','10','D1','LATE-CANCEL-ORDER','2026-09-17');
   perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-LATE-CANCEL","quantity":6}]}');
   preview:=pg_temp.hl_command('preview','{}')->'preview';
   perform pg_temp.hl_command('submit',jsonb_build_object('preview_id',preview->>'id'));
@@ -209,7 +209,7 @@ begin
   perform pg_temp.hl_check((select status='removed' and available_quantity=0 from hl_order_private.dispositions where source_id='HL-LATE-CANCEL'),
     'late cancellation never revives retired source ID');
   insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,transactionnumber)
-    values('HL-LATE-CANCEL','HL-LATE-CANCEL','#3','C.12.4','27.S1','20','D1','LATE-CANCEL-ORDER');
+    values('HL-LATE-CANCEL','HL-LATE-CANCEL','#3','C.12.4','27.F1','20','D1','LATE-CANCEL-ORDER');
   perform public.hl_order_state();
   perform pg_temp.hl_reject('resolve_review','{"source_id":"HL-LATE-CANCEL","resolution":"needed"}','HL_ORDER_REPLACEMENT_REVIEW_REQUIRED');
   perform pg_temp.hl_command('resolve_review','{"source_id":"HL-LATE-CANCEL","resolution":"removed"}');

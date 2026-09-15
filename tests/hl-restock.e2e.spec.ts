@@ -120,3 +120,28 @@ test('other administrators cannot load or order restocking', async ({ page, base
   await expect(page.locator('#view-hl-order')).toBeHidden();
   expect(fixture.restockReads).toBe(0); expect(fixture.commands).toHaveLength(0); isolated(fixture);
 });
+
+test('season changes preserve F1 input while S1 orders and target reviews remain isolated', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, setup({ restockItems: [stock({ basis_quantity: 100, target_initialized: true }), stock({ lot: '27.S1', available: 5, basis_quantity: 794, target: 239, target_initialized: true, po_balance: { status: 'ready', remaining: 794 } })] }));
+  await openRestock(page);
+  await item(page).locator('[data-hl-restock-quantity]').fill('7');
+  await page.locator('#hl-restock-ship-date').fill('2026-09-20');
+  await page.locator('[data-hl-restock-lot="27.S1"]').click();
+  const spring = page.locator('[data-hl-restock-item="SYNTH.003|#3|27.S1"]');
+  await expect(spring).toContainText('794');
+  await expect(spring.locator('[data-hl-restock-quantity]')).toHaveValue('234');
+  await spring.getByRole('button', { name: 'Reset stock target', exact: true }).click();
+  await expect(page.locator('#hl-restock-target-dialog')).toContainText('New target: 239');
+  await page.locator('#hl-restock-target-dialog').getByRole('button', { name: 'Confirm stock target', exact: true }).click();
+  await expect(page.locator('#hl-restock-target-dialog')).not.toBeVisible();
+  await page.locator('#hl-restock-ship-date').fill('2026-09-20');
+  await spring.locator('[data-hl-restock-quantity]').fill('5');
+  await spring.locator('[data-hl-restock-save]').click();
+  await expect.poll(() => fixture.state.draft.length).toBe(1);
+  expect(fixture.state.draft[0].source.lotcode).toBe('27.S1');
+  await page.locator('[data-hl-restock-lot="27.F1"]').click();
+  await expect(item(page).locator('[data-hl-restock-quantity]')).toHaveValue('7');
+  await expect(page.locator('#hl-restock-ship-date')).toHaveValue('2026-09-20');
+  expect(fixture.commands.filter((command: any) => command.p_action === 'restock_draft_save')[0].p_payload.lot).toBe('27.S1');
+  isolated(fixture);
+});

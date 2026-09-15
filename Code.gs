@@ -5484,7 +5484,9 @@ function stageHlPoParsedRows_(runId, rows, sheetData) {
   return payloadRows.length;
 }
 
-function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
+// The former sheet reader remains available for historical import verification.
+// The scheduled HL entry point below accepts original PO PDFs only.
+function syncHlPoParsedFolderLegacy_(sourceFolderId, processedFolderId, tableName) {
   const safeTableName = String(tableName || HL_PO_PARSED_TABLE).trim();
   if (String(sourceFolderId || '').trim() === String(processedFolderId || '').trim()) {
     throw new Error('HL PO Parsed source and processed folders must be different.');
@@ -5657,6 +5659,69 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
     awaitingReconciliation: stageCompleted && awaitingReconciliation,
     runId: runId
   };
+}
+
+function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
+  const sourceFolder = getDriveFolderByIdWithRetry_(sourceFolderId, 'HL PO PDF source');
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'HL PO PDF processed');
+  const iterator = listDriveFilesWithRetry_(sourceFolder, 'HL PO PDF source');
+  const files = [];
+  let unsupportedFiles = 0;
+  while (iterator.hasNext()) {
+    const file = iterator.next();
+    if (file.getMimeType() === 'application/pdf' || /\.pdf$/i.test(file.getName())) files.push(file);
+    else unsupportedFiles++;
+  }
+  files.sort(function(a, b) { return a.getDateCreated().getTime() - b.getDateCreated().getTime(); });
+  const properties = PropertiesService.getScriptProperties();
+  const startedAt = Date.now();
+  const errors = [];
+  let filesProcessed = 0, totalRows = 0, runId = '', awaitingReconciliation = false, pending = false;
+  for (let i = 0; i < files.length; i++) {
+    if (Date.now() - startedAt > 210000) { pending = true; break; }
+    const file = files[i];
+    const key = 'HL_PO_PDF_PROGRESS_' + file.getId();
+    try {
+      const bytes = file.getBlob().getBytes();
+      if (!bytes.length || bytes.length > 10000000) throw new Error('HL_PO_PDF_FILE_SIZE');
+      const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes).map(function(n) { return ('0' + ((n + 256) % 256).toString(16)).slice(-2); }).join('');
+      let saved = null;
+      try { saved = JSON.parse(properties.getProperty(key) || 'null'); } catch (_) {}
+      let progress = saved && saved.digest === digest ? saved : { digest: digest, nextPage: 1, complete: false };
+      const base64 = Utilities.base64Encode(bytes);
+      while (!progress.complete && Date.now() - startedAt <= 210000) {
+        const response = UrlFetchApp.fetch(SUPABASE_URL + '/functions/v1/hl-po-pdf-import', {
+          method: 'post', headers: getSupabaseHeaders_({ 'Content-Type': 'application/json' }),
+          payload: JSON.stringify({ source_file_id: file.getId(), source_file_name: file.getName(), pdf_base64: base64, start_page: progress.nextPage }),
+          muteHttpExceptions: true
+        });
+        let result = null;
+        try { result = JSON.parse(response.getContentText() || 'null'); } catch (_) {}
+        if (response.getResponseCode() !== 200 || !result || result.ok !== true) {
+          throw new Error(result && result.code || 'HL_PO_PDF_IMPORT_FAILED');
+        }
+        const complete = result.next_page === null && ['pending', 'duplicate', 'reconciled'].indexOf(result.status) >= 0;
+        if (!complete && (!Number.isInteger(result.next_page) || result.next_page <= progress.nextPage)) throw new Error('HL_PO_PDF_INVALID_PROGRESS');
+        progress = { digest: digest, nextPage: result.next_page, complete: complete, runId: result.run_id,
+          rows: result.total_rows || 0, awaitingReconciliation: result.status === 'pending' };
+        properties.setProperty(key, JSON.stringify(progress));
+      }
+      if (!progress.complete) { pending = true; break; }
+      // Store final acknowledgement before moving; a failed move retries only the move.
+      moveDriveFileToFolderWithRetry_(file, processedFolder, 'HL PO PDF processed');
+      properties.deleteProperty(key);
+      filesProcessed++;
+      totalRows += progress.rows;
+      runId = progress.runId;
+      awaitingReconciliation = awaitingReconciliation || progress.awaitingReconciliation;
+    } catch (error) {
+      errors.push({ name: file.getName(), error: String(error && error.message || 'HL_PO_PDF_IMPORT_FAILED') });
+    }
+  }
+  return { tableName: tableName || HL_PO_PARSED_TABLE, filesProcessed: filesProcessed, tempFilesRemoved: 0,
+    unsupportedFiles: unsupportedFiles, failedFiles: errors.length, failedFileNames: errors.map(function(e) { return e.name; }),
+    failedFileErrors: errors, totalRows: totalRows, upsertCount: 0, deleteCount: 0, runId: runId,
+    awaitingReconciliation: awaitingReconciliation, importStatus: errors.length ? 'incomplete' : pending ? 'staging' : awaitingReconciliation ? 'awaiting_reconciliation' : filesProcessed ? 'staged' : 'no_files' };
 }
 
 const TRANSACTIONS_KEYED_COLUMNS = Object.freeze([
@@ -16838,7 +16903,7 @@ function handleSignedHlOrderDelivery_(delivery) {
       + (report.kind === 'addition' ? '\nADDITIONS\nAdded quantity: ' : report.kind === 'cancellation' ? '\nOriginal order: ' + report.original_order_number + '\nCanceled quantity: ' : '\nHL order quantity: ')
       + report.total_quantity + '\nLines: ' + report.lines.length + (report.reason ? '\nReason: ' + report.reason : '')
       + (report.contract_version === 'hl-order-report-v3' ? '\n\n' + report.lines.map(function(line) {
-        return (line.source_kind === 'restock' ? 'Restocking' : 'Customer order') + ' | ' + line.itemcode + ' | ' + line.contsize + ' | Quantity: ' + line.quantity;
+        return (line.source_kind === 'restock' ? 'Restocking' : 'Customer order') + ' | ' + line.itemcode + ' | ' + line.contsize + ' | Lot: ' + (line.lotcode || '-') + ' | Quantity: ' + line.quantity;
       }).join('\n') : '') + '\n\nThe saved HL order PDF is attached.';
     const result = sendGmailApiMessage_({ toList: recipient, toArray: [recipient], subject: subject, textBody: textBody,
       htmlBody: '<div style="font-family:Arial,sans-serif;white-space:pre-line">' + escapeEmailHtml_(textBody) + '</div>',

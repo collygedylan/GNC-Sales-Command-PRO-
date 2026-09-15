@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import pg from 'pg';
 
 // Committed synthetic fixtures are necessary for real independent sessions.
@@ -37,7 +37,7 @@ try {
   await admin.query("insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values($1,$2,'{}','{}')", [actor, `${actor}@hl-concurrency.example.invalid`]);
   await admin.query("insert into public.profiles(id,username,display_name,role,must_change_password) values($1,'dylan_collyge','HL concurrency','ADMIN',false)", [actor]);
   await admin.query("insert into auth.sessions(id,user_id,not_after) values($1,$2,now()+interval '1 hour')", [session, actor]);
-  for (const id of ids) await admin.query("insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,planstart,transactionnumber) values($1,$1,'#3','C.12.4','27.S1','10','D1','2026-09-15',$1)", [id]);
+  for (const id of ids) await admin.query("insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,planstart,transactionnumber) values($1,$1,'#3','C.12.4','27.F1','10','D1','2026-09-15',$1)", [id]);
   for (const [i,id] of ids.entries()) await admin.query("insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain) values($1,$2,$1,$3,'#3','27.F1',20,20)",[prefix,i,id]);
   await admin.query("update hl_order_private.po_control set active_scope=$1,receipt_cutoff='1970-01-01' where singleton",[prefix]);
   await admin.query('commit'); committed = true;
@@ -93,8 +93,9 @@ try {
 
   // Confirming a reconciled report races with a receipt under one CAS lock.
   const cutoff=(await admin.query('select clock_timestamp() t')).rows[0].t.toISOString();
-  const importRows=ids.map((id,i)=>({source_file_id:prefix,row_index:i,item_code:id,size:'#3',lot:'27.F1',po_remain:20,report_date:'2026-09-11'}));
-  const staged=(await clients[2].query('select public.hl_po_import_stage($1,$2::jsonb,true) result',[prefix+'-import',JSON.stringify(importRows)])).rows[0].result;
+  const importRows=[...ids.map((id,i)=>({source_file_id:prefix,row_index:i,item_code:id,size:'#3',lot:'27.F1',po_ordered:20,po_received:0,po_remain:20,po_number:'CI',vendor:'823517'})),{item_code:restockItem,size:'#3',lot:'27.F1',po_ordered:100,po_received:0,po_remain:100,po_number:'CI',vendor:'823517'}];
+  const pdfMetadata={source_file_id:prefix,source_file_name:'Isolated concurrency.pdf',fingerprint:createHash('sha256').update(JSON.stringify(importRows)).digest('hex'),page_count:1,report_printed_at:'2026-09-11T21:17:26Z',report_date:'2026-09-11',parser_version:'greenleaf-po-pdf-v1'};
+  const staged=(await clients[2].query('select public.hl_po_pdf_stage($1,$2::jsonb,1,$3::jsonb,true) result',[prefix+'-import',JSON.stringify(pdfMetadata),JSON.stringify(importRows)])).rows[0].result;
   initial=await state(clients[0]);
   let importPreview=await command(clients[0],'po_import_preview',{import_id:staged.id,receipt_cutoff:cutoff},initial.revision);
   const correctionPayload={order_id:order.id,reason:'Concurrent count correction',lines:[{line_id:receiveLine.id,received_quantity:received-1}]};
@@ -110,7 +111,7 @@ try {
     importPreview=await command(clients[0],'po_import_preview',{import_id:staged.id,receipt_cutoff:cutoff},initial.revision);
     await command(clients[0],'po_import_confirm',{preview_id:importPreview.po_import_preview.id},importPreview.revision);
   }
-  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2',[prefix,ids[0]])).rows[0].balance,21,'Only post-cutoff correction applies to imported balance');
+  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2',['pdf:'+staged.id,ids[0].toUpperCase()])).rows[0].balance,21,'Only post-cutoff correction applies to imported balance');
 
   // Concurrent previews/additions must share the open order and create one new batch.
   initial = await state(clients[0]);
@@ -150,8 +151,6 @@ try {
 
   // Genuine restock intent: the fixture adds no SOC row for this item. Use the
   // active confirmed report and actual dataset revision triggers in native CI.
-  const activeScope = (await admin.query('select active_scope from hl_order_private.po_control where singleton')).rows[0].active_scope;
-  await admin.query("insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_ordered,po_remain,imported_po_remain) values($1,100,$2,$3,'#3','27.F1',100,100,100)", [prefix, activeScope, restockItem]);
   await admin.query("insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable) values($1,$2,'#3','C.12.004','27.F1','10')", [restockMasterId, restockItem]);
   await authenticate(clients[2]);
   let restocking = await restockState(clients[0]);
@@ -252,9 +251,12 @@ try {
     await admin.query('delete from hl_order_private.restock_inventory_gates where itemcode=$1', [restockItem.toUpperCase()]);
     await admin.query('delete from public.ph_master_inventory where unique_id=$1', [restockMasterId]);
     await admin.query('delete from public.ph_soc_master where unique_id=any($1::text[])', [ids]);
-    await admin.query('delete from public.ph_27f1_hl_po where source_file_id=$1', [prefix]);
+    await admin.query(`delete from public.ph_27f1_hl_po where source_file_id=$1 or source_file_id in (select 'pdf:'||id from hl_order_private.po_imports where run_id=$2)`, [prefix,prefix+'-import']);
     await admin.query('update hl_order_private.po_control set active_scope=null,active_import_id=null where active_import_id in (select id from hl_order_private.po_imports where run_id=$1)',[prefix+'-import']);
     await admin.query('delete from hl_order_private.po_import_previews where created_by=$1',[actor]);
+    await admin.query('delete from hl_order_private.restock_target_history where created_by=$1',[actor]);
+    await admin.query('delete from hl_order_private.restock_targets where created_by=$1',[actor]);
+    await admin.query('delete from hl_order_private.po_pdf_pages where import_id in (select id from hl_order_private.po_imports where run_id=$1)',[prefix+'-import']);
     await admin.query('delete from hl_order_private.po_import_rows where import_id in (select id from hl_order_private.po_imports where run_id=$1)',[prefix+'-import']);
     await admin.query('delete from hl_order_private.po_imports where run_id=$1',[prefix+'-import']);
     await admin.query('delete from private.app_access_user_overrides where profile_id=$1', [actor]);

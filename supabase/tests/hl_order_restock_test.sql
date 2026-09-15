@@ -50,7 +50,7 @@ values('restock-fixture',1,'restock-fixture','REST.A','#3','27.F1','Restock A',1
  ('restock-fixture',7,'restock-fixture','REST.CONFLICT','#3','27.F1','Conflicting PO',200,100,100),
  ('restock-fixture',8,'restock-fixture','REST.ZERO','#3','27.F1','Zero stock',100,100,100),
  ('restock-fixture',9,'old-restock-fixture','REST.OLD','#3','27.F1','Old report',100,100,100);
-update hl_order_private.po_control set active_scope='restock-fixture',receipt_cutoff='1970-01-01' where singleton;
+update hl_order_private.po_control set active_scope='restock-fixture',receipt_cutoff='1970-01-01T00:00:00Z' where singleton;
 insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable,app_tab_assignment)
 values('restock-master-a','REST.A','#3','C.12.001','27.F1','10',null),
  ('restock-master-b','REST.A','#3','B.10.001','27.F1','5',null),
@@ -63,6 +63,19 @@ values('restock-master-a','REST.A','#3','C.12.001','27.F1','10',null),
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,planstart)
 values('REST-SOC','REST.A','#3','C.05','27.F1','10','1','2026-09-15');
 update public.app_dataset_revisions set state='ready',revision=revision+1,changed_at=clock_timestamp() where key='ph_master_inventory';
+
+-- The current workflow initializes fixed targets from a confirmed PDF report.
+-- The second REST.A line is fully received; distinct lines remain distinct.
+update public.ph_27f1_hl_po set po_ordered=0,po_remain=0 where source_file_id='restock-fixture' and row_index=2;
+update public.ph_27f1_hl_po set po_remain=101 where item_code='REST.EMPTY';
+do $pdf$
+declare rows jsonb; imp jsonb; preview jsonb; meta jsonb:=jsonb_build_object('source_file_id','restock-pdf','source_file_name','Synthetic restocking.pdf','fingerprint',repeat('a',64),'page_count',1,'report_printed_at','2026-09-11T21:17:26Z','report_date','2026-09-11','parser_version','greenleaf-po-pdf-v1');
+begin
+ select jsonb_agg(jsonb_build_object('item_code',item_code,'lot',lot,'size',size,'common_name',common_name,'po_ordered',po_ordered,'po_received',0,'po_remain',po_remain,'po_number','FIXTURE','vendor','823517') order by row_index) into rows from public.ph_27f1_hl_po where run_id='restock-fixture';
+ imp:=public.hl_po_pdf_stage('restock-pdf',meta,1,rows,true);
+ preview:=pg_temp.hl_command('po_import_preview',jsonb_build_object('import_id',imp->>'id','receipt_cutoff','1970-01-01T00:00:00Z'))->'po_import_preview';
+ perform pg_temp.hl_command('po_import_confirm',jsonb_build_object('preview_id',preview->>'id'));
+end $pdf$;
 
 create function pg_temp.restock_item(code text) returns jsonb language sql as $$
   select i from jsonb_array_elements(public.hl_order_restock_state()->'items') i where i->>'itemcode'=code
@@ -79,12 +92,12 @@ declare s jsonb; snap jsonb; item jsonb; p jsonb; result jsonb; cmd uuid; rev bi
   saved_request jsonb; order_id_value uuid; original_number text; watermark bigint; claims text;
 begin
   s:=public.hl_order_restock_state(); item:=pg_temp.restock_item('REST.A');
-  perform pg_temp.hl_check((item->>'po_ordered')::numeric=100 and (item->>'target')::numeric=30,'duplicate PO rows are copies of one ordered balance');
+  perform pg_temp.hl_check((item->>'po_ordered')::numeric=100 and (item->>'target')::numeric=30,'distinct PDF lines retain their ordered total and fixed remaining target');
   perform pg_temp.hl_check((item->>'available')::numeric=15 and (item->>'suggested_quantity')::numeric=15,'full visible matching size and season sums individual master IDs');
   perform pg_temp.hl_check((pg_temp.restock_item('REST.EMPTY')->>'target')::numeric=31 and (pg_temp.restock_item('REST.EMPTY')->>'available')::numeric=0,'target rounds up and verified absent matching inventory means zero');
   perform pg_temp.hl_check(pg_temp.restock_item('REST.UNKNOWN')->>'status'='inventory_unknown','null availability blocks restocking');
   perform pg_temp.hl_check(pg_temp.restock_item('REST.NEGATIVE')->>'status'='inventory_unknown','negative availability blocks restocking');
-  perform pg_temp.hl_check(pg_temp.restock_item('REST.CONFLICT')->>'status'='po_unknown','conflicting duplicate ordered balances are unknown');
+  perform pg_temp.hl_check((pg_temp.restock_item('REST.CONFLICT')->>'target')::numeric=60,'different legitimate PO line quantities sum their remaining balances');
   perform pg_temp.hl_check((pg_temp.restock_item('REST.ZERO')->>'available')::numeric=0,'zero availability is preserved');
   perform pg_temp.hl_check(pg_temp.restock_item('REST.OLD') is null,'previous PO report is excluded');
   claims:=current_setting('request.jwt.claims');

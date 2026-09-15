@@ -40,13 +40,13 @@ select set_config('request.jwt.claims',jsonb_build_object('role','authenticated'
   'iss','https://kzrnyjsosryejjejliii.supabase.co/auth/v1','session_id','97000000-0000-0000-0000-000000000002','exp',extract(epoch from now()+interval '1 hour'))::text,true);
 select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,stopnumber,planstart,transactionnumber,customername,ptravailable)
-select id,id,'#3','C.12.4','27.S1',qty,'D1','S1','2026-09-15','ORDER-'||id,'Fixture customer','999'
+select id,id,'#3','C.12.4','27.F1',qty,'D1','S1','2026-09-15','ORDER-'||id,'Fixture customer','999'
 from (values('HL-A','10'),('HL-B','20'),('HL-CHANGE','12'),('HL-REPLACE','10'),('HL-INVALID','1,2'),('HL-FRACTION','2.5'),('HL-THOUSAND','1,250')) f(id,qty);
 insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,quantityordered,dock,invoicedate)
 values('HL-INVOICED','HL-INVOICED','#3','C.05','10','D1','2026-09-10'),
  ('HL-BLANK','','','C.05','10','D1',null),('HL-NODOCK','HL-NODOCK','#3','C.05','10',null,null);
 insert into public.ph_master_inventory(unique_id,itemcode,contsize,locationcode,lotcode,ptravailable)
-values('HL-INV-A','HL-A','#3','C.12.4','27.S1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.S1',null);
+values('HL-INV-A','HL-A','#3','C.12.4','27.F1','0'),('HL-INV-B','HL-B','#3','C.12.4','27.F1',null);
 
 -- Explicit current PO fixture; never infer membership from SOC in production.
 do $po$ begin
@@ -107,7 +107,7 @@ begin
   perform pg_temp.hl_check(p->'report'->>'kind'='submission' and p->'report'->>'order_number'<>first_number,'same date after completion gets new number');
   perform pg_temp.hl_command('submit',jsonb_build_object('preview_id',p->>'id'));
   perform pg_temp.hl_command('draft_clear','{"source_ids":["HL-CHANGE"]}');
-  update public.ph_soc_master set itemcode='HL-UNDATED',contsize='#3' where unique_id='HL-BLANK';
+  update public.ph_soc_master set itemcode='HL-UNDATED',contsize='#3',lotcode='27.F1' where unique_id='HL-BLANK';
   perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-BLANK","quantity":1}]}');
   perform pg_temp.hl_reject('preview','{}','HL_ORDER_SHIP_DATE_REQUIRED');
   perform pg_temp.hl_check((select ship_date is null from hl_order_private.drafts where source_id='HL-BLANK'),'undated demand stays saved for correction');

@@ -30,12 +30,14 @@ test('HL has no unrestricted SOC fallback while protected eligibility is loading
   assert.equal(context.getHlOrderRows().length, 0);
 });
 
-test('PO send warnings aggregate matching item and size across source lots and distinguish zero from unknown', () => {
+test('PO send warnings aggregate matching item and size within the saved accounting lot and distinguish zero from unknown', () => {
   const context = vm.createContext({ hlOrderStateData: { draft: [] }, escapeHtml: String });
-  vm.runInContext(['getHlOrderSource', 'getHlPoBalance', 'getHlPoSubmissionWarnings', 'buildHlPoBalanceHtml'].map(extract).join('\n'), context);
+  vm.runInContext(['getHlOrderSource', 'getHlPoLot', 'getHlPoBalance', 'getHlPoSubmissionWarnings', 'buildHlPoBalanceHtml'].map(extract).join('\n'), context);
   const first = { ...hlSoc('a'), quantity: 4, po_balance: { status: 'ready', remaining: 6 } };
-  const second = { ...hlSoc('b', { lotcode: '26.F1' }), quantity: 4, po_balance: { status: 'ready', remaining: 6 } };
+  const second = { ...hlSoc('b', { lotcode: '26.F1', po_lot: '27.F1' }), quantity: 4, po_balance: { status: 'ready', remaining: 6 } };
   assert.match(context.getHlPoSubmissionWarnings({ lines: [first, second] })[0], /ordering 8 exceeds PO remaining 6/);
+  const spring = { ...first, lotcode: '27.S1', quantity: 4 };
+  assert.equal(context.getHlPoSubmissionWarnings({ lines: [first, spring] }).length, 0, 'different season balances cannot be pooled');
   first.po_balance.remaining = 0;
   assert.match(context.getHlPoSubmissionWarnings({ lines: [first] })[0], /remaining 0/);
   assert.match(context.buildHlPoBalanceHtml(first), /PO remaining: 0/);
@@ -94,7 +96,7 @@ test('duplicate PO balance copies remain one shared amount and mixed null copies
   assert.equal([...conflict.poBalances.values()][0].status, 'conflict');
 });
 
-test('PO Management totals count shared 27.F1 copies once and preserve unknown, zero and negative balances', () => {
+test('PO Management totals count shared season copies once and preserve unknown, zero and negative balances', () => {
   const context = vm.createContext({ escapeHtml: String, PO_MANAGEMENT_NUMERIC_FIELDS: new Set(['po_remain']) });
   vm.runInContext(['normalizePoManagementText', 'parsePoManagementNumber', 'formatPoManagementNumber', 'getPoManagementSharedRemaining', 'renderPoManagementCell'].map(extract).join('\n'), context);
   const copies = Array.from({ length: 3 }, (_, index) => ({ itemcode: index ? 'item.a' : ' ITEM.A ', contsize: index ? '#3' : ' #3 ', lotcode: index ? '27.f1' : ' 27.F1 ', po_remain: 100 }));
@@ -105,7 +107,7 @@ test('PO Management totals count shared 27.F1 copies once and preserve unknown, 
   assert.equal(context.getPoManagementSharedRemaining(copies.map((row) => ({ ...row, po_remain: 0 }))), 0);
   assert.equal(context.getPoManagementSharedRemaining(copies.map((row) => ({ ...row, po_remain: -5 }))), -5);
   assert.equal(context.getPoManagementSharedRemaining([...copies, { ...copies[0], lotcode: '26.F1', po_remain: 999 }]), 100);
-  assert.equal(context.getPoManagementSharedRemaining([...copies, { ...copies[0], lotcode: '27.S1', po_remain: null }]), 100);
+  assert.equal(context.getPoManagementSharedRemaining([...copies, { ...copies[0], lotcode: '27.S1', po_remain: null }]), null);
   assert.equal(context.getPoManagementSharedRemaining([...copies, { ...copies[0], contsize: '#7', po_remain: 50 }]), 150);
   assert.match(context.renderPoManagementCell({ po_remain: null }, { key: 'po_remain' }), />Unknown<\/td>/);
   assert.match(context.renderPoManagementCell({ po_remain: 0 }, { key: 'po_remain' }), />0<\/td>/);

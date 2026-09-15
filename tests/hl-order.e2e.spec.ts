@@ -105,7 +105,7 @@ test('fresh HL tab navigation reuses state and loads Restocking only on demand',
   const reads={state:0,restock:0};
   page.on('request',request=>{
     if(request.url().endsWith('/rpc/hl_order_state')) reads.state++;
-    if(request.url().endsWith('/rpc/hl_order_restock_state')) reads.restock++;
+    if(request.url().endsWith('/rpc/hl_order_restock_state_v2')) reads.restock++;
   });
   const fixture=await installHlOrderFixture(page,baseURL!);
   await openHl(page);
@@ -1011,5 +1011,28 @@ test('another admin cannot discover or open HL ordering', async ({ page, baseURL
   await page.evaluate(() => window.eval('switchView("hl-order")'));
   await expect(page.locator('#view-hl-order')).toBeHidden();
   expect(fixture.commands).toHaveLength(0); expect(fixture.pdfRequests).toHaveLength(0);
+  assertIsolated(fixture);
+});
+
+test('PO Management opens both confirmed seasons without mixing balances or search', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { poRows: [
+    { row_index: 1, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.F1', po_remain: 300 },
+    { row_index: 2, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.S1', po_remain: 794 }
+  ] });
+  await page.getByRole('button', { name: 'Open Inventory', exact: true }).click();
+  await page.locator('#inventory-open-po-management').click();
+  await page.locator('#po-management-hub-grid').getByRole('button', { name: /HL PO/ }).click();
+  await page.locator('#po-management-season-grid').getByRole('button', { name: /27F1/ }).click();
+  await expect(page.locator('#po-management-content tbody')).toContainText('300');
+  await expect(page.locator('#po-management-content tbody')).not.toContainText('794');
+  await page.locator('#po-management-search').fill('Sea Green');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.locator('#po-management-season-grid').getByRole('button', { name: /27S1/ }).click();
+  await expect(page.locator('#po-management-content tbody')).toContainText('794');
+  await expect(page.locator('#po-management-content tbody')).not.toContainText('300');
+  await expect(page.locator('#po-management-search')).toHaveValue('');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.locator('#po-management-season-grid').getByRole('button', { name: /27F1/ }).click();
+  await expect(page.locator('#po-management-search')).toHaveValue('Sea Green');
   assertIsolated(fixture);
 });

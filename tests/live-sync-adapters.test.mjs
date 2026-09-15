@@ -287,7 +287,7 @@ test('unregistered routes and adapters fail closed', () => {
 test('every registered physical source has a database revision contract', () => {
     const h = harness();
     const directory = new URL('../supabase/migrations/', import.meta.url);
-    const migrations = readdirSync(directory).filter((name) => name.endsWith('_live_dataset_revisions.sql'));
+    const migrations = readdirSync(directory).filter((name) => name.endsWith('.sql'));
     assert.ok(migrations.length, 'live revision migration is missing');
     const sql = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     const keys = h.ctx.AgMetricLiveSyncRegistry.sourceKeys;

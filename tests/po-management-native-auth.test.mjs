@@ -31,11 +31,11 @@ test('PO Management RLS permits only trusted active manager profiles', () => {
 });
 
 test('PO Management loader uses authenticated PostgREST paging with sanitized errors', () => {
-  const loaderStart = html.indexOf('async function fetchPoManagementRows()');
+  const loaderStart = html.indexOf('async function fetchPoManagementRows(');
   const loaderEnd = html.indexOf('function reloadPoManagementData()', loaderStart);
   const loader = html.slice(loaderStart, loaderEnd);
   assert.ok(loaderStart > 0 && loaderEnd > loaderStart);
-  assert.match(loader, /fetchAuthenticatedSupabaseReadPage\(PO_MANAGEMENT_TABLE, query/);
+  assert.match(loader, /fetchAuthenticatedSupabaseReadPage\(table, query/);
   assert.doesNotMatch(loader, /runAppApiSupabaseWrite\(PO_MANAGEMENT_TABLE/);
   assert.match(loader, /DATASET_AUTH_REQUIRED/);
   assert.match(loader, /DATASET_PERMISSION_DENIED/);

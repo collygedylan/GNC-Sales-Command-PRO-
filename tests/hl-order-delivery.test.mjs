@@ -190,7 +190,7 @@ test('v3 restocking preview and delivery label purpose without fabricated custom
   assert.doesNotMatch(html, /Dock Unassigned|Customer:|Consignee:|Order ref:|PO:|Location: -|<Holly>/);
   assert.equal(h.sent[0].subject, 'HL TAGS'); assert.equal(h.sent[0].toList, dylan);
   assert.match(h.sent[0].textBody, /Order: HL-2026-000001\nShip date: Sep 15, 2026\nHL order quantity: 12/);
-  assert.match(h.sent[0].textBody, /Restocking \| 000748\.010\.1 \| #3 \| Quantity: 12/);
+  assert.match(h.sent[0].textBody, /Restocking \| 000748\.010\.1 \| #3 \| Lot: 27.F1 \| Quantity: 12/);
   assert.equal(h.sent[0].attachments[0].name, 'GNC_PH_HL_Order_HL-2026-000001.pdf');
   assert.equal(h.send().recovered, true); assert.equal(h.sent.length, 1);
 });

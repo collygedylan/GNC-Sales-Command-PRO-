@@ -30,6 +30,7 @@ function harness() {
     activeTaskView: 'flyer', cropRollDriveSchemaReady: true, productionInventoryTab: 'counting',
     productionWorkflowActive: 'spacing', selectedProductivityUser: '', requestDeliveryRecoveryOpen: false,
     activeDetailTab: '', activeDetailSourceView: '', activeItem: null, activeLocationWorkJobId: '', managersSearchTerm: '', evalRole: false,
+    poManagementState: { season: '27F1' },
     managerOrdersState: { rows: [], batches: [], selectedAssigneeKeys: new Set() },
     bloomscapesPendingState: { orders: [] }, inventoryTransactionHistoryState: {},
     managerTransactionsKeyedState: { allDates: [], files: [] },
@@ -57,7 +58,7 @@ function harness() {
   context.window.AgMetricLiveSyncRegistry = context.AgMetricLiveSyncRegistry;
   context.window.AgMetricDriveDemandDetail = context.AgMetricDriveDemandDetail;
   for (const name of ['shouldLoadInventoryEditRequestsForEvalRows', 'withEvalInventoryEditRequestsForRowView',
-    'getRequestViewLoadingConfig', 'getViewLoadingConfig', 'getDriveDemandContext', 'getProductionLiveSyncSideContext']) {
+    'normalizePoManagementText', 'normalizePoManagementSeason', 'getRequestViewLoadingConfig', 'getViewLoadingConfig', 'getDriveDemandContext', 'getProductionLiveSyncSideContext']) {
     vm.runInContext(functionSource(name), context);
   }
   return context;

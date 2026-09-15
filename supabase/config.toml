@@ -400,6 +400,12 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/request-delivery-worker/index.ts"
 
+[functions.hl-po-pdf-import]
+enabled = true
+# The worker requires the existing server-side service credential itself.
+verify_jwt = false
+entrypoint = "./functions/hl-po-pdf-import/index.ts"
+
 [functions.codex-ops-api]
 enabled = true
 verify_jwt = true

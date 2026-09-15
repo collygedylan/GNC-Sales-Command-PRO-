@@ -55,7 +55,7 @@ function harness(options = {}) {
     files.splice(files.indexOf(file), 1);
   };
   ctx.emitTableSyncLiveEvent_ = () => events.push({ type: 'active-event' });
-  return { ctx, events, properties, files, run: () => plain(ctx.syncHlPoParsedFolder_('source', 'processed', 'ph_27f1_hl_po')) };
+  return { ctx, events, properties, files, run: () => plain(ctx.syncHlPoParsedFolderLegacy_('source', 'processed', 'ph_27f1_hl_po')) };
 }
 const stages = h => h.events.filter(e => e.type === 'rpc' && e.name === 'hl_po_import_stage');
 

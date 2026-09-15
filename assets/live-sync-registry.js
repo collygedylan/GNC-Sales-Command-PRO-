@@ -32,7 +32,7 @@
         spreadCounts: ['ph_spread_counts'], bunchCounts: ['ph_bunch_counts'],
         cropRoll: ['ph_crop_roll_runs', 'ph_crop_roll_rows'],
         takeBack: ['ph_take_back_queue'],
-        po: ['ph_27f1_hl_po', 'ph_master_inventory', 'ph_soc_master'],
+        po: ['ph_27f1_hl_po', 'ph_27s1_hl_po', 'ph_master_inventory', 'ph_soc_master'],
         chat: ['ph_chat_conversations', 'ph_chat_participants', 'ph_chat_messages'],
         calendar: ['ph_department_calendar_events'],
         weather: ['ph_weather_hourly', 'ph_weather_daily'],
