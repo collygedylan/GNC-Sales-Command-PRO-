@@ -2066,9 +2066,10 @@ test('Desktop Reclass action views preserve combined requests and show missing-s
     await itemHold.locator(`[data-reclass-item-hold-action="${action}"]`).click();
     if (action === 'hold' || action === 'stop_ship') {
       const reason = modal.locator('#argos-reclass-hidden-hold [data-reclass-v3-proposal-field="reason"]');
+      const rowReason = modal.locator('[data-reclass-row-card] [data-reclass-v3-proposal-field="reason"]');
       await reason.fill('reviewed');
-      await expect(old.locator('[data-reclass-v3-proposal-field="reason"]')).toHaveValue('reviewed');
-      await old.locator('[data-reclass-v3-proposal-field="reason"]').fill('updated reason');
+      await expect(rowReason).toHaveValue('reviewed');
+      await rowReason.fill('updated reason');
       await expect(reason).toHaveValue('updated reason');
     }
     for (const actionView of ['priority_change', 'recount', 'move_down', action]) {
