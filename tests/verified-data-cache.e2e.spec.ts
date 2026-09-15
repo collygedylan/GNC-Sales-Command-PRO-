@@ -195,7 +195,18 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
       getProductionLiveSyncCoordinator().check('fixture-native-entry');
     })()`);
   }, rows);
-  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  try {
+    await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  } catch (error) {
+    console.log('DOCKS_STARTUP_STATE', await page.evaluate(() => window.eval(`({
+      hidden: document.hidden, focus: document.hasFocus(), view: getCurrentVisibleViewId(),
+      pending: productionLiveSyncRenderPending, active: productionLiveSyncActiveRender,
+      activeCurrent: isProductionRefreshCurrent(productionLiveSyncActiveRender),
+      context: productionVerifiedViewKey(), generation: productionLiveSyncRenderGeneration,
+      draft: hasProductionLiveSyncDraft(), focused: document.activeElement && document.activeElement.id
+    })`)));
+    throw error;
+  }
   const headerGeometry = await page.locator('#live-data-freshness').evaluate(element => {
     const rect = element.getBoundingClientRect();
     const obscured = ['global-header-inline-back', 'docks-search'].filter(id => {
@@ -307,6 +318,18 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   await page.bringToFront();
   await page.waitForFunction(() => document.visibilityState === 'visible');
   await enableNativeCoordinator(page, initial);
+  // A normal visible render can supersede a queued background refresh. Its
+  // completed display must not retain the superseded refresh's pending label.
+  await page.evaluate(() => window.eval(`(() => {
+    scheduleProductionLiveSyncRender();
+    renderProductionDataFreshness(getProductionLiveSyncCoordinator().getStatus());
+    window.__dockPendingLabel = document.getElementById('live-data-freshness').textContent;
+    prepareLatestViewRender('docks');
+    renderViewContent('docks', false, true);
+  })()`));
+  expect(await page.evaluate(() => (window as any).__dockPendingLabel)).toContain('Updates ready');
+  await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
+  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
   await page.evaluate(() => window.eval(`openDockInfoModal('28', '37231')`));
   await expect(page.locator('#dock-info-modal')).toBeVisible();
   // Verification may finish while displaying its replacement waits for the editor.
