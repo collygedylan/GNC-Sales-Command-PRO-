@@ -214,7 +214,7 @@ try {
   assert.equal(itemState(restocking).status, 'receipt_pending', 'The newly received stock must require its own confirmation');
   assert.equal(itemState(restocking).can_confirm_inventory, false);
   assert.equal(itemState(restocking).incoming_quantity, restockQuantity - 3);
-  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2', [prefix, restockItem])).rows[0].balance, 97);
+  assert.equal((await admin.query('select po_remain::int balance from public.ph_27f1_hl_po where source_file_id=$1 and item_code=$2', ['pdf:'+staged.id, restockItem.toUpperCase()])).rows[0].balance, 97);
   assert.equal((await admin.query('select count(*)::int n from hl_order_private.po_receipt_adjustments where itemcode=$1', [restockCode])).rows[0].n, 2);
   await admin.query("update public.ph_master_inventory set ptravailable='13' where unique_id=$1", [restockMasterId]);
   restocking = await restockState(clients[0]);
