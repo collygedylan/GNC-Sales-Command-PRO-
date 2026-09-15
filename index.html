@@ -34366,6 +34366,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             productionLiveSyncRenderPending = false;
             productionLiveSyncActiveRender = null;
             cancelScheduledUiRenderByPrefix('production-live-refresh');
+            // An ordinary view render can replace a queued refresh after its
+            // pending label was painted. Keep that label in sync with the
+            // cancellation without changing the coordinator's verified state.
+            if (productionLiveSyncCoordinator) renderProductionDataFreshness(productionLiveSyncCoordinator.getStatus());
         }
 
         function scheduleProductionLiveSyncRender(immediate = false) {
