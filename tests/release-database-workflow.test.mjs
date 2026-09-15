@@ -16,7 +16,7 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 97);
+  assert.equal(migrations.length, 98);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
@@ -34,6 +34,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     '20260912170906_hl_restocking.sql',
     '20260914164706_hl_state_balances_once.sql',
     '20260915021525_hl_po_seasons_pdf.sql',
+    '20260915115800_hl_po_negative_pdf_balances.sql',
     '20260911152125_restore_sep09_eval_review_compatibility.sql',
   ]) assert.ok(migrations.includes(filename), `Required migration: ${filename}`);
   const sqlTests = [...workflow.matchAll(/cp supabase\/tests\/(\S+)/g)].map(match => match[1]);
