@@ -769,6 +769,23 @@ test('workflow V3 accepts every pair with at most one Hold/Stop proposal and rej
   assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['hold', 'stop_ship'], holdStopProposals: [{ action: 'hold', reason: 'one' }, { action: 'stop_ship', reason: 'two' }], scope: { season: 'F1', salesYear: 2027 } }, rows, rows.map((row) => ({ unique_id: row.unique_id, expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode }, proposals: [] })), { season: 'F1', salesYear: 2027 }), /only one Hold\/Stop action/);
 });
 
+test('every Hold/Stop action combines with priority, move and recount on the same eligible row', () => {
+  const server = loadServerModel();
+  const scope = { season: 'F1', salesYear: 2027 };
+  for (const hold of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
+    const row = { unique_id: 'same-row', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', priority: '3', ptronhand: '50', season: 'F1', saleyear: '27',
+      holdstopcode: hold === 'take_off_hold' ? 'H' : hold === 'off_stop_ship' ? 'S' : '', holdstopreason: 'existing reason' };
+    for (const action of ['priority_change', 'move_up', 'move_down', 'recount']) {
+      const proposal = action === 'priority_change' ? { action, priority: '2' } : action.startsWith('move_') ? { action, moveQuantity: 5, destinationSeason: 'S1' } : { action };
+      const result = server.buildReclassInquiryActionRowsV3_({requestActions:[hold,action],holdStopProposals:[{action:hold,reason:hold === 'hold' || hold === 'stop_ship' ? 'reviewed' : ''}],scope},[row],
+        [{unique_id:row.unique_id,expected:{itemcode:row.itemcode,lotcode:row.lotcode,locationcode:row.locationcode},proposals:[proposal]}],scope);
+      assert.equal(result.ok,true,`${hold} + ${action}`);
+      assert.ok(result.rows[0].actions.includes(hold));
+      assert.ok(result.rows[0].actions.includes(action));
+    }
+  }
+});
+
 test('approved pilot sender is removed and the live Reclass handler accepts V3 before V2 compatibility', () => {
   const handlerStart = code.indexOf('function deliverReclassInquiryPayload_');
   const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
@@ -847,7 +864,10 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
     closest: () => ({ getAttribute: () => 'origin' }),
     getAttribute: (name) => name === 'data-reclass-v3-proposal-action' ? 'hold' : 'reason',
   };
+  const mirror = {value:'old reason',getAttribute:()=> 'hold'};
+  const otherAction = {value:'keep stop reason',getAttribute:()=> 'stop_ship'};
   const context = {
+    document: {querySelectorAll:()=>[input,mirror,otherAction]},
     getArgosReclassV3Proposal: () => proposal,
     getArgosReclassV3HoldProposal: () => proposal,
     RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
@@ -858,6 +878,8 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
   assert.equal(context.handleArgosReclassV3ProposalInput(input), true);
   assert.equal(input.value, 'sheared mixed case');
   assert.equal(proposal.reason, 'sheared mixed case');
+  assert.equal(mirror.value, 'sheared mixed case');
+  assert.equal(otherAction.value, 'keep stop reason');
 
   const collectorStart = html.indexOf('function collectArgosReclassV3Draft');
   const collectorEnd = html.indexOf('function buildArgosInventoryTransactionPayload', collectorStart);

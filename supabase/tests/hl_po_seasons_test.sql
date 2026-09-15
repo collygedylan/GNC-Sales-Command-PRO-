@@ -125,6 +125,7 @@ begin
  perform pg_temp.hl_reject('po_import_confirm',jsonb_build_object('preview_id',p->>'id'),'HL_PO_REPORT_CONFLICT');
  perform pg_temp.hl_check((select count(*)=1 from public.ph_27f1_hl_po),'Compatibility projection stores one aggregate F1 row');
  perform pg_temp.hl_check((select po_remain=791 from public.ph_27s1_hl_po limit 1),'S1 PO read model reflects corrected ledger balance');
+ perform pg_temp.hl_check(not has_function_privilege('authenticated','public.hl_po_import_capabilities()','EXECUTE') and not has_function_privilege('anon','public.hl_po_import_capabilities()','EXECUTE') and has_function_privilege('service_role','public.hl_po_import_capabilities()','EXECUTE'),'PDF authentication probe is executable only by service role');
  perform pg_temp.hl_check(not has_function_privilege('authenticated','public.hl_po_pdf_stage(text,jsonb,integer,jsonb,boolean)','EXECUTE'),'Authenticated client cannot stage PDF reports');
  perform pg_temp.hl_check(not has_table_privilege('authenticated','public.ph_27s1_hl_po','UPDATE'),'S1 PO read model rejects browser writes');
 end $test$;

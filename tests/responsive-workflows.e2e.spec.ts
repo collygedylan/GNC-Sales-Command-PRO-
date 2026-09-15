@@ -2051,6 +2051,8 @@ test('Desktop Reclass action views preserve combined requests and show missing-s
   const view = modal.locator('#argos-reclass-action-view');
   const old = modal.locator('[data-reclass-row-card="old"]');
   const current = modal.locator('[data-reclass-row-card="current"]');
+  const itemHold = modal.locator('#argos-reclass-item-hold-actions');
+  await expect(itemHold.locator('[data-reclass-item-hold-action]')).toHaveCount(4);
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(2);
   await expect(modal.locator('#argos-reclass-view-status')).toContainText('1 row(s) need season / sales year review');
   await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(8);
@@ -2060,16 +2062,27 @@ test('Desktop Reclass action views preserve combined requests and show missing-s
   await old.locator('[data-reclass-v3-proposal-field="priority"]').fill('');
   await old.locator('[data-reclass-v3-action="recount"]').click();
   for (const action of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
-    await view.selectOption(action);
-    await old.locator(`[data-reclass-v3-action="${action}"]`).click();
-    if (action === 'hold' || action === 'stop_ship') await old.locator('[data-reclass-v3-proposal-field="reason"]').fill('reviewed');
+    await view.selectOption('move_up');
+    await itemHold.locator(`[data-reclass-item-hold-action="${action}"]`).click();
+    if (action === 'hold' || action === 'stop_ship') {
+      const reason = modal.locator('#argos-reclass-hidden-hold [data-reclass-v3-proposal-field="reason"]');
+      await reason.fill('reviewed');
+      await expect(old.locator('[data-reclass-v3-proposal-field="reason"]')).toHaveValue('reviewed');
+      await old.locator('[data-reclass-v3-proposal-field="reason"]').fill('updated reason');
+      await expect(reason).toHaveValue('updated reason');
+    }
+    for (const actionView of ['priority_change', 'recount', 'move_down', action]) {
+      await view.selectOption(actionView);
+      await expect(itemHold.locator(`[data-reclass-item-hold-action="${action}"]`)).toHaveAttribute('aria-pressed','true');
+      await expect(itemHold.locator('[data-reclass-item-hold-action]:enabled')).toHaveCount(4);
+    }
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.holdStopProposals).toHaveLength(1);
     expect(draft.holdStopProposals[0].action).toBe(action);
     expect(draft.requestActions).toEqual(expect.arrayContaining(['priority_change', 'recount', action]));
     expect(draft.rowOverlays.find((row: any) => row.unique_id === 'old')?.proposals).toEqual(expect.arrayContaining([{ action: 'priority_change', priority: '' }]));
     // Deselect explicitly so the following choice needs no replacement confirmation.
-    await old.locator(`[data-reclass-v3-action="${action}"]`).click();
+    await itemHold.locator(`[data-reclass-item-hold-action="${action}"]`).click();
   }
   await page.evaluate(() => localStorage.removeItem('gnc_current_season_settings_v1'));
   await view.selectOption('priority_change');
@@ -2197,6 +2210,8 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(0);
 
     const actionView = modal.locator('#argos-reclass-action-view');
+    const itemHoldActions = modal.locator('#argos-reclass-item-hold-actions [data-reclass-item-hold-action]');
+    await expect(itemHoldActions).toHaveCount(4);
     await expect(actionView).toHaveValue('priority_change');
     await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(39);
     await expect(second).toBeHidden();
@@ -2205,6 +2220,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(modal.locator('#argos-reclass-pending-summary')).toHaveText('No pending actions.');
     for (const view of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
       await actionView.selectOption(view);
+      await expect(modal.locator('#argos-reclass-item-hold-actions [data-reclass-item-hold-action]:enabled')).toHaveCount(4);
       await expect(second).toBeHidden();
       await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(39);
       await expect(modal.locator('#argos-reclass-pending-summary')).toHaveText('No pending actions.');
