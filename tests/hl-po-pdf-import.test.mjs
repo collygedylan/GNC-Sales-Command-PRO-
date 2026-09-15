@@ -3,7 +3,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {parseHlPoPdfPage,chicagoReportTime} from '../supabase/functions/_shared/hl-po-pdf.mjs';
+import {parseHlPoPdfPage,chicagoReportTime,validateHlPoPdfReport} from '../supabase/functions/_shared/hl-po-pdf.mjs';
 
 const text=(str,x,y=506)=>({str,width:str.length*4,transform:[1,0,0,1,x,y]});
 function page() {return [text('PO Order Report',351,563),text('1 of 1',680,586),text('9/11/2026 4:17:26 PM',680,575),
@@ -12,6 +12,19 @@ function page() {return [text('PO Order Report',351,563),text('1 of 1',680,586),
   text('000310.030.1',19,450),text('27.F1',77,450),text('#3',105,450),text('Sea Green',127,450),text('Juniper',127,441),text('500',249,450),text('500',644,450),
   text('000310.030.1',19,425),text('27.F1',77,425),text('#3',105,425),text('Sea Green Juniper',127,425),text('300',249,425),text('300',687,425)];}
 const parse=items=>parseHlPoPdfPage(items,{pageNumber:1,totalPages:1});
+
+test('report timestamps may advance during printing without changing per-page provenance',()=>{
+  const first=chicagoReportTime('9/11/2026 4:17:25 PM');
+  const next=chicagoReportTime('9/11/2026 4:17:26 PM');
+  const pages=[{metadata:first},...Array.from({length:34},()=>({metadata:next}))];
+  const original=JSON.stringify(pages);
+  assert.doesNotThrow(()=>validateHlPoPdfReport(pages));
+  assert.equal(JSON.stringify(pages),original);
+  for(const metadata of [chicagoReportTime('9/11/2026 4:17:24 PM'),chicagoReportTime('9/11/2026 4:18:26 PM'),chicagoReportTime('9/12/2026 4:17:26 PM'),{...next,report_printed_at:'invalid'}]) {
+    assert.throws(()=>validateHlPoPdfReport([{metadata:first},{metadata}]),/MIXED_REPORT/);
+  }
+  assert.throws(()=>validateHlPoPdfReport([]),/MIXED_REPORT/);
+});
 test('original PO columns preserve distinct lines, leading zeroes, multiline names and blank-as-zero',()=>{
   const {rows,metadata}=parse(page());
   assert.equal(rows.length,2); assert.equal(rows[0].common_name,'Sea Green Juniper');
@@ -61,7 +74,7 @@ test('scheduled importer accepts original PDF only, stages resumable pages and a
   assert.equal(h.properties.size,0);
 });
 test('failed PDF remains in source and failed archive retries no database calls',()=>{
-  const bad=importer({fail:true});assert.equal(bad.run().failedFiles,1);assert.equal(bad.events.some(e=>e[0]==='move'),false);
+  const bad=importer({fail:true});const failed=bad.run();assert.equal(failed.failedFiles,1);assert.equal(failed.errorCode,'HL_PO_PDF_MISSING_COLUMNS');assert.equal(failed.failedFileErrors[0].errorCode,'HL_PO_PDF_MISSING_COLUMNS');assert.equal(bad.events.some(e=>e[0]==='move'),false);
   const h=importer({moveFail:true});h.run();h.events.length=0;h.run();
   assert.deepEqual(h.events,[['move','synthetic-file-123']]);
 });

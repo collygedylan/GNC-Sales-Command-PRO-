@@ -25,6 +25,21 @@ export function chicagoReportTime(value) {
   if (candidates.length!==1) throw new Error('HL_PO_PDF_AMBIGUOUS_PRINT_DATE');
   return {report_printed_at:candidates[0].toISOString(),report_date:`${yr}-${mo.padStart(2,'0')}-${da.padStart(2,'0')}`};
 }
+export function validateHlPoPdfReport(pages) {
+  const first=pages[0]?.metadata;
+  const started=Date.parse(first?.report_printed_at);
+  let previous=started;
+  if(!Number.isFinite(started)) throw new Error('HL_PO_PDF_MIXED_REPORT');
+  for(const {metadata} of pages) {
+    const printed=Date.parse(metadata?.report_printed_at);
+    // The report prints its current clock on each page (the supplied report
+    // advances one second). Keep page timestamps, but require one ordered run.
+    if(metadata?.report_date!==first.report_date || !Number.isFinite(printed) || printed<previous || printed-started>60000) {
+      throw new Error('HL_PO_PDF_MIXED_REPORT');
+    }
+    previous=printed;
+  }
+}
 export function parseHlPoPdfPage(items, {pageNumber,totalPages,width=792,height=612}) {
   if (!Array.isArray(items) || Math.abs(width/height-792/612)>0.02) fail('UNSUPPORTED_LAYOUT',pageNumber);
   const cells=items.filter(i=>typeof i.str==='string' && clean(i.str)).map(i=>({

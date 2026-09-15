@@ -2,6 +2,36 @@ import { assertEquals } from 'jsr:@std/assert@1';
 import { createHlPoPdfHandler, createHlPoServiceAuthorizer } from './index.ts';
 const client={rpc(){throw new Error('Invalid requests must never reach database');}} as never;
 const authorize=async(request:Request)=>request.headers.get('authorization')==='Bearer isolated-service-key'?client:null;
+function reportFixture(times:string[]) {
+ const fontId=3+times.length*2;
+ const objects=['<< /Type /Catalog /Pages 2 0 R >>',`<< /Type /Pages /Kids [${times.map((_,i)=>`${3+i*2} 0 R`).join(' ')}] /Count ${times.length} >>`];
+ times.forEach((time,i)=>{
+  const cells:Array<[string,number,number]>=[['PO Order Report',351,563],[`${i+1} of ${times.length}`,680,586],[time,680,575],['10C00258',617,541],['Vendor 823517:',120,524],
+   ...[['Item Code',19],['Lot',77],['Size',105],['Common Name',127],['PO Ordered',220],['Genus',266],['Received',624],['Remaining',662],['Hand',589]].map(([s,x])=>[String(s),Number(x),506] as [string,number,number]),
+   ['000310.030.1',19,450],['27.F1',77,450],['#3',105,450],['Sea Green Juniper',127,450],['300',249,450],['300',687,450]];
+  const stream=cells.slice().reverse().map(([s,x,y])=>`BT /F1 8 Tf 1 0 0 1 ${x} ${y} Tm (${s}) Tj ET`).join('\n');
+  objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${4+i*2} 0 R >>`,`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+ });
+ objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+ let pdf='%PDF-1.4\n';const offsets=[0];
+ objects.forEach((object,i)=>{offsets.push(pdf.length);pdf+=`${i+1} 0 obj\n${object}\nendobj\n`;});
+ const xref=pdf.length;pdf+=`xref\n0 ${offsets.length}\n0000000000 65535 f \n`+offsets.slice(1).map(n=>`${String(n).padStart(10,'0')} 00000 n \n`).join('')+`trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+ return btoa(pdf);
+}
+
+Deno.test('complete PDF worker accepts advancing page print times and rejects mixed reports before staging',async()=>{
+ for(const [last,expected] of [['9/11/2026 4:17:26 PM',200],['9/11/2026 4:18:26 PM',422]] as const) {
+  const pages:Array<Record<string,unknown>>=[];
+  const handler=createHlPoPdfHandler(async()=>({rpc:async(_name,args)=>{pages.push(args);return {data:{status:'pending'},error:null};}}));
+  const result=await handler(new Request('https://fixture.invalid',{method:'POST',body:JSON.stringify({source_file_id:'synthetic-print-run',source_file_name:'PO.pdf',pdf_base64:reportFixture(['9/11/2026 4:17:25 PM',last])})}));
+  assertEquals(result.status,expected,JSON.stringify(await result.clone().json()));
+  if(expected===200){
+   assertEquals(pages.map(p=>p.p_page),[1,2,null]);
+   assertEquals(((pages[0].p_rows as Array<Record<string,unknown>>)[0]).report_printed_at,'2026-09-11T21:17:25.000Z');
+   assertEquals(((pages[1].p_rows as Array<Record<string,unknown>>)[0]).report_printed_at,'2026-09-11T21:17:26.000Z');
+  }else{assertEquals(pages.length,0);assertEquals((await result.json()).code,'HL_PO_PDF_MIXED_REPORT');}
+ }
+});
 Deno.test('PDF staging rejects browser and missing server credentials before reading request data',async()=>{
  const handler=createHlPoPdfHandler(authorize);
  for(const bearer of ['', 'Bearer native-session-token']) {

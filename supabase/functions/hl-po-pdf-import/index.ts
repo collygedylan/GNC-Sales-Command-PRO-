@@ -1,5 +1,5 @@
 import { getDocumentProxy } from 'npm:unpdf@1.8.1';
-import { HL_PO_PDF_VERSION, parseHlPoPdfPage } from '../_shared/hl-po-pdf.mjs';
+import { HL_PO_PDF_VERSION, parseHlPoPdfPage, validateHlPoPdfReport } from '../_shared/hl-po-pdf.mjs';
 
 const response=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
 const hash=async(bytes:Uint8Array)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes).buffer))).map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -56,8 +56,7 @@ return async (request:Request)=>{
       const viewport=page.getViewport({scale:1});
       pages.push(parseHlPoPdfPage(content.items,{pageNumber:n,totalPages:pdf.numPages,width:viewport.width,height:viewport.height}));
     }
-    const identity=JSON.stringify(pages[0].metadata);
-    if(pages.some(p=>JSON.stringify(p.metadata)!==identity)) throw new Error('HL_PO_PDF_MIXED_REPORT');
+    validateHlPoPdfReport(pages);
     const fingerprint=await hash(new TextEncoder().encode(JSON.stringify({version:HL_PO_PDF_VERSION,pages})));
     const runId=`hl-pdf:${input.source_file_id}:${fileHash}`;
     const metadata={source_file_id:input.source_file_id,source_file_name:input.source_file_name,fingerprint,

@@ -5715,12 +5715,14 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
       runId = progress.runId;
       awaitingReconciliation = awaitingReconciliation || progress.awaitingReconciliation;
     } catch (error) {
-      errors.push({ name: file.getName(), error: String(error && error.message || 'HL_PO_PDF_IMPORT_FAILED') });
+      const message = String(error && error.message || 'HL_PO_PDF_IMPORT_FAILED');
+      errors.push({ name: file.getName(), error: message,
+        errorCode: /^HL_PO_[A-Z_]+$/.test(message) ? message : 'HL_PO_PDF_IMPORT_FAILED' });
     }
   }
   return { tableName: tableName || HL_PO_PARSED_TABLE, filesProcessed: filesProcessed, tempFilesRemoved: 0,
     unsupportedFiles: unsupportedFiles, failedFiles: errors.length, failedFileNames: errors.map(function(e) { return e.name; }),
-    failedFileErrors: errors, totalRows: totalRows, upsertCount: 0, deleteCount: 0, runId: runId,
+    failedFileErrors: errors, errorCode: errors.length ? errors[0].errorCode : '', totalRows: totalRows, upsertCount: 0, deleteCount: 0, runId: runId,
     awaitingReconciliation: awaitingReconciliation, importStatus: errors.length ? 'incomplete' : pending ? 'staging' : awaitingReconciliation ? 'awaiting_reconciliation' : filesProcessed ? 'staged' : 'no_files' };
 }
 
