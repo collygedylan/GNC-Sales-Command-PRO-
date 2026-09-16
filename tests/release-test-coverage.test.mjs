@@ -225,7 +225,7 @@ for (const [name, spec, projects] of compiledSuites) {
 test('Request regressions run against the compiled shell across desktop and mobile browsers', () => {
   const load = configLoader();
   const config = load('playwright.request-reliability.config.ts');
-  assert.deepEqual(selected(config), ['tests/request-entry-source.e2e.spec.ts', 'tests/request-on-hand-calculation.e2e.spec.ts']);
+  assert.deepEqual(selected(config), ['tests/request-editing.e2e.spec.ts', 'tests/request-entry-source.e2e.spec.ts', 'tests/request-on-hand-calculation.e2e.spec.ts']);
   assert.deepEqual(plain(config.projects.map(project => project.name)), ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']);
   assert.match(config.webServer.command, /startReleaseTestServer/);
   assert.equal(config.workers, 1);
@@ -378,7 +378,11 @@ const september9BrowserFixtures = [
 
 test('September 9 product scripts preserve their complete baseline safety file sets', () => {
   for (const [name, command] of Object.entries(september9ProductScripts)) {
-    assert.deepEqual(testFilesFromPackageScript(name, manifest.scripts[name]), testFilesFromPackageScript(name, command), name);
+    const expected = testFilesFromPackageScript(name, command);
+    if (name === 'test:pilot') {
+      expected.splice(expected.indexOf('tests/request-completion-resilience.test.mjs') + 1, 0, 'tests/request-edit-performance.test.mjs');
+    }
+    assert.deepEqual(testFilesFromPackageScript(name, manifest.scripts[name]), expected, name);
   }
 });
 
