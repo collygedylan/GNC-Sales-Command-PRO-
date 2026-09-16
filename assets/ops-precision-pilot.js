@@ -777,22 +777,36 @@
     const viewport = window.visualViewport;
     const visibleHeight = Math.max(1, Number(viewport && viewport.height || window.innerHeight || root.clientHeight || 1));
     const visibleOffsetTop = Math.max(0, Number(viewport && viewport.offsetTop || 0));
-    root.style.setProperty('--ops-visible-height', `${visibleHeight}px`);
-    root.style.setProperty('--ops-visible-offset-top', `${visibleOffsetTop}px`);
     const nav = document.getElementById('bottom-nav');
     const navVisible = !!(nav && getComputedStyle(nav).display !== 'none');
     const navHeight = navVisible ? Math.max(0, Number(nav.getBoundingClientRect().height || 0)) : 0;
-    root.style.setProperty('--footer-nav-reserve', `${navHeight}px`);
     const mainArea = document.getElementById('main-scroll-area');
     const mainTop = mainArea ? Math.max(0, Number(mainArea.getBoundingClientRect().top || 0) - visibleOffsetTop) : 0;
-    root.style.setProperty('--ops-main-top', `${mainTop}px`);
-    root.style.setProperty('--ops-content-available-height', `${Math.max(180, visibleHeight - mainTop - navHeight)}px`);
-    if (nav) nav.dataset.resolvedTheme = getEffectiveTheme();
+    // Read geometry together, then write only changed values. Repeated health
+    // checks should not invalidate layout between each measurement while typing.
+    const measurements = {
+      '--ops-visible-height': visibleHeight,
+      '--ops-visible-offset-top': visibleOffsetTop,
+      '--footer-nav-reserve': navHeight,
+      '--ops-main-top': mainTop,
+      '--ops-content-available-height': Math.max(180, visibleHeight - mainTop - navHeight)
+    };
+    Object.entries(measurements).forEach(([property, value]) => {
+      const next = `${value}px`;
+      if (root.style.getPropertyValue(property) !== next) root.style.setProperty(property, next);
+    });
+    const theme = getEffectiveTheme();
+    if (nav && nav.dataset.resolvedTheme !== theme) nav.dataset.resolvedTheme = theme;
   }
 
   function runLayoutHealthAssertions() {
     layoutHealthTimer = 0;
     measureRuntimeViewport();
+    if (['isUserActivelyTyping', 'isUserActivelyTouching', 'isUserActivelyScrolling']
+      .some((name) => typeof window[name] === 'function' && window[name]())) {
+      layoutHealthTimer = setTimeout(runLayoutHealthAssertions, 250);
+      return;
+    }
     const nav = document.getElementById('bottom-nav');
     if (nav && getComputedStyle(nav).display !== 'none') {
       const background = String(getComputedStyle(nav).backgroundColor || '').toLowerCase();
