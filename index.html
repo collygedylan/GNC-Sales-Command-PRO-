@@ -88397,6 +88397,7 @@ function toggleDriveQuickRequestItem(domId) {
             // legacy state readable, but never invent a date for a new preview.
             state.draft.forEach((entry) => { if (entry && entry.ship_date == null) entry.ship_date = getHlDraftShipDate(entry) || null; });
             state.orders.forEach((entry) => { if (entry && entry.ship_date == null) entry.ship_date = getHlOrderShipDate(entry.planstartdate || entry.created_ship_date || '') || null; });
+            const initialDisplay = !hlOrderStateData;
             const changed = JSON.stringify(hlOrderStateData) !== JSON.stringify(state);
             const recovered = !!hlOrderStateError || hlOrderTimeoutPaused;
             hlOrderStateData = state;
@@ -88407,6 +88408,9 @@ function toggleDriveQuickRequestItem(domId) {
             refreshHlOrderWarning();
             if (!changed && !recovered) return;
             syncHlOrderDraftSelections();
+            // Initial saved selections must exist before startup permission and
+            // navigation completion can obsolete a deferred view render.
+            if (initialDisplay) updateGlobalActionBar();
             if (options.deferRender && canUseProductionLiveSync()) scheduleHlOrderDisplayRefresh();
             else { updateGlobalActionBar(); renderHlOrder(); }
         }
