@@ -126,7 +126,17 @@ test('unchanged shared checks preserve Drive Tasks Que and Docks content', async
   for (const view of ['drive', 'tasks', 'request', 'docks']) {
     await page.locator(`[data-footer-view="${view}"]`).click();
     await expect(page.locator(`#view-${view}`)).toBeVisible();
+    // Common Name preparation has its own animation frames, separate from the
+    // shared refresh renderer. Measure unchanged refreshes after initial cards.
+    if (view === 'drive') {
+      await expect(page.locator('#drive-content')).toHaveAttribute('data-drive-commonname-state', 'complete');
+      await expect(page.locator('#drive-content')).toHaveAttribute('aria-busy', 'false');
+      await expect(page.locator('#drive-content [role="button"]')).toHaveCount(1);
+      await expect(page.locator('#drive-content [role="button"]')).toContainText('Synthetic HL Holly');
+    }
     await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("fixture-settle")'));
+    const containerId = await page.evaluate(view => window.eval('VIEW_LOAD_UI')[view].container, view);
+    await expect(page.locator(`#${containerId}`)).toHaveAttribute('data-render-ui-state', 'content');
     await expect.poll(() => page.evaluate(() => window.eval('!productionLiveSyncRenderPending && !productionLiveSyncActiveRender'))).toBe(true);
     const result = await page.evaluate(async view => {
       const root = document.getElementById(window.eval('VIEW_LOAD_UI')[view].container)!;
