@@ -18859,6 +18859,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!masterItem || !row) return row;
             const preservedValues = captureRequestOwnedSyncValues(row);
             syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true, exactPhotoClone: false, photoPrefix: 'req-' });
+            // Availability and its provenance must move together. The Request
+            // import can lack stock even though its linked inventory knows it.
+            row.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = masterItem.PHOTO_MATCH_PTR_AVAILABLE_KNOWN !== false
+                && parseAppNumber(firstNonEmptyValue(masterItem.PTRAVAILABLE, masterItem.LOC_AVAIL, '')) != null;
             Object.keys(preservedValues).forEach((key) => {
                 row[key] = preservedValues[key];
             });
@@ -25885,8 +25889,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (sameActiveItem) {
                 const renderKey = `active-photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`;
                 scheduleUiRender(renderKey, () => {
+                    if (!activeItem || String(activeItem.UNIQUE_ID || '').trim() !== String(item.UNIQUE_ID || '').trim()) return;
                     incrementInternalPerfCounter('photoUiOnlyRefreshes');
                     renderSavedPhotos();
+                    if (String(prefix || '').trim().toLowerCase() === 'req-') calculateMatchQty('req-');
                     if (activeDetailTab === 'gallery') renderPhotoGallery();
                 }, 16);
                 return;
@@ -105262,19 +105268,28 @@ function toggleDriveQuickRequestItem(domId) {
         function verifyRequestDetailRendered(reason = '', attempt = 0) {
             const content = document.getElementById('det-request-content');
             if (!content || content.classList.contains('hidden')) return false;
-            const requiredControls = content.querySelectorAll('#req-match, #req-spec, #req-av-note, #req-btn-save-complete');
+            // Held/stopped items intentionally omit AV Note. Check the form
+            // required for this item, rather than treating that rule as failure.
+            const requiredIds = ['req-match', 'req-spec', 'req-btn-save-complete'];
+            if (requiresAvNoteForCompletion(activeItem)) requiredIds.push('req-av-note');
+            const requiredControls = requiredIds.map((id) => content.querySelector('#' + id));
             const renderedHeight = Array.from(content.children || []).reduce((total, child) => {
                 if (!child || !child.getClientRects || !child.getClientRects().length) return total;
                 const rect = child.getBoundingClientRect();
                 return total + Math.max(0, Number(rect.height) || 0);
             }, 0);
-            const usable = requiredControls.length === 4
+            const usable = requiredControls.length === requiredIds.length
                 && Array.from(requiredControls).every((control) => control && control.getClientRects && control.getClientRects().length)
                 && renderedHeight > 120;
             if (!usable) {
                 if (Number(attempt) < 1) {
+                    const expectedToken = detailHydrationToken;
+                    const expectedItem = activeItem;
                     scheduleRequestDetailEntryVisible('render-verify-retry', { skipOptionLoad: true, resetScroll: false });
-                    setTimeout(() => requestAnimationFrame(() => verifyRequestDetailRendered(reason, Number(attempt) + 1)), 80);
+                    setTimeout(() => requestAnimationFrame(() => {
+                        if (expectedToken !== detailHydrationToken || expectedItem !== activeItem) return;
+                        verifyRequestDetailRendered(reason, Number(attempt) + 1);
+                    }), 80);
                     return false;
                 }
                 setRequestDetailLoadState('error', 'The Request form did not render completely.');
@@ -105282,6 +105297,8 @@ function toggleDriveQuickRequestItem(domId) {
                     controls: requiredControls.length,
                     reason: String(reason || '').slice(0, 60)
                 });
+            } else if (document.getElementById('request-detail-load-state')?.textContent.includes('The Request form did not render completely.')) {
+                setRequestDetailLoadState('');
             }
             return usable;
         }
