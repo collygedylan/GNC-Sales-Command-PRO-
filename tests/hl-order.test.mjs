@@ -22,7 +22,9 @@ function runtime() {
     nativeAuthProfile: { id: '12345678-1234-1234-1234-123456789abc', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false },
     selectedItems: new Set(), selectedItemSources: new Map(), document: { getElementById: () => null },
     escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
-    navigator: { onLine: true }, console
+    navigator: { onLine: true }, console,
+    productionVerifiedViewKey: () => 'test-view', getCurrentVisibleViewId: () => 'hl-order',
+    setSurfaceDisplayPending: () => {}, scheduleTypingAwareUiRender: (_key, render) => render()
   });
   vm.runInContext(source('parseAppNumber') + '\n' + html.slice(blockStart, blockEnd), ctx);
   return ctx;

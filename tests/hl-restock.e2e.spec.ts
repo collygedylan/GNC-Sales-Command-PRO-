@@ -24,6 +24,25 @@ const isolated = (fixture: any) => { expect(fixture.errors).toEqual([]); expect(
 
 test.beforeEach(async ({ page }) => { await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); }); });
 
+test('unchanged refresh cycles preserve Restocking cards and entered quantities', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, setup());
+  await openRestock(page);
+  await expect(item(page).locator('[data-hl-restock-quantity]')).toHaveValue('18');
+  await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("fixture-settle")'));
+  await expect.poll(() => page.evaluate(() => window.eval('!productionLiveSyncRenderPending && !productionLiveSyncActiveRender'))).toBe(true);
+  await item(page).locator('[data-hl-restock-quantity]').fill('7');
+  const result = await page.evaluate(async () => {
+    const input = document.querySelector('[data-hl-restock-quantity]');
+    const card = document.querySelector('[data-hl-restock-item]');
+    const reads = window.eval('getProductionLiveSyncCoordinator().getStatistics().adapterReads');
+    for (let i = 0; i < 3; i++) await window.eval('Promise.all([loadHlOrderState(true), loadHlRestockState(true), getProductionLiveSyncCoordinator().check("foreground-safeguard")])');
+    return { sameInput: input === document.querySelector('[data-hl-restock-quantity]'), sameCard: card === document.querySelector('[data-hl-restock-item]'), downloads: window.eval('getProductionLiveSyncCoordinator().getStatistics().adapterReads') - reads };
+  });
+  expect(result).toEqual({ sameInput: true, sameCard: true, downloads: 0 });
+  await expect(item(page).locator('[data-hl-restock-quantity]')).toHaveValue('7');
+  isolated(fixture);
+});
+
 test('Restocking loads on demand without SOC demand and shows verified server quantities', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ restockItems: [stock(), stock({ itemcode: 'UNKNOWN', available: null, status: 'unknown' })] }));
   expect(fixture.restockReads).toBe(0);

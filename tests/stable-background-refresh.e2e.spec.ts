@@ -1,7 +1,144 @@
 import { expect, test } from '@playwright/test';
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 
+test('unchanged verification preserves Drive demand cards across three refresh cycles', async ({ page, baseURL }, testInfo) => {
+  await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    reserveRows: Array.from({ length: 8 }, (_, i) => ({ unique_id: `steady-reserve-${i}`, itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Steady Reserve', quantityordered: '0' })),
+    demandSocRows: Array.from({ length: 8 }, (_, i) => ({ unique_id: `steady-order-${i}`, itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Steady Order', invoicedate: null, quantityordered: '4' }))
+  });
+  await expect(page.locator('#view-login')).toBeHidden();
+  await page.locator('#home-tile-hl-order').click();
+  await page.locator('[data-hl-group]').first().getByRole('button', { name: 'View HL order details', exact: true }).click();
+  await page.locator('#hl-order-detail [data-hl-drive-location="C.12.001"] .app-drive-compact-card').click();
+  await expect(page.locator('#view-detail')).toBeVisible();
+  for (const [tab, panel] of [['customer', 'det-customer-panel'], ['open-orders', 'det-open-orders-panel']]) {
+    const mobile = page.locator('#det-mobile-tab-select');
+    if (await mobile.isVisible()) await mobile.selectOption(tab);
+    else await page.locator(`#dtab-${tab}`).click();
+    await expect(page.locator(`#${panel} [data-drive-demand-row]`)).toHaveCount(8);
+    const reads = { ...fixture.demandReads };
+    const trace = await page.evaluate(async id => {
+      const root = document.getElementById(id)!;
+      const first = root.querySelector('[data-drive-demand-row]');
+      let replacements = 0;
+      const observer = new MutationObserver(records => { replacements += records.filter(record => record.type === 'childList').length; });
+      observer.observe(root, { childList: true, subtree: true });
+      const cycles = [];
+      for (let i = 0; i < 3; i++) {
+        await window.eval('getProductionLiveSyncCoordinator().check("foreground-safeguard")');
+        await new Promise<void>(resolve => {
+          const settled = () => {
+            if (window.eval('Object.keys(uiRenderTimers).concat(Object.keys(uiRenderFrames)).some(key => key.startsWith("drive-demand-display:"))')) setTimeout(settled, 20);
+            else requestAnimationFrame(() => resolve());
+          };
+          settled();
+        });
+        cycles.push({ sameNode: first === root.querySelector('[data-drive-demand-row]'), replacements,
+          state: window.eval('getProductionLiveSyncCoordinator().getStatus().state') });
+      }
+      observer.disconnect();
+      return cycles;
+    }, panel);
+    await testInfo.attach(`${tab}-refresh-trace.json`, { body: JSON.stringify(trace), contentType: 'application/json' });
+    expect(trace).toEqual(Array.from({ length: 3 }, () => ({ sameNode: true, replacements: 0, state: 'Up to date' })));
+    expect(fixture.demandReads).toEqual(reads);
+    // A changed imported line must still appear, even though its neighbor is
+    // unchanged. Keep that neighbor attached through loading and reconciliation.
+    await page.locator(`#${panel} [data-drive-demand-row]`).nth(3).evaluate(node => {
+      (window as any).__retainedDemand = node;
+      const scroll = document.getElementById('main-scroll-area')!;
+      scroll.scrollTop += node.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
+    });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const topBefore = await page.evaluate(() => (window as any).__retainedDemand.getBoundingClientRect().top);
+    await page.locator('#main-scroll-area').dispatchEvent('pointerdown', { pointerId: 57, pointerType: 'touch', isPrimary: true, button: 0 });
+    const rows = tab === 'customer' ? fixture.reserveRows : fixture.demandSocRows;
+    rows.unshift({ ...rows[0], unique_id: `added-${tab}`, customername: 'Newly imported customer', quantityordered: '8' });
+    fixture.datasetRevision++;
+    await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("changed-demand")'));
+    await expect(page.locator(`#${panel} [data-drive-demand-row]`)).toHaveCount(8);
+    await expect(page.locator('[data-live-display-pending]')).not.toHaveCount(0);
+    await page.locator('#main-scroll-area').dispatchEvent('pointerup', { pointerId: 57, pointerType: 'touch', isPrimary: true, button: 0 });
+    await expect(page.locator(`#${panel} [data-drive-demand-row]`)).toHaveCount(9);
+    expect(await page.evaluate(() => (window as any).__retainedDemand.isConnected)).toBe(true);
+    await expect.poll(() => page.evaluate(before => Math.abs((window as any).__retainedDemand.getBoundingClientRect().top - before), topBefore)).toBeLessThanOrEqual(2);
+    await expect(page.locator(`#${panel}`)).toContainText('Newly imported customer');
+    const source = tab === 'customer' ? 'ph_reserves' : 'ph_soc_master';
+    fixture.datasetSourceStates.set(source, 'unavailable');
+    await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("denied-demand")'));
+    await expect(page.locator(`#${panel} [data-drive-demand-row]`)).toHaveCount(0);
+    fixture.datasetSourceStates.set(source, 'ready');
+  }
+  expect(fixture.blockedMutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
+
 const itemCount = 18;
+
+test('unchanged HL reads preserve detail and Bloom inputs and same-revision balance updates remain visible', async ({ page, baseURL }) => {
+  await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await expect(page.locator('#view-login')).toBeHidden();
+  await page.locator('#home-tile-hl-order').click();
+  await page.locator('[data-hl-group]').first().getByRole('button', { name: 'View HL order details', exact: true }).click();
+  const detail = page.locator('#hl-order-detail');
+  await expect(detail.locator('[data-hl-drive-location="C.12.001"] .app-drive-compact-card')).toBeVisible();
+  await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("fixture-settle")'));
+  await expect.poll(() => page.evaluate(() => window.eval('!productionLiveSyncRenderPending && !productionLiveSyncActiveRender'))).toBe(true);
+  const unchanged = await page.evaluate(async () => {
+    const node = document.getElementById('hl-order-detail');
+    const input = node!.querySelector('[data-hl-quantity]');
+    const render = window.eval('scheduleProductionLiveSyncRender');
+    (window as any).__refreshSchedules = 0;
+    (window as any).__originalRefreshSchedule = render;
+    window.eval('scheduleProductionLiveSyncRender = function(...args) { window.__refreshSchedules++; return window.__originalRefreshSchedule(...args); }');
+    for (let i = 0; i < 3; i++) {
+      await window.eval('Promise.all([loadHlOrderState(true), loadHlOrderState(true), getProductionLiveSyncCoordinator().check("foreground-safeguard")])');
+    }
+    window.eval('scheduleProductionLiveSyncRender = window.__originalRefreshSchedule');
+    return { sameNode: node === document.getElementById('hl-order-detail'), sameInput: input === document.querySelector('#hl-order-detail [data-hl-quantity]'), schedules: (window as any).__refreshSchedules };
+  });
+  expect(unchanged).toEqual({ sameNode: true, sameInput: true, schedules: 0 });
+  const revision = fixture.state.revision;
+  for (const balance of fixture.poBalances.values()) balance.remaining = 901;
+  await page.evaluate(() => window.eval('loadHlOrderState(true)'));
+  await expect(detail).toContainText('901');
+  expect(fixture.state.revision).toBe(revision);
+  await detail.locator('[data-hl-source-id="hl-b"] [data-hl-select]').uncheck();
+  await detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]').fill('6');
+  await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
+  const draft = page.locator('[data-hl-draft-source-id="hl-a"]');
+  await expect(draft).toBeVisible();
+  await draft.locator('[data-hl-draft-quantity]').fill('4');
+  await draft.locator('[data-hl-draft-quantity]').evaluate(node => node.setAttribute('data-kept-input', 'yes'));
+  for (let i = 0; i < 3; i++) await page.evaluate(() => window.eval('Promise.all([loadHlOrderState(true), getProductionLiveSyncCoordinator().check("foreground-safeguard")])'));
+  await expect(draft.locator('[data-hl-draft-quantity]')).toHaveValue('4');
+  await expect(draft.locator('[data-hl-draft-quantity]')).toHaveAttribute('data-kept-input', 'yes');
+  expect(fixture.blockedMutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
+
+test('unchanged shared checks preserve Drive Tasks Que and Docks content', async ({ page, baseURL }) => {
+  await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await expect(page.locator('#view-login')).toBeHidden();
+  for (const view of ['drive', 'tasks', 'request', 'docks']) {
+    await page.locator(`[data-footer-view="${view}"]`).click();
+    await expect(page.locator(`#view-${view}`)).toBeVisible();
+    await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("fixture-settle")'));
+    await expect.poll(() => page.evaluate(() => window.eval('!productionLiveSyncRenderPending && !productionLiveSyncActiveRender'))).toBe(true);
+    const result = await page.evaluate(async view => {
+      const root = document.getElementById(window.eval('VIEW_LOAD_UI')[view].container)!;
+      const first = root.firstElementChild;
+      const reads = window.eval('getProductionLiveSyncCoordinator().getStatistics().adapterReads');
+      for (let i = 0; i < 3; i++) await window.eval('getProductionLiveSyncCoordinator().check("foreground-safeguard")');
+      return { populated: !!first, sameNode: first === root.firstElementChild, downloads: window.eval('getProductionLiveSyncCoordinator().getStatistics().adapterReads') - reads, state: window.eval('getProductionLiveSyncCoordinator().getStatus().state') };
+    }, view);
+    expect(result, view).toEqual({ populated: true, sameNode: true, downloads: 0, state: 'Up to date' });
+  }
+  expect(fixture.blockedMutations).toEqual([]);
+});
 // LowStock shows current-F1 itemcodes through their valid support-season rows.
 // Keep one F1 low-stock row and one U1 support row for every visual card.
 const inventory = Array.from({ length: itemCount }, (_, index) => {
