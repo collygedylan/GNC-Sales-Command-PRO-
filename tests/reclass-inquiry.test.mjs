@@ -805,7 +805,84 @@ test('approved pilot sender is removed and the live Reclass handler accepts V3 b
   assert.match(handler, /LOCATION_DETAIL_CHANGE_REQUIRED/);
   assert.match(handler, /fetchReclassInquiryScopeSettingsV3_/);
   assert.match(handler, /scope: overlayResult\.scope/);
-  assert.match(handler, /GNC PH Reclass - ' \+ model\.requestActionLabel/);
+  assert.match(handler, /const subject = buildReclassInquiryEmailSubject_\(model\)/);
+});
+
+test('Reclass subject uses container size and common name with safe whitespace and missing-value defaults', () => {
+  const server = loadServerModel();
+  for (const [contsize, commonname, expected] of [
+    ['#3', 'Sea Green Juniper', '#3 Sea Green Juniper Reclass'],
+    ['  #3\t', ' Sea\r\n Green   Juniper ', '#3 Sea Green Juniper Reclass'],
+    ['#3/5', 'Saybrook Gold® Juniper — "Special"', '#3/5 Saybrook Gold® Juniper — "Special" Reclass'],
+    ['', 'Sea Green Juniper', 'Sea Green Juniper Reclass'],
+    [null, 'Sea Green Juniper', 'Sea Green Juniper Reclass'],
+    ['#3', ' \t\n', '#3 Inventory Reclass'],
+    [undefined, undefined, 'Inventory Reclass'],
+  ]) {
+    assert.equal(server.buildReclassInquiryEmailSubject_({ identity: { contsize, commonname } }), expected);
+  }
+});
+
+test('protected Reclass delivery uses the originating item for every action and recovers retries without resending', () => {
+  const actions = ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down'];
+  const holds = actions.slice(0, 4);
+  const combinations = actions.map(action => [action]);
+  for (const hold of holds) for (const action of actions.slice(4)) combinations.push([hold, action]);
+  combinations.push(['priority_change', 'move_up', 'move_down', 'recount']);
+  for (const requested of combinations) {
+    const server = loadServerModel();
+    const sourceRow = { unique_id: 'origin', itemcode: '000310.030.1', contsize: '#3', commonname: 'Sea Green Juniper', lotcode: '27.F1', locationcode: 'B.2', season: 'F1', saleyear: '27', priority: '3', ptronhand: '50', holdstopcode: '', holdstopreason: '' };
+    const otherRow = { ...sourceRow, unique_id: 'other', locationcode: 'A.1', contsize: '#7', commonname: 'Other size name' };
+    const hold = requested.find(action => holds.includes(action));
+    if (hold === 'take_off_hold') sourceRow.holdstopcode = 'H';
+    if (hold === 'off_stop_ship') sourceRow.holdstopcode = 'S';
+    const rows = [otherRow, sourceRow];
+    const proposals = requested.filter(action => !holds.includes(action)).map(action => action === 'priority_change'
+      ? { action, priority: '2' } : action.startsWith('move_') ? { action, moveQuantity: 5, destinationSeason: 'S1' } : { action });
+    const scope = { season: 'F1', salesYear: 2027 };
+    const payload = {
+      source: { unique_id: sourceRow.unique_id, itemcode: sourceRow.itemcode },
+      workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_,
+      transaction: { requestActions: requested, holdStopProposals: hold ? [{ action: hold, reason: ['hold', 'stop_ship'].includes(hold) ? 'Reviewed' : '' }] : [], scope },
+      rowOverlays: rows.map(row => ({ unique_id: row.unique_id, expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode }, proposals: row === sourceRow ? proposals : [] })),
+      recipientEmails: ['reviewer@example.invalid'],
+    };
+    const mails = [], receipts = new Map();
+    server.fetchEmailApprovalMasterRow_ = uid => { assert.equal(uid, sourceRow.unique_id); return sourceRow; };
+    server.validateInventoryTransactionSourceIdentity_ = (row, source) => assert.equal(row.itemcode, source.itemcode);
+    server.fetchReclassInquiryItemRows_ = () => rows;
+    server.fetchReclassInquiryScopeSettingsV3_ = () => scope;
+    server.dedupeEmailAddresses_ = values => [...new Set(values)];
+    server.isGmailAdvancedServiceAvailable_ = () => true;
+    server.resolveAutomatedEmailSenderAddress_ = () => 'automation@example.invalid';
+    server.sendGmailApiMessage_ = mail => {
+      mails.push(mail);
+      return { ok: true, gmailMessageId: 'gmail-fixture', threadId: 'thread-fixture', messageId: mail.messageIdHeader };
+    };
+    server.getRequestDeliveryReceipt_ = id => receipts.get(id);
+    server.saveRequestDeliveryReceipt_ = (id, result) => receipts.set(id, result);
+    server.findSentRequestDeliveryByMessageId_ = () => null;
+    const start = code.indexOf('function buildRecoveredDeliveryResult_');
+    const end = code.indexOf('function buildEvalWorkReportModel_', start);
+    vm.runInContext(code.slice(start, end), server);
+    const delivery = { messageIdHeader: '<reclass-fixture@example.invalid>', payload: { reclassPayload: payload, itemInquiryCoverage: { contractVersion: 'item-inquiry-coverage-v1' } } };
+    const result = server.handleSignedReclassInquiryDelivery_(delivery);
+    assert.equal(result.subject, '#3 Sea Green Juniper Reclass', requested.join(' + '));
+    assert.equal(mails.length, 1);
+    assert.equal(mails[0].subject, result.subject);
+    assert.deepEqual(Array.from(mails[0].toArray), payload.recipientEmails);
+    assert.equal(mails[0].messageIdHeader, delivery.messageIdHeader);
+    assert.equal(mails[0].attachments.length, 1);
+    assert.match(mails[0].attachments[0].name, /^GNC_PH_Reclass_.*Sea_Green_Juniper\.pdf$/);
+    assert.match(mails[0].textBody, /Open the attached PDF to review the complete Item Inquiry/);
+    const retry = server.handleSignedReclassInquiryDelivery_(delivery);
+    assert.equal(retry.mode, 'apps_script_receipt_recovery');
+    assert.equal(mails.length, 1);
+    receipts.clear();
+    server.findSentRequestDeliveryByMessageId_ = () => result;
+    assert.equal(server.handleSignedReclassInquiryDelivery_(delivery).mode, 'gmail_api_idempotent_recovery');
+    assert.equal(mails.length, 1);
+  }
 });
 
 test('Reclass email body is a short attachment summary without duplicated row report sections', () => {

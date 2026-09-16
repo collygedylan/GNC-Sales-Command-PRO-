@@ -12323,6 +12323,13 @@ function buildReclassInquiryReportHtml_(model, printMode) {
   return buildReclassInquiryCompactReportHtml_(model, printMode);
 }
 
+function buildReclassInquiryEmailSubject_(model) {
+  const identity = model && model.identity || {};
+  const size = String(identity.contsize == null ? '' : identity.contsize).replace(/\s+/g, ' ').trim();
+  const commonName = String(identity.commonname == null ? '' : identity.commonname).replace(/\s+/g, ' ').trim() || 'Inventory';
+  return [size, commonName, 'Reclass'].filter(Boolean).join(' ');
+}
+
 function buildReclassInquiryReportText_(model) {
   const safeModel = model || {};
   const identity = safeModel.identity || {};
@@ -12790,7 +12797,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
       : getReclassInquiryEmailRecipients_(safePayload);
     if (!recipients.length) throw new Error('RECLASS_VALIDATION:RECIPIENT_REQUIRED');
     const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
-    const subject = '[External] GNC PH Reclass - ' + model.requestActionLabel + ': ' + commonName;
+    const subject = buildReclassInquiryEmailSubject_(model);
     let pdfBlob;
     try {
       const printHtml = buildReclassInquiryCompactReportHtml_(model, true);
