@@ -129,10 +129,13 @@ jobs:
             config: playwright.request-photo.config.ts
           - suite: hl-order-1
             config: playwright.hl-order.config.ts
-            shard: 1/2
+            shard: 1/3
           - suite: hl-order-2
             config: playwright.hl-order.config.ts
-            shard: 2/2
+            shard: 2/3
+          - suite: hl-order-3
+            config: playwright.hl-order.config.ts
+            shard: 3/3
           - suite: hl-restock
             config: playwright.hl-restock.config.ts
           - suite: stable-refresh

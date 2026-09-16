@@ -31,11 +31,11 @@ test('browser shards and compiled suites use isolated runners without racing per
   assert.equal(validation.jobs.functional.strategy['max-parallel'], 4);
   assert.equal(validation.jobs.functional.strategy['fail-fast'], false);
   assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=/);
-  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home-1','home-2','season','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo', 'hl-order-1','hl-order-2','hl-restock','stable-refresh']);
+  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['footer','home-1','home-2','season','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo', 'hl-order-1','hl-order-2','hl-order-3','hl-restock','stable-refresh']);
   const home = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.home-role.config.ts');
   assert.deepEqual(home.map(x => x.shard), ['1/2','2/2']);
   const hl = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.hl-order.config.ts');
-  assert.deepEqual(hl.map(x => x.shard), ['1/2','2/2']);
+  assert.deepEqual(hl.map(x => x.shard), ['1/3','2/3','3/3']);
   assert.equal(validation.jobs.compiled['timeout-minutes'], 12);
   assert.match(validation.jobs.compiled.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*matrix.shard.*--shard=/);
   assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-timing.config.ts --workers=1/);
