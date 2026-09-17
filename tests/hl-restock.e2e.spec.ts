@@ -24,6 +24,38 @@ const isolated = (fixture: any) => { expect(fixture.errors).toEqual([]); expect(
 
 test.beforeEach(async ({ page }) => { await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); }); });
 
+test('Restocking preserves verified Drive facts and excludes other lots', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, setup({
+    master: [hlMaster('stock-a', { commonname: 'Blue Point Juniper', ptravailable: '315', ptronhand: '315', s_lts: '311' }),
+      hlMaster('stock-zero', { commonname: 'Blue Point Juniper', locationcode: 'C.14.001', ptravailable: '0', ptronhand: '0', s_lts: '0' }),
+      hlMaster('spring-only', { commonname: 'Spring unrelated stock', lotcode: '27.S1', ptravailable: '999' })],
+    restockItems: [stock({ commonname: null, target: null, basis_quantity: null, status: 'po_unknown', po_balance: { status: 'unknown', remaining: null } })]
+  }));
+  await openRestock(page);
+  await expect(item(page).locator('[data-hl-drive-instance]')).toHaveCount(2);
+  await expect(item(page).locator('h3').first()).toHaveText('#3 Blue Point Juniper');
+  const drive = item(page).locator('[data-hl-drive-location="C.12.001"]');
+  await expect(drive).toContainText(/ON HAND\s*-\s*315/i);
+  await expect(drive).toContainText(/OPEN STOCK\s*-\s*311/i);
+  await expect(item(page).locator('[data-hl-drive-location="C.14.001"]')).toContainText(/AVAILABLE\s*-\s*0/i);
+  await expect(item(page)).not.toContainText('Spring unrelated stock');
+  await expect(item(page)).toContainText('Suggested Unknown');
+  await expect(item(page)).toContainText('this is not zero');
+  await expect(item(page).locator('[data-hl-restock-save]')).toBeDisabled();
+  isolated(fixture);
+});
+
+test('negative PO source balances remain visible and cannot be ordered', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, setup({
+    restockItems: [stock({ target: null, basis_quantity: null, status: 'po_unknown', po_balance: { status: 'review', remaining: -831 } })]
+  }));
+  await openRestock(page);
+  await expect(item(page)).toContainText('PO remaining -831');
+  await expect(item(page)).toContainText('negative or invalid source balance');
+  await expect(item(page).locator('[data-hl-restock-save]')).toBeDisabled();
+  isolated(fixture);
+});
+
 test('unchanged refresh cycles preserve Restocking cards and entered quantities', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup());
   await openRestock(page);

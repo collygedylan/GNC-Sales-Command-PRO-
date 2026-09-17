@@ -145,6 +145,13 @@ begin
  perform pg_temp.hl_reject('restock_target_preview','{"lot":"27.F1","items":[{"itemcode":"NEG-OFFSET","size":"#3"}]}','HL_RESTOCK_REVIEW_REQUIRED');
  perform pg_temp.hl_check((select target=238 from hl_order_private.restock_targets where itemcode='000310.030.1' and lot='27.S1'),'Review import preserves previously fixed targets');
 end $test$;
+
+-- Compare every existing field after mixed seasons, receipts, corrections,
+-- additions and review imports. Only the additive report identity is new.
+with base as materialized (select hl_order_private.state_json_before_restock() s),
+expected as (select s || jsonb_build_object('draft', coalesce((select jsonb_agg(d || jsonb_build_object('source_kind',coalesce(d->'source'->>'source_kind','soc'))) from jsonb_array_elements(s->'draft') d),'[]'::jsonb)) s from base)
+select pg_temp.hl_check((hl_order_private.state_json()-'po_report')=s,'Materialized response preserves every existing state field') from expected;
+select pg_temp.hl_check(hl_order_private.state_json()->'po_report'->>'source_format'='pdf','State identifies the active confirmed PDF');
 select '1..'||count(*) from hl_checks;
 select 'ok '||id||' - '||description from hl_checks order by id;
 rollback;

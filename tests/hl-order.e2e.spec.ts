@@ -78,6 +78,22 @@ function assertIsolated(fixture: any) {
   expect(fixture.blockedMutations).toEqual([]);
 }
 
+test('initial HL timeout shows Retry without indefinite loading or a current-data badge', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!);
+  await page.route('**/rest/v1/rpc/hl_order_state', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ code: '57014', message: 'canceling statement due to statement timeout' }) }));
+  await page.evaluate(() => window.eval('hlOrderStateData = null; hlOrderStateLoadedAt = 0;'));
+  await openHl(page);
+  await expect(page.locator('#hl-order-status')).toContainText('No confirmed HL data is available yet');
+  await expect(page.locator('#hl-order-content')).not.toContainText('Loading saved HL orders');
+  await expect(page.locator('#live-data-freshness')).toContainText('HL needs attention');
+  await page.unroute('**/rest/v1/rpc/hl_order_state');
+  // Restore the fixture route removed above; its dispatcher owns all RPC reads.
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.locator('[data-hl-group]').first()).toBeVisible();
+  await expect(page.locator('#hl-order-status')).toBeEmpty();
+  assertIsolated(fixture);
+});
+
 test('HL statement timeout keeps saved rows, pauses polling, and Retry preserves edits', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a')] });
   await openHl(page); await openDetails(page);
