@@ -71,7 +71,7 @@ test('Request editing calculates immediately and renders a usable form', async (
 
 test.describe('Request save performance', () => {
 test('Request input and save timing with a complete inventory', async ({ page, baseURL, browserName }, testInfo) => {
-  await installHlOrderFixture(page, baseURL, { startupMode: 'cold', master: Array.from({ length:9366 }, (_,i) => hlMaster('inventory-'+i,
+  const fixture = await installHlOrderFixture(page, baseURL, { startupMode: 'cold', master: Array.from({ length:9366 }, (_,i) => hlMaster('inventory-'+i,
     { itemcode:i?'TIMING.'+i:'TIMING.001', commonname:i?'Timing Hosta '+i:'Timing Hosta', contsize:'#1', locationcode:'C.09.000', ptravailable:'911', ptronhand:'911', holdstopcode:'H' })) });
   const saves: any[] = [];
   let serverRow: any = { unique_id: 'request-timing', itemcode: 'TIMING.001', commonname: 'Timing Hosta', contsize: '#1',
@@ -112,6 +112,15 @@ test('Request input and save timing with a complete inventory', async ({ page, b
   if (await page.locator('#request-open-info-modal').isVisible()) await page.locator('#request-open-info-ok').click();
   await expect(page.locator('#req-comments')).toBeVisible();
   await page.waitForFunction(() => window.eval("getDatasetState('master').fullLoaded && fullInventory.length === 9366"));
+  // fullLoaded can precede metadata verification and its display commit. Finish
+  // that startup work before measuring a continuous typing burst: otherwise the
+  // fixture transport pauses between early keys long enough to trigger valid
+  // idle autosaves, despite pressSequentially requesting a 30ms cadence.
+  await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("request-timing-ready")'));
+  await fixture.waitForRevisionIdle();
+  // An open detail form deliberately defers replacement to protect its draft;
+  // that settled state is valid, but an actively rendering screen is not.
+  await page.waitForFunction(() => window.eval('!productionLiveSyncActiveRender && (!productionLiveSyncRenderPending || productionLiveSyncDraftChanged)'));
   let profileSession: any;
   if (browserName === 'chromium') {
     profileSession = await page.context().newCDPSession(page);
