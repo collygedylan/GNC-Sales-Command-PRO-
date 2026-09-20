@@ -16,7 +16,7 @@ try {
  assert.equal((await admin.query("select count(*)::int n from public.profiles where username='dylan_collyge'")).rows[0].n,0);
  for(const [i,id] of ids.entries()) {
   await admin.query("insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values($1,$2,'{}','{}')",[id,id+'@example.invalid']);
-  await admin.query('insert into public.profiles(id,username,display_name,role,must_change_password) values($1,$2,$2,$3,false)',[id,i===0?'dylan_collyge':prefix+i,i===0?'ADMIN':'EVAL']);
+  await admin.query('insert into public.profiles(id,username,display_name,role,must_change_password) values($1,$2,$2,$3,false)',[id,i===0?'dylan_collyge':(prefix+i).toLowerCase(),i===0?'ADMIN':'EVAL']);
  }
  await admin.query("insert into bunch_note_private.batches(id,created_by,block,body) values($1,$2,$3,'{}')",[batch,creator,prefix]);
  await admin.query("insert into bunch_note_private.jobs(id,batch_id,note_number,block,location,body,created_by) values($1,$2,$3,$3,$3,'{\"actions\":[{\"id\":\"a\",\"instructions\":\"Do work\"}]}',$4)",[job,batch,prefix,creator]);
