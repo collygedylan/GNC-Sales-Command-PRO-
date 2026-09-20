@@ -589,6 +589,7 @@ test('a same-date addition keeps its sent order number and leaves only the new b
   await addition.locator('[data-hl-select]').check();
   await addition.locator('[data-hl-quantity]').fill('5');
   await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
+  await expect(page.locator('[data-hl-draft-source-id="hl-b"]')).toBeVisible();
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await expect(page.locator('[data-hl-order-id]')).toContainText(orderNumber);
   await expect(page.locator('[data-hl-pending-additions]')).toContainText('Quantity 5');
