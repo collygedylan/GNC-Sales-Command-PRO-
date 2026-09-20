@@ -34,6 +34,11 @@ begin
  perform pg_temp.po_health_check(snapshot->>'freshness_mode'='manual_pdf','confirmed PDFs use manual replacement');
  perform pg_temp.po_health_check(snapshot->'pdf_report_valid'='true','old complete confirmed PDF remains valid');
  perform pg_temp.po_health_check(snapshot->'source_authority_valid'='true','confirmed active source is authoritative');
+ perform pg_temp.po_health_check(snapshot->'season_access_healthy'='true','S1 retains authenticated read-only access');
+ perform pg_temp.po_health_check(not has_table_privilege('authenticated','public.ph_27s1_hl_po','INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'),'S1 rejects inherited browser write privileges');
+ grant update on public.ph_27s1_hl_po to authenticated;
+ perform pg_temp.po_health_check(public.get_po_management_health_snapshot()->'season_access_healthy'='false','S1 write grant drift fails health');
+ revoke update on public.ph_27s1_hl_po from authenticated;
  perform pg_temp.po_health_check(snapshot->'projection_matches_ledger'='true','both seasonal projections match');
  perform pg_temp.po_health_check((snapshot->>'row_count')::integer=3,'detail and grouped counts stay distinct');
  perform pg_temp.po_health_check((snapshot->>'review_balance_count')::integer=1,'negative report balances remain reviewable');
