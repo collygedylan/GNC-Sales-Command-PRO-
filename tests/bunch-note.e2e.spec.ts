@@ -17,6 +17,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
  const rows=[plant('a','C.12.001'),{...plant('a2','C.12.001'),contsize:'#5',lotcode:'LOT2',season:'27.F1',stock:'20',review:null},plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[];
  const options:any[]=[['sequence','Early protection','instruction'],['grading','Shear before bunching','instruction'],['placement','Center house','instruction'],['placement','Variety mixes','instruction'],['inventory','TA / culls follow-up','ta'],['inventory','Move','move'],['hauling','Grade shift','hauling']].map(([category,label,kind],i)=>({id:'option'+i,category,label,kind,active:true,revision:1}));
  let lastPreview:any=null;
+ let actualReply:Promise<void>|null=null;
  const jobs:any[]=worker?[{id:'work',note_number:'BN-1',block:'FULL.BLOCK',location:'C.12.001',status:'open',owner_id:null,revision:1,instruction_revision:1,progress:{},body:{purposes:'Rain day',instructions:'Keep aisles',actions:[{id:'a',group:'placement',scope:'location',instructions:'Center house'},{id:'ta',group:'inventory',kind:'ta',label:'TA / culls follow-up',scope:'rows',row_ids:['a'],instructions:'TA / culls follow-up',quantity:'5'},{id:'move',group:'inventory',kind:'move',label:'Move',scope:'rows',row_ids:['a'],instructions:'Move',quantity:'4'}],source:[rows[0],rows[1]]},actuals:[],worker_actions:[],delivery_status:'not_sent'}]:[];
  const pdf={job_id:'work',filename:'BN-1_R1.pdf',base64:fixturePdf()};
  await page.route('**/functions/v1/app-api',async(route:any)=>{
@@ -38,7 +39,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
   else if(body.operation==='get')data={job:jobs.find(j=>j.id===p.job_id),versions:[],work_reports:[],audit:[]};
   else if(body.operation==='claim'){jobs[0].owner_id=hlUserId;jobs[0].revision++;data={job:jobs[0]};}
   else if(body.operation==='add_action'){jobs[0].worker_actions.push({...p.action,worker_added:true});jobs[0].revision++;data={job:jobs[0]};}
-  else if(body.operation==='actual'){const j=jobs[0],action=[...j.body.actions,...j.worker_actions].find((a:any)=>a.id===p.action_id),source=j.body.source.find((r:any)=>r.unique_id===p.source_id);if(p.replaces_id)j.actuals.find((a:any)=>a.id===p.replaces_id).superseded=true;j.actuals.push({id:'actual'+j.actuals.length,action_id:action.id,action_snapshot:action,source_snapshot:source,quantity:Number(p.quantity),destination:p.destination,explanation:p.explanation,replaces_id:p.replaces_id,review_flags:[],created_at:new Date().toISOString()});delete j.progress[action.id];j.revision++;data={job:j};}
+  else if(body.operation==='actual'){if(actualReply){await actualReply;actualReply=null;}if(!/^[1-9][0-9]*$/.test(String(p.quantity))&&!p.replaces_id)throw new Error('Invalid actual quantity submitted');const j=jobs[0],action=[...j.body.actions,...j.worker_actions].find((a:any)=>a.id===p.action_id),source=j.body.source.find((r:any)=>r.unique_id===p.source_id);if(p.replaces_id)j.actuals.find((a:any)=>a.id===p.replaces_id).superseded=true;j.actuals.push({id:'actual'+j.actuals.length,action_id:action.id,action_snapshot:action,source_snapshot:source,quantity:Number(p.quantity),destination:p.destination,explanation:p.explanation,replaces_id:p.replaces_id,review_flags:[],created_at:new Date().toISOString()});delete j.progress[action.id];j.revision++;data={job:j};}
   else if(body.operation==='progress'){jobs[0].progress[p.action_id]={status:p.status,reason:p.reason};jobs[0].revision++;data={job:jobs[0]};}
   else if(body.operation==='complete'){jobs[0].status='complete';jobs[0].revision++;data={job:jobs[0]};}
   else throw new Error('Unexpected Bunch command '+body.operation);
@@ -50,7 +51,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
   if(body?.type!=='bunch_note_preview')return route.fallback();
   await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({ok:true,pdfs:lastPreview.reports.map((l:any,i:number)=>({...pdf,job_id:'job'+i,filename:'BN-'+i+'.pdf'}))})});
  });
- return {control,commands,jobs};
+ return {control,commands,jobs,holdActualReply:()=>{let release!:()=>void;actualReply=new Promise<void>(resolve=>{release=resolve;});return release;}};
 }
 test('creator drills through themed block/location cards and preserves multiple locations through PDF review',async({page,baseURL},testInfo)=>{
  const f=await fixture(page,baseURL!);
@@ -151,7 +152,12 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await ta.getByText('Record TA / partial work',{exact:true}).click();
  await ta.getByRole('combobox',{name:'Container size and lot',exact:true}).selectOption('a');
  await ta.getByLabel('Actual quantity',{exact:true}).fill('2');
+ const releaseActual=f.holdActualReply();
  await ta.getByRole('button',{name:'Record entry',exact:true}).click();
+ await expect(ta.getByLabel('Actual quantity',{exact:true})).toBeDisabled();
+ await expect(ta.getByRole('combobox',{name:'Container size and lot',exact:true})).toBeDisabled();
+ await expect(ta.getByRole('button',{name:'Record entry',exact:true})).toBeDisabled();
+ releaseActual();
  await ta.getByLabel('Actual quantity',{exact:true}).fill('3');
  await ta.getByRole('button',{name:'Record entry',exact:true}).click();
  await expect(ta).toContainText('Recorded 5 TA');

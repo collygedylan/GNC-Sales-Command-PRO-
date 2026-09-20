@@ -226,6 +226,8 @@
   if (!container || !account() || (view !== 'bunch-note' && !(view === 'request' && activeReqTab === 'bunch-notes'))) return;
   container.classList.add('bn-root');
   container.innerHTML = (state.error ? `<p role="alert">${esc(state.error)}</p>` : '') + (view === 'bunch-note' && author() ? state.preview ? previewHtml() : editor() : queue());
+  container.setAttribute('aria-busy', String(state.busy));
+  if (state.busy) container.querySelectorAll('input,select,textarea,button').forEach(control => { control.disabled = true; });
  }
  const invalidate = () => { state.preview = null; state.urls.forEach(url => URL.revokeObjectURL(url)); state.urls = []; };
  async function saveDraft() {
@@ -273,7 +275,7 @@
    }
   }),
   workField: (key,field,value) => {state.workForms[key]={...state.workForms[key],[field]:value};},
-  recordActual: id => run(async()=>{const j=state.detail.job,key=j.id+':'+id,form=state.workForms[key]||{};await api('actual',{job_id:j.id,action_id:id,source_id:form.source_id,quantity:form.quantity,destination:form.destination||'',explanation:form.explanation||''},j.revision,crypto.randomUUID());state.workForms[key]={source_id:form.source_id};state.detail=await api('get',{job_id:j.id});await load();}),
+  recordActual: id => run(async()=>{const j=state.detail.job,key=j.id+':'+id,form=state.workForms[key]||{};await api('actual',{job_id:j.id,action_id:id,source_id:form.source_id,quantity:form.quantity,destination:form.destination||'',explanation:form.explanation||''},j.revision,crypto.randomUUID());if(state.workForms[key]===form)state.workForms[key]={source_id:form.source_id};state.detail=await api('get',{job_id:j.id});await load();}),
   correctActual: id => {const j=state.detail.job,x=j.actuals.find(x=>x.id===id),amount=prompt('Corrected quantity (0 cancels this entry):',String(x.quantity));if(amount===null)return;const destination=actionKind(x.action_snapshot)==='ta'?'':prompt('Correct destination:',x.destination);if(destination===null)return;const explanation=prompt('Reason for this correction:');if(!explanation?.trim())return;return run(async()=>{await api('actual',{job_id:j.id,action_id:x.action_id,source_id:x.source_snapshot.unique_id,replaces_id:id,quantity:amount,destination,explanation},j.revision,crypto.randomUUID());state.detail=await api('get',{job_id:j.id});await load();});},
   workRecipient: (id,on) => {state.workRecipients=on?[...new Set([...state.workRecipients,id])]:state.workRecipients.filter(x=>x!==id);},
   previewWork: () => run(async()=>{const j=state.detail.job,{preview}=await api('work_preview',{job_id:j.id,recipient_ids:state.workRecipients},j.revision,crypto.randomUUID());await preparePdf(preview);switchView('bunch-note');}),

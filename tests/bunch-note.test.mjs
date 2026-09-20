@@ -63,7 +63,7 @@ test('uncertain command retains its id and same-user reauthentication rejects ol
  await assert.rejects(pending,/session changed/);
 });
 test('failed initial Queue read does not auto-loop; explicit refresh can recover',async()=>{
- let calls=0;const element={classList:{add(){}},innerHTML:''};
+ let calls=0;const element={classList:{add(){}},innerHTML:'',setAttribute(){},querySelectorAll:()=>[]};
  const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
@@ -71,7 +71,7 @@ test('failed initial Queue read does not auto-loop; explicit refresh can recover
 });
 
 test('a refresh staged before a command cannot overwrite the newer work state',async()=>{
- const element={classList:{add(){}},innerHTML:'unchanged'};
+ const element={classList:{add(){}},innerHTML:'unchanged',setAttribute(){},querySelectorAll:()=>[]};
  const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
  const stale=await ctx.BunchNote.stage({});
  await ctx.BunchNote.api('claim',{job_id:'work'},1,'claim-id');
@@ -79,6 +79,34 @@ test('a refresh staged before a command cannot overwrite the newer work state',a
  assert.equal(element.innerHTML,'unchanged');
  ctx.BunchNote.commit(await ctx.BunchNote.stage({}));
  assert.ok(element.innerHTML.includes('Bunch Notes'));
+});
+test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
+ const controls=Array.from({length:4},()=>({disabled:false})),attributes={},requests=[];
+ const element={classList:{add(){}},set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:()=>controls};
+ const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[{id:'ta',kind:'ta',group:'inventory',scope:'location',instructions:'TA'}],source:[]},actuals:[]};
+ let release,fail=false,command=0;
+ const ctx=runtime({crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async(_url,body)=>{
+  if(body.operation==='get')return {ok:true,data:{job,versions:[],audit:[]}};
+  if(body.operation==='catalog')return {ok:true,data:{options:[],locations:[]}};
+  if(body.operation==='directory')return {ok:true,data:{users:[]}};
+  if(body.operation==='list')return {ok:true,data:{jobs:[job]}};
+  requests.push(body);if(fail)throw new Error('offline');
+  if(requests.length===1)await new Promise(resolve=>{release=resolve;});
+  return {ok:true,data:{job}};
+ }});
+ await ctx.BunchNote.refresh();
+ await ctx.BunchNote.detail('work');
+ ctx.BunchNote.workField('work:ta','source_id','lot');ctx.BunchNote.workField('work:ta','quantity','2');
+ const pending=ctx.BunchNote.recordActual('ta');
+ assert.equal(attributes['aria-busy'],'true');assert.ok(controls.every(c=>c.disabled));
+ // A queued event or another caller must not have its newer draft erased by an old response.
+ ctx.BunchNote.workField('work:ta','quantity','3');release();await pending;
+ assert.equal(attributes['aria-busy'],'false');assert.ok(controls.every(c=>!c.disabled));
+ await ctx.BunchNote.recordActual('ta');assert.deepEqual(requests.map(r=>r.payload.quantity),['2','3']);
+ ctx.BunchNote.workField('work:ta','quantity','4');fail=true;await ctx.BunchNote.recordActual('ta');
+ fail=false;await ctx.BunchNote.recordActual('ta');
+ assert.deepEqual(requests.slice(-2).map(r=>r.payload.quantity),['4','4']);
+ assert.equal(requests.at(-1).commandId,requests.at(-2).commandId);
 });
 test('PDF repeats headers, paginates, includes all required details, and escapes instructions',()=>{
  const ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
