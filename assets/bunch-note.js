@@ -247,7 +247,8 @@
   templates, normalize, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, api, render, reset, open, author,
   scope: () => { ensureAccount(); return state.detail?.job.id || ''; },
   stage: async ctx => { ensureAccount(); const owner=account(), epoch=state.epoch, id=state.detail?.job.id; const data = await api('list', {}, null, null, ctx.signal); const detail=id&&data.jobs.some(j=>j.id===id)?await api('get',{job_id:id},null,null,ctx.signal):null; return {account:owner,epoch,jobs:data.jobs,detail,id}; },
-  commit: value => { ensureAccount(); if (value.account === account() && value.epoch === state.epoch) { state.jobs = value.jobs; state.loaded = true; if (state.detail?.job.id===value.id) state.detail=value.detail; if(getCurrentVisibleViewId()==='request'&&activeReqTab==='bunch-notes')render(); } },
+  // The live-sync coordinator schedules the repaint after typing and taps finish.
+  commit: value => { ensureAccount(); if (value.account === account() && value.epoch === state.epoch) { state.jobs = value.jobs; state.loaded = true; if (state.detail?.job.id===value.id) state.detail=value.detail; } },
   chooseBlock: block => run(async () => { if (!block) return; state.rows = (await api('inventory',{block})).rows; state.location=''; state.panels.clear(); state.draft = {id:null,revision:null,body:{block,locations:[],recipient_ids:[]}}; }),
   openDraft: id => run(async () => { const d = state.drafts.find(d => d.id === id); const rows=(await api('inventory',{block:d.block})).rows; state.draft = structuredClone(d); state.rows=rows; state.location=''; state.panels.clear(); }),
   backEditor: () => run(async () => { if(state.draft.body.locations.length)await saveDraft(); state.drafts=(await api('drafts')).drafts; invalidate(); state.draft=null; state.location=''; }),

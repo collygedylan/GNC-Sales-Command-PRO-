@@ -159,6 +159,12 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await expect(ta.getByRole('button',{name:'Record entry',exact:true})).toBeDisabled();
  releaseActual();
  await ta.getByLabel('Actual quantity',{exact:true}).fill('3');
+ // A verified refresh arriving between pointerdown and click must not replace the button.
+ await page.evaluate(async()=>{
+  const note=(window as any).BunchNote,update=await note.stage({});
+  document.getElementById('request-content')!.addEventListener('pointerdown',()=>note.commit(update),{capture:true,once:true});
+ });
+ await expect(ta.getByLabel('Actual quantity',{exact:true})).toHaveValue('3');
  await ta.getByRole('button',{name:'Record entry',exact:true}).click();
  await expect(ta).toContainText('Recorded 5 TA');
  const answers=['1','Corrected count'];const amend=(dialog:any)=>dialog.accept(answers.shift()!);

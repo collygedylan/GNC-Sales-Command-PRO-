@@ -70,7 +70,7 @@ test('failed initial Queue read does not auto-loop; explicit refresh can recover
  ctx.postAppFunctionJson=async()=>{calls++;return {ok:true,data:{jobs:[]}};};await ctx.BunchNote.refresh();assert.equal(calls,2);
 });
 
-test('a refresh staged before a command cannot overwrite the newer work state',async()=>{
+test('refresh commits preserve active controls and cannot overwrite newer commands',async()=>{
  const element={classList:{add(){}},innerHTML:'unchanged',setAttribute(){},querySelectorAll:()=>[]};
  const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
  const stale=await ctx.BunchNote.stage({});
@@ -78,6 +78,8 @@ test('a refresh staged before a command cannot overwrite the newer work state',a
  ctx.BunchNote.commit(stale);
  assert.equal(element.innerHTML,'unchanged');
  ctx.BunchNote.commit(await ctx.BunchNote.stage({}));
+ assert.equal(element.innerHTML,'unchanged');
+ ctx.BunchNote.render();
  assert.ok(element.innerHTML.includes('Bunch Notes'));
 });
 test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
