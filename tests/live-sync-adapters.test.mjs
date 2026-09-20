@@ -18,7 +18,7 @@ const demandBindingSource = html.slice(demandStart, demandEnd);
 function harness() {
     const calls = [];
     const rows = [{ unique_id: 'new', source_unique_id: 'new', id: 'new', tripnumber: 'T1', issueSourceUniqueId: 'new', allocationUniqueId: 'new', UNIQUE_ID: 'new', conversationId: 'new' }];
-    const ctx = { Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
+    const ctx = { BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
         fetchAllSupabaseRows: async (table, query) => { calls.push(['GET', table, query]); return table === 'ph_crop_roll_runs' ? [] : rows; },
         fetchPoManagementRows: async () => { calls.push(['GET', 'po']); return rows; },
         supabaseFetch: async (table, method, body, query) => { calls.push([method, table, query]); return rows; },

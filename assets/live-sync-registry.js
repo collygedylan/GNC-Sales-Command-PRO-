@@ -26,6 +26,7 @@
         users: ['profiles'],
         avOptionEval: ['ph_av_option_eval_requests'],
         evalWork: ['ph_eval_work', 'ph_eval_work_origin_rows', 'ph_eval_work_events', 'ph_request_delivery_outbox'],
+        bunchNotes: ['bunch_note_private.jobs', 'bunch_note_private.previews'],
         locationWork: ['ph_location_work_jobs', 'ph_location_work_lines', 'ph_location_work_assignments', 'ph_request_delivery_outbox'],
         shear: ['ph_shear_list', 'ph_shear_location_inquiries', 'ph_shear_location_items', 'ph_shear_location_rows', 'ph_request_delivery_outbox'],
         productionWorkflow: ['ph_production_workflow_rows'],
@@ -62,6 +63,7 @@
         reserves: data(['reserves', 'master', 'customerRepMap']),
         docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow']),
         'hl-order': data(['soc', 'master']),
+        'bunch-note': data([], ['bunchNotes']),
         request: data(['requests', 'master', 'customerRepMap']),
         reports: data(['requests', 'requestHistory', 'salesCredits', 'soc', 'master', 'reserves', 'customerRepMap'], ['settings']),
         'sales-office': data(['salesOffice', 'master', 'flyerRows', 'flyerHistory'], ['settings']),
@@ -88,6 +90,7 @@
         'dialog:av-notes': data(['avNotes']),
         'detail:reserves': data([], ['driveReserves']),
         'detail:open-orders': data([], ['driveOpenOrders']),
+        'request:bunch-notes': data([], ['bunchNotes']),
         'request:pending': data(['requests', 'requestHistory', 'salesCredits', 'inventoryEditRequests']),
         'request:reps': data(['requests', 'requestHistory', 'salesCredits']),
         'request:suspend-tag': data(['soc', 'master']),
@@ -141,7 +144,7 @@
     function getEntries(viewId, context = {}) {
         const view = views[viewId];
         if (!view) throw new Error(`Unregistered live-sync view: ${viewId}`);
-        const entries = [viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
+        const entries = [viewId === 'request' && (context.surfaces || []).includes('request:bunch-notes') ? data([], ['bunchNotes']) : viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
         if ((viewId === 'drive' || viewId === 'detail' && context.driveDetail) && context.driveAssignmentsRequired) {
             entries.push(data(['warehouseAssignedItems']));
         }

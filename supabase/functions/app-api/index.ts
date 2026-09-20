@@ -2576,6 +2576,25 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
   if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
+  if (action === "bunch_note") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      const allowed = new Set(["action", "operation", "payload", "commandId", "expectedRevision"]);
+      if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("BUNCH_NOTE_PAYLOAD_INVALID");
+      const { data, error } = await supabase.rpc("bunch_note_command_v1", {
+        p_actor_id: actor.id, p_operation: String(payload.operation || ""),
+        p_payload: payload.payload || {}, p_command_id: payload.commandId || null,
+        p_expected_revision: payload.expectedRevision ?? null,
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    } catch (error) {
+      const source = error as Record<string, unknown>;
+      const code = String(source.message || "BUNCH_NOTE_FAILED");
+      return errorResponse(code, source.code === "42501" ? 403 : /CONFLICT|CHANGED|CLAIMED/.test(code) ? 409 : 400, { code });
+    }
+  }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
   if (action === "db") {

@@ -296,7 +296,7 @@ test('lost durable receipt write keeps send intent unknown; Script receipt recov
 });
 
 test('legacy Apps Script outbox excludes HL before claiming and legacy direct HL TAGS requires app update', () => {
-  assert.match(source, /event_type=not\.in\.\(photo_history_share,hl_order_submission,hl_order_cancellation\)/);
+  assert.match(source, /event_type=not\.in\.\(photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission\)/);
   const h = createHlBackend(); const result = h.dispatch({ type: 'email', emailType: 'bloom_purpose_report', emailSubType: 'hl_tags', accessToken: token, sourceRows: [] });
   assert.equal(result.code, 'hl_order_update_app_required'); assert.match(result.message, /Update the app/); assert.equal(h.sent.length, 0); assert.equal(h.reads.length, 0);
 });

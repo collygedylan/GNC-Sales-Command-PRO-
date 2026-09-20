@@ -16931,10 +16931,99 @@ function handleSignedHlOrderDelivery_(delivery) {
   } finally { if (lock) { try { lock.releaseLock(); } catch (releaseError) {} } }
 }
 
+function buildBunchNotePdfHtml_(report) {
+  const e = escapeEmailHtml_;
+  const qty = function(value) { return value === null || value === undefined || String(value).trim() === '' || !Number.isFinite(Number(value)) ? 'Unknown' : String(Number(value)); };
+  const rows = (report.source || []).map(function(row) {
+    return '<tr><td>' + e(row.commonname) + '<br>' + e(row.itemcode) + '</td><td>' + e(row.contsize) + '</td><td>' + e(row.lotcode) + '<br>' + e(row.season) + '</td><td>Stock ' + e(qty(row.stock)) + '<br>Available ' + e(qty(row.available)) + '</td><td>' + e(row.flags || '-') + '<br>Hold ' + e(row.hold || '-') + '<br>' + e(row.warehouse || '-') + '</td><td>' + e(row.location_notes || '-') + '</td></tr>';
+  }).join('');
+  const actions = (report.actions || []).map(function(action, index) {
+    const scope = action.scope === 'location' ? 'Whole location' : (action.row_ids || []).map(function(id) {
+      const row = (report.source || []).find(function(r) { return r.unique_id === id; });
+      return row ? [row.itemcode, row.contsize, row.lotcode].join(' / ') : id;
+    }).join('; ');
+    return '<tr><td>' + (index + 1) + '<br>' + e(action.crew || action.group) + '</td><td>' + e(scope) + '</td><td>' + e(action.quantity || '-') + '<br>' + e(action.percentage ? action.percentage + '%' : '') + '</td><td>' + e(action.stage || '-') + '<br>' + e(action.destination || '-') + '<br>' + e(action.marking || '-') + '</td><td class="instructions">' + e(action.instructions) + '</td><td>☐ Done<br>☐ Not needed<br>Reason:</td></tr>';
+  }).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px}h2{font-size:15px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.instructions,.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}</style></head><body><h1>Bunch Note ' + e(report.note_number) + ' · Revision ' + e(report.instruction_revision) + '</h1><div class="meta"><b>Block:</b> ' + e(report.block) + ' <b>Location:</b> ' + e(report.location) + '<br><b>Purposes:</b> ' + e(report.purposes) + '<br><b>Priority / order:</b> ' + e(report.priority || '-') + '</div><h2>General instructions</h2><p class="pre">' + e(report.instructions || '-') + '</p><h2>Prerequisites / wait instructions</h2><p class="pre">' + e(report.prerequisites || '-') + '</p><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Season</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes</th></tr></thead><tbody>' + rows + '</tbody></table><h2>Work checklist</h2><table><thead><tr><th>Action / crew label</th><th>Applies to</th><th>Qty / %</th><th>Stage / destination / marking</th><th>Instructions</th><th>Completion</th></tr></thead><tbody>' + actions + '</tbody></table><p>Instructions and completion only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
+}
+
+function handleBunchNotePreview_(payload) {
+  try {
+    if (Object.keys(payload).some(function(key) { return ['type','nativeAuthAccessToken','previewId'].indexOf(key) === -1; })) throw new Error('BUNCH_NOTE_PREVIEW_INVALID');
+    const actor = verifyHlTagsSender_({accessToken: payload.nativeAuthAccessToken});
+    const preview = requestDeliveryRest_('rpc/bunch_note_command_v1', 'POST', '', {p_actor_id:actor.id,p_operation:'preview_read',p_payload:{preview_id:payload.previewId}});
+    let pdfs = preview.pdfs;
+    if (!pdfs) {
+      let total = 0;
+      pdfs = preview.reports.map(function(report) {
+        const filename = report.note_number + '_R' + report.instruction_revision + '.pdf';
+        const bytes = HtmlService.createHtmlOutput(buildBunchNotePdfHtml_(report)).getBlob().getAs(MimeType.PDF).getBytes();
+        total += bytes.length;
+        if (total > 15000000) throw new Error('BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS');
+        return {job_id:report.job_id,filename:filename,base64:Utilities.base64Encode(bytes)};
+      });
+      pdfs = requestDeliveryRest_('rpc/bunch_note_freeze_pdfs_v1','POST','',{p_preview_id:preview.id,p_pdfs:pdfs}).pdfs;
+    }
+    return {ok:true,pdfs:pdfs,recipients:preview.recipients};
+  } catch (error) {
+    return {ok:false,code:'BUNCH_NOTE_PREVIEW_FAILED',message:String(error.message || 'PDF preview failed. No work was published.')};
+  }
+}
+
+function bunchNoteDeliveryRecord_(delivery, status, result) {
+  return requestDeliveryRest_('rpc/bunch_note_delivery_record_v1','POST','',{
+    p_event_id:delivery.eventId,p_lease_token:delivery.leaseToken,p_status:status,p_result:result || {}
+  });
+}
+
+function handleSignedBunchNoteDelivery_(delivery) {
+  let lock, started = false;
+  try {
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) throw new Error('BUNCH_NOTE_DELIVERY_BUSY');
+    const saved = requestDeliveryRest_('rpc/bunch_note_delivery_lookup_v1','POST','',{p_event_id:delivery.eventId});
+    if (!saved || saved.event_type !== 'bunch_note_submission' || saved.event_key !== delivery.eventKey || saved.event_id !== delivery.eventId) throw new Error('BUNCH_NOTE_DELIVERY_INVALID');
+    const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(saved.event_key),Utilities.Charset.UTF_8);
+    const expectedId = '<gnc-' + digest.map(function(b) { return ('0'+(b&255).toString(16)).slice(-2); }).join('').slice(0,40) + '@request-delivery.agdatasolutions.local>';
+    if (delivery.messageIdHeader !== expectedId) throw new Error('BUNCH_NOTE_DELIVERY_INVALID');
+    const dylan = normalizeEmailAddress_(resolveRequestRecipientEmail_('dylan_collyge',''));
+    if (!isLikelyEmailAddress_(dylan)) throw new Error('BUNCH_NOTE_DYLAN_EMAIL_REQUIRED');
+    const recipients = Array.from(new Set(saved.recipients.map(function(r) { return normalizeEmailAddress_(r.email); })));
+    if (!recipients.length || recipients.indexOf(dylan) === -1 || recipients.some(function(email) { return !isLikelyEmailAddress_(email); })) throw new Error('BUNCH_NOTE_RECIPIENT_INVALID');
+    const receipt = saved.receipt && saved.receipt.gmail_message_id ? saved.receipt : getRequestDeliveryReceipt_(expectedId) || findSentRequestDeliveryByMessageId_(expectedId);
+    function durableReceipt(result) { return {gmail_message_id:result.gmailMessageId || result.gmail_message_id,thread_id:result.threadId || result.thread_id || '',message_id:expectedId,message_id_header:expectedId,recipients:recipients,mode:'bunch_note_gmail_api'}; }
+    if (receipt) {
+      const recovered = durableReceipt(receipt);
+      bunchNoteDeliveryRecord_(delivery,'sent',recovered);
+      return {ok:true,gmailMessageId:recovered.gmail_message_id,threadId:recovered.thread_id,messageId:expectedId,messageIdHeader:expectedId,recipients:recipients,recovered:true};
+    }
+    if (delivery.reconciliationOnly === true || ['sending','sent','unknown'].indexOf(saved.delivery_status) !== -1) { started=true; throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN'); }
+    if (!isGmailAdvancedServiceAvailable_()) throw new Error('BUNCH_NOTE_GMAIL_UNAVAILABLE');
+    const attachments = saved.pdfs.map(function(pdf) { return Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename); });
+    const block = saved.reports[0].block;
+    const purposes = Array.from(new Set(saved.reports.map(function(r) { return r.purposes; }))).join('; ');
+    const subject = ('BUNCH NOTES — ' + block + ' — ' + purposes).replace(/[\r\n]+/g,' ');
+    const text = saved.reports.map(function(r) { return r.note_number + ' / revision ' + r.instruction_revision + ' / ' + r.location; }).join('\n') + '\n\nEach location has a separate attached PDF. Claim and complete work in Queue → Bunch Notes.';
+    const intent = bunchNoteDeliveryRecord_(delivery,'sending',{message_id_header:expectedId,recipients:recipients});
+    if (!intent || intent.allow_send !== true) { started=true; throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN'); }
+    started=true;
+    const result = sendGmailApiMessage_({toList:recipients.join(','),toArray:recipients,subject:subject,textBody:text,htmlBody:'<pre>'+escapeEmailHtml_(text)+'</pre>',attachments:attachments,fromName:'GNC Park Hill Bunch Notes',fromAddress:resolveAutomatedEmailSenderAddress_(),messageIdHeader:expectedId});
+    if (!result || !result.ok || !result.gmailMessageId) throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN');
+    try { saveRequestDeliveryReceipt_(expectedId,result); } catch (ignored) {}
+    bunchNoteDeliveryRecord_(delivery,'sent',durableReceipt(result));
+    return Object.assign({},result,{ok:true,recipients:recipients,messageIdHeader:expectedId,mode:'bunch_note_gmail_api'});
+  } catch (error) {
+    if (started) { try { bunchNoteDeliveryRecord_(delivery,'unknown',{message_id_header:delivery.messageIdHeader}); } catch (ignored) {} }
+    const code = started ? 'BUNCH_NOTE_DELIVERY_UNKNOWN' : String(error.message || 'BUNCH_NOTE_DELIVERY_FAILED');
+    return {ok:false,code:code,deliveryUncertain:started,retryable:!started && /BUSY|UNAVAILABLE/.test(code),message:started?'Delivery needs reconciliation. Do not send another copy.':'The saved work and PDFs are retained.'};
+  } finally { if(lock) { try { lock.releaseLock(); } catch(ignored) {} } }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
   if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
+  if (eventType === 'bunch_note_submission') return handleSignedBunchNoteDelivery_(delivery);
   if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);
   if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
     return handleSignedReclassInquiryDelivery_(delivery);
@@ -17058,12 +17147,12 @@ function processRequestDeliveryOutbox_(limit) {
     events = requestDeliveryRest_(
       'ph_request_delivery_outbox',
       'GET',
-      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
+      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
       null
     );
     events.forEach(function(eventRow) {
       // The leased Edge worker exclusively owns HL email delivery and reconciliation.
-      if (['hl_order_submission', 'hl_order_cancellation'].indexOf(String(eventRow.event_type || '')) !== -1) return;
+      if (['hl_order_submission', 'hl_order_cancellation', 'bunch_note_submission'].indexOf(String(eventRow.event_type || '')) !== -1) return;
       const eventId = String(eventRow.event_id || '');
       const claimedRows = requestDeliveryRest_(
         'ph_request_delivery_outbox',
@@ -17370,6 +17459,8 @@ function doPost(e) {
     if (payload.type === 'block_clearing_pdf') {
       return jsonOutput_(handleBlockClearingPdf_(payload));
     }
+
+    if (payload.type === 'bunch_note_preview') return jsonOutput_(handleBunchNotePreview_(payload));
 
     if (payload.type === 'hl_order_preview') {
       return jsonOutput_(handleHlOrderPreview_(payload));
