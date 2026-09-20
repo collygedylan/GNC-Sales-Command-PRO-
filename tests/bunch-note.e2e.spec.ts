@@ -44,18 +44,49 @@ async function fixture(page:any,baseURL:string,worker=false) {
  });
  return {control,commands,jobs};
 }
-test('creator selects full block and multiple locations, persists draft and reviews PDFs before publish',async({page,baseURL})=>{
+test('creator drills through themed block/location cards and preserves multiple locations through PDF review',async({page,baseURL},testInfo)=>{
  const f=await fixture(page,baseURL!);
  await page.locator('#home-tile-bunch-note').click();
- await page.getByRole('combobox',{name:'Block',exact:true}).selectOption('FULL.BLOCK');
- await page.getByLabel('C.12.001',{exact:true}).check();await page.getByLabel('C.12.002',{exact:true}).check();
- await expect(page.locator('#bunch-note-content')).toContainText('Available Unknown');
- for(const [i,card] of (await page.locator('#bunch-note-content section.bn-card').all()).entries()) {
-  await card.getByLabel('Purposes',{exact:true}).fill('Rain day '+i);
-  await card.getByRole('button',{name:'Add for whole location',exact:true}).click();
+ await page.evaluate(project=>{
+  document.body.classList.add('ops-precision-pilot');
+  document.body.dataset.opsTheme=project==='cache-android'?'dark':'light';
+  document.documentElement.classList.toggle('outdoor-mode',project==='cache-iphone');
+ },testInfo.project.name);
+ const block=page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true});
+ await expect(block).toBeVisible();
+ await expect.poll(()=>block.evaluate(el=>{const probe=document.createElement('span');probe.style.color='var(--ops-surface)';el.append(probe);const same=getComputedStyle(el).backgroundColor===getComputedStyle(probe).color;probe.remove();return same;})).toBe(true);
+ await block.click();
+ for(const [i,location] of ['C.12.001','C.12.002'].entries()) {
+  await page.getByRole('button',{name:'Open location '+location,exact:true}).click();
+  await page.getByLabel('Purposes',{exact:true}).fill('Rain day '+i);
+  await expect(page.locator('.bn-plant')).toContainText('Available Unknown');
+  const selection=page.locator('.bn-plant input[type="checkbox"]');
+  const sharedAction=page.getByRole('button',{name:'Add for selected plant rows',exact:true});
+  await selection.uncheck();
+  await expect(sharedAction).toBeDisabled();
+  await selection.check();
+  await expect(sharedAction).toBeEnabled();
+  if(i===0){
+   await page.locator('.bn-plant summary').click();
+   await page.getByRole('combobox',{name:'Action for this plant',exact:true}).selectOption({label:'placement — Center house'});
+   await page.getByRole('button',{name:'Add instruction for this plant',exact:true}).click();
+   await expect(page.getByRole('textbox',{name:'Instruction',exact:true})).toHaveValue('Center house');
+  } else await page.getByRole('button',{name:'Add for whole location',exact:true}).click();
+  await expect.poll(()=>page.locator('#bunch-note-content').evaluate(el=>[el,...el.querySelectorAll('button,summary,input,select,textarea,.bn-card')].every(node=>{const box=node.getBoundingClientRect();return !box.width||(box.left>=-1&&box.right<=innerWidth+1);}))).toBe(true);
+  await expect.poll(()=>page.locator('#bunch-note-content button:visible, #bunch-note-content summary:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=44))).toBe(true);
+  await page.getByRole('button',{name:'Back to locations',exact:true}).click();
  }
- await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await page.getByRole('button',{name:'Save & back to blocks',exact:true}).click();
  await expect.poll(()=>f.commands.filter(c=>c.operation==='save').length).toBe(1);
+ await page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
+ await expect(page.getByLabel('Purposes',{exact:true})).toHaveValue('Rain day 0');
+ await expect(page.getByRole('textbox',{name:'Instruction',exact:true})).toHaveValue('Center house');
+ await page.getByRole('button',{name:'Back to locations',exact:true}).click();
+ const saved=f.commands.find(c=>c.operation==='save').payload.body;
+ expect(saved.locations.map((l:any)=>l.location)).toEqual(['C.12.001','C.12.002']);
+ expect(saved.locations[0].actions[0].row_ids).toEqual(['a']);
+ expect(saved.locations[1].actions[0].scope).toBe('location');
  await page.getByRole('button',{name:'Preview PDFs and recipients',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Review Bunch Notes PDFs'})).toBeVisible();
  await expect(page.locator('#bunch-note-content iframe')).toHaveCount(2);
