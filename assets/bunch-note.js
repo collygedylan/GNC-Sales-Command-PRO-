@@ -34,7 +34,7 @@
  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const arg = value => esc(JSON.stringify(value));
  const stock = value => quantity(value) === null ? 'Unknown' : String(quantity(value));
- const fresh = () => ({ account: '', jobs: [], loaded: false, loading: false, error: '', blocks: [], rows: [], users: [], drafts: [], draft: null, detail: null, preview: null, urls: [], filter: 'available', busy: false, commands: new Map() });
+ const fresh = () => ({ account: '', epoch: 0, jobs: [], loaded: false, loading: false, error: '', blocks: [], rows: [], users: [], drafts: [], draft: null, detail: null, preview: null, urls: [], filter: 'available', busy: false, commands: new Map() });
  let state = fresh();
  const account = () => typeof currentUser === 'undefined' ? '' : String(currentUser || '');
  const author = () => account() === 'dylan_collyge' && typeof nativeAuthSessionActive !== 'undefined' && nativeAuthSessionActive === true && typeof nativeAuthProfile !== 'undefined' && nativeAuthProfile?.username === 'dylan_collyge'
@@ -49,11 +49,12 @@
   const response = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'bunch_note', operation, payload, expectedRevision: revision, commandId }, { timeoutMs: 45000, label: 'Bunch Notes', signal, idempotencyKey: commandId || undefined });
   if (owner !== account() || ownerState !== state) throw new Error('The signed-in session changed.');
   if (!response?.ok) throw new Error(response?.message || response?.code || 'Bunch Notes could not be loaded.');
+  if (commandId) state.epoch++;
   state.commands.delete(key);
   return response.data;
  }
  async function run(work) {
-  ensureAccount(); if (state.busy) return; state.busy = true;
+  ensureAccount(); if (state.busy) return; state.busy = true; render();
   try { await work(); state.error = ''; } catch (error) {
    const code = String(error.message || error);
    state.error = code;
@@ -70,7 +71,7 @@
  async function load() {
   ensureAccount(); if (state.loading) return;
   state.loading = true;
-  try { const result = await api('list'); state.jobs = result.jobs; state.loaded = true; }
+  try { const result = await api('list'); state.jobs = result.jobs; state.loaded = true; state.epoch++; }
   finally { state.loading = false; }
  }
  async function open() {
@@ -80,7 +81,7 @@
    state.blocks = results[0].blocks; state.users = results[1].users; state.drafts = results[2].drafts;
   });
  }
- const button = (label, action, disabled = false) => `<button type="button" class="bn-button" onclick="${action}" ${disabled ? 'disabled' : ''}>${esc(label)}</button>`;
+ const button = (label, action, disabled = false, pressed = null) => `<button type="button" class="bn-button" onclick="${action}" ${disabled ? 'disabled' : ''} ${pressed === null ? '' : `aria-pressed="${pressed}"`}>${esc(label)}</button>`;
  function field(label, value, action, type = 'text') {
   return `<label class="bn-field">${esc(label)}<input type="${type}" value="${esc(value)}" oninput="${action}" /></label>`;
  }
@@ -122,7 +123,7 @@
   if (!state.loaded && !state.loading && !state.error) void run(load);
   if (state.detail) return detailHtml();
   let html = '<h2>Bunch Notes</h2><p>Claim available location work. Claimed work is visible to its owner and Dylan.</p>';
-  ['available','mine','completed', ...(author() ? ['all','cancelled'] : [])].forEach(filter => { html += button(({available:'Available',mine:'My Work',completed:'Completed',all:'All assignments',cancelled:'Canceled'})[filter], `BunchNote.filter(${arg(filter)})`); });
+  ['available','mine','completed', ...(author() ? ['all','cancelled'] : [])].forEach(filter => { html += button(({available:'Available',mine:'My Work',completed:'Completed',all:'All assignments',cancelled:'Canceled'})[filter], `BunchNote.filter(${arg(filter)})`, state.busy, state.filter === filter); });
   html += button('Refresh', 'BunchNote.refresh()');
   const uid = typeof nativeAuthProfile === 'undefined' ? '' : nativeAuthProfile?.id || '';
   const jobs = state.jobs.filter(j => state.filter === 'all' || (state.filter === 'available' ? j.status === 'open' && !j.owner_id : state.filter === 'mine' ? j.status === 'open' && j.owner_id === uid : j.status === (state.filter === 'completed' ? 'complete' : 'cancelled')));
@@ -169,8 +170,8 @@
  root.BunchNote = {
   templates, normalize, quantity, groupInventory, recipientEmails, api, render, reset, open, author,
   scope: () => { ensureAccount(); return state.detail?.job.id || ''; },
-  stage: async ctx => { const owner=account(), id=state.detail?.job.id; const data = await api('list', {}, null, null, ctx.signal); const detail=id&&data.jobs.some(j=>j.id===id)?await api('get',{job_id:id},null,null,ctx.signal):null; return {account:owner,jobs:data.jobs,detail,id}; },
-  commit: value => { ensureAccount(); if (value.account === account()) { state.jobs = value.jobs; state.loaded = true; if (state.detail?.job.id===value.id) state.detail=value.detail; if(getCurrentVisibleViewId()==='request'&&activeReqTab==='bunch-notes')render(); } },
+  stage: async ctx => { ensureAccount(); const owner=account(), epoch=state.epoch, id=state.detail?.job.id; const data = await api('list', {}, null, null, ctx.signal); const detail=id&&data.jobs.some(j=>j.id===id)?await api('get',{job_id:id},null,null,ctx.signal):null; return {account:owner,epoch,jobs:data.jobs,detail,id}; },
+  commit: value => { ensureAccount(); if (value.account === account() && value.epoch === state.epoch) { state.jobs = value.jobs; state.loaded = true; if (state.detail?.job.id===value.id) state.detail=value.detail; if(getCurrentVisibleViewId()==='request'&&activeReqTab==='bunch-notes')render(); } },
   chooseBlock: block => run(async () => { if (!block) return; state.rows = (await api('inventory',{block})).rows; state.draft = {id:null,revision:null,body:{block,locations:[],recipient_ids:[]}}; }),
   openDraft: id => run(async () => { const d = state.drafts.find(d => d.id === id); state.draft = structuredClone(d); state.rows = (await api('inventory',{block:d.block})).rows; }),
   backEditor: () => { invalidate(); state.draft = null; void open(); },

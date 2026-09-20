@@ -27,7 +27,12 @@ test('Eval Reports #2 completion routing is server-owned and submitter-aware', (
 test('the actual assigned evaluator is authorized and audited instead of the compatibility lead', () => {
   assert.match(migration, /lower\(actor\.username\) = any\(coalesce\(work\.assignee_usernames/);
   assert.match(migration, /submitted_by_username = lower\(actor\.username\)/);
-  assert.match(appApi, /p_actor_username: operation === "submit" \? actor : normalizeUsername\(row\.assignee_username\)/);
+  const evaluatorSave = appApi.slice(appApi.indexOf('if (operation === "save" || operation === "submit")'), appApi.indexOf('if (operation === "reassign")'));
+  assert.match(evaluatorSave, /isEvalWorkAssignedTo\(row, actor\)/);
+  assert.match(evaluatorSave, /p_actor_username: actor,/);
+  const shearUpdate = appApi.slice(appApi.indexOf('if (["complete", "cancel", "retry"].includes(operation))'), appApi.indexOf('const LOCATION_WORK_CREATOR'));
+  assert.match(shearUpdate, /p_actor_username: actor,/);
+  assert.doesNotMatch(shearUpdate, /row\.assignee_username/);
   assert.doesNotMatch(appApi, /p_actor_username: normalizeUsername\(row\.assignee_username\)/);
 });
 

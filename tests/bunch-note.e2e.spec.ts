@@ -2,13 +2,24 @@ import {test,expect} from '@playwright/test';
 import {installHlOrderFixture,hlUserId} from './fixtures/hl-order-state.mjs';
 
 const plant=(id:string,location:string)=>({unique_id:id,blockalpha:'FULL.BLOCK',locationcode:location,itemcode:'BN-I',commonname:'Bunch Plant',contsize:'#3',lotcode:'27.F1',season:'27.F1',stock:'0',available:null,flags:'Blue',location_notes:'Wide aisles'});
+function fixturePdf() {
+ const stream='BT /F1 12 Tf 30 70 Td (Bunch Note preview fixture) Tj ET';
+ const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 100] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`];
+ let pdf='%PDF-1.4\n';const offsets=[0];
+ objects.forEach((object,index)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${index+1} 0 obj\n${object}\nendobj\n`;});
+ const start=Buffer.byteLength(pdf);
+ pdf+=`xref\n0 ${offsets.length}\n0000000000 65535 f \n`+offsets.slice(1).map(offset=>`${String(offset).padStart(10,'0')} 00000 n \n`).join('')+`trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
+ return Buffer.from(pdf).toString('base64');
+}
 async function fixture(page:any,baseURL:string,worker=false) {
  const control=await installHlOrderFixture(page,baseURL,{username:worker?'bn_worker':'dylan_collyge',role:worker?'EVAL':'ADMIN'});
+ const headers={'access-control-allow-origin':new URL(baseURL).origin,'access-control-allow-credentials':'true'};
  const rows=[plant('a','C.12.001'),plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[];
  const jobs:any[]=worker?[{id:'work',note_number:'BN-1',block:'FULL.BLOCK',location:'C.12.001',status:'open',owner_id:null,revision:1,instruction_revision:1,progress:{},body:{purposes:'Rain day',instructions:'Keep aisles',actions:[{id:'a',group:'placement',scope:'location',instructions:'Center house'}],source:[rows[0]]},delivery_status:'not_sent'}]:[];
- const pdf={job_id:'work',filename:'BN-1_R1.pdf',base64:Buffer.from('%PDF-1.4\n'+ 'fixture '.repeat(40)).toString('base64')};
+ const pdf={job_id:'work',filename:'BN-1_R1.pdf',base64:fixturePdf()};
  await page.route('**/functions/v1/app-api',async(route:any)=>{
-  const body=route.request().postDataJSON(); if(body.action!=='bunch_note')return route.fallback();
+  if(route.request().method()!=='POST')return route.fallback();
+  const body=route.request().postDataJSON(); if(body?.action!=='bunch_note')return route.fallback();
   const p=body.payload||{};commands.push(body);let data:any={};
   if(body.operation==='blocks')data={blocks:['FULL.BLOCK']};
   else if(body.operation==='inventory')data={rows};
@@ -23,19 +34,20 @@ async function fixture(page:any,baseURL:string,worker=false) {
   else if(body.operation==='progress'){jobs[0].progress[p.action_id]={status:p.status,reason:p.reason};jobs[0].revision++;data={job:jobs[0]};}
   else if(body.operation==='complete'){jobs[0].status='complete';jobs[0].revision++;data={job:jobs[0]};}
   else throw new Error('Unexpected Bunch command '+body.operation);
-  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,data})});
+  await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({ok:true,data})});
  });
  await page.route('https://script.google.com/**',async(route:any)=>{
+  if(route.request().method()!=='POST')return route.fallback();
   let body:any;try{body=route.request().postDataJSON();}catch{return route.fallback();}
   if(body?.type!=='bunch_note_preview')return route.fallback();
-  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,pdfs:drafts[0].body.locations.map((l:any,i:number)=>({...pdf,job_id:'job'+i,filename:'BN-'+i+'.pdf'}))})});
+  await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({ok:true,pdfs:drafts[0].body.locations.map((l:any,i:number)=>({...pdf,job_id:'job'+i,filename:'BN-'+i+'.pdf'}))})});
  });
  return {control,commands,jobs};
 }
 test('creator selects full block and multiple locations, persists draft and reviews PDFs before publish',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
  await page.locator('#home-tile-bunch-note').click();
- await page.getByLabel('Block',{exact:true}).selectOption('FULL.BLOCK');
+ await page.getByRole('combobox',{name:'Block',exact:true}).selectOption('FULL.BLOCK');
  await page.getByLabel('C.12.001',{exact:true}).check();await page.getByLabel('C.12.002',{exact:true}).check();
  await expect(page.locator('#bunch-note-content')).toContainText('Available Unknown');
  for(const [i,card] of (await page.locator('#bunch-note-content section.bn-card').all()).entries()) {
@@ -63,6 +75,7 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await page.getByRole('button',{name:'Claim work',exact:true}).click();
  await page.getByRole('button',{name:'My Work',exact:true}).click();
+ await expect(page.getByRole('button',{name:'My Work',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await expect(page.getByRole('button',{name:'Complete location',exact:true})).toBeDisabled();
  await page.getByRole('button',{name:'Done',exact:true}).click();

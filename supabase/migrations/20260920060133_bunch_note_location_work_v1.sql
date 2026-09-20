@@ -199,7 +199,7 @@ begin
       or (act->>'percentage')::numeric<=0 or (act->>'percentage')::numeric>100) then raise exception 'BUNCH_NOTE_PERCENTAGE_INVALID'; end if;
     if nullif(act->>'quantity','') is not null and nullif(act->>'percentage','') is not null then raise exception 'BUNCH_NOTE_QUANTITY_OR_PERCENTAGE'; end if;
     if act->>'scope'='rows' and (jsonb_typeof(act->'row_ids') is distinct from 'array' or jsonb_array_length(act->'row_ids')=0
-      or not (entry->'row_ids' @> act->'row_ids')) then raise exception 'BUNCH_NOTE_ACTION_ROWS_INVALID'; end if;
+      or not ((entry->'row_ids') @> (act->'row_ids'))) then raise exception 'BUNCH_NOTE_ACTION_ROWS_INVALID'; end if;
    end loop;
    owner:=nullif(entry->>'owner_id','')::uuid;
    if owner is not null then perform bunch_note_private.actor(owner); end if;
@@ -212,7 +212,7 @@ begin
    returning * into batch;
   result:=jsonb_build_object('draft',to_jsonb(batch));
  elsif p_operation='preview' then
-  if exists(select 1 from public.app_dataset_revisions where key='ph_master_inventory' and state<>'ready') then raise exception 'BUNCH_NOTE_SOURCE_REFRESH_REQUIRED'; end if;
+  if exists(select 1 from public.app_dataset_revisions r where r.key='ph_master_inventory' and r.state<>'ready') then raise exception 'BUNCH_NOTE_SOURCE_REFRESH_REQUIRED'; end if;
   select * into batch from bunch_note_private.batches where id=(p_payload->>'batch_id')::uuid for update;
   if not found or batch.created_by<>actor.id or batch.revision is distinct from p_expected_revision then raise exception 'BUNCH_NOTE_REVISION_CONFLICT'; end if;
   for entry in select value from jsonb_array_elements(batch.body->'locations') loop
@@ -234,7 +234,7 @@ begin
   result:=jsonb_build_object('preview',to_jsonb(preview)-'pdfs');
  elsif p_operation='publish' then
   lock table public.ph_master_inventory in share mode;
-  if exists(select 1 from public.app_dataset_revisions where key='ph_master_inventory' and state<>'ready') then raise exception 'BUNCH_NOTE_SOURCE_REFRESH_REQUIRED'; end if;
+  if exists(select 1 from public.app_dataset_revisions r where r.key='ph_master_inventory' and r.state<>'ready') then raise exception 'BUNCH_NOTE_SOURCE_REFRESH_REQUIRED'; end if;
   select * into preview from bunch_note_private.previews where id=(p_payload->>'preview_id')::uuid for update;
   if not found or preview.created_by<>actor.id or preview.expires_at<=now() or preview.published or preview.pdfs is null then raise exception 'BUNCH_NOTE_PREVIEW_REQUIRED'; end if;
   select * into batch from bunch_note_private.batches where id=preview.batch_id for update;
@@ -359,7 +359,7 @@ begin
    or left(f->>'base64',7)<>'JVBERi0' or length(f->>'base64')<100 then raise exception 'BUNCH_NOTE_PDF_INVALID'; end if;
   total:=total+octet_length(decode(f->>'base64','base64'));
  end loop;
- if (select count(distinct f->>'job_id') from jsonb_array_elements(p_pdfs) f)<>jsonb_array_length(p.reports) then raise exception 'BUNCH_NOTE_PDF_INVALID'; end if;
+ if (select count(distinct pdf_value->>'job_id') from jsonb_array_elements(p_pdfs) pdf_value)<>jsonb_array_length(p.reports) then raise exception 'BUNCH_NOTE_PDF_INVALID'; end if;
  if total>15000000 then raise exception 'BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS'; end if;
  update bunch_note_private.previews set pdfs=p_pdfs where id=p.id;
  return jsonb_build_object('pdfs',p_pdfs);

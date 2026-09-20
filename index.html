@@ -63897,7 +63897,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','managers','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['bunch-note','drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','managers','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));

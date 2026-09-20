@@ -21,7 +21,7 @@ export type AppSessionClaims = {
   exp: number;
 };
 
-export function normalizeUsername(value = "") {
+export function normalizeUsername(value: unknown = "") {
   return String(value || "")
     .trim()
     .toLowerCase()

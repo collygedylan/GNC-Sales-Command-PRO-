@@ -833,7 +833,7 @@ async function loadShearLocationInquiries(status = "active", inquiryId = "", inc
   if (inquiryId) query = query.eq("id", inquiryId);
   else if (status === "active") query = query.in("status", ["open", "in_progress"]);
   else if (["open", "in_progress", "complete", "cancelled"].includes(status)) query = query.eq("status", status);
-  const { data: inquiries, error } = await query;
+  const { data: inquiries, error } = await query.returns<Record<string, unknown>[]>();
   if (error) throw error;
   const ids = (inquiries || []).map((row) => String(row.id || "")).filter(Boolean);
   if (!ids.length) return [];
@@ -945,7 +945,7 @@ async function handleShearLocationAction(
         : "retry_shear_location_delivery_v1";
       const { data, error } = await supabase.rpc(rpcName, {
         p_inquiry_id: inquiryId,
-        p_actor_username: operation === "submit" ? actor : normalizeUsername(row.assignee_username),
+        p_actor_username: actor,
         p_expected_revision: expectedRevision,
       });
       if (error) throw error;
@@ -1010,7 +1010,7 @@ async function loadLocationWorkJobs(actor: string, status = "active", jobId = ""
   else if (status === "active") query = query.in("status", ["open", "in_progress"]);
   else if (["open", "in_progress", "complete", "cancelled"].includes(status)) query = query.eq("status", status);
   if (actor !== LOCATION_WORK_CREATOR) query = query.contains("assigned_usernames", [actor]);
-  const { data: jobs, error } = await query;
+  const { data: jobs, error } = await query.returns<Record<string, unknown>[]>();
   if (error) throw error;
   const ids = (jobs || []).map((job) => String(job.id || "")).filter(Boolean);
   if (!ids.length) return [];
@@ -1360,7 +1360,7 @@ function evalWorkV1Origin(row: Record<string, unknown>) {
   };
 }
 
-async function withEvalWorkOrigins(rows: Record<string, unknown>[]) {
+async function withEvalWorkOrigins(rows: Record<string, unknown>[]): Promise<Array<Record<string, unknown> & { origins: Record<string, unknown>[] }>> {
   const v2Ids = rows.filter((row) => String(row.contract_version || "") === "eval-work-v2-multi-origin")
     .map((row) => String(row.id || "")).filter(Boolean);
   let byWork = new Map<string, Record<string, unknown>[]>();

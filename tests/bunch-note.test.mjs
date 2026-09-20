@@ -58,6 +58,17 @@ test('failed initial Queue read does not auto-loop; explicit refresh can recover
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
  ctx.postAppFunctionJson=async()=>{calls++;return {ok:true,data:{jobs:[]}};};await ctx.BunchNote.refresh();assert.equal(calls,2);
 });
+
+test('a refresh staged before a command cannot overwrite the newer work state',async()=>{
+ const element={classList:{add(){}},innerHTML:'unchanged'};
+ const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
+ const stale=await ctx.BunchNote.stage({});
+ await ctx.BunchNote.api('claim',{job_id:'work'},1,'claim-id');
+ ctx.BunchNote.commit(stale);
+ assert.equal(element.innerHTML,'unchanged');
+ ctx.BunchNote.commit(await ctx.BunchNote.stage({}));
+ assert.ok(element.innerHTML.includes('Bunch Notes'));
+});
 test('PDF repeats headers, paginates, includes all required details, and escapes instructions',()=>{
  const ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
  vm.runInContext(gas.slice(gas.indexOf('function buildBunchNotePdfHtml_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
