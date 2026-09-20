@@ -24,9 +24,20 @@ test('stock zero, unknown and invalid values remain distinct',()=>{
  for(const value of [null,undefined,'','  ','N/A',false,{},'Infinity']) assert.equal(q(value),null);
  assert.equal(q('0'),0);assert.equal(q(' 12.5 '),12.5);assert.equal(q('-2'),-2);
 });
+test('item cards combine sizes and lots, deduplicate only source identity, and keep incomplete totals unknown',()=>{
+ const b=runtime().BunchNote,r={unique_id:'1',locationcode:' a.1 ',itemcode:' plant ',contsize:'#3',lotcode:'one',stock:'10',review:'0',available:'8'};
+ const groups=b.groupItems([r,{...r},{...r,unique_id:'2',itemcode:'PLANT',contsize:'#5',lotcode:'two',stock:'20',review:null,available:'0'},{...r,unique_id:'3',locationcode:'A.2'},{...r,unique_id:'4',itemcode:''},{...r,unique_id:'5',itemcode:''}]);
+ assert.equal(groups.length,4);assert.equal(groups[0].rows.length,2);assert.equal(groups[0].stock,30);assert.equal(groups[0].review,null);assert.equal(groups[0].available,8);
+ assert.equal(groups[1].review,0);
+});
+test('Shift/Hauling accepts either season condition OR designation and never Open Stock',()=>{
+ const eligible=runtime().BunchNote.shiftEligible;
+ for(const r of [{season:'27.y'},{season:'U3A'},{season:'F1',desigitem:'pre-shft'},{season:null,desigitem:'SHFT'}])assert.equal(eligible(r),true);
+ for(const r of [{season:'F1',desigitem:''},{season:null,desigitem:null},{season:'',s_lts:'Y'}])assert.equal(eligible(r),false);
+});
 test('catalog covers every action group without assigning instruction labels',()=>{
  const templates=runtime().BunchNote.templates;
- assert.deepEqual([...new Set(templates.map(t=>t.group))],['sequence','grading','hauling','placement','identification','inventory']);
+ assert.deepEqual([...new Set(templates.map(t=>t.group))],['sequence','grading','hauling','placement','inventory']);
  for(const label of ['Early protection','Rain-day preparation','Shear before bunching','Wait for hauling before bunching','Center house','Countable rows','Variety mixes','Obsolete-location review']) assert.ok(templates.some(t=>t.label===label));
  assert.ok(templates.every(t=>!t.owner_id&&!t.recipient_ids));
 });
@@ -73,8 +84,17 @@ test('PDF repeats headers, paginates, includes all required details, and escapes
  const ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
  vm.runInContext(gas.slice(gas.indexOf('function buildBunchNotePdfHtml_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
  const html=ctx.buildBunchNotePdfHtml_({note_number:'BN-1',instruction_revision:2,block:'FULL.BLOCK',location:'C.12.1',purposes:'Rain day',priority:'1',instructions:'<script>bad</script>',prerequisites:'Wait for hauling',source:[{unique_id:'row',itemcode:'I-1',commonname:'Plant',contsize:'#3',lotcode:'27.F1',stock:0,available:null,location_notes:'Keep aisles',flags:'Blue'}],actions:Array.from({length:200},(_,i)=>({id:String(i),scope:'rows',row_ids:['row'],instructions:'Work '+i,crew:'BOB',quantity:'5',stage:'Sheared',marking:'Pink'}))});
- for(const expected of ['table-header-group','counter(page)','counter(pages)','Revision 2','FULL.BLOCK','C.12.1','Stock 0','Available Unknown','Keep aisles','Work 199','BOB','Sheared','Pink'])assert.ok(html.includes(expected),expected);
+ for(const expected of ['table-header-group','counter(page)','counter(pages)','Revision 2','FULL.BLOCK','C.12.1','On Hand 0','Review Unknown','Available Unknown','Keep aisles','Work 199','BOB','Sheared','Pink'])assert.ok(html.includes(expected),expected);
  assert.ok(html.includes('&lt;script&gt;bad'));assert.ok(!html.includes('<script>bad'));
+});
+test('completed-work PDF separates planned/actual types and excludes superseded corrections from totals',()=>{
+ const ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('<','&lt;')});
+ vm.runInContext(gas.slice(gas.indexOf('function buildBunchNotePdfHtml_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
+ const source={unique_id:'lot',itemcode:'plant',contsize:'#3',lotcode:'Y1',stock:0,review:null,available:0},ta={id:'ta',label:'TA',kind:'ta',quantity:4},move={id:'move',label:'Move',kind:'move',worker_added:true};
+ const actual=(action,quantity,extra={})=>({action_id:action.id,action_snapshot:action,source_snapshot:source,quantity,review_flags:[],...extra});
+ const html=ctx.buildBunchNotePdfHtml_({note_number:'BN-1',instruction_revision:1,report_kind:'completed_work',work_revision:8,source:[source],actions:[ta,move],progress:{},actuals:[actual(ta,9,{superseded:true}),actual(ta,4,{replaces_id:'old'}),actual(move,3,{destination:'NEW.LOC',explanation:'<review>',review_flags:['exceeds_saved_stock']})]});
+ for(const expected of ['Completed work 8','TA: 4','MOVE: 3','Planned 4','Actual 4','NEW.LOC','Correction; current','Replaced; excluded from totals','Worker added','REVIEW:','&lt;review>','LOC Review Unknown'])assert.ok(html.includes(expected),expected);
+ assert.ok(!html.includes('TA: 13'));
 });
 function deliveryRuntime({prior='pending',loseAck=false,recovered=false}={}) {
  const calls=[];const saved={event_id:'e',event_key:'key',event_type:'bunch_note_submission',delivery_status:prior,recipients:[{email:'dylan@example.test'},{email:'worker@example.test'}],pdfs:[{base64:'pdf',filename:'BN-1.pdf'}],reports:[{block:'C.12',purposes:'Rain day',note_number:'BN-1',instruction_revision:1,location:'C.12.1'}]};

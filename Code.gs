@@ -16933,18 +16933,41 @@ function handleSignedHlOrderDelivery_(delivery) {
 
 function buildBunchNotePdfHtml_(report) {
   const e = escapeEmailHtml_;
-  const qty = function(value) { return value === null || value === undefined || String(value).trim() === '' || !Number.isFinite(Number(value)) ? 'Unknown' : String(Number(value)); };
-  const rows = (report.source || []).map(function(row) {
-    return '<tr><td>' + e(row.commonname) + '<br>' + e(row.itemcode) + '</td><td>' + e(row.contsize) + '</td><td>' + e(row.lotcode) + '<br>' + e(row.season) + '</td><td>Stock ' + e(qty(row.stock)) + '<br>Available ' + e(qty(row.available)) + '</td><td>' + e(row.flags || '-') + '<br>Hold ' + e(row.hold || '-') + '<br>' + e(row.warehouse || '-') + '</td><td>' + e(row.location_notes || '-') + '</td></tr>';
+  const number = function(v) { return v === null || v === undefined || String(v).trim() === '' || !/^-?\d+(\.\d+)?$/.test(String(v).trim()) ? null : Number(v); };
+  const qty = function(v) { return number(v) === null ? 'Unknown' : String(number(v)); };
+  const kind = function(a) { return a.kind || (String(a.label || a.instructions || '').indexOf('TA / culls') === 0 ? 'ta' : a.label === 'Move' ? 'move' : a.group === 'hauling' && String(a.label || a.instructions || '').indexOf('Wait') !== 0 ? 'hauling' : 'instruction'); };
+  const reviewText = function(flags) { return flags.map(function(f) { return ({exceeds_saved_stock:'Quantity exceeds saved stock',saved_stock_unknown:'Saved stock is unknown',exceeds_planned_quantity:'Quantity exceeds the plan',differs_from_planned_quantity:'Quantity differs from the plan'})[f] || f; }).join('; '); };
+  const work = report.report_kind === 'completed_work';
+  const actuals = report.actuals || [], current = actuals.filter(function(a) { return !a.superseded; });
+  const seen = new Set(), items = new Map();
+  (report.source || []).forEach(function(r) {
+    if (!r.unique_id || seen.has(r.unique_id)) return;
+    seen.add(r.unique_id);
+    const key = String(r.itemcode || '').trim().toUpperCase() || '@' + r.unique_id;
+    if (!items.has(key)) items.set(key, []);
+    items.get(key).push(r);
+  });
+  let rows = '';
+  items.forEach(function(lots, itemcode) {
+    const total = function(field) { const values=lots.map(function(r) { return number(r[field]); }); return values.some(function(v) { return v===null; }) ? 'Unknown' : String(values.reduce(function(sum,v) { return sum+v; },0)); };
+    rows += '<tr class="item"><td colspan="6"><b>' + e(itemcode) + ' · ' + e(lots[0].commonname) + '</b><br>LOC On Hand ' + e(total('stock')) + ' · LOC Review ' + e(total('review')) + ' · LOC Available ' + e(total('available')) + '</td></tr>';
+    rows += lots.map(function(r) { return '<tr><td>'+e(r.commonname)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'</td><td>'+e(r.lotcode)+'<br>Season '+e(r.season || 'Unknown')+'<br>DesigItem '+e(r.desigitem || '—')+'</td><td>On Hand '+e(qty(r.stock))+'<br>Review '+e(qty(r.review))+'<br>Available '+e(qty(r.available))+'</td><td>'+e(r.flags || '—')+'<br>'+e(r.hold || '—')+'<br>'+e(r.warehouse || '—')+'</td><td>'+e(r.location_notes || '—')+'<br><small>'+e(r.unique_id)+'</small></td></tr>'; }).join('');
+  });
+  const actions = (report.actions || []).map(function(a) {
+    const target = a.scope === 'location' ? 'Whole location' : (a.row_ids || []).map(function(id) { const r=(report.source||[]).find(function(r) { return r.unique_id===id; }); return r ? [r.itemcode,r.contsize,r.lotcode].join(' / ') : id; }).join('; ');
+    const recorded = current.filter(function(x) { return x.action_id===a.id; });
+    const status = (report.progress || {})[a.id] || {};
+    const completion = work ? e(status.status || 'Unresolved')+'<br>'+e(status.reason || '')+(status.review_flags && status.review_flags.length ? '<br><b>REVIEW: '+e(reviewText(status.review_flags))+'</b>' : '') : '☐ Done<br>☐ Not needed<br>Reason:';
+    return '<tr><td>'+e(a.label || a.group)+'<br>'+e(a.crew || '')+(a.worker_added?'<br><b>Worker added</b>':'')+'</td><td>'+e(target)+'</td><td>Planned '+e(a.quantity || '—')+' / '+e(a.percentage || '—')+'%'+(work?'<br>Actual '+(recorded.length?e(recorded.reduce(function(sum,x) { return sum+Number(x.quantity); },0)):'Not recorded'):'')+'</td><td>'+e(a.stage || '')+'<br>'+e(a.destination || '')+'<br>'+e(a.marking || '')+'</td><td class="pre">'+e(a.instructions)+'</td><td>'+completion+'</td></tr>';
   }).join('');
-  const actions = (report.actions || []).map(function(action, index) {
-    const scope = action.scope === 'location' ? 'Whole location' : (action.row_ids || []).map(function(id) {
-      const row = (report.source || []).find(function(r) { return r.unique_id === id; });
-      return row ? [row.itemcode, row.contsize, row.lotcode].join(' / ') : id;
-    }).join('; ');
-    return '<tr><td>' + (index + 1) + '<br>' + e(action.crew || action.group) + '</td><td>' + e(scope) + '</td><td>' + e(action.quantity || '-') + '<br>' + e(action.percentage ? action.percentage + '%' : '') + '</td><td>' + e(action.stage || '-') + '<br>' + e(action.destination || '-') + '<br>' + e(action.marking || '-') + '</td><td class="instructions">' + e(action.instructions) + '</td><td>☐ Done<br>☐ Not needed<br>Reason:</td></tr>';
-  }).join('');
-  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px}h2{font-size:15px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.instructions,.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}</style></head><body><h1>Bunch Note ' + e(report.note_number) + ' · Revision ' + e(report.instruction_revision) + '</h1><div class="meta"><b>Block:</b> ' + e(report.block) + ' <b>Location:</b> ' + e(report.location) + '<br><b>Purposes:</b> ' + e(report.purposes) + '<br><b>Priority / order:</b> ' + e(report.priority || '-') + '</div><h2>General instructions</h2><p class="pre">' + e(report.instructions || '-') + '</p><h2>Prerequisites / wait instructions</h2><p class="pre">' + e(report.prerequisites || '-') + '</p><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Season</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes</th></tr></thead><tbody>' + rows + '</tbody></table><h2>Work checklist</h2><table><thead><tr><th>Action / crew label</th><th>Applies to</th><th>Qty / %</th><th>Stage / destination / marking</th><th>Instructions</th><th>Completion</th></tr></thead><tbody>' + actions + '</tbody></table><p>Instructions and completion only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
+  let recorded = '';
+  if (work) {
+    const totals={};
+    current.forEach(function(a) { const type=kind(a.action_snapshot);totals[type]=(totals[type]||0)+Number(a.quantity); });
+    recorded='<h2>Recorded totals by action type</h2><p>'+Object.keys(totals).map(function(type) { return e(type.toUpperCase())+': '+e(totals[type]); }).join(' · ')+'</p><h2>Actual work and correction history</h2><table><thead><tr><th>Action / item</th><th>Size / lot</th><th>Quantity / destination</th><th>Record / actor</th><th>Explanation / review</th></tr></thead><tbody>'+
+      actuals.map(function(a) { const r=a.source_snapshot;return '<tr><td>'+e(a.action_snapshot.label || a.action_snapshot.instructions)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'<br>'+e(r.lotcode)+'</td><td>'+e(a.quantity)+'<br>'+e(a.destination || '—')+'</td><td>'+e(a.created_at)+'<br>'+e(a.actor_id)+'<br>'+e(a.superseded?'Replaced; excluded from totals':a.replaces_id?'Correction; current':'Current')+'</td><td class="pre">'+e(a.explanation || '—')+(a.review_flags.length?'<br><b>REVIEW: '+e(reviewText(a.review_flags))+'</b>':'')+'</td></tr>'; }).join('')+'</tbody></table>';
+  }
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px}h2{font-size:15px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}</style></head><body><h1>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h1><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Purposes:</b> '+e(report.purposes)+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+e(report.instructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+e(report.prerequisites || '—')+'</p><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table><h2>Work checklist'+(work?' — planned versus actual':'')+'</h2><table><thead><tr><th>Action / crew label</th><th>Applies to</th><th>Qty / %</th><th>Stage / destination / marking</th><th>Instructions</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table>'+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
 }
 
 function handleBunchNotePreview_(payload) {
@@ -16956,7 +16979,7 @@ function handleBunchNotePreview_(payload) {
     if (!pdfs) {
       let total = 0;
       pdfs = preview.reports.map(function(report) {
-        const filename = report.note_number + '_R' + report.instruction_revision + '.pdf';
+        const filename = report.note_number + (report.report_kind === 'completed_work' ? '_WORK_R' + report.work_revision : '_R' + report.instruction_revision) + '.pdf';
         const bytes = HtmlService.createHtmlOutput(buildBunchNotePdfHtml_(report)).getBlob().getAs(MimeType.PDF).getBytes();
         total += bytes.length;
         if (total > 15000000) throw new Error('BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS');
@@ -17002,8 +17025,9 @@ function handleSignedBunchNoteDelivery_(delivery) {
     const attachments = saved.pdfs.map(function(pdf) { return Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename); });
     const block = saved.reports[0].block;
     const purposes = Array.from(new Set(saved.reports.map(function(r) { return r.purposes; }))).join('; ');
-    const subject = ('BUNCH NOTES — ' + block + ' — ' + purposes).replace(/[\r\n]+/g,' ');
-    const text = saved.reports.map(function(r) { return r.note_number + ' / revision ' + r.instruction_revision + ' / ' + r.location; }).join('\n') + '\n\nEach location has a separate attached PDF. Claim and complete work in Queue → Bunch Notes.';
+    const completedWork = saved.reports[0].report_kind === 'completed_work';
+    const subject = ('BUNCH NOTES — ' + (completedWork ? 'COMPLETED WORK — ' : '') + block + ' — ' + purposes).replace(/[\r\n]+/g,' ');
+    const text = saved.reports.map(function(r) { return r.note_number + ' / revision ' + r.instruction_revision + ' / ' + r.location; }).join('\n') + (completedWork ? '\n\nCompleted work, quantities, destinations and corrections are recorded in the attached PDF. No inventory quantities were changed.' : '\n\nEach location has a separate attached PDF. Claim and complete work in Queue → Bunch Notes.');
     const intent = bunchNoteDeliveryRecord_(delivery,'sending',{message_id_header:expectedId,recipients:recipients});
     if (!intent || intent.allow_send !== true) { started=true; throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN'); }
     started=true;
