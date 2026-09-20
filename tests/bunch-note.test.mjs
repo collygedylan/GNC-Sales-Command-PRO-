@@ -9,8 +9,46 @@ function runtime(extra={}) {
  const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,
   currentUser:'dylan_collyge',nativeAuthSessionActive:true,nativeAuthProfile:{id:'dylan',username:'dylan_collyge',must_change_password:false},
   APP_API_FUNCTION_URL:'https://fixture.invalid',postAppFunctionJson:async()=>({ok:true,data:{jobs:[]}}),...extra});
- vm.runInContext(js,ctx); return ctx;
+ vm.runInContext(read('assets/location-code.js'),ctx);vm.runInContext(js,ctx); return ctx;
 }
+
+test('base location cards preserve exact bays and nonstandard codes',()=>{
+ const b=runtime().BunchNote;
+ assert.deepEqual(plain([...b.locationGroups([' d.08.001 ','D.08.002','D.08.001','0.00.111','D.08','SPECIAL.LOC','D.08.001.EXTRA'])]),
+  [['0.00',['0.00.111']],['D.08',['D.08','D.08.001','D.08.002']],['D.08.001.EXTRA',['D.08.001.EXTRA']],['SPECIAL.LOC',['SPECIAL.LOC']]]);
+ assert.equal(b.baseLocation('D.08'),'D.08');assert.equal(b.baseLocation('SPECIAL.LOC'),'SPECIAL.LOC');
+});
+
+test('destination sales years use only the actual year and keep mixed groups separate',()=>{
+ const b=runtime().BunchNote;
+ assert.equal(b.salesYear('26'),'2026');assert.equal(b.salesYear(' 2026 '),'2026');
+ for(const v of ['',null,'26.Y','unknown'])assert.equal(b.salesYear(v),'');
+ const groups=b.sourceGroups([{itemcode:' A ',salesyear:'26',season:'27.Y'},{itemcode:'a',salesyear:'2026'},{itemcode:'A',salesyear:'27'},{itemcode:'A',season:'26.Y'}]);
+ assert.deepEqual([...groups].map(([key,rows])=>[key,rows.length]),[['A|2026',2],['A|2027',1],['A|',1]]);
+ assert.equal(b.templates.find(t=>t.label==='Grade and Save / Move To').kind,'move');
+});
+
+test('top-level Back traverses item, bay and base while retaining planned destination and draft input',async()=>{
+ const row={unique_id:'source',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',commonname:'Plant',salesyear:'26',contsize:'#3',lotcode:'LOT',stock:0,review:null,available:0};
+ const element={classList:{add(){}},innerHTML:'',setAttribute(){},querySelectorAll:()=>[]};let saved,serial=0;
+ const option={id:'move',category:'grading',label:'Grade and Save / Move To',kind:'move',active:true};
+ const ctx=runtime({crypto:{randomUUID:()=>String(++serial)},document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},postAppFunctionJson:async(_url,body)=>{
+  const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.08.001','D.09.001']}:body.operation==='inventory'?{rows:[row]}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.08.001','D.09.001','OTHER'],matching:[{...row,locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
+  return {ok:true,data};
+ }}),b=ctx.BunchNote;
+ await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('Open location D.08"'));
+ assert.ok(!element.innerHTML.includes('Open location D.08.001"'));
+ b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');b.openItem('D.08.001|PLANT');
+ const key='item:0:D.08.001|PLANT';b.chooseOption(key+':grading','move',true);await b.addChoices(key,'grading');b.editAction(0,0,'quantity','4');
+ await b.chooseDestination('planned',0,0);assert.ok(element.innerHTML.includes('Locations with this item'));assert.ok(element.innerHTML.includes('All other locations'));
+ b.destinationBase('D.09');b.pickDestination('D.09.001');await b.save();
+ assert.equal(saved.locations[0].actions[0].destination,'D.09.001');assert.equal(saved.locations[0].actions[0].destination_mode,'matching');
+ assert.equal(saved.locations[0].source_all[0].locationcode,'D.08.001');
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open item PLANT'));assert.ok(!element.innerHTML.includes('Choose destination'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08.001"'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08"'));
+ assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);
+});
 test('complete normalized block/location grouping keeps all seasons and deduplicates identity',()=>{
  const b=runtime().BunchNote;
  const r={unique_id:'1',blockalpha:' c.12.full ',locationcode:' c.12.0001 ',season:'26.F1'};

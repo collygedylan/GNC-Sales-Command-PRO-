@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {installHlOrderFixture,hlUserId} from './fixtures/hl-order-state.mjs';
 
-const plant=(id:string,location:string)=>({unique_id:id,blockalpha:'FULL.BLOCK',locationcode:location,itemcode:'BN-I',commonname:'Bunch Plant',contsize:'#3',lotcode:'27.F1',season:'27.Y',desigitem:'',stock:'10',review:'0',available:null,flags:'Blue',location_notes:'Wide aisles'});
+const plant=(id:string,location:string)=>({unique_id:id,blockalpha:'FULL.BLOCK',locationcode:location,itemcode:'BN-I',commonname:'Bunch Plant',contsize:'#3',lotcode:'27.F1',salesyear:'27',season:'27.Y',desigitem:'',stock:'10',review:'0',available:null,flags:'Blue',location_notes:'Wide aisles'});
 function fixturePdf() {
  const stream='BT /F1 12 Tf 30 70 Td (Bunch Note preview fixture) Tj ET';
  const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 100] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`];
@@ -15,7 +15,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
  const control=await installHlOrderFixture(page,baseURL,{username:worker?'bn_worker':'dylan_collyge',role:worker?'EVAL':'ADMIN'});
  const headers={'access-control-allow-origin':new URL(baseURL).origin,'access-control-allow-credentials':'true'};
  const rows=[plant('a','C.12.001'),{...plant('a2','C.12.001'),contsize:'#5',lotcode:'LOT2',season:'27.F1',stock:'20',review:null},plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[];
- const options:any[]=[['sequence','Early protection','instruction'],['grading','Shear before bunching','instruction'],['placement','Center house','instruction'],['placement','Variety mixes','instruction'],['inventory','TA / culls follow-up','ta'],['inventory','Move','move'],['hauling','Grade shift','hauling']].map(([category,label,kind],i)=>({id:'option'+i,category,label,kind,active:true,revision:1}));
+ const options:any[]=[['sequence','Early protection','instruction'],['grading','Shear before bunching','instruction'],['grading','Grade and Save / Move To','move'],['placement','Center house','instruction'],['placement','Variety mixes','instruction'],['inventory','TA / culls follow-up','ta'],['inventory','Move','move'],['hauling','Grade shift','hauling']].map(([category,label,kind],i)=>({id:'option'+i,category,label,kind,active:true,revision:1}));
  let lastPreview:any=null;
  let actualReply:Promise<void>|null=null;
  const jobs:any[]=worker?[{id:'work',note_number:'BN-1',block:'FULL.BLOCK',location:'C.12.001',status:'open',owner_id:null,revision:1,instruction_revision:1,progress:{},body:{purposes:'Rain day',instructions:'Keep aisles',actions:[{id:'a',group:'placement',scope:'location',instructions:'Center house'},{id:'ta',group:'inventory',kind:'ta',label:'TA / culls follow-up',scope:'rows',row_ids:['a'],instructions:'TA / culls follow-up',quantity:'5'},{id:'move',group:'inventory',kind:'move',label:'Move',scope:'rows',row_ids:['a'],instructions:'Move',quantity:'4'}],source:[rows[0],rows[1]]},actuals:[],worker_actions:[],delivery_status:'not_sent'}]:[];
@@ -26,6 +26,9 @@ async function fixture(page:any,baseURL:string,worker=false) {
   const p=body.payload||{};commands.push(body);let data:any={};
   if(body.operation==='catalog')data={options,locations:['C.12.001','C.12.002']};
   else if(body.operation==='option_add'){const option={id:'custom'+options.length,category:p.category,label:p.label,kind:p.kind,active:true,revision:1};options.push(option);data={option};}
+  else if(body.operation==='destination_lookup')data={itemcode:'BN-I',salesyear:'2027',locations:['C.12.001','C.12.002','D.08.001'],matching:[rows[2]]};
+  else if(body.operation==='destinations')data={locations:['C.12.001','C.12.002','D.08.001']};
+  else if(body.operation==='destination_detail')data={location:p.location,locations:['C.12.001','C.12.002','D.08.001'],jobs:jobs.filter(j=>j.location===p.location),incoming:jobs.flatMap(j=>(j.body.actions||[]).filter((a:any)=>a.destination===p.location).map((action:any)=>({job_id:j.id,note_number:j.note_number,source_location:j.location,status:j.status,action,source:j.body.source||[],planned_here:true,actuals:[]})))};
   else if(body.operation==='blocks')data={blocks:['FULL.BLOCK']};
   else if(body.operation==='inventory')data={rows};
   else if(body.operation==='directory')data={users:[{id:hlUserId,username:'dylan_collyge',display:'Dylan',email:'dylan_collyge@greenleafnursery.com'}]};
@@ -65,6 +68,7 @@ test('creator drills through themed block/location cards and preserves multiple 
  await expect(block).toBeVisible();
  await expect.poll(()=>block.evaluate(el=>{const probe=document.createElement('span');probe.style.color='var(--ops-surface)';el.append(probe);const same=getComputedStyle(el).backgroundColor===getComputedStyle(probe).color;probe.remove();return same;})).toBe(true);
  await block.click();
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  for(const [i,location] of ['C.12.001','C.12.002'].entries()) {
   await page.getByRole('button',{name:'Open location '+location,exact:true}).click();
   await page.getByLabel('Purposes',{exact:true}).fill('Rain day '+i);
@@ -74,7 +78,7 @@ test('creator drills through themed block/location cards and preserves multiple 
   await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).uncheck();
   await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).check();
   if(i===0){
-   await page.locator('.bn-plant > details > summary').click();
+   await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
    const choices=page.locator('.bn-plant .bn-action-choices');
    await choices.getByText('Placement · choose multiple',{exact:true}).click();
    await choices.getByLabel('Center house',{exact:true}).check();
@@ -93,22 +97,27 @@ test('creator drills through themed block/location cards and preserves multiple 
    await sequence.getByRole('button',{name:'Save custom option',exact:true}).click();
    await sequence.getByRole('button',{name:'Add selected Sequence actions',exact:true}).click();
   } else {
-   const checklist=page.locator('.bn-location-editor > details').filter({has:page.locator('summary').filter({hasText:'Action checklist'})});
+   const checklist=page.locator('.bn-location-editor > details').filter({has:page.locator('summary').filter({hasText:'Location action checklist'})});
    await checklist.getByText('Sequence · choose multiple',{exact:true}).click();
    await checklist.getByLabel('Check walkway',{exact:true}).check();
    await checklist.getByRole('button',{name:'Add selected Sequence actions',exact:true}).click();
   }
   await expect.poll(()=>page.locator('#bunch-note-content').evaluate(el=>[el,...el.querySelectorAll('button,summary,input,select,textarea,.bn-card')].every(node=>{const box=node.getBoundingClientRect();return !box.width||(box.left>=-1&&box.right<=innerWidth+1);}))).toBe(true);
   await expect.poll(()=>page.locator('#bunch-note-content button:visible, #bunch-note-content summary:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=44))).toBe(true);
-  await page.getByRole('button',{name:'Back to locations',exact:true}).click();
+  if(i===0)await page.locator('#global-header-inline-back').click();
+  await page.locator('#global-header-inline-back').click();
  }
- await page.getByRole('button',{name:'Save & back to blocks',exact:true}).click();
+ await page.locator('#global-header-inline-back').click();
+ await page.locator('#global-header-inline-back').click();
  await expect.poll(()=>f.commands.filter(c=>c.operation==='save').length).toBe(1);
  await page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await expect(page.getByLabel('Purposes',{exact:true})).toHaveValue('Rain day 0');
+ await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Instruction',exact:true}).first()).toHaveValue('Center house');
- await page.getByRole('button',{name:'Back to locations',exact:true}).click();
+ await page.locator('#global-header-inline-back').click();
+ await page.locator('#global-header-inline-back').click();
  const saved=f.commands.find(c=>c.operation==='save').payload.body;
  expect(saved.locations.map((l:any)=>l.location)).toEqual(['C.12.001','C.12.002']);
  expect(saved.locations[0].actions[0].row_ids).toEqual(['a','a2']);
@@ -126,6 +135,8 @@ test('creator drills through themed block/location cards and preserves multiple 
  f.jobs[0].status='complete';f.jobs[0].actuals=[];f.jobs[0].worker_actions=[];
  await page.evaluate(()=>window.eval(`switchView('request'); setReqTab('bunch-notes');`));
  await page.getByRole('button',{name:'Completed',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await page.getByText('Completed-work PDF and recipients',{exact:true}).click();
  await page.getByRole('button',{name:'Preview completed-work PDF',exact:true}).click();
@@ -135,18 +146,61 @@ test('creator drills through themed block/location cards and preserves multiple 
  await expect.poll(()=>f.commands.filter(c=>c.operation==='work_publish').length).toBe(1);
  expect(f.control.blockedMutations).toEqual([]);
 });
+
+test('combined move keeps its full destination and opens destination instructions',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!);
+ await page.locator('#home-tile-bunch-note').click();
+ for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001','Open item BN-I'])await page.getByRole('button',{name,exact:true}).click();
+ const grading=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:'Grading · choose multiple'})});
+ await grading.locator('summary').click();
+ await grading.getByLabel('Grade and Save / Move To',{exact:true}).check();
+ await grading.getByRole('button',{name:'Add selected Grading actions',exact:true}).click();
+ await page.getByLabel('Quantity (or percentage)',{exact:true}).fill('4');
+ await page.getByRole('button',{name:'Choose destination',exact:true}).click();
+ await page.getByRole('button',{name:'All other locations',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Open location D.08',exact:true})).toBeVisible();
+ await page.getByLabel('New full destination',{exact:true}).fill('NEW.PAD');
+ await page.getByRole('button',{name:'Use typed destination',exact:true}).click();
+ await expect(page.getByLabel('Destination',{exact:true})).toHaveValue('NEW.PAD');
+ await page.getByRole('button',{name:'Choose destination',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await expect(page.locator('#bunch-note-content')).toContainText('Available Unknown');
+ await page.getByRole('button',{name:'Open location C.12.002',exact:true}).click();
+ await expect(page.getByLabel('Destination',{exact:true})).toHaveValue('C.12.002');
+ await page.locator('#global-header-inline-back').click();
+ await page.getByLabel('Purposes',{exact:true}).fill('Grade and move');
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ const body=f.commands.filter(c=>c.operation==='save').at(-1).payload.body;
+ expect(body.locations[0].actions[0]).toMatchObject({quantity:'4',destination:'C.12.002',destination_mode:'matching'});
+ f.jobs.push({id:'source',note_number:'BN-1',status:'open',location:'C.12.001',body:body.locations[0]},
+  {id:'destination',note_number:'BN-2',status:'open',location:'C.12.002',body:{purposes:'Leave wide aisles',actions:[]}});
+ await page.getByRole('button',{name:'By Destination',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.002',exact:true}).click();
+ await expect(page.locator('#bunch-note-content')).toContainText('Leave wide aisles');
+ await expect(page.locator('#bunch-note-content')).toContainText('Planned here: 4');
+ await expect(page.locator('#bunch-note-content')).toContainText('Recorded here: Not recorded');
+ await page.locator('#global-header-inline-back').click();
+ await expect(page.getByRole('button',{name:'Open location C.12.001',exact:true})).toBeVisible();
+ expect(f.control.blockedMutations).toEqual([]);
+});
 test('worker without Request permission sees Bunch-only Queue, claims and completes without email',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!,true);
  await page.evaluate(()=>window.eval(`getRequestCapabilities = () => ({canViewQueue:false}); canSeeEvalWorkRequestTab = () => false; switchView('request');`));
  await expect(page.locator('#home-tile-bunch-note')).toBeHidden();
  await expect(page.locator('[data-request-category="bunch-notes"]')).toBeVisible();
  await expect(page.locator('[data-request-category="pending"]')).toHaveCount(0);
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await page.getByRole('button',{name:'Claim work',exact:true}).click();
  await page.getByRole('button',{name:'My Work',exact:true}).click();
  await expect(page.getByRole('button',{name:'My Work',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await expect(page.getByRole('button',{name:'Complete location',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
  const action=(label:string)=>page.locator('#request-content article.bn-card').filter({has:page.getByRole('heading',{name:label,exact:true})});
  const ta=action('TA / culls follow-up'),move=action('Move');
  await ta.getByText('Record TA / partial work',{exact:true}).click();
@@ -184,7 +238,7 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await expect(move).toContainText('Recorded 4 MOVE');
  await expect(move).toContainText('NEW.LOC');
  await move.getByRole('button',{name:'Done',exact:true}).click();
- await page.locator('.bn-plant > details > summary').click();
+
  const inventory=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:'Inventory · choose multiple'})});
  await inventory.locator('summary').click();
  await inventory.getByLabel('New Inventory option',{exact:true}).fill('Inspect empty spaces');
@@ -192,10 +246,13 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await inventory.getByRole('button',{name:'Add selected Inventory actions',exact:true}).click();
  await expect(action('Inspect empty spaces · Added by worker')).toBeVisible();
  await action('Inspect empty spaces · Added by worker').getByRole('button',{name:'Done',exact:true}).click();
+ await page.locator('#global-header-inline-back').click();
  await action('placement').getByRole('button',{name:'Done',exact:true}).click();
  await expect.poll(()=>page.locator('#request-content').evaluate(el=>[el,...el.querySelectorAll('button,summary,input,select,textarea,.bn-card')].every(node=>{const box=node.getBoundingClientRect();return !box.width||(box.left>=-1&&box.right<=innerWidth+1);}))).toBe(true);
  await page.getByRole('button',{name:'Complete location',exact:true}).click();
  await page.getByRole('button',{name:'Completed',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await expect(page.locator('#request-content')).toContainText('BN-1');
  expect(f.commands.some(c=>['send','publish','preview','retry'].includes(c.operation))).toBe(false);
 });

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="./assets/location-code.js"></script>
     <script src="./assets/bunch-note.js"></script>
     <link rel="stylesheet" href="./assets/bunch-note.css">
     <meta charset="UTF-8">
@@ -44,14 +45,14 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.20.04">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.20.05">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.20.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.20.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6819,7 +6820,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.20.04">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.20.05">
     <style id="request-mobile-v2-authority">
         .request-av-note-sheet{position:fixed;inset:0;z-index:60000;display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));touch-action:pan-y}
         .request-av-note-sheet.hidden{display:none!important}
@@ -6884,7 +6885,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         @media(min-width:721px){.eval-work-field-list{grid-template-columns:1fr}.eval-work-summary{grid-template-columns:minmax(0,1fr) minmax(260px,.6fr);align-items:start}.eval-work-action-tray{position:relative;bottom:auto;width:min(100%,620px);justify-self:end}.eval-work-av-note-sheet{align-items:center}.eval-work-av-note-sheet>section{max-height:min(82dvh,760px)}}
         @media(max-width:640px){.eval-work-card-list,.eval-work-detail{padding:2px 0 calc(var(--footer-nav-reserve,8.75rem) + 1rem)}.eval-work-summary,.eval-work-evidence,.eval-work-inquiry{border-radius:18px;padding:13px}.eval-work-summary h2{font-size:21px}.eval-work-detail-tabs{gap:5px;padding:5px}.eval-work-detail-tab{min-height:52px;padding:7px 5px;font-size:10px}.eval-work-action-tray{position:fixed;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));width:auto}.eval-work-setup-modal{align-items:flex-end;padding:6px max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}.eval-work-setup-panel{max-height:calc(var(--mobile-visible-height,var(--visual-height,100dvh)) - 12px);border-radius:22px}.eval-work-setup-confirmation{grid-template-columns:1fr}}
     </style>
-</head>
+<style>
+[data-secondary-back]{display:none!important}
+#global-header-inline-back:popover-open{position:fixed!important;inset:calc(env(safe-area-inset-top,0px) + 12px) auto auto 12px!important;margin:0!important;display:flex!important;min-width:44px;min-height:44px;background:var(--ops-surface,#fff);border:1px solid var(--ops-border,#bcd9cd);border-radius:12px;color:var(--ops-brand-strong,#007a4d)}
+.location-base-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:72px;margin:0 0 12px;padding:16px;border:1px solid var(--ops-border,#bbdbc9);border-radius:var(--ops-radius-md,12px);background:var(--ops-surface,#fff);color:var(--ops-text,#18372b);text-align:left;cursor:pointer;touch-action:manipulation}
+.location-base-card strong,.location-base-card small{display:block}.location-base-card strong{font-size:1.3rem;color:var(--ops-brand-strong,#007a4d)}
+</style></head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
       (function applyRememberedThemeToBody() {
@@ -6997,13 +7003,13 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.20.04"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.20.04"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.20.04"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.20.04"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.20.04"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.20.04"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.20.04"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.20.05"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.20.05"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.20.05"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.20.05"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.20.05"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.20.05"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.20.05"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7389,7 +7395,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" id="ncr-email-no-btn" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeNcrEmailModal('done')">NO</button>
             </div>
             <div id="ncr-email-message-actions" class="mt-5 hidden grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="resetNcrEmailMessageStep()">Back</button>
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="resetNcrEmailMessageStep()">Back</button>
                 <button type="button" id="ncr-email-done-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeNcrEmailModal('email')">OK</button>
             </div>
         </div>
@@ -7464,7 +7470,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
             <div id="hold-release-message-actions" class="sticky bottom-0 z-20 mt-5 hidden grid grid-cols-1 gap-2 rounded-xl bg-white/95 p-1 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] shadow-sm backdrop-blur sm:grid-cols-2">
                 <button type="button" id="hold-release-done-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="finishHoldReleaseMessageStep()">Done</button>
-                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="resetHoldReleaseMessageStep()">Back</button>
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="resetHoldReleaseMessageStep()">Back</button>
             </div>
         </div>
     </div>
@@ -7499,7 +7505,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
             <div id="step-2-cust" class="hidden flex flex-col text-left min-h-0">
                 <div class="request-step-header">
-                    <i class="request-back-icon ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromCustomerStep()"></i>
+                    <i data-secondary-back="true" aria-hidden="true" class="request-back-icon ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromCustomerStep()"></i>
                     <h3 class="font-bold text-lg text-orange-600">Customer</h3>
                 </div>
                 <label id="request-customer-label" class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
@@ -7513,7 +7519,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
             <div id="step-3-qty" class="hidden flex flex-col text-left min-h-0">
                 <div class="request-step-header">
-                    <i class="request-back-icon ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i>
+                    <i data-secondary-back="true" aria-hidden="true" class="request-back-icon ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i>
                     <h3 class="font-bold text-lg text-orange-600">Request Details</h3>
                 </div>
                 <div id="request-qty-scroll-body" class="min-h-0 flex-1 overflow-y-auto pr-1 pb-3">
@@ -7771,7 +7777,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.20.04').trim() || 'V2026.09.20.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.20.05').trim() || 'V2026.09.20.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -8469,7 +8475,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="shear-list-heading-slot"><div class="text-xl font-black text-slate-900">Shear List</div></div>
                             </div>
                             <div class="flex shrink-0 items-center gap-2">
-                                <button id="shear-list-back-btn" type="button" class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backShearListDrill()"><i class="ph-bold ph-caret-left text-base align-middle"></i><span class="align-middle ml-1">Back</span></button>
+                                <button data-secondary-back="true" aria-hidden="true" id="shear-list-back-btn" type="button" class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backShearListDrill()"><i class="ph-bold ph-caret-left text-base align-middle"></i><span class="align-middle ml-1">Back</span></button>
                                 <button type="button" class="rounded-xl border border-lime-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-lime-700 shadow-sm active:scale-95" onclick="return reloadShearListData()"><i class="ph-bold ph-arrows-clockwise text-base align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
                             </div>
                         </div>
@@ -8528,7 +8534,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="min-w-0 flex-1">
                                 <div id="po-management-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-2">PO Managment</div>
                                 <div class="flex items-center gap-2">
-                                    <button type="button" id="po-management-back-btn" class="hidden flex h-9 w-9 items-center justify-center rounded-xl border border-green-200 bg-white text-[#007a4d] shadow-sm active:scale-95" onclick="return goBackPoManagementDrilldown()" aria-label="Back"><i class="ph-bold ph-arrow-left text-lg"></i></button>
+                                    <button data-secondary-back="true" aria-hidden="true" type="button" id="po-management-back-btn" class="hidden flex h-9 w-9 items-center justify-center rounded-xl border border-green-200 bg-white text-[#007a4d] shadow-sm active:scale-95" onclick="return goBackPoManagementDrilldown()" aria-label="Back"><i class="ph-bold ph-arrow-left text-lg"></i></button>
                                     <div id="po-management-title" class="text-xl font-black text-slate-900 truncate">PO Managment</div>
                                     <div id="po-management-row-pill" class="hidden rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]"></div>
                                 </div>
@@ -8900,7 +8906,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <div id="view-detail" class="hidden">
                     <div id="det-av-hero" class="hidden"></div>
                     <div class="freeze-panel">
-                    <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
+                    <div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
                     <div id="det-tabs-container" class="detail-tabs hidden">
                         <div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Item Details</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('ncr')" id="dtab-ncr">New Crop Release</div>
@@ -9047,7 +9053,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <button type="button" class="mt-3 w-full rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-lime-800 shadow-sm active:scale-95" onclick="return submitShearApprovalRequestForActiveDetail('na-')"><i class="ph-bold ph-scissors mr-1 text-base align-middle"></i>Add To Shear List</button>
                     </div>
                     <div id="det-gallery-content" class="hidden py-4">
-                        <div id="request-gallery-return-wrap" class="hidden mb-3"><button type="button" class="request-gallery-return" onclick="switchDetailTab('request'); return false;"><i class="ph-bold ph-arrow-left"></i><span>Back To Request</span></button></div>
+                        <div id="request-gallery-return-wrap" class="hidden mb-3"><button data-secondary-back="true" aria-hidden="true" type="button" class="request-gallery-return" onclick="switchDetailTab('request'); return false;"><i class="ph-bold ph-arrow-left"></i><span>Back To Request</span></button></div>
                         <div id="gallery-empty" class="hidden p-8 text-center text-gray-400">No photos on file for this row.</div>
                         <div id="gallery-sections" class="space-y-5"></div>
                     </div>
@@ -9292,7 +9298,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.20.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.20.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9503,6 +9509,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 
         function clearRoleScopedClientCaches(username = currentUser) {
             if (window.BunchNote) BunchNote.reset();
+            if (window.LocationCode) LocationCode.reset();
             productionDisplayGroups.clear();
             if (typeof resetHlOrderState === 'function') resetHlOrderState();
             if (typeof resetPoManagementInventoryState === 'function') resetPoManagementInventoryState();
@@ -9736,6 +9743,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             nativeAuthAccessToken = String(data.session.access_token || '').trim();
             nativeAuthProfile = null;
             if (window.BunchNote) BunchNote.reset();
+            if (window.LocationCode) LocationCode.reset();
             const profile = await loadNativeAuthProfile(true);
             if (!profile) {
                 await client.auth.signOut().catch(() => {});
@@ -9812,6 +9820,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 nativeAuthAccessToken = String(data.session.access_token || '').trim();
                 nativeAuthProfile = null;
             if (window.BunchNote) BunchNote.reset();
+            if (window.LocationCode) LocationCode.reset();
                 const profile = await loadNativeAuthProfile(true);
                 if (!profile) throw new Error('This account is not enabled for passkeys.');
                 await ensureNativeAppSessionBridge(true).catch(() => null);
@@ -22517,6 +22526,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             nativeAuthAccessToken = '';
             nativeAuthProfile = null;
             if (window.BunchNote) BunchNote.reset();
+            if (window.LocationCode) LocationCode.reset();
             clearCachedNativeAuthProfile();
             clearPersistedLoginSession();
             sessionStorage.clear();
@@ -23771,7 +23781,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function buildFastInvokeAttrs(actionName = '', args = [], label = 'Open') {
-            return buildFastPressAttrs('invoke', actionName, args, label);
+            return (/^back|^goBack|^closeEvalWorkDetail|^closeLocationWorkJob/.test(actionName) ? 'data-secondary-back="true" aria-hidden="true" ' : '') + buildFastPressAttrs('invoke', actionName, args, label);
         }
 
         function buildRequestFolderOpenAttrs(folderName = '', label = 'Open request folder') {
@@ -32034,7 +32044,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const selectedPhotoCsv = String(firstNonEmptyValue(row.selected_photo_link, row.SELECTED_PHOTO_LINK, selected.photo_link, '') || '').trim();
             const resultPhotoCsv = String(firstNonEmptyValue(row.result_photo_link, row.RESULT_PHOTO_LINK, '') || '').trim();
             return `<div class="space-y-4 pb-24">
-                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" onclick="return backToAvOptionEvalQueue()"><i class="ph-bold ph-arrow-left"></i> Back To AV Check</button>
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" onclick="return backToAvOptionEvalQueue()"><i class="ph-bold ph-arrow-left"></i> Back To AV Check</button>
                 <div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
@@ -32440,7 +32450,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.20.04').trim() || 'V2026.09.20.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.20.05').trim() || 'V2026.09.20.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -36690,7 +36700,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             </section>` : '';
             const inquiryPanel = detailView === 'item-inquiry' ? `<section class="eval-work-inquiry"><h3>Item Inquiry</h3><p>${itemcodeWideScope ? 'Every current ITEMCODE row is included.' : 'Only the assignment rows are included.'} Choose Mark Done after selecting an action, or choose No Action. Drafts save automatically. The final row decision sends the completed Item Inquiry PDF to ${escapeHtml(getEvalWorkCompletionRecipientCopy(safeWork))} for review.</p>${renderArgosReclassInquiryEditor(hydrated.inquiryModel, evalWorkActiveOriginUid || safeWork.origin_unique_id)}</section>` : '';
             return `<div class="eval-work-detail">
-                <button type="button" class="back-btn" onclick="return closeEvalWorkDetail()"><i class="ph-bold ph-arrow-left"></i> Back to Eval Work</button>
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="back-btn" onclick="return closeEvalWorkDetail()"><i class="ph-bold ph-arrow-left"></i> Back to Eval Work</button>
                 <section class="eval-work-summary"><div><span>${escapeHtml(String(safeWork.status || 'open').replace('_', ' '))}</span><h2>${escapeHtml(safeWork.commonname || 'Eval Work')}</h2><p>${escapeHtml(safeWork.itemcode || '')} &middot; ${escapeHtml(safeWork.contsize || '')} &middot; ${origins.length || 1} ${itemcodeWideScope ? 'current row' : 'selected lot'}${origins.length === 1 ? '' : 's'}</p></div><div><strong>Assigned to ${escapeHtml(getEvalWorkAssigneeLabel(getEvalWorkAssigneeUsernames(safeWork)))}</strong><p>${escapeHtml(safeWork.instructions || 'No additional instructions.')}</p><p class="eval-work-delivery-state">Email delivery: ${escapeHtml(deliveryStatus)}</p></div>${managerActions}</section>
                 ${detailTabs}${evaluationPanel}${inquiryPanel}
                 ${readOnly ? '<div class="eval-work-readonly">This Eval Work is read-only.</div>' : ''}
@@ -37371,7 +37381,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const toolbar = document.getElementById('request-filter-toolbar');
             if (!toolbar) return false;
             if (requestSalesRepsManagerMode && activeReqTab === 'reps') {
-                toolbar.innerHTML = `<div class="request-category-options"><button type="button" class="request-category-chip is-active" onclick="return closeManagerSalesRepsModule()"><i class="ph-bold ph-arrow-left"></i><span>Managers / Sales Reps</span></button></div>`;
+                toolbar.innerHTML = `<div class="request-category-options"><button data-secondary-back="true" aria-hidden="true" type="button" class="request-category-chip is-active" onclick="return closeManagerSalesRepsModule()"><i class="ph-bold ph-arrow-left"></i><span>Managers / Sales Reps</span></button></div>`;
                 toolbar.dataset.toolbarSingleRow = 'true';
                 return true;
             }
@@ -62823,7 +62833,7 @@ function toggleDriveQuickRequestItem(domId) {
             }).join('') : '<div class="mt-auto mb-auto rounded-2xl bg-slate-50 px-5 py-4 text-center text-sm font-bold text-slate-400">No messages yet.</div>';
             return `<div id="chat-thread-shell" class="chat-thread-shell android-chat-shell">
                 <div class="android-chat-header">
-                    <button type="button" class="android-icon-btn mic" onclick="backToChatList()" aria-label="Back to chats"><i class="ph-bold ph-caret-left text-2xl"></i></button>
+                    <button data-secondary-back="true" aria-hidden="true" type="button" class="android-icon-btn mic" onclick="backToChatList()" aria-label="Back to chats"><i class="ph-bold ph-caret-left text-2xl"></i></button>
                     <div class="ios-chat-title-cluster">
                         <div class="android-chat-avatar">${escapeHtml(titleInitials)}</div>
                         <div class="max-w-full truncate text-[13px] font-black text-slate-950">${escapeHtml(title)}</div>
@@ -70265,7 +70275,7 @@ function toggleDriveQuickRequestItem(domId) {
             const bodyHtml = showingRows
                 ? (() => {
                     const selectedRows = getProductionWorkflowSelectedRows();
-                    return `<div class="mb-3 flex items-center justify-between gap-2"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderProductionWorkflowDriveRowCard).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No ${escapeHtml(meta.title || 'workflow')} rows match this item anymore.</div>`}`;
+                    return `<div class="mb-3 flex items-center justify-between gap-2"><button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderProductionWorkflowDriveRowCard).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No ${escapeHtml(meta.title || 'workflow')} rows match this item anymore.</div>`}`;
                 })()
                 : (groups.length
                     ? visibleGroups.map(renderProductionWorkflowItemCard).join('')
@@ -70366,11 +70376,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (productionWorkflowState.drillLevel === 'locations') {
                 const blockRows = rows.filter((row) => getProductionWorkflowBlockValue(row) === productionWorkflowState.selectedBlock);
                 const groups = groupProductionWorkflowRows(blockRows, getProductionWorkflowLocationValue, getProductionWorkflowLocationValue);
-                return `<div class="mb-3"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowListDrill()"><i class="ph-bold ph-arrow-left"></i> Blocks</button></div><div class="space-y-3">${groups.map((group) => `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflowLocation('${escJsAttrValue(productionWorkflowState.selectedBlock)}', '${escJsAttrValue(group.key)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-lg font-black text-slate-900">Loc ${escapeHtml(group.label)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(group.rows.length))} Row${group.rows.length === 1 ? '' : 's'} | Qty ${escapeHtml(formatShearDecisionNumber(group.totalQty))}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div></button>`).join('')}</div>`;
+                return `<div class="mb-3"><button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowListDrill()"><i class="ph-bold ph-arrow-left"></i> Blocks</button></div><div class="space-y-3">${LocationCode.cards('production:'+productionWorkflowActive+':'+productionWorkflowState.selectedBlock,groups,group=>group.key,(group) => `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflowLocation('${escJsAttrValue(productionWorkflowState.selectedBlock)}', '${escJsAttrValue(group.key)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-lg font-black text-slate-900">Loc ${escapeHtml(group.label)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(group.rows.length))} Row${group.rows.length === 1 ? '' : 's'} | Qty ${escapeHtml(formatShearDecisionNumber(group.totalQty))}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div></button>`)}</div>`;
             }
             if (productionWorkflowState.drillLevel === 'rows') {
                 const rowList = rows.filter((row) => getProductionWorkflowBlockValue(row) === productionWorkflowState.selectedBlock && getProductionWorkflowLocationValue(row) === productionWorkflowState.selectedLocation);
-                return `<div class="mb-3"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowListDrill()"><i class="ph-bold ph-arrow-left"></i> Locations</button></div><div class="space-y-3">${rowList.map(renderProductionWorkflowOpenRow).join('')}</div>`;
+                return `<div class="mb-3"><button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowListDrill()"><i class="ph-bold ph-arrow-left"></i> Locations</button></div><div class="space-y-3">${rowList.map(renderProductionWorkflowOpenRow).join('')}</div>`;
             }
             const groups = groupProductionWorkflowRows(rows, getProductionWorkflowBlockValue, (row) => `Block ${getProductionWorkflowBlockValue(row)}`);
             return `<div class="space-y-3">${groups.map((group) => `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflowBlock('${escJsAttrValue(group.key)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-lg font-black text-slate-900">${escapeHtml(group.label)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(group.rows.length))} Row${group.rows.length === 1 ? '' : 's'} | ${escapeHtml(String(group.locations.size))} Location${group.locations.size === 1 ? '' : 's'} | Qty ${escapeHtml(formatShearDecisionNumber(group.totalQty))}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div></button>`).join('')}</div>`;
@@ -72456,7 +72466,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (spreadCountState.selectedBlock) crumbParts.push(`Block ${spreadCountState.selectedBlock}`);
             if (spreadCountState.selectedLocation) crumbParts.push(spreadCountState.selectedLocation);
             const backHtml = spreadCountState.drillLevel !== 'blocks'
-                ? `<button type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backSpreadCountDrill()"><i class="ph-bold ph-caret-left text-base align-middle"></i><span class="ml-1 align-middle">Back</span></button>`
+                ? `<button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backSpreadCountDrill()"><i class="ph-bold ph-caret-left text-base align-middle"></i><span class="ml-1 align-middle">Back</span></button>`
                 : '';
             let bodyHtml = '';
             if (spreadCountState.drillLevel === 'blocks') {
@@ -72472,13 +72482,13 @@ function toggleDriveQuickRequestItem(domId) {
                 const rows = sourceRows.filter((row) => getSpreadCountBlockValue(row) === spreadCountState.selectedBlock);
                 const groups = groupSpreadCountRows(rows, getSpreadCountLocationValue, getSpreadCountLocationValue);
                 bodyHtml = groups.length
-                    ? `<div class="space-y-2">${groups.map((group) => `<button type="button" class="drill-item w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm" onclick="return openSpreadCountLocation('${escJsAttrValue(spreadCountState.selectedBlock)}', '${escJsAttrValue(group.key)}')">
+                    ? `<div class="space-y-2">${LocationCode.cards('spread:'+spreadCountState.selectedBlock,groups,group=>group.key,(group) => `<button type="button" class="drill-item w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm" onclick="return openSpreadCountLocation('${escJsAttrValue(spreadCountState.selectedBlock)}', '${escJsAttrValue(group.key)}')">
                         <span class="min-w-0">
                             <span class="block text-lg font-black text-slate-900">Loc ${escapeHtml(group.label)}</span>
                             <span class="mt-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">${group.rows.length} row${group.rows.length === 1 ? '' : 's'}</span>
                         </span>
                         <i class="ph-bold ph-caret-right text-slate-300"></i>
-                    </button>`).join('')}</div>`
+                    </button>`)}</div>`
                     : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">No locations found for this block.</div>';
             } else {
                 const rows = getSpreadCountOrderedRows(getSpreadCountRowsForSelectedLocation());
@@ -74125,7 +74135,7 @@ function toggleDriveQuickRequestItem(domId) {
             const bodyHtml = showingRows
                 ? (() => {
                     const selectedRows = getWeatherHoldInventorySelectedRows();
-                    return `<div class="mb-3 flex items-center justify-between gap-2"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backWeatherHoldInventoryItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderWeatherHoldInventoryRowCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No rows match this item anymore.</div>'}`;
+                    return `<div class="mb-3 flex items-center justify-between gap-2"><button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backWeatherHoldInventoryItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderWeatherHoldInventoryRowCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No rows match this item anymore.</div>'}`;
                 })()
                 : (groups.length
                     ? visibleGroups.map(renderWeatherHoldInventoryCard).join('')
@@ -75302,7 +75312,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderShearMoveTestRequestDetailPage(record = null) {
             return `<div class="space-y-3">
-                <button type="button" class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[0.99]" onclick="return closeShearMoveTestRequestCard()">
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[0.99]" onclick="return closeShearMoveTestRequestCard()">
                     <i class="ph-bold ph-arrow-left text-base"></i><span>Back to Shear List</span>
                 </button>
                 ${buildShearMoveTestRequestDetailHtml(record)}
@@ -76489,7 +76499,7 @@ function toggleDriveQuickRequestItem(domId) {
                             <div class="mt-1 text-xl font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
                             <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(contSize)} | Item ${escapeHtml(itemCode)}</div>
                         </div>
-                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backShearDriveItems()"><i class="ph-bold ph-caret-left align-middle"></i><span class="ml-1 align-middle">Items</span></button>
+                        <button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backShearDriveItems()"><i class="ph-bold ph-caret-left align-middle"></i><span class="ml-1 align-middle">Items</span></button>
                     </div>
                     <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
                         <span class="rounded-full bg-white px-2.5 py-1 text-slate-600">${escapeHtml(String(rows.length))} row${rows.length === 1 ? '' : 's'}</span>
@@ -77105,7 +77115,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const blockRows = rows.filter((row) => getShearListBlockValue(row) === shearListState.selectedBlock);
                 const groups = groupShearListRows(blockRows, getShearListLocationValue, getShearListLocationValue);
                 if (crumb) crumb.innerText = `Shear List > Block ${shearListState.selectedBlock} > Locations`;
-                setContainerHtml(container, `${tabHtml}${inquiriesHtml}<div class="space-y-3">${groups.map(renderShearListLocationCard).join('')}</div>`);
+                setContainerHtml(container, `${tabHtml}${inquiriesHtml}<div class="space-y-3">${LocationCode.cards('shear:'+shearListState.selectedBlock,groups,group=>group.key,renderShearListLocationCard)}</div>`);
                 return;
             }
             if (shearListState.drillLevel === 'rows') {
@@ -77479,7 +77489,9 @@ function toggleDriveQuickRequestItem(domId) {
 
         function hasInAppBackDestination() {
             const currentView = getCurrentVisibleViewId();
+            if ((currentView === 'bunch-note' || (currentView === 'request' && activeReqTab === 'bunch-notes')) && BunchNote.hasBack()) return true;
             if (!currentView) return false;
+            if (getVisibleSecondaryBack(true)) return true;
             if (hasOpenInteractiveSurfaceForBack()) return true;
             if (isDrawerOpen()) return true;
             if (currentView === 'home') return shouldShowHomeProductivityBackButton();
@@ -77528,13 +77540,14 @@ function toggleDriveQuickRequestItem(domId) {
             nativeBackNavigationInitialized = true;
             ensureNativeBackGuard();
             window.addEventListener('popstate', handleNativeAppBack);
+            initializeModalBackNavigation();
         }
 
         function updateGlobalBackButton() {
             const backBtn = document.getElementById('global-back-btn');
             const inlineBackBtn = document.getElementById('global-header-inline-back');
             const currentView = getCurrentVisibleViewId();
-            const naturalShowBack = currentView === 'detail'
+            const naturalShowBack = !!getVisibleSecondaryBack(true) || currentView === 'detail'
                 || currentView !== 'home'
                 || (currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen || bloomCropUpdateModalOpen));
             const precisionShell = !!(document.body && document.body.classList.contains('ops-precision-pilot'));
@@ -77811,6 +77824,38 @@ function toggleDriveQuickRequestItem(domId) {
             recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
             return false;
         }
+        function getVisibleSecondaryBack(modalOnly = false) {
+            const view = document.getElementById('view-' + getCurrentVisibleViewId());
+            return [...document.querySelectorAll('[data-secondary-back]')].reverse().find(control => {
+                const modal = control.closest('[id$="-modal"],dialog,[role="dialog"]');
+                if (modalOnly ? !modal : !view?.contains(control)) return false;
+                if (control.disabled || control.classList.contains('hidden') || control.closest('details:not([open])')) return false;
+                for (let parent=control.parentElement; parent; parent=parent.parentElement) {
+                    if (parent.classList.contains('hidden') || getComputedStyle(parent).display==='none') return false;
+                }
+                return true;
+            });
+        }
+        function syncGlobalModalBack() {
+            const button=document.getElementById('global-header-inline-back');
+            if (!button || typeof button.showPopover!=='function') return;
+            const needed=!!getVisibleSecondaryBack(true);
+            if (needed) {
+                button.setAttribute('popover','manual');
+                button.classList.remove('hidden');button.setAttribute('aria-hidden','false');button.setAttribute('aria-disabled','false');
+                if(!button.matches(':popover-open'))button.showPopover();
+            } else if(button.hasAttribute('popover')) {
+                if(button.matches(':popover-open'))button.hidePopover();
+                button.removeAttribute('popover');
+                updateGlobalBackButton();
+            }
+        }
+        function initializeModalBackNavigation() {
+            let queued=false;
+            const observer=new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;syncGlobalModalBack();});});
+            document.querySelectorAll('[id$="-modal"],dialog,[role="dialog"]').forEach(modal=>observer.observe(modal,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','open']}));
+            syncGlobalModalBack();
+        }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
             if (isDrawerOpen()) {
@@ -77818,7 +77863,13 @@ function toggleDriveQuickRequestItem(domId) {
                 updateGlobalBackButton();
                 return false;
             }
+            const modalBack = getVisibleSecondaryBack(true);
+            if (modalBack) { modalBack.click(); syncGlobalModalBack(); return false; }
             if (closeOpenInteractiveSurfaceForBack()) return false;
+            if ((currentView === 'bunch-note' || (currentView === 'request' && activeReqTab === 'bunch-notes')) && BunchNote.back()) { updateGlobalBackButton(); return false; }
+            if (LocationCode.back()) { updateGlobalBackButton(); return false; }
+            const secondaryBack = getVisibleSecondaryBack();
+            if (secondaryBack) { secondaryBack.click(); updateGlobalBackButton(); return false; }
             if (currentView === 'home' && shouldShowHomeProductivityBackButton()) {
                 backToProductivityUserList();
                 return false;
@@ -81413,7 +81464,7 @@ function toggleDriveQuickRequestItem(domId) {
                 panel.innerHTML = `<div class="rounded-[22px] border border-sky-200 bg-sky-50/60 p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Reserve Customers</div><div class="mt-2 text-[12px] font-semibold text-slate-600">${esc(helperText)}</div></div>${customerCards.map((card) => generateAvReserveDetailCustomerCard(card)).join('')}`;
                 return;
             }
-            panel.innerHTML = `<div class="back-btn mb-3" ${buildFastInvokeAttrs('backToAvReserveDetailCustomerList', [], 'Back to customer cards')}><i class="ph-bold ph-arrow-left"></i> Back to Customer Cards</div><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Selected Customer</div><div class="mt-2 font-black text-[22px] leading-tight text-slate-900 break-words">${esc(selectedCustomerCard.customerName || 'Unknown Customer')}</div><div class="mt-1 text-[12px] font-semibold text-slate-600">${selectedCustomerCard.rows.length} reserve row${selectedCustomerCard.rows.length === 1 ? '' : 's'} from ph_reserves are shown below with all source columns.</div></div>${selectedCustomerCard.rows.map((row) => generateAvReserveCustomerFieldCard(row)).join('')}`;
+            panel.innerHTML = `<div data-secondary-back="true" aria-hidden="true" class="back-btn mb-3" ${buildFastInvokeAttrs('backToAvReserveDetailCustomerList', [], 'Back to customer cards')}><i class="ph-bold ph-arrow-left"></i> Back to Customer Cards</div><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Selected Customer</div><div class="mt-2 font-black text-[22px] leading-tight text-slate-900 break-words">${esc(selectedCustomerCard.customerName || 'Unknown Customer')}</div><div class="mt-1 text-[12px] font-semibold text-slate-600">${selectedCustomerCard.rows.length} reserve row${selectedCustomerCard.rows.length === 1 ? '' : 's'} from ph_reserves are shown below with all source columns.</div></div>${selectedCustomerCard.rows.map((row) => generateAvReserveCustomerFieldCard(row)).join('')}`;
         }
 
         function getAvReserveDriveRowsForSelection() {
@@ -85639,6 +85690,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderMarkupChunkedByKey(tokenKey, container, crumb, rows, crumbText, renderRow, options = {}) {
             if (!container) return false;
+            if (['review-block-locations','move-up-block-locations','tasks-locations'].includes(tokenKey)) {
+                if (crumb) crumb.textContent = crumbText;
+                setContainerHtml(container, String(options.prefixHtml || '') + LocationCode.cards(tokenKey + ':' + crumbText + (tokenKey==='tasks-locations'?':'+activeTaskTab+':'+selectedTaskBlock:''), rows, row => row.locationCode, renderRow));
+                return true;
+            }
+
             if (productionLiveSyncRendering && productionLiveSyncActiveRender && !options._backgroundStage
                 && container.childElementCount && Array.isArray(rows) && rows.length
                 && getContainerUiState(container) !== 'loading') {
@@ -87670,7 +87727,7 @@ function toggleDriveQuickRequestItem(domId) {
                     : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" ${buildFastInvokeAttrs('openDockAllocationModal', [safeIssueUid, masterUniqueId], existingAllocation ? `Update Qty (${formatDockDisplayQty(existingAllocation.allocatedQty)})` : 'Use This Location')}>${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
                 return `<div class="rounded-2xl border ${isOriginal ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${isOriginal ? 'text-blue-600' : 'text-slate-500'}">${isOriginal ? 'Original Row Reference' : 'Alternate Location'}</div><div class="mt-1 text-lg font-black text-slate-900 break-words">${esc(row.LOCATIONCODE || '-')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.LOTCODE || '-')} &bull; ${esc(row.ITEMCODE || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Available ${esc(formatDockDisplayQty(candidateQty))}</div></div><div class="mt-3 text-sm font-semibold text-slate-600 break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')} &bull; ${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div><div class="mt-3 flex justify-end">${buttonHtml}</div></div>`;
             }).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching alternate locations found for this search.</div>`;
-            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} &bull; ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
+            container.innerHTML = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} &bull; ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
         }
 
         function renderDockMistakeDetailV2(container, crumb, term = '') {
@@ -87709,7 +87766,7 @@ function toggleDriveQuickRequestItem(domId) {
                     : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode S1 rows found for this search.</div>`
             ].filter(Boolean).join('')}</div></div>`;
             const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved &bull; ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
-            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
+            container.innerHTML = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
         }
 
         function renderDockMistakeDetailV3(container, crumb, term = '') {
@@ -87750,7 +87807,7 @@ function toggleDriveQuickRequestItem(domId) {
                     allocation: detailSelectedAllocation,
                     selectedRow: detailSelectedRow
                 });
-                container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], backLabel)}><i class="ph-bold ph-arrow-left"></i> ${backLabel}</div><div class="space-y-4">${cardHtml}</div>`;
+                container.innerHTML = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], backLabel)}><i class="ph-bold ph-arrow-left"></i> ${backLabel}</div><div class="space-y-4">${cardHtml}</div>`;
                 enhanceDetailMeasurementNaOptions(container);
                 prepareIosNativeDetailMeasurementInputs(container);
                 return;
@@ -87814,7 +87871,7 @@ function toggleDriveQuickRequestItem(domId) {
                 : buildFastInvokeAttrs('cantResolveDockIssue', [safeIssueUid], 'Can Not Resolve');
             const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Selected Drive Mode Rows</div><div class="mt-1 text-base font-black text-slate-900">${esc(allocationSummaryLabel)}</div></div><div class="grid grid-cols-2 gap-2 sm:min-w-[16rem]"><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve')}>Resolve</button><button class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-95" ${cantResolveAttrs}>Can't Resolve</button></div></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
             const issueOverviewHtml = buildDockMistakeIssueOverviewHtml(issue, sourceRow, { sourceQty, remainingQty, totalAllocatedQty, selectedAllocation, selectedRow });
-            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${issueOverviewHtml}${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
+            container.innerHTML = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${issueOverviewHtml}${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
         }
 
         const DOCK_CARD_PLANSTART_ALIASES = Object.freeze([
@@ -88047,7 +88104,7 @@ function toggleDriveQuickRequestItem(domId) {
                     }).length;
                     return { stopNum, count: stopItems.length, doneCount, rep: lead.SALESREPNAME || lead.SALESREPID || 'Unknown Rep', cust: lead.CUSTOMERNAME || 'Unknown Customer', cons: lead.CONSIGNEENAME || lead.CONSIGNEE || '', state: lead.CONSIGNEESTATE || lead.STATE || 'N/A' };
                 });
-                const prefixHtml = `<div class="back-btn" onclick="return resetDockView()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                const prefixHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="return resetDockView()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
                 renderMarkupChunkedByKey('docks-stops', container, crumb, stopCards, selectedDockLabel, (stopCard) => {
                     return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" ${buildFastInvokeAttrs('selectDockStop', [stopCard.stopNum], `Open Stop ${stopCard.stopNum}`)}><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">STOP ${stopCard.stopNum}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopCard.count} Rows</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${stopCard.doneCount === stopCard.count ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${stopCard.doneCount}/${stopCard.count} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${stopCard.cust}</div>${stopCard.cons && stopCard.cons !== stopCard.cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${stopCard.cons}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${stopCard.rep}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${stopCard.state}</span></div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Stop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
                 }, { prefixHtml, approxCardHeight: 175, emptyHtml: `<div class="p-8 text-center text-gray-400">No stops remain in this dock.</div>` });
@@ -88072,7 +88129,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return progress.checker && progress.inspector;
             }).length;
             crumb.innerText = `${selectedDockLabel} > Stop ${selectedDockStop}`;
-            const stopHeaderHtml = `<div class="back-btn" onclick="dockViewLevel=1; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div><div class="bg-white border border-green-200 rounded-xl shadow-lg mb-4 overflow-hidden"><div class="bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white p-4 border-b border-green-200/40"><div class="flex justify-between items-center gap-3 mb-2 border-b border-white/20 pb-2"><div><div class="font-black text-xl tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold text-green-50 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="flex items-center gap-2"><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15">${doneCount}/${stopItems.length} Done</div></div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${state}</span></div></div></div>`;
+            const stopHeaderHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="dockViewLevel=1; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div><div class="bg-white border border-green-200 rounded-xl shadow-lg mb-4 overflow-hidden"><div class="bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white p-4 border-b border-green-200/40"><div class="flex justify-between items-center gap-3 mb-2 border-b border-white/20 pb-2"><div><div class="font-black text-xl tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold text-green-50 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="flex items-center gap-2"><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15">${doneCount}/${stopItems.length} Done</div></div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${state}</span></div></div></div>`;
             renderMarkupChunkedByKey('docks-stop-items', container, crumb, stopItems, `${selectedDockLabel} > Stop ${selectedDockStop}`, (item) => generateCard(item, 'docks', 'status-orange'), {
                 prefixHtml: stopHeaderHtml,
                 approxCardHeight: 265,
@@ -91969,7 +92026,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildMovesDrillBackButton(label = 'Back') {
-            return `<button type="button" class="mb-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="${movesViewLevel > 1 ? 'return backToMovesLocations()' : 'return backToMovesBlocks()'}"><i class="ph-bold ph-arrow-left text-base"></i>${esc(label)}</button>`;
+            return `<button data-secondary-back="true" aria-hidden="true" type="button" class="mb-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="${movesViewLevel > 1 ? 'return backToMovesLocations()' : 'return backToMovesBlocks()'}"><i class="ph-bold ph-arrow-left text-base"></i>${esc(label)}</button>`;
         }
 
         function renderMovesFallbackRecordCard(record = {}) {
@@ -92185,11 +92242,11 @@ function toggleDriveQuickRequestItem(domId) {
                     group.rows.push(record);
                     if (record.itemcode) group.items.add(record.itemcode);
                 });
-                const cards = Array.from(groups.values()).sort((a, b) => a.location.localeCompare(b.location, undefined, { numeric: true, sensitivity: 'base' })).map((group) => {
+                const cards = LocationCode.cards('moves:'+selectedMovesBlock,Array.from(groups.values()),group=>group.location,(group) => {
                     const safeBlock = escJsAttrValue(normalizeMovesDrillValue(selectedMovesBlock));
                     const safeLocation = escJsAttrValue(group.location);
                     return `<button type="button" class="w-full rounded-xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return selectMovesLocation('${safeBlock}', '${safeLocation}')"><div class="flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Location Code</div><div class="mt-1 text-xl font-black text-slate-900">${esc(group.location)}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.rows.length} Move${group.rows.length === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.items.size} Item${group.items.size === 1 ? '' : 's'}</span></div></button>`;
-                }).join('');
+                });
                 return `<div class="space-y-3">${approvalHtml}${buildMovesDrillBackButton('Blocks')}<div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block Alpha</div><div class="mt-1 text-lg font-black text-slate-900">${esc(normalizeMovesDrillValue(selectedMovesBlock))}</div></div>${cards || '<div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No locations for this block.</div>'}</div>`;
             }
             return renderMovesLocationDetail(records, selectedMovesBlock, selectedMovesLocation);
@@ -107092,7 +107149,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function generateSalesOfficeOrderBackPanel(title = 'Bloom Picker Orders', subtitle = '') {
-            return `<div class="mb-3 flex flex-col gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(title)}</div>${subtitle ? `<div class="mt-1 truncate text-xs font-bold text-slate-500">${escapeHtml(subtitle)}</div>` : ''}</div><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backSalesOfficeOrderFolder()"><i class="ph-bold ph-arrow-left text-base"></i>Back</button></div>`;
+            return `<div class="mb-3 flex flex-col gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(title)}</div>${subtitle ? `<div class="mt-1 truncate text-xs font-bold text-slate-500">${escapeHtml(subtitle)}</div>` : ''}</div><button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backSalesOfficeOrderFolder()"><i class="ph-bold ph-arrow-left text-base"></i>Back</button></div>`;
         }
 
         function generateSalesOfficeOrderFolderCard(folder, folderType = 'rep') {
@@ -110368,7 +110425,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
 
             if (taskViewLevel !== 2 || !selectedTaskLoc) return [];
-            let items = tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc);
+            let items = tabItems.filter(i => getTaskFullLocation(i) === selectedTaskLoc);
             items.sort((a,b) => {
                 const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
                 if (locationCompare !== 0) return locationCompare;
@@ -110578,7 +110635,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 <section class="request-open-info-panel" onclick="event.stopPropagation()">
                     <div id="location-move-que-detail-body"></div>
                     <div class="request-open-info-footer">
-                        <button type="button" data-fast-press-ignore class="request-open-info-ok active:scale-95" onclick="return closeApprovedMoveRequestCard()">Back</button>
+                        <button data-secondary-back="true" aria-hidden="true" type="button" data-fast-press-ignore class="request-open-info-ok active:scale-95" onclick="return closeApprovedMoveRequestCard()">Back</button>
                     </div>
                 </section>`;
             document.body.appendChild(modal);
@@ -110752,7 +110809,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function renderApprovedMoveRequestDetailPage(item = {}) {
             const uid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
             return `<div class="space-y-3">
-                <button type="button" class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[0.99]" onclick="return closeApprovedMoveRequestCard()">
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[0.99]" onclick="return closeApprovedMoveRequestCard()">
                     <i class="ph-bold ph-arrow-left text-base"></i><span>Back to Location Move Que</span>
                 </button>
                 ${buildApprovedMoveRequestDetailHtml(item)}
@@ -111228,7 +111285,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             });
             const sections = Array.from(groups.entries()).map(([location, group]) => `<section class="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div class="mb-3 text-sm font-black uppercase tracking-[0.12em] text-slate-700">Source ${esc(location)} · ${group.length} line${group.length === 1 ? '' : 's'}</div><div class="space-y-3">${group.map((line) => renderLocationWorkLine(job, line)).join('')}</div></section>`).join('');
             const canManage = canCreateLocationWorkJob() && ['open','in_progress'].includes(String(job && job.status || ''));
-            return `<div class="space-y-4"><button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-600" onclick="return closeLocationWorkJob()"><i class="ph-bold ph-arrow-left"></i>Location Work</button><section class="rounded-2xl border border-blue-200 bg-white p-4"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">${esc(String(job.status || '').replace(/_/g, ' '))}</div><h2 class="mt-1 text-2xl font-black text-slate-900">${esc(String(job.title || 'Location Work'))}</h2><div class="mt-2 text-sm font-semibold text-slate-600 whitespace-pre-wrap">${esc(String(job.general_instructions || ''))}</div><div class="mt-3 text-xs font-bold text-slate-500">Assigned: ${esc((Array.isArray(job.assigned_usernames) ? job.assigned_usernames : []).join(', '))}</div></div><div class="flex flex-wrap gap-2">${renderLocationWorkDeliveryState(job, 'assignment')}${renderLocationWorkDeliveryState(job, 'completion')}</div></div>${canManage ? `<div class="mt-4 flex flex-wrap gap-2">${Number(job.resolved_line_count || 0) === 0 ? `<button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-blue-700" onclick="return editLocationWorkJob('${escJsAttrValue(job.id)}')">Edit Job Details</button>` : ''}<button type="button" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-red-700" onclick="return cancelLocationWorkJob('${escJsAttrValue(job.id)}',${Number(job.revision || 1)})">Cancel Work</button></div>` : ''}</section>${sections || '<div class="p-8 text-center text-sm font-bold text-slate-400">No worksheet lines.</div>'}</div>`;
+            return `<div class="space-y-4"><button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-600" onclick="return closeLocationWorkJob()"><i class="ph-bold ph-arrow-left"></i>Location Work</button><section class="rounded-2xl border border-blue-200 bg-white p-4"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">${esc(String(job.status || '').replace(/_/g, ' '))}</div><h2 class="mt-1 text-2xl font-black text-slate-900">${esc(String(job.title || 'Location Work'))}</h2><div class="mt-2 text-sm font-semibold text-slate-600 whitespace-pre-wrap">${esc(String(job.general_instructions || ''))}</div><div class="mt-3 text-xs font-bold text-slate-500">Assigned: ${esc((Array.isArray(job.assigned_usernames) ? job.assigned_usernames : []).join(', '))}</div></div><div class="flex flex-wrap gap-2">${renderLocationWorkDeliveryState(job, 'assignment')}${renderLocationWorkDeliveryState(job, 'completion')}</div></div>${canManage ? `<div class="mt-4 flex flex-wrap gap-2">${Number(job.resolved_line_count || 0) === 0 ? `<button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-blue-700" onclick="return editLocationWorkJob('${escJsAttrValue(job.id)}')">Edit Job Details</button>` : ''}<button type="button" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-red-700" onclick="return cancelLocationWorkJob('${escJsAttrValue(job.id)}',${Number(job.revision || 1)})">Cancel Work</button></div>` : ''}</section>${sections || '<div class="p-8 text-center text-sm font-bold text-slate-400">No worksheet lines.</div>'}</div>`;
         }
 
         async function editLocationWorkJob(jobId = '') {
@@ -111577,16 +111634,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     if (!customerEntries.length) {
                         const historyLoading = queueRequestHistoryRepFallbackFetch(selectedReqRepView, 'request-history-empty-customers');
                         const emptyText = historyLoading ? 'Loading request history for this sales rep...' : 'No customer request folders for this rep.';
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
+                        const html = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:empty:${historyLoading ? 'loading' : 'idle'}`);
                         return;
                     }
                     if (!visibleCustomerEntries.length) {
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">No matching customers.</div>`;
+                        const html = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">No matching customers.</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:filter-empty:${customerSearchToken}`);
                         return;
                     }
-                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-customers"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
+                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-customers"><div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
                     html += visibleCustomerEntries.map((entry) => {
                         const latestLabel = formatRequestFolderLatestLabel(entry.sortMs || entry.info.latestMs);
                         const unreadDot = entry.unreadCount ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
@@ -111612,16 +111669,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     if (!consigneeEntries.length) {
                         const historyLoading = queueRequestHistoryRepFallbackFetch(selectedReqRepView, 'request-history-empty-consignees');
                         const emptyText = historyLoading ? 'Loading request history for this customer...' : 'No consignee folders for this customer yet.';
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
+                        const html = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:consignees:empty:${historyLoading ? 'loading' : 'idle'}`);
                         return;
                     }
                     if (!visibleConsigneeEntries.length) {
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="p-8 text-center text-gray-400">No matching consignees.</div>`;
+                        const html = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="p-8 text-center text-gray-400">No matching consignees.</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:consignees:filter-empty:${consigneeSearchToken}`);
                         return;
                     }
-                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-consignees"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>`;
+                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-consignees"><div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>`;
                     html += visibleConsigneeEntries.map((entry) => {
                         const latestLabel = formatRequestFolderLatestLabel(entry.sortMs || entry.info.latestMs);
                         const unreadDot = entry.unreadCount ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
@@ -111644,7 +111701,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     if (consigneeItems.length === 0 && creditRows.length === 0) {
                         const historyLoading = queueRequestHistoryRepFallbackFetch(selectedReqRepView, 'request-history-empty-folders');
                         const emptyText = historyLoading ? 'Loading request history folders...' : 'No request folders for this consignee yet.';
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
+                        const html = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:${selectedReqConsigneeView}:folders:empty:${historyLoading ? 'loading' : 'idle'}`);
                         return;
                     }
@@ -111675,7 +111732,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     const hasFolderFilters = !!(searchToken || dateFilter);
                     const tabsHtml = renderRequestConsigneeModeTabs(folderEntries.length, creditRows.length);
                     if (requestConsigneeDrillMode === 'credit') {
-                        const html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-credit"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div>${tabsHtml}${renderSalesCreditConsigneeView(consigneeItems, creditRows)}</div>`;
+                        const html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-credit"><div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div>${tabsHtml}${renderSalesCreditConsigneeView(consigneeItems, creditRows)}</div>`;
                         const creditRenderKey = [
                             `request:credit:${selectedReqRepView}:${selectedReqCustView}:${selectedReqConsigneeView}`,
                             creditRows.map((row) => [row.UNIQUE_ID, row.CREDIT_STATUS, row.UPDATED_AT, row.CREDIT_PHOTO_LINK, row.REQUEST_PHOTO_LINK].join(':')).join('|'),
@@ -111685,7 +111742,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         setTimeout(() => scheduleDeferredCardPhotoHydration(container), didRender ? 80 : 20);
                         return;
                     }
-                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-folders"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div>${tabsHtml}<div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"><div class="relative"><input id="request-folder-search-input" class="input-field !mb-0 border-emerald-200 focus:border-[#007a4d] pr-10" type="text" value="${esc(requestFolderSearchTerm)}" placeholder="Search folders..." oninput="return setRequestFolderSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"><i class="ph-bold ph-magnifying-glass pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-emerald-500"></i></div><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Date<input id="request-folder-date-filter" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]" type="date" value="${esc(requestFolderDateFilter)}" oninput="return setRequestFolderDateFilter(this.value)" onchange="return setRequestFolderDateFilter(this.value)"></label><button id="request-folder-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-emerald-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasFolderFilters ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearRequestFolderFilters()">Clear</button></div><div id="request-folder-empty-filter" class="${visibleFolderCount ? 'hidden ' : ''}p-8 text-center text-gray-400">${folderEntries.length ? 'No matching request folders.' : 'No request folders for this consignee yet.'}</div>`;
+                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-folders"><div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div>${tabsHtml}<div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"><div class="relative"><input id="request-folder-search-input" class="input-field !mb-0 border-emerald-200 focus:border-[#007a4d] pr-10" type="text" value="${esc(requestFolderSearchTerm)}" placeholder="Search folders..." oninput="return setRequestFolderSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"><i class="ph-bold ph-magnifying-glass pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-emerald-500"></i></div><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Date<input id="request-folder-date-filter" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]" type="date" value="${esc(requestFolderDateFilter)}" oninput="return setRequestFolderDateFilter(this.value)" onchange="return setRequestFolderDateFilter(this.value)"></label><button id="request-folder-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-emerald-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasFolderFilters ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearRequestFolderFilters()">Clear</button></div><div id="request-folder-empty-filter" class="${visibleFolderCount ? 'hidden ' : ''}p-8 text-center text-gray-400">${folderEntries.length ? 'No matching request folders.' : 'No request folders for this consignee yet.'}</div>`;
                     html += folderEntries.map((entry) => {
                         const f = entry.folderName;
                         const folderStatus = entry.info.allComplete ? 'Complete' : 'Pending';
@@ -111714,7 +111771,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     folderItems = folderItems.filter(i => doesRequestItemMatchCustomerConsigneeFolder(i, selectedCustomerKey, selectedConsigneeKey));
                     folderItems = folderItems.filter(i => getRequestFolderName(i) === selectedReqFolderView);
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
-                    const prefixHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
+                    const prefixHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                     const renderKey = buildRequestChunkRenderKey(`request-folder:${selectedReqRepView}:${selectedReqCustView}:${selectedReqConsigneeView}:${selectedReqFolderView}`, crumbText, folderItems);
                     renderMarkupChunkedByKey('request-main', container, crumb, folderItems, crumbText, (item) => generateCard(item, 'request', isRequestComplete(item) ? 'status-green' : 'status-purple'), {
                         prefixHtml,
@@ -116967,7 +117024,7 @@ C.14.043 C.15.000
             return safeRows.filter((item) => {
                 if (!item || typeof item !== 'object') return false;
                 if (level >= 1 && selectedBlock && getTaskBlockAlpha(item) !== selectedBlock) return false;
-                if (level >= 2 && selectedLocation && getTaskLocationBucket(item) !== selectedLocation) return false;
+                if (level >= 2 && selectedLocation && getTaskFullLocation(item) !== selectedLocation) return false;
                 return true;
             });
         }
@@ -121630,7 +121687,7 @@ C.14.043 C.15.000
                 resetCropRollActiveDrillState(1);
                 return;
             }
-            if (!safeRows.some((item) => getTaskBlockAlpha(item) === selectedBlock && getTaskLocationBucket(item) === selectedLocation)) {
+            if (!safeRows.some((item) => getTaskBlockAlpha(item) === selectedBlock && getTaskFullLocation(item) === selectedLocation)) {
                 resetCropRollActiveDrillState(1);
                 return;
             }
@@ -121655,7 +121712,7 @@ C.14.043 C.15.000
         function buildCropRollSy27LocationGroups(rows = []) {
             const locationCounts = new Map();
             (Array.isArray(rows) ? rows : []).forEach((item) => {
-                const location = getTaskLocationBucket(item);
+                const location = getTaskFullLocation(item);
                 locationCounts.set(location, (locationCounts.get(location) || 0) + 1);
             });
             return Array.from(locationCounts.entries())
@@ -121869,6 +121926,11 @@ C.14.043 C.15.000
         }
 
         function renderCropRollSy27Entries(container, crumb, crumbText, entries, modeKey, renderEntry, options = {}) {
+            if(String(modeKey).endsWith(':locations')) {
+                syncDriveCrumb(crumb,crumbText);
+                setContainerHtml(container,String(options.prefixHtml||'')+LocationCode.cards(modeKey+':'+getCropRollActiveSelectedBlock(),entries,row=>row.location,renderEntry));
+                return;
+            }
             const safeEntries = Array.isArray(entries) ? entries : [];
             const prefixHtml = String(options.prefixHtml || '');
             const emptyMessage = String(options.emptyMessage || `No ${getCropRollActiveViewLabel()} rows match the current search.`);
@@ -121948,11 +122010,11 @@ C.14.043 C.15.000
             }
             const selectedLocation = String(getCropRollActiveSelectedLocation() || '').trim();
             const selectedLocationRows = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-rows:${selectedBlock}:${selectedLocation}`, () => selectedBlockRows
-                .filter((item) => getTaskLocationBucket(item) === selectedLocation)
+                .filter((item) => getTaskFullLocation(item) === selectedLocation)
                 .filter((item) => doesCropRollRowMatchActiveFilterState(item, activeView)));
             const term = String(cropRollSy27SearchTerm || '').trim();
             const searchedLocationRows = term
-                ? getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-search:${selectedBlock}:${selectedLocation}`, () => selectedBlockSearchRows.filter((item) => getTaskLocationBucket(item) === selectedLocation))
+                ? getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-search:${selectedBlock}:${selectedLocation}`, () => selectedBlockSearchRows.filter((item) => getTaskFullLocation(item) === selectedLocation))
                 : selectedLocationRows;
             const locationContSizeOptions = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-contsize-options:${selectedBlock}:${selectedLocation}`, () => getCropRollLocationContSizeOptions(searchedLocationRows));
             const locationSeasonOptions = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-season-options:${selectedBlock}:${selectedLocation}`, () => getCropRollLocationSeasonOptions(searchedLocationRows));
@@ -126480,7 +126542,7 @@ C.14.043 C.15.000
                 </div>`;
             };
             return `<div class="space-y-3">
-                <button type="button" class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[0.99]" onclick="return closeShearApprovalDetail()">
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-[0.99]" onclick="return closeShearApprovalDetail()">
                     <i class="ph-bold ph-arrow-left text-base"></i><span>Back to Shear Approval</span>
                 </button>
                 <div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
@@ -127354,7 +127416,7 @@ C.14.043 C.15.000
             if (!state.loaded && !state.loading && state.level === 'sources') setTimeout(() => loadManagerOrderSources(false), 0);
             const errorHtml = state.error ? `<div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"><div>${escapeHtml(state.error)}</div><button type="button" class="mt-3 min-h-[44px] rounded-xl border border-red-200 bg-white px-4 text-[10px] font-black uppercase" onclick="return refreshManagerOrders()">Retry</button></div>` : '';
             const loadingHtml = state.loading && !state.rows.length && !state.batches.length ? '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">Loading Orders...</div>' : '';
-            const header = `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-3"><div class="flex min-w-0 items-center gap-3">${state.level !== 'sources' ? '<button type="button" class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-emerald-200 bg-white text-emerald-800" aria-label="Back" onclick="return backManagerOrders()"><i class="ph-bold ph-arrow-left"></i></button>' : ''}<div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Managers · Orders</div><div class="mt-1 truncate text-xl font-black text-slate-900">${escapeHtml(state.level === 'detail' && state.batch ? state.batch.displayName : state.level === 'batches' ? sourceLabel : 'Orders')}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">Frozen Drive Mode history from processed order files.</div></div></div><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-800 ${state.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return refreshManagerOrders()"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button></div></div>`;
+            const header = `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-3"><div class="flex min-w-0 items-center gap-3">${state.level !== 'sources' ? '<button data-secondary-back="true" aria-hidden="true" type="button" class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-emerald-200 bg-white text-emerald-800" aria-label="Back" onclick="return backManagerOrders()"><i class="ph-bold ph-arrow-left"></i></button>' : ''}<div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Managers · Orders</div><div class="mt-1 truncate text-xl font-black text-slate-900">${escapeHtml(state.level === 'detail' && state.batch ? state.batch.displayName : state.level === 'batches' ? sourceLabel : 'Orders')}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">Frozen Drive Mode history from processed order files.</div></div></div><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-800 ${state.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return refreshManagerOrders()"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button></div></div>`;
 
             if (state.level === 'sources') {
                 const cards = state.sources.length ? state.sources.map((source) => `<button type="button" class="w-full rounded-2xl border border-emerald-200 bg-white p-5 text-left shadow-sm active:scale-[0.99]" onclick="return openManagerOrderSource('${escJsAttrValue(source.sourceKey || 'pikes')}')"><div class="flex items-start justify-between gap-4"><div><div class="text-2xl font-black text-[#007a4d]">${escapeHtml(source.label || 'Pikes')}</div><div class="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(source.batchCount || 0))} historical batches${Number(source.failedCount || 0) ? ` • ${escapeHtml(String(source.failedCount))} pending failure${Number(source.failedCount) === 1 ? '' : 's'}` : ''}</div>${source.latestDisplayName ? `<div class="mt-2 text-sm font-bold text-slate-600">Latest: ${escapeHtml(source.latestDisplayName)}</div>` : ''}</div><i class="ph-bold ph-caret-right text-2xl text-emerald-500"></i></div></button>`).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No order sources are available yet.</div>';
@@ -127764,7 +127826,7 @@ C.14.043 C.15.000
                 return { active: true, rows: scoped, crumb: `${meta.label} > ${managerEvalReportSelectedCommonName} (${scoped.length} items)` };
             }
             if (activeManagerEvalReportView === 'loc' && managerEvalReportSelectedBlock && managerEvalReportSelectedLocation) {
-                const scoped = sourceRows.filter((row) => getTaskBlockAlpha(row) === managerEvalReportSelectedBlock && getTaskLocationBucket(row) === managerEvalReportSelectedLocation);
+                const scoped = sourceRows.filter((row) => getTaskBlockAlpha(row) === managerEvalReportSelectedBlock && getTaskFullLocation(row) === managerEvalReportSelectedLocation);
                 return { active: true, rows: scoped, crumb: `${meta.label} > ${managerEvalReportSelectedBlock} > ${managerEvalReportSelectedLocation} (${scoped.length} items)` };
             }
             return { active: false, rows: sourceRows, crumb: `${meta.label} (${sourceRows.length} items)` };
@@ -127777,7 +127839,7 @@ C.14.043 C.15.000
         function renderManagerEvalReportBrowseResults(rows = []) {
             const detail = getManagerEvalReportDetailContext(rows);
             if (detail.active) {
-                return `<div class="space-y-3"><div class="flex items-center justify-between gap-3">${activeManagerEvalReportView === 'card' ? '<span></span>' : '<button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerEvalReportDrill()"><i class="ph-bold ph-arrow-left text-base"></i>Back</button>'}<span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(detail.crumb)}</span></div><div id="manager-eval-report-records"></div></div>`;
+                return `<div class="space-y-3"><div class="flex items-center justify-between gap-3">${activeManagerEvalReportView === 'card' ? '<span></span>' : '<button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerEvalReportDrill()"><i class="ph-bold ph-arrow-left text-base"></i>Back</button>'}<span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(detail.crumb)}</span></div><div id="manager-eval-report-records"></div></div>`;
             }
             if (activeManagerEvalReportView === 'name') {
                 const groups = new Map();
@@ -127808,15 +127870,12 @@ C.14.043 C.15.000
                 }
                 const groups = new Map();
                 rows.filter((row) => getTaskBlockAlpha(row) === managerEvalReportSelectedBlock).forEach((row) => {
-                    const location = getTaskLocationBucket(row);
+                    const location = getTaskFullLocation(row);
                     if (!groups.has(location)) groups.set(location, []);
                     groups.get(location).push(row);
                 });
-                const cards = Array.from(groups.entries())
-                    .sort((a, b) => compareLocationCodeValues(a[0], b[0]))
-                    .map(([location, groupRows]) => renderManagerEvalReportGroupButton(location, groupRows.length, `${new Set(groupRows.map(getManagerEvalReportRowCommonName)).size} common names`, `openManagerEvalReportLocation('${escJsAttrValue(location)}')`))
-                    .join('');
-                return `<button type="button" class="mb-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerEvalReportDrill()"><i class="ph-bold ph-arrow-left text-base"></i>Blocks</button>${cards || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No locations match the active filters.</div>'}`;
+                const cards = LocationCode.cards('manager-eval:'+managerEvalReportSelectedBlock,Array.from(groups.entries()),entry=>entry[0],([location, groupRows]) => renderManagerEvalReportGroupButton(location, groupRows.length, `${new Set(groupRows.map(getManagerEvalReportRowCommonName)).size} common names`, `openManagerEvalReportLocation('${escJsAttrValue(location)}')`));
+                return `<button data-secondary-back="true" aria-hidden="true" type="button" class="mb-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerEvalReportDrill()"><i class="ph-bold ph-arrow-left text-base"></i>Blocks</button>${cards || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No locations match the active filters.</div>'}`;
             }
             return '';
         }
@@ -129277,7 +129336,7 @@ C.14.043 C.15.000
 
         function renderManagerEvalReport2ItemDetail() {
             const model = getManagerEvalReport2DetailModel();
-            if (!model) return `<div data-manager-eval2-detail class="rounded-2xl border border-red-200 bg-red-50 p-6 text-center"><div class="text-sm font-black text-red-700">This ITEMCODE is no longer available for the selected AssignedTo user.</div><button type="button" class="mt-4 min-h-[44px] rounded-xl bg-[#007a4d] px-4 text-[10px] font-black uppercase tracking-[0.12em] text-white" onclick="return closeManagerEvalReport2ItemDetail()">Back to ITEMCODEs</button></div>`;
+            if (!model) return `<div data-manager-eval2-detail class="rounded-2xl border border-red-200 bg-red-50 p-6 text-center"><div class="text-sm font-black text-red-700">This ITEMCODE is no longer available for the selected AssignedTo user.</div><button data-secondary-back="true" aria-hidden="true" type="button" class="mt-4 min-h-[44px] rounded-xl bg-[#007a4d] px-4 text-[10px] font-black uppercase tracking-[0.12em] text-white" onclick="return closeManagerEvalReport2ItemDetail()">Back to ITEMCODEs</button></div>`;
             const stale = managerEvalReport2LoadState.loading || !!managerEvalReport2LoadState.error || !isDatasetLoaded('master', 'full') || !isDatasetLoaded('warehouseAssignedItems', 'full');
             const staleHtml = stale ? '<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">These are the last complete results. Retry the inventory and Assigned Items refresh before editing or assigning Eval Work.</div>' : '<div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-800">Edits are temporary report-only proposals. They will be carried into the PDF-backed Eval Work assignment; production inventory will not be updated.</div>';
             const overviewFields = ['LOCATIONCODE', 'SOURCE', 'LOTCODE', 'ITEMSPEC', 'S_LTS', 'SALESNOTE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PTRAVAILABLE'];
@@ -129304,7 +129363,7 @@ C.14.043 C.15.000
                 ].join('');
                 return `<details data-manager-eval2-detail-row="${escapeHtml(rowKey)}" class="group overflow-hidden rounded-2xl border ${edited ? 'border-amber-400 ring-2 ring-amber-200' : 'border-emerald-200'} bg-white shadow-sm" ${index === 0 ? 'open' : ''}><summary class="cursor-pointer list-none px-4 py-3 marker:content-none"><div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Location ${escapeHtml(location)} / Lot ${escapeHtml(lot)}</div><div class="mt-1 break-words text-[12px] font-bold text-slate-600">${escapeHtml(source)}</div><span data-manager-eval2-row-edit-count class="${edited ? '' : 'hidden'} mt-2 inline-flex rounded-full bg-amber-200 px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-amber-900">${changedFields.size} Edited</span></div><div class="shrink-0 text-right"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Available</div><div class="text-base font-black text-slate-900">${escapeHtml(available)}</div><i class="ph-bold ph-caret-down mt-1 inline-block text-[#007a4d] transition-transform group-open:rotate-180"></i></div></div></summary><div class="border-t border-emerald-100 bg-emerald-50/25 p-3"><div class="grid grid-cols-2 gap-2">${overviewHtml}</div><div class="mt-4 text-[9px] font-black uppercase tracking-[0.14em] text-amber-700">Hold</div><div class="mt-2 space-y-2">${holdHtml}</div><div class="mt-4 text-[9px] font-black uppercase tracking-[0.14em] text-purple-700">Priority</div><div class="mt-2">${buildManagerEvalReport2EditableField(row, index, 'PRIORITY')}</div><div class="mt-4 text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Location / Follow-up</div><div class="mt-2 space-y-2">${followUpHtml}</div></div></details>`;
             }).join('');
-            return `<div data-manager-eval2-detail class="space-y-4 overflow-x-hidden"><div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><button type="button" class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return closeManagerEvalReport2ItemDetail()"><i class="ph-bold ph-arrow-left"></i>ITEMCODEs</button><div class="mt-4"><div class="text-[9px] font-black uppercase tracking-[0.15em] text-[#007a4d]">Queue-style item details</div><div class="mt-1 text-2xl font-black leading-tight text-slate-900">${escapeHtml(model.commonName)}</div><div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.1em]"><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-blue-700">${escapeHtml(model.containerSizes.join(', ') || '—')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-mono text-emerald-800">${escapeHtml(model.itemCode)}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-700">${escapeHtml(model.assignedTo)}</span></div></div><div class="mt-4 grid grid-cols-3 gap-2"><div class="rounded-xl bg-emerald-50 px-2 py-3 text-center"><div class="text-[7px] font-black uppercase tracking-[0.11em] text-emerald-700">Report rows</div><div class="mt-1 text-lg font-black text-emerald-900">${escapeHtml(String(model.reportRowCount))}</div></div><div class="rounded-xl bg-blue-50 px-2 py-3 text-center"><div class="text-[7px] font-black uppercase tracking-[0.11em] text-blue-700">Expanded rows</div><div class="mt-1 text-lg font-black text-blue-900">${escapeHtml(String(model.rows.length))}</div></div><div class="rounded-xl bg-purple-50 px-2 py-3 text-center"><div class="text-[7px] font-black uppercase tracking-[0.11em] text-purple-700">Locations</div><div class="mt-1 text-lg font-black text-purple-900">${escapeHtml(String(model.locationCount))}</div></div></div></div>${staleHtml}${renderManagerEvalReport2SelectionTray()}<div class="space-y-3">${rowSections}</div></div>`;
+            return `<div data-manager-eval2-detail class="space-y-4 overflow-x-hidden"><div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return closeManagerEvalReport2ItemDetail()"><i class="ph-bold ph-arrow-left"></i>ITEMCODEs</button><div class="mt-4"><div class="text-[9px] font-black uppercase tracking-[0.15em] text-[#007a4d]">Queue-style item details</div><div class="mt-1 text-2xl font-black leading-tight text-slate-900">${escapeHtml(model.commonName)}</div><div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.1em]"><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-blue-700">${escapeHtml(model.containerSizes.join(', ') || '—')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-mono text-emerald-800">${escapeHtml(model.itemCode)}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-700">${escapeHtml(model.assignedTo)}</span></div></div><div class="mt-4 grid grid-cols-3 gap-2"><div class="rounded-xl bg-emerald-50 px-2 py-3 text-center"><div class="text-[7px] font-black uppercase tracking-[0.11em] text-emerald-700">Report rows</div><div class="mt-1 text-lg font-black text-emerald-900">${escapeHtml(String(model.reportRowCount))}</div></div><div class="rounded-xl bg-blue-50 px-2 py-3 text-center"><div class="text-[7px] font-black uppercase tracking-[0.11em] text-blue-700">Expanded rows</div><div class="mt-1 text-lg font-black text-blue-900">${escapeHtml(String(model.rows.length))}</div></div><div class="rounded-xl bg-purple-50 px-2 py-3 text-center"><div class="text-[7px] font-black uppercase tracking-[0.11em] text-purple-700">Locations</div><div class="mt-1 text-lg font-black text-purple-900">${escapeHtml(String(model.locationCount))}</div></div></div></div>${staleHtml}${renderManagerEvalReport2SelectionTray()}<div class="space-y-3">${rowSections}</div></div>`;
         }
 
         function handleManagerEvalReport2ItemCardClick(encodedKey = '') {
@@ -129602,7 +129661,7 @@ C.14.043 C.15.000
                 ? `<button id="manager-eval-report-2-select-shown" type="button" class="min-h-[40px] rounded-full border border-emerald-300 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${visibleSelection.visibleKeys.length ? '' : 'pointer-events-none opacity-50'}" onclick="return toggleAllShownManagerEvalReport2Items()" ${visibleSelection.visibleKeys.length ? '' : 'disabled'}><i class="ph-bold ph-checks mr-1"></i><span data-role="label">${visibleSelection.allVisibleSelected ? 'Deselect Shown' : 'Select All Shown'}</span></button>`
                 : '';
             const backButton = managerEvalReport2BrowseMode === 'location' && managerEvalReport2DrillLevel > 0
-                ? '<button type="button" class="min-h-[40px] rounded-full border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700" onclick="return backManagerEvalReport2Drill()"><i class="ph-bold ph-arrow-left mr-1"></i>Back</button>'
+                ? '<button data-secondary-back="true" aria-hidden="true" type="button" class="min-h-[40px] rounded-full border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700" onclick="return backManagerEvalReport2Drill()"><i class="ph-bold ph-arrow-left mr-1"></i>Back</button>'
                 : '';
             const helperText = itemcodeLevel
                 ? (getManagerEvalReport2SeasonFilters().size
@@ -129735,7 +129794,7 @@ C.14.043 C.15.000
                     setContainerHtml(container, '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No blocks or locations match the selected reports and filters.</div>');
                     return;
                 }
-                setContainerHtml(container, `<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">${drillGroups.map(renderManagerEvalReport2DrillGroupCard).join('')}</div>`);
+                setContainerHtml(container, `<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">${drillGroups[0]?.kind === 'locationcode' ? LocationCode.cards('eval2:'+managerEvalReport2SelectedBlockAlpha, drillGroups, group => group.value, renderManagerEvalReport2DrillGroupCard) : drillGroups.map(renderManagerEvalReport2DrillGroupCard).join('')}</div>`);
                 return;
             }
             const allItemGroups = getManagerEvalReport2VisibleItemGroups();
@@ -131565,7 +131624,7 @@ C.14.043 C.15.000
         }
         function filterManagerBlockClearingRowsForSearch(rows = []) { return getManagersSearchTokens().length ? rows.filter(managerBlockClearingRowMatchesSearch) : rows; }
         function getManagerBlockClearingLocationGroupsForBlock(block = '') { return getManagerBlockClearingCache().locationsByBlock.get(String(block).trim().toUpperCase()) || []; }
-        function getManagerBlockClearingRowsForSelectedLocation() { return (getManagerBlockClearingCache().byLocation.get(normalizeManagerBlockClearingLocationBucket(managerBlockClearingSelectedLocation)) || {}).rows || []; }
+        function getManagerBlockClearingRowsForSelectedLocation() { const code=LocationCode.normalize(managerBlockClearingSelectedLocation), cache=getManagerBlockClearingCache(); const rows=cache.byLocation.get(LocationCode.base(code))?.rows || [], exact=rows.filter(row=>getManagerBlockClearingRawLocation(row)===code); return exact.length ? exact : (cache.byLocation.has(code) ? cache.byLocation.get(code).rows : []); }
         function buildManagerBlockClearingGroups(rows = null) {
             const groups = new Map(), seen = new Set();
             (Array.isArray(rows) ? rows : getManagerBlockClearingSelectedRows()).forEach((row) => {
@@ -131627,7 +131686,7 @@ C.14.043 C.15.000
         }
         function selectManagerBlockClearingLocation(location = '') {
             saveManagerBlockClearingNavigation();
-            managerBlockClearingSelectedLocation = normalizeManagerBlockClearingLocationBucket(location); managerBlockClearingLevel = 2; managerBlockClearingInstructionMode = false;
+            managerBlockClearingSelectedLocation = LocationCode.normalize(location); managerBlockClearingLevel = 2; managerBlockClearingInstructionMode = false;
             const saved = managerBlockClearingDraftState.locations.get(managerBlockClearingSelectedLocation);
             managerBlockClearingSelectedIds = saved ? saved.selected : new Set();
             managerBlockClearingDraftState.decisions = saved ? saved.decisions : new Map();
@@ -131889,7 +131948,8 @@ C.14.043 C.15.000
             }
             if (managerBlockClearingLevel === 1) {
                 const groups = getManagerBlockClearingLocationGroupsForBlock(managerBlockClearingSelectedBlock).filter((group) => managerTextMatchesSearch([group.location]) || filterManagerBlockClearingRowsForSearch(group.rows).length);
-                return `<div class="space-y-3"><h2 class="text-xl font-black text-[#007a4d]">Block ${escapeHtml(managerBlockClearingSelectedBlock)}</h2>${groups.map((group) => renderManagerBlockClearingBucketCard('location', group.location, group)).join('') || '<p>No locations match this search.</p>'}</div>`;
+                const bayGroups = groups.flatMap(group=>[...LocationCode.group(group.rows.map(getManagerBlockClearingRawLocation)).values()].flat().map(location=>{const rows=group.rows.filter(row=>getManagerBlockClearingRawLocation(row)===location);return {...group,location,rows,itemcodes:new Set(rows.map(getManagerBlockClearingItemCode))};}));
+                return `<div class="space-y-3"><h2 class="text-xl font-black text-[#007a4d]">Block ${escapeHtml(managerBlockClearingSelectedBlock)}</h2>${LocationCode.cards('block-clearing:'+managerBlockClearingSelectedBlock,bayGroups,group=>group.location,group=>renderManagerBlockClearingBucketCard('location',group.location,group)) || '<p>No locations match this search.</p>'}</div>`;
             }
             const allGroups = getManagerBlockClearingItemGroupsForSelectedLocation(), groups = allGroups.filter((group) => filterManagerBlockClearingRowsForSearch(group.rows).length);
             const count = getManagerBlockClearingSelectedCount();
@@ -132739,7 +132799,7 @@ C.14.043 C.15.000
             const canApprove = task.status === 'ready_for_approval' && codexOpsState.capabilities && codexOpsState.capabilities.canApprove === true && task.pathPolicyPassed === true && task.requiredChecksPassed === true;
             const status = String(task.status || '');
             const terminal = ['deploying','live','reverted','cancelled'].includes(status);
-            return `<div class="space-y-4"><button type="button" class="codex-ops-back" onclick="return closeCodexOpsTask()"><i class="ph-bold ph-arrow-left"></i>Tasks</button><section class="codex-ops-panel"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="codex-ops-kicker">Task · Revision ${escapeHtml(String(task.revision || 1))}</div><h3 class="mt-1 text-xl font-black text-slate-900">${escapeHtml(task.title || task.description || 'Codex task')}</h3></div>${renderCodexOpsStatus(task.status)}</div>${task.headSha ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] font-bold text-slate-700">Commit ${escapeHtml(task.headSha)}</div>` : ''}<div class="mt-3 flex flex-wrap gap-2">${pr}${task.status === 'needs_escalation' ? '<button type="button" class="codex-ops-secondary-btn" onclick="return escalateCodexOpsTask()"><i class="ph-bold ph-magnifying-glass"></i>Request Sol Review</button>' : ''}${canApprove ? `<button type="button" class="codex-ops-approve-btn" ${codexOpsState.sending ? 'disabled' : ''} onclick="return approveCodexOpsDeployment()"><i class="ph-bold ph-rocket-launch"></i>Approve and Deploy</button>` : ''}${!terminal ? '<button type="button" class="codex-ops-danger-btn" onclick="return cancelCodexOpsTask()">Cancel</button>' : ''}</div></section>${changedFiles || tests ? `<section class="codex-ops-panel"><div class="codex-ops-kicker">Reviewed Change</div>${changedFiles ? `<div class="mt-3 text-[11px] font-black uppercase text-slate-500">Files</div><ul class="codex-ops-review-list">${changedFiles}</ul>` : ''}${tests ? `<div class="mt-3 text-[11px] font-black uppercase text-slate-500">Tests</div><ul class="codex-ops-review-list">${tests}</ul>` : ''}</section>` : ''}<section class="space-y-3" aria-label="Codex conversation">${messages || '<div class="codex-ops-empty">No messages yet.</div>'}</section>${!terminal ? `<section class="codex-ops-panel"><label class="codex-ops-label" for="codex-ops-reply">Reply to Codex</label><textarea id="codex-ops-reply" class="codex-ops-textarea" rows="3" maxlength="12000" oninput="return updateCodexOpsMessageDraft(this.value)">${escapeHtml(codexOpsState.messageDraft || '')}</textarea><button type="button" class="codex-ops-primary-btn mt-3 w-full" ${codexOpsState.sending ? 'disabled' : ''} onclick="return sendCodexOpsFollowUp()"><i class="ph-bold ph-paper-plane-tilt"></i>Send</button></section>` : ''}</div>`;
+            return `<div class="space-y-4"><button data-secondary-back="true" aria-hidden="true" type="button" class="codex-ops-back" onclick="return closeCodexOpsTask()"><i class="ph-bold ph-arrow-left"></i>Tasks</button><section class="codex-ops-panel"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="codex-ops-kicker">Task · Revision ${escapeHtml(String(task.revision || 1))}</div><h3 class="mt-1 text-xl font-black text-slate-900">${escapeHtml(task.title || task.description || 'Codex task')}</h3></div>${renderCodexOpsStatus(task.status)}</div>${task.headSha ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] font-bold text-slate-700">Commit ${escapeHtml(task.headSha)}</div>` : ''}<div class="mt-3 flex flex-wrap gap-2">${pr}${task.status === 'needs_escalation' ? '<button type="button" class="codex-ops-secondary-btn" onclick="return escalateCodexOpsTask()"><i class="ph-bold ph-magnifying-glass"></i>Request Sol Review</button>' : ''}${canApprove ? `<button type="button" class="codex-ops-approve-btn" ${codexOpsState.sending ? 'disabled' : ''} onclick="return approveCodexOpsDeployment()"><i class="ph-bold ph-rocket-launch"></i>Approve and Deploy</button>` : ''}${!terminal ? '<button type="button" class="codex-ops-danger-btn" onclick="return cancelCodexOpsTask()">Cancel</button>' : ''}</div></section>${changedFiles || tests ? `<section class="codex-ops-panel"><div class="codex-ops-kicker">Reviewed Change</div>${changedFiles ? `<div class="mt-3 text-[11px] font-black uppercase text-slate-500">Files</div><ul class="codex-ops-review-list">${changedFiles}</ul>` : ''}${tests ? `<div class="mt-3 text-[11px] font-black uppercase text-slate-500">Tests</div><ul class="codex-ops-review-list">${tests}</ul>` : ''}</section>` : ''}<section class="space-y-3" aria-label="Codex conversation">${messages || '<div class="codex-ops-empty">No messages yet.</div>'}</section>${!terminal ? `<section class="codex-ops-panel"><label class="codex-ops-label" for="codex-ops-reply">Reply to Codex</label><textarea id="codex-ops-reply" class="codex-ops-textarea" rows="3" maxlength="12000" oninput="return updateCodexOpsMessageDraft(this.value)">${escapeHtml(codexOpsState.messageDraft || '')}</textarea><button type="button" class="codex-ops-primary-btn mt-3 w-full" ${codexOpsState.sending ? 'disabled' : ''} onclick="return sendCodexOpsFollowUp()"><i class="ph-bold ph-paper-plane-tilt"></i>Send</button></section>` : ''}</div>`;
         }
 
         function renderCodexOperationsPanel() {
@@ -134609,8 +134669,8 @@ C.14.043 C.15.000
             if (managerMovePlannerLevel === 1) {
                 const safeBlock = normalizeMovesDrillValue(managerMoveSelectedBlock);
                 const locationGroups = getManagerMoveLocationGroupsForBlock(safeBlock).filter((group) => managerTextMatchesSearch([safeBlock, group.location]) || filterManagerMoveRowsForSearch(group.rows).length);
-                const locationCards = locationGroups.map((group) => `<button type="button" class="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" style="touch-action: manipulation;" onclick="return selectManagerMoveLocation('${escJsAttrValue(group.location)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Location Code</div><div class="mt-1 text-2xl font-black text-slate-900">${esc(group.location)}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.rows.length} Rows</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.itemcodes.size} Items</span></div></button>`).join('');
-                return `<div class="space-y-3">${approvalHtml}<button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerMovePlanner()"><i class="ph-bold ph-arrow-left text-base"></i>Blocks</button><div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block Alpha</div><div class="mt-1 text-xl font-black text-slate-900">${esc(safeBlock)}</div></div>${locationCards}</div>`;
+                const locationCards = LocationCode.cards('manager-moves:'+safeBlock,locationGroups,group=>group.location,(group) => `<button type="button" class="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" style="touch-action: manipulation;" onclick="return selectManagerMoveLocation('${escJsAttrValue(group.location)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Location Code</div><div class="mt-1 text-2xl font-black text-slate-900">${esc(group.location)}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.rows.length} Rows</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.itemcodes.size} Items</span></div></button>`);
+                return `<div class="space-y-3">${approvalHtml}<button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerMovePlanner()"><i class="ph-bold ph-arrow-left text-base"></i>Blocks</button><div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block Alpha</div><div class="mt-1 text-xl font-black text-slate-900">${esc(safeBlock)}</div></div>${locationCards}</div>`;
             }
             const allLocationRows = getManagerMoveRowsForSelectedLocation();
             const locationRows = filterManagerMoveRowsForSearch(allLocationRows);
@@ -134620,7 +134680,7 @@ C.14.043 C.15.000
             const searchActive = !!getManagersSearchTokens().length;
             const availabilityLabel = searchActive ? `${locationRows.length} shown of ${allLocationRows.length}` : `${locationRows.length} row${locationRows.length === 1 ? '' : 's'} available`;
             const moveFromHtml = `<div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Move From</div><div class="mt-1 text-xl font-black text-slate-900">${esc(normalizeMovesDrillValue(managerMoveSelectedBlock))} / ${esc(normalizeMovesLocationValue(managerMoveSelectedLocation))}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">${esc(availabilityLabel)} | ${selectedCount} selected</div></div>`;
-            const backButtonHtml = `<button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerMovePlanner()"><i class="ph-bold ph-arrow-left text-base"></i>Locations</button>`;
+            const backButtonHtml = `<button data-secondary-back="true" aria-hidden="true" type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerMovePlanner()"><i class="ph-bold ph-arrow-left text-base"></i>Locations</button>`;
             const itemGroups = buildManagerMoveItemGroups(locationRows);
             const cardsHtml = itemGroups.length
                 ? itemGroups.map(renderManagerMoveItemcodeCard).join('')
@@ -135110,7 +135170,7 @@ C.14.043 C.15.000
             const subtitle = group.contSize ? ` | ${escapeHtml(group.contSize)}` : '';
             const currentLowLabel = group.missingOpenStock ? 'No current row' : (group.blankOpenStockCount ? 'Blank' : (group.minSeedSlts == null ? '-' : String(group.minSeedSlts)));
             return `<div class="space-y-4">
-                <button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm" onclick="return closeBuildingGroup()"><i class="ph-bold ph-arrow-left align-middle"></i><span class="ml-1 align-middle">Back to Building</span></button>
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm" onclick="return closeBuildingGroup()"><i class="ph-bold ph-arrow-left align-middle"></i><span class="ml-1 align-middle">Back to Building</span></button>
                 <div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                     <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(getBuildingTabLabel(group.mode))}</div>
                     <div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(group.commonName)}</div>
@@ -139519,7 +139579,7 @@ C.14.043 C.15.000
                     picker_locked: isRequestRepPickerLockedForCurrentUser() ? 1 : 0
                 }, 'error');
             } catch (_) {}
-            container.innerHTML = `<div class="request-step-header flex-shrink-0"><h3 class="font-bold text-lg text-orange-600">Customer</h3></div><div class="request-folder-picker-body"><div class="request-empty-state"><div class="request-choice-title">Customer choices could not be prepared.</div><div class="request-choice-meta mt-2">Your selected rows and sales rep are still saved. Retry or go back.</div></div><button class="request-primary-action request-folder-create-action" ${buildFastInvokeAttrs('retryExistingRequestFolderPicker', [], 'Retry loading Request customers')}>Retry</button><button class="request-secondary-action mt-2" ${buildFastInvokeAttrs('leaveRequestFolderPickerFailure', [], 'Back from Request customer loading error')}>Back</button></div>`;
+            container.innerHTML = `<div class="request-step-header flex-shrink-0"><h3 class="font-bold text-lg text-orange-600">Customer</h3></div><div class="request-folder-picker-body"><div class="request-empty-state"><div class="request-choice-title">Customer choices could not be prepared.</div><div class="request-choice-meta mt-2">Your selected rows and sales rep are still saved. Retry or go back.</div></div><button class="request-primary-action request-folder-create-action" ${buildFastInvokeAttrs('retryExistingRequestFolderPicker', [], 'Retry loading Request customers')}>Retry</button><button data-secondary-back="true" aria-hidden="true" class="request-secondary-action mt-2" ${buildFastInvokeAttrs('leaveRequestFolderPickerFailure', [], 'Back from Request customer loading error')}>Back</button></div>`;
             return false;
         }
 
@@ -139541,7 +139601,7 @@ C.14.043 C.15.000
             const { customerGroup: selectedGroup, consigneeGroup: selectedConsigneeGroup } = getSelectedExistingRequestFolderGroups(groups);
             const stepTitle = selectedConsigneeGroup ? 'Select Request Folder' : (selectedGroup ? 'Select Consignee' : 'Select Customer');
             const canBackToRepPicker = !selectedGroup && !isRequestRepPickerLockedForCurrentUser();
-            let html = `<div class="request-step-header flex-shrink-0">${canBackToRepPicker ? `<i class="request-back-icon ph-bold ph-arrow-left cursor-pointer" ${buildFastInvokeAttrs('backToRequestRepStep', [], 'Back to Sales Reps')}></i>` : ''}<h3 class="font-bold text-lg text-orange-600">${stepTitle}</h3></div>`;
+            let html = `<div class="request-step-header flex-shrink-0">${canBackToRepPicker ? `<i data-secondary-back="true" aria-hidden="true" class="request-back-icon ph-bold ph-arrow-left cursor-pointer" ${buildFastInvokeAttrs('backToRequestRepStep', [], 'Back to Sales Reps')}></i>` : ''}<h3 class="font-bold text-lg text-orange-600">${stepTitle}</h3></div>`;
             html += `<div class="request-folder-picker-body">`;
             if (!selectedGroup) {
                 const filteredGroups = groups.filter((group) => requestCustomerGroupMatchesPickerSearch(group, tempExistingReqCustomerSearch, customerSearch));
@@ -139566,7 +139626,7 @@ C.14.043 C.15.000
                 const consignees = Array.isArray(selectedGroup.consignees) ? selectedGroup.consignees : [];
                 const filteredConsignees = consignees.filter((group) => requestConsigneeOptionMatchesPickerSearch(group, tempExistingReqConsigneeSearch, consigneeSearch));
                 const visibleConsignees = getRequestModalVisibleOptions(`existing:consignees:${selectedGroup.key}:${consigneeSearch || 'all'}`, filteredConsignees);
-                html += `<button class="request-secondary-action" ${buildFastInvokeAttrs('backToExistingRequestCustomers', [], 'Back to customers')}><i class="ph-bold ph-arrow-left mr-1"></i>Customers</button>`;
+                html += `<button data-secondary-back="true" aria-hidden="true" class="request-secondary-action" ${buildFastInvokeAttrs('backToExistingRequestCustomers', [], 'Back to customers')}><i class="ph-bold ph-arrow-left mr-1"></i>Customers</button>`;
                 html += `<div class="request-summary-card"><div class="request-summary-label">Customer</div><div class="request-summary-value">${esc(selectedGroup.label || 'Unknown Customer')}</div></div>`;
                 html += `<input type="text" id="existing-request-consignee-search-input" data-existing-request-search="consignee" class="input-field border-orange-200" placeholder="Search consignee..." value="${esc(tempExistingReqConsigneeSearch)}" oninput="handleExistingRequestConsigneeSearchInput(this.value)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">`;
                 html += `<div class="request-folder-picker-scroll">`;
@@ -139585,7 +139645,7 @@ C.14.043 C.15.000
                 const filteredFolders = (selectedConsigneeGroup.folders || []).filter((folder) => !folderSearch || doesProgressiveSearchTextMatch(folder.searchToken, folderSearch));
                 const visibleFolders = getRequestModalVisibleOptions(`existing:folders:${selectedGroup.key}:${selectedConsigneeGroup.key}:${folderSearch || 'all'}`, filteredFolders);
                 const pairLabel = getExistingRequestFolderPairLabel(selectedGroup, selectedConsigneeGroup);
-                html += `<button class="request-secondary-action" ${buildFastInvokeAttrs('backToExistingRequestConsignees', [], 'Back to consignees')}><i class="ph-bold ph-arrow-left mr-1"></i>Consignees</button>`;
+                html += `<button data-secondary-back="true" aria-hidden="true" class="request-secondary-action" ${buildFastInvokeAttrs('backToExistingRequestConsignees', [], 'Back to consignees')}><i class="ph-bold ph-arrow-left mr-1"></i>Consignees</button>`;
                 html += `<div class="request-summary-card"><div class="request-summary-label">Customer</div><div class="request-summary-value">${esc(selectedGroup.label || 'Unknown Customer')}</div><div class="mt-3 request-summary-label">Consignee</div><div class="request-summary-value">${esc(selectedConsigneeGroup.consigneeLabel || 'No Consignee')}</div></div>`;
                 html += `<input type="text" id="existing-request-folder-search-input" data-existing-request-search="folder" class="input-field border-orange-200" placeholder="Search folder date or request number..." value="${esc(tempExistingReqFolderSearch)}" oninput="handleExistingRequestFolderSearchInput(this.value)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">`;
                 html += `<div class="request-folder-picker-scroll">`;
@@ -140024,7 +140084,7 @@ C.14.043 C.15.000
                     <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Rows Addressed</div>
                     <div class="mt-1 text-lg font-black text-slate-900">Add People To Email</div>
                     <div class="mt-1 text-[12px] font-bold leading-snug text-slate-600">${esc(String(total))} request row${total === 1 ? '' : 's'} ready. Choose anyone else who should receive the request email, then submit.</div>
-                    <button type="button" class="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-[.98]" onclick="return goBackFromRequestEmailChainStep()">Back To Rows</button>
+                    <button data-secondary-back="true" aria-hidden="true" type="button" class="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-[.98]" onclick="return goBackFromRequestEmailChainStep()">Back To Rows</button>
                 </div>`;
             }
             renderRequestEmailChainPanel();
@@ -140226,7 +140286,7 @@ C.14.043 C.15.000
             container.innerHTML = `<div class="space-y-3">
                 <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-bold text-amber-800">Some request quantities are higher than the selected row has available. The original over-qty rows will not be added to the Request tab; only the replacement rows you choose below will be submitted.</div>
                 ${issueHtml}
-                <button type="button" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm" onclick="return cancelRequestOverQtyResolution()">Back To Qty</button>
+                <button data-secondary-back="true" aria-hidden="true" type="button" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm" onclick="return cancelRequestOverQtyResolution()">Back To Qty</button>
             </div>`;
             return false;
         }
@@ -144184,7 +144244,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         scopeParts.push(getDriveBlockAlphaLabel(selectedDriveBlock));
                     }
                     if (selectedDriveLoc) {
-                        rows = rows.filter((item) => getDriveBlockNumberValue(item) === selectedDriveLoc);
+                        rows = rows.filter((item) => LocationCode.normalize(getDrivePlantLocationCode(item)) === selectedDriveLoc);
                         scopeParts.push(getDriveBlockNumberLabel(selectedDriveLoc));
                         const locationSearchTerm = shouldScopeDriveSearchToSelectedLocation() ? getDriveSearchTerm() : '';
                         if (locationSearchTerm) rows = filterBySearch(rows, locationSearchTerm, 'drive_card');
@@ -146475,7 +146535,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     changed = true;
                 }
                 const blockItems = visibleItems.filter((item) => getDriveBlockAlphaValue(item) === selectedDriveBlock);
-                const hasSelectedBlockNumber = !!(selectedDriveLoc && blockItems.some((item) => getDriveBlockNumberValue(item) === selectedDriveLoc));
+                const hasSelectedBlockNumber = !!(selectedDriveLoc && blockItems.some((item) => LocationCode.normalize(getDrivePlantLocationCode(item)) === selectedDriveLoc));
                 if (!hasSelectedBlockNumber) {
                     if (selectedDriveLoc || driveViewLevel !== 1) changed = true;
                     driveViewLevel = 1;
@@ -147538,6 +147598,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 delete container.dataset.driveDetailedRecords;
                 container.dataset.driveDisplay = isDriveSpreadsheetGridMode() ? 'grid' : 'cards';
             }
+            if(modeKey==='drive:loc:blocknumbers' && !isDriveSpreadsheetGridMode()) {
+                syncDriveCrumb(crumb,crumbText);
+                setContainerHtml(container,LocationCode.cards(modeKey+':'+selectedDriveBlock,safeEntries,row=>row.location,renderEntry));
+                return;
+            }
             const emptyMessage = String(options.emptyMessage || 'No matching Drive rows.');
             if (!safeEntries.length) {
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, `${modeKey}:empty`);
@@ -147804,7 +147869,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (!blockGroups.has(block)) blockGroups.set(block, { block, rowCount: 0, blockNumbers: new Set() });
                         const group = blockGroups.get(block);
                         group.rowCount += 1;
-                        group.blockNumbers.add(getDriveBlockNumberValue(item));
+                        group.blockNumbers.add((LocationCode.normalize(getDrivePlantLocationCode(item)) || DRIVE_NO_BLOCK_NUMBER));
                     });
                     groups = Array.from(blockGroups.values())
                         .map((group) => ({
@@ -147837,7 +147902,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (driveViewLevel <= 1 || !selectedDriveLoc) {
                 const blockNumberGroups = new Map();
                 selectedBlockItems.forEach((item) => {
-                    const blockNumber = getDriveBlockNumberValue(item);
+                    const blockNumber = (LocationCode.normalize(getDrivePlantLocationCode(item)) || DRIVE_NO_BLOCK_NUMBER);
                     if (!blockNumberGroups.has(blockNumber)) blockNumberGroups.set(blockNumber, { location: blockNumber, rowCount: 0 });
                     const group = blockNumberGroups.get(blockNumber);
                     group.rowCount += 1;
@@ -147855,7 +147920,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 });
                 return;
             }
-            const selectedBlockNumberItems = selectedBlockItems.filter((item) => getDriveBlockNumberValue(item) === selectedDriveLoc);
+            const selectedBlockNumberItems = selectedBlockItems.filter((item) => (LocationCode.normalize(getDrivePlantLocationCode(item)) || DRIVE_NO_BLOCK_NUMBER) === selectedDriveLoc);
             const finalItems = sortDriveCardItems(selectedBlockNumberItems).sort((a, b) => compareLocationCodeValues(getDrivePlantLocationCode(a), getDrivePlantLocationCode(b)) || compareItemInquiryRows(a, b));
             const selectedBlockNumberLabel = getDriveBlockNumberLabel(selectedDriveLoc);
             const crumbText = `${resolvedDriveModeLabel} > ${selectedBlockLabel} > ${selectedBlockNumberLabel} (${finalItems.length} physical rows)`;
@@ -151682,15 +151747,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             return match ? match[1] : 'Other';
         }
 
-        function getTaskLocationBucket(item) {
-            const blockAlpha = getTaskBlockAlpha(item);
-            const loc = String(item ? (item.LOCATIONCODE || '') : '').trim().toUpperCase();
-            const exact = loc.match(/^([A-Z])\.(\d{2})/);
-            if (exact) return `${exact[1]}.${exact[2]}`;
-            const digits = loc.match(/(\d{2})/);
-            if (blockAlpha !== 'Other' && digits) return `${blockAlpha}.${digits[1]}`;
-            return loc || 'UNASSIGNED';
-        }
+        function getTaskFullLocation(item) { return LocationCode.normalize(item && (item.LOCATIONCODE || item.locationcode)) || 'UNASSIGNED'; }
+
+        function getTaskLocationBucket(item) { return LocationCode.base(item && (item.LOCATIONCODE || item.locationcode)) || 'UNASSIGNED'; }
 
         function compareLocationCodeValues(a, b) {
             const normalize = (value) => String(value || '').trim().toUpperCase();
@@ -151822,7 +151881,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (taskTabUsesBlockDrill(safeTab)) {
                 tabItems.forEach((item) => {
                     const blockAlpha = getTaskBlockAlpha(item);
-                    const locationCode = getTaskLocationBucket(item);
+                    const locationCode = getTaskFullLocation(item);
                     if (!itemsByBlock.has(blockAlpha)) itemsByBlock.set(blockAlpha, []);
                     itemsByBlock.get(blockAlpha).push(item);
                     if (!itemsByLocation.has(locationCode)) itemsByLocation.set(locationCode, []);
@@ -151836,7 +151895,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     blockRows.push({ blockAlpha, count: blockItems.length });
                     const locationCounts = new Map();
                     blockItems.forEach((item) => {
-                        const locationCode = getTaskLocationBucket(item);
+                        const locationCode = getTaskFullLocation(item);
                         locationCounts.set(locationCode, (locationCounts.get(locationCode) || 0) + 1);
                     });
                     const locationRows = Array.from(locationCounts.entries())
@@ -152232,7 +152291,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const filteredBlockSet = new Set(tabItems.map((item) => getTaskBlockAlpha(item)));
                 const hasSelectedBlock = !!(selectedTaskBlock && filteredBlockSet.has(selectedTaskBlock));
                 if (taskViewLevel === 2) {
-                    const hasSelectedLocation = !!(selectedTaskLoc && tabItems.some((item) => getTaskLocationBucket(item) === selectedTaskLoc));
+                    const hasSelectedLocation = !!(selectedTaskLoc && tabItems.some((item) => getTaskFullLocation(item) === selectedTaskLoc));
                     if (!hasSelectedLocation) {
                         if (hasSelectedBlock) {
                             taskViewLevel = 1;
@@ -152310,7 +152369,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (useBlockDrill && !canReuseHotDerivedState) {
                 tabItems.forEach((item) => {
                     const blockAlpha = getTaskBlockAlpha(item);
-                    const locationCode = getTaskLocationBucket(item);
+                    const locationCode = getTaskFullLocation(item);
                     if (!itemsByBlock.has(blockAlpha)) itemsByBlock.set(blockAlpha, []);
                     itemsByBlock.get(blockAlpha).push(item);
                     if (!itemsByLocation.has(locationCode)) itemsByLocation.set(locationCode, []);
@@ -152324,7 +152383,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     blockRows.push({ blockAlpha, count: blockItems.length });
                     const locationCounts = new Map();
                     blockItems.forEach((item) => {
-                        const locationCode = getTaskLocationBucket(item);
+                        const locationCode = getTaskFullLocation(item);
                         locationCounts.set(locationCode, (locationCounts.get(locationCode) || 0) + 1);
                     });
                     locationRowsByBlock.set(blockAlpha, Array.from(locationCounts.entries())
@@ -153868,7 +153927,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }, { approxCardHeight: 96, emptyHtml: `<div class="p-8 text-center text-gray-400">No end cap folders found.</div>` });
                 } else if (taskViewLevel === 1) {
                     const folderItems = itemsByEndCapFolder.get(selectedEndCapFolder) || [];
-                    const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskEndCapFolderList', [], 'Back to End Caps')}><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
+                    const prefixHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToTaskEndCapFolderList', [], 'Back to End Caps')}><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
                     renderMarkupChunkedByKey('tasks-endcap-items', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
                         prefixHtml,
                         approxCardHeight: 260,
@@ -153901,7 +153960,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         ? `<button data-fast-press-ignore class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
                         : `<div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row"><button data-fast-press-ignore class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="event.preventDefault(); event.stopPropagation(); return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button><button data-fast-press-ignore class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'archive', { currentTab: 'active', keepOpen: true })">Archive Folder</button></div>`;
                     const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
-                    const prefixHtml = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}`;
+                    const prefixHtml = `${flyerTabsHtml}<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}`;
                     renderMarkupChunkedByKey('tasks-flyer-folder-items', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-indigo'), {
                         prefixHtml,
                         approxCardHeight: 300,
@@ -153930,7 +153989,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             } else if (taskViewLevel === 1) {
                 const locRows = locationRowsByBlock.get(selectedTaskBlock) || [];
                 const blockScopeRows = getTaskCustomerOutreachScopeRows(tabItems, itemsByLocation, locationRowsByBlock);
-                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskBlockList', [], 'Back to Blocks')}><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>${buildTaskCustomerOutreachPrefix(blockScopeRows)}`;
+                const prefixHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToTaskBlockList', [], 'Back to Blocks')}><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>${buildTaskCustomerOutreachPrefix(blockScopeRows)}`;
                 renderMarkupChunkedByKey('tasks-locations', container, null, locRows, '', (locationRow) => {
                     return `<div class="drill-item" ${buildFastInvokeAttrs('openTaskLocationView', [locationRow.locationCode], 'Open location ' + locationRow.locationCode)}><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                 }, { prefixHtml, approxCardHeight: 72, emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>` });
@@ -153939,7 +153998,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     ? taskLocationDetailItems
                     : (itemsByLocation.get(selectedTaskLoc) || []);
                 taskSearchVisibleCount = locationItems.length;
-                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskLocationList', [], 'Back to Locations')}><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>${buildTaskCustomerOutreachPrefix(locationItems)}`;
+                const prefixHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" ${buildFastInvokeAttrs('backToTaskLocationList', [], 'Back to Locations')}><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>${buildTaskCustomerOutreachPrefix(locationItems)}`;
                 const renderRow = (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
                 const emptyHtml = (shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()) || taskLocationDetailSearchActive
                     ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
@@ -154299,10 +154358,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     ? `<div class="grid gap-3 md:grid-cols-2">${repOptions.map((entry) => renderRequestHistoryReportGroupCard(entry, 'salesrep')).join('')}</div>`
                     : `<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-bold text-slate-400">No sales reps match those filters.</div>`;
             } else if (!selectedCustomer) {
-                const backHtml = `<button type="button" class="mb-3 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm" onclick="return backToRequestHistoryReportSalesReps()"><i class="ph-bold ph-arrow-left mr-1"></i>Sales Reps</button>`;
+                const backHtml = `<button data-secondary-back="true" aria-hidden="true" type="button" class="mb-3 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm" onclick="return backToRequestHistoryReportSalesReps()"><i class="ph-bold ph-arrow-left mr-1"></i>Sales Reps</button>`;
                 bodyHtml = `${backHtml}${customerEntries.length ? `<div class="grid gap-3 md:grid-cols-2">${customerEntries.map((entry) => renderRequestHistoryReportGroupCard(entry, 'customer')).join('')}</div>` : `<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-bold text-slate-400">No customers or consignees match those filters.</div>`}`;
             } else {
-                const backHtml = `<button type="button" class="mb-3 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm" onclick="return backToRequestHistoryReportCustomerConsignees()"><i class="ph-bold ph-arrow-left mr-1"></i>Customer / Consignee</button>`;
+                const backHtml = `<button data-secondary-back="true" aria-hidden="true" type="button" class="mb-3 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm" onclick="return backToRequestHistoryReportCustomerConsignees()"><i class="ph-bold ph-arrow-left mr-1"></i>Customer / Consignee</button>`;
                 bodyHtml = rows.length
                     ? `${backHtml}<div class="space-y-3">${rows.slice(0, 500).map(renderRequestHistoryReportCard).join('')}</div>${rows.length > 500 ? `<div class="mt-3 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-center text-[12px] font-black uppercase tracking-[0.12em] text-amber-700">Showing first 500 rows. Export includes all ${rows.length.toLocaleString()} filtered rows.</div>` : ''}`
                     : `${backHtml}<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-bold text-slate-400">No Request History rows match those filters.</div>`;

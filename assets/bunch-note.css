@@ -64,3 +64,5 @@
  .bn-breadcrumb>.bn-button{flex:1 1 130px}
 }
 @media(prefers-reduced-motion:reduce){.bn-options>summary>i{transition:none}}
+
+.bn-item-open{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:16px;border:0;border-top:1px solid var(--ops-border,#cbd8d1);background:transparent;color:var(--ops-brand-strong,#05623c);font:inherit;font-weight:800;min-height:48px;text-align:left;cursor:pointer}

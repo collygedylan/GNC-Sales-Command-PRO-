@@ -207,6 +207,48 @@ begin
  perform pg_temp.bn_check((select jsonb_agg(to_jsonb(m) order by unique_id)=inventory_before from public.ph_master_inventory m),'recording, amendments and reports never write inventory');
  perform pg_temp.bn_check(not has_table_privilege('authenticated','bunch_note_private.actuals','select') and not has_table_privilege('service_role','bunch_note_private.actuals','update'),'actual history cannot be directly read or rewritten');
 end $$;
+
+-- Destination reads must respect the source job, even when the receiving location is public inventory.
+do $$
+declare d uuid:='98000000-0000-0000-0000-000000000001'; w uuid:='98000000-0000-0000-0000-000000000002'; other uuid:='98000000-0000-0000-0000-000000000003';
+ batchid uuid:=gen_random_uuid(); sourceid uuid:=gen_random_uuid(); targetid uuid:=gen_random_uuid(); result jsonb; action jsonb; snapshot jsonb; firstid uuid; inventory_before jsonb;
+begin
+ insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,blockalpha,locationcode,lotcode,saleyear,ptronhand,ptravailable,ptrreviewed) values
+ ('BN-D-SRC','BN-DEST','Destination Plant','#3','D','D.08.001','LOT1','26','20','0',null),
+ ('BN-D-MATCH','BN-DEST','Destination Plant','#5','D','D.09.001','LOT2','2026','0',null,'0'),
+ ('BN-D-YEAR','BN-DEST','Destination Plant','#3','D','D.09.002','LOT3','27','8','8','0'),
+ ('BN-D-OTHER','OTHER','Other Plant','#3','D','D.10.001','LOT4','26','5','5','0');
+ snapshot:=bunch_note_private.inventory('D','D.08.001');
+ action:='{"id":"destination-action","kind":"move","group":"grading","label":"Grade and Save / Move To","instructions":"Keep the best and move","scope":"rows","row_ids":["BN-D-SRC"],"quantity":"4","destination":"D.09.001","destination_mode":"matching"}'::jsonb;
+ insert into bunch_note_private.batches(id,created_by,block,body) values(batchid,d,'D','{}');
+ insert into bunch_note_private.jobs(id,batch_id,note_number,block,location,owner_id,created_by,body) values
+ (sourceid,batchid,'BN-DEST-SOURCE','D','D.08.001',w,d,jsonb_build_object('source',snapshot,'actions',jsonb_build_array(action),'instructions','Private source instructions')),
+ (targetid,batchid,'BN-DEST-TARGET','D','D.09.001',other,d,jsonb_build_object('source',bunch_note_private.inventory('D','D.09.001'),'actions','[]'::jsonb,'instructions','Private destination instructions'));
+ select jsonb_agg(to_jsonb(m) order by unique_id) into inventory_before from public.ph_master_inventory m;
+ result:=public.bunch_note_command_v1(w,'destination_lookup',jsonb_build_object('job_id',sourceid,'source_ids',jsonb_build_array('BN-D-SRC'),'itemcode','OTHER','salesyear','27'));
+ perform pg_temp.bn_check(result->>'itemcode'='BN-DEST' and result->>'salesyear'='2026','lookup derives trusted source despite injected item/year');
+ perform pg_temp.bn_check(exists(select 1 from jsonb_array_elements(result->'matching') r where r->>'unique_id'='BN-D-MATCH' and r->>'stock'='0' and r->'available'='null'),'same-year matching retains zero and unknown');
+ perform pg_temp.bn_check(not exists(select 1 from jsonb_array_elements(result->'matching') r where r->>'unique_id' in ('BN-D-YEAR','BN-D-OTHER')),'wrong year and wrong item excluded');
+ perform pg_temp.bn_reject(other,'destination_lookup',jsonb_build_object('job_id',sourceid,'source_ids',jsonb_build_array('BN-D-SRC')),null,'BUNCH_NOTE_NOT_FOUND');
+ perform pg_temp.bn_reject(w,'destination_lookup','{"source_ids":["BN-D-SRC"]}',null,'BUNCH_NOTE_AUTHOR_ONLY');
+ perform pg_temp.bn_reject(w,'destination_lookup',jsonb_build_object('job_id',sourceid,'source_ids',jsonb_build_array('BN-D-OTHER')),null,'BUNCH_NOTE_ACTION_ROWS_INVALID');
+ result:=public.bunch_note_command_v1(w,'destination_detail','{"location":" d.09.001 "}');
+ perform pg_temp.bn_check(jsonb_array_length(result->'incoming')=1 and jsonb_array_length(result->'jobs')=0,'source owner sees incoming work but not private receiving job');
+ result:=public.bunch_note_command_v1(other,'destination_detail','{"location":"D.09.001"}');
+ perform pg_temp.bn_check(jsonb_array_length(result->'incoming')=0 and jsonb_array_length(result->'jobs')=1,'receiving owner cannot see private source work');
+ result:=public.bunch_note_command_v1(d,'destination_detail','{"location":"D.09.001"}');
+ perform pg_temp.bn_check(jsonb_array_length(result->'incoming')=1 and jsonb_array_length(result->'jobs')=1,'Dylan sees incoming and receiving instructions together');
+ perform pg_temp.bn_do(w,sourceid,'actual','{"action_id":"destination-action","source_id":"BN-D-SRC","quantity":"2","destination":"D.09.001","destination_mode":"matching"}');
+ select id into firstid from bunch_note_private.actuals where job_id=sourceid;
+ perform pg_temp.bn_do(w,sourceid,'actual',jsonb_build_object('action_id','destination-action','source_id','BN-D-SRC','quantity','1','destination','D.09.001','replaces_id',firstid,'explanation','Corrected count'));
+ result:=public.bunch_note_command_v1(w,'destination_detail','{"location":"D.09.001"}');
+ perform pg_temp.bn_check(result->'incoming'->0->'action'->>'quantity'='4' and jsonb_array_length(result->'incoming'->0->'actuals')=1 and result->'incoming'->0->'actuals'->0->>'quantity'='1','planned and actual are separate, superseded entry not counted');
+ perform pg_temp.bn_check((select jsonb_agg(to_jsonb(m) order by unique_id)=inventory_before from public.ph_master_inventory m),'destination workflow does not write inventory');
+ update public.ph_master_inventory set saleyear='27' where unique_id='BN-D-MATCH';
+ begin perform bunch_note_private.validate_destination(action,snapshot); raise exception 'Expected destination revalidation'; exception when others then if sqlerrm<>'BUNCH_NOTE_DESTINATION_CHANGED' then raise; end if; end;
+ perform pg_temp.bn_check(true,'changed matching destination requires review');
+ perform pg_temp.bn_check(bunch_note_private.sales_year(null) is null and bunch_note_private.sales_year('26.Y') is null,'unknown year is never inferred from season/lot');
+end $$;
 select plan(1);
 select ok((select count(*) from bn_checks)>=20,'Bunch Note lifecycle, privacy, revisions, quantities and delivery assertions passed');
 select * from finish();

@@ -686,7 +686,7 @@ test('Drive Location tab drills through Block Alpha and Block Number before show
   assert.match(locationDrill, /Location > Select Block Alpha/);
   assert.match(locationDrill, /getDriveBlockAlphaValue\(item\)/);
   assert.match(locationDrill, /Select Block Number/);
-  assert.match(locationDrill, /getDriveBlockNumberValue\(item\)/);
+  assert.match(locationDrill, /LocationCode\.normalize\(getDrivePlantLocationCode\(item\)\)/);
   assert.match(locationDrill, /No Block Alpha/);
   assert.match(locationDrill, /No Block Number/);
   assert.match(locationDrill, /compareLocationCodeValues/);
