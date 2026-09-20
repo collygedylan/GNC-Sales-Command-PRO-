@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { verifyPoManagementHealth } from './po-management-health.mjs';
 
 const source = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const supabaseUrl = process.env.PRODUCTION_SUPABASE_URL
@@ -312,26 +313,12 @@ if (serviceRoleKey) {
   if (!poHealthResponse.ok || !poManagementHealth || typeof poManagementHealth !== 'object') {
     throw new Error(`production_po_management_health_unavailable_HTTP_${poHealthResponse.status}`);
   }
-  const poContractHealthy = poManagementHealth.contract_version === 'po-management-native-auth-v1'
-    && poManagementHealth.source_authenticated_select === true
-    && poManagementHealth.view_authenticated_select === true
-    && poManagementHealth.anonymous_access_denied === true
-    && poManagementHealth.authenticated_writes_denied === true
-    && poManagementHealth.manager_policy_present === true
-    && poManagementHealth.security_invoker_enabled === true;
-  const poRowCount = Math.max(0, Number(poManagementHealth.row_count) || 0);
-  const poLatestBuiltAtMs = Date.parse(String(poManagementHealth.latest_built_at || ''));
-  const poAgeMs = Number.isFinite(poLatestBuiltAtMs) ? Date.now() - poLatestBuiltAtMs : Number.POSITIVE_INFINITY;
-  const poStaleAfterMs = 72 * 60 * 60 * 1000;
-  if (!poContractHealthy) throw new Error('production_po_management_auth_contract_unhealthy');
-  if (poRowCount < 1) throw new Error('production_po_management_empty');
-  if (poAgeMs < 0 || poAgeMs > poStaleAfterMs) throw new Error('production_po_management_stale');
+  const poHealth = verifyPoManagementHealth(poManagementHealth);
   checks.push({
     name: 'po_management',
     status: poHealthResponse.status,
     contractVersion: poManagementHealth.contract_version,
-    rowCount: poRowCount,
-    ageMinutes: Math.max(0, Math.round(poAgeMs / 60000))
+    ...poHealth
   });
 
   const accessControlHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_access_control_health_snapshot_v1`, {
@@ -676,7 +663,10 @@ const result = {
   poManagement: poManagementHealth ? {
     contractVersion: String(poManagementHealth.contract_version || ''),
     rowCount: Math.max(0, Number(poManagementHealth.row_count) || 0),
-    latestBuiltAt: String(poManagementHealth.latest_built_at || '')
+    latestBuiltAt: String(poManagementHealth.latest_built_at || ''),
+    ...verifyPoManagementHealth(poManagementHealth),
+    pendingPdfCount: Number(poManagementHealth.pending_pdf_count || 0),
+    reviewBalanceCount: Number(poManagementHealth.review_balance_count || 0)
   } : null,
   accessControl: accessControlHealth ? {
     contractVersion: String(accessControlHealth.contract_version || ''),

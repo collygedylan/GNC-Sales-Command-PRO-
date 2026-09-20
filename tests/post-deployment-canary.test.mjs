@@ -65,7 +65,8 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
 
 test('scheduled production health checks exact live parity without racing the push deployment', () => {
   const workflow = fs.readFileSync(new URL('../.github/workflows/production-auth-health.yml', import.meta.url), 'utf8');
-  const probe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
+  const probe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8')
+    + fs.readFileSync(new URL('../scripts/po-management-health.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(workflow, /\n\s+push:/);
   assert.match(workflow, /workflow_run:[\s\S]*Deploy static app to Pages/);
   assert.match(workflow, /Verify the completed Pages deployment is the exact live release/);

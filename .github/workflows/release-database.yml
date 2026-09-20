@@ -136,6 +136,8 @@ jobs:
           cp supabase/migrations/20260917013505_hl_complete_restock_data.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260911152125_restore_sep09_eval_review_compatibility.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260920060133_bunch_note_location_work_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260920132156_hl_po_pdf_health_contract.sql "$ci_root/supabase/migrations/"
+          cp supabase/tests/hl_po_health_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/bunch_note_workflow_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"

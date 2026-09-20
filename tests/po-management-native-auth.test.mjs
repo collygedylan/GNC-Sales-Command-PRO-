@@ -2,6 +2,7 @@ import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const migration = fs.readFileSync(
@@ -12,7 +13,8 @@ const healthRepair = fs.readFileSync(
   new URL('../supabase/migrations/20260902160400_optimize_po_management_health_snapshot.sql', import.meta.url),
   'utf8'
 );
-const healthProbe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
+const healthProbe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8')
+  + fs.readFileSync(new URL('../scripts/po-management-health.mjs', import.meta.url), 'utf8');
 const productionCanary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
 const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 
@@ -93,4 +95,49 @@ test('PO health reads the bounded latest source scope instead of rebuilding the 
   assert.match(healthRepair, /grant execute on function public\.get_po_management_health_snapshot\(\)[\s\S]*to service_role/);
   assert.match(performanceWorkflow, /20260809011735_ph_27f1_hl_po\.sql/);
   assert.match(performanceWorkflow, /20260902160400_optimize_po_management_health_snapshot\.sql/);
+});
+
+const now = Date.parse('2026-09-20T12:00:00Z');
+const confirmedPdf = () => ({ contract_version: 'po-management-native-auth-v1', row_count: 463,
+  source_authority_valid: true,
+  latest_built_at: '2026-09-17T02:45:04Z', source_format: 'pdf', freshness_mode: 'manual_pdf',
+  pdf_health_contract: 'confirmed-pdf-ledger-v1', pdf_report_valid: true, projection_matches_ledger: true,
+  season_access_healthy: true, source_authenticated_select: true, view_authenticated_select: true,
+  anonymous_access_denied: true, authenticated_writes_denied: true, manager_policy_present: true,
+  security_invoker_enabled: true });
+
+test('an older confirmed PDF remains healthy only with proven provenance and current ledger parity', () => {
+  const report = confirmedPdf();
+  const before = structuredClone(report);
+  const result = verifyPoManagementHealth(report, now);
+  assert.equal(result.freshnessMode, 'manual_pdf');
+  assert.equal(result.reportAgeNotice, 'confirmed_pdf_older_than_72_hours');
+  assert.deepEqual(report, before, 'health must not reset source timestamps');
+  for (const key of ['pdf_report_valid', 'projection_matches_ledger', 'season_access_healthy']) {
+    for (const value of [false, undefined, 'true']) {
+      assert.throws(() => verifyPoManagementHealth({...report, [key]: value}, now), /pdf_contract_unhealthy/);
+    }
+  }
+  assert.throws(() => verifyPoManagementHealth({...report, pdf_health_contract: undefined}, now), /pdf_contract_unhealthy/);
+});
+
+test('missing, future, unauthorized, empty and stale scheduled data still block release', () => {
+  const report = confirmedPdf();
+  for (const latest_built_at of ['', 'invalid', '2026-09-21T00:00:00Z']) {
+    assert.throws(() => verifyPoManagementHealth({...report, latest_built_at}, now), /production_po_management_stale/);
+  }
+  assert.throws(() => verifyPoManagementHealth({...report, anonymous_access_denied:false}, now), /auth_contract_unhealthy/);
+  assert.throws(() => verifyPoManagementHealth({...report, row_count:0}, now), /production_po_management_empty/);
+  assert.throws(() => verifyPoManagementHealth({...report, source_authority_valid:false, source_format:'legacy', freshness_mode:'scheduled_import', latest_built_at:'2026-09-20T00:00:00Z'}, now), /source_invalid/);
+  assert.throws(() => verifyPoManagementHealth({...report, source_format:'legacy', freshness_mode:'scheduled_import'}, now), /production_po_management_stale/);
+  assert.throws(() => verifyPoManagementHealth({...report, source_format:'sheet'}, now), /production_po_management_stale/);
+  assert.doesNotThrow(() => verifyPoManagementHealth({...report, source_format:'legacy', freshness_mode:'scheduled_import', latest_built_at:'2026-09-20T00:00:00Z'}, now));
+});
+
+test('pending replacements and flagged negative balances do not replace the confirmed PDF', () => {
+  assert.equal(verifyPoManagementHealth({...confirmedPdf(),pending_pdf_count:2,review_balance_count:1}, now).freshnessMode, 'manual_pdf');
+  const handler = fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
+  const importer = handler.slice(handler.indexOf('function syncHlPoParsedFolder_('),handler.indexOf('const TRANSACTIONS_KEYED_COLUMNS'));
+  assert.match(importer,/application\/pdf/);
+  assert.match(importer,/else unsupportedFiles\+\+/);
 });

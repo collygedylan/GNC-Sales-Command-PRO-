@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
 
 const script = readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
 const workflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
@@ -12,7 +13,7 @@ function healthyPayloads() {
   return {
     get_hosted_health_snapshot: { health_code: 'HEALTHY' },
     get_pikes_order_assignment_health_v1: { contractVersion: 1, falseUnassignedCount: 0, ambiguousCount: 0 },
-    get_po_management_health_snapshot: { contract_version: 'po-management-native-auth-v1', source_authenticated_select: true, view_authenticated_select: true, anonymous_access_denied: true, authenticated_writes_denied: true, manager_policy_present: true, security_invoker_enabled: true, row_count: 1, latest_built_at: new Date().toISOString() },
+    get_po_management_health_snapshot: { source_authority_valid: true, source_format: 'legacy', freshness_mode: 'scheduled_import', contract_version: 'po-management-native-auth-v1', source_authenticated_select: true, view_authenticated_select: true, anonymous_access_denied: true, authenticated_writes_denied: true, manager_policy_present: true, security_invoker_enabled: true, row_count: 1, latest_built_at: new Date().toISOString() },
     get_access_control_health_snapshot_v1: { contract_version: 'app-access-v1', enforcement_mode: 'audit', permission_count: 50, maintainer_count: 3, baseline_missing_count: 0, unknown_permission_count: 0, unmapped_legacy_check_count: 0 },
     get_eval_request_delivery_health_snapshot_v2: { contract_version: 'eval-request-delivery-health-v2', required_manager_recipient_count: 2, creation_order_violation_count: 0, completion_membership_mismatch_count: 0, missing_completion_event_count: 0, eval_origin_scope_mismatch_count: 0, eval_required_recipient_violation_count: 0 },
     get_eval_work_creation_health_snapshot_v1: { contract_version: 'eval-work-creation-health-v1', batch_assignee_insert_contract_healthy: true, single_assignee_insert_contract_healthy: true, healthy: true },
@@ -36,7 +37,7 @@ async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, 
   if (mismatch) payloads.get_request_drive_evidence_health_snapshot_v1.mismatch_request_ids = ['fixture-request'];
   if (unhealthy) payloads.get_drive_evidence_save_health_v2.lockWaits = 1;
   const ctx = {
-    URL, AbortController, setTimeout, clearTimeout,
+    URL, AbortController, setTimeout, clearTimeout, verifyPoManagementHealth,
     fs: { readFileSync: () => shell, appendFileSync() { throw new Error('No summary configured'); } },
     process: { env: { PRODUCTION_SUPABASE_URL: 'https://backend.test', PRODUCTION_SUPABASE_PUBLISHABLE_KEY: 'fixture-public', PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: 'fixture-service', PRODUCTION_PROBE_READ_ONLY: readOnly ? '1' : '0', REQUIRE_BOUNDED_MAINTENANCE: '1', REQUEST_DELIVERY_CRON_SECRET: withCronSecret ? 'fixture-cron' : '', PRODUCTION_APP_ORIGIN: 'https://app.test', APPS_SCRIPT_DEPLOYMENT_ID: 'fixture-deployment', REQUIRE_APPS_SCRIPT_HEALTH: '1' }, stdout: { write: text => output.push(text) } },
     fetch: async (url, options) => {
@@ -59,7 +60,9 @@ async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, 
     }
   };
   vm.createContext(ctx);
-  const executable = script.replace(/^import fs from 'node:fs';\s*/, '').replaceAll('import.meta.url', "'https://fixtures.test/scripts/probe.mjs'");
+  const executable = script.replace(/^import fs from 'node:fs';\s*/, '')
+    .replace("import { verifyPoManagementHealth } from './po-management-health.mjs';", '')
+    .replaceAll('import.meta.url', "'https://fixtures.test/scripts/probe.mjs'");
   let error = null;
   try { await vm.runInContext(`(async () => { ${executable} })()`, ctx); } catch (failure) { error = failure; }
   return { calls, error, result: output.length ? JSON.parse(output.at(-1)) : null };
