@@ -1,3 +1,4 @@
+import { createBackend } from './helpers/block-clearing-pdf-harness.mjs';
 import { expect, test, type Page } from '@playwright/test';
 
 const sourceRows = [
@@ -676,3 +677,29 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 }
+
+
+test('base and bay cards retain exact PDF scope and full nonstandard location identities', async ({page}) => {
+  await setupBlockClearing(page, 390, {realShell:true});
+  await page.locator('#managers-content button[onclick*=selectManagerBlockClearingBlock]').filter({hasText:/^Block AlphaA/}).click();
+  await page.getByRole('button',{name:'Open location A.05',exact:true}).click();
+  await page.locator('#managers-content button[onclick*=selectManagerBlockClearingLocation]').filter({hasText:'A.05.001'}).click();
+  await expect(page.locator('[data-block-clearing-itemcode]')).toHaveCount(1);
+  await expect(page.locator('#managers-content')).toContainText('Total Plants On Hand: 10');
+  const payload = await appEval(page, `(() => {
+    toggleManagerBlockClearingItemcode('BC.ROSE',true);
+    const decision=getManagerBlockClearingDecision('BC.ROSE');decision.action='ta';decision.quantity='5';
+    setManagerBlockClearingReportTitle('Exact bay');
+    return buildManagerBlockClearingPdfPayload('render');
+  })()`);
+  const report=createBackend().context.normalizeBlockClearingPdfReport_(payload);
+  expect(report.locationBucket).toBe('A.05');
+  expect(report.sourceLocationCode).toBe('A.05.001');
+  expect(report.items[0].rows.map((row:any)=>row.uniqueId)).toEqual(['bc-source-26']);
+  const scopes=await appEval(page, `(() => {
+    fullInventory.push({...fullInventory[0],UNIQUE_ID:'unpadded',LOCATIONCODE:'A.5.001'}, {...fullInventory[0],UNIQUE_ID:'named',LOCATIONCODE:'SPECIAL.ZONE.BAY'});
+    managerBlockClearingCache=null;managerBlockClearingCacheKey='';
+    return ['A.5.001','SPECIAL.ZONE.BAY','A.05.888'].map(code=>{managerBlockClearingSelectedLocation=code;return getManagerBlockClearingRowsForSelectedLocation().map(getManagerBlockClearingRowId);});
+  })()`);
+  expect(scopes).toEqual([['unpadded'],['named'],[]]);
+});

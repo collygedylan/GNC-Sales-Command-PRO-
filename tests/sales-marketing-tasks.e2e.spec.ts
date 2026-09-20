@@ -69,6 +69,8 @@ for (const username of ['madison_austin', 'madelyn_gray']) {
     await expect(page.getByRole('button', { name: 'Open block A', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Open block A', exact: true }).click();
     await page.getByRole('button', { name: 'Open location A.01', exact: true }).click();
+    await expect(page.locator('#task-content')).not.toContainText('Shared Season Plant');
+    await page.getByRole('button', { name: 'Open location A.01.001', exact: true }).click();
     await expect(page.locator('#task-content')).toContainText('Shared Season Plant');
     await expect(page.locator('#task-content')).not.toContainText('Held Plant');
     await expect(page.locator('#task-content')).not.toContainText('Already Entered Plant');

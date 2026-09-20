@@ -272,9 +272,16 @@ test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to Locatio
     Array.from(document.querySelectorAll('#manager-eval-report-2-records')).forEach((node, index) => { node.id = 'eval2-existing-records-' + index; });
     const host = document.createElement('div');
     host.id = 'eval2-block-location-host';
-    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:390px;overflow:auto;background:white;';
+    host.style.cssText = 'width:100%;max-width:390px;overflow:auto;';
     host.innerHTML = renderManagerEvalReport2ReportsPanel();
-    document.body.appendChild(host);
+    document.getElementById('view-login').style.display = 'none';
+    document.getElementById('app-wrapper').classList.remove('hidden');
+    document.querySelectorAll('#view-wrapper > [id^="view-"]').forEach(view => view.classList.toggle('hidden', view.id !== 'view-managers'));
+    currentPrimaryViewId = 'managers';
+    syncCurrentViewBodyClass('managers');
+    document.getElementById('managers-content').replaceChildren(host);
+    syncGlobalHeaderChrome({reason:'eval2-navigation-fixture',force:true});
+    updateGlobalBackButton();
     renderManagerEvalReport2Records();
     window.eval2FullManagerRenderCount = 0;
     renderManagers = () => { window.eval2FullManagerRenderCount += 1; };
@@ -292,17 +299,23 @@ test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to Locatio
   await expect(host.locator('[data-manager-eval2-drill-kind="blockalpha"]')).toHaveCount(2);
   await expect(host).toContainText('Block Alpha');
   await host.locator('[data-manager-eval2-drill-kind="blockalpha"][data-manager-eval2-drill-value="A"]').click();
-  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(2);
+  await expect(host.locator('.location-base-card')).toHaveCount(2);
+  await expect(host).not.toContainText('A.01.001');
+  await host.getByRole('button', {name:'Open location A.01',exact:true}).click();
+  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(1);
   await expect(host).toContainText('A.01.001');
-  await expect(host).toContainText('A.02.001');
+  await expect(host).not.toContainText('A.02.001');
   await expect(host).not.toContainText('B.01.001');
   await host.locator('[data-manager-eval2-drill-kind="locationcode"][data-manager-eval2-drill-value="A.01.001"]').click();
   await expect(host.locator('.manager-eval2-item-card')).toHaveCount(1);
   await expect(host).toContainText('Alpha One');
   await host.locator('[data-role="manager-eval2-selection-toggle"]').click();
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
-  await host.getByRole('button', { name:'Back' }).click();
-  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(2);
+  await expect(host.getByRole('button', {name:'Back',exact:true})).toHaveCount(0);
+  await page.locator('#global-header-inline-back').click();
+  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(1);
+  await page.goBack();
+  await expect(host.locator('.location-base-card')).toHaveCount(2);
   await expect(host.locator('#manager-eval-report-2-selection-count')).toContainText('1 ITEMCODE');
   await expect(host.locator('#manager-eval-report-2-report-select')).toContainText('U1 + U2');
 
@@ -324,7 +337,7 @@ test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to Locatio
     seasonValues:['U1','U2'],
     selection:['DRILL.A1'],
   });
-  await expect(host.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(2);
+  await expect(host.locator('.location-base-card')).toHaveCount(2);
   expect(await host.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
 });
 

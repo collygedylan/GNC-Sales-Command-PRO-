@@ -16334,6 +16334,8 @@ function normalizeBlockClearingPdfReport_(payload) {
   if (!report || typeof report !== 'object' || Array.isArray(report)) throw new Error('BLOCK_CLEARING_VALIDATION:REPORT');
   const rawBucket = blockClearingPdfCode_(report.locationBucket, 'LOCATION_BUCKET', true);
   const bucket = blockClearingPdfBucket_(rawBucket);
+  const sourceLocationCode = blockClearingPdfCode_(report.sourceLocationCode, 'SOURCE_LOCATION', false);
+  if (sourceLocationCode && blockClearingPdfBucket_(sourceLocationCode) !== bucket) throw new Error('BLOCK_CLEARING_VALIDATION:SOURCE_OUTSIDE_BUCKET');
   const block = blockClearingPdfCode_(report.blockalpha, 'BLOCK', true);
   const bucketParts = rawBucket.split('.');
   if (bucketParts.length > 2 || (bucketParts.length === 2 && (!bucketParts[1] || (/^\d+$/.test(bucketParts[1]) && bucketParts[0] !== block)))) throw new Error('BLOCK_CLEARING_VALIDATION:LOCATION_BUCKET');
@@ -16347,6 +16349,7 @@ function normalizeBlockClearingPdfReport_(payload) {
     submittedBy: blockClearingPdfText_(report.submittedBy, 'SUBMITTED_BY', true, 160),
     blockalpha: block, locationBucket: bucket, items: [], totalOnHand: 0, itemCount: 0, rowCount: 0
   };
+  if (sourceLocationCode) normalized.sourceLocationCode = sourceLocationCode;
   if (!Array.isArray(report.items) || !report.items.length || report.items.length > 500) throw new Error('BLOCK_CLEARING_VALIDATION:ITEMS');
   const itemcodes = new Set();
   const identities = new Map();
@@ -16393,6 +16396,7 @@ function normalizeBlockClearingPdfReport_(payload) {
       if (row.itemcode !== itemcode) throw new Error('BLOCK_CLEARING_VALIDATION:ROW_ITEMCODE');
       if (row.locationcode.indexOf('.') !== -1 && !/^[A-Z0-9_-]+(?:\.[A-Z0-9_-]+)+$/.test(row.locationcode)) throw new Error('BLOCK_CLEARING_VALIDATION:ROW_LOCATION');
       if (blockClearingPdfBucket_(row.locationcode) !== bucket) throw new Error('BLOCK_CLEARING_VALIDATION:ROW_OUTSIDE_BUCKET');
+      if (sourceLocationCode && row.locationcode !== sourceLocationCode) throw new Error('BLOCK_CLEARING_VALIDATION:ROW_OUTSIDE_SOURCE_LOCATION');
       checkPhysicalIdentity(row);
       const fingerprint = JSON.stringify(row);
       if (identities.has(row.uniqueId)) {
@@ -16470,10 +16474,10 @@ function buildBlockClearingPdfHtml_(report) {
       + '<div class="route"><b>From:</b> ' + escape(fromLocations) + '<br><b>To:</b> ' + escape(item.destinationLocationcode || '-') + '</div>'
       + '<div class="instructions"><b>Instructions:</b> ' + escape(item.instructions || 'Follow the planned action and quantity above.').replace(/\r?\n/g, '<br>') + '</div>'
       + (item.action === 'grade_save_best' ? '<div class="instructions"><b>Grade &amp; Save Best:</b> Planned Qty is the number of best plants to keep. No discard quantity is assigned.</div>' : '')
-      + '<table class="breakdown"><thead><tr><th colspan="5" class="row-context">' + escape(item.itemcode) + ' - ' + escape(item.commonname) + ' | ' + escape(report.locationBucket) + ' Source Rows</th></tr><tr><th style="width:30%">Source LOCATIONCODE</th><th style="width:27%">LOTCODE</th><th style="width:15%">Sales Year</th><th style="width:15%">Source</th><th style="width:13%" class="num">OH</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
+      + '<table class="breakdown"><thead><tr><th colspan="5" class="row-context">' + escape(item.itemcode) + ' - ' + escape(item.commonname) + ' | ' + escape(report.sourceLocationCode || report.locationBucket) + ' Source Rows</th></tr><tr><th style="width:30%">Source LOCATIONCODE</th><th style="width:27%">LOTCODE</th><th style="width:15%">Sales Year</th><th style="width:15%">Source</th><th style="width:13%" class="num">OH</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
   }).join('');
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + escape(report.title) + '</title><style>'
-    + '@page{size:letter landscape;margin:9mm 10mm 12mm;@bottom-left{content:"GNC PH Block Clearing | ' + report.locationBucket + '";font:8px Arial;color:#526459}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8px Arial;color:#526459}}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#18251e;font-size:10px;margin:0}'
+    + '@page{size:letter landscape;margin:9mm 10mm 12mm;@bottom-left{content:"GNC PH Block Clearing | ' + (report.sourceLocationCode || report.locationBucket) + '";font:8px Arial;color:#526459}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8px Arial;color:#526459}}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#18251e;font-size:10px;margin:0}'
     + 'h1{font-size:22px;margin:0 0 4px;color:#165b3b}header{border-bottom:2px solid #165b3b;padding-bottom:8px;margin-bottom:10px}.brand{font-size:9px;font-weight:bold;letter-spacing:1px;margin-bottom:5px}.meta{line-height:1.5}.totals{font-size:12px;font-weight:bold;margin-top:6px}'
     + '.item{border:1px solid #9aaa9f;margin:0 0 10px;padding:8px;page-break-inside:avoid;break-inside:avoid}.item-heading{font-size:13px;line-height:1.35;margin-bottom:7px;overflow-wrap:break-word}.item-number{color:#55715f}.size{font-weight:bold}'
     + 'table{border-collapse:collapse;width:100%;table-layout:fixed}.plan td{width:25%;border:1px solid #c7d1ca;padding:5px 7px;background:#f2f6f3;vertical-align:top}.plan b{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}.plan strong{font-size:13px}.write-in{height:15px;border-bottom:1px solid #354f40;margin-right:18px}'
@@ -16481,7 +16485,7 @@ function buildBlockClearingPdfHtml_(report) {
     + '.breakdown th,.breakdown td{border:1px solid #c7d1ca;padding:4px 6px;text-align:left;vertical-align:top;overflow-wrap:break-word}.breakdown th{background:#edf2ee;font-size:8px;text-transform:uppercase}.breakdown .row-context{background:white;text-transform:none;font-size:9px}.breakdown .num{text-align:right}thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}'
     + '.signoff{page-break-inside:avoid;break-inside:avoid;margin-top:15px}.signoff td{width:33.33%;padding:14px 16px 0 0}.signature-line{border-bottom:1px solid #354f40;height:14px;margin-bottom:5px}.note{font-size:8px;color:#526459;margin:8px 0 0}'
     + '</style></head><body><header><div class="brand">GREENLEAF NURSERY COMPANY | PARK HILL</div><h1>' + escape(report.title) + '</h1>'
-    + '<div class="meta"><b>Clearing Location:</b> ' + escape(report.locationBucket) + ' &nbsp;&nbsp; <b>Block:</b> ' + escape(report.blockalpha)
+    + '<div class="meta"><b>Clearing Location:</b> ' + escape(report.sourceLocationCode || report.locationBucket) + ' &nbsp;&nbsp; <b>Block:</b> ' + escape(report.blockalpha)
     + '<br><b>Created:</b> ' + escape(Utilities.formatDate(new Date(report.createdAt), 'America/Chicago', 'MMM d, yyyy h:mm a z'))
     + ' &nbsp;&nbsp; <b>Submitted By:</b> ' + escape(report.submittedBy) + '</div><div class="totals">Total Plants On Hand: ' + number(report.totalOnHand) + ' &nbsp; | &nbsp; Items: ' + report.itemCount
     + ' &nbsp; | &nbsp; Source Rows: ' + report.rowCount + '</div></header>' + sections
@@ -16490,7 +16494,7 @@ function buildBlockClearingPdfHtml_(report) {
 }
 
 function blockClearingPdfFilename_(report) {
-  return 'GNC_PH_Block_Clearing_' + report.locationBucket.replace(/[^A-Z0-9._-]/g, '_') + '_' + report.createdAt.slice(0, 19).replace(/[-:]/g, '').replace('T', '_') + '.pdf';
+  return 'GNC_PH_Block_Clearing_' + (report.sourceLocationCode || report.locationBucket).replace(/[^A-Z0-9._-]/g, '_') + '_' + report.createdAt.slice(0, 19).replace(/[-:]/g, '').replace('T', '_') + '.pdf';
 }
 
 function buildBlockClearingPdfFile_(report) {
@@ -16535,8 +16539,8 @@ function handleBlockClearingPdf_(payload) {
     const filename = blockClearingPdfFilename_(report);
     if (savedReceipt) return Object.assign(response, { pdfFilename: filename, recovered: true });
     const pdf = buildBlockClearingPdfFile_(report);
-    const subject = 'GNC PH Block Clearing - ' + report.locationBucket + ' - ' + report.title.replace(/[\r\n]+/g, ' ');
-    const textBody = report.title + '\nClearing Location: ' + report.locationBucket + '\nBlock: ' + report.blockalpha + '\nSubmitted By: ' + report.submittedBy
+    const subject = 'GNC PH Block Clearing - ' + (report.sourceLocationCode || report.locationBucket) + ' - ' + report.title.replace(/[\r\n]+/g, ' ');
+    const textBody = report.title + '\nClearing Location: ' + (report.sourceLocationCode || report.locationBucket) + '\nBlock: ' + report.blockalpha + '\nSubmitted By: ' + report.submittedBy
       + '\nTotal Plants On Hand: ' + report.totalOnHand + '\nItems: ' + report.itemCount + '\n\nThe Block Clearing worksheet PDF is attached.';
     const result = sendGmailApiMessage_({
       toList: recipients.join(','), toArray: recipients, subject: subject, textBody: textBody,

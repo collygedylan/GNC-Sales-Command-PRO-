@@ -222,6 +222,7 @@ async function openLowStockLocationCards(page: any) {
   await page.locator('#manager-eval-report-2-view-location').click();
   await expect(page.locator('[data-manager-eval2-drill-kind="blockalpha"]')).toHaveCount(1);
   await page.locator('[data-manager-eval2-drill-kind="blockalpha"]').click();
+  await page.getByRole('button', { name: 'Open location A.01', exact: true }).click();
   await expect(page.locator('[data-manager-eval2-drill-kind="locationcode"]')).toHaveCount(1);
   await page.locator('[data-manager-eval2-drill-kind="locationcode"]').click();
   await expect(page.locator('.manager-eval2-item-card')).toHaveCount(itemCount);

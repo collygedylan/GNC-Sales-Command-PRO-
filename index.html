@@ -131624,7 +131624,7 @@ C.14.043 C.15.000
         }
         function filterManagerBlockClearingRowsForSearch(rows = []) { return getManagersSearchTokens().length ? rows.filter(managerBlockClearingRowMatchesSearch) : rows; }
         function getManagerBlockClearingLocationGroupsForBlock(block = '') { return getManagerBlockClearingCache().locationsByBlock.get(String(block).trim().toUpperCase()) || []; }
-        function getManagerBlockClearingRowsForSelectedLocation() { const code=LocationCode.normalize(managerBlockClearingSelectedLocation), cache=getManagerBlockClearingCache(); const rows=cache.byLocation.get(LocationCode.base(code))?.rows || [], exact=rows.filter(row=>getManagerBlockClearingRawLocation(row)===code); return exact.length ? exact : (cache.byLocation.has(code) ? cache.byLocation.get(code).rows : []); }
+        function getManagerBlockClearingRowsForSelectedLocation() { const code=LocationCode.normalize(managerBlockClearingSelectedLocation), cache=getManagerBlockClearingCache(); const exact=cache.rows.filter(row=>getManagerBlockClearingRawLocation(row)===code); return exact.length ? exact : (code.split('.').length <= 2 ? cache.byLocation.get(normalizeManagerBlockClearingLocationBucket(code))?.rows || [] : []); }
         function buildManagerBlockClearingGroups(rows = null) {
             const groups = new Map(), seen = new Set();
             (Array.isArray(rows) ? rows : getManagerBlockClearingSelectedRows()).forEach((row) => {
@@ -131789,7 +131789,7 @@ C.14.043 C.15.000
                 const report = pending.report;
                 const groups = report.items.map((item) => ({ key: item.itemcode, itemcode: item.itemcode, commonname: item.commonname, contsize: item.contsize, rows: item.rows, totalOnHand: item.rows.reduce((sum, row) => sum + Number(row.ptronhand || 0), 0), salesyears: new Set(item.rows.map((row) => row.salesyear).filter(Boolean)) }));
                 const rows = groups.flatMap((group) => group.rows);
-                return { rows, groups, detailRows: rows, blockalpha: report.blockalpha, locationcode: report.locationBucket, title: report.title };
+                return { rows, groups, detailRows: rows, blockalpha: report.blockalpha, locationcode: report.sourceLocationCode || report.locationBucket, title: report.title };
             }
             const rows = getManagerBlockClearingSelectedRows(), groups = buildManagerBlockClearingGroups(rows);
             return { rows, groups, detailRows: rows.map(buildManagerBlockClearingSnapshot), blockalpha: managerBlockClearingSelectedBlock, locationcode: managerBlockClearingSelectedLocation, title: getManagerBlockClearingReportTitle() };
@@ -131799,7 +131799,7 @@ C.14.043 C.15.000
             if (pendingEmail) return JSON.parse(JSON.stringify({ ...pendingEmail, operation }));
             const context = buildManagerBlockClearingEmailContext();
             if (!isManagerBlockClearingReadyToEmail(context.groups)) throw new Error('Complete the title, actions, quantities, and Move To destinations first.');
-            const report = { title: context.title, submittedBy: String(currentUserDisplay || currentUser || '').trim(), blockalpha: context.blockalpha, locationBucket: context.locationcode, items: context.groups.map((group) => {
+            const report = { title: context.title, submittedBy: String(currentUserDisplay || currentUser || '').trim(), blockalpha: context.blockalpha, locationBucket: normalizeManagerBlockClearingLocationBucket(context.locationcode), ...(context.rows.every(row => getManagerBlockClearingRawLocation(row) === context.locationcode) ? {sourceLocationCode: context.locationcode} : {}), items: context.groups.map((group) => {
                 const decision = getManagerBlockClearingDecision(group.key);
                 const destination = decision.action === 'move' ? getManagerBlockClearingDestinationOptions(group, decision.destinationMode).find((option) => option.locationcode === decision.destinationLocationcode) : null;
                 return { itemcode: group.itemcode, commonname: group.commonname, contsize: group.contsize, action: decision.action, quantity: Number(decision.quantity), destinationMode: decision.destinationMode, destinationLocationcode: destination ? destination.locationcode : '', instructions: decision.instructions, rows: group.rows.map(buildManagerBlockClearingSnapshot), destinationEvidence: destination ? destination.rows.map(buildManagerBlockClearingSnapshot) : [] };

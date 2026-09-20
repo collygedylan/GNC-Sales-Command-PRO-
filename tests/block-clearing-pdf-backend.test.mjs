@@ -260,3 +260,25 @@ test('routes the new contract independently and retains the legacy Excel email p
   const handler = backendSource.slice(backendSource.indexOf('function handleBlockClearingPdf_'), backendSource.indexOf('// Photo History uses bounded previews'));
   assert.doesNotMatch(handler, /GmailApp|sendRequestEmailWithFallback_|buildRequestEmailAttachmentBlob_/);
 });
+
+
+test('exact source locations preserve bay scope without changing legacy report identity', () => {
+  const { context } = createBackend();
+  const legacy = context.normalizeBlockClearingPdfReport_(makePayload());
+  assert.equal(Object.hasOwn(legacy, 'sourceLocationCode'), false);
+  for (const location of ['A.05.010', 'A.5.010', 'SPECIAL.ZONE.BAY', 'HOLD PAD']) {
+    const payload = makePayload();
+    payload.report.locationBucket = context.blockClearingPdfBucket_(location);
+    payload.report.sourceLocationCode = location;
+    payload.report.items[0].rows = [payload.report.items[0].rows[1]];
+    payload.report.items[0].rows[0].locationcode = location;
+    payload.report.items[0].quantity = 5;
+    const report = context.normalizeBlockClearingPdfReport_(payload);
+    assert.equal(report.sourceLocationCode, location);
+    assert.equal(report.rowCount, 1);
+    assert.ok(context.buildBlockClearingPdfHtml_(report).includes('Clearing Location:</b> ' + location));
+    assert.ok(context.blockClearingPdfFilename_(report).includes(location.replace(/[^A-Z0-9._-]/g, '_')));
+    payload.report.items[0].rows[0].locationcode = location === 'HOLD PAD' ? 'OTHER PAD' : location + '.002';
+    assert.throws(() => context.normalizeBlockClearingPdfReport_(payload), /ROW_OUTSIDE_SOURCE_LOCATION|ROW_OUTSIDE_BUCKET/);
+  }
+});
