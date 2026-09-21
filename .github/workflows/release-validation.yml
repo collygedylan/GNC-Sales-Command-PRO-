@@ -101,6 +101,8 @@ jobs:
       max-parallel: 6
       matrix:
         include:
+          - suite: production-requests
+            config: playwright.release-canary.config.ts
           - suite: footer
             config: playwright.footer.config.ts
           - suite: home-1

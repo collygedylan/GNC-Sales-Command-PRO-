@@ -21,7 +21,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 
 // Evaluate the real checked-in config objects, without launching Playwright or
 // starting any server. Isolated env values cannot inherit a production target.
-function configLoader() {
+function configLoader(extraEnv = {}) {
   const cache = new Map();
   function load(filename) {
     const fullPath = path.resolve(root, filename);
@@ -40,6 +40,7 @@ function configLoader() {
       process: { env: {
         CI: '1', SUPABASE_LOCAL_URL: 'http://127.0.0.1:54321',
         SUPABASE_LOCAL_ANON_KEY: 'fixture-only', SUPABASE_LOCAL_SERVICE_ROLE_KEY: 'fixture-only',
+        ...extraEnv,
       } },
     }, { filename: fullPath });
     return module.exports;
@@ -213,6 +214,22 @@ const compiledSuites = [
   ['request-photo', 'request-photo-completion', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
   ['hl-restock', 'hl-restock', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
 ];
+
+test('hosted request and access canaries also gate the sealed candidate with unchanged browsers and assertions', () => {
+  const load = configLoader({ CANARY_BASE_URL: 'http://127.0.0.1:43144' });
+  const hosted = load('playwright.production.config.ts');
+  const candidate = load('playwright.release-canary.config.ts');
+  assert.deepEqual(selected(candidate), ['tests/production-request-canary.spec.ts']);
+  assert.deepEqual(selected(candidate), selected(hosted));
+  for (const key of ['projects', 'use', 'expect', 'timeout', 'retries', 'workers', 'fullyParallel', 'forbidOnly']) {
+    assert.deepEqual(plain(candidate[key]), plain(hosted[key]), key);
+  }
+  assert.match(candidate.webServer.command, /--directory _site(?:\s|$)/);
+  assert.equal(candidate.webServer.url, candidate.use.baseURL);
+  assert.equal(candidate.webServer.reuseExistingServer, false);
+  const workflow = readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8');
+  assert.match(workflow, /suite: production-requests\s+config: playwright\.release-canary\.config\.ts/);
+});
 
 for (const [name, spec, projects] of compiledSuites) {
   test(`compiled ${name} suite keeps its exact file and browser coverage outside source lanes`, () => {

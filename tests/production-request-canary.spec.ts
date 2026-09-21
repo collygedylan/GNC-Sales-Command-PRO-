@@ -1,8 +1,39 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const expectedCommit = String(process.env.EXPECTED_COMMIT || process.env.GITHUB_SHA || '').trim().toLowerCase();
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
+
+const canaryProfileId = '00000000-0000-4000-8000-000000000071';
+async function fulfillNavigationRead(route: Route, manager = false, reads: string[] = []) {
+  const request = route.request(), url = new URL(request.url());
+  if (request.method() !== 'POST' || url.hostname !== 'kzrnyjsosryejjejliii.supabase.co'
+    || url.pathname !== '/functions/v1/app-api' || request.headers()['idempotency-key']) return false;
+  let body: Record<string, any>;
+  try { body = request.postDataJSON(); } catch { return false; }
+  if (!body || typeof body !== 'object' || Array.isArray(body) || body.action !== 'navigation_preferences'
+    || Object.keys(body).some(key => !['action', 'operation', 'payload'].includes(key))
+    || !body.payload || typeof body.payload !== 'object' || Array.isArray(body.payload)) return false;
+  const payloadKeys = Object.keys(body.payload);
+  const snapshot = {
+    profileId: canaryProfileId, username: 'dylan_collyge', manager,
+    views: manager ? [
+      { view: 'managers', label: 'Manager', allowed: true, override: null, selectable: true, protectedReason: '' },
+      { view: 'access-control', label: 'User Access', allowed: true, override: null, selectable: false, protectedReason: 'Manager authority required' },
+    ] : [], shortcuts: null, footerRevision: 0, accessRevision: 0,
+  };
+  let data: unknown;
+  if (body.operation === 'get' && !payloadKeys.length) data = snapshot;
+  else if (manager && body.operation === 'users' && !payloadKeys.length) data = [{
+    id: canaryProfileId, username: 'dylan_collyge', displayName: 'Synthetic Admin Canary', role: 'ADMIN', active: true,
+  }];
+  else if (manager && body.operation === 'user_access' && payloadKeys.length === 1
+    && payloadKeys[0] === 'profileId' && body.payload.profileId === canaryProfileId) data = snapshot;
+  else return false;
+  reads.push(body.operation);
+  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data }) });
+  return true;
+}
 
 test('live Request rep to customer, consignee, folder, and quantity flow remains actionable', async ({ page }) => {
   const blockedMutations: string[] = [];
@@ -12,6 +43,7 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
   await page.route('**/*', async (route) => {
     const request = route.request();
     const method = request.method().toUpperCase();
+    if (await fulfillNavigationRead(route)) return;
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       let pathname = 'unknown';
       try { pathname = new URL(request.url()).pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120); } catch {}
@@ -35,6 +67,7 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
   const setup = await page.evaluate(() => window.eval(`(() => {
     const fixture = installMutationBlockedRequestCanaryFixture();
     if (!fixture) throw new Error('REQUEST_CANARY_FIXTURE_UNAVAILABLE');
+    hasAppliedInitialHomeView = true;
     document.body.classList.add('ops-precision-pilot');
     showRequestModalBase();
     const canaryGroups = buildExistingRequestFolderCustomerGroups('Hosted Canary Rep');
@@ -111,6 +144,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await page.route('**/*', async (route) => {
     const request = route.request();
     const method = request.method().toUpperCase();
+    if (await fulfillNavigationRead(route)) return;
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       let pathname = 'unknown';
       try { pathname = new URL(request.url()).pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120); } catch {}
@@ -134,6 +168,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     currentUser = 'dylan_collyge';
     currentUserDisplay = 'Dylan Collyge';
     currentRole = 'Manager';
+    hasAppliedInitialHomeView = true;
     canViewManagerEvalReports2 = () => true;
     isEvalWorkManagerUser = () => true;
     const loginView = document.getElementById('view-login');
@@ -371,10 +406,11 @@ test('live PO Management uses authenticated PostgREST and never the retired data
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
 });
 
-test('live authorized Admin opens Access Control from the manager module card without mutation', async ({ page }) => {
+test('live authorized Admin opens Access Control from the manager module card without mutation', async ({ page, isMobile }) => {
   const blockedMutations: string[] = [];
   const accessRequests: string[] = [];
   const codexReadRequests: string[] = [];
+  const navigationReadRequests: string[] = [];
   const forbiddenPolicyMutations: string[] = [];
   const pageErrors: string[] = [];
 
@@ -384,6 +420,7 @@ test('live authorized Admin opens Access Control from the manager module card wi
     let parsedUrl: URL | null = null;
     try { parsedUrl = new URL(request.url()); } catch {}
     const pathname = parsedUrl?.pathname || '';
+    if (await fulfillNavigationRead(route, true, navigationReadRequests)) return;
     if (method === 'POST' && pathname.endsWith('/rest/v1/rpc/get_my_app_permissions_v1')) {
       accessRequests.push(pathname);
       await route.fulfill({
@@ -451,7 +488,15 @@ test('live authorized Admin opens Access Control from the manager module card wi
         return;
       }
     }
-    if (pathname.endsWith('/rest/v1/rpc/save_access_control_draft_v1')
+    let navigationMutation = false;
+    if (method === 'POST' && pathname === '/functions/v1/app-api') {
+      try {
+        const body = request.postDataJSON();
+        navigationMutation = body?.action === 'navigation_preferences'
+          && ['set_user_access', 'save_shortcuts'].includes(body.operation);
+      } catch {}
+    }
+    if (navigationMutation || pathname.endsWith('/rest/v1/rpc/save_access_control_draft_v1')
       || pathname.endsWith('/rest/v1/rpc/publish_access_control_policy_v1')) {
       forbiddenPolicyMutations.push(`${method}:${pathname}`);
       await route.abort('blockedbyclient');
@@ -473,8 +518,11 @@ test('live authorized Admin opens Access Control from the manager module card wi
   await page.waitForFunction(() => typeof (window as any).initializeAppAccessSnapshot === 'function'
     && typeof (window as any).getAuditedAppPermission === 'function');
 
-  const result = await page.evaluate(() => (window as any).eval(`(async () => {
+  const setup = await page.evaluate(() => (window as any).eval(`(async () => {
     if (!installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN')) throw new Error('ACCESS_CANARY_IDENTITY_UNAVAILABLE');
+    // This synthetic identity represents a user who already finished login.
+    // Preference adoption still runs the real access checks for the open view.
+    hasAppliedInitialHomeView = true;
     const snapshot = await initializeAppAccessSnapshot({ force: true, reason: 'post-deploy-canary' });
     const managers = getAuditedAppPermission('module.managers.view');
     const accessControl = getAuditedAppPermission('access_control.manage');
@@ -482,16 +530,20 @@ test('live authorized Admin opens Access Control from the manager module card wi
     if (!managerView) throw new Error('ACCESS_CANARY_MANAGERS_VIEW_UNAVAILABLE');
     ensureViewDataForRender = () => false;
     scheduleManagersRender = () => renderManagers();
-    currentPrimaryViewId = 'managers';
-    managerView.classList.remove('hidden');
+    const loginView = document.getElementById('view-login');
+    if (loginView) {
+      loginView.classList.add('hidden');
+      loginView.style.setProperty('display', 'none', 'important');
+      loginView.style.setProperty('pointer-events', 'none', 'important');
+    }
+    document.getElementById('app-wrapper').classList.remove('hidden');
+    // Normal login configures these hooks through the footer. This synthetic
+    // login must perform that real initialization before opening User Access.
+    configureNavigationPreferences();
+    await GncNavigationPreferences.refresh();
+    activeHomeTab = 'dashboard';
+    showOnlyPrimaryView('managers');
     renderManagers();
-    const moduleCard = Array.from(managerView.querySelectorAll('button.manager-module-card'))
-      .find((button) => /access control/i.test(String(button.textContent || '')));
-    if (!moduleCard) throw new Error('ACCESS_CANARY_MODULE_CARD_UNAVAILABLE');
-    moduleCard.click();
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    renderManagers();
-    const accessCanaryState = getMutationBlockedAccessCanaryState();
     return {
       release: String(window.__APP_SHELL_VERSION__ || ''),
       contractVersion: snapshot && snapshot.contractVersion,
@@ -500,7 +552,29 @@ test('live authorized Admin opens Access Control from the manager module card wi
       managersAllowed: managers && managers.allowed,
       managersSource: managers && managers.source,
       accessControlAllowed: accessControl && accessControl.allowed,
-      accessControlSource: accessControl && accessControl.source,
+      accessControlSource: accessControl && accessControl.source
+    };
+  })()`));
+
+  const moduleCard = page.locator('#view-managers button.manager-module-card').filter({
+    has: page.locator('.manager-module-title', { hasText: /^User Access$/ }),
+  });
+  await expect(moduleCard).toBeVisible();
+  if (isMobile) await moduleCard.tap(); else await moduleCard.click();
+  await expect.poll(() => page.evaluate(() => (window as any).eval(`(() => ({
+    matrix: getMutationBlockedAccessCanaryState()?.matrixContract || '',
+    codex: codexOpsState?.capabilities?.contractVersion || ''
+  }))()`))).toEqual({ matrix: 'app-access-view-v2', codex: 'mobile-codex-ops-v1' });
+  const userAccess = page.locator('#effective-user-access-editor');
+  await expect(userAccess.getByRole('heading', { name: 'User Access', exact: true })).toBeVisible();
+  await userAccess.locator('[data-nav-user]').selectOption(canaryProfileId);
+  await expect(userAccess.locator('[data-nav-view="managers"]')).toBeEnabled();
+  await expect(userAccess.locator('[data-nav-view="access-control"]')).toBeDisabled();
+  await expect(userAccess).toContainText('Manager authority required');
+  await expect(userAccess.locator('[data-nav-save]')).toBeVisible();
+  const detail = await page.evaluate(() => (window as any).eval(`(() => {
+    const accessCanaryState = getMutationBlockedAccessCanaryState();
+    return {
       matrixContract: accessCanaryState && accessCanaryState.matrixContract,
       canViewMatrix: accessCanaryState && accessCanaryState.canViewMatrix,
       canEditMatrix: accessCanaryState && accessCanaryState.canEditMatrix,
@@ -510,12 +584,16 @@ test('live authorized Admin opens Access Control from the manager module card wi
       managerSearchPlaceholder: getManagersSearchPlaceholder()
     };
   })()`));
+  const result = { ...setup, ...detail };
 
   expect(accessRequests).toEqual([
     '/rest/v1/rpc/get_my_app_permissions_v1',
     '/rest/v1/rpc/get_access_control_matrix_v2'
   ]);
   expect(codexReadRequests).toEqual(['capabilities']);
+  expect(navigationReadRequests).toContain('get');
+  expect(navigationReadRequests).toContain('users');
+  expect(navigationReadRequests.filter(operation => operation === 'user_access')).toEqual(['user_access']);
   expect(result).toEqual({
     release: expectedRelease,
     contractVersion: 'app-access-v1',
