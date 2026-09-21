@@ -6,7 +6,10 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
   'matchesManagerAssignedColumnFilters', 'sortManagerAssignedColumnRows', 'getManagerAssignedColumnOptions',
-  'getManagerAssignedItemsActiveAssigneeKey', 'getFilteredManagerAssignedItemsExportRows', 'buildManagerEvalAssignmentKey'];
+  'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
+  'firstNonEmptyValue', 'normalizeWarehouseAssignedItemRow', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
+  'getManagerAssignedItemsAssigneeOptions', 'getManagerAssignedItemsActiveAssigneeLabel', 'getManagerAssignedItemsExportColumns',
+  'getManagerAssignedItemsExportMetaRows', 'getManagerAssignedItemsActiveAssigneeKey', 'getFilteredManagerAssignedItemsExportRows', 'buildManagerEvalAssignmentKey'];
 function helper(name) {
   const start = html.indexOf(`        function ${name}(`);
   assert.ok(start >= 0, name);
@@ -18,13 +21,17 @@ const rows = [
   { UNIQUE_ID: 'a', ASSIGNEDTO: 'dylan_collyge', WAREHOUSEI: '10', ITEMCODE: '002', CONTSIZE: '#5', COMMONNAME: 'rose', LOCATIONCODE: 'D.08.002', SOURCE: 'Import', GENUSNAME: 'Rosa' },
   { UNIQUE_ID: 'c', ASSIGNEDTO: '', WAREHOUSEI: '', ITEMCODE: '003', CONTSIZE: '#3', COMMONNAME: 'Acer', LOCATIONCODE: 'E.01.000', SOURCE: 'Manual', GENUSNAME: '' }
 ];
-function context(data = rows) {
+function context(data = rows, normalize = false) {
   const ctx = vm.createContext({ currentUser: 'dylan_collyge', managersSearchTerm: '', managerAssignedItemsAssignedToFilter: 'all',
+    managerEvalAssignmentSelection: new Set(['001|rosa']),
     managerAssignedColumnState: { owner: 'dylan_collyge', filters: {}, sort: null, editor: null },
     normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
-    getManagerAssignedItemsDisplayRows: () => data,
+    warehouseAssignedItemsInventory: data,
+    disposeManagerAssignedColumnEditor: () => {},
+    renderManagerAssignedColumnOptions: () => {},
   });
   vm.runInContext(`function managerTextMatchesSearch(values) { return values.some(value => String(value || '').toLowerCase().includes(managersSearchTerm.trim().toLowerCase())); }\n${names.map(helper).join('\n')}`, ctx);
+  if (!normalize) ctx.getManagerAssignedItemsDisplayRows = () => ctx.warehouseAssignedItemsInventory;
   return ctx;
 }
 const ids = values => Array.from(values, row => row.UNIQUE_ID);
@@ -101,4 +108,89 @@ test('account changes reset filters and sorting; assignment identities remain in
   ctx.currentUser = 'megan_kelly';
   assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length, 3);
   assert.equal(ctx.managerAssignedColumnState.sort, null);
+  assert.equal(ctx.managerEvalAssignmentSelection.size, 0);
+});
+
+
+test('searched Select All spans option batches and keeps values outside the search', () => {
+  const data = Array.from({ length: 240 }, (_, i) => ({ ...rows[0], UNIQUE_ID: String(i), COMMONNAME: 'Rose ' + i }));
+  data.push({ ...rows[2], COMMONNAME: 'Acer' });
+  const ctx = context(data);
+  ctx.managerAssignedColumnState.editor = { field: 'COMMONNAME', values: ['acer'], search: ' ROSE ', limit: 100 };
+  ctx.selectManagerAssignedColumnValues(true);
+  const selected = Array.from(ctx.managerAssignedColumnState.editor.values);
+  assert.equal(selected.length, 241);
+  assert.ok(selected.includes('rose 239'));
+  assert.ok(selected.includes('acer'));
+  assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length, 241, 'draft does not filter rows');
+  ctx.selectManagerAssignedColumnValues(false);
+  assert.equal(ctx.managerAssignedColumnState.editor.values.length, 0);
+});
+
+test('Select All stays explicit when new values arrive; removing the filter accepts them', () => {
+  const ctx = context();
+  ctx.managerAssignedColumnState.editor = { field: 'COMMONNAME', values: [], search: '', limit: 100 };
+  ctx.selectManagerAssignedColumnValues(true);
+  ctx.managerAssignedColumnState.filters.COMMONNAME = ctx.managerAssignedColumnState.editor.values;
+  ctx.managerAssignedColumnState.editor = null;
+  ctx.warehouseAssignedItemsInventory = [...rows, { ...rows[0], UNIQUE_ID: 'new', COMMONNAME: 'New Plant' }];
+  assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length, 3);
+  delete ctx.managerAssignedColumnState.filters.COMMONNAME;
+  assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length, 4);
+});
+
+test('applied and draft values keep display labels after disappearance and reappearance', () => {
+  const ctx = context();
+  ctx.getManagerAssignedColumnOptions('COMMONNAME');
+  ctx.managerAssignedColumnState.filters.COMMONNAME = ['rose'];
+  ctx.managerAssignedColumnState.editor = { field: 'COMMONNAME', values: [], search: '', limit: 100 };
+  ctx.warehouseAssignedItemsInventory = [rows[2]];
+  let option = ctx.getManagerAssignedColumnOptions('COMMONNAME').find(x => x.value === 'rose');
+  assert.equal(option.label, 'Rose');
+  assert.equal(option.count, 0, 'deselected draft still exposes applied value until Apply');
+  ctx.warehouseAssignedItemsInventory = rows;
+  option = ctx.getManagerAssignedColumnOptions('COMMONNAME').find(x => x.value === 'rose');
+  assert.equal(option.label, 'Rose');
+  assert.equal(option.count, 2);
+});
+
+test('real normalization preserves zeros, codes and location codes in exported values', () => {
+  const data = [{ unique_id: 'zero', itemcode: '000012', warehousei: 0, contsize: 0,
+    commonname: 'Mixed Case', locationcode: 'D.08.002', source: 0, assignedto: ' ', genusname: null }];
+  const ctx = context(data, true);
+  ctx.managerAssignedColumnState.filters.WAREHOUSEI = ['0'];
+  const result = ctx.getFilteredManagerAssignedItemsExportRows();
+  assert.equal(result.length, 1);
+  assert.deepEqual(Array.from(ctx.getManagerAssignedItemsExportColumns(), col => col.value(result[0])),
+    ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '']);
+  assert.equal(ctx.getManagerAssignedColumnOptions('WAREHOUSEI')[0].label, '0');
+  assert.equal(data[0].warehousei, 0, 'source dataset remains unchanged');
+});
+
+test('every column sorts both ways, puts blanks at the edge, and breaks ties by row identity', () => {
+  for (const [field] of context().getManagerAssignedColumnDefinitions()) {
+    const data = [
+      { ...rows[0], UNIQUE_ID: 'z', [field]: 'value 2' },
+      { ...rows[0], UNIQUE_ID: 'a', [field]: 'VALUE 2' },
+      { ...rows[0], UNIQUE_ID: 'last', [field]: 'value 10' },
+      { ...rows[0], UNIQUE_ID: 'blank', [field]: '  ' },
+    ];
+    const ctx = context(data);
+    ctx.managerAssignedColumnState.sort = { field, direction: 'asc' };
+    assert.deepEqual(ids(ctx.getFilteredManagerAssignedItemsExportRows()), ['blank', 'a', 'z', 'last'], field);
+    ctx.managerAssignedColumnState.sort.direction = 'desc';
+    assert.deepEqual(ids(ctx.getFilteredManagerAssignedItemsExportRows()), ['last', 'a', 'z', 'blank'], field);
+    assert.deepEqual(ids(data), ['z', 'a', 'last', 'blank']);
+  }
+});
+
+test('export metadata uses retained display labels, Unassigned, and readable sort direction', () => {
+  const ctx = context(rows, true);
+  ctx.managerAssignedColumnState.filters = { ASSIGNEDTO: [''], GENUSNAME: [''], COMMONNAME: ['acer'] };
+  ctx.managerAssignedColumnState.sort = { field: 'ITEMCODE', direction: 'desc' };
+  const matching = ctx.getFilteredManagerAssignedItemsExportRows();
+  const metadata = new Map(Array.from(ctx.getManagerAssignedItemsExportMetaRows(matching), row => Array.from(row)));
+  assert.equal(metadata.get('Rows'), '1');
+  assert.equal(metadata.get('Column Filters'), 'AssignedTo: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
+  assert.equal(metadata.get('Sort'), 'Item Code descending');
 });

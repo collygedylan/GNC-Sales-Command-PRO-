@@ -8657,3 +8657,13 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
 .assigned-filter-actions .assigned-filter-apply{background:var(--ui-accent,#07874f);color:var(--ui-on-accent,#fff)}
 .assigned-column-panel :focus-visible,.assigned-column-trigger:focus-visible{outline:3px solid var(--ui-accent,#07874f);outline-offset:2px}
 @media(max-width:767px){.assigned-phone-filters{display:block;margin-bottom:8px}.assigned-phone-filters>summary{width:100%}.assigned-filter-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px}.assigned-filter-fields .assigned-column-trigger{white-space:normal;text-align:left}.assigned-filter-clear{width:100%}}
+
+/* Keep editing controls mounted above live result refreshes and the software keyboard. */
+.assigned-column-panel.excel-filter-panel{overflow:hidden}
+.assigned-column-panel .assigned-filter-body{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;overscroll-behavior:contain}
+.assigned-column-panel .assigned-filter-body>strong{font-size:16px}
+.assigned-column-panel .assigned-filter-actions{flex-shrink:0;display:flex;background:var(--ui-surface,#fff);padding-top:8px;margin:0}
+.assigned-column-panel .assigned-filter-actions button{flex:1 1 0;min-height:44px}
+
+/* Assigned Items restores a saved pixel position; native anchoring must not offset it as header chrome settles. */
+body.current-view-managers #main-scroll-area:has(#managers-content .assigned-filter-controls){overflow-anchor:none}
