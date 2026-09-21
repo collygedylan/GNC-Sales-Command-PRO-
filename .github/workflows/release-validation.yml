@@ -78,7 +78,7 @@ jobs:
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Functional browsers, shard ${{ matrix.shard }} of 4
-        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --shard=${{ matrix.shard }}/4 --reporter=github,blob
+        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --retries=0 --shard=${{ matrix.shard }}/4 --reporter=github,blob
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
@@ -129,6 +129,8 @@ jobs:
             config: playwright.request-photo.config.ts
           - suite: bunch-note
             config: playwright.bunch-note.config.ts
+          - suite: sales-mobile
+            config: playwright.sales-mobile.config.ts
           - suite: hl-order-1
             config: playwright.hl-order.config.ts
             shard: 1/3
@@ -149,7 +151,7 @@ jobs:
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Compiled shell — ${{ matrix.suite }}
-        run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
+        run: npx playwright test --config ${{ matrix.config }} --workers=1 --retries=0 --reporter=github,blob ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
@@ -175,9 +177,9 @@ jobs:
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Scroll and throttled startup on a quiet runner
-        run: npx playwright test --config playwright.release-timing.config.ts --workers=1
+        run: npx playwright test --config playwright.release-timing.config.ts --workers=1 --retries=0
       - name: Android startup and protected photo persistence
-        run: npx playwright test --config playwright.release-android.config.ts --project=android --workers=1
+        run: npx playwright test --config playwright.release-android.config.ts --project=android --workers=1 --retries=0
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

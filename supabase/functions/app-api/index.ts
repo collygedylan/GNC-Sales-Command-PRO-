@@ -1,3 +1,6 @@
+import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
+import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
@@ -2337,6 +2340,14 @@ async function handlePasswordChange(
 }
 
 async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>, payload: Record<string, unknown>) {
+  const protectedTable = String(payload.table || "").trim().toLowerCase();
+  const protectedMethod = String(payload.method || "GET").toUpperCase();
+  if (protectedTable === "ph_sales_credit_requests" || protectedTable.startsWith("ph_credit_") || protectedTable === "ph_inventory_transactions"
+    || (protectedTable === "ph_request_history" && protectedMethod === "GET")
+    || protectedTable === "ph_production_workflow_rows") {
+    return errorResponse("Update the app to use the protected workflow.", 410, { code: "SALES_WORKFLOW_API_REQUIRED" });
+  }
+
   if (!session) return errorResponse("Unauthorized", 401);
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
 
@@ -2562,6 +2573,23 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
 
+  if (action === "request_history" || action === "sales_credit") {
+    return await handleSalesWorkflow({ session, payload, supabase, resolveActiveSessionProfile, headers: corsHeaders });
+  }
+  if (["navigation_preferences", "production_workflow", "inventory_transaction_history"].includes(action)) {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      if (action === "navigation_preferences") return jsonResponse({ ok: true, data: await handleNavigationPreferences(supabase, actor, payload) });
+      const moduleAllowed = await resolveModuleAllowed(supabase, actor, action === "production_workflow" ? "production-workflow" : "inventory-transaction-history");
+      const context = { supabase, actorProfile: actor, moduleAllowed, payload };
+      const data = action === "production_workflow" ? await handleProductionWorkflow(context) : await handleInventoryTransactionHistory(context);
+      return jsonResponse(data);
+    } catch (error) {
+      const failure = workflowError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
+  }
   if (action === "login") return await handleLogin(payload);
   if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "password_change") return await handlePasswordChange(session, payload);

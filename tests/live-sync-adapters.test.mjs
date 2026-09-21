@@ -18,7 +18,7 @@ const demandBindingSource = html.slice(demandStart, demandEnd);
 function harness() {
     const calls = [];
     const rows = [{ unique_id: 'new', source_unique_id: 'new', id: 'new', tripnumber: 'T1', issueSourceUniqueId: 'new', allocationUniqueId: 'new', UNIQUE_ID: 'new', conversationId: 'new' }];
-    const ctx = { BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
+    const ctx = { SalesWorkspace: {isView:()=>true,stageRefresh:async()=>{calls.push(['api','sales_credit','sources']);return {rows};},applyRefresh(){}}, BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
         fetchAllSupabaseRows: async (table, query) => { calls.push(['GET', table, query]); return table === 'ph_crop_roll_runs' ? [] : rows; },
         fetchPoManagementRows: async () => { calls.push(['GET', 'po']); return rows; },
         supabaseFetch: async (table, method, body, query) => { calls.push([method, table, query]); return rows; },
@@ -37,6 +37,7 @@ function harness() {
             if (name === 'get_request_delivery_recovery_queue' || name === 'search_historical_inventory_common_names') return rows;
             return {};
         },
+        postAppFunctionJson: async (_url, payload) => { calls.push(['api', payload.action, payload.operation || 'read']); return {ok:true, rows, hasMore:false}; },
         postGoogleScriptRawJsonPayload: async (payload) => { calls.push(['script', payload.type]); return { ok: true, rows }; },
         parseRemoteAppSeasonSettingsRow: () => ({ seasonCode: 'F1', salesYear: '27' }),
         writeLocalAppSeasonSettings: (value) => { ctx.settings = value; },
@@ -79,6 +80,7 @@ function harness() {
     ctx.isKaylaLimitedAccessManagerUser = () => false;
     vm.createContext(ctx);
     vm.runInContext(`${registrySource}\n${adapterSource}`, ctx);
+    ctx.window.SalesWorkspace = ctx.SalesWorkspace;
     ctx.window.AgMetricLiveSyncRegistry = ctx.AgMetricLiveSyncRegistry;
     ctx.window.AgMetricLiveSyncAdapters = ctx.AgMetricLiveSyncAdapters;
     vm.runInContext(demandDetailSource, ctx);
@@ -86,7 +88,7 @@ function harness() {
     vm.runInContext(`${demandBindingSource}\n${factorySource}`, ctx);
     return { ctx, calls, rows, api: ctx.createProductionLiveSyncSideAdapters() };
 }
-const context = { scope: 'user:division', username: 'dylan_collyge', productionType: 'spacing', countType: 'spread', productivityUser: 'dylan_collyge', managerOrders: { level: 'sources', sourceKey: '', assignees: [], rowCount: 0, batchCount: 0 }, pendingOrderCount: 0, transactions: {}, transactionsKeyed: { dateCount: 0, fileCount: 0 }, historical: { level: 'names', columns: [], search: '', rowCount: 0 }, accessQuery: {}, codexTaskId: '' };
+const context = { scope: 'user:division', username: 'dylan_collyge', productionType: 'propagation', countType: 'spread', productivityUser: 'dylan_collyge', managerOrders: { level: 'sources', sourceKey: '', assignees: [], rowCount: 0, batchCount: 0 }, pendingOrderCount: 0, transactions: {}, transactionsKeyed: { dateCount: 0, fileCount: 0 }, historical: { level: 'names', columns: [], search: '', rowCount: 0 }, accessQuery: {}, codexTaskId: '' };
 const driveDemandContext = (kind = 'reserves') => ({ kind, key: { itemcode: 'SYNTH.003', season: 'F1', salesyear: 2027 }, query: 'select=*&itemcode=ilike.*SYNTH.003*', cacheKey: JSON.stringify([kind, 'SYNTH.003']) });
 
 for (const id of ['side:shear', 'side:evalWork', 'side:chat', 'side:calendar']) {
@@ -139,8 +141,9 @@ test('every side adapter executes a read-only stage and a synchronous commit', a
         assert.equal(item.commit(staged), undefined, id);
     }
     for (const call of h.calls) {
-        assert.ok(['GET', 'RPC', 'dock', 'eval', 'location', 'shear', 'codex', 'script'].includes(call[0]), JSON.stringify(call));
+        assert.ok(['GET', 'RPC', 'dock', 'eval', 'location', 'shear', 'codex', 'script', 'api'].includes(call[0]), JSON.stringify(call));
         if (['dock', 'eval', 'location', 'shear'].includes(call[0])) assert.ok(['list', 'get'].includes(call[1]), JSON.stringify(call));
+        if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read'].includes(call[1]+':'+call[2]), JSON.stringify(call));
         if (call[1] === 'bloomscapes_pending_command') assert.equal(call[2].p_action, 'state');
     }
     assert.equal(h.ctx.shearListState.draft, 'keep me');
@@ -251,7 +254,7 @@ test('a verified directory snapshot replaces all option caches without changing 
 
 test('inventory views and Bloom Picker dialogs require settings but badge-only Chat does not', () => {
     const h = harness(); const registry = h.ctx.AgMetricLiveSyncRegistry;
-    for (const view of ['docks', 'reports', 'reserves', 'building', 'request']) assert.ok(registry.getViewAdapters(view).includes('side:settings'), view);
+    for (const view of ['docks', 'reports', 'reserves', 'request']) assert.ok(registry.getViewAdapters(view).includes('side:settings'), view);
     const bloom = registry.getViewAdapters('chat', { surfaces: ['dialog:bloom-picker'] });
     assert.ok(bloom.includes('core:reserves')); assert.ok(bloom.includes('core:customerRepMap')); assert.ok(bloom.includes('side:settings'));
     assert.ok(!registry.getViewAdapters('chat', { surfaces: ['badge:queue'] }).includes('side:settings'));

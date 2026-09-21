@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 
-const RELEASE = 'V2026.09.20.06';
+const RELEASE = 'V2026.09.20.07';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -40,7 +40,7 @@ await mkdir(path.dirname(runtimeTarget), { recursive: true });
 await writeFile(runtimeTarget, `${minified.code}\n;window.__gncAppRuntimeExecuted = true;\n`, 'utf8');
 // These synchronous dependencies must accompany the extracted production
 // runtime in local verification as well as the Pages artifact.
-await Promise.all(['location-code.js', 'bunch-note.js', 'bunch-note.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'inventory-list-contract.js', 'master-detail-snapshots.js'].map((name) =>
+await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'location-code.js', 'bunch-note.js', 'bunch-note.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'inventory-list-contract.js', 'master-detail-snapshots.js'].map((name) =>
   copyFile(path.join(root, 'assets', name), path.join(siteRoot, 'assets', name))));
 
 const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
@@ -130,7 +130,7 @@ replaceLoginMarkup('<button id="login-button"', '<button id="login-button" disab
 replaceLoginMarkup('<button id="login-password-toggle"', '<button id="login-password-toggle" disabled');
 replaceLoginMarkup('onclick="return triggerLoginFromUI(event)"', 'onclick="if(this.disabled || typeof triggerLoginFromUI!==\'function\'){event.preventDefault();return false;}return triggerLoginFromUI(event)"');
 replaceLoginMarkup('onkeydown="if(event.key===\'Enter\'){return triggerLoginFromUI(event);}"', 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();if(!document.getElementById(\'login-button\').disabled && typeof triggerLoginFromUI===\'function\'){return triggerLoginFromUI(event);}return false;}"');
-replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing app…</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
+replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing appâ€¦</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
 
 // The legacy shell carries hundreds of kilobytes of route-specific CSS in the
 // document head. Parsing those rules delays the login logo even though none of
@@ -189,7 +189,7 @@ for (const href of deferrableStylesheets) {
   optimizedHead = optimizedHead.replace(blockingTag, asyncStylesheetMarkup(href));
 }
 
-const loginStylesMarker = '/* V2026.08.15.11 — compact enterprise shell';
+const loginStylesMarker = '/* V2026.08.15.11 â€” compact enterprise shell';
 const loginStylesStart = pilotCss.indexOf(':root {', pilotCss.indexOf(loginStylesMarker));
 const loginStylesEnd = pilotCss.indexOf('body.ops-precision-pilot {', loginStylesStart);
 if (loginStylesStart < 0 || loginStylesEnd < 0) {

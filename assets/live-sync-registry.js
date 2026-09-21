@@ -18,6 +18,7 @@
         avHotPriceKeys: ['ph_cav_import', 'ph_master_inventory'], avNotes: ['ph_av_notes']
     };
     const side = {
+        salesWorkspace: ['ph_request_history','ph_credit_sources','ph_credit_submissions','ph_sales_credit_requests','ph_credit_attachments'],
         settings: ['ph_app_settings'],
         driveReserves: ['ph_reserves', 'ph_master_inventory'],
         driveOpenOrders: ['ph_soc_master', 'ph_master_inventory'],
@@ -64,6 +65,9 @@
         docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow']),
         'hl-order': data(['soc', 'master']),
         'bunch-note': data([], ['bunchNotes']),
+        'request-history': data([], ['salesWorkspace']),
+        'sales-credit': data([], ['salesWorkspace']),
+        'credit-request': data([], ['salesWorkspace']),
         request: data(['requests', 'master', 'customerRepMap']),
         reports: data(['requests', 'requestHistory', 'salesCredits', 'soc', 'master', 'reserves', 'customerRepMap'], ['settings']),
         'sales-office': data(['salesOffice', 'master', 'flyerRows', 'flyerHistory'], ['settings']),
@@ -131,16 +135,6 @@
     const adapters = {};
     Object.entries(core).forEach(([id, sourceKeys]) => { adapters[`core:${id}`] = { id: `core:${id}`, kind: 'core', sourceKeys }; });
     Object.entries(side).forEach(([id, sourceKeys]) => { adapters[`side:${id}`] = { id: `side:${id}`, kind: 'side', sourceKeys }; });
-    // These legacy features reference schemas absent from the verified production
-    // database. Keep their contract explicit; never disguise unavailable as empty.
-    Object.assign(adapters['side:productionWorkflow'], {
-        deploymentRequired: true,
-        unavailableReason: 'Production propagation/planting data is unavailable because its database is not deployed.'
-    });
-    Object.assign(adapters['side:transactions'], {
-        deploymentRequired: true,
-        unavailableReason: 'Inventory transaction audit history is unavailable because its database is not deployed.'
-    });
     function getEntries(viewId, context = {}) {
         const view = views[viewId];
         if (!view) throw new Error(`Unregistered live-sync view: ${viewId}`);

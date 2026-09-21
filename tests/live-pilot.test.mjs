@@ -902,16 +902,16 @@ test('first service-worker control does not reload an already-rendered login she
   assert.match(html, /controllerchange[\s\S]*if \(!shellControllerObserved\)[\s\S]*shellControllerObserved = true;[\s\S]*return;/);
 });
 
-test('V16 Home uses one authorization-backed primary module registry and leaves nested workflows in their hubs', () => {
+test('Home keeps an authorization-backed registry with Sales Office and relocated modules in their hubs', () => {
   assert.match(html, /const HOME_MODULE_REGISTRY = Object\.freeze\(\[/);
-  for (const view of ['bunch-note', 'drive', 'docks', 'hl-order', 'av', 'communication', 'sales', 'managers', 'building', 'qc', 'office', 'sales-inventory', 'production', 'reports']) {
+  for (const view of ['bunch-note', 'drive', 'hl-order', 'av', 'sales-office', 'sales', 'managers', 'qc', 'office', 'sales-inventory', 'production']) {
     assert.match(html, new RegExp(`\\{ view: '${view}'`));
   }
   const registrySource = html.slice(html.indexOf('const HOME_MODULE_REGISTRY'), html.indexOf('function ensureHomeModuleRegistry'));
-  for (const nestedView of ['tasks', 'request', 'crop-roll', 'take-back', 'reserves', 'disease-pest', 'sales-office', 'moves', 'hours', 'low-stock', 'review', 'move-up', 'advertisement', 'grower', 'pest-management']) {
+  for (const nestedView of ['tasks', 'request', 'crop-roll', 'take-back', 'reserves', 'disease-pest', 'moves', 'hours', 'low-stock', 'review', 'move-up', 'advertisement', 'grower', 'pest-management', 'docks', 'communication', 'reports', 'building']) {
     assert.doesNotMatch(registrySource, new RegExp(`\\{ view: '${nestedView}'`));
   }
-  assert.equal((registrySource.match(/\{ view:/g) || []).length, 14);
+  assert.equal((registrySource.match(/\{ view:/g) || []).length, 11);
   for (const nestedHubControl of ['sales-open-bloom-orders', 'production-open-take-back', 'production-open-disease-pest', 'office-open-sales']) {
     assert.match(html, new RegExp(`id="${nestedHubControl}"`));
   }

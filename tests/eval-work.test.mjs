@@ -108,7 +108,7 @@ test('Queue exposes only authorized Eval Work and supports offline-safe editing'
   assert.match(html, /function getEvalWorkOriginEntries\(work = null\)[\s\S]*snapshot\.BLOCKALPHA[\s\S]*locationParts\[1\]/);
 });
 
-test('Queue navigation is focused while Sales Reps and Delivery Recovery live in Managers', () => {
+test('Queue stays focused, Request History opens in Sales, and Delivery Recovery stays in Managers', () => {
   assert.match(html, /const REQUEST_TAB_LABELS = Object\.freeze\(\{[\s\S]*pending: 'Request'[\s\S]*'suspend-tag': 'Suspend'[\s\S]*moves: 'Location Moves'[\s\S]*recount: 'Recount'[\s\S]*'shear-list': 'Shear List'[\s\S]*'eval-work': 'Eval Work'/);
   const labelsStart = html.indexOf('const REQUEST_TAB_LABELS = Object.freeze');
   const labelsEnd = html.indexOf('function getRequestTabQueueCounts', labelsStart);
@@ -121,10 +121,12 @@ test('Queue navigation is focused while Sales Reps and Delivery Recovery live in
   assert.doesNotMatch(html, /id="tab-req-reps"|id="tab-req-av-check"|id="request-delivery-recovery-panel"/);
   assert.match(html, /const MANAGER_SALES_REPS_VIEW = 'sales-reps'/);
   assert.match(html, /const MANAGER_DELIVERY_RECOVERY_VIEW = 'delivery-recovery'/);
-  assert.match(html, /if \(access\.canViewSalesReps\) tabs\.push\(\{ id: MANAGER_SALES_REPS_VIEW, label: 'Sales Reps' \}\)/);
+  assert.doesNotMatch(html, /tabs\.push\(\{ id: MANAGER_SALES_REPS_VIEW, label: 'Sales Reps' \}\)/);
+  const hubs = readFileSync(new URL('../assets/mobile-workspace.js', import.meta.url), 'utf8');
+  assert.match(hubs, /sales:\[[\s\S]*card\('request-history','Request History'/);
   assert.match(html, /if \(access\.canManageDeliveryRecovery\) tabs\.push\(\{ id: MANAGER_DELIVERY_RECOVERY_VIEW, label: 'Delivery Recovery' \}\)/);
   assert.match(html, /activeHomeTab === MANAGER_DELIVERY_RECOVERY_VIEW\) html \+= renderManagerDeliveryRecoveryPanel\(\)/);
-  assert.match(html, /function openManagerSalesRepsModule\(\)[\s\S]*switchView\('request', \{ managerSalesReps: true, force: true \}\)/);
+  assert.match(html, /function openManagerSalesRepsModule\(\)\s*\{\s*return switchView\('request-history'\)/);
   assert.match(html, /const sendToEvalHtml = ''/);
 });
 

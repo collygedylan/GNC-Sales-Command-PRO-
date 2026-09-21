@@ -11020,37 +11020,39 @@ function normalizeInventoryTransactionHistoryToken_(value) {
     .replace(/[\s.]+/g, '_');
 }
 
+function inventoryWorkflowRpc_(name, payload) {
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+    method: 'post', headers: getSupabaseHeaders_({ 'Content-Type': 'application/json' }),
+    payload: JSON.stringify(payload), muteHttpExceptions: true
+  });
+  const status = response.getResponseCode();
+  if (status < 200 || status >= 300) {
+    const error = new Error(status === 409 ? 'The row changed. Refresh and review it before trying again.' : 'The protected inventory operation could not be completed. Your entries are retained.');
+    error.inventoryStatus = status;
+    throw error;
+  }
+  return JSON.parse(response.getContentText() || '{}');
+}
+
+function verifyInventoryWorkflowActor_(payload) {
+  const token = String(payload && (payload.nativeAuthAccessToken || payload.accessToken) || '').trim();
+  if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) || token.length > 8192) {
+    throw new Error('Sign in again and update the app before using inventory history or transactions.');
+  }
+  const headers = getSupabaseHeaders_();
+  headers.Authorization = 'Bearer ' + token;
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/auth/v1/user', { method: 'get', headers: headers, muteHttpExceptions: true });
+  if (response.getResponseCode() !== 200) throw new Error('Your session expired. Sign in again.');
+  const user = JSON.parse(response.getContentText() || '{}');
+  // Decode only after the Auth service has validated this exact token. The RPC
+  // also checks that its session still belongs to the verified Auth user.
+  const claims = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(token.split('.')[1])).getDataAsString());
+  if (!user.id || claims.sub !== user.id || !claims.session_id) throw new Error('Your session could not be verified. Sign in again.');
+  return inventoryWorkflowRpc_('inventory_workflow_session_actor_v1', { p_actor_id: user.id, p_session_id: claims.session_id });
+}
+
 function canReadInventoryTransactionHistory_(payload) {
-  const actor = payload && typeof payload.actor === 'object' ? payload.actor : {};
-  const roleText = String(firstNonEmptyRequestValue_(
-    payload && payload.role,
-    actor.role,
-    actor.userRole,
-    ''
-  ) || '').trim().toLowerCase();
-  if (roleText === 'admin' || roleText === 'manager') return true;
-  const allowed = {
-    dylan_collyge: true,
-    dylan: true,
-    jd_jones: true,
-    jdjones: true,
-    jd: true,
-    megan_kelly: true,
-    megankelly: true,
-    megan: true
-  };
-  const candidates = [
-    payload && payload.actorUsername,
-    payload && payload.username,
-    payload && payload.user,
-    payload && payload.requestedBy,
-    actor.username,
-    actor.user,
-    actor.display,
-    actor.displayName,
-    actor.email
-  ].map(normalizeInventoryTransactionHistoryToken_).filter(Boolean);
-  return candidates.some((token) => allowed[token]);
+  try { return !!verifyInventoryWorkflowActor_(payload).id; } catch (_) { return false; }
 }
 
 function normalizeInventoryTransactionHistoryDateStart_(value) {
@@ -11077,67 +11079,23 @@ function inventoryTransactionHistoryRowMatchesSearch_(row, searchText) {
 }
 
 function fetchInventoryTransactionHistory_(payload) {
-  if (!canReadInventoryTransactionHistory_(payload || {})) {
-    return {
-      ok: false,
-      status: 'forbidden',
-      message: 'Inventory transaction history is manager-only.'
-    };
-  }
-  const safePayload = payload && typeof payload === 'object' ? payload : {};
-  const action = String(safePayload.action || 'all').trim().toLowerCase();
-  const limit = Math.max(1, Math.min(1000, Number(safePayload.limit) || 300));
-  const params = ['select=*'];
-  if (['qty', 'transfer', 'reclass'].indexOf(action) !== -1) {
-    params.push('action=eq.' + encodeURIComponent(action));
-  }
-  const dateStart = normalizeInventoryTransactionHistoryDateStart_(safePayload.dateStart || safePayload.startDate || safePayload.from);
-  const dateEnd = normalizeInventoryTransactionHistoryDateEnd_(safePayload.dateEnd || safePayload.endDate || safePayload.to);
-  if (dateStart) params.push('created_at=gte.' + encodeURIComponent(dateStart));
-  if (dateEnd) params.push('created_at=lte.' + encodeURIComponent(dateEnd));
-  params.push('order=created_at.desc');
-  params.push('limit=' + encodeURIComponent(String(limit)));
-  const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(INVENTORY_TRANSACTION_TABLE) + '?' + params.join('&');
-  const response = UrlFetchApp.fetch(url, {
-    method: 'get',
-    headers: getSupabaseHeaders_({
-      Accept: 'application/json'
-    }),
-    muteHttpExceptions: true
-  });
-  const code = response.getResponseCode();
-  const text = response.getContentText() || '';
-  if (code < 200 || code >= 300) {
-    return {
-      ok: false,
-      status: code,
-      message: text || 'Unable to load inventory transaction history.'
-    };
-  }
-  let rows = [];
   try {
-    rows = text ? JSON.parse(text) : [];
-  } catch (error) {
-    return {
-      ok: false,
-      status: 'parse_error',
-      message: 'Inventory transaction history returned unreadable JSON.'
-    };
-  }
-  if (!Array.isArray(rows)) rows = [];
-  const searchText = String(safePayload.search || safePayload.query || '').trim();
-  if (searchText) {
-    rows = rows.filter(function(row) {
-      return inventoryTransactionHistoryRowMatchesSearch_(row, searchText);
+    const actor = verifyInventoryWorkflowActor_(payload);
+    const input = payload && typeof payload === 'object' ? payload : {};
+    return inventoryWorkflowRpc_('inventory_transaction_history_v1', {
+      p_actor_id: actor.id,
+      p_payload: {
+        action: String(input.action || 'all').trim().toLowerCase(),
+        search: String(input.search || input.query || '').trim().slice(0, 300),
+        dateStart: normalizeInventoryTransactionHistoryDateStart_(input.dateStart || input.startDate || input.from),
+        dateEnd: normalizeInventoryTransactionHistoryDateEnd_(input.dateEnd || input.endDate || input.to),
+        limit: Math.max(1, Math.min(500, Number(input.limit) || 100)),
+        offset: Math.max(0, Math.floor(Number(input.offset) || 0))
+      }
     });
+  } catch (error) {
+    return { ok: false, status: error.inventoryStatus || 'forbidden', message: error.message || 'Inventory history could not be verified.' };
   }
-  return {
-    ok: true,
-    table: INVENTORY_TRANSACTION_TABLE,
-    rows: rows,
-    count: rows.length,
-    searchedAt: new Date().toISOString()
-  };
 }
 
 function getInventoryTransactionEmailActionLabel_(action) {
@@ -12837,268 +12795,138 @@ function handleReclassInquiryEmail_(payload) {
   throw new Error('The legacy synchronous Reclass delivery path is disabled. Refresh the app and try again.');
 }
 
+function prepareInventoryTransactionOperations_(sourceRow, transaction, action) {
+  const operations = [];
+  const byKey = {};
+  function add(row, patch, created) {
+    const table = getInventoryTransactionRowTable_(row);
+    const uid = getInventoryTransactionRowUid_(row);
+    const key = table + ':' + uid;
+    let operation = byKey[key];
+    if (!operation) {
+      operation = created
+        ? { table: table, unique_id: uid, kind: 'insert', row: cloneInventoryTransactionRowForAudit_(row) }
+        : { table: table, unique_id: uid, kind: 'update', expected: cloneInventoryTransactionRowForAudit_(row), patch: {} };
+      operations.push(operation);
+      byKey[key] = operation;
+    }
+    if (operation.kind === 'insert') Object.assign(operation.row, patch);
+    else Object.assign(operation.patch, patch);
+  }
+  const quantity = action === 'qty'
+    ? parseInventoryTransactionNumber_(firstNonEmptyRequestValue_(transaction.newQuantity, transaction.new_quantity, transaction.quantity), 'New quantity', { disallowNegative: true })
+    : parseInventoryTransactionNumber_(transaction.quantity, 'Quantity to move', { requirePositive: true });
+  let destination = null;
+  let destinationCreated = false;
+  if (action === 'qty') {
+    add(sourceRow, buildInventoryTransactionPatch_({ ptronhand: quantity, ptrreviewed: quantity, ptravailable: quantity }), false);
+  } else {
+    const spec = getInventoryTransactionDestinationSpec_(sourceRow, transaction, action);
+    destination = fetchInventoryTransactionDestinationRowBySpec_(sourceRow, spec);
+    destinationCreated = !destination;
+    if (!destination) {
+      destination = buildInventoryTransactionDestinationInsertPayload_(sourceRow, transaction, action, spec);
+      destination.__approval_table_name = getInventoryTransactionRowTable_(sourceRow);
+    }
+    if (getInventoryTransactionRowUid_(destination) === getInventoryTransactionRowUid_(sourceRow)) throw new Error('Choose a different destination row.');
+    add(sourceRow, buildInventoryTransactionPatch_({
+      ptronhand: getInventoryTransactionRowNumber_(sourceRow, ['ptronhand']) - quantity,
+      ptravailable: getInventoryTransactionRowNumber_(sourceRow, ['ptravailable']) - quantity
+    }), false);
+    add(destination, buildInventoryTransactionPatch_({
+      ptronhand: getInventoryTransactionRowNumber_(destination, ['ptronhand']) + quantity,
+      ptravailable: getInventoryTransactionRowNumber_(destination, ['ptravailable']) + quantity
+    }), destinationCreated);
+  }
+  let holdScope = { action: 'none', count: 0, rows: [] };
+  const holdAction = normalizeInventoryTransactionHoldAction_(transaction);
+  if (holdAction !== 'none') {
+    const scope = getInventoryTransactionHoldScope_(sourceRow, transaction);
+    const table = getInventoryTransactionRowTable_(sourceRow);
+    function readScope(fallback) {
+      const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(table) + '?' + buildInventoryTransactionHoldScopeQuery_(scope, fallback) + '&limit=5001',
+        { method: 'get', headers: getSupabaseHeaders_(), muteHttpExceptions: true });
+      if (response.getResponseCode() !== 200) throw new Error('The hold scope could not be verified. No inventory was changed.');
+      return JSON.parse(response.getContentText() || '[]');
+    }
+    let rows = scope.season && scope.salesYear ? readScope(false) : [];
+    if (!rows.length && scope.lotCode) rows = readScope(true);
+    if (!rows.length || rows.length > 4998) throw new Error('The hold scope is missing or too large. No inventory was changed.');
+    const reason = String(firstNonEmptyRequestValue_(transaction.holdStopReason, transaction.holdstopReason, transaction.holdstopreason, transaction.hold_reason, transaction.holdReason) || '').trim();
+    const patch = buildInventoryTransactionPatch_({ holdstopcode: holdAction === 'hold' ? 'H' : null, holdstopreason: holdAction === 'hold' ? reason : null });
+    rows.forEach(function(row) { row.__approval_table_name = table; add(row, patch, false); });
+    holdScope = Object.assign({}, scope, { action: holdAction, count: rows.length, rows: rows, reason: reason });
+  }
+  return { operations: operations, quantity: quantity, destination: destination, destinationCreated: destinationCreated, holdScope: holdScope };
+}
+
 function handleInventoryTransaction_(payload) {
   if (normalizeInventoryTransactionAction_(payload && payload.action) === 'reclass') {
     const compatibilityPayload = Object.assign({}, payload || {}, {
       type: 'reclass_inquiry_email',
-      idempotencyToken: firstNonEmptyRequestValue_(
-        payload && payload.idempotencyToken,
-        payload && payload.idempotency_token,
-        payload && payload.clientTransactionId,
-        payload && payload.client_transaction_id
-      ),
+      idempotencyToken: firstNonEmptyRequestValue_(payload && payload.idempotencyToken, payload && payload.idempotency_token, payload && payload.clientTransactionId, payload && payload.client_transaction_id),
       rowOverlays: payload && (payload.rowOverlays || payload.row_overlays)
     });
     return handleReclassInquiryEmail_(compatibilityPayload);
   }
   const lock = LockService.getScriptLock();
-  let lockReleased = false;
-  if (!lock.tryLock(15000)) {
-    return {
-      ok: false,
-      status: 'lock_timeout',
-      message: 'Inventory is busy finishing another update. Please try again in a few seconds.'
-    };
-  }
+  if (!lock.tryLock(15000)) return { ok: false, status: 'lock_timeout', message: 'Inventory is busy. Your entries are retained.' };
   try {
-    const action = normalizeInventoryTransactionAction_(payload && payload.action);
-    const source = payload && typeof payload.source === 'object' ? payload.source : {};
-    const transaction = payload && typeof payload.transaction === 'object' ? payload.transaction : {};
-    const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId, payload && payload.unique_id, payload && payload.uniqueId));
-    if (!sourceUid) throw new Error('Missing source inventory row id.');
+    const actor = verifyInventoryWorkflowActor_(payload);
+    const action = String(payload && payload.action || '').trim().toLowerCase();
+    if (action !== 'qty' && action !== 'transfer') throw new Error('This inventory action is not supported.');
+    const commandId = String(firstNonEmptyRequestValue_(payload.command_id, payload.clientTransactionId, payload.client_transaction_id, payload.idempotencyToken) || '').trim();
+    if (!/^[A-Za-z0-9:_.-]{12,180}$/.test(commandId)) throw new Error('Update the app before saving inventory transactions.');
+    const source = payload.source && typeof payload.source === 'object' ? payload.source : {};
+    const transaction = payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {};
+    const sourceUid = String(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId) || '').trim();
     const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
-    if (!sourceRow) throw new Error('Source inventory row was not found. Sync and try again.');
+    if (!sourceRow) throw new Error('The source row no longer exists. Refresh inventory.');
     validateInventoryTransactionSourceIdentity_(sourceRow, source);
     validateInventoryTransactionHoldScopeRequest_(sourceRow, transaction);
-
-    const actor = payload && typeof payload.actor === 'object' ? payload.actor : {};
-    const actorUsername = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.username, actor.user, payload && payload.actorUsername, 'unknown'));
-    const actorDisplay = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.displayName, actorUsername, 'Unknown User'));
-    const actorEmail = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.email, actor.userEmail, ''));
-    const transactionId = Utilities.getUuid();
-    const nowIso = new Date().toISOString();
-    const sourceBefore = cloneInventoryTransactionRowForAudit_(sourceRow);
-    let destinationRow = null;
-    let destinationWasCreated = false;
-    let destinationBefore = null;
-    let sourceAfter = null;
-    let destinationAfter = null;
-    let holdScopeResult = { action: 'none', count: 0, rows: [] };
-    let auditWarning = null;
-
-    if (action === 'qty') {
-      const newQty = parseInventoryTransactionNumber_(firstNonEmptyRequestValue_(transaction.newQuantity, transaction.new_quantity, transaction.quantity), 'New quantity', { disallowNegative: true });
-      sourceAfter = patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
-        ptronhand: newQty,
-        ptrreviewed: newQty,
-        ptravailable: newQty
-      }), getInventoryTransactionRowTable_(sourceRow));
-    } else {
-      const qty = parseInventoryTransactionNumber_(transaction.quantity, 'Quantity to move', { requirePositive: true });
-      destinationRow = fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action);
-      destinationWasCreated = Boolean(destinationRow && destinationRow.__inventory_transaction_created);
-      const destinationUid = getInventoryTransactionRowUid_(destinationRow);
-      if (!destinationUid) throw new Error('Destination row is missing a unique id.');
-      if (destinationUid === sourceUid) throw new Error('Destination row must be different from the source row.');
-      destinationBefore = destinationWasCreated ? null : cloneInventoryTransactionRowForAudit_(destinationRow);
-      const sourceOnHand = getInventoryTransactionRowNumber_(sourceRow, ['ptronhand', 'PTRONHAND']);
-      const sourceAvailable = getInventoryTransactionRowNumber_(sourceRow, ['ptravailable', 'PTRAVAILABLE']);
-      const destinationOnHand = getInventoryTransactionRowNumber_(destinationRow, ['ptronhand', 'PTRONHAND']);
-      const destinationAvailable = getInventoryTransactionRowNumber_(destinationRow, ['ptravailable', 'PTRAVAILABLE']);
-      let sourcePatched = false;
-      try {
-        sourceAfter = patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
-          ptronhand: sourceOnHand - qty,
-          ptravailable: sourceAvailable - qty
-        }), getInventoryTransactionRowTable_(sourceRow));
-        sourcePatched = true;
-        destinationAfter = patchEmailApprovalMasterRow_(destinationUid, buildInventoryTransactionPatch_({
-          ptronhand: destinationOnHand + qty,
-          ptravailable: destinationAvailable + qty
-        }), getInventoryTransactionRowTable_(destinationRow));
-      } catch (updateError) {
-        if (sourcePatched) {
-          try {
-            patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
-              ptronhand: sourceOnHand,
-              ptravailable: sourceAvailable
-            }), getInventoryTransactionRowTable_(sourceRow));
-          } catch (rollbackError) {
-            console.warn('Inventory transaction rollback failed: ' + (rollbackError && rollbackError.message ? rollbackError.message : rollbackError));
-          }
-        }
-        if (destinationWasCreated) {
-          try {
-            deleteInventoryTransactionCreatedRow_(destinationRow);
-          } catch (createdRollbackError) {
-            console.warn('Inventory transaction created destination rollback failed: ' + (createdRollbackError && createdRollbackError.message ? createdRollbackError.message : createdRollbackError));
-          }
-        }
-        throw updateError;
+    const prepared = prepareInventoryTransactionOperations_(sourceRow, transaction, action);
+    const destination = prepared.destination;
+    // Credentials and submitted actor fields are excluded from durable receipts.
+    const request = { action: action, source: source, transaction: transaction };
+    const result = inventoryWorkflowRpc_('apply_inventory_transaction_v1', {
+      p_actor_id: actor.id, p_command_id: commandId, p_request: request, p_operations: prepared.operations,
+      p_audit: {
+        action: action, source_table: getInventoryTransactionRowTable_(sourceRow), source_unique_id: sourceUid,
+        destination_table: destination ? getInventoryTransactionRowTable_(destination) : '', destination_unique_id: destination ? getInventoryTransactionRowUid_(destination) : '',
+        source_itemcode: sourceRow.itemcode, source_lotcode: sourceRow.lotcode, source_locationcode: sourceRow.locationcode,
+        destination_itemcode: destination && destination.itemcode, destination_lotcode: destination && destination.lotcode, destination_locationcode: destination && destination.locationcode,
+        quantity: prepared.quantity, source_before: cloneInventoryTransactionRowForAudit_(sourceRow),
+        destination_before: destination && !prepared.destinationCreated ? cloneInventoryTransactionRowForAudit_(destination) : null
       }
-    }
-
-    try {
-      holdScopeResult = patchInventoryTransactionHoldScope_(sourceRow, transaction);
-    } catch (holdUpdateError) {
-      try {
-        if (action === 'qty') {
-          patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
-            ptronhand: getInventoryTransactionRowNumber_(sourceBefore, ['ptronhand', 'PTRONHAND']),
-            ptrreviewed: getInventoryTransactionRowNumber_(sourceBefore, ['ptrreviewed', 'PTRREVIEWED']),
-            ptravailable: getInventoryTransactionRowNumber_(sourceBefore, ['ptravailable', 'PTRAVAILABLE'])
-          }), getInventoryTransactionRowTable_(sourceRow));
-        } else {
-          patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
-            ptronhand: getInventoryTransactionRowNumber_(sourceBefore, ['ptronhand', 'PTRONHAND']),
-            ptravailable: getInventoryTransactionRowNumber_(sourceBefore, ['ptravailable', 'PTRAVAILABLE'])
-          }), getInventoryTransactionRowTable_(sourceRow));
-          if (destinationWasCreated && destinationRow) {
-            deleteInventoryTransactionCreatedRow_(destinationRow);
-          } else if (destinationRow && destinationBefore) {
-            patchEmailApprovalMasterRow_(getInventoryTransactionRowUid_(destinationRow), buildInventoryTransactionPatch_({
-              ptronhand: getInventoryTransactionRowNumber_(destinationBefore, ['ptronhand', 'PTRONHAND']),
-              ptravailable: getInventoryTransactionRowNumber_(destinationBefore, ['ptravailable', 'PTRAVAILABLE'])
-            }), getInventoryTransactionRowTable_(destinationRow));
-          }
-        }
-      } catch (holdRollbackError) {
-        console.warn('Inventory transaction hold rollback failed: ' + (holdRollbackError && holdRollbackError.message ? holdRollbackError.message : holdRollbackError));
-      }
-      throw holdUpdateError;
-    }
-    if (holdScopeResult && Array.isArray(holdScopeResult.rows) && holdScopeResult.rows.length) {
-      const updatedSource = getInventoryTransactionReturnedRowByUid_(holdScopeResult.rows, sourceUid);
-      if (updatedSource) sourceAfter = updatedSource;
-      if (destinationAfter) {
-        const updatedDestination = getInventoryTransactionReturnedRowByUid_(holdScopeResult.rows, getInventoryTransactionRowUid_(destinationAfter));
-        if (updatedDestination) destinationAfter = updatedDestination;
-      }
-    }
-
-    const sourceAfterAudit = cloneInventoryTransactionRowForAudit_(sourceAfter || sourceRow);
-    const destinationAfterAudit = destinationAfter ? cloneInventoryTransactionRowForAudit_(destinationAfter) : null;
-    const quantity = action === 'qty'
-      ? parseInventoryTransactionNumber_(firstNonEmptyRequestValue_(transaction.newQuantity, transaction.new_quantity, transaction.quantity), 'New quantity', { disallowNegative: true })
-      : parseInventoryTransactionNumber_(transaction.quantity, 'Quantity to move', { requirePositive: true });
-    const auditResult = insertInventoryTransactionAudit_({
-      unique_id: transactionId,
-      created_at: nowIso,
-      action: action,
-      actor_username: actorUsername,
-      actor_display: actorDisplay,
-      actor_email: actorEmail,
-      source_table: getInventoryTransactionRowTable_(sourceRow),
-      source_unique_id: sourceUid,
-      destination_table: destinationRow ? getInventoryTransactionRowTable_(destinationRow) : '',
-      destination_unique_id: destinationRow ? getInventoryTransactionRowUid_(destinationRow) : '',
-      source_itemcode: getInventoryTransactionRowValue_(sourceRow, ['itemcode', 'ITEMCODE'], ''),
-      source_lotcode: getInventoryTransactionRowValue_(sourceRow, ['lotcode', 'LOTCODE'], ''),
-      source_locationcode: getInventoryTransactionRowValue_(sourceRow, ['locationcode', 'LOCATIONCODE'], ''),
-      destination_itemcode: destinationRow ? getInventoryTransactionRowValue_(destinationRow, ['itemcode', 'ITEMCODE'], '') : '',
-      destination_lotcode: destinationRow ? getInventoryTransactionRowValue_(destinationRow, ['lotcode', 'LOTCODE'], '') : '',
-      destination_locationcode: destinationRow ? getInventoryTransactionRowValue_(destinationRow, ['locationcode', 'LOCATIONCODE'], '') : '',
-      quantity: quantity,
-      source_before: sourceBefore,
-      source_after: sourceAfterAudit,
-      destination_before: destinationBefore,
-      destination_after: destinationAfterAudit,
-      raw_payload: payload || {},
-      status: 'applied'
     });
-    if (!auditResult.ok) {
-      auditWarning = auditResult.message || ('Audit insert failed (' + auditResult.status + ')');
-      console.warn('Inventory transaction audit warning: ' + auditWarning);
-    }
-
-    const rowIds = [sourceUid];
-    if (destinationAfter) rowIds.push(getInventoryTransactionRowUid_(destinationAfter));
-    (holdScopeResult && Array.isArray(holdScopeResult.rows) ? holdScopeResult.rows : []).forEach(function(row) {
-      const uid = getInventoryTransactionRowUid_(row);
-      if (uid && rowIds.indexOf(uid) === -1) rowIds.push(uid);
+    const audit = result.audit;
+    const holdRows = (result.rows || []).map(function(entry) { return entry.row; }).filter(function(row) {
+      return prepared.holdScope.rows.some(function(before) { return before.unique_id === row.unique_id; });
     });
-    emitAppLiveEvent_('inventory', 'inventory_transaction_' + action, getInventoryTransactionRowTable_(sourceRow), rowIds, {
-      transaction_id: transactionId,
-      action: action,
-      quantity: quantity,
-      source_unique_id: sourceUid,
-      destination_unique_id: destinationAfter ? getInventoryTransactionRowUid_(destinationAfter) : '',
-      source_row: sourceAfter || null,
-      destination_row: destinationAfter || null,
-      hold_scope: holdScopeResult && holdScopeResult.action !== 'none' ? {
-        action: holdScopeResult.action,
-        count: holdScopeResult.count,
-        itemcode: holdScopeResult.itemCode,
-        season: holdScopeResult.season,
-        saleyear: holdScopeResult.salesYear
-      } : null,
-      hold_rows: holdScopeResult && Array.isArray(holdScopeResult.rows) ? holdScopeResult.rows : []
-    });
-
-    try {
-      lock.releaseLock();
-      lockReleased = true;
-    } catch (releaseError) {
-      console.warn('Inventory transaction lock release before email failed: ' + (releaseError && releaseError.message ? releaseError.message : releaseError));
-    }
-
-    let emailResult = null;
+    if (!result.duplicate) emitAppLiveEvent_('inventory', 'inventory_transaction_' + action, audit.source_table,
+      (result.rows || []).map(function(entry) { return entry.row.unique_id; }), { transaction_id: result.transactionId, action: action, source_row: audit.source_after, destination_row: audit.destination_after, hold_rows: holdRows });
+    // Preserve existing notification behavior only after a confirmed commit;
+    // retrying a saved command never resends its notification.
     let emailWarning = null;
-    try {
-      emailResult = sendInventoryTransactionEmail_(payload, {
-        action: action,
-        transaction: transaction,
-        transactionId: transactionId,
-        nowIso: nowIso,
-        actorUsername: actorUsername,
-        actorDisplay: actorDisplay,
-        actorEmail: actorEmail,
-        sourceBefore: sourceBefore,
-        sourceRow: sourceAfter || sourceRow,
-        destinationBefore: destinationBefore,
-        destinationRow: destinationAfter || destinationRow,
-        holdScope: holdScopeResult,
-        quantity: quantity
-      });
-      if (emailResult && emailResult.ok === false) {
-        emailWarning = emailResult.message || 'Inventory transaction email was not sent.';
-      }
-    } catch (emailError) {
-      emailWarning = emailError && emailError.message ? emailError.message : String(emailError || 'Inventory transaction email failed.');
-      console.warn('Inventory transaction email warning: ' + emailWarning);
+    let emailResult = null;
+    if (!result.duplicate) {
+      try {
+        emailResult = sendInventoryTransactionEmail_(Object.assign({}, payload, { actor: { username: actor.username, display: actor.display_name } }), {
+          action: action, transaction: transaction, transactionId: result.transactionId, nowIso: audit.created_at,
+          actorUsername: actor.username, actorDisplay: actor.display_name || actor.username, actorEmail: '',
+          sourceBefore: audit.source_before, sourceRow: audit.source_after, destinationBefore: audit.destination_before,
+          destinationRow: audit.destination_after, holdScope: Object.assign({}, prepared.holdScope, { rows: holdRows }), quantity: prepared.quantity
+        });
+        if (emailResult && emailResult.ok === false) emailWarning = 'The inventory change was saved, but its email could not be confirmed.';
+      } catch (_) { emailWarning = 'The inventory change was saved, but its email could not be confirmed.'; }
     }
-
-    return {
-      ok: true,
-      status: 'success',
-      action: action,
-      transactionId: transactionId,
-      sourceRow: sourceAfter || null,
-      destinationRow: destinationAfter || null,
-      holdRows: holdScopeResult && Array.isArray(holdScopeResult.rows) ? holdScopeResult.rows : [],
-      holdScope: holdScopeResult && holdScopeResult.action !== 'none' ? {
-        action: holdScopeResult.action,
-        count: holdScopeResult.count,
-        itemCode: holdScopeResult.itemCode,
-        season: holdScopeResult.season,
-        salesYear: holdScopeResult.salesYear
-      } : { action: 'none', count: 0 },
-      auditWarning: auditWarning,
-      emailWarning: emailWarning,
-      emailRecipients: emailResult && emailResult.recipients ? emailResult.recipients : [],
-      message: action === 'qty' ? 'Quantity updated.' : (action === 'transfer' ? 'Transfer applied.' : 'Reclass applied.')
-    };
+    return { ok: true, status: 'success', action: action, transactionId: result.transactionId, duplicate: !!result.duplicate,
+      sourceRow: audit.source_after, destinationRow: audit.destination_after, holdRows: holdRows,
+      holdScope: Object.assign({}, prepared.holdScope, { rows: holdRows }), auditWarning: null, emailWarning: emailWarning,
+      emailRecipients: emailResult && emailResult.recipients || [], message: action === 'qty' ? 'Quantity updated.' : 'Transfer applied.' };
   } catch (error) {
-    return {
-      ok: false,
-      status: 'error',
-      message: error && error.message ? error.message : String(error || 'Inventory transaction failed.')
-    };
-  } finally {
-    if (!lockReleased) {
-      try { lock.releaseLock(); } catch (error) {}
-    }
-  }
+    return { ok: false, status: error.inventoryStatus || 'error', message: error.message || 'Inventory was not changed. Your entries are retained.' };
+  } finally { try { lock.releaseLock(); } catch (_) {} }
 }
 
 function getEmailApprovalRowValue_(row, fields, fallback) {

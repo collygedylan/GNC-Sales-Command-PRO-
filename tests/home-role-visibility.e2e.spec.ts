@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const salesViews = ['drive', 'sales', 'av', 'docks', 'request', 'tasks', 'weather-hold', 'communication', 'department-calendar', 'chat', 'sales-office', 'office'];
-const adminViews = ['drive', 'docks', 'av', 'communication', 'sales', 'managers', 'building', 'qc', 'office', 'sales-inventory', 'production', 'reports'];
+const salesViews = ['drive', 'sales', 'av', 'request', 'tasks', 'weather-hold', 'department-calendar', 'chat', 'sales-office', 'office'];
+const adminViews = ['drive', 'av', 'sales-office', 'sales', 'managers', 'qc', 'office', 'sales-inventory', 'production'];
 const roleCases = [
   { username: 'tony_bono', role: 'REP', dynamic: true, views: salesViews },
   { username: 'home_rep_whitespace_fixture', role: '\nREP', dynamic: true, views: salesViews },
@@ -12,14 +12,14 @@ const roleCases = [
   { username: 'home_manager_fixture', role: 'MANAGER', dynamic: false, views: adminViews },
   { username: 'home_data_entry_fixture', role: 'data entry', dynamic: false, views: adminViews },
   { username: 'home_data_supervisor_fixture', role: 'data entry supervisor', dynamic: false, views: adminViews },
-  { username: 'home_qc_fixture', role: 'QC', dynamic: false, views: ['drive', 'docks', 'communication', 'qc', 'production'] },
-  { username: 'home_qcsup_fixture', role: 'QC SUPERVISOR', dynamic: false, views: ['drive', 'docks', 'communication', 'qc', 'production'] },
-  { username: 'home_foreman_fixture', role: 'FOREMAN', dynamic: false, views: ['drive', 'communication', 'sales-inventory', 'production'] },
-  { username: 'home_grower_fixture', role: 'GROWER', dynamic: false, views: ['communication', 'sales-inventory', 'production'] },
+  { username: 'home_qc_fixture', role: 'QC', dynamic: false, views: ['drive', 'qc', 'production'] },
+  { username: 'home_qcsup_fixture', role: 'QC SUPERVISOR', dynamic: false, views: ['drive', 'qc', 'production'] },
+  { username: 'home_foreman_fixture', role: 'FOREMAN', dynamic: false, views: ['drive', 'sales-inventory', 'production'] },
+  { username: 'home_grower_fixture', role: 'GROWER', dynamic: false, views: ['sales-inventory', 'production'] },
   { username: 'home_takeback_fixture', role: 'TAKEBACK', dynamic: false, views: ['sales-inventory', 'production'] },
   { username: 'home_takebacks_fixture', role: 'Take Backs ', dynamic: false, views: ['sales-inventory', 'production'] },
-  { username: 'home_eval_fixture', role: 'EVAL', dynamic: false, views: ['drive', 'docks', 'av', 'communication', 'sales-inventory'] },
-  { username: 'home_division_fixture', role: 'DIVISION', dynamic: false, views: ['communication'] },
+  { username: 'home_eval_fixture', role: 'EVAL', dynamic: false, views: ['drive', 'av', 'sales-office', 'sales-inventory'] },
+  { username: 'home_division_fixture', role: 'DIVISION', dynamic: false, views: [] },
   { username: 'home_marketing_fixture', role: 'SALES MARKETING', dynamic: false, views: ['drive'] },
 ];
 const salesTileIds: Record<string, string> = {
@@ -33,6 +33,7 @@ async function harness(page: Page, baseURL: string) {
   const unexpectedMutations: string[] = [];
   const pageErrors: string[] = [];
   const runtimeResponses: string[] = [];
+  let fixtureUsername = '';
   page.on('pageerror', error => pageErrors.push(error.message));
   page.on('response', response => {
     if (/\/assets\/live-app-runtime[^/]*\.js/.test(new URL(response.url()).pathname)) runtimeResponses.push(response.url());
@@ -41,6 +42,14 @@ async function harness(page: Page, baseURL: string) {
     const request = route.request();
     const url = new URL(request.url());
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
+      let body: any = null;
+      try { body = request.postDataJSON(); } catch { /* Non-JSON traffic stays blocked. */ }
+      const preferenceRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && body?.action === 'navigation_preferences'
+        && body.operation === 'get' && !body.commandId && !body.command_id
+        && Object.keys(body.payload || {}).length === 0;
+      if (preferenceRead) return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ ok: true, data: { username: fixtureUsername, views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } }) });
       const isManualStatusRead = request.method() === 'POST' && url.hostname === 'script.google.com'
         && /^\/macros\/s\/[^/]+\/exec$/.test(url.pathname) && request.postData() === '{"type":"manual_status"}';
       const isRevisionRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
@@ -58,6 +67,7 @@ async function harness(page: Page, baseURL: string) {
   expect(runtimeResponses, 'the generated production runtime must execute').toHaveLength(1);
 
   const seed = async (username: string, role: string, denied: string[] = []) => {
+    fixtureUsername = username;
     await page.evaluate(data => {
       (window as any).__homeRoleFixture = data;
       window.eval(`(() => {
@@ -100,14 +110,17 @@ async function harness(page: Page, baseURL: string) {
 
   const assertTiles = async (views: string[], dynamic: boolean, checkReachability = true) => {
     const grid = page.locator(dynamic ? '#home-rep-dashboard-grid' : '#home-dashboard-grid');
-    await expect(grid).toBeVisible();
+    if (views.length) await expect(grid).toBeVisible(); else await expect(grid).toBeAttached();
     await expect(grid.locator(':scope > button:visible')).toHaveCount(views.length);
     for (const view of views) {
       const tile = page.locator(tileSelector(view, dynamic));
       await expect(tile, `${view} must be visible through every ancestor`).toBeVisible();
     }
     // Check the far end of the grid is reachable; the test opens an early tile natively.
-    if (checkReachability) await page.locator(tileSelector(views.at(-1)!, dynamic)).click({ trial: true });
+    if (checkReachability && views.length) await page.locator(tileSelector(views.at(-1)!, dynamic)).click({ trial: true });
+    for (const removed of ['docks', 'communication', 'reports', 'building']) {
+      await expect(page.locator(tileSelector(removed, dynamic))).toHaveCount(0);
+    }
     await expect(page.locator(dynamic ? '#home-dashboard-content' : '#home-dynamic-content')).toBeHidden();
   };
   const assertClean = () => {
@@ -140,14 +153,17 @@ for (let offset = 0; offset < roleCases.length; offset += 4) {
             await page.locator(tileSelector(entry.views.at(-1)!, entry.dynamic)).click({ trial: true });
           }
         }
-        const view = ['drive', 'communication', 'production'].find(candidate => entry.views.includes(candidate))!;
-        const tile = page.locator(tileSelector(view, entry.dynamic));
+        // Division retains Communication through its fixed footer after its
+        // standalone Home tile is removed; it gains no unrelated Home modules.
+        const view = ['drive', 'production'].find(candidate => entry.views.includes(candidate)) || 'communication';
+        const tile = page.locator(entry.views.includes(view) ? tileSelector(view, entry.dynamic) : '#bottom-nav [data-footer-view="communication"]');
         if (isMobile) await tile.tap(); else await tile.click();
         await expect(page.locator(`#view-${view}`)).toBeVisible();
         const homeButton = page.locator('#bottom-nav [data-footer-view="home"]');
         if (isMobile) await homeButton.tap(); else await homeButton.click();
         await expect(page.locator('#view-home')).toBeVisible();
-        await expect(page.locator(tileSelector(entry.views[0], entry.dynamic))).toBeVisible();
+        if (entry.views.length) await expect(page.locator(tileSelector(entry.views[0], entry.dynamic))).toBeVisible();
+        else await app.assertTiles([], entry.dynamic, false);
       });
     }
     app.assertClean();

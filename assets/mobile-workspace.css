@@ -1,0 +1,17 @@
+.gnc-hub-card{min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;padding:.7rem;border:1.5px solid #007a4d;border-radius:12px;background:var(--ops-surface,#fff);color:var(--ops-text,#007a4d);font-weight:800;text-align:center;overflow-wrap:anywhere}
+.gnc-hub-card i{font-size:1.5rem}.gnc-hub-card.hidden{display:none}
+.gnc-settings-dialog{max-width:42rem;max-height:calc(100dvh - 2rem);overflow:auto;margin:auto;padding:1rem;border-radius:1rem;background:var(--ops-surface,#fff);color:var(--ops-text,#10281a)}
+.gnc-settings-dialog>button{min-height:44px;min-width:44px;padding:.6rem;border:1px solid #007a4d;border-radius:.7rem}
+@media(max-width:640px),(pointer:coarse){
+ .gnc-mobile-workspace [id^="view-"] button:not(.hidden),.gnc-mobile-workspace [role=dialog] button:not(.hidden){min-height:44px;min-width:44px}
+ .gnc-mobile-workspace [id^="view-"] input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),.gnc-mobile-workspace [id^="view-"] select,.gnc-mobile-workspace [id^="view-"] textarea{font-size:16px;min-height:44px;min-width:0;max-width:100%}
+ .gnc-mobile-workspace [id^="view-"]{min-width:0;max-width:100%;overflow-wrap:break-word}
+ .gnc-mobile-workspace [id^="view-"] input[type=checkbox],.gnc-mobile-workspace [id^="view-"] input[type=radio]{flex-shrink:0;width:24px;height:24px}
+ .gnc-mobile-workspace #main-area{padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem + env(safe-area-inset-bottom))!important;scroll-padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem)}
+ .gnc-mobile-workspace [id^="view-"] .gnc-hub-card span{white-space:normal;line-height:1.2}
+ .gnc-mobile-workspace #bottom-nav .footer-nav-btn{min-width:44px;min-height:48px}
+}
+@media(max-width:359px){
+ .gnc-mobile-workspace #bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr))!important;height:auto!important;min-height:96px;padding-bottom:env(safe-area-inset-bottom)}
+ .gnc-mobile-workspace #bottom-nav .footer-nav-btn{padding:.4rem .15rem!important}
+}

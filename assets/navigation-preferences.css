@@ -1,0 +1,30 @@
+.gnc-navigation-editor { color: inherit; width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.gnc-navigation-editor h2 { font-size: 1.2rem; font-weight: 800; margin-block: .5rem; }
+.gnc-navigation-editor p { margin-block: .65rem; }
+.gnc-navigation-editor label { display: grid; gap: .4rem; margin-block: .7rem; min-width: 0; font-weight: 700; }
+.gnc-navigation-editor select,
+.gnc-navigation-editor textarea,
+.gnc-navigation-editor input:not([type=checkbox]):not([type=radio]) {
+  width: 100%; min-width: 0; min-height: 44px; font: inherit; font-size: 16px;
+  color: inherit; background: var(--card-bg, var(--bg-panel, transparent));
+  border: 1px solid currentColor; border-radius: .65rem; padding: .65rem;
+}
+.gnc-navigation-editor button { min-height: 44px; min-width: 44px; border: 1px solid currentColor; border-radius: .65rem; padding: .65rem .9rem; font-weight: 700; }
+.gnc-navigation-editor button:disabled { opacity: .55; cursor: wait; }
+.gnc-navigation-editor [role=alert] { border-left: 4px solid #dc2626; padding-left: .75rem; }
+.gnc-navigation-slots { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: .75rem; }
+.gnc-navigation-actions { display: flex; flex-wrap: wrap; gap: .6rem; padding-block: .5rem; }
+.gnc-navigation-actions > button { flex: 1 1 160px; }
+.gnc-navigation-access-row { padding: .65rem; border: 1px solid color-mix(in srgb,currentColor 30%,transparent); border-radius: .75rem; }
+.gnc-navigation-access-row small { display: block; font-weight: 400; margin-top: .25rem; }
+.gnc-navigation-access-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: .5rem; }
+#bottom-nav.gnc-personal-footer { display: grid !important; grid-template-columns: repeat(var(--gnc-footer-count,8),minmax(0,1fr)) !important; height: auto !important; }
+#bottom-nav.gnc-personal-footer > .footer-nav-btn { min-width: 0; width: 100%; min-height: 44px; overflow-wrap: anywhere; white-space: normal; }
+#bottom-nav.gnc-personal-footer > [data-footer-view="sales"] { display: flex !important; }
+#gnc-footer-button-pool { display: none !important; }
+@media(max-width:359px) {
+  #bottom-nav.gnc-personal-footer { grid-template-columns: repeat(4,minmax(0,1fr)) !important; }
+}
+@media(max-width:600px) {
+  .gnc-navigation-actions > button { flex-basis: 100%; }
+}
