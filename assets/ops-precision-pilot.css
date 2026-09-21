@@ -8636,3 +8636,24 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
 .drive-demand-row dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin:0}
 .drive-demand-row dt{font-size:.75rem;opacity:.75}
 .drive-demand-row dd{font-size:.9rem;font-weight:650;margin:.25rem 0 0;overflow-wrap:anywhere}
+
+/* Assigned Items uses the same filters on table headers and compact phone cards. */
+.assigned-filter-controls{min-width:0;margin:1rem 0}
+.assigned-filter-chips,.assigned-filter-fields{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.assigned-column-trigger,.assigned-filter-chip,.assigned-filter-clear,.assigned-phone-filters>summary,
+.assigned-column-panel button{min-height:44px;min-width:44px;padding:8px 12px;border:1px solid var(--ui-border,#cbd8d1);border-radius:10px;background:var(--ui-surface,#fff);color:var(--ui-text,#13221b);font-size:13px;font-weight:700;cursor:pointer}
+.assigned-column-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;white-space:nowrap}
+.assigned-column-trigger.is-filtered,.assigned-filter-chip,.assigned-column-panel button[aria-pressed="true"]{border-color:var(--ui-accent,#07874f);background:var(--ui-accent-soft,#e7f7ef);color:var(--ui-accent,#07874f)}
+.assigned-phone-filters{display:none}
+.assigned-column-panel.excel-filter-panel{position:fixed!important;z-index:15000;display:flex;flex-direction:column;gap:8px;padding:12px;margin:0;box-sizing:border-box;overflow:auto;border:2px solid var(--ui-accent,#07874f);border-radius:14px;background:var(--ui-surface,#fff);color:var(--ui-text,#13221b);box-shadow:0 10px 40px #0005;text-transform:none;letter-spacing:normal}
+.assigned-column-panel>strong{font-size:16px}
+.assigned-filter-sort,.assigned-filter-selection,.assigned-filter-actions{display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0}
+.assigned-column-panel .excel-filter-search-wrap{padding:0;font-size:13px;flex-shrink:0}
+.assigned-column-panel .excel-filter-search{min-height:44px;width:100%;font-size:16px;background:var(--ui-surface,#fff);color:var(--ui-text,#13221b);border:1px solid var(--ui-border,#cbd8d1)}
+.assigned-column-panel .excel-filter-options{min-height:44px;max-height:230px;flex:1 1 160px;overflow:auto;overscroll-behavior:contain}
+.assigned-column-panel .assigned-filter-option{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px;cursor:pointer;font-size:14px;overflow-wrap:anywhere}
+.assigned-column-panel .assigned-filter-option input[type="checkbox"]{flex:0 0 22px;width:22px!important;height:22px!important;min-height:22px!important;appearance:auto!important;accent-color:var(--ui-accent,#07874f)}
+.assigned-filter-actions button{flex:1 1 auto}
+.assigned-filter-actions .assigned-filter-apply{background:var(--ui-accent,#07874f);color:var(--ui-on-accent,#fff)}
+.assigned-column-panel :focus-visible,.assigned-column-trigger:focus-visible{outline:3px solid var(--ui-accent,#07874f);outline-offset:2px}
+@media(max-width:767px){.assigned-phone-filters{display:block;margin-bottom:8px}.assigned-phone-filters>summary{width:100%}.assigned-filter-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px}.assigned-filter-fields .assigned-column-trigger{white-space:normal;text-align:left}.assigned-filter-clear{width:100%}}
