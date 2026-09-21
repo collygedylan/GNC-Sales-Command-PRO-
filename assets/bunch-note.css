@@ -73,4 +73,4 @@
 .bn-step-actions{display:flex;position:sticky;bottom:calc(90px + env(safe-area-inset-bottom));padding:8px;background:var(--ops-surface,#fff);border-top:1px solid var(--ops-border,#cbd8d1);z-index:2;margin-top:20px}
 .bn-step-actions .bn-button{width:100%;margin:0;min-height:48px}
 .bn-root :is(input,textarea,select){scroll-margin-bottom:190px}
-@media(max-width:520px){.bn-root:has(input:focus,textarea:focus,select:focus) .bn-step-actions{position:static}.bn-field textarea{min-height:72px}}
+@media(max-width:520px){.bn-root .bn-step-actions{position:static}.bn-field textarea{min-height:72px}}

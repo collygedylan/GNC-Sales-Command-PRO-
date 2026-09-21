@@ -289,11 +289,11 @@ test('phone steps retain failed saves and make mixed-year and unknown-year desti
  await page.getByRole('button',{name:'Move',exact:true}).click();
  await expect(page.getByRole('button',{name:'Choose location',exact:true})).toBeInViewport();
  await page.getByLabel('Planned quantity',{exact:true}).fill('3');
- await page.getByLabel('Source item and sales year',{exact:true}).selectOption('BN-I|2027');
+ await page.getByRole('combobox',{name:'Source item and sales year',exact:true}).selectOption('BN-I|2027');
  await page.getByRole('button',{name:'Choose location',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12.002',exact:true}).click();
- await page.getByLabel('Source item and sales year',{exact:true}).selectOption('BN-I|');
+ await page.getByRole('combobox',{name:'Source item and sales year',exact:true}).selectOption('BN-I|');
  await expect(page.locator('.bn-destination')).not.toContainText('C.12.002');
  await page.getByRole('button',{name:'Choose location',exact:true}).click();
  await expect(page.getByRole('button',{name:'Locations with this item',exact:true})).toBeDisabled();
