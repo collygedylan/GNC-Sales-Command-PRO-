@@ -480,6 +480,9 @@ test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves l
   if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(1);
   await expect(locked).toContainText('Waiting for delivery reconciliation');
+  await page.getByRole('button',{name:'Open HL Orders',exact:true}).click();
+  await expect(page.locator('#global-action-bar')).toBeHidden();
+  await expect(page.locator('[data-hl-review-source-id="hl-b"]')).toBeVisible();
   assertIsolated(fixture);
 });
 
@@ -491,8 +494,24 @@ test('unsent Needs Review rows leave Bloom through swipe and Clear while review 
   fixture.markChanged('hl-b',{stopnumber:'9'});
   const reviewBefore=JSON.stringify(fixture.state.dispositions);
   await openHl(page);
-  if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
+  await page.evaluate(()=>window.eval('loadHlOrderState(true)'));
+  let release!:()=>void; let waiting=false;
+  const held=new Promise<void>(resolve=>{release=resolve;});
+  await page.route('**/rest/v1/rpc/hl_order_state',async route=>{
+    waiting=true; await held; await route.fallback();
+  });
+  // Reproduce startup: the saved-state read has started, but no selections are available yet.
+  await page.evaluate(()=>window.eval(`hlOrderStateData=null; hlOrderStateLoadedAt=0;
+    syncHlOrderDraftSelections(); updateGlobalActionBar(); void loadHlOrderState(true);`));
+  await expect.poll(()=>waiting).toBe(true);
+  const bloom=page.getByRole('button',{name:'Bloom Picker',exact:true});
+  await bloom.click(); await bloom.click();
+  await expect(page.locator('#global-action-bar')).toBeHidden();
+  await expect(page.locator('#toast-notification')).not.toContainText('Bloom Picker Empty');
+  release();
+  await expect(page.locator('#global-action-bar')).toBeVisible();
   const row=page.locator('[data-hl-draft-source-id="hl-a"]');
+  await expect(row).toBeVisible();
   await expect(row.locator('[data-hl-draft-quantity]')).toBeDisabled();
   await expect(row.getByRole('button',{name:'Remove from Bloom Picker',exact:true})).toBeEnabled();
   await row.evaluate(element=>{

@@ -88297,6 +88297,7 @@ function toggleDriveQuickRequestItem(domId) {
         let hlOrderPollTimer = null;
         let hlOrderPendingCommand = null;
         let hlBloomClearIntent = null;
+        let hlBloomOpenIntent = null;
         let hlBloomRemovalError = '';
         let hlOrderPdfUrl = '';
         let hlOrderPreviewShipDate = '';
@@ -89610,7 +89611,7 @@ function toggleDriveQuickRequestItem(domId) {
         function openHlBloomReview() {
             if (!canUseHlOrder()) return false;
             toggleCartPanel(false);
-            navTo('hl-order');
+            switchView('hl-order');
             setHlOrderTab('needs-review');
             return false;
         }
@@ -93693,8 +93694,17 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function toggleCartPanel(forceOpen = null) {
-            if (canUseHlOrder() && navigator.onLine !== false && !hlOrderBusy && forceOpen !== false && !cartPanelOpen && Date.now() - hlOrderStateLoadedAt >= 15000) {
-                void loadHlOrderState(true).then(() => { if (canUseHlOrder()) toggleCartPanel(forceOpen); });
+            if (forceOpen === false || cartPanelOpen) hlBloomOpenIntent = null;
+            if (canUseHlOrder() && navigator.onLine !== false && !hlOrderBusy && !hlOrderTimeoutPaused && forceOpen !== false && !cartPanelOpen
+                && (hlOrderStatePending || Date.now() - hlOrderStateLoadedAt >= 15000)) {
+                if (hlBloomOpenIntent && isHlOrderOwnershipCurrent(hlBloomOpenIntent.owner) && hlBloomOpenIntent.viewKey === productionVerifiedViewKey()) return false;
+                const intent = { owner: captureHlOrderOwnership(), viewKey: productionVerifiedViewKey() };
+                hlBloomOpenIntent = intent;
+                void loadHlOrderState(true).then(() => {
+                    if (hlBloomOpenIntent !== intent) return;
+                    hlBloomOpenIntent = null;
+                    if (isHlOrderOwnershipCurrent(intent.owner) && intent.viewKey === productionVerifiedViewKey()) toggleCartPanel(true);
+                });
                 return false;
             }
             if (!selectedItems.size && forceOpen !== false) {

@@ -48,6 +48,61 @@ function quantityRuntime() {
   return ctx;
 }
 
+function bloomOpenRuntime() {
+  const ctx = runtime();
+  ctx.cartPanelOpen = false;
+  ctx.bloomPickerActionsOpen = false;
+  ctx.bloomShareMenuOpen = false;
+  ctx.owner = 'first'; ctx.view = 'hl-order'; ctx.reads = 0; ctx.notices = [];
+  ctx.captureHlOrderOwnership = () => ctx.owner;
+  ctx.isHlOrderOwnershipCurrent = owner => owner === ctx.owner;
+  ctx.productionVerifiedViewKey = () => ctx.view;
+  ctx.updateGlobalActionBar = () => {};
+  ctx.restoreBloomPickerOrderDraftSelection = () => {};
+  ctx.showToast = (...args) => ctx.notices.push(args);
+  let finish;
+  ctx.read = new Promise(resolve => { finish = resolve; });
+  ctx.loadHlOrderState = () => { ctx.reads++; return ctx.read; };
+  vm.runInContext('hlOrderStatePending=read; hlOrderStateLoadedAt=Date.now();', ctx);
+  vm.runInContext(source('toggleCartPanel'), ctx);
+  return { ctx, finish: async () => {
+    ctx.selectedItems.add('hl-a');
+    vm.runInContext('hlOrderStatePending=null; hlOrderStateLoadedAt=Date.now();', ctx);
+    finish(); await ctx.read; await Promise.resolve();
+  } };
+}
+
+test('Bloom waits for saved HL selections and repeated taps open once without an empty warning', async () => {
+  const {ctx,finish}=bloomOpenRuntime();
+  ctx.toggleCartPanel(); ctx.toggleCartPanel();
+  assert.equal(ctx.reads,1);
+  assert.equal(ctx.cartPanelOpen,false);
+  assert.deepEqual(ctx.notices,[]);
+  await finish();
+  assert.equal(ctx.cartPanelOpen,true);
+  assert.deepEqual(ctx.notices,[]);
+});
+
+for (const change of ['close','account','view']) test(`pending Bloom opening cannot override ${change}`, async () => {
+  const {ctx,finish}=bloomOpenRuntime();
+  ctx.toggleCartPanel();
+  if(change==='close') ctx.toggleCartPanel(false);
+  if(change==='account') ctx.owner='second';
+  if(change==='view') ctx.view='home';
+  await finish();
+  assert.equal(ctx.cartPanelOpen,false);
+});
+
+test('a new Bloom tap after navigation replaces the old pending open request', async () => {
+  const {ctx,finish}=bloomOpenRuntime();
+  ctx.toggleCartPanel();
+  ctx.view='home';
+  ctx.toggleCartPanel();
+  await finish();
+  assert.equal(ctx.cartPanelOpen,true);
+  assert.deepEqual(ctx.notices,[]);
+});
+
 function bloomRemovalRuntime() {
   const ctx = runtime();
   ctx.cartPanelOpen = true;
