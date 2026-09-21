@@ -154836,7 +154836,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             setContainerHtmlWithSignature(container, html, reportRenderKey);
         }
 
-        const ADVERTISEMENT_FABRIC_CDN_URL = 'https://cdn.jsdelivr.net/npm/fabric@6.7.1/dist/index.js';
+        const ADVERTISEMENT_FABRIC_ASSET_URL = new URL('./assets/vendor/fabric-6.7.1.min.mjs', document.baseURI).href;
         const ADVERTISEMENT_CANVAS_SIZE = 1080;
         const ADVERTISEMENT_CANVAS_FORMATS = Object.freeze({
             square: { label: 'Square Post', width: 1080, height: 1080 },
@@ -154922,7 +154922,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (advertisementFabricPromise) return advertisementFabricPromise;
             advertisementFabricPromise = (async () => {
                 try {
-                    const importedFabric = await import(ADVERTISEMENT_FABRIC_CDN_URL);
+                    const importedFabric = await import(ADVERTISEMENT_FABRIC_ASSET_URL);
                     const fabricNamespace = resolveAdvertisementFabricNamespace(importedFabric);
                     if (!fabricNamespace) throw new Error('Fabric.js loaded without a Canvas export.');
                     window.fabric = fabricNamespace;
@@ -156512,6 +156512,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             setAdvertisementLoading(true, 'Loading editor');
             setAdvertisementStatus('');
             advertisementFabric = await loadAdvertisementFabric();
+            // A refresh may open the same editor while its shared library load is pending.
+            if (advertisementInitialized && advertisementCanvas) return advertisementCanvas;
             const canvasElement = document.getElementById('advertisement-canvas');
             if (!canvasElement) throw new Error('Advertisement canvas is missing.');
             advertisementCanvas = new advertisementFabric.Canvas(canvasElement, {

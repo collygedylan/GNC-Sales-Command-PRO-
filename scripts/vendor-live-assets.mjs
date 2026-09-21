@@ -20,3 +20,8 @@ for (const [weight, fontName] of weights) {
   await copyFile(path.join(sourceDir, 'style.css'), path.join(targetDir, 'style.css'));
   await copyFile(path.join(sourceDir, fontName), path.join(targetDir, fontName));
 }
+
+// Serve the pinned browser build locally; mobile editing must not depend on a CDN.
+const fabricRoot = path.join(root, 'node_modules', 'fabric');
+await copyFile(path.join(fabricRoot, 'dist', 'index.min.mjs'), path.join(root, 'assets', 'vendor', 'fabric-6.7.1.min.mjs'));
+await copyFile(path.join(fabricRoot, 'LICENSE'), path.join(root, 'assets', 'vendor', 'fabric-LICENSE.txt'));

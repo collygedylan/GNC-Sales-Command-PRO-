@@ -40,7 +40,7 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   expect(runtimeResponses, 'must exercise the generated, deferred deployment runtime').toHaveLength(1);
   // Before authentication the reusable Drive button may be parked outside the
   // footer; selecting account shortcuts must retain its original native binding.
-  await expect(page.locator('#footer-drive-btn')).toHaveAttribute('data-fast-press-bound', '1');
+  await expect(page.locator('[data-footer-view="drive"]')).toHaveAttribute('data-fast-press-bound', '1');
   await expect(page.locator('#footer-menu-btn')).toHaveAttribute('data-fast-press-bound', '1');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('gnc_app_shell_build_v1')))
     .toBe(await page.evaluate(() => (window as any).__APP_SHELL_VERSION__));

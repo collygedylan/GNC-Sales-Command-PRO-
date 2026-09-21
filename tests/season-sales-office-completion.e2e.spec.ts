@@ -58,6 +58,16 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
     if (url.pathname.endsWith('/functions/v1/app-api') && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      const preferenceRead = url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && body.action === 'navigation_preferences'
+        && body.operation === 'get' && !Object.hasOwn(body, 'commandId') && !Object.hasOwn(body, 'command_id')
+        && !request.headers()['idempotency-key']
+        && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
+        && body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
+        && Object.keys(body.payload).length === 0;
+      if (preferenceRead) return fulfill(route, { ok: true, data: {
+        username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0,
+      } });
       if (body.action === 'season_sales_office' && body.operation === 'complete') {
         requests.push({ body, token: request.headers()['idempotency-key'] || '' });
         const reply = replies.shift() || {};

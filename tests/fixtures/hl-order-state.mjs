@@ -582,6 +582,13 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};
+      const salesCompatibilityRead = method === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
+        && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
+        && !req.headers()['idempotency-key'] && body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
+        && Object.keys(body.payload).length === 3 && Object.keys(body.payload).every(key => ['status', 'cursor', 'limit'].includes(key))
+        && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100;
+      if (salesCompatibilityRead) return json(route, { ok: true, data: { rows: [], nextCursor: null } });
       if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role } });
       if (body.action === 'db') {
         control.blockedMutations.push(`PROHIBITED_NATIVE_DB:${body.method}:${body.table}`);

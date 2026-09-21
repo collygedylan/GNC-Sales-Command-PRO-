@@ -35,6 +35,7 @@ const ASSETS_TO_CACHE = [
   './assets/live-app-styles-authority-v2026090503.css',
   './assets/image-optimize-worker-v2026090401.js',
   './assets/vendor/supabase-browser-2.112.3.min.js',
+  './assets/vendor/fabric-6.7.1.min.mjs',
   './assets/vendor/phosphor/regular/style.css',
   './assets/vendor/phosphor/regular/Phosphor.woff2',
   './assets/vendor/phosphor/bold/style.css',

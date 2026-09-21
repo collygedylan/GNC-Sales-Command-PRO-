@@ -349,14 +349,15 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
   await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
 
-  // Exercise real side-adapter cache keys and commits, with the read-only Apps
-  // Script boundary replaced. Metadata revisions deliberately do not change.
+  // Exercise real side-adapter cache keys and commits, with only the protected
+  // transaction-history read boundary replaced. Metadata revisions do not change.
   await page.evaluate(() => window.eval(`(() => {
     window.__nativeSyncFixture.transactionQueries = [];
-    postGoogleScriptRawJsonPayload = async payload => {
-      if (payload.type !== 'inventory_transaction_history') throw new Error('Unexpected synthetic boundary');
+    postAppFunctionJson = async (url, payload, options = {}) => {
+      if (url !== APP_API_FUNCTION_URL || payload.action !== 'inventory_transaction_history'
+        || payload.commandId || payload.command_id || options.idempotencyKey) throw new Error('Unexpected synthetic boundary');
       window.__nativeSyncFixture.transactionQueries.push(payload.search);
-      return {ok:true, rows:[{unique_id:'synthetic-query-' + payload.search, description:payload.search}]};
+      return {ok:true, rows:[{unique_id:'synthetic-query-' + payload.search, description:payload.search}], count:1, hasMore:false};
     };
     inventoryTransactionHistoryState.search = 'pine';
     return ensureProductionLiveSyncSideData('transactions');

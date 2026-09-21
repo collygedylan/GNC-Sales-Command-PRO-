@@ -89,6 +89,13 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      if (url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && body.action === 'navigation_preferences' && body.operation === 'get'
+        && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
+        && body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
+        && Object.keys(body.payload).length === 0) {
+        return fulfill(route, { ok: true, data: { username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } });
+      }
       // Opening Queue > Location Moves performs this authenticated read. Keep
       // every Location Work mutation blocked while allowing the navigation.
       if (body.action === 'location_work' && body.operation === 'list' && body.status === 'all') {
@@ -122,6 +129,9 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
           status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: 'dylan_collyge',
           capabilities: { username: 'dylan_collyge', scope: 'global', canViewQueue: true, canTakePhoto: true, canEdit: true, canComplete: true, canArchive: true }
         };
+        // Queue is opened after login's initial Home transition. Preference
+        // refresh must recheck access without replaying that startup transition.
+        hasAppliedInitialHomeView = true;
         appSeasonSettingsCache = { seasonCode: 'F1', salesYear: 27 };
         Object.keys(DATASET_DEFINITIONS).forEach((key) => {
           const state = getDatasetState(key);

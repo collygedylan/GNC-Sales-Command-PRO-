@@ -42,6 +42,8 @@ await writeFile(runtimeTarget, `${minified.code}\n;window.__gncAppRuntimeExecute
 // runtime in local verification as well as the Pages artifact.
 await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'location-code.js', 'bunch-note.js', 'bunch-note.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'inventory-list-contract.js', 'master-detail-snapshots.js'].map((name) =>
   copyFile(path.join(root, 'assets', name), path.join(siteRoot, 'assets', name))));
+await mkdir(path.join(siteRoot, 'assets', 'vendor'), { recursive: true });
+await copyFile(path.join(root, 'assets', 'vendor', 'fabric-6.7.1.min.mjs'), path.join(siteRoot, 'assets', 'vendor', 'fabric-6.7.1.min.mjs'));
 
 const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
     <noscript><link rel="stylesheet" href="${href}"></noscript>`;
@@ -130,7 +132,7 @@ replaceLoginMarkup('<button id="login-button"', '<button id="login-button" disab
 replaceLoginMarkup('<button id="login-password-toggle"', '<button id="login-password-toggle" disabled');
 replaceLoginMarkup('onclick="return triggerLoginFromUI(event)"', 'onclick="if(this.disabled || typeof triggerLoginFromUI!==\'function\'){event.preventDefault();return false;}return triggerLoginFromUI(event)"');
 replaceLoginMarkup('onkeydown="if(event.key===\'Enter\'){return triggerLoginFromUI(event);}"', 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();if(!document.getElementById(\'login-button\').disabled && typeof triggerLoginFromUI===\'function\'){return triggerLoginFromUI(event);}return false;}"');
-replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing appâ€¦</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
+replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing app\u2026</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
 
 // The legacy shell carries hundreds of kilobytes of route-specific CSS in the
 // document head. Parsing those rules delays the login logo even though none of

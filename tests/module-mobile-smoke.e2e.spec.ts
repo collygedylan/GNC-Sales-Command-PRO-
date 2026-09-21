@@ -73,6 +73,17 @@ async function drawer(page: Page, view: string) {
 async function checkScreen(page: Page, view: string, screen: string, evidence: Evidence[], back = true) {
   const area = page.locator(`#view-${view}`);
   await expect(area, `${screen} opens its real view`).toBeVisible();
+  // The view can become visible before its scheduled renderer commits content.
+  // Wait for that real commit; a persistently blank view must still fail.
+  await expect(area, `${screen} renders content`).toContainText(/\S/, { useInnerText: true });
+  if (view === 'advertisement') {
+    // Wait for the real, vendored Fabric editor rather than its loading shell.
+    await expect(area.locator('#advertisement-canvas')).toHaveAttribute('data-fabric', 'main');
+    await expect(area.locator('canvas.upper-canvas[data-fabric="top"]')).toBeVisible();
+    await expect(area.locator('#advertisement-loading')).toBeHidden();
+    await expect(area.locator('#advertisement-status')).not.toHaveClass(/\berror\b/);
+    await expect(page.locator('#toast-notification')).not.toContainText('Editor Error');
+  }
   // Let the actual frame scheduler paint without replacing any app functions.
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   for (const theme of themes) {
