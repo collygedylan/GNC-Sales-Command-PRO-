@@ -17,15 +17,16 @@ async function fixture(page:any,baseURL:string,worker=false) {
  const rows=[plant('a','C.12.001'),{...plant('a2','C.12.001'),contsize:'#5',lotcode:'LOT2',season:'27.F1',stock:'20',review:null},plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[];
  const options:any[]=[['sequence','Early protection','instruction'],['grading','Shear before bunching','instruction'],['grading','Grade and Save / Move To','move'],['placement','Center house','instruction'],['placement','Variety mixes','instruction'],['inventory','TA / culls follow-up','ta'],['inventory','Move','move'],['hauling','Grade shift','hauling']].map(([category,label,kind],i)=>({id:'option'+i,category,label,kind,active:true,revision:1}));
  let lastPreview:any=null;
- let actualReply:Promise<void>|null=null;
+ let actualReply:Promise<void>|null=null; let saveFailures=0;
  const jobs:any[]=worker?[{id:'work',note_number:'BN-1',block:'FULL.BLOCK',location:'C.12.001',status:'open',owner_id:null,revision:1,instruction_revision:1,progress:{},body:{purposes:'Rain day',instructions:'Keep aisles',actions:[{id:'a',group:'placement',scope:'location',instructions:'Center house'},{id:'ta',group:'inventory',kind:'ta',label:'TA / culls follow-up',scope:'rows',row_ids:['a'],instructions:'TA / culls follow-up',quantity:'5'},{id:'move',group:'inventory',kind:'move',label:'Move',scope:'rows',row_ids:['a'],instructions:'Move',quantity:'4'}],source:[rows[0],rows[1]]},actuals:[],worker_actions:[],delivery_status:'not_sent'}]:[];
  const pdf={job_id:'work',filename:'BN-1_R1.pdf',base64:fixturePdf()};
  await page.route('**/functions/v1/app-api',async(route:any)=>{
   if(route.request().method()!=='POST')return route.fallback();
   const body=route.request().postDataJSON(); if(body?.action!=='bunch_note')return route.fallback();
   const p=body.payload||{};commands.push(body);let data:any={};
-  if(body.operation==='catalog')data={options,locations:['C.12.001','C.12.002']};
-  else if(body.operation==='option_add'){const option={id:'custom'+options.length,category:p.category,label:p.label,kind:p.kind,active:true,revision:1};options.push(option);data={option};}
+  if(body.operation==='save'&&saveFailures-->0){await route.fulfill({status:503,headers,contentType:'application/json',body:JSON.stringify({ok:false,message:'Save unavailable. Your draft is retained.'})});return;}
+  if(body.operation==='catalog')data={options,locations:['C.12.001','C.12.002','D.08.001']};
+  else if(body.operation==='option_add'){if(worker){expect(p.job_id).toBe(jobs[0].id);expect(body.expectedRevision).toBe(jobs[0].revision);}const option={id:'custom'+options.length,category:p.category,label:p.label,kind:p.kind,active:true,revision:1};options.push(option);data={option};}
   else if(body.operation==='destination_lookup')data={itemcode:'BN-I',salesyear:'2027',locations:['C.12.001','C.12.002','D.08.001'],matching:[rows[2]]};
   else if(body.operation==='destinations')data={locations:['C.12.001','C.12.002','D.08.001']};
   else if(body.operation==='destination_detail')data={location:p.location,locations:['C.12.001','C.12.002','D.08.001'],jobs:jobs.filter(j=>j.location===p.location),incoming:jobs.flatMap(j=>(j.body.actions||[]).filter((a:any)=>a.destination===p.location).map((action:any)=>({job_id:j.id,note_number:j.note_number,source_location:j.location,status:j.status,action,source:j.body.source||[],planned_here:true,actuals:[]})))};
@@ -54,7 +55,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
   if(body?.type!=='bunch_note_preview')return route.fallback();
   await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({ok:true,pdfs:lastPreview.reports.map((l:any,i:number)=>({...pdf,job_id:'job'+i,filename:'BN-'+i+'.pdf'}))})});
  });
- return {control,commands,jobs,holdActualReply:()=>{let release!:()=>void;actualReply=new Promise<void>(resolve=>{release=resolve;});return release;}};
+ return {control,commands,jobs,rows,failNextSave:()=>{saveFailures=1;},holdActualReply:()=>{let release!:()=>void;actualReply=new Promise<void>(resolve=>{release=resolve;});return release;}};
 }
 test('creator drills through themed block/location cards and preserves multiple locations through PDF review',async({page,baseURL},testInfo)=>{
  const f=await fixture(page,baseURL!);
@@ -72,6 +73,9 @@ test('creator drills through themed block/location cards and preserves multiple 
  for(const [i,location] of ['C.12.001','C.12.002'].entries()) {
   await page.getByRole('button',{name:'Open location '+location,exact:true}).click();
   await page.getByLabel('Purposes',{exact:true}).fill('Rain day '+i);
+  await expect(page.locator('.bn-plant')).toHaveCount(0);
+  await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+  await expect(page.getByLabel('Purposes',{exact:true})).toHaveCount(0);
   await expect(page.locator('.bn-plant')).toHaveCount(1);
   await expect(page.locator('.bn-plant')).toContainText('LOC Available Unknown');
   await expect(page.locator('.bn-plant')).toContainText(i===0?'LOC On Hand 30':'LOC On Hand 10');
@@ -80,45 +84,54 @@ test('creator drills through themed block/location cards and preserves multiple 
   if(i===0){
    await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
    const choices=page.locator('.bn-plant .bn-action-choices');
-   await choices.getByText('Placement · choose multiple',{exact:true}).click();
-   await choices.getByLabel('Center house',{exact:true}).check();
-   await choices.getByRole('button',{name:'Add selected Placement actions',exact:true}).click();
-   await expect(page.getByRole('textbox',{name:'Instruction',exact:true})).toHaveValue('Center house');
-   await choices.getByText('Inventory · choose multiple',{exact:true}).click();
-   await choices.getByLabel('TA / culls follow-up',{exact:true}).check();
-   await choices.getByLabel('Move',{exact:true}).check();
-   await choices.getByRole('button',{name:'Add selected Inventory actions',exact:true}).click();
-   await choices.getByText('Shift/Hauling · choose multiple',{exact:true}).click();
-   await choices.getByLabel('Grade shift',{exact:true}).check();
-   await choices.getByRole('button',{name:'Add selected Shift/Hauling actions',exact:true}).click();
-   await choices.getByText('Sequence · choose multiple',{exact:true}).click();
-   const sequence=choices.locator('details').filter({has:page.locator('summary').filter({hasText:'Sequence · choose multiple'})});
-   await sequence.getByLabel('New Sequence option',{exact:true}).fill('Check walkway');
-   await sequence.getByRole('button',{name:'Save custom option',exact:true}).click();
-   await sequence.getByRole('button',{name:'Add selected Sequence actions',exact:true}).click();
+   for(const [category,label] of [['Placement','Center house'],['Inventory','TA / culls follow-up'],['Inventory','Move'],['Shift/Hauling','Grade shift']]){
+    const group=choices.locator('details').filter({has:page.locator('summary').filter({hasText:new RegExp('^'+category.replace('/','\\/')+'$')})});
+    if(await group.getAttribute('open')===null)await group.locator('summary').click();
+    await group.getByRole('button',{name:label,exact:true}).click();
+    await expect(page.getByRole('textbox',{name:'Instruction',exact:true})).toHaveValue(label);
+    if(['Move','Grade shift'].includes(label)){
+     await page.getByLabel('Planned quantity',{exact:true}).fill('4');
+     await page.getByRole('button',{name:'Choose location',exact:true}).click();
+     await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+     await page.getByRole('button',{name:'Open location C.12.002',exact:true}).click();
+     await expect(page.locator('.bn-destination')).toContainText('Move to: C.12.002');
+    }
+    await page.getByRole('button',{name:'Done',exact:true}).click();
+   }
+   await choices.getByText('Sequence',{exact:true}).click();
+   await choices.getByRole('button',{name:'Add custom Sequence option',exact:true}).click();
+   await page.getByLabel('Option name',{exact:true}).fill('Check walkway');
+   await expect(page.getByLabel('Option name')).toHaveCSS('font-size','16px');
+   await expect.poll(()=>page.getByLabel('Option name').evaluate(el=>el.getBoundingClientRect().width)).toBeGreaterThan(150);
+   await page.getByRole('button',{name:'Save custom option and continue',exact:true}).click();
+   await page.getByRole('button',{name:'Done',exact:true}).click();
+   await page.locator('#global-header-inline-back').click();
   } else {
-   const checklist=page.locator('.bn-location-editor > details').filter({has:page.locator('summary').filter({hasText:'Location action checklist'})});
-   await checklist.getByText('Sequence · choose multiple',{exact:true}).click();
-   await checklist.getByLabel('Check walkway',{exact:true}).check();
-   await checklist.getByRole('button',{name:'Add selected Sequence actions',exact:true}).click();
+   const checklist=page.locator('.bn-location-editor > details').filter({has:page.locator('summary').filter({hasText:'Whole-location actions'})});
+   await checklist.locator('summary').first().click();
+   await checklist.getByText('Sequence',{exact:true}).click();
+   await checklist.getByRole('button',{name:'Check walkway',exact:true}).click();
+   await page.getByRole('button',{name:'Done',exact:true}).click();
   }
   await expect.poll(()=>page.locator('#bunch-note-content').evaluate(el=>[el,...el.querySelectorAll('button,summary,input,select,textarea,.bn-card')].every(node=>{const box=node.getBoundingClientRect();return !box.width||(box.left>=-1&&box.right<=innerWidth+1);}))).toBe(true);
   await expect.poll(()=>page.locator('#bunch-note-content button:visible, #bunch-note-content summary:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=44))).toBe(true);
-  if(i===0)await page.locator('#global-header-inline-back').click();
+  await page.locator('#global-header-inline-back').click();
   await page.locator('#global-header-inline-back').click();
  }
  await page.locator('#global-header-inline-back').click();
  await page.locator('#global-header-inline-back').click();
- await expect.poll(()=>f.commands.filter(c=>c.operation==='save').length).toBe(1);
+ await expect(page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
- await expect(page.getByLabel('Purposes',{exact:true})).toHaveValue('Rain day 0');
+ await expect(page.getByLabel('Purposes',{exact:true})).toHaveCount(0);
+ await expect(page.locator('#bunch-note-content')).toContainText('Rain day 0');
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
- await expect(page.getByRole('textbox',{name:'Instruction',exact:true}).first()).toHaveValue('Center house');
+ await page.getByRole('button',{name:'Edit Center house',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Instruction',exact:true})).toHaveValue('Center house');
  await page.locator('#global-header-inline-back').click();
  await page.locator('#global-header-inline-back').click();
- const saved=f.commands.find(c=>c.operation==='save').payload.body;
+ const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body;
  expect(saved.locations.map((l:any)=>l.location)).toEqual(['C.12.001','C.12.002']);
  expect(saved.locations[0].actions[0].row_ids).toEqual(['a','a2']);
  expect(saved.locations[0].actions.find((a:any)=>a.group==='hauling').row_ids).toEqual(['a']);
@@ -150,26 +163,27 @@ test('creator drills through themed block/location cards and preserves multiple 
 test('combined move keeps its full destination and opens destination instructions',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
  await page.locator('#home-tile-bunch-note').click();
- for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001','Open item BN-I'])await page.getByRole('button',{name,exact:true}).click();
- const grading=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:'Grading · choose multiple'})});
+ for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001'])await page.getByRole('button',{name,exact:true}).click();
+ await page.getByLabel('Purposes',{exact:true}).fill('Grade and move');
+ await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
+ const grading=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:/^Grading$/})});
  await grading.locator('summary').click();
- await grading.getByLabel('Grade and Save / Move To',{exact:true}).check();
- await grading.getByRole('button',{name:'Add selected Grading actions',exact:true}).click();
- await page.getByLabel('Quantity (or percentage)',{exact:true}).fill('4');
- await page.getByRole('button',{name:'Choose destination',exact:true}).click();
+ await grading.getByRole('button',{name:'Grade and Save / Move To',exact:true}).click();
+ await page.getByLabel('Planned quantity',{exact:true}).fill('4');
+ await page.getByRole('button',{name:/^(Choose location|Change location)$/,exact:true}).click();
  await page.getByRole('button',{name:'All other locations',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open location D.08',exact:true})).toBeVisible();
  await page.getByLabel('New full destination',{exact:true}).fill('NEW.PAD');
  await page.getByRole('button',{name:'Use typed destination',exact:true}).click();
- await expect(page.getByLabel('Destination',{exact:true})).toHaveValue('NEW.PAD');
- await page.getByRole('button',{name:'Choose destination',exact:true}).click();
+ await expect(page.locator('.bn-destination')).toContainText('Move to: NEW.PAD');
+ await page.getByRole('button',{name:/^(Choose location|Change location)$/,exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  await expect(page.locator('#bunch-note-content')).toContainText('Available Unknown');
  await page.getByRole('button',{name:'Open location C.12.002',exact:true}).click();
- await expect(page.getByLabel('Destination',{exact:true})).toHaveValue('C.12.002');
+ await expect(page.locator('.bn-destination')).toContainText('Move to: C.12.002');
+ await page.getByRole('button',{name:'Done',exact:true}).click();
  await page.locator('#global-header-inline-back').click();
- await page.getByLabel('Purposes',{exact:true}).fill('Grade and move');
- await page.getByRole('button',{name:'Save draft',exact:true}).click();
  const body=f.commands.filter(c=>c.operation==='save').at(-1).payload.body;
  expect(body.locations[0].actions[0]).toMatchObject({quantity:'4',destination:'C.12.002',destination_mode:'matching'});
  f.jobs.push({id:'source',note_number:'BN-1',status:'open',location:'C.12.001',body:body.locations[0]},
@@ -239,11 +253,12 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await expect(move).toContainText('NEW.LOC');
  await move.getByRole('button',{name:'Done',exact:true}).click();
 
- const inventory=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:'Inventory · choose multiple'})});
+ const inventory=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:/^Inventory$/})});
  await inventory.locator('summary').click();
- await inventory.getByLabel('New Inventory option',{exact:true}).fill('Inspect empty spaces');
- await inventory.getByRole('button',{name:'Save custom option',exact:true}).click();
- await inventory.getByRole('button',{name:'Add selected Inventory actions',exact:true}).click();
+ await inventory.getByRole('button',{name:'Add custom Inventory option',exact:true}).click();
+ await page.getByLabel('Option name',{exact:true}).fill('Inspect empty spaces');
+ await page.getByRole('button',{name:'Save custom option and continue',exact:true}).click();
+ await page.getByRole('button',{name:'Done',exact:true}).click();
  await expect(action('Inspect empty spaces · Added by worker')).toBeVisible();
  await action('Inspect empty spaces · Added by worker').getByRole('button',{name:'Done',exact:true}).click();
  await page.locator('#global-header-inline-back').click();
@@ -255,4 +270,43 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await expect(page.locator('#request-content')).toContainText('BN-1');
  expect(f.commands.some(c=>['send','publish','preview','retry'].includes(c.operation))).toBe(false);
+});
+
+
+test('phone steps retain failed saves and make mixed-year and unknown-year destinations reachable',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!);f.rows[1].salesyear='';
+ await page.locator('#home-tile-bunch-note').click();
+ for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001'])await page.getByRole('button',{name,exact:true}).click();
+ await page.getByLabel('Purposes',{exact:true}).fill('Move safely');f.failNextSave();
+ await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await expect(page.locator('#bunch-note-content [role=alert]')).toContainText('Save unavailable');
+ await expect(page.getByLabel('Purposes',{exact:true})).toHaveValue('Move safely');
+ await page.getByRole('button',{name:'Next: Items',exact:true}).evaluate((el:HTMLButtonElement)=>{el.click();el.click();});
+ await expect(page.getByRole('button',{name:'Open item BN-I',exact:true})).toBeVisible();
+ expect(f.commands.filter(c=>c.operation==='save')).toHaveLength(2);
+ await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
+ await page.locator('.bn-action-choices').getByText('Inventory',{exact:true}).click();
+ await page.getByRole('button',{name:'Move',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Choose location',exact:true})).toBeInViewport();
+ await page.getByLabel('Planned quantity',{exact:true}).fill('3');
+ await page.getByLabel('Source item and sales year',{exact:true}).selectOption('BN-I|2027');
+ await page.getByRole('button',{name:'Choose location',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.002',exact:true}).click();
+ await page.getByLabel('Source item and sales year',{exact:true}).selectOption('BN-I|');
+ await expect(page.locator('.bn-destination')).not.toContainText('C.12.002');
+ await page.getByRole('button',{name:'Choose location',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Locations with this item',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Open location D.08',exact:true}).click();
+ await page.getByRole('button',{name:'Open location D.08.001',exact:true}).click();
+ await expect(page.locator('.bn-destination')).toContainText('Move to: D.08.001');
+ f.failNextSave();await page.getByRole('button',{name:'Done',exact:true}).click();
+ await expect(page.getByLabel('Planned quantity',{exact:true})).toHaveValue('3');
+ await expect(page.locator('.bn-destination')).toContainText('D.08.001');
+ await page.getByRole('button',{name:'Done',exact:true}).click();
+ await page.goBack();
+ await expect(page.getByRole('button',{name:'Open item BN-I',exact:true})).toBeVisible();
+ const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body.locations[0];
+ expect(saved.actions).toHaveLength(1);expect(saved.actions[0]).toMatchObject({destination:'D.08.001',row_ids:['a2'],quantity:'3'});expect(saved.source_all).toHaveLength(2);
+ expect(f.control.blockedMutations).toEqual([]);
 });

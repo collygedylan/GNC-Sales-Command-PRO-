@@ -38,13 +38,14 @@ test('top-level Back traverses item, bay and base while retaining planned destin
  }}),b=ctx.BunchNote;
  await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('Open location D.08"'));
  assert.ok(!element.innerHTML.includes('Open location D.08.001"'));
- b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');b.openItem('D.08.001|PLANT');
- const key='item:0:D.08.001|PLANT';b.chooseOption(key+':grading','move',true);await b.addChoices(key,'grading');b.editAction(0,0,'quantity','4');
- await b.chooseDestination('planned',0,0);assert.ok(element.innerHTML.includes('Locations with this item'));assert.ok(element.innerHTML.includes('All other locations'));
- b.destinationBase('D.09');b.pickDestination('D.09.001');await b.save();
+ b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');assert.ok(element.innerHTML.includes('Next: Items'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.openItem('D.08.001|PLANT');
+ const key='item:0:D.08.001|PLANT';b.startAction(key,'move');b.startAction(key,'move');b.actionField('quantity','4');assert.ok(element.innerHTML.includes('Choose location'));
+ await b.chooseActionDestination();assert.ok(element.innerHTML.includes('Locations with this item'));assert.ok(element.innerHTML.includes('All other locations'));
+ b.destinationBase('D.09');b.pickDestination('D.09.001');await b.finishAction();assert.equal(saved.locations[0].actions.length,1);
  assert.equal(saved.locations[0].actions[0].destination,'D.09.001');assert.equal(saved.locations[0].actions[0].destination_mode,'matching');
  assert.equal(saved.locations[0].source_all[0].locationcode,'D.08.001');
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open item PLANT'));assert.ok(!element.innerHTML.includes('Choose destination'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Next: Items'));
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08.001"'));
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08"'));
  assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);
@@ -194,4 +195,37 @@ test('migration confines writes and enforces durable ownership/revision/command 
  const worker=read('supabase/functions/request-delivery-worker/index.ts');
  assert.match(worker,/saved\?\.delivery_status === "sent"[\s\S]*finishEvent/);
  new vm.Script(js);new vm.Script(gas);
+});
+
+
+test('move readiness requires destination while checklist and TA preserve optional planned quantities',()=>{
+ const b=runtime().BunchNote,base={instructions:'Do work',scope:'rows',row_ids:['a']};
+ for(const kind of ['move','hauling'])assert.equal(b.actionProblem({...base,kind}),'Choose a move destination');
+ assert.equal(b.actionProblem({...base,kind:'move',destination:'D.08.001'}),'');
+ assert.equal(b.actionProblem({...base,kind:'ta'}),'');
+ assert.equal(b.actionProblem({...base,kind:'instruction'}),'');
+ assert.equal(b.actionProblem({...base,kind:'move',label:'Grade and Save / Move To',destination:'D.08.001'}),'Enter the planned quantity');
+ assert.match(b.actionProblem({...base,quantity:'-1'}),/positive whole/);
+ assert.match(b.actionProblem({...base,quantity:'2',percentage:'50'}),/quantity or percentage/);
+});
+
+test('setup and action saves retain values on failure; source changes preserve choices and invalidate matching destination',async()=>{
+ const rows=[{unique_id:'a',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',salesyear:'26',contsize:'#3',lotcode:'A'},
+ {unique_id:'b',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',salesyear:null,contsize:'#5',lotcode:'B'}];
+ const option={id:'move',category:'inventory',label:'Move',kind:'move',active:true};
+ const element={classList:{add(){}},innerHTML:'',setAttribute(){},querySelectorAll:()=>[]};let serial=0,saved,fail=true,lookups=0;
+ const ctx=runtime({crypto:{randomUUID:()=>String(++serial)},document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},postAppFunctionJson:async(_url,body)=>{
+  if(body.operation==='save'&&fail)return {ok:false,message:'Save unavailable'};
+  if(body.operation==='destination_lookup')lookups++;
+  const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.09.001','OTHER']}:body.operation==='inventory'?{rows}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.09.001','OTHER'],matching:[{...rows[0],locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
+  return {ok:true,data};
+ }}),b=ctx.BunchNote;
+ await b.open();await b.chooseBlock('D');b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Move stock');await b.nextItems();
+ assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/value="Move stock"/);assert.match(element.innerHTML,/Next: Items/);
+ fail=false;await b.nextItems();b.openItem('D.08.001|PLANT');b.startAction('item:0:D.08.001|PLANT','move');b.actionField('quantity','3');
+ b.actionSource('PLANT|2026');await b.chooseActionDestination();b.destinationBase('D.09');b.pickDestination('D.09.001');
+ b.actionSource('PLANT|');assert.match(element.innerHTML,/Choose location/);assert.ok(!element.innerHTML.includes('Move to: D.09.001'));assert.match(element.innerHTML,/value="PLANT\|2026"/);
+ await b.chooseActionDestination();assert.match(element.innerHTML,/Same-item matching needs one known sales year/);assert.equal(lookups,1);b.pickDestination('OTHER','other');
+ fail=true;await b.finishAction();assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/Move to: OTHER/);assert.match(element.innerHTML,/value="3"/);
+ fail=false;await b.finishAction();assert.equal(saved.locations[0].actions[0].destination,'OTHER');assert.deepEqual(plain(saved.locations[0].actions[0].row_ids),['b']);assert.equal(saved.locations[0].source_all.length,2);
 });

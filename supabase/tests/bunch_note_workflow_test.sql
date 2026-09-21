@@ -123,7 +123,7 @@ begin
  perform pg_temp.bn_check(bunch_note_private.shift_eligible('{"season":"Y"}') and bunch_note_private.shift_eligible('{"season":"U3"}') and bunch_note_private.shift_eligible('{"season":"F1","desigitem":"shft"}') and not bunch_note_private.shift_eligible('{"season":"F1"}'),'shift qualification is OR, case insensitive');
  body:=jsonb_build_object('block','NEW','recipient_ids','[]'::jsonb,'locations',jsonb_build_array(jsonb_build_object('location','N.1','purposes','Recorded work','row_ids',jsonb_build_array('BN-C'),
  'actions',jsonb_build_array(jsonb_build_object('id','ta','option_id',ta.id,'group',ta.category,'kind',ta.kind,'label',ta.label,'instructions',ta.label,'scope','rows','row_ids',jsonb_build_array('BN-C'),'quantity','5'),
- jsonb_build_object('id','move','option_id',move.id,'group',move.category,'kind',move.kind,'label',move.label,'instructions',move.label,'scope','rows','row_ids',jsonb_build_array('BN-C'),'quantity','4')))));
+ jsonb_build_object('id','move','option_id',move.id,'group',move.category,'kind',move.kind,'label',move.label,'instructions',move.label,'scope','rows','row_ids',jsonb_build_array('BN-C'),'quantity','4','destination','EXISTING.LOC')))));
  draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('body',body),gen_random_uuid())->'draft';
  perform pg_temp.bn_check(jsonb_array_length(draft->'body'->'locations'->0->'source')=2,'selected item snapshots every lot even when action targets just one');
  perform pg_temp.bn_check(draft->'body'->'locations'->0->'source'->0->>'season'='27.y' and draft->'body'->'locations'->0->'source'->0->>'review'='0','actual Season and Review projected');
@@ -249,6 +249,31 @@ begin
  perform pg_temp.bn_check(true,'changed matching destination requires review');
  perform pg_temp.bn_check(bunch_note_private.sales_year(null) is null and bunch_note_private.sales_year('26.Y') is null,'unknown year is never inferred from season/lot');
 end $$;
+
+-- Setup-only drafts are private and durable; neither preview nor publish accepts unfinished work.
+do $$
+declare d uuid:='98000000-0000-0000-0000-000000000001'; w uuid:='98000000-0000-0000-0000-000000000002';
+ body jsonb; draft jsonb; ready jsonb; preview jsonb; cmd uuid:=gen_random_uuid();
+begin
+ body:='{"block":"NEW","recipient_ids":[],"locations":[{"location":"N.1","purposes":"Setup first","row_ids":["BN-C"],"actions":[]}]}'::jsonb;
+ draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('body',body),cmd)->'draft';
+ perform pg_temp.bn_check(draft=public.bunch_note_command_v1(d,'save',jsonb_build_object('body',body),cmd)->'draft','setup-only save replays exactly');
+ perform pg_temp.bn_check(jsonb_array_length(draft->'body'->'locations'->0->'actions')=0,'setup persists before any action');
+ perform pg_temp.bn_reject(w,'save',jsonb_build_object('body',body),null,'BUNCH_NOTE_AUTHOR_ONLY');
+ perform pg_temp.bn_reject(d,'preview',jsonb_build_object('batch_id',draft->'id'),1,'BUNCH_NOTE_INSTRUCTIONS_REQUIRED');
+ body:=jsonb_set(draft->'body','{locations,0,actions}','[{"id":"move-setup","group":"inventory","scope":"rows","row_ids":["BN-C"],"instructions":"Move"}]');
+ draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('batch_id',draft->'id','body',body),gen_random_uuid(),1)->'draft';
+ perform pg_temp.bn_reject(d,'preview',jsonb_build_object('batch_id',draft->'id'),2,'BUNCH_NOTE_DESTINATION_REQUIRED');
+ body:=jsonb_set(draft->'body','{locations,0,actions,0,destination}','"D.08.001"');
+ draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('batch_id',draft->'id','body',body),gen_random_uuid(),2)->'draft';
+ preview:=public.bunch_note_command_v1(d,'preview',jsonb_build_object('batch_id',draft->'id'),gen_random_uuid(),3)->'preview';
+ perform pg_temp.bn_check(preview->'reports'->0->'actions'->0->>'destination'='D.08.001','full move destination retained in PDF report');
+ perform public.bunch_note_freeze_pdfs_v1((preview->>'id')::uuid,(select jsonb_agg(jsonb_build_object('job_id',r->'job_id','filename','setup.pdf','base64',encode(convert_to('%PDF-1.4'||repeat('x',200),'UTF8'),'base64'))) from jsonb_array_elements(preview->'reports') r));
+ -- Simulate a pre-upgrade/faulty saved batch while retaining the frozen preview revision.
+ update bunch_note_private.batches set body=jsonb_set(bunch_note_private.batches.body,'{locations,0,actions}','[]') where id=(draft->>'id')::uuid;
+ perform pg_temp.bn_reject(d,'publish',jsonb_build_object('preview_id',preview->'id'),3,'BUNCH_NOTE_INSTRUCTIONS_REQUIRED');
+end $$;
+
 select plan(1);
 select ok((select count(*) from bn_checks)>=20,'Bunch Note lifecycle, privacy, revisions, quantities and delivery assertions passed');
 select * from finish();

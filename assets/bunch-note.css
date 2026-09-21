@@ -15,7 +15,7 @@
 .bn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px}
 .bn-choice{display:flex;gap:12px;align-items:center;padding:12px 0;min-height:48px}
 .bn-choice small{display:block;font-weight:400;color:var(--ops-text-muted,#617068)}
-.bn-choice input,.bn-plant input{width:24px;height:24px;min-height:24px!important;flex-shrink:0;accent-color:var(--ops-brand,#07874f)}
+.bn-choice input[type=checkbox],.bn-plant input[type=checkbox]{width:24px;height:24px;min-height:24px!important;flex-shrink:0;accent-color:var(--ops-brand,#07874f)}
 .bn-plants{display:grid;gap:12px;min-width:0}
 .bn-plant.bn-card{margin:0;padding:0;overflow:visible}
 .bn-plant-heading{display:flex;gap:12px;align-items:center;padding:16px;min-height:64px;cursor:pointer}
@@ -66,3 +66,11 @@
 @media(prefers-reduced-motion:reduce){.bn-options>summary>i{transition:none}}
 
 .bn-item-open{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:16px;border:0;border-top:1px solid var(--ops-border,#cbd8d1);background:transparent;color:var(--ops-brand-strong,#05623c);font:inherit;font-weight:800;min-height:48px;text-align:left;cursor:pointer}
+.bn-action-summary{display:flex;flex-direction:column;gap:6px;width:100%;text-align:left;color:var(--ops-text,#13221b);font:inherit;min-height:64px;cursor:pointer}
+.bn-destination{padding:14px;border:2px solid var(--ops-brand,#07874f);border-radius:12px;margin:12px 0}
+.bn-destination b,.bn-destination small{display:block}
+.bn-destination .bn-button{width:100%;margin:10px 0 0}
+.bn-step-actions{display:flex;position:sticky;bottom:calc(90px + env(safe-area-inset-bottom));padding:8px;background:var(--ops-surface,#fff);border-top:1px solid var(--ops-border,#cbd8d1);z-index:2;margin-top:20px}
+.bn-step-actions .bn-button{width:100%;margin:0;min-height:48px}
+.bn-root :is(input,textarea,select){scroll-margin-bottom:190px}
+@media(max-width:520px){.bn-root:has(input:focus,textarea:focus,select:focus) .bn-step-actions{position:static}.bn-field textarea{min-height:72px}}
