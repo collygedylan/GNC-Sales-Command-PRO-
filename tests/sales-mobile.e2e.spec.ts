@@ -282,6 +282,10 @@ test('propagation and planting retain protected work after reload and complete w
 });
 
 test('Inventory Transaction History pages and searches on the server, preserving requested status', async ({ page, baseURL }) => {
+  const capabilityRequests: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/functions/v1/codex-ops-api') capabilityRequests.push(request.url());
+  });
   const f = await installSalesMobileFixture(page, baseURL!);
   await page.locator('#home-tile-managers')[test.info().project.use.isMobile ? 'tap' : 'click']();
   const area = page.locator('#view-managers');
@@ -305,5 +309,8 @@ test('Inventory Transaction History pages and searches on the server, preserving
   await expect(area.locator('article')).toHaveCount(0);
   await expect(area.getByText('No QTY, Transfer, Reclass, or Priority Change history matched those filters.', { exact: true })).toBeVisible();
   expect(f.commands.some(call => call.action === 'inventory_transaction_history' && call.filter_action === 'transfer' && call.offset === 0)).toBe(true);
+  // The fixture leaves the optional capability endpoint unavailable. History
+  // must remain usable instead of retrying it on each render and replacing taps.
+  expect(capabilityRequests).toHaveLength(1);
   expectIsolated(f);
 });

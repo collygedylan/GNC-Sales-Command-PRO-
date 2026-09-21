@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 import { validateChangedFiles } from '../scripts/validate-codex-mobile-patch.mjs';
 
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -16,6 +17,70 @@ const pathWorkflow = read('../.github/workflows/codex-mobile-path-policy.yml');
 const html = read('../index.html');
 const healthProbe = read('../scripts/probe-production-auth-health.mjs');
 const productionCanary = read('./production-request-canary.spec.ts');
+
+function capabilityHarness() {
+  const state = () => ({ capabilities: null, capabilitiesLoading: false, capabilitiesLoaded: false, error: '' });
+  const calls = [];
+  const context = vm.createContext({ codexOpsState: state(),
+    getCodexOpsCurrentUserKey: () => 'dylan_collyge',
+    shouldUseProductionLiveSyncSideLoad: () => true,
+    ensureProductionLiveSyncSideData: (id, force) => new Promise((resolve, reject) => calls.push({ id, force, resolve, reject })),
+    invokeCodexOpsApi: () => { throw new Error('Native reads must use the revision coordinator'); },
+    activeHomeTab: 'transactions', getCurrentVisibleViewId: () => 'managers', scheduleManagersRender: () => {} });
+  const start = html.indexOf('        async function loadCodexOpsCapabilities(');
+  vm.runInContext(html.slice(start, html.indexOf('        async function loadCodexOpsTasks(', start)), context);
+  return { context, calls, state, load: force => context.loadCodexOpsCapabilities(force) };
+}
+
+test('failed optional native capabilities do not restart on Manager repaint; explicit refresh can recover', async () => {
+  const h = capabilityHarness();
+  const pending = h.load(false);
+  assert.equal(h.context.codexOpsState.capabilitiesLoading, true);
+  assert.equal(await h.load(false), null);
+  assert.equal(h.calls.length, 1);
+  h.calls[0].reject(new Error('Optional service unavailable'));
+  assert.equal(await pending, null);
+  assert.equal(h.context.codexOpsState.capabilitiesLoading, false);
+  assert.equal(h.context.codexOpsState.capabilitiesLoaded, true);
+  assert.equal(h.context.codexOpsState.error, 'Optional service unavailable');
+  for (let repaint = 0; repaint < 10; repaint++) assert.equal(await h.load(false), null);
+  assert.equal(h.calls.length, 1);
+  const retry = h.load(true);
+  assert.equal(h.calls[1].force, true);
+  h.context.codexOpsState.capabilities = { canView: true, submissionEnabled: true };
+  h.calls[1].resolve(true);
+  assert.equal((await retry).canView, true);
+  assert.equal(h.context.codexOpsState.error, '');
+});
+
+test('capability reads remain Dylan-only and an old session cannot update a replacement state', async () => {
+  const h = capabilityHarness();
+  h.context.getCodexOpsCurrentUserKey = () => 'another_user';
+  assert.equal(await h.load(true), null);
+  assert.equal(h.calls.length, 0);
+  h.context.getCodexOpsCurrentUserKey = () => 'dylan_collyge';
+  const pending = h.load(true);
+  const replacement = h.state();
+  h.context.codexOpsState = replacement;
+  h.calls[0].reject(new Error('Departed session failed'));
+  assert.equal(await pending, null);
+  assert.deepEqual(replacement, h.state());
+});
+
+test('navigation cancellation does not cache a capability failure for the next visit', async () => {
+  const h = capabilityHarness();
+  const pending = h.load(false);
+  h.context.getCurrentVisibleViewId = () => 'drive';
+  h.calls[0].reject(new Error('Cohort cancelled'));
+  assert.equal(await pending, null);
+  assert.deepEqual(h.context.codexOpsState, h.state());
+  h.context.getCurrentVisibleViewId = () => 'managers';
+  const retry = h.load(false);
+  assert.equal(h.calls.length, 2);
+  h.context.codexOpsState.capabilities = { canView: true, submissionEnabled: true };
+  h.calls[1].resolve(true);
+  assert.equal((await retry).canView, true);
+});
 
 test('private Codex control-plane tables are RLS protected and clients get RPCs only', () => {
   for (const table of ['tasks', 'messages', 'events', 'attachments', 'approvals', 'dispatches', 'audit_events']) {

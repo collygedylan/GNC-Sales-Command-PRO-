@@ -132572,7 +132572,6 @@ C.14.043 C.15.000
         }
 
         async function loadCodexOpsCapabilities(force = false) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('codex', force).then(() => codexOpsState.capabilities);
             if (getCodexOpsCurrentUserKey() !== 'dylan_collyge') {
                 codexOpsState.capabilities = null;
                 codexOpsState.capabilitiesLoaded = true;
@@ -132580,20 +132579,35 @@ C.14.043 C.15.000
             }
             if (codexOpsState.capabilitiesLoading) return null;
             if (codexOpsState.capabilitiesLoaded && !force) return codexOpsState.capabilities;
-            codexOpsState.capabilitiesLoading = true;
+            const state = codexOpsState;
+            const view = getCurrentVisibleViewId();
+            const tab = activeHomeTab;
+            state.capabilitiesLoading = true;
             try {
-                codexOpsState.capabilities = await invokeCodexOpsApi('capabilities', {}, 20000);
-                codexOpsState.capabilitiesLoaded = true;
-                codexOpsState.error = '';
-                return codexOpsState.capabilities;
+                // Rendering must not enqueue this optional surface again while it
+                // is loading, or retry a failed read on every Manager repaint.
+                let capabilities;
+                if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                    await ensureProductionLiveSyncSideData('codex', force);
+                    capabilities = state.capabilities;
+                } else capabilities = await invokeCodexOpsApi('capabilities', {}, 20000);
+                if (state !== codexOpsState) return null;
+                state.capabilities = capabilities;
+                state.capabilitiesLoaded = true;
+                state.error = '';
+                return state.capabilities;
             } catch (error) {
-                codexOpsState.capabilities = null;
-                codexOpsState.capabilitiesLoaded = true;
-                codexOpsState.error = String(error && error.message || 'CODEX_OPS_CAPABILITIES_FAILED');
+                if (state !== codexOpsState) return null;
+                // Navigating cancels an in-flight cohort; it is not a cached
+                // capability failure for the next time this screen is opened.
+                if (view !== getCurrentVisibleViewId() || tab !== activeHomeTab) return null;
+                state.capabilities = null;
+                state.capabilitiesLoaded = true;
+                state.error = String(error && error.message || 'CODEX_OPS_CAPABILITIES_FAILED');
                 return null;
             } finally {
-                codexOpsState.capabilitiesLoading = false;
-                if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
+                state.capabilitiesLoading = false;
+                if (state === codexOpsState && getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
             }
         }
 
