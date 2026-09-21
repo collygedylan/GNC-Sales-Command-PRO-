@@ -37,6 +37,9 @@ async function reloadHl(page: Page, fixture: any) {
   await fixture.waitForRevisionIdle();
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.eval('typeof nativeAuthProfile !== "undefined" && !!nativeAuthProfile'));
+  // Match initial fixture startup: a profile can arrive before the final Home navigation.
+  await page.waitForFunction(() => document.body.classList.contains('role-access-ready')
+    && window.eval('hasAppliedInitialHomeView === true'));
   await openHl(page);
 }
 async function closeBloom(page: Page) {
