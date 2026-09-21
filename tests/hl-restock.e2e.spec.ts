@@ -9,10 +9,17 @@ const setup = (changes = {}) => ({ rows: [], poMembership: ['SYNTH.003'],
   restockItems: [stock()], master: [hlMaster('stock-a', { ptravailable: '12' }), hlMaster('stock-zero', { locationcode: 'C.14.001', ptravailable: '0' }),
     hlMaster('old-season', { lotcode: '26.F1', ptravailable: '80' })], ...changes });
 const item = (page: Page) => page.locator('[data-hl-restock-item="SYNTH.003|#3"]');
-async function openRestock(page: Page) {
+const activate = (page: Page, selector: string) => page.locator(selector)[test.info().project.use.isMobile ? 'tap' : 'click']();
+async function openHl(page: Page) {
   await expect(page.locator('#view-login')).toBeHidden();
-  await page.locator('#home-tile-hl-order').click();
-  await page.locator('[data-hl-tab="restocking"]').click();
+  // Phone profiles exercise touch navigation, including WebKit's synthesized
+  // click, while desktop profiles retain mouse coverage. Never force or retry.
+  await activate(page, '#home-tile-hl-order');
+  await expect(page.locator('#view-hl-order')).toBeVisible();
+}
+async function openRestock(page: Page) {
+  await openHl(page);
+  await activate(page, '[data-hl-tab="restocking"]');
   await expect(page.locator('#hl-restock-content')).toBeVisible();
 }
 async function saveRestock(page: Page, quantity = '10') {
@@ -90,10 +97,9 @@ test('Restocking loads on demand without SOC demand and shows verified server qu
 test('Restocking retries once when initial permission metadata arrives during its protected read', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ holdInitialMetadataRead: true }));
   await fixture.waitForHeldInitialMetadataRead();
-  await expect(page.locator('#view-login')).toBeHidden();
-  await page.locator('#home-tile-hl-order').click();
+  await openHl(page);
   fixture.holdNextRestockStateRead();
-  await page.locator('[data-hl-tab="restocking"]').click();
+  await activate(page, '[data-hl-tab="restocking"]');
   await fixture.waitForHeldRestockStateRead();
   // Release the actual initial metadata response only after the protected
   // Restock read has captured its permission-empty ownership scope.
