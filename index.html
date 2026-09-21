@@ -62498,6 +62498,10 @@ function toggleDriveQuickRequestItem(domId) {
         function scheduleChatBackgroundPoll(delayMs = CHAT_BACKGROUND_POLL_MS) {
             clearChatBackgroundPoll();
             if (!currentUser || document.hidden) return;
+            // Native chat/calendar badges already share revision polling and
+            // realtime with the visible view. A second forced loader invalidates
+            // unrelated in-progress inventory renders even when nothing changed.
+            if (canUseProductionLiveSync()) return;
             if (hasHealthyBackgroundChatRealtime()) {
                 chatBackgroundPollAttempt = 0;
                 return;
@@ -62519,6 +62523,11 @@ function toggleDriveQuickRequestItem(domId) {
                 clearChatBackgroundPoll();
                 return false;
             }
+            if (canUseProductionLiveSync()) {
+                clearChatBackgroundPoll();
+                signalProductionLiveSync('chat-background', 0);
+                return true;
+            }
             if (navigator.onLine === false) {
                 chatBackgroundPollAttempt = Math.min(chatBackgroundPollAttempt + 1, 8);
                 scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS);
@@ -62535,6 +62544,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function ensureChatBackgroundSync(reason = '', delayMs = 1200) {
             if (!currentUser) return;
+            if (canUseProductionLiveSync()) {
+                clearChatBackgroundPoll();
+                signalProductionLiveSync(`chat-background:${reason}`, delayMs);
+                return;
+            }
             fetchChatData(false).then(() => updateFooterChatBadge()).catch(() => {});
             syncDepartmentCalendarBadgeData(false).catch(() => {});
             if (!hasHealthyBackgroundChatRealtime()) scheduleChatBackgroundPoll(delayMs);

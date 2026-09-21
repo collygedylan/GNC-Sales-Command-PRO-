@@ -41,6 +41,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   const pageErrors: string[] = [];
   const runtimeResponses: string[] = [];
   const replies: Reply[] = [];
+  let preferenceWait: Promise<void> = Promise.resolve();
+  let releasePreferences: () => void = () => {};
   const corsHeaders = {
     'access-control-allow-origin': '*',
     'access-control-allow-headers': '*',
@@ -65,9 +67,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
         && body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
         && Object.keys(body.payload).length === 0;
-      if (preferenceRead) return fulfill(route, { ok: true, data: {
-        username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0,
-      } });
+      if (preferenceRead) {
+        await preferenceWait;
+        return fulfill(route, { ok: true, data: {
+          username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0,
+        } });
+      }
       if (body.action === 'season_sales_office' && body.operation === 'complete') {
         requests.push({ body, token: request.headers()['idempotency-key'] || '' });
         const reply = replies.shift() || {};
@@ -94,6 +99,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   await page.routeWebSocket('**/*', (socket) => socket.close());
 
   const seed = async (nextRows: FixtureRow[] = rows) => {
+    preferenceWait = new Promise<void>(resolve => { releasePreferences = resolve; });
     await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
     await page.evaluate((data) => {
       (window as any).__seasonCompletionFixtureRows = data;
@@ -101,6 +107,9 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         if (!installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Isolated Season Done Test', 'ADMIN')) {
           throw new Error('SEASON_DONE_CANARY_IDENTITY_UNAVAILABLE');
         }
+        // Seed a view opened after login, without replaying login's initial
+        // Home transition when the pending preference read rechecks access.
+        hasAppliedInitialHomeView = true;
         appSeasonSettingsCache = { seasonCode: 'F1', salesYear: 27 };
         avBlanksPhotoBypassRemoteLoaded = true;
         avBlanksPhotoBypassAccessCache = { username: 'dylan_collyge', allowed: true, canManage: true, loadedAt: Date.now() };
@@ -130,6 +139,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         renderSalesOffice();
       })()`);
     }, nextRows);
+    try {
+      await expect(page.locator('#view-sales-office')).toBeVisible();
+    } finally {
+      releasePreferences();
+    }
+    await page.evaluate(async () => { await (window as any).GncNavigationPreferences.refresh(); });
     await expect(page.locator('#view-sales-office')).toBeVisible();
   };
 

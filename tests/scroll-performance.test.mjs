@@ -81,3 +81,35 @@ test('Common Name preparation rejects changed ownership, permissions, navigation
     assert.equal(pending.container.dataset.driveCommonnameState, 'cancelled');
   }
 });
+
+test('passive native chat uses shared revision refresh without forcing unrelated view reloads', async () => {
+  const source = html.slice(html.indexOf('        function clearChatBackgroundPoll()'),
+    html.indexOf('        function maybeShowForegroundChatNotification('));
+  const calls = [];
+  const context = vm.createContext({
+    currentUser: 'alice', document: { hidden: false }, navigator: { onLine: true },
+    chatBackgroundPollTimer: 7, chatBackgroundPollAttempt: 0,
+    CHAT_BACKGROUND_POLL_MS: 5000, REALTIME_FALLBACK_BASE_MS: 1000, REALTIME_FALLBACK_MAX_MS: 30000,
+    canUseProductionLiveSync: () => true, hasHealthyBackgroundChatRealtime: () => false,
+    clearTimeout: id => calls.push(['clear', id]), setTimeout: () => { calls.push(['timer']); return 8; },
+    signalProductionLiveSync: (reason, delay) => calls.push(['signal', reason, delay]),
+    fetchChatData: async force => { calls.push(['fetch', force]); return true; },
+    syncDepartmentCalendarBadgeData: async force => { calls.push(['calendar', force]); },
+    updateFooterChatBadge: () => calls.push(['badge']), isViewVisible: () => true,
+    renderChat: () => calls.push(['render'])
+  });
+  vm.runInContext(source, context);
+  context.scheduleChatBackgroundPoll();
+  context.ensureChatBackgroundSync('resume', 0);
+  assert.equal(await context.runChatBackgroundPoll(), true);
+  assert.deepEqual(calls, [['clear', 7], ['signal', 'chat-background:resume', 0], ['signal', 'chat-background', 0]]);
+  assert.equal(context.chatBackgroundPollTimer, null);
+  calls.length = 0;
+  context.document.hidden = true;
+  assert.equal(await context.runChatBackgroundPoll(), false);
+  assert.deepEqual(calls, []);
+  context.document.hidden = false;
+  context.canUseProductionLiveSync = () => false;
+  assert.equal(await context.runChatBackgroundPoll(), true);
+  assert.deepEqual(calls, [['fetch', true], ['calendar', false], ['badge'], ['render'], ['timer']]);
+});

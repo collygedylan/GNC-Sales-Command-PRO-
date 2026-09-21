@@ -204,6 +204,12 @@ test('Common Name replaces obsolete search and navigation work and resumes after
     hidden = false; document.dispatchEvent(new Event('visibilitychange'));
     delete (document as unknown as Record<string, unknown>).hidden;
   });
+  // Exercise the passive chat refresh that used to force a foreground read and
+  // repeatedly invalidate this unchanged inventory list while it was preparing.
+  await page.evaluate(async () => {
+    await window.eval('runChatBackgroundPoll()');
+    window.eval('ensureChatBackgroundSync("test-resume", 0)');
+  });
   await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);
