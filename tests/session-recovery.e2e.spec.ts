@@ -120,7 +120,7 @@ async function harness(page: Page, baseURL: string) {
     }
     // Check the far end of the grid is reachable; the test opens an early tile natively.
     if (checkReachability && views.length) await page.locator(tileSelector(views.at(-1)!, dynamic)).click({ trial: true });
-    for (const removed of ['docks', 'communication', 'reports', 'building']) {
+    for (const removed of ['bunch-note', 'docks', 'communication', 'reports', 'building']) {
       await expect(page.locator(tileSelector(removed, dynamic))).toHaveCount(0);
     }
     await expect(page.locator(dynamic ? '#home-dashboard-content' : '#home-dynamic-content')).toBeHidden();
@@ -206,7 +206,7 @@ test('HL Order Home tile requires the active Dylan native profile and disappears
     nativeAuthProfile = { id: 'synthetic-dylan-hl', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false };
     applyRolePermissions(); renderHome();
   `));
-  await app.assertTiles([...adminViews, 'hl-order', 'bunch-note'], false);
+  await app.assertTiles([...adminViews, 'hl-order'], false);
   await expect(page.locator('#home-tile-hl-order')).toBeVisible();
   await page.evaluate(() => window.eval(`
     nativeAuthProfile.disabled_at = '2026-09-09T00:00:00Z';
