@@ -61,8 +61,8 @@ function bloomRemovalRuntime() {
   ctx.isHlOrderOwnershipCurrent = owner => ctx.owner === owner;
   ctx.crypto = {randomUUID:()=> '30000000-0000-4000-8000-000000000099'};
   ctx.entries = [
-    {source_id:'soc-a',status:'ready',quantity:3,ship_date:'2026-09-15',source:row('soc-a'),po_balance:{status:'unknown'}},
-    {source_id:'soc-b',status:'needs_review',quantity:4,ship_date:'2026-09-16',source:row('soc-b')},
+    {source_id:'soc-a',status:'ready',can_remove:true,quantity:3,ship_date:'2026-09-15',source:row('soc-a'),po_balance:{status:'unknown'}},
+    {source_id:'soc-b',status:'needs_review',can_remove:false,removal_block_reason:'HL_ORDER_DELIVERY_UNKNOWN',quantity:4,ship_date:'2026-09-16',source:row('soc-b')},
   ];
   vm.runInContext('hlOrderStateData={revision:4,draft:entries,orders:[]}; syncHlOrderDraftSelections();',ctx);
   ctx.selectedItems.add('ordinary-a'); ctx.selectedItemSources.set('ordinary-a','drive');
@@ -150,6 +150,22 @@ test('a definite rejection during Bloom reconciliation releases the pending UI w
   assert.equal(ctx.selectedItems.has('ordinary-a'),true);
 });
 const groups = (ctx, rows) => Array.from(ctx.groupHlOrderRows(rows.map((entry) => ctx.getHlOrderSource(entry))));
+
+test('unsent review drafts can leave Bloom without enabling quantity edits or resolving review', async () => {
+  const {ctx,elements}=bloomRemovalRuntime();
+  ctx.entries[1].can_remove=true; ctx.entries[1].removal_block_reason=null;
+  assert.equal(ctx.isHlBloomDraftEditable(ctx.entries[1]),false);
+  assert.equal(ctx.isHlBloomDraftRemovable(ctx.entries[1]),true);
+  assert.equal(ctx.isHlBloomDraftRemovable({status:'ready'}),false);
+  const calls=[];
+  ctx.supabaseRpc=async(_method,command)=>{calls.push(command);return {revision:5,draft:[],orders:[],dispositions:[{source_id:'soc-b',status:'needs_review'}]};};
+  await ctx.clearBloomPickerSelection();
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].p_action,'draft_clear');
+  assert.deepEqual(Array.from(calls[0].p_payload.source_ids),['soc-a','soc-b']);
+  assert.equal(elements.every(row=>row.removed),true);
+  assert.equal(vm.runInContext('hlOrderStateData.dispositions[0].status',ctx),'needs_review');
+});
 
 test('HL eligibility retains exact location boundaries and dock OR planned start', () => {
   const ctx = runtime();

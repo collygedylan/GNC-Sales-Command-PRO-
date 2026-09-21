@@ -6396,8 +6396,23 @@ body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-ope
 }
 
 @media (min-width: 1100px) {
-  body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home #home-dashboard-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home :is(#home-dashboard-grid, #home-rep-dashboard-grid) {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-content: start !important;
+    gap: var(--home-fit-row-gap, 8px) var(--home-fit-col-gap, 10px) !important;
+  }
+
+  body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home :is(#home-dashboard-grid, #home-rep-dashboard-grid) > :is(div, button) {
+    flex: 0 0 var(--home-fit-card-width, 160px) !important;
+    width: var(--home-fit-card-width, 160px) !important;
+    height: var(--home-fit-tile-height, 180px) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 44px !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
   }
 }
 

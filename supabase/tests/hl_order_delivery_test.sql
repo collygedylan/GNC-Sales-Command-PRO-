@@ -84,6 +84,7 @@ select pg_temp.hld_check((select count(*)=1 from public.ph_request_delivery_outb
 select pg_temp.hld_check((select count(*)=0 from public.get_request_delivery_recovery_queue() where event_type like 'hl_order_%'),'manager definer recovery queue excludes HL');
 select pg_temp.hld_check((select count(*)=1 from public.get_request_delivery_recovery_queue() where event_id='98000000-0000-0000-0000-000000000005'),'manager recovery queue retains ordinary failed request');
 select pg_temp.hld_reject('select public.hl_order_state()','HL_ORDER_FORBIDDEN');
+select pg_temp.hld_reject('select public.hl_order_command(gen_random_uuid(),''draft_clear'',''{"source_ids":["HL-DELIVERY-SOC"]}'',0)','HL_ORDER_FORBIDDEN');
 select pg_temp.hld_reject('select public.requeue_request_delivery(event_id) from hl_delivery_context','DELIVERY_EVENT_NOT_RECOVERABLE');
 select pg_temp.hld_check(public.requeue_request_delivery('98000000-0000-0000-0000-000000000005')->>'status'='pending','ordinary request recovery remains usable');
 reset role;
@@ -105,6 +106,7 @@ select set_config('request.jwt.claims',jsonb_set(current_setting('request.jwt.cl
 set local role authenticated;
 select pg_temp.hld_check((select count(*)=0 from public.ph_request_delivery_outbox where event_type like 'hl_order_%'),'Dylan with revoked native session sees no HL outbox rows');
 select pg_temp.hld_reject('select public.hl_order_state()','HL_ORDER_FORBIDDEN');
+select pg_temp.hld_reject('select public.hl_order_command(gen_random_uuid(),''draft_clear'',''{"source_ids":["HL-DELIVERY-SOC"]}'',0)','HL_ORDER_FORBIDDEN');
 reset role;
 select pg_temp.hld_identity();
 select set_config('request.jwt.claims',jsonb_set(current_setting('request.jwt.claims')::jsonb,'{iss}','"https://untrusted.invalid/auth/v1"')::text,true);
@@ -115,7 +117,12 @@ select pg_temp.hld_reject('select public.hl_order_state()','HL_ORDER_FORBIDDEN')
 select pg_temp.hld_identity();
 update public.profiles set must_change_password=true where username='dylan_collyge';
 select pg_temp.hld_reject('select public.hl_order_state()','HL_ORDER_FORBIDDEN');
+select pg_temp.hld_reject('select public.hl_order_command(gen_random_uuid(),''draft_clear'',''{"source_ids":["HL-DELIVERY-SOC"]}'',0)','HL_ORDER_FORBIDDEN');
 update public.profiles set must_change_password=false where username='dylan_collyge';
+select pg_temp.hld_check(not has_function_privilege('authenticated','hl_order_private.draft_removal_block_reason(text)','EXECUTE')
+  and not has_function_privilege('authenticated','hl_order_private.command_before_po(uuid,text,jsonb,bigint)','EXECUTE')
+  and not has_function_privilege('anon','public.hl_order_command(uuid,text,jsonb,bigint)','EXECUTE'),
+  'new removal helpers remain private and anonymous removal remains forbidden');
 set local role anon;
 do $$ begin
   begin perform event_id from public.ph_request_delivery_outbox; raise exception 'Expected anonymous denial';

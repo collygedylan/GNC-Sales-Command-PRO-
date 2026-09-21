@@ -429,7 +429,11 @@ test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves l
   let sequence=0;
   const seed=(action:string,payload:any)=>fixture.command({p_command_id:`20000000-0000-4000-8000-${String(++sequence).padStart(12,'0')}`,
     p_action:action,p_payload:payload,p_expected_revision:fixture.state.revision});
-  seed('draft_save',{rows:[{source_id:'hl-a',quantity:6},{source_id:'hl-b',quantity:5}]});
+  seed('draft_save',{rows:[{source_id:'hl-b',quantity:5}]});
+  const pendingPreview=seed('preview',{ship_date:'2026-09-15'});
+  seed('submit',{preview_id:pendingPreview.preview.id});
+  fixture.deliver('delivery_unknown');
+  seed('draft_save',{rows:[{source_id:'hl-a',quantity:6}]});
   seed('restock_draft_save',{ship_date:'2026-09-16',rows:[{itemcode:'SYNTH.003',size:'#3',quantity:8}],inventory_snapshot:fixture.inventorySnapshot});
   fixture.state.draft.find((row:any)=>row.source_id==='hl-b').status='needs_review';
   fixture.state.dispositions.find((row:any)=>row.source_id==='hl-b').status='needs_review';
@@ -442,7 +446,7 @@ test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves l
   if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(3);
   const locked=page.locator('[data-hl-draft-source-id="hl-b"]');
-  await expect(locked).toContainText('Needs Review');
+  await expect(locked).toContainText('Waiting for delivery reconciliation');
   await expect(locked.getByRole('button',{name:'Remove from Bloom Picker',exact:true})).toBeDisabled();
   await locked.evaluate(row => {
     const surface=row.querySelector('.bloom-picker-tray-surface')!;
@@ -471,11 +475,47 @@ test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves l
   expect(actions(fixture,'draft_clear')[0].p_payload.source_ids).not.toContain('hl-b');
   expect(await page.evaluate(()=>window.eval('selectedItems.has(window.__clearLocalId)'))).toBe(false);
   await expect.poll(()=>page.evaluate(()=>window.eval('hlRestockState?.items[0]?.saved_quantity'))).toBe(0);
-  expect(actions(fixture,'submit')).toHaveLength(0); expect(actions(fixture,'receive')).toHaveLength(0);
+  expect(actions(fixture,'submit')).toHaveLength(1); expect(actions(fixture,'receive')).toHaveLength(0);
   await reloadHl(page,fixture);
   if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(1);
-  await expect(locked).toContainText('Needs Review');
+  await expect(locked).toContainText('Waiting for delivery reconciliation');
+  assertIsolated(fixture);
+});
+
+test('unsent Needs Review rows leave Bloom through swipe and Clear while review survives reload', async ({page,baseURL}) => {
+  const fixture=await installHlOrderFixture(page,baseURL!);
+  fixture.command({p_command_id:'20000000-0000-4000-8000-000000009001',p_action:'draft_save',
+    p_payload:{rows:[{source_id:'hl-a',quantity:6},{source_id:'hl-b',quantity:5}]},p_expected_revision:fixture.state.revision});
+  fixture.markChanged('hl-a',{quantityordered:'11'});
+  fixture.markChanged('hl-b',{stopnumber:'9'});
+  const reviewBefore=JSON.stringify(fixture.state.dispositions);
+  await openHl(page);
+  if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
+  const row=page.locator('[data-hl-draft-source-id="hl-a"]');
+  await expect(row.locator('[data-hl-draft-quantity]')).toBeDisabled();
+  await expect(row.getByRole('button',{name:'Remove from Bloom Picker',exact:true})).toBeEnabled();
+  await row.evaluate(element=>{
+    const surface=element.querySelector('.bloom-picker-tray-surface')!;
+    for(const [type,x] of [['touchstart',300],['touchmove',210],['touchend',210]] as const){
+      const event=new Event(type,{bubbles:true,cancelable:true});
+      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:200}]});
+      surface.dispatchEvent(event);
+    }
+  });
+  await expect(row).toHaveClass(/swipe-open/);
+  await row.getByRole('button',{name:'Remove HL row via swipe',exact:true}).click();
+  await expect(row).toHaveCount(0);
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(1);
+  await page.locator('#bloom-picker-clear').click();
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(0);
+  expect(JSON.stringify(fixture.state.dispositions)).toBe(reviewBefore);
+  expect(actions(fixture,'draft_clear')).toHaveLength(2);
+  expect(actions(fixture,'resolve_review')).toHaveLength(0);
+  await reloadHl(page,fixture);
+  await page.locator('[data-hl-tab="needs-review"]').click();
+  await expect(page.locator('[data-hl-review-source-id]')).toHaveCount(2);
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(0);
   assertIsolated(fixture);
 });
 

@@ -147,10 +147,15 @@ begin
 end $test$;
 
 -- Compare every existing field after mixed seasons, receipts, corrections,
--- additions and review imports. Only the additive report identity is new.
+-- additions and review imports. Report identity and removal capability metadata
+-- are additive; no existing field, saved source or array ordering may change.
 with base as materialized (select hl_order_private.state_json_before_restock() s),
-expected as (select s || jsonb_build_object('draft', coalesce((select jsonb_agg(d || jsonb_build_object('source_kind',coalesce(d->'source'->>'source_kind','soc'))) from jsonb_array_elements(s->'draft') d),'[]'::jsonb)) s from base)
-select pg_temp.hl_check((hl_order_private.state_json()-'po_report')=s,'Materialized response preserves every existing state field') from expected;
+expected as (select s || jsonb_build_object('draft', coalesce((select jsonb_agg(d || jsonb_build_object('source_kind',coalesce(d->'source'->>'source_kind','soc'))) from jsonb_array_elements(s->'draft') d),'[]'::jsonb)) s from base),
+actual as materialized (select hl_order_private.state_json() s)
+select pg_temp.hl_check(jsonb_set(actual.s-'po_report','{draft}',coalesce((
+  select jsonb_agg(d.value-'can_remove'-'removal_block_reason' order by d.ordinality)
+  from jsonb_array_elements(actual.s->'draft') with ordinality d),'[]'))=expected.s,
+  'Materialized response preserves every existing state field') from expected cross join actual;
 select pg_temp.hl_check(hl_order_private.state_json()->'po_report'->>'source_format'='pdf','State identifies the active confirmed PDF');
 select '1..'||count(*) from hl_checks;
 select 'ok '||id||' - '||description from hl_checks order by id;

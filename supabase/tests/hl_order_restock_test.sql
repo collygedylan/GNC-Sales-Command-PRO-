@@ -133,6 +133,9 @@ begin
   perform pg_temp.hl_check((select quantity=7 from hl_order_private.drafts where source_id=source_id_value),'explicit saved edit replaces that reservation');
   perform public.hl_order_state();
   perform pg_temp.hl_check((select status='draft' from hl_order_private.dispositions where source_id=source_id_value),'SOC source reconciliation ignores genuine restock intents');
+  perform pg_temp.hl_check((select d->'can_remove'='true'::jsonb and d->'removal_block_reason'='null'::jsonb
+    from jsonb_array_elements(public.hl_order_state()->'draft') d where d->>'source_id'=second_id),
+    'ordinary restock draft receives server removal permission');
   perform pg_temp.hl_command('draft_clear',jsonb_build_object('source_ids',jsonb_build_array(second_id)));
   perform pg_temp.hl_check((pg_temp.restock_item('REST.A')->>'saved_quantity')::numeric=7,'clearing restock draft restores available reservation');
   p:=pg_temp.hl_command('preview','{"ship_date":"2026-09-15"}');

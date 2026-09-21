@@ -716,7 +716,7 @@ test('final responsive shell measures every Home row against the fixed quick bar
   assert.match(finalCascade, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\), minmax\(0, 1fr\)\)/);
   assert.match(finalCascade, /grid-auto-rows: var\(--home-fit-tile-height, 44px\)/);
   assert.match(finalCascade, /min-height: 44px !important;[\s\S]*max-height: none !important/);
-  assert.match(finalCascade, /@media \(min-width: 1100px\)[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(finalCascade, /@media \(min-width: 1100px\)[\s\S]*flex-wrap: wrap !important;[\s\S]*justify-content: center !important;[\s\S]*width: var\(--home-fit-card-width/);
   assert.doesNotMatch(finalCascade, /max-height: 210px/);
 });
 
@@ -1000,6 +1000,16 @@ test('V16 Drive controls share one horizontal rail and Home uses measured adapti
   assert.match(html, /document\.fonts\.addEventListener\('loadingdone'/);
   assert.match(css, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\)/);
   assert.match(css, /current-view-home\.home-dashboard-mode[\s\S]*#main-scroll-area \{[\s\S]*overflow: hidden !important/);
+});
+
+test('desktop Home balances authorized module counts without forcing six columns', () => {
+  const body=html.match(/function getHomeDesktopColumnCount\(count\) \{([\s\S]*?)\n        \}/)[1];
+  const columns=new Function('count',body);
+  for(const [count,expected] of [[6,6],[7,4],[8,4],[9,5],[10,5],[11,6],[12,6]]) {
+    assert.equal(columns(count),expected);
+    const rows=Math.ceil(count/expected);
+    assert.ok(rows===1 || expected-(count-expected)<=1);
+  }
 });
 
 test('V15 Chat and navigation are measured against the visible viewport', () => {

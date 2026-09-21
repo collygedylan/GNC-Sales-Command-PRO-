@@ -81,6 +81,10 @@ export function createHlOrderState(options = {}) {
   const sourceMap = new Map(sourceRows.map((row) => [row.source_id, clone(row)]));
   const source = (id) => sourceMap.get(id);
   const disposition = (id) => state.dispositions.find((entry) => entry.source_id === id);
+  const deliveryLocked = (id) => state.orders.some(order => order.lines.some(line => line.source_id === id && (
+    state.batches.some(batch => batch.id === line.batch_id && batch.status !== 'sent')
+    || order.cancellations.some(cancellation => cancellation.status !== 'sent' && cancellation.lines.some(entry => entry.line_id === line.id))
+  )));
   const problem = (message) => { const error = new Error(message); error.status = 409; throw error; };
   control.restockItems = clone(options.restockItems || []);
   control.restockReads = 0;
@@ -109,6 +113,10 @@ export function createHlOrderState(options = {}) {
     };
     snapshot.actionable_rows = snapshot.actionable_rows.filter((row) => membership.has(row.itemcode.toUpperCase()));
     snapshot.actionable_rows.forEach(annotate); snapshot.draft.forEach(annotate);
+    snapshot.draft.forEach(row => {
+      row.can_remove = !deliveryLocked(row.source_id) && ['ready', 'draft', 'needs_review'].includes(row.status);
+      row.removal_block_reason = deliveryLocked(row.source_id) ? 'HL_ORDER_DELIVERY_UNKNOWN' : row.can_remove ? null : 'HL_ORDER_SOURCE_REVIEW_REQUIRED';
+    });
     snapshot.orders.forEach((order) => { order.batches = snapshot.batches.filter((batch) => batch.order_id === order.id); order.lines.forEach(annotate); });
     return snapshot;
   };
@@ -174,8 +182,10 @@ export function createHlOrderState(options = {}) {
       }
     } else if (action === 'draft_clear') {
       const ids = payload.source_ids || [];
+      if (ids.some(id => deliveryLocked(id))) problem('HL_ORDER_DELIVERY_UNKNOWN');
+      if (ids.some(id => !state.draft.some(row => row.source_id === id && ['ready', 'draft', 'needs_review'].includes(row.status)))) problem('HL_ORDER_SOURCE_REVIEW_REQUIRED');
       state.draft = state.draft.filter((row) => !ids.includes(row.source_id));
-      ids.forEach((id) => { if (disposition(id)) disposition(id).status = 'needed'; });
+      ids.forEach((id) => { if (disposition(id) && disposition(id).status !== 'needs_review') disposition(id).status = 'needed'; });
     } else if (action === 'dismiss' || action === 'restore') {
       for (const id of payload.source_ids || []) {
         if (disposition(id)) disposition(id).status = action === 'dismiss' ? 'removed' : 'needed';

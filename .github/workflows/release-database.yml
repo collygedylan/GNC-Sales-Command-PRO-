@@ -147,6 +147,7 @@ jobs:
           cp supabase/migrations/20260921034331_sales_history_permanent_credit_workflow.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260921034349_production_workflow_and_atomic_inventory_audit.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260921034506_navigation_preferences_and_live_view_grants.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260921123226_hl_draft_review_removal.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'

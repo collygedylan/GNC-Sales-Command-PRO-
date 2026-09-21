@@ -114,6 +114,22 @@ async function harness(page: Page, baseURL: string) {
     const grid = page.locator(dynamic ? '#home-rep-dashboard-grid' : '#home-dashboard-grid');
     if (views.length) await expect(grid).toBeVisible(); else await expect(grid).toBeAttached();
     await expect(grid.locator(':scope > button:visible')).toHaveCount(views.length);
+    if (page.viewportSize()!.width >= 1100 && views.length) {
+      await page.mouse.move(1,1); // Measure resting cards, outside their hover animation.
+      await expect.poll(() => grid.evaluate((element) => {
+        const cards=Array.from(element.children).filter(child=>(child as HTMLElement).offsetWidth>0);
+        const rects=cards.map(card=>card.getBoundingClientRect());
+        const bounds=element.getBoundingClientRect();
+        const rows=new Map<number,DOMRect[]>();
+        rects.forEach(rect=>{ const top=Math.round(rect.top); rows.set(top,[...(rows.get(top)||[]),rect]); });
+        const sizes=[...rows.values()].map(row=>row.length);
+        const center=bounds.left+bounds.width/2;
+        return sizes.length===Math.ceil(cards.length/6) && Math.max(...sizes)-Math.min(...sizes)<=1
+          && Math.max(...sizes)<=6 && Math.max(...rects.map(rect=>rect.width))-Math.min(...rects.map(rect=>rect.width))<2
+          && [...rows.values()].every(row=>Math.abs((row[0].left+row.at(-1)!.right)/2-center)<2)
+          && rects.every(rect=>rect.width>=44 && rect.height>=44 && rect.bottom<=document.getElementById('bottom-nav')!.getBoundingClientRect().top);
+      }), 'desktop Home rows must be balanced, centered and clear of the footer').toBe(true);
+    }
     for (const view of views) {
       const tile = page.locator(tileSelector(view, dynamic));
       await expect(tile, `${view} must be visible through every ancestor`).toBeVisible();

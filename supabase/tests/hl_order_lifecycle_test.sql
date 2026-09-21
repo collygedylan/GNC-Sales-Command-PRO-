@@ -215,6 +215,136 @@ begin
   perform pg_temp.hl_command('resolve_review','{"source_id":"HL-LATE-CANCEL","resolution":"removed"}');
   perform pg_temp.hl_reject('restore','{"source_ids":["HL-LATE-CANCEL"]}','HL_ORDER_SOURCE_REVIEW_REQUIRED');
 end $test$;
+
+-- Picker removal keeps source review/history independent of a saved selection.
+insert into public.ph_soc_master(unique_id,itemcode,contsize,locationcode,lotcode,quantityordered,dock,stopnumber,planstart,transactionnumber,customername)
+select id,id,'#3','C.12.4','27.F1','10','D1','S1',day,'ORDER-'||id,'Clear fixture'
+from (values('HL-CLEAR-READY','2031-09-01'),('HL-CLEAR-CHANGE','2031-09-01'),
+ ('HL-CLEAR-MISSING','2031-09-01'),('HL-CLEAR-REPLACE','2031-09-01'),
+ ('HL-CLEAR-LOCK','2032-01-01'),('HL-CLEAR-CANCEL','2032-02-01')) f(id,day);
+insert into public.ph_27f1_hl_po(source_file_id,row_index,run_id,item_code,size,lot,po_remain,imported_po_remain)
+select 'hl-fixture',1000+row_number() over(order by itemcode)::int,'hl-fixture',itemcode,'#3','27.F1',2000,2000
+from public.ph_soc_master where unique_id like 'HL-CLEAR-%';
+
+do $draft_removal$
+<<draft_removal>>
+declare s jsonb; preview jsonb; command_id uuid; rev bigint; result jsonb; original_drafts jsonb;
+  review_before jsonb; unrelated_before jsonb; history_before jsonb;
+  submission_id uuid; order_id_value uuid; line_id_value uuid; cancellation_id_value uuid; event_id_value uuid;
+  lock_status text; locked_draft jsonb; history_count bigint; request jsonb;
+begin
+  s:=pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-CLEAR-READY","quantity":3},{"source_id":"HL-CLEAR-CHANGE","quantity":4},{"source_id":"HL-CLEAR-MISSING","quantity":5},{"source_id":"HL-CLEAR-REPLACE","quantity":6}]}');
+  perform pg_temp.hl_check((select bool_and(d ? 'can_remove' and d ? 'removal_block_reason') from jsonb_array_elements(s->'draft') d),
+    'every saved draft receives explicit server removal capability');
+  perform pg_temp.hl_check((select d->'can_remove'='true'::jsonb and d->'removal_block_reason'='null'::jsonb
+    from jsonb_array_elements(s->'draft') d where d->>'source_id'='HL-CLEAR-READY'),'ordinary draft can be removed');
+  preview:=pg_temp.hl_command('preview','{"ship_date":"2031-09-01"}')->'preview';
+  select jsonb_agg(to_jsonb(d) order by source_id) into original_drafts from hl_order_private.drafts d where source_id in ('HL-CLEAR-CHANGE','HL-CLEAR-MISSING','HL-CLEAR-REPLACE');
+  update public.ph_soc_master set quantityordered='12',stopnumber='S2' where unique_id='HL-CLEAR-CHANGE';
+  delete from public.ph_soc_master where unique_id='HL-CLEAR-MISSING';
+  update public.ph_soc_master set unique_id='HL-CLEAR-CANDIDATE',dock='D2' where unique_id='HL-CLEAR-REPLACE';
+  s:=public.hl_order_state();
+  perform pg_temp.hl_check((select count(*)=3 and bool_and(d->>'status'='needs_review' and d->'can_remove'='true'::jsonb and d->'removal_block_reason'='null'::jsonb)
+    from jsonb_array_elements(s->'draft') d where d->>'source_id' in ('HL-CLEAR-CHANGE','HL-CLEAR-MISSING','HL-CLEAR-REPLACE')),
+    'changed, vanished and replacement-candidate drafts remain removable');
+  perform pg_temp.hl_check((select d->'replacement_candidates'->0->>'source_id'='HL-CLEAR-CANDIDATE'
+    from jsonb_array_elements(s->'dispositions') d where d->>'source_id'='HL-CLEAR-REPLACE'),
+    'missing source exposes the genuine candidate before Picker removal');
+  -- An existing historical replacement link is retained too; clearing is not a
+  -- replacement-resolution operation, even on a legacy saved review draft.
+  update hl_order_private.dispositions set replacement_source_id='HL-CLEAR-CANDIDATE' where source_id='HL-CLEAR-REPLACE';
+  select jsonb_agg(to_jsonb(d) order by source_id) into review_before from hl_order_private.dispositions d
+    where source_id in ('HL-CLEAR-CHANGE','HL-CLEAR-MISSING','HL-CLEAR-REPLACE','HL-CLEAR-CANDIDATE');
+  select coalesce(jsonb_agg(to_jsonb(d) order by source_id),'[]') into unrelated_before from hl_order_private.drafts d where source_id not like 'HL-CLEAR-%';
+  select coalesce(jsonb_agg(to_jsonb(h) order by id),'[]') into history_before from hl_order_private.history h;
+  perform pg_temp.hl_reject('draft_clear','{"source_ids":["HL-CLEAR-CHANGE","HL-CLEAR-CHANGE"]}','HL_ORDER_INVALID_COMMAND');
+  perform pg_temp.hl_check(exists(select 1 from hl_order_private.drafts where source_id='HL-CLEAR-CHANGE'),
+    'duplicate row IDs roll back the entire removal command');
+  perform pg_temp.hl_reject('draft_clear','{"source_ids":["HL-CLEAR-NOT-SAVED"]}','HL_ORDER_SOURCE_REVIEW_REQUIRED');
+  rev:=(public.hl_order_state()->>'revision')::bigint; command_id:=gen_random_uuid();
+  request:='{"source_ids":["HL-CLEAR-CHANGE","HL-CLEAR-MISSING","HL-CLEAR-REPLACE"]}';
+  result:=public.hl_order_command(command_id,'draft_clear',request,rev);
+  perform pg_temp.hl_check((result->>'revision')::bigint=rev+1,'review draft removal increments revision once and invalidates previews');
+  perform pg_temp.hl_check(public.hl_order_command(command_id,'draft_clear',request,rev)=result,'duplicate remove command replays exact response despite stale revision');
+  begin perform public.hl_order_command(command_id,'draft_clear','{"source_ids":["HL-CLEAR-READY"]}',rev); raise exception 'Expected command conflict';
+  exception when sqlstate '22023' then perform pg_temp.hl_check(sqlerrm='HL_ORDER_COMMAND_ID_CONFLICT','removal command ID cannot be reused for another selection'); end;
+  begin perform public.hl_order_command(gen_random_uuid(),'draft_clear','{"source_ids":["HL-CLEAR-READY"]}',rev); raise exception 'Expected stale remove rejection';
+  exception when serialization_failure then perform pg_temp.hl_check(sqlerrm='HL_ORDER_REVISION_CONFLICT','a stale tab cannot clear a different selection'); end;
+  perform pg_temp.hl_check((select jsonb_agg(to_jsonb(d) order by source_id)=review_before from hl_order_private.dispositions d
+    where source_id in ('HL-CLEAR-CHANGE','HL-CLEAR-MISSING','HL-CLEAR-REPLACE','HL-CLEAR-CANDIDATE')),
+    'review reasons, quantities, snapshots, fingerprints, timestamps and replacement links remain unchanged');
+  perform pg_temp.hl_check((select payload->'removed_drafts'=original_drafts from hl_order_private.history h where h.command_id=draft_removal.command_id),
+    'removal audit retains each complete saved draft, source snapshot and quantity');
+  perform pg_temp.hl_check((select count(*)=1 from hl_order_private.history h where h.command_id=draft_removal.command_id),
+    'remove replay does not duplicate audit history');
+  perform pg_temp.hl_check((select coalesce(jsonb_agg(to_jsonb(h) order by id),'[]')=history_before from hl_order_private.history h where h.command_id is distinct from draft_removal.command_id),
+    'existing review and order history remains byte-for-byte unchanged');
+  s:=public.hl_order_state();
+  perform pg_temp.hl_check(not exists(select 1 from jsonb_array_elements(s->'draft') d where d->>'source_id' in ('HL-CLEAR-CHANGE','HL-CLEAR-MISSING','HL-CLEAR-REPLACE')),
+    'review selections stay out of Picker after state refresh');
+  perform pg_temp.hl_check((select count(*)=4 from jsonb_array_elements(s->'dispositions') d
+    where d->>'source_id' in ('HL-CLEAR-CHANGE','HL-CLEAR-MISSING','HL-CLEAR-REPLACE','HL-CLEAR-CANDIDATE') and d->>'status'='needs_review'),
+    'all review records and the possible replacement remain in Needs Review');
+  perform pg_temp.hl_check((select coalesce(jsonb_agg(to_jsonb(d) order by source_id),'[]')=unrelated_before from hl_order_private.drafts d where source_id not like 'HL-CLEAR-%'),
+    'clearing review selections preserves unrelated Picker drafts');
+  perform pg_temp.hl_reject('draft_save','{"rows":[{"source_id":"HL-CLEAR-CANDIDATE","quantity":1}]}','HL_ORDER_SOURCE_REVIEW_REQUIRED');
+  perform pg_temp.hl_reject('submit',jsonb_build_object('preview_id',preview->>'id'),'HL_ORDER_PREVIEW_STALE');
+  perform pg_temp.hl_command('draft_clear','{"source_ids":["HL-CLEAR-READY"]}');
+  perform pg_temp.hl_check((select status='needed' and available_quantity=10 from hl_order_private.dispositions where source_id='HL-CLEAR-READY')
+    and not exists(select 1 from hl_order_private.drafts where source_id='HL-CLEAR-READY'),'ordinary clearing still returns unchanged demand to Needed');
+
+  -- A source refresh must not turn a queued/failed/uncertain delivery into an
+  -- unlocked review draft. Exercise the real removal command for each status.
+  perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-CLEAR-LOCK","quantity":4},{"source_id":"HL-CLEAR-READY","quantity":3}]}');
+  preview:=pg_temp.hl_command('preview','{"ship_date":"2032-01-01"}')->'preview';
+  submission_id:=(preview->'report'->>'batch_id')::uuid;
+  perform pg_temp.hl_command('submit',jsonb_build_object('preview_id',preview->>'id'));
+  update public.ph_soc_master set quantityordered='12' where unique_id='HL-CLEAR-LOCK';
+  perform public.hl_order_state();
+  select to_jsonb(d) into locked_draft from hl_order_private.drafts d where source_id='HL-CLEAR-LOCK';
+  foreach lock_status in array array['queued','failed','delivery_unknown'] loop
+    update hl_order_private.submission_batches set status=lock_status where id=submission_id;
+    s:=public.hl_order_state();
+    perform pg_temp.hl_check((select d->>'status'='needs_review' and d->'can_remove'='false'::jsonb and d->>'removal_block_reason'='HL_ORDER_DELIVERY_UNKNOWN'
+      from jsonb_array_elements(s->'draft') d where d->>'source_id'='HL-CLEAR-LOCK'),'submission '||lock_status||' locks removal regardless of review status');
+    perform pg_temp.hl_reject('draft_clear','{"source_ids":["HL-CLEAR-LOCK"]}','HL_ORDER_DELIVERY_UNKNOWN');
+  end loop;
+  rev:=(public.hl_order_state()->>'revision')::bigint;
+  select count(*) into history_count from hl_order_private.history;
+  perform pg_temp.hl_reject('draft_clear','{"source_ids":["HL-CLEAR-READY","HL-CLEAR-LOCK"]}','HL_ORDER_DELIVERY_UNKNOWN');
+  perform pg_temp.hl_check(exists(select 1 from hl_order_private.drafts where source_id='HL-CLEAR-READY')
+    and (select to_jsonb(d)=locked_draft from hl_order_private.drafts d where source_id='HL-CLEAR-LOCK')
+    and (select revision=rev from hl_order_private.state where singleton)
+    and (select count(*)=history_count from hl_order_private.history),'mixed locked/unlocked removal rolls back drafts, revision and audit atomically');
+
+  -- A sent original line can have a later draft when SOC demand grows. Pending
+  -- cancellation of that original line must also lock the later selection.
+  perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-CLEAR-CANCEL","quantity":4}]}');
+  preview:=pg_temp.hl_command('preview','{"ship_date":"2032-02-01"}')->'preview';
+  perform pg_temp.hl_command('submit',jsonb_build_object('preview_id',preview->>'id'));
+  select b.order_id,b.event_id,l.id into order_id_value,event_id_value,line_id_value from hl_order_private.submission_batches b
+    join hl_order_private.order_lines l on l.batch_id=b.id where l.source_id='HL-CLEAR-CANCEL';
+  perform pg_temp.hl_confirm(event_id_value);
+  update public.ph_soc_master set quantityordered='12' where unique_id='HL-CLEAR-CANCEL';
+  perform public.hl_order_state();
+  perform pg_temp.hl_command('resolve_review','{"source_id":"HL-CLEAR-CANCEL","resolution":"needed"}');
+  perform pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-CLEAR-CANCEL","quantity":2}]}');
+  preview:=pg_temp.hl_command('cancellation_preview',jsonb_build_object('order_id',order_id_value,'reason','Cancellation lock fixture',
+    'lines',jsonb_build_array(jsonb_build_object('line_id',line_id_value,'quantity',2))))->'preview';
+  cancellation_id_value:=(preview->'report'->>'cancellation_id')::uuid;
+  perform pg_temp.hl_command('cancellation_submit',jsonb_build_object('preview_id',preview->>'id'));
+  update public.ph_soc_master set stopnumber='S3' where unique_id='HL-CLEAR-CANCEL';
+  perform public.hl_order_state();
+  foreach lock_status in array array['queued','failed','delivery_unknown'] loop
+    update hl_order_private.cancellations set status=lock_status where id=cancellation_id_value;
+    s:=public.hl_order_state();
+    perform pg_temp.hl_check((select d->>'status'='needs_review' and d->'can_remove'='false'::jsonb and d->>'removal_block_reason'='HL_ORDER_DELIVERY_UNKNOWN'
+      from jsonb_array_elements(s->'draft') d where d->>'source_id'='HL-CLEAR-CANCEL'),'cancellation '||lock_status||' locks removal independently of source status');
+    perform pg_temp.hl_reject('draft_clear','{"source_ids":["HL-CLEAR-CANCEL"]}','HL_ORDER_DELIVERY_UNKNOWN');
+  end loop;
+  perform pg_temp.hl_check((select quantity=2 from hl_order_private.drafts where source_id='HL-CLEAR-CANCEL'),
+    'rejected cancellation-locked removals retain the saved quantity');
+end $draft_removal$;
 select '1..'||count(*)::text as tap from hl_checks;
 select 'ok '||id::text||' - '||description as tap from hl_checks order by id;
 rollback;
