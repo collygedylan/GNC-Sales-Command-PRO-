@@ -16,12 +16,14 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 105);
+  assert.equal(migrations.length, 110);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
   }
   for (const filename of [
+    '20260815043342_dylan_live_pilot_preferences.sql',
+    '20260904003007_sales_marketing_and_kayla_limited_access.sql',
     '20260902002912_flatten_eval_reports_2_and_reconcile_work.sql',
     '20260902105411_group_eval_report2_assignment_email.sql',
     '20260910174603_grouped_eval_itemcode_health_contract.sql',
@@ -43,8 +45,14 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     '20260920192648_bunch_note_destinations.sql',
     '20260921011812_bunch_note_phone_steps.sql',
     '20260911152125_restore_sep09_eval_review_compatibility.sql',
+    '20260921034331_sales_history_permanent_credit_workflow.sql',
+    '20260921034349_production_workflow_and_atomic_inventory_audit.sql',
+    '20260921034506_navigation_preferences_and_live_view_grants.sql',
   ]) assert.ok(migrations.includes(filename), `Required migration: ${filename}`);
-  const sqlTests = [...workflow.matchAll(/cp supabase\/tests\/(\S+)/g)].map(match => match[1]);
+  const sqlTests = [
+    ...[...workflow.matchAll(/cp supabase\/tests\/(\S+)/g)].map(match => match[1]),
+    ...[...workflow.matchAll(/"([a-z_]+_test\.sql)": "[a-z_]+_checks"/g)].map(match => match[1]),
+  ];
   assert.deepEqual([...sqlTests].sort(), [
     'bunch_note_workflow_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
     'pikes_orders_rls_test.sql', 'request_eval_drive_reliability_test.sql',
@@ -58,10 +66,20 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     'hl_order_lifecycle_test.sql', 'hl_order_delivery_test.sql', 'hl_order_ship_dates_test.sql', 'hl_order_po_receipts_test.sql',
     'hl_order_restock_test.sql', 'hl_po_seasons_test.sql', 'hl_po_health_test.sql',
     'sep09_eval_review_compatibility_test.sql',
+    'sales_credit_workflow_test.sql', 'navigation_preferences_test.sql', 'production_workflow_test.sql',
   ].sort());
   for (const filename of sqlTests) {
     assert.ok(fs.existsSync(new URL(`../supabase/tests/${filename}`, import.meta.url)), filename);
   }
+  const hlBaseline = workflow.match(/migrations\/(\d+)_hl_order_baseline\.sql/);
+  const salesBaseline = workflow.match(/migrations\/(\d+)_sales_credit_baseline\.sql/);
+  const liveRegistration = migrations.find(filename => filename.endsWith('_live_dataset_revisions.sql'));
+  assert.ok(hlBaseline && salesBaseline && liveRegistration, 'Required source baselines and live-sync migration remain present');
+  assert.ok(hlBaseline[1] < salesBaseline[1] && salesBaseline[1] < liveRegistration.split('_')[0],
+    'Legacy source tables exist before live-sync registration');
+  assert.match(workflow, /source\[:-len\("rollback;"\)\]/, 'TAP envelope retains every original assertion');
+  assert.match(workflow, /ON_ERROR_STOP on/, 'A SQL exception must fail the gate');
+  assert.match(workflow, /select ok\(\(select count\(\*\) > 0 from \{checks_table\}\)/, 'TAP result requires completed assertions');
 });
 
 test('database migration, pgTAP, concurrency, browser, and Edge checks stay serialized', () => {
@@ -71,6 +89,8 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'supabase --workdir "$SUPABASE_CI_ROOT" test db',
     'CI=true EVAL_REVIEW_TEST_DB_URL="$DB_URL" node scripts/test-reclass-review-concurrency.mjs',
     'CI=true HL_ORDER_TEST_DB_URL="$DB_URL" node scripts/test-hl-order-concurrency.mjs',
+    'CI=true BUNCH_NOTE_TEST_DB_URL="$DB_URL" node scripts/test-bunch-note-concurrency.mjs',
+    'CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
     'deno test --allow-env --allow-net supabase/functions',
   ];

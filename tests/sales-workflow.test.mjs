@@ -104,3 +104,35 @@ test('stale reviews return a conflict rather than a success acknowledgement', as
     resolveActiveSessionProfile: async () => ({ id: actorId }), supabase: { rpc: async () => ({ error: { message: 'CREDIT_REVISION_CONFLICT' } }) } });
   assert.equal(response.status, 409);
 });
+
+test('background refresh preserves expanded drafts and does not detach unchanged controls', async () => {
+  const { JSDOM } = await import('jsdom');
+  const { readFileSync } = await import('node:fs');
+  const dom = new JSDOM('<div id="sales-credit-content"></div>', { url: 'https://test.invalid', runScripts: 'outside-only' });
+  const w = dom.window;
+  let count = 1;
+  const calls = [];
+  Object.assign(w, { currentUser: 'rep', APP_API_FUNCTION_URL: '/api', getCurrentVisibleViewId: () => 'sales-credit',
+    postAppFunctionJson: async (_url, request) => {
+      calls.push(request.operation);
+      return { ok: true, data: request.operation === 'drafts' ? { drafts: [{ id: commandId, label: 'Saved customer' }] }
+        : { folders: [{ customerKey: 'customer', label: 'Customer', count }] } };
+    } });
+  w.eval(readFileSync(new URL('../assets/sales-workspace.js', import.meta.url), 'utf8'));
+  try {
+    await w.SalesWorkspace.open('sales-credit');
+    const disclosure = w.document.querySelector('details'); disclosure.open = true;
+    const control = disclosure.querySelector('button');
+    w.SalesWorkspace.applyRefresh(await w.SalesWorkspace.stageRefresh());
+    assert.equal(w.document.querySelector('details button'), control);
+    assert.equal(disclosure.open, true);
+    const reads = calls.length;
+    await w.SalesWorkspace.open('sales-credit');
+    assert.equal(calls.length, reads, 'painting an already loaded view must not reload it');
+    assert.equal(w.document.querySelector('details').open, true);
+    count = 2;
+    w.SalesWorkspace.applyRefresh(await w.SalesWorkspace.stageRefresh());
+    assert.equal(w.document.querySelector('details').open, true, 'changed records retain the expanded draft list');
+    assert.match(w.document.getElementById('sales-credit-content').textContent, /2 records/);
+  } finally { dom.window.close(); }
+});

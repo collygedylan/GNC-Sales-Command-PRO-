@@ -7833,41 +7833,40 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="ops-passkey-note" class="ops-pilot-settings__note" aria-live="polite"></div>
                 </div>
             </div>
-            <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-duotone ph-house"></i> Home</div>
+            <div id="drawer-home-btn" class="drawer-item" onclick="return openDrawerView('home')"><i class="ph-duotone ph-house"></i> Home</div>
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-duotone ph-arrows-clockwise"></i> Force Data Sync</div>
             <div id="drawer-outdoor-mode-btn" class="drawer-item text-emerald-700 font-bold" onclick="return toggleOutdoorMode()" role="button" aria-pressed="false"><i class="ph-duotone ph-sun"></i> <span id="drawer-outdoor-mode-label">Outdoor Mode Off</span></div>
             <div id="drawer-enable-push-btn" class="drawer-item text-blue-600 font-bold" onclick="manuallyEnablePushNotifications(); toggleMenu();"><i class="ph-duotone ph-bell-ringing"></i> Enable Notifications</div>
-            <div id="drawer-communication-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('communication'); toggleMenu();"><i class="ph-duotone ph-chat-circle-dots"></i> Communication</div>
-            <div id="drawer-sales-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('sales'); toggleMenu();"><i class="ph-duotone ph-handshake"></i> Sales</div>
-            <div id="drawer-crop-roll-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" data-role-gated="true" onclick="switchView('crop-roll'); toggleMenu();"><i class="ph-duotone ph-plant"></i> Crop Roll</div>
-            <div id="drawer-managers-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('managers'); toggleMenu();"><i class="ph-duotone ph-users-three"></i> Managers</div>
-            <div id="drawer-building-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('building'); toggleMenu();"><i class="ph-duotone ph-hammer"></i> Building</div>
-            <div id="drawer-qc-btn" class="drawer-item text-orange-700 font-bold role-access hidden" onclick="switchView('qc'); toggleMenu();"><i class="ph-duotone ph-shield-check"></i> QC</div>
+            <div id="drawer-communication-btn" class="drawer-item text-sky-600 font-bold" onclick="return openDrawerView('communication')"><i class="ph-duotone ph-chat-circle-dots"></i> Communication</div>
+            <div id="drawer-sales-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="return openDrawerView('sales')"><i class="ph-duotone ph-handshake"></i> Sales</div>
+            <div id="drawer-crop-roll-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" data-role-gated="true" onclick="return openDrawerView('crop-roll')"><i class="ph-duotone ph-plant"></i> Crop Roll</div>
+            <div id="drawer-managers-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="return openDrawerView('managers')"><i class="ph-duotone ph-users-three"></i> Managers</div>
+            <div id="drawer-qc-btn" class="drawer-item text-orange-700 font-bold role-access hidden" onclick="return openDrawerView('qc')"><i class="ph-duotone ph-shield-check"></i> QC</div>
             <hr class="my-2">
-            <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-rep role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-duotone ph-car"></i> Drive Mode</div>
-            <div id="drawer-tasks-btn" class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-duotone ph-clipboard-text"></i> My Tasks</div>
-            <div id="drawer-bunch-note-btn" class="drawer-item role-access hidden" onclick="switchView('bunch-note'); toggleMenu();"><i class="ph ph-notepad"></i> Bunch Note</div>
-            <div id="drawer-hl-order-btn" class="drawer-item role-access hidden" onclick="switchView('hl-order'); toggleMenu();"><i class="ph-duotone ph-truck"></i> HL Order</div>
-            <div id="drawer-docks-btn" class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-duotone ph-truck"></i> Docks</div>
-            <div id="drawer-take-back-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" data-role-gated="true" onclick="switchView('take-back'); toggleMenu();"><i class="ph-duotone ph-arrow-u-up-left"></i> Take Back</div>
-            <div id="drawer-av-btn" class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-duotone ph-notebook"></i> AV</div>
+            <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-rep role-qc-supervisor hidden" onclick="return openDrawerView('drive')"><i class="ph-duotone ph-car"></i> Drive Mode</div>
+            <div id="drawer-tasks-btn" class="drawer-item role-access role-admin hidden" onclick="return openDrawerView('tasks')"><i class="ph-duotone ph-clipboard-text"></i> My Tasks</div>
+            <div id="drawer-bunch-note-btn" class="drawer-item role-access hidden" onclick="return openDrawerView('bunch-note')"><i class="ph ph-notepad"></i> Bunch Note</div>
+            <div id="drawer-hl-order-btn" class="drawer-item role-access hidden" onclick="return openDrawerView('hl-order')"><i class="ph-duotone ph-truck"></i> HL Order</div>
+            <div id="drawer-docks-btn" class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="return openDrawerView('docks')"><i class="ph-duotone ph-truck"></i> Docks</div>
+            <div id="drawer-take-back-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" data-role-gated="true" onclick="return openDrawerView('take-back')"><i class="ph-duotone ph-arrow-u-up-left"></i> Take Back</div>
+            <div id="drawer-av-btn" class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="return openDrawerView('av')"><i class="ph-duotone ph-notebook"></i> AV</div>
             <hr class="my-2">
-            <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-duotone ph-list-checks"></i> Que</div>
-            <div id="drawer-reserves-btn" class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-duotone ph-bookmark-simple"></i> Reserves</div>
-            <div id="drawer-office-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin role-rep hidden" onclick="switchView('office'); toggleMenu();"><i class="ph-duotone ph-buildings"></i> Office</div>
+            <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="return openDrawerView('request')"><i class="ph-duotone ph-list-checks"></i> Que</div>
+            <div id="drawer-reserves-btn" class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="return openDrawerView('reserves')"><i class="ph-duotone ph-bookmark-simple"></i> Reserves</div>
+            <div id="drawer-office-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin role-rep hidden" onclick="return openDrawerView('office')"><i class="ph-duotone ph-buildings"></i> Office</div>
             <div id="drawer-sales-inventory-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="openInventoryHubView(); toggleMenu();"><i class="ph-duotone ph-storefront"></i> Inventory</div>
-            <div id="drawer-production-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('production'); toggleMenu();"><i class="ph-duotone ph-plant"></i> Production</div>
-            <div id="drawer-disease-pest-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="switchView('disease-pest'); toggleMenu();"><i class="ph-duotone ph-bug"></i> Disease &amp; Pest Management</div>
+            <div id="drawer-production-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="return openDrawerView('production')"><i class="ph-duotone ph-plant"></i> Production</div>
+            <div id="drawer-disease-pest-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="return openDrawerView('disease-pest')"><i class="ph-duotone ph-bug"></i> Disease &amp; Pest Management</div>
             <div id="drawer-sales-office-btn" class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-duotone ph-briefcase"></i> Sales Office</div>
             <div id="drawer-moves-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="openDrawerMovesView()"><i class="ph-duotone ph-map-pin-line"></i> Location Move</div>
-            <div id="drawer-reports-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-duotone ph-chart-bar"></i> Reports</div>
-            <div id="drawer-hours-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-duotone ph-clock"></i> Labor Hours</div>
-            <div id="drawer-low-stock-btn" class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-duotone ph-trend-down"></i> NCR</div>
-            <div id="drawer-review-btn" class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-duotone ph-warning-circle"></i> New Crop Release</div>
-            <div id="drawer-move-up-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('move-up'); toggleMenu();"><i class="ph-duotone ph-arrow-up"></i> Move Up</div>
-            <div id="drawer-advertisement-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('advertisement'); toggleMenu();"><i class="ph-duotone ph-megaphone"></i> Advertisement</div>
-            <div id="drawer-grower-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('grower'); toggleMenu();"><i class="ph-duotone ph-plant"></i> Grower</div>
-            <div id="drawer-pest-management-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="switchView('pest-management'); toggleMenu();"><i class="ph-duotone ph-bug"></i> Pest Management</div>
+            <div id="drawer-reports-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="return openDrawerView('reports')"><i class="ph-duotone ph-chart-bar"></i> Reports</div>
+            <div id="drawer-hours-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="return openDrawerView('hours')"><i class="ph-duotone ph-clock"></i> Labor Hours</div>
+            <div id="drawer-low-stock-btn" class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="return openDrawerView('low-stock')"><i class="ph-duotone ph-trend-down"></i> NCR</div>
+            <div id="drawer-review-btn" class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="return openDrawerView('review')"><i class="ph-duotone ph-warning-circle"></i> New Crop Release</div>
+            <div id="drawer-move-up-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="return openDrawerView('move-up')"><i class="ph-duotone ph-arrow-up"></i> Move Up</div>
+            <div id="drawer-advertisement-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="return openDrawerView('advertisement')"><i class="ph-duotone ph-megaphone"></i> Advertisement</div>
+            <div id="drawer-grower-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="return openDrawerView('grower')"><i class="ph-duotone ph-plant"></i> Grower</div>
+            <div id="drawer-pest-management-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="return openDrawerView('pest-management')"><i class="ph-duotone ph-bug"></i> Pest Management</div>
             <hr class="my-3 border-gray-200">
             <button type="button" class="drawer-item" onclick="return openFooterShortcutSettings()">Customize shortcuts</button>
             <button type="button" class="drawer-item" onclick="toggleCartPanel();setMenuOpenState(false)">Bloom Picker</button>
@@ -7921,7 +7920,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-communication" onclick="switchView('communication')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
                                 <div id="home-tile-sales" onclick="switchView('sales')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph ph-handshake text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales</span></div>
                                 <div id="home-tile-managers" onclick="switchView('managers')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph ph-users-three text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Managers</span></div>
-                                <div id="home-tile-building" onclick="switchView('building')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph ph-hammer text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Building</span></div>
                                 <div id="home-tile-qc" onclick="switchView('qc')" class="bg-white border-2 border-orange-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph ph-shield-check text-3xl text-orange-700"></i><span class="font-bold text-sm text-orange-700 uppercase tracking-wide">QC</span></div>
                                 <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
                                 <div id="home-tile-sales-inventory" onclick="openInventoryHubView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory</span></div>
@@ -25180,10 +25178,13 @@ bindFastInvokeById('drawer-communication-btn', 'openDrawerView', ['communication
 bindFastInvokeById('drawer-sales-btn', 'openDrawerView', ['sales'], 'Sales');
 bindFastInvokeById('drawer-crop-roll-btn', 'openDrawerView', ['crop-roll'], 'Crop Roll');
 bindFastInvokeById('drawer-managers-btn', 'openDrawerView', ['managers'], 'Managers');
-bindFastInvokeById('drawer-building-btn', 'openDrawerView', ['building'], 'Building');
 bindFastInvokeById('drawer-qc-btn', 'openDrawerView', ['qc'], 'QC');
 bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode');
             bindFastInvokeById('drawer-tasks-btn', 'openDrawerView', ['tasks'], 'My Tasks');
+bindFastInvokeById('drawer-bunch-note-btn', 'openDrawerView', ['bunch-note'], 'Bunch Note');
+bindFastInvokeById('drawer-hl-order-btn', 'openDrawerView', ['hl-order'], 'HL Order');
+bindFastInvokeById('drawer-grower-btn', 'openDrawerView', ['grower'], 'Grower');
+bindFastInvokeById('drawer-pest-management-btn', 'openDrawerView', ['pest-management'], 'Pest Management');
             bindFastInvokeById('drawer-docks-btn', 'openDrawerView', ['docks'], 'Docks');
             bindFastInvokeById('drawer-take-back-btn', 'openDrawerView', ['take-back'], 'Take Back');
             bindFastInvokeById('drawer-av-btn', 'openDrawerView', ['av'], 'AV');
@@ -25208,7 +25209,6 @@ bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode'
 bindFastInvokeById('home-tile-communication', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('home-tile-sales', 'switchView', ['sales'], 'Sales');
 bindFastInvokeById('home-tile-managers', 'switchView', ['managers'], 'Managers');
-bindFastInvokeById('home-tile-building', 'switchView', ['building'], 'Building');
 bindFastInvokeById('home-tile-qc', 'switchView', ['qc'], 'QC');
             bindFastInvokeById('home-tile-office', 'switchView', ['office'], 'Office');
             bindFastInvokeById('home-tile-sales-inventory', 'openInventoryHubView', [], 'Inventory');
@@ -31483,7 +31483,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 add(`request:${activeReqTab}`);
                 if (requestDeliveryRecoveryOpen && canManageRequestDeliveryRecovery()) add('request:delivery-recovery');
             }
-            if (view === 'sales-inventory' && productionInventoryTab === 'counting') add('sales-inventory:counting');
+            if (view === 'sales-inventory' && inventoryMainTab === 'production' && productionInventoryTab === 'counting') add('sales-inventory:counting');
             if (view === 'moves' && activeMovesTab === 'office' && normalizeInventoryOfficeApprovalType(activeInventoryOfficeApprovalType) === 'crop-roll') add('moves:crop-roll');
             if (view === 'managers') {
                 add(`managers:${activeHomeTab}`);
@@ -31814,7 +31814,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         if (!result || result.ok === false || result.httpOk === false) throw new Error(result?.message || 'Transaction history could not load.');
                         return { rows: array(result.rows, 'Transaction history'), hasMore: result.hasMore === true, count: result.count };
                     },
-                    commit: (rows) => { stateReady(inventoryTransactionHistoryState, rows); }
+                    commit: (rows) => { stateReady(inventoryTransactionHistoryState, rows); if (typeof refreshInventoryTransactionHistoryResults === 'function') refreshInventoryTransactionHistoryResults(); }
                 },
                 'side:transactionsKeyed': {
                     enabled: () => canViewTransactionsKeyed(), scope: (ctx) => [ctx.transactionsKeyed.selectedDate, ctx.transactionsKeyed.search],
@@ -70003,7 +70003,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function loadProductionWorkflowRows(force = false, type = productionWorkflowActive) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('productionWorkflow', force, { state: productionWorkflowState, context: { productionType: type } }).then(() => productionWorkflowState);
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('productionWorkflow', force || !productionWorkflowState.loaded, { state: productionWorkflowState, context: { productionType: type } }).then(() => productionWorkflowState);
             const safeType = String(type || '').trim().toLowerCase();
             if (!isProductionWorkflowDriveType(safeType)) return productionWorkflowState;
             const staleMs = 3 * 60 * 1000;
@@ -70043,13 +70043,13 @@ function toggleDriveQuickRequestItem(domId) {
                     requeueOnInteraction: true,
                     preserveRequestedMode: true,
                     retryReason: `${safeType}-production-workflow-full-load`
-                }, 1).then(() => {
-                    if (isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
+                }, 1).then((loaded) => {
+                    if (loaded && isDatasetLoaded('master', 'full') && isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
                 }).catch(() => {});
             }
             if ((!productionWorkflowState.loaded || productionWorkflowState.workflowType !== safeType) && !productionWorkflowState.loading && !productionWorkflowState.error) {
                 loadProductionWorkflowRows(false, safeType).then(() => {
-                    if (isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
+                    if ((productionWorkflowState.loaded || productionWorkflowState.error) && isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
                 }).catch(() => {});
             }
             return fullLoaded;
@@ -72032,7 +72032,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function loadSpreadCountData(force = false, countType = getActiveSpreadCountType()) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData(normalizeSpreadCountType(countType) === 'bunch' ? 'bunchCounts' : 'spreadCounts', force, { state: spreadCountState, context: { countType } }).then(() => spreadCountState);
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData(normalizeSpreadCountType(countType) === 'bunch' ? 'bunchCounts' : 'spreadCounts', force || !spreadCountState.loaded, { state: spreadCountState, context: { countType } }).then(() => spreadCountState);
             const safeType = normalizeSpreadCountType(countType);
             const staleMs = 3 * 60 * 1000;
             if (!force && spreadCountState.loaded && spreadCountState.countType === safeType && (Date.now() - spreadCountState.lastLoadedAt) < staleMs) return spreadCountState;
@@ -72071,13 +72071,13 @@ function toggleDriveQuickRequestItem(domId) {
                     requeueOnInteraction: true,
                     preserveRequestedMode: true,
                     retryReason: `${activeType}-count-master-load`
-                }, 1).then(() => {
-                    if (isViewVisible('sales-inventory') && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
+                }, 1).then((loaded) => {
+                    if (loaded && isDatasetLoaded('master', 'full') && isViewVisible('sales-inventory') && inventoryMainTab === 'production' && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
                 }).catch(() => {});
             }
             if ((!spreadCountState.loaded || spreadCountState.countType !== activeType) && !spreadCountState.loading && !spreadCountState.error) {
                 loadSpreadCountData(false, activeType).then(() => {
-                    if (isViewVisible('sales-inventory') && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
+                    if ((spreadCountState.loaded || spreadCountState.error) && isViewVisible('sales-inventory') && inventoryMainTab === 'production' && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
                 }).catch(() => {});
             }
             return fullLoaded;
@@ -72570,7 +72570,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderProductionInventoryCountingContent() {
             const container = document.getElementById('production-inventory-counting-content');
-            if (!container) return;
+            if (!container || !isViewVisible('sales-inventory') || inventoryMainTab !== 'production' || productionInventoryTab !== 'counting') return;
             renderSpreadCountContent(container);
         }
 
@@ -72652,8 +72652,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (emptyState) emptyState.classList.toggle('hidden', !showSales || visibleCount > 0);
             renderNotOnInventoryPanel();
 
-            renderProductionInventoryCountingContent();
-            renderProductionInventory84Content();
+            if (showProduction && showCounting) renderProductionInventoryCountingContent();
+            if (showProduction && !showCounting) renderProductionInventory84Content();
         }
 
         function renderDiseasePestHub() {
@@ -72851,7 +72851,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function loadPoManagementData(force = false) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('po', force, { state: poManagementState, context: { poSeason: poManagementState.season } }).then(() => { if (isViewVisible('po-management')) renderPoManagement(); return poManagementState; });
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('po', force || !poManagementState.loaded, { state: poManagementState, context: { poSeason: poManagementState.season } }).then(() => { if ((poManagementState.loaded || poManagementState.error) && isViewVisible('po-management')) renderPoManagement(); return poManagementState; });
             if (poManagementState.promise && !force) return poManagementState.promise;
             if (poManagementState.loaded && !force) return Promise.resolve(poManagementState);
             poManagementState.loading = true;
@@ -73945,8 +73945,8 @@ function toggleDriveQuickRequestItem(domId) {
                     requeueOnInteraction: true,
                     preserveRequestedMode: true,
                     retryReason: 'weather-hold-drive-mode-full-load'
-                }, 1).then(() => {
-                    if (isViewVisible('weather-hold')) renderWeatherHold();
+                }, 1).then((loaded) => {
+                    if (loaded && isDatasetLoaded('master', 'full') && isViewVisible('weather-hold')) renderWeatherHold();
                 }).catch(() => {});
             }
             return fullLoaded;
@@ -124818,6 +124818,7 @@ C.14.043 C.15.000
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
             else if (requestedTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW && canManageAvBlanksPhotoBypassSettings()) nextTab = AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             else if (requestedTab === ITEM_INQUIRY_COVERAGE_SETTINGS_VIEW && canManageItemInquiryCoverage()) nextTab = ITEM_INQUIRY_COVERAGE_SETTINGS_VIEW;
+            else if (requestedTab === INVENTORY_TRANSACTION_HISTORY_VIEW && canViewInventoryTransactionHistory()) nextTab = INVENTORY_TRANSACTION_HISTORY_VIEW;
             else if (requestedTab === MANAGER_TRANSACTIONS_KEYED_VIEW && canViewTransactionsKeyed()) nextTab = MANAGER_TRANSACTIONS_KEYED_VIEW;
             else if (requestedTab === MANAGER_ORDERS_VIEW && canViewManagerOrders()) nextTab = MANAGER_ORDERS_VIEW;
             else if (requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && canViewAssignedItemsExport()) nextTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
@@ -126992,7 +126993,12 @@ C.14.043 C.15.000
         }
 
         async function loadInventoryTransactionHistoryRows(force = false) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('transactions', force, { state: inventoryTransactionHistoryState }).then(() => inventoryTransactionHistoryState.rows);
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                try { await ensureProductionLiveSyncSideData('transactions', force, { state: inventoryTransactionHistoryState }); }
+                catch { /* The verified loader retains prior data and records the visible error. */ }
+                finally { refreshInventoryTransactionHistoryResults(); }
+                return inventoryTransactionHistoryState.rows;
+            }
             if (!canViewInventoryTransactionHistory()) return false;
             const state = inventoryTransactionHistoryState;
             if (state.loading) return state.promise || false;
@@ -127026,14 +127032,8 @@ C.14.043 C.15.000
             return state.promise;
         }
 
-        function renderInventoryTransactionHistoryPanel() {
-            if (!canViewInventoryTransactionHistory()) {
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Inventory transaction history is manager-only.</div>';
-            }
+        function renderInventoryTransactionHistoryResults() {
             const state = inventoryTransactionHistoryState;
-            if (!state.loaded && !state.loading && !state.error) {
-                setTimeout(() => loadInventoryTransactionHistoryRows(false), 0);
-            }
             const rows = getInventoryTransactionHistoryRowsForRender();
             const emptyCopy = state.action === 'priority_change'
                 ? 'No Priority Change history matched those filters.'
@@ -127043,6 +127043,30 @@ C.14.043 C.15.000
                 : (state.error
                     ? `<div class="rounded-2xl border border-red-100 bg-red-50 p-6 text-sm font-bold text-red-700">${escapeHtml(state.error)}</div>`
                     : (rows.length ? rows.map(renderInventoryTransactionHistoryCard).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">${escapeHtml(emptyCopy)}</div>`));
+            return `                <div class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">${rows.length} displayed</div>
+                <div class="space-y-3">${rowsHtml}</div>
+                <div class="flex flex-wrap gap-3">
+                    <button type="button" class="sw-button" ${state.loading || !(state.offset > 0) ? 'disabled' : ''} onclick="pageInventoryTransactionHistory(-1)">Previous page</button>
+                    <span class="self-center">Page ${Math.floor((state.offset || 0) / 100) + 1}</span>
+                    <button type="button" class="sw-button" ${state.loading || !state.hasMore ? 'disabled' : ''} onclick="pageInventoryTransactionHistory(1)">Next page</button>
+                </div>
+`;
+        }
+
+        function refreshInventoryTransactionHistoryResults() {
+            if (getCurrentVisibleViewId() !== 'managers' || activeHomeTab !== INVENTORY_TRANSACTION_HISTORY_VIEW) return;
+            const results = document.getElementById('inventory-transaction-history-results');
+            if (results) results.innerHTML = renderInventoryTransactionHistoryResults();
+        }
+
+        function renderInventoryTransactionHistoryPanel() {
+            if (!canViewInventoryTransactionHistory()) {
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Inventory transaction history is manager-only.</div>';
+            }
+            const state = inventoryTransactionHistoryState;
+            if (!state.loaded && !state.loading && !state.error) {
+                setTimeout(() => loadInventoryTransactionHistoryRows(false), 0);
+            }
             return `<div class="space-y-4">
                 <div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -127060,13 +127084,7 @@ C.14.043 C.15.000
                         <label class="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">To<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" value="${escapeHtml(state.dateEnd || '')}" onchange="setInventoryTransactionHistoryDate('end', this.value)"></label>
                     </div>
                 </div>
-                <div class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">${rows.length} displayed</div>
-                <div class="space-y-3">${rowsHtml}</div>
-                <div class="flex flex-wrap gap-3">
-                    <button type="button" class="sw-button" ${state.loading || !(state.offset > 0) ? 'disabled' : ''} onclick="pageInventoryTransactionHistory(-1)">Previous page</button>
-                    <span class="self-center">Page ${Math.floor((state.offset || 0) / 100) + 1}</span>
-                    <button type="button" class="sw-button" ${state.loading || !state.hasMore ? 'disabled' : ''} onclick="pageInventoryTransactionHistory(1)">Next page</button>
-                </div>
+                <div id="inventory-transaction-history-results">${renderInventoryTransactionHistoryResults()}</div>
             </div>`;
         }
 

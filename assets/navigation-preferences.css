@@ -18,12 +18,12 @@
 .gnc-navigation-access-row { padding: .65rem; border: 1px solid color-mix(in srgb,currentColor 30%,transparent); border-radius: .75rem; }
 .gnc-navigation-access-row small { display: block; font-weight: 400; margin-top: .25rem; }
 .gnc-navigation-access-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: .5rem; }
-#bottom-nav.gnc-personal-footer { display: grid !important; grid-template-columns: repeat(var(--gnc-footer-count,8),minmax(0,1fr)) !important; height: auto !important; }
-#bottom-nav.gnc-personal-footer > .footer-nav-btn { min-width: 0; width: 100%; min-height: 44px; overflow-wrap: anywhere; white-space: normal; }
-#bottom-nav.gnc-personal-footer > [data-footer-view="sales"] { display: flex !important; }
+.gnc-mobile-workspace #app-wrapper #bottom-nav.gnc-personal-footer { display: grid !important; grid-template-columns: repeat(var(--gnc-footer-count,8),minmax(0,1fr)) !important; height: auto !important; }
+.gnc-mobile-workspace #app-wrapper #bottom-nav.gnc-personal-footer > .footer-nav-btn { min-width: 0; width: 100%; min-height: 44px !important; overflow-wrap: anywhere; white-space: normal; }
+.gnc-mobile-workspace #app-wrapper #bottom-nav.gnc-personal-footer > [data-footer-view="sales"] { display: flex !important; }
 #gnc-footer-button-pool { display: none !important; }
 @media(max-width:359px) {
-  #bottom-nav.gnc-personal-footer { grid-template-columns: repeat(4,minmax(0,1fr)) !important; }
+  .gnc-mobile-workspace #app-wrapper #bottom-nav.gnc-personal-footer { grid-template-columns: repeat(4,minmax(0,1fr)) !important; }
 }
 @media(max-width:600px) {
   .gnc-navigation-actions > button { flex-basis: 100%; }

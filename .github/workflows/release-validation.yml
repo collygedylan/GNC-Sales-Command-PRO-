@@ -131,6 +131,8 @@ jobs:
             config: playwright.bunch-note.config.ts
           - suite: sales-mobile
             config: playwright.sales-mobile.config.ts
+          - suite: module-mobile
+            config: playwright.module-mobile.config.ts
           - suite: hl-order-1
             config: playwright.hl-order.config.ts
             shard: 1/3

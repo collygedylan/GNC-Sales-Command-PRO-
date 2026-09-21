@@ -87,6 +87,9 @@ test('release unit union preserves every existing script and explicit gate exact
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
     'tests/bunch-note.test.mjs',
+    'tests/sales-workflow.test.mjs',
+    'tests/navigation-preferences.test.mjs',
+    'tests/production-workflow.test.mjs',
     'tests/drive-demand-detail.test.mjs',
     'tests/live-sync-priority-cache.test.mjs',
     'tests/inventory-list-read-fixture.test.mjs',
@@ -196,6 +199,8 @@ test('functional and timing lanes retain all original browser projects and asser
 
 const compiledSuites = [
   ['bunch-note', 'bunch-note', ['cache-chromium', 'cache-android', 'cache-iphone']],
+  ['sales-mobile', 'sales-mobile', ['sales-desktop', 'sales-android', 'sales-iphone', 'sales-narrow']],
+  ['module-mobile', 'module-mobile-smoke', ['module-320', 'module-iphone']],
   ['footer', 'footer-navigation', ['footer-android-chromium', 'footer-iphone-webkit', 'footer-desktop-firefox']],
   ['home-role', 'home-role-visibility', ['home-android-chromium', 'home-iphone-webkit', 'home-tablet-coarse-webkit', 'home-desktop-chromium']],
   ['season-sales-office', 'season-sales-office-completion', ['season-sales-office-android-chromium', 'season-sales-office-iphone-webkit']],
@@ -218,7 +223,7 @@ for (const [name, spec, projects] of compiledSuites) {
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
-    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
+    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'sales-mobile', 'module-mobile'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
     else assert.match(config.webServer.command, /startReleaseTestServer/);
   });

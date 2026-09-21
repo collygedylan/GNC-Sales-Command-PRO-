@@ -27,7 +27,7 @@ function harness() {
     canUseProductionLiveSync: () => true,
     currentUser: 'fixture', currentRole: 'ADMIN', activeReqTab: 'pending', activeHomeTab: 'orders',
     activeMovesTab: 'office', activeInventoryOfficeApprovalType: 'crop-roll', activeAVTab: 'open',
-    activeTaskView: 'flyer', cropRollDriveSchemaReady: true, productionInventoryTab: 'counting',
+    activeTaskView: 'flyer', cropRollDriveSchemaReady: true, inventoryMainTab: 'sales', productionInventoryTab: 'counting',
     productionWorkflowActive: 'spacing', selectedProductivityUser: '', requestDeliveryRecoveryOpen: false,
     activeDetailTab: '', activeDetailSourceView: '', activeItem: null, activeLocationWorkJobId: '', managersSearchTerm: '', evalRole: false,
     poManagementState: { season: '27F1' },
@@ -83,11 +83,15 @@ test('actual loader dependencies remain covered for every route, request tab, ta
       : route === 'tasks' ? taskViews.map(tab => ({ activeTaskView: tab }))
       : route === 'managers' ? managerTabs.flatMap(tab => ['office', 'moves'].map(mode => ({ activeHomeTab: tab, activeMovesTab: mode })))
       : route === 'moves' ? ['office', 'moves'].map(tab => ({ activeMovesTab: tab }))
+      : route === 'sales-inventory' ? ['sales', 'production'].flatMap(inventoryMainTab => ['counting', '84rd'].map(productionInventoryTab => ({ inventoryMainTab, productionInventoryTab })))
       : route === 'av' ? ['open', 'reserves'].map(tab => ({ activeAVTab: tab })) : [{}];
     for (const state of states) for (const evalRole of [false, true]) {
       Object.assign(context, state, { view: route, evalRole });
       const loaded = context.getViewLoadingConfig(route);
       const activeContext = context.getProductionLiveSyncSideContext();
+      if (route === 'sales-inventory') assert.equal(activeContext.surfaces.includes('sales-inventory:counting'),
+        state.inventoryMainTab === 'production' && state.productionInventoryTab === 'counting',
+        `Only visible counting content registers count dependencies: ${JSON.stringify(state)}`);
       // Footer badges remain visible on every authenticated screen. Also cover
       // each data-bearing dialog that can be opened over a routed screen.
       for (const dialog of ['', ...Object.keys(registry.surfaces).filter(key => key.startsWith('dialog:'))]) {

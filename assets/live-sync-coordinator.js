@@ -328,9 +328,11 @@
         function ensure(adapter, force = false) {
             const ctx = context();
             if (!ctx?.scope || ctx.visible === false || ctx.online === false) return Promise.resolve(false);
-            if (!force && applied.get(adapter.id)?.cacheKey === adapter.cacheKey) return Promise.resolve(true);
+            const wasApplied = applied.get(adapter.id)?.cacheKey === adapter.cacheKey;
+            if (!force && wasApplied) return Promise.resolve(true);
+            if (force) applied.delete(adapter.id);
             if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)
-                && activeRun.adapters?.some(item => item.id === adapter.id && item.cacheKey === adapter.cacheKey)) {
+                && (!force || !wasApplied) && activeRun.adapters?.some(item => item.id === adapter.id && item.cacheKey === adapter.cacheKey)) {
                 return running.then(() => applied.get(adapter.id)?.cacheKey === adapter.cacheKey);
             }
             requested.set(adapter.id, adapter);

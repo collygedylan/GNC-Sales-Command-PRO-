@@ -166,6 +166,35 @@ test('explicit background warmup requests are removed after one cycle', async ()
     await f.coordinator.ensure(extra); const count = f.reads; f.revision = '2'; await f.coordinator.check();
     assert.equal(f.reads, count + 1);
 });
+test('forced readiness restores an invalidated side state without reloading unrelated adapters', async () => {
+    const f = fixture(); let extraReads = 0;
+    f.context.adapters.push({ id: 'side:extra', cacheKey: 'extra/all', sourceKeys: ['extra'], stage: async () => { extraReads++; return []; }, commit() {} });
+    await f.coordinator.check();
+    assert.equal(await f.coordinator.ensure(f.adapter), true);
+    assert.equal(f.reads, 1);
+    assert.equal(await f.coordinator.ensure(f.adapter, true), true);
+    assert.equal(f.reads, 2); assert.equal(f.commits.length, 2); assert.equal(extraReads, 1);
+});
+test('concurrent forced readiness requests share the same reload and cancellation cannot commit', async () => {
+    for (const cancel of [false, true]) {
+        const f = fixture(); await f.coordinator.check();
+        const gate = deferred(); f.loadHook = () => gate.promise;
+        const first = f.coordinator.ensure(f.adapter, true); await settle();
+        const second = f.coordinator.ensure(f.adapter, true);
+        if (cancel) f.coordinator.suspend();
+        gate.resolve();
+        assert.deepEqual(await Promise.all([first, second]), [!cancel, !cancel]);
+        assert.equal(f.reads, 2); assert.equal(f.commits.length, cancel ? 1 : 2);
+    }
+});
+test('forcing an adapter during an unchanged verification restores it before reporting success', async () => {
+    const f = fixture(); await f.coordinator.check();
+    const gate = deferred(); f.metadataHook = () => gate.promise;
+    const check = f.coordinator.check(); await settle();
+    const forced = f.coordinator.ensure(f.adapter, true); gate.resolve();
+    assert.equal(await forced, true); await check;
+    assert.equal(f.reads, 2); assert.equal(f.commits.length, 2);
+});
 test('an immediate resume supersedes a queued low-priority check', async () => {
     const f = fixture(); await f.coordinator.check(); f.revision = '2';
     f.coordinator.signal('background-request', 30000); f.coordinator.signal('resume', 0);
@@ -226,4 +255,63 @@ test('progressive display does not wait for an extra requested startup dependenc
     const pending = coordinator.ensure(extra); await settle();
     assert.equal(shown.length, 1); assert.equal(shown[0].join(','), 'inventory');
     gate.resolve(); assert.equal(await pending, true); coordinator.reset();
+});
+
+const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+function appFunction(name) {
+    const found = appSource.match(new RegExp(`(?:async )?function ${name}\\(`));
+    assert.ok(found, name);
+    const end = appSource.indexOf('\n        function ', found.index + found[0].length);
+    assert.ok(end > found.index, name + ' function boundary');
+    return appSource.slice(found.index, end);
+}
+
+for (const [name, renderName] of [
+    ['ensureSpreadCountInventoryData', 'renderProductionInventoryCountingContent'],
+    ['ensureProductionWorkflowData', 'renderProductionWorkflowPanel'],
+    ['ensureWeatherHoldInventoryData', 'renderWeatherHold'],
+]) test(`${name} only rerenders after a completed full inventory load`, async () => {
+    for (const [result, verified] of [[false, false], [true, false], [true, true]]) {
+        let ready = false, renders = 0, loads = 0;
+        const context = {
+            isDatasetLoaded: () => ready, fullInventory: [], getActiveSpreadCountType: () => 'bunch',
+            productionWorkflowActive: 'planting', isProductionWorkflowDriveType: () => true,
+            productionWorkflowState: { loaded: true, workflowType: 'planting' },
+            spreadCountState: { loaded: true, countType: 'bunch' },
+            inventoryMainTab: 'production', productionInventoryTab: 'counting', isViewVisible: () => true,
+            loadDatasetTargetsWithLimit: async () => { loads++; ready = verified; return result; },
+            [renderName]: () => { renders++; },
+        };
+        vm.runInNewContext(`${appFunction(name)}; ${name}();`, context);
+        await settle();
+        assert.equal(loads, 1);
+        assert.equal(renders, result && verified ? 1 : 0, 'A paused or incomplete read must not queue another render');
+    }
+});
+
+test('hidden Inventory counting content does not trigger data reads', () => {
+    for (const [visible, mainTab, subTab, expected] of [[true, 'sales', 'counting', 0], [false, 'production', 'counting', 0], [true, 'production', '84rd', 0], [true, 'production', 'counting', 1]]) {
+        let renders = 0;
+        vm.runInNewContext(`${appFunction('renderProductionInventoryCountingContent')}; renderProductionInventoryCountingContent();`, {
+            document: { getElementById: () => ({}) }, isViewVisible: () => visible,
+            inventoryMainTab: mainTab, productionInventoryTab: subTab, renderSpreadCountContent: () => { renders++; },
+        });
+        assert.equal(renders, expected);
+    }
+});
+
+for (const [name, stateKey, args] of [
+    ['loadSpreadCountData', 'spreadCountState', [false, 'bunch']],
+    ['loadProductionWorkflowRows', 'productionWorkflowState', [false, 'planting']],
+    ['loadPoManagementData', 'poManagementState', [false]],
+]) test(`${name} restores reset state once without forcing healthy state`, async () => {
+    const calls = [], state = { loaded: false, season: '27F1' };
+    const context = {
+        [stateKey]: state, shouldUseProductionLiveSyncSideLoad: () => true,
+        normalizeSpreadCountType: value => value, isViewVisible: () => false,
+        ensureProductionLiveSyncSideData: async (_id, force) => { calls.push(force); state.loaded = true; return true; },
+    };
+    vm.runInNewContext(appFunction(name), context);
+    await context[name](...args); await context[name](...args);
+    assert.deepEqual(calls, [true, false]);
 });

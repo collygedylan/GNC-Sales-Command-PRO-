@@ -18,6 +18,7 @@ assert.ok(fetchAllStart >= 0 && fetchAllEnd > fetchAllStart, 'real complete read
 const fetchAllSource = html.slice(fetchAllStart, fetchAllEnd);
 function completeReader(pages) {
   const ctx = { Object, String, Number, Array, Map, Set, JSON, Error, Promise,
+        REQUEST_HISTORY_TABLE: 'ph_request_history', SALES_CREDIT_REQUESTS_TABLE: 'ph_sales_credit_requests',
     runDedupeSupabaseRead: async (_key, task) => task(), startGlobalProgress() {}, stopGlobalProgress() {},
     beginInternalPerfMeasure: () => 0, incrementInternalPerfCounter() {}, recordInternalPerfDuration() {},
     getFullDatasetPageLimit: () => 2, getFullDatasetPageConcurrency: () => 1,

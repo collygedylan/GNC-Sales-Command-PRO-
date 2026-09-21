@@ -175,11 +175,16 @@
         if (!pool) { pool = root.document.createElement('div'); pool.id = 'gnc-footer-button-pool'; pool.hidden = true; container.after(pool); }
         const choices = ['menu', 'home', ...shortcuts()];
         if (!hooks.canAccess || hooks.canAccess('communication')) choices.push('communication');
-        // Keep original button nodes, event handlers and badge elements alive.
-        Array.from(container.querySelectorAll('.footer-nav-btn')).forEach(button => pool.append(button));
-        choices.forEach(view => {
+        // Keep unchanged buttons attached during touch/keyboard activation.
+        // Only removed shortcuts move into the pool; badges and handlers survive.
+        const chosenIds = new Set(choices.map(view => FOOTER_IDS[view] || `footer-personal-${view}`));
+        Array.from(container.querySelectorAll('.footer-nav-btn')).forEach(button => {
+            const id = button.id || FOOTER_IDS[button.dataset.footerView];
+            if (!chosenIds.has(id)) pool.append(button);
+        });
+        choices.forEach((view, index) => {
             let button = root.document.getElementById(FOOTER_IDS[view] || `footer-personal-${view}`)
-                || Array.from(pool.querySelectorAll('[data-footer-view]')).find(node => node.dataset.footerView === view);
+                || [...container.querySelectorAll('[data-footer-view]'), ...pool.querySelectorAll('[data-footer-view]')].find(node => node.dataset.footerView === view);
             if (!button) {
                 button = root.document.createElement('button'); button.type = 'button'; button.id = FOOTER_IDS[view] || `footer-personal-${view}`;
                 button.className = 'footer-nav-btn'; button.dataset.footerView = view;
@@ -187,7 +192,8 @@
                 button.onclick = () => { if (permitted(view) && typeof hooks.navigate === 'function') hooks.navigate(view); };
             }
             if (!button.id && FOOTER_IDS[view]) button.id = FOOTER_IDS[view];
-            button.classList.remove('hidden'); button.hidden = false; container.append(button);
+            button.classList.remove('hidden'); button.hidden = false;
+            if (container.children[index] !== button) container.insertBefore(button, container.children[index] || null);
         });
         container.style.setProperty('--gnc-footer-count', String(choices.length));
         const measure = () => {

@@ -3,15 +3,28 @@
 .gnc-settings-dialog{max-width:42rem;max-height:calc(100dvh - 2rem);overflow:auto;margin:auto;padding:1rem;border-radius:1rem;background:var(--ops-surface,#fff);color:var(--ops-text,#10281a)}
 .gnc-settings-dialog>button{min-height:44px;min-width:44px;padding:.6rem;border:1px solid #007a4d;border-radius:.7rem}
 @media(max-width:640px),(pointer:coarse){
- .gnc-mobile-workspace [id^="view-"] button:not(.hidden),.gnc-mobile-workspace [role=dialog] button:not(.hidden){min-height:44px;min-width:44px}
- .gnc-mobile-workspace [id^="view-"] input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),.gnc-mobile-workspace [id^="view-"] select,.gnc-mobile-workspace [id^="view-"] textarea{font-size:16px;min-height:44px;min-width:0;max-width:100%}
+ .gnc-mobile-workspace #app-wrapper #main-scroll-area [id^="view-"] :is(button,[role=button]):not(.hidden),.gnc-mobile-workspace #app-wrapper [role=dialog] button:not(.hidden){min-height:44px!important;min-width:44px!important}
+ .gnc-mobile-workspace [id^="view-"] input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),.gnc-mobile-workspace [id^="view-"] select,.gnc-mobile-workspace [id^="view-"] textarea{font-size:16px;min-height:44px!important;min-width:44px!important;max-width:100%}
  .gnc-mobile-workspace [id^="view-"]{min-width:0;max-width:100%;overflow-wrap:break-word}
  .gnc-mobile-workspace [id^="view-"] input[type=checkbox],.gnc-mobile-workspace [id^="view-"] input[type=radio]{flex-shrink:0;width:24px;height:24px}
- .gnc-mobile-workspace #main-area{padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem + env(safe-area-inset-bottom))!important;scroll-padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem)}
+ .gnc-mobile-workspace #app-wrapper #main-scroll-area{padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem + env(safe-area-inset-bottom))!important;scroll-padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem)}
  .gnc-mobile-workspace [id^="view-"] .gnc-hub-card span{white-space:normal;line-height:1.2}
- .gnc-mobile-workspace #bottom-nav .footer-nav-btn{min-width:44px;min-height:48px}
+ .gnc-mobile-workspace #app-wrapper #bottom-nav .footer-nav-btn{min-width:44px;min-height:48px}
 }
 @media(max-width:359px){
- .gnc-mobile-workspace #bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr))!important;height:auto!important;min-height:96px;padding-bottom:env(safe-area-inset-bottom)}
- .gnc-mobile-workspace #bottom-nav .footer-nav-btn{padding:.4rem .15rem!important}
+ .gnc-mobile-workspace #app-wrapper #bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr))!important;height:auto!important;min-height:96px;padding-bottom:env(safe-area-inset-bottom)}
+ .gnc-mobile-workspace #app-wrapper #bottom-nav .footer-nav-btn{padding:.4rem .15rem!important}
+}
+
+@media(max-width:600px){
+ .gnc-mobile-workspace #app-wrapper #bottom-nav.gnc-personal-footer{width:100%!important;max-width:100%!important;gap:0!important;padding-inline:2px!important}
+}
+
+@media(max-width:640px){
+ .gnc-mobile-workspace #app-wrapper #view-tasks .task-controls-sticky,
+ .gnc-mobile-workspace #app-wrapper #docks-filter-controls{display:block!important;width:100%!important;min-width:0!important;overflow:visible!important}
+ .gnc-mobile-workspace #app-wrapper #task-tabs-container,
+ .gnc-mobile-workspace #app-wrapper #docks-filter-controls .docks-filter-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;min-width:0!important;gap:.4rem!important;overflow:visible!important}
+ .gnc-mobile-workspace #app-wrapper #task-tabs-container>*,
+ .gnc-mobile-workspace #app-wrapper #docks-filter-controls .docks-filter-row>*{width:auto!important;min-width:0!important;max-width:100%!important}
 }

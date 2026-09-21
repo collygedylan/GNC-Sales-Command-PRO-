@@ -5,9 +5,9 @@ const photo = (name: string) => ({ name, mimeType: 'image/png',
   buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aU1QAAAAASUVORK5CYII=', 'base64') });
 
 async function openSales(page: Page, label: string, view: string) {
-  await page.locator('#footer-home-btn').click();
-  await page.locator('#home-tile-sales').click();
-  await page.locator('#sales-hub-grid').getByRole('button', { name: label, exact: true }).click();
+  await page.locator('#footer-home-btn')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await page.locator('#home-tile-sales')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await page.locator('#sales-hub-grid').getByRole('button', { name: label, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   const area = page.locator(`#${view}-content`);
   await expect(area.getByRole('heading', { name: label, level: 1, exact: true })).toBeVisible();
   await expect(area.getByText('Saving or loading…', { exact: true })).toHaveCount(0);
@@ -31,7 +31,7 @@ async function expectPhoneLayout(page: Page, area: Locator) {
   }
   const footer = page.locator('#bottom-nav > .footer-nav-btn:visible');
   expect(await footer.count()).toBe(8);
-  expect(await footer.evaluateAll(nodes => nodes.every(node => node.getBoundingClientRect().width >= 43.5 && node.getBoundingClientRect().height >= 43.5))).toBe(true);
+  expect(await footer.evaluateAll(nodes => nodes.map(node => ({ id: node.id, width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })).filter(box => box.width < 43.5 || box.height < 43.5))).toEqual([]);
   if (page.viewportSize()!.width < 360) {
     expect(await footer.evaluateAll(nodes => new Set(nodes.map(node => Math.round(node.getBoundingClientRect().top))).size)).toBe(2);
   }
@@ -52,7 +52,7 @@ test('history searches the complete permitted result set, pages newest first, an
   await expect(cards).toHaveCount(50);
   await expect(cards.first()).toContainText('Cedar 00');
   await expect(cards.first()).toContainText('2026-09-20T12:00:00.000Z');
-  await area.getByRole('button', { name: 'Load more', exact: true }).click();
+  await area.getByRole('button', { name: 'Load more', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards).toHaveCount(63);
   await expect(cards.last()).toContainText('Rare Orchid');
   await expect(area.getByRole('button', { name: 'Load more', exact: true })).toHaveCount(0);
@@ -61,26 +61,26 @@ test('history searches the complete permitted result set, pages newest first, an
   await expect(cards).toHaveCount(1);
   expect(f.commands.some(call => call.action === 'request_history' && call.operation === 'search' && call.payload.query === '  ORCHID  ')).toBe(true);
   await expectPhoneLayout(page, area);
-  await cards.first().click();
+  await cards.first()[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('heading', { name: 'Rare Orchid', level: 2 })).toBeVisible();
   await expect(area).toContainText('Completed instruction 62');
   await expect(page.locator('button[aria-label="Back"]:visible')).toHaveCount(1);
-  await page.locator('#global-header-inline-back').click();
+  await page.locator('#global-header-inline-back')[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(search).toHaveValue('  ORCHID  ');
   await expect(cards).toHaveCount(1);
   await search.fill('');
   await expect(cards).toHaveCount(50);
-  await area.getByRole('button', { name: 'Pending', exact: true }).click();
+  await area.getByRole('button', { name: 'Pending', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText('Pending Magnolia');
-  await area.getByRole('button', { name: 'All', exact: true }).click();
+  await area.getByRole('button', { name: 'All', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards.first()).toContainText('Pending Magnolia');
-  await area.getByRole('button', { name: 'Browse customer / consignee', exact: true }).click();
-  await area.getByRole('button', { name: new RegExp(folderName) }).click();
+  await area.getByRole('button', { name: 'Browse customer / consignee', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await area.getByRole('button', { name: new RegExp(folderName) })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards.first()).toContainText('Pending Magnolia');
   // A denied scoped response must be reported instead of appearing as a successful empty search.
   f.denyHistory = true;
-  await area.getByRole('button', { name: 'Refresh records', exact: true }).click();
+  await area.getByRole('button', { name: 'Refresh records', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('alert')).toContainText('SALES_ACCESS_DENIED');
   expectIsolated(f);
 });
@@ -88,16 +88,16 @@ test('history searches the complete permitted result set, pages newest first, an
 test('multi-line drafts retain repeated photos, failed uploads, Back edits, and one uncertain submission', async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const area = await openSales(page, 'Credit', 'sales-credit');
-  await area.getByRole('button', { name: new RegExp(folderName) }).click();
+  await area.getByRole('button', { name: new RegExp(folderName) })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await area.getByRole('checkbox', { name: 'Blue Hydrangea', exact: true }).check();
   await area.getByRole('checkbox', { name: 'Red Hydrangea', exact: true }).check();
-  await area.getByRole('button', { name: 'Prepare credit (2 rows)', exact: true }).click();
+  await area.getByRole('button', { name: 'Prepare credit (2 rows)', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   const blue = area.locator('article.sw-card').filter({ has: page.getByRole('heading', { name: 'Blue Hydrangea', exact: true }) });
   const red = area.locator('article.sw-card').filter({ has: page.getByRole('heading', { name: 'Red Hydrangea', exact: true }) });
   await blue.getByLabel('Affected quantity', { exact: true }).fill('3');
-  await blue.getByLabel('What happened?', { exact: true }).fill('Three plants arrived damaged.');
+  await blue.getByRole('textbox', { name: 'What happened?', exact: true }).fill('Three plants arrived damaged.');
   await red.getByLabel('Affected quantity', { exact: true }).fill('4');
-  await red.getByLabel('What happened?', { exact: true }).fill('Four plants were broken during unloading.');
+  await red.getByRole('textbox', { name: 'What happened?', exact: true }).fill('Four plants were broken during unloading.');
   await blue.locator('input[capture="environment"]').setInputFiles(photo('first-capture.png'));
   await blue.locator('input[capture="environment"]').setInputFiles(photo('second-capture.png'));
   await red.locator('input[type=file][multiple]').setInputFiles([photo('one-file.png'), photo('two-file.png')]);
@@ -106,36 +106,36 @@ test('multi-line drafts retain repeated photos, failed uploads, Back edits, and 
   await expect(red.locator('.sw-file-row')).toHaveCount(2);
   await expectPhoneLayout(page, area);
   f.failUploads = true;
-  await area.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await area.getByRole('button', { name: 'Save draft', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('alert')).toContainText('Photo upload unavailable');
   await expect(blue.getByLabel('Affected quantity', { exact: true })).toHaveValue('3');
-  await expect(red.getByLabel('What happened?', { exact: true })).toHaveValue('Four plants were broken during unloading.');
+  await expect(red.getByRole('textbox', { name: 'What happened?', exact: true })).toHaveValue('Four plants were broken during unloading.');
   await expect(area.locator('.sw-file-row')).toHaveCount(4);
   expect(f.drafts.size).toBe(0);
   f.failUploads = false;
-  await area.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await area.getByRole('button', { name: 'Save draft', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect.poll(() => f.drafts.size).toBe(1);
   await expect(area.locator('.sw-file-row')).toHaveCount(0);
   expect(f.attachments.size).toBe(4);
   const uploads = f.commands.filter(call => call.operation === 'attachment_upload');
   expect(uploads[0].commandId).toBe(uploads[1].commandId);
   await expect(blue.getByRole('button', { name: 'Photo 2', exact: true })).toBeVisible();
-  await page.locator('#global-header-inline-back').click();
+  await page.locator('#global-header-inline-back')[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('checkbox', { name: 'Blue Hydrangea', exact: true })).toBeChecked();
-  await area.getByRole('button', { name: 'Prepare credit (2 rows)', exact: true }).click();
+  await area.getByRole('button', { name: 'Prepare credit (2 rows)', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(blue.getByLabel('Affected quantity', { exact: true })).toHaveValue('3');
   await expect(area.locator('article.sw-card')).toHaveCount(2);
   await f.native.waitForRevisionIdle();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openSales(page, 'Credit', 'sales-credit');
   const savedDrafts = area.locator('details').filter({ has: page.locator('summary').filter({ hasText: /^Saved drafts/ }) });
-  await savedDrafts.locator('summary').click();
-  await savedDrafts.getByRole('button', { name: folderName, exact: true }).click();
+  await savedDrafts.locator('summary')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await savedDrafts.getByRole('button', { name: folderName, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(blue.getByLabel('Affected quantity', { exact: true })).toHaveValue('3');
-  await expect(red.getByLabel('What happened?', { exact: true })).toHaveValue('Four plants were broken during unloading.');
+  await expect(red.getByRole('textbox', { name: 'What happened?', exact: true })).toHaveValue('Four plants were broken during unloading.');
   await expect(blue.getByRole('button', { name: 'Photo 2', exact: true })).toBeVisible();
   f.loseSubmitAcknowledgement = true;
-  await area.getByRole('button', { name: 'Submit credit request', exact: true }).click();
+  await area.getByRole('button', { name: 'Submit credit request', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('alert')).toContainText('acknowledgement lost');
   expect(f.submissions.size).toBe(1);
   await expect(blue.getByLabel('Affected quantity', { exact: true })).toBeDisabled();
@@ -143,7 +143,7 @@ test('multi-line drafts retain repeated photos, failed uploads, Back edits, and 
   await expect(area.getByRole('button', { name: 'Save draft', exact: true })).toBeDisabled();
   const savesBeforeRetry = f.commands.filter(call => call.operation === 'save_draft').length;
   f.loseSubmitAcknowledgement = false;
-  await area.getByRole('button', { name: 'Submit credit request', exact: true }).click();
+  await area.getByRole('button', { name: 'Submit credit request', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('heading', { name: 'Credit draft', exact: true })).toHaveCount(0);
   await expect(area.getByRole('button', { name: new RegExp(folderName) })).toBeVisible();
   const submits = f.commands.filter(call => call.operation === 'submit');
@@ -162,27 +162,27 @@ test('review keeps separate line decisions and exposes one mixed submission in e
   const area = await openSales(page, 'Credit Request', 'credit-request');
   await expect(area.locator('button.sw-card')).toHaveCount(1);
   await expect(area.locator('button.sw-card')).toContainText('2 matching lines');
-  await area.locator('button.sw-card').click();
+  await area.locator('button.sw-card')[test.info().project.use.isMobile ? 'tap' : 'click']();
   const cards = area.locator('article.sw-card');
-  await cards.nth(1).getByRole('button', { name: 'Deny line', exact: true }).click();
+  await cards.nth(1).getByRole('button', { name: 'Deny line', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('alert')).toContainText('Enter a reason');
   expect(f.commands.filter(call => call.operation === 'review_line')).toHaveLength(0);
   await cards.nth(1).getByLabel('Review reason (required for denial)', { exact: true }).fill('Photos show healthy stock, not shipping damage.');
-  await cards.nth(0).getByRole('button', { name: 'Approve line', exact: true }).click();
+  await cards.nth(0).getByRole('button', { name: 'Approve line', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards.nth(0)).toContainText('approved');
   // Re-rendering after another line changes must retain this denial explanation.
   await expect(cards.nth(1).getByLabel('Review reason (required for denial)', { exact: true })).toHaveValue('Photos show healthy stock, not shipping damage.');
-  await cards.nth(1).getByRole('button', { name: 'Deny line', exact: true }).click();
+  await cards.nth(1).getByRole('button', { name: 'Deny line', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards.nth(1)).toContainText('denied');
   await expectPhoneLayout(page, area);
   const stored = f.submissions.get(submissionId);
   expect(stored.lines.map((line: any) => line.status)).toEqual(['approved', 'denied']);
   expect(stored.lines.map((line: any) => line.reviewHistory.length)).toEqual([1, 1]);
-  await page.locator('#global-header-inline-back').click();
-  await area.getByRole('button', { name: 'Refresh records', exact: true }).click();
+  await page.locator('#global-header-inline-back')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await area.getByRole('button', { name: 'Refresh records', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByText('No matching records.', { exact: true })).toBeVisible();
   for (const label of ['Approved Credit Request', 'Credit Denial']) {
-    await area.getByRole('button', { name: label, exact: true }).click();
+    await area.getByRole('button', { name: label, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
     await expect(area.locator('button.sw-card')).toHaveCount(1);
     await expect(area.locator('button.sw-card')).toContainText('1 matching lines');
   }
@@ -192,36 +192,36 @@ test('review keeps separate line decisions and exposes one mixed submission in e
 
 test('footer preferences survive reload, preserve fixed controls, and reject a revoked shortcut', async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
-  await page.locator('#footer-menu-btn').click();
-  await page.getByRole('button', { name: 'Customize shortcuts', exact: true }).click();
+  await page.locator('#footer-menu-btn')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await page.getByRole('button', { name: 'Customize shortcuts', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   const dialog = page.getByRole('dialog', { name: 'Footer shortcuts', exact: true });
-  await expect(dialog.getByLabel('Shortcut 1', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('combobox', { name: 'Shortcut 1', exact: true })).toBeVisible();
   const chosen = ['request-history', 'drive', 'tasks', 'docks', 'bloom'];
-  for (const [index, value] of chosen.entries()) await dialog.getByLabel(`Shortcut ${index + 1}`, { exact: true }).selectOption(value);
-  await dialog.getByRole('button', { name: 'Save shortcuts', exact: true }).click();
+  for (const [index, value] of chosen.entries()) await dialog.getByRole('combobox', { name: `Shortcut ${index + 1}`, exact: true }).selectOption(value);
+  await dialog.getByRole('button', { name: 'Save shortcuts', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect.poll(() => f.navigation.shortcuts).toEqual(chosen);
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-  const footerViews = () => page.locator('#bottom-nav > .footer-nav-btn:visible').evaluateAll(nodes => nodes.map(node => (node as HTMLElement).dataset.footerView));
+  await dialog.getByRole('button', { name: 'Close', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  const footerViews = () => page.locator('#bottom-nav > .footer-nav-btn:visible').evaluateAll(nodes => nodes.map(node => (node as HTMLElement).dataset.footerView || ({ 'footer-menu-btn': 'menu', 'footer-cart-btn': 'bloom' } as Record<string, string>)[node.id]));
   await expect.poll(footerViews).toEqual(['menu', 'home', ...chosen, 'communication']);
   await f.native.waitForRevisionIdle();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect.poll(footerViews).toEqual(['menu', 'home', ...chosen, 'communication']);
-  await page.locator('#footer-personal-request-history').click();
+  await page.locator('#footer-personal-request-history')[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(page.locator('#request-history-content').getByRole('heading', { name: 'Request History', level: 1 })).toBeVisible();
-  await page.locator('#footer-menu-btn').click();
-  await page.getByRole('button', { name: 'Customize shortcuts', exact: true }).click();
-  await dialog.getByLabel('Shortcut 1', { exact: true }).selectOption('sales-credit');
+  await page.locator('#footer-menu-btn')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await page.getByRole('button', { name: 'Customize shortcuts', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await dialog.getByRole('combobox', { name: 'Shortcut 1', exact: true }).selectOption('sales-credit');
   f.rejectShortcutSave = true;
-  await dialog.getByRole('button', { name: 'Save shortcuts', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save shortcuts', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(dialog.getByRole('alert')).toContainText('permissions changed');
-  await expect(dialog.getByLabel('Shortcut 1', { exact: true })).toHaveValue('sales-credit');
+  await expect(dialog.getByRole('combobox', { name: 'Shortcut 1', exact: true })).toHaveValue('sales-credit');
   expect(f.navigation.shortcuts).toEqual(chosen);
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Close', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   f.navigation.views.find((view: any) => view.view === 'request-history').allowed = false;
   f.navigation.accessRevision++;
   await page.evaluate(() => (window as any).GncNavigationPreferences.refresh());
   await expect(page.locator('#bottom-nav #footer-personal-request-history')).toHaveCount(0);
-  await page.locator('#home-tile-sales').click();
+  await page.locator('#home-tile-sales')[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(page.locator('#sales-hub-grid').getByRole('button', { name: 'Request History', exact: true })).toBeHidden();
   await expect(page.locator('#footer-menu-btn')).toBeVisible();
   await expect(page.locator('#footer-home-btn')).toBeVisible();
@@ -233,21 +233,21 @@ test('propagation and planting retain protected work after reload and complete w
   const f = await installSalesMobileFixture(page, baseURL!);
   const panel = page.locator('#production-workflow-page-content');
   const openWorkflow = async (type: string) => {
-    await page.locator('#footer-home-btn').click();
-    await page.locator('#home-tile-production').click();
-    await page.locator(`#production-open-${type}`).click();
+    await page.locator('#footer-home-btn')[test.info().project.use.isMobile ? 'tap' : 'click']();
+    await page.locator('#home-tile-production')[test.info().project.use.isMobile ? 'tap' : 'click']();
+    await page.locator(`#production-open-${type}`)[test.info().project.use.isMobile ? 'tap' : 'click']();
     await expect(panel).toBeVisible();
   };
   for (const [type, title, quantityLabel] of [
     ['propagation', 'Propagation', 'Amount / Percent'], ['planting', 'Planting', 'Amount Planted'],
   ]) {
     await openWorkflow(type);
-    await panel.getByRole('button', { name: /^Propagation Holly/ }).click();
+    await panel.getByRole('button', { name: /^Propagation Holly/ })[test.info().project.use.isMobile ? 'tap' : 'click']();
     await panel.getByLabel(quantityLabel, { exact: true }).fill('5');
     await panel.getByLabel('Instructions Optional', { exact: true }).fill(`Keep ${type} stock together.`);
     if (type === 'planting') await panel.getByLabel('Bay Number Optional', { exact: true }).fill('001');
-    await panel.getByRole('button', { name: `Move To ${title}`, exact: true }).click();
-    await page.locator('#app-prompt-dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
+    await panel.getByRole('button', { name: `Move To ${title}`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+    await page.locator('#app-prompt-dialog').getByRole('button', { name: 'Confirm', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
     await expect(panel.getByRole('button', { name: 'Already Open', exact: true })).toBeDisabled();
     const added = [...f.productionRows.values()].find(row => row.workflow_type === type);
     expect(added.quantity).toBe(5);
@@ -257,13 +257,13 @@ test('propagation and planting retain protected work after reload and complete w
     await f.native.waitForRevisionIdle();
     await page.reload({ waitUntil: 'domcontentloaded' });
     await openWorkflow(type);
-    await panel.getByRole('button', { name: `${title} List`, exact: true }).click();
-    await panel.getByRole('button', { name: /^Block D / }).click();
-    await panel.getByRole('button', { name: 'Open location D.08', exact: true }).click();
-    await panel.getByRole('button', { name: /^Loc D\.08\.001 / }).click();
+    await panel.getByRole('button', { name: `${title} List`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+    await panel.getByRole('button', { name: /^Block D / })[test.info().project.use.isMobile ? 'tap' : 'click']();
+    await panel.getByRole('button', { name: 'Open location D.08', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+    await panel.getByRole('button', { name: /^Loc D\.08\.001 / })[test.info().project.use.isMobile ? 'tap' : 'click']();
     await expect(panel).toContainText(`Keep ${type} stock together.`);
     await expectPhoneLayout(page, panel);
-    await panel.getByRole('button', { name: 'Complete', exact: true }).click();
+    await panel.getByRole('button', { name: 'Complete', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
     await expect(panel.getByText(`No open ${title} rows.`, { exact: true })).toBeVisible();
     expect(f.productionRows.get(added.unique_id).status).toBe('complete');
     expect(f.productionRows.get(added.unique_id).revision).toBe(2);
@@ -283,12 +283,12 @@ test('propagation and planting retain protected work after reload and complete w
 
 test('Inventory Transaction History pages and searches on the server, preserving requested status', async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
-  await page.locator('#home-tile-managers').click();
+  await page.locator('#home-tile-managers')[test.info().project.use.isMobile ? 'tap' : 'click']();
   const area = page.locator('#view-managers');
-  await area.getByRole('button', { name: /^Transaction History:/ }).click();
+  await area.getByRole('button', { name: /^Transaction History:/ })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.locator('article')).toHaveCount(100);
   await expect(area.locator('article').first()).toContainText('TX0000');
-  await area.getByRole('button', { name: 'Next page', exact: true }).click();
+  await area.getByRole('button', { name: 'Next page', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.locator('article')).toHaveCount(1);
   await expect(area.locator('article')).toContainText('TX0100');
   await expect(area.locator('article')).toContainText('requested');
@@ -301,7 +301,7 @@ test('Inventory Transaction History pages and searches on the server, preserving
   await expect(area.locator('article')).toContainText('TX0100');
   await expect(area.getByRole('button', { name: 'Previous page', exact: true })).toBeDisabled();
   await expectPhoneLayout(page, area);
-  await area.getByLabel('Action', { exact: true }).selectOption('transfer');
+  await area.getByRole('combobox', { name: 'Action', exact: true }).selectOption('transfer');
   await expect(area.locator('article')).toHaveCount(0);
   await expect(area.getByText('No QTY, Transfer, Reclass, or Priority Change history matched those filters.', { exact: true })).toBeVisible();
   expect(f.commands.some(call => call.action === 'inventory_transaction_history' && call.filter_action === 'transfer' && call.offset === 0)).toBe(true);
