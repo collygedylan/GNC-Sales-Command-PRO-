@@ -87,6 +87,7 @@ const originalBrowserFiles = [
 test('release unit union preserves every existing script and explicit gate exactly once', () => {
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
+    'tests/assigned-items-filters.test.mjs',
     'tests/bunch-note.test.mjs',
     'tests/sales-workflow.test.mjs',
     'tests/navigation-preferences.test.mjs',
@@ -236,7 +237,7 @@ for (const [name, spec, projects] of compiledSuites) {
     const load = configLoader();
     const config = load(`playwright.${name}.config.ts`);
     const files = selected(config);
-    assert.deepEqual(files, name === 'home-role' ? ['tests/home-native-startup.e2e.spec.ts', `tests/${spec}.e2e.spec.ts`, 'tests/verified-loading.e2e.spec.ts'] : [`tests/${spec}.e2e.spec.ts`]);
+    assert.deepEqual(files, name === 'home-role' ? ['tests/assigned-items-filters.e2e.spec.ts', 'tests/home-native-startup.e2e.spec.ts', `tests/${spec}.e2e.spec.ts`, 'tests/verified-loading.e2e.spec.ts'] : [`tests/${spec}.e2e.spec.ts`]);
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
