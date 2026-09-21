@@ -57,9 +57,17 @@ async function fixture(page:any,baseURL:string,worker=false) {
  });
  return {control,commands,jobs,rows,failNextSave:()=>{saveFailures=1;},holdActualReply:()=>{let release!:()=>void;actualReply=new Promise<void>(resolve=>{release=resolve;});return release;}};
 }
+async function openBunchNotesFromInventory(page:any) {
+ await expect(page.locator('#home-tile-bunch-note')).toHaveCount(0);
+ const press=test.info().project.use.isMobile?'tap':'click';
+ await page.locator('#home-tile-sales-inventory')[press]();
+ await page.locator('#hub-extra-sales-inventory-bunch-note')[press]();
+ await expect(page.locator('#view-bunch-note')).toBeVisible();
+}
+
 test('creator drills through themed block/location cards and preserves multiple locations through PDF review',async({page,baseURL},testInfo)=>{
  const f=await fixture(page,baseURL!);
- await page.locator('#home-tile-bunch-note').click();
+ await openBunchNotesFromInventory(page);
  await page.evaluate(project=>{
   document.body.classList.add('ops-precision-pilot');
   document.body.dataset.opsTheme=project==='cache-android'?'dark':'light';
@@ -162,7 +170,7 @@ test('creator drills through themed block/location cards and preserves multiple 
 
 test('combined move keeps its full destination and opens destination instructions',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
- await page.locator('#home-tile-bunch-note').click();
+ await openBunchNotesFromInventory(page);
  for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001'])await page.getByRole('button',{name,exact:true}).click();
  await page.getByLabel('Purposes',{exact:true}).fill('Grade and move');
  await page.getByRole('button',{name:'Next: Items',exact:true}).click();
@@ -201,7 +209,7 @@ test('combined move keeps its full destination and opens destination instruction
 test('worker without Request permission sees Bunch-only Queue, claims and completes without email',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!,true);
  await page.evaluate(()=>window.eval(`getRequestCapabilities = () => ({canViewQueue:false}); canSeeEvalWorkRequestTab = () => false; switchView('request');`));
- await expect(page.locator('#home-tile-bunch-note')).toBeHidden();
+ await expect(page.locator('#home-tile-bunch-note')).toHaveCount(0);
  await expect(page.locator('[data-request-category="bunch-notes"]')).toBeVisible();
  await expect(page.locator('[data-request-category="pending"]')).toHaveCount(0);
  await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
@@ -275,7 +283,7 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
 
 test('phone steps retain failed saves and make mixed-year and unknown-year destinations reachable',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);f.rows[1].salesyear='';
- await page.locator('#home-tile-bunch-note').click();
+ await openBunchNotesFromInventory(page);
  for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001'])await page.getByRole('button',{name,exact:true}).click();
  await page.getByLabel('Purposes',{exact:true}).fill('Move safely');f.failNextSave();
  await page.getByRole('button',{name:'Next: Items',exact:true}).click();
