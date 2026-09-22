@@ -100,33 +100,20 @@ export function runReleaseCandidate({ argv = [], invoke = spawnSync, cwd = proce
     fail('CANDIDATE_WORKFLOW_INVALID', 'The expected active performance benchmark workflow is unavailable.');
   }
   const dispatchCommand = `gh workflow run ${WORKFLOW} --repo 'github.com/${candidate.repository}' --ref '${candidate.branch}'`;
-  if (command === 'prepare') {
-    unchanged();
-    if (dispatch) {
-      // Only this opt-in path writes remotely, and only to start branch validation.
-      call('gh', ['workflow', 'run', WORKFLOW, '--repo', `github.com/${candidate.repository}`, '--ref', candidate.branch]);
-      unchanged();
-    }
-    const result = { state: dispatch ? 'benchmark-dispatched' : 'prepared', ...candidate, published };
-    print(`Candidate ${candidate.head} on ${candidate.branch}; base ${candidate.main}.`);
-    if (!published) print(`Next: git push origin '${candidate.head}:refs/heads/${candidate.branch}'`);
-    else if (!dispatch) print(`Next: ${dispatchCommand}`);
-    if (dispatch) print('Branch benchmark requested. Once it completes, run: node scripts/release-candidate.mjs check');
-    else print('Prepared only; no benchmark success or production release is approved.');
-    return result;
-  }
-
   const runsEndpoint = `repos/${candidate.repository}/actions/workflows/${workflow.id}/runs?${new URLSearchParams({
     branch: candidate.branch, event: 'workflow_dispatch', head_sha: candidate.head, per_page: '100',
   })}`;
-  function latestRun() {
+  function latestRun({ missingAllowed = false, greenRequired = true } = {}) {
     // Never filter for success: a newer queued, failed or cancelled run blocks.
     const page = api(runsEndpoint);
     if (!Number.isSafeInteger(page?.total_count) || !Array.isArray(page.workflow_runs) ||
         page.total_count !== page.workflow_runs.length || page.total_count > 100) {
       fail('CANDIDATE_RUNS_INCOMPLETE', 'The exact-commit benchmark list is incomplete or too large; inspect it before releasing.');
     }
-    if (!page.workflow_runs.length) fail('CANDIDATE_BENCHMARK_MISSING', `No manual benchmark exists for this exact branch and HEAD. Next: ${dispatchCommand}`);
+    if (!page.workflow_runs.length) {
+      if (missingAllowed) return null;
+      fail('CANDIDATE_BENCHMARK_MISSING', `No manual benchmark exists for this exact branch and HEAD. Next: ${dispatchCommand}`);
+    }
     for (const run of page.workflow_runs) {
       if (!Number.isSafeInteger(run?.id) || run.id < 1 || !Number.isSafeInteger(run.run_number) || run.run_number < 1 ||
           !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1 || run.workflow_id !== workflow.id ||
@@ -141,11 +128,59 @@ export function runReleaseCandidate({ argv = [], invoke = spawnSync, cwd = proce
     }
     const latest = page.workflow_runs.sort((a, b) => b.run_number - a.run_number)[0];
     if (runId && String(latest.id) !== runId) fail('CANDIDATE_RUN_SUPERSEDED', '--run must identify the latest benchmark for this branch and HEAD.');
-    if (latest.status !== 'completed' || latest.conclusion !== 'success') {
+    if (greenRequired && (latest.status !== 'completed' || latest.conclusion !== 'success')) {
       fail('CANDIDATE_BENCHMARK_NOT_GREEN', `Latest exact-commit benchmark ${latest.id} is ${latest.conclusion || latest.status || 'unknown'}. Fix the cause before releasing.`);
     }
     return latest;
   }
+  if (command === 'prepare') {
+    unchanged();
+    let existing = null;
+    if (dispatch) {
+      existing = latestRun({ missingAllowed: true, greenRequired: false });
+      if (existing) {
+        const reusable = (existing.status === 'completed' && existing.conclusion === 'success') ||
+          (['queued', 'in_progress', 'pending', 'requested', 'waiting'].includes(existing.status) && existing.conclusion == null);
+        if (!reusable) {
+          fail('CANDIDATE_BENCHMARK_NOT_GREEN', `Latest exact-commit benchmark ${existing.id} is ${existing.conclusion || existing.status || 'unknown'}. Fix the cause before requesting another validation.`);
+        }
+        unchanged();
+        const confirmed = latestRun({ greenRequired: false });
+        if (confirmed.id !== existing.id || confirmed.run_attempt !== existing.run_attempt ||
+            confirmed.status !== existing.status || confirmed.conclusion !== existing.conclusion) {
+          fail('CANDIDATE_RUN_CHANGED', 'A new benchmark or rerun started during preflight; prepare again after inspecting it.');
+        }
+        unchanged();
+      } else {
+        unchanged();
+        existing = latestRun({ missingAllowed: true, greenRequired: false });
+        if (!existing) {
+          call('gh', ['workflow', 'run', WORKFLOW, '--repo', `github.com/${candidate.repository}`, '--ref', candidate.branch]);
+          unchanged();
+        } else {
+          fail('CANDIDATE_RUN_CHANGED', 'A benchmark appeared during preflight; prepare again to reuse or inspect it.');
+        }
+      }
+    }
+    const reused = Boolean(existing);
+    const result = {
+      state: dispatch ? (reused ? 'benchmark-reused' : 'benchmark-dispatched') : 'prepared',
+      ...candidate, published,
+      ...(reused ? { runId: existing.id, attempt: existing.run_attempt, runStatus: existing.status, conclusion: existing.conclusion } : {}),
+    };
+    print(`Candidate ${candidate.head} on ${candidate.branch}; base ${candidate.main}.`);
+    if (!published) print(`Next: git push origin '${candidate.head}:refs/heads/${candidate.branch}'`);
+    else if (!dispatch) print(`Next: ${dispatchCommand}`);
+    if (dispatch && reused) print(`Reusing latest exact-commit benchmark ${existing.id} (${existing.conclusion || existing.status}); no workflow was dispatched.`);
+    if (dispatch) {
+      const watchTarget = reused ? `--run ${existing.id}` : `--branch '${candidate.branch}'`;
+      print(`Watch status: node scripts/release-watch.mjs --repo '${candidate.repository}' ${watchTarget} --sha ${candidate.head}`);
+    }
+    if (dispatch) print('Run node scripts/release-candidate.mjs check after the benchmark succeeds; reuse does not approve a release.');
+    else print('Prepared only; no benchmark success or production release is approved.');
+    return result;
+  }
+
   const run = latestRun();
   const pages = api(`repos/${candidate.repository}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, ['--paginate', '--slurp']);
   if (!Array.isArray(pages) || !pages.length || pages.some(page => !Array.isArray(page?.jobs))) {

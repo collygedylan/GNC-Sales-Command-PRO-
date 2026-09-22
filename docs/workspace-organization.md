@@ -13,7 +13,7 @@ Use a permanent local development directory outside Temp and synchronized busine
 1. Confirm the base checkout is clean, fetch origin, and fast-forward main. Stop if it diverged; preserve work rather than reset it.
 2. Create a named feature worktree under `worktrees` with `git worktree add -b`. Reuse that directory until the repair is complete. Do not repeatedly clone into Temp.
 3. Install locked dependencies with `npm ci`. Retain shared npm and Playwright caches; clearing them routinely makes subsequent work slower.
-4. Split implementation and regression verification across independent workers with explicit file ownership. Run performance tests in isolated lanes.
+4. Use one implementation owner and one bounded independent reviewer for a release; avoid duplicate exploration. Select useful delegated work by complexity using `model-routing.md`. Run performance tests in isolated lanes.
 5. Use the exact-commit candidate preflight in `parallel-release-pipeline.md`, followed by main's candidate-proof verification, publication of the same sealed artifact, and all live checks. Record the candidate SHA, version, successful run/attempt, artifact ID and manifest digest. Do not repeat the full candidate validation on main.
 
 ## Retiring old work
