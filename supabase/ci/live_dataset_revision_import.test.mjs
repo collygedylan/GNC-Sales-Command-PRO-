@@ -68,6 +68,48 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
   return { ctx, events, run: () => vm.runInContext('__run()', ctx), locked: () => locked };
 }
 const actions = env => env.events.map(event => typeof event === 'string' ? event : event.action);
+
+test('SOC timeout batches split serially without changing rows or import headers', () => {
+  const env = environment(); const requests = []; const batchSizes = [];
+  const response = rows => ({ getResponseCode: () => rows.length > 100 ? 500 : 201,
+    getContentText: () => rows.length > 100 ? JSON.stringify({ code: '57014', message: 'synthetic timeout' }) : '' });
+  env.ctx.UrlFetchApp.fetch = (_, request) => { const rows = JSON.parse(request.payload); requests.push(request); return response(rows); };
+  env.ctx.executeFetchAllBatches = (batch, size) => { batchSizes.push(size); return batch.map(request => {
+    requests.push(request); return response(JSON.parse(request.payload));
+  }); };
+  const rows = Array.from({ length: 1000 }, (_, i) => ({ unique_id: 'synthetic-' + i }));
+  env.ctx.testRows = rows;
+  const failures = vm.runInContext(`datasetImportFenceContext_ = {runId:'fixture-fence'}; executeSupabaseUpsert_('ph_soc_master', testRows)`, env.ctx);
+  assert.equal(failures.length, 0);
+  assert.deepEqual(batchSizes, [1]);
+  const successful = requests.map(request => JSON.parse(request.payload)).filter(chunk => chunk.length <= 100).flat();
+  assert.deepEqual(successful, rows);
+  for (const request of requests) assert.equal(request.headers['x-gnc-import-run-id'], 'fixture-fence');
+});
+
+test('SOC permanent errors stop without splitting; generic imports retain their batching', () => {
+  const env = environment(); let extraFetches = 0;
+  env.ctx.UrlFetchApp.fetch = () => { extraFetches++; throw new Error('unexpected retry'); };
+  env.ctx.response = { getResponseCode: () => 400, getContentText: () => JSON.stringify({ code: '23505' }) };
+  env.ctx.request = { payload: JSON.stringify(Array.from({ length: 200 }, (_, i) => ({ unique_id: 'synthetic-' + i }))) };
+  const failures = vm.runInContext(`executeSupabaseUpsertRequestWithRecovery_('ph_soc_master',request,response,1,0)`, env.ctx);
+  assert.equal(failures.length, 1); assert.equal(extraFetches, 0);
+  assert.equal(vm.runInContext(`usesBoundedImportUpserts_('ph_cav_import')`, env.ctx), false);
+});
+
+test('import diagnostics expose only recognized SQLSTATE or internal stage codes', () => {
+  const env = environment();
+  for (const [message, expected] of [
+    ['Supabase upsert failed for ph_soc_master (500): {"code":"57014","details":"private row contents"}', 'IMPORT_DATABASE_57014'],
+    ['Supabase delete failed for ph_soc_master (400): {"code":"23503"}', 'IMPORT_DATABASE_23503'],
+    ['SEASON_SALES_RECONCILIATION_FAILED', 'SEASON_SALES_RECONCILIATION_FAILED'],
+    ['private row contents 57014', 'MANUAL_SYNC_STAGE_FAILED'],
+    ['Supabase upsert failed for ph_soc_master (500): {"code":"private row contents"}', 'MANUAL_SYNC_STAGE_FAILED']
+  ]) {
+    env.ctx.testMessage = message;
+    assert.equal(vm.runInContext(`normalizeManualSyncFailedFileEntries_({failedFileErrors:[{name:'fixture',error:testMessage}]})[0].errorCode`, env.ctx), expected);
+  }
+});
 test('full import locks before reads, fences writes/derived reconciliation, then archives', () => {
   const env = environment(); const result = env.run();
   assert.equal(result.failedFiles, 0);

@@ -952,13 +952,25 @@ function normalizeManualSyncFailedFileEntries_(stageResult) {
       return {
         name: String(entry && entry.name || names[index] || '').trim(),
         error: String(entry && entry.error || safeResult.error || '').trim(),
-        errorCode: String(entry && (entry.errorCode || entry.error_code) || '').trim().toUpperCase()
+        errorCode: String(entry && (entry.errorCode || entry.error_code) || getSafeImportFailureCode_(entry && entry.error || safeResult.error)).trim().toUpperCase()
       };
     }).filter(function(entry) { return entry.name || entry.error; });
   }
   return names.map(function(name) {
     return { name: String(name || '').trim(), error: String(safeResult.error || '').trim() };
   }).filter(function(entry) { return entry.name || entry.error; });
+}
+
+function getSafeImportFailureCode_(error) {
+  const message = String(error && error.message || error || '');
+  // Publish only a structured SQLSTATE, never database details or source rows.
+  const databaseError = /^Supabase (?:upsert|delete) failed for [a-zA-Z0-9_]+ \(\d{3}\):\s*(\{[\s\S]*\})$/.exec(message);
+  if (databaseError) {
+    const code = extractSupabaseErrorCode_(databaseError[1]);
+    if (/^[A-Z0-9]{5}$/.test(code)) return 'IMPORT_DATABASE_' + code;
+  }
+  if (/^(?:DATASET_IMPORT|SEASON_SALES_RECONCILIATION|EVAL_REPORT2_RECONCILIATION)_[A-Z0-9_]+$/.test(message)) return message;
+  return 'MANUAL_SYNC_STAGE_FAILED';
 }
 
 function sanitizeManualSyncErrorCode_(value, fallback) {
@@ -3733,6 +3745,10 @@ function retrySupabaseUpsertRequest_(tableName, request, initialResponse, reques
   return response;
 }
 
+function usesBoundedImportUpserts_(tableName) {
+  return isMasterInventoryTable_(tableName) || getSiteSplitLegacyTableName_(tableName) === 'ph_soc_master';
+}
+
 function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialResponse, requestNumber, splitDepth) {
   if (isSuccessfulSupabaseWriteResponse_(initialResponse)) return [];
   const depth = Math.max(0, Number(splitDepth) || 0);
@@ -3745,7 +3761,7 @@ function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialRe
     payloadRows = [];
   }
 
-  if (isMasterInventoryTable_(tableName) &&
+  if (usesBoundedImportUpserts_(tableName) &&
       extractSupabaseErrorCode_(initialBody) === '57014' &&
       payloadRows.length > SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE) {
     const midpoint = Math.ceil(payloadRows.length / 2);
@@ -3772,7 +3788,7 @@ function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialRe
   const response = retrySupabaseUpsertRequest_(tableName, request, initialResponse, requestNumber);
   if (isSuccessfulSupabaseWriteResponse_(response)) return [];
   const body = response.getContentText();
-  if (isMasterInventoryTable_(tableName) &&
+  if (usesBoundedImportUpserts_(tableName) &&
       extractSupabaseErrorCode_(body) === '57014' &&
       payloadRows.length > SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE) {
     return executeSupabaseUpsertRequestWithRecovery_(tableName, request, response, requestNumber, depth + 1);
@@ -3817,7 +3833,7 @@ function removeSupabaseColumnsFromPayload_(payloadArray, columns) {
 function executeSupabaseUpsert_(tableName, payloadArray) {
   const requests = buildSupabaseUpsertRequests_(tableName, payloadArray);
   if (!requests.length) return [];
-  const fetchBatchSize = isMasterInventoryTable_(tableName)
+  const fetchBatchSize = usesBoundedImportUpserts_(tableName)
     ? SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE
     : SUPABASE_UPSERT_FETCH_BATCH_SIZE;
   let responses = executeFetchAllBatches(requests, fetchBatchSize);
