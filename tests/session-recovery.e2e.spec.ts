@@ -154,6 +154,23 @@ async function harness(page: Page, baseURL: string) {
   return { seed, assertTiles, assertClean };
 }
 
+test('authorized manual import control is reachable before imported metadata loads', async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!);
+  await app.seed('dylan_collyge', 'ADMIN');
+  const button = page.locator('#run-google-script-btn');
+  await expect(button).toBeVisible();
+  await expect(button).toBeEnabled();
+  await button.click({ trial: true });
+  await page.evaluate(() => window.eval(`manualSyncStatusState = { active:true, currentStage:'drive', updatedAt:new Date().toISOString() }; syncGoogleScriptButton();`));
+  await expect(button).toBeVisible();
+  await expect(button).toBeDisabled();
+  await page.evaluate(() => window.eval(`manualSyncStatusState = null; syncGoogleScriptButton();`));
+  await app.seed('tony_bono', 'REP');
+  await expect(button).toBeHidden();
+  await expect(page.locator('#dashboard-sync-accordion')).toBeHidden();
+  app.assertClean();
+});
+
 // Keep ordered account transitions while bounding each WebKit test's cumulative work.
 // All role, theme, far-tile reachability, and native navigation assertions stay identical.
 for (let offset = 0; offset < roleCases.length; offset += 4) {
