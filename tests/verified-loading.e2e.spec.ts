@@ -338,18 +338,27 @@ test('mobile Pending Requests renders its required rows while unrelated reads ar
 
 test('navigation clears a stale draft warning without discarding the retained input value', async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!);
-  await page.locator('#home-tile-drive').click();
-  await waitForVerifiedDrive(page);
-  await page.locator('#drive-search').fill('Synthetic retained search');
+  await page.locator('#bottom-nav [data-footer-view="docks"]').click();
+  await expect(page.locator('#view-docks')).toBeVisible();
+  await page.waitForFunction(() => window.eval(`productionLiveSyncVerifiedView
+    && productionLiveSyncVerifiedView === productionVerifiedViewKey()
+    && getProductionLiveSyncCoordinator().getStatus().state === 'Up to date'
+    && !productionLiveSyncRenderPending && !productionLiveSyncActiveRender`), null, { timeout: 10000 });
+  await page.evaluate(() => window.eval(`openDockInfoModal('28', '37231')`));
+  await expect(page.locator('#dock-info-modal')).toBeVisible();
+  await page.evaluate(() => window.eval(`ensureDockTeamStatusLoaded()`));
+  await page.locator('#dock-status').selectOption('Palletize');
   fixture.datasetRevision += 1;
   await page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().check('draft-warning-navigation')`));
   await expect(page.locator('#live-data-freshness')).toContainText('Edit needs review');
   await expect(page.locator('#live-data-warning-dot')).toBeVisible();
-  await page.locator('#bottom-nav [data-footer-view="home"]').click();
+  // The editor overlay intentionally blocks pointer hit-testing. Activate the
+  // real footer control's click handler to exercise navigation lifecycle only.
+  await page.locator('#bottom-nav [data-footer-view="home"]').evaluate(element => (element as HTMLElement).click());
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('#live-data-freshness')).not.toContainText('Edit needs review');
   await expect(page.locator('#live-data-warning-dot')).toBeHidden();
-  await expect(page.locator('#drive-search')).toHaveValue('Synthetic retained search');
+  await expect(page.locator('#dock-status')).toHaveValue('Palletize');
   expect(await page.evaluate(() => window.eval('productionLiveSyncDraftChanged'))).toBe(false);
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);
