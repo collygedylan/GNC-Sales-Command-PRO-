@@ -10,18 +10,6 @@ Reproduce the reported failure with a focused fixture while implementation proce
 
 Report implementation, validation, publication, and exact-live verification separately. A fast publish step does not make diagnosis or coding instantaneous. Record time spent in each phase so the next bottleneck can be measured rather than guessed. Any failed required check stops publication; fix the cause instead of bypassing it or repeatedly rerunning an unexplained failure.
 
-## Token-efficient execution
-
-Keep all required validation and hosted suites. The shared app shell, data synchronization, role permissions, and delivery paths make filename-only test skipping unsafe. Optimize model involvement and duplicate runs before reducing coverage.
-
-1. Reproduce and repair the requested issue, with a targeted local regression. Let the required branch validation provide broad cross-app coverage; do not repeatedly execute the same broad suites locally unless a failure requires diagnosis.
-2. Use one owner and the existing bounded independent review. Choose delegated models by the actual complexity using `docs/model-routing.md`; do not inherit Ultra reasoning for routine reading or monitoring.
-3. `prepare --dispatch` checks for an existing exact-branch/SHA manual benchmark. Reuse a pending or successful run. An existing failed/cancelled run requires diagnosis and a deliberate corrected candidate or authorized retry; the helper does not silently restart it. GitHub list visibility is not an atomic dispatch lock, so retain one release owner and the latest-run checks.
-4. Run the exact watcher command printed by `prepare --dispatch`. A fresh dispatch uses branch/SHA discovery; a reused run uses its run ID. The watcher verifies the workflow identity and waits without putting intermediate GitHub progress into the model context. Let the terminal/tool surface completion; avoid model-driven polling or repeated status narration. Read its compact failure summary first and retrieve detailed logs only for the failed lane.
-5. Before publication, run the existing exact-commit check. Deployment still uses the validated sealed artifact and performs every required live check. Save concise progress outside Git so a resumed task can continue without re-reading the entire investigation.
-
-Neither a lower-cost model nor a watcher exit code establishes application correctness. The full validation proof and exact-live gates remain authoritative. No fixed token saving is promised; compare actual completed repairs before claiming a measured improvement.
-
 ## One build; isolated checks
 
 Set `package.json` to the next unused `YYYY.MM.DD.NN` version, then run `npm run release:version` before committing. This synchronizes the manifest, shell, service worker, compiler and lockfile to `VYYYY.MM.DD.NN`. `npm run release:version -- --check` verifies the markers without writing. Read-only production health must be checked before lengthy candidate validation and immediately before publication.
@@ -63,12 +51,8 @@ Use `scripts/release-candidate.mjs` from the candidate checkout before an author
 ```powershell
 node scripts/release-candidate.mjs prepare
 # If the branch is not published at this exact commit, prepare prints its SHA-pinned push command.
-# After publishing the branch, start or reuse its exact-commit validation:
+# After publishing the branch, explicitly request validation:
 node scripts/release-candidate.mjs prepare --dispatch
-# Run the exact watcher command printed above. A fresh dispatch prints:
-node scripts/release-watch.mjs --repo OWNER/REPO --branch RELEASE_BRANCH --sha CANDIDATE_SHA
-# Reusing an existing exact-commit run prints this form:
-node scripts/release-watch.mjs --repo OWNER/REPO --run RUN_ID --sha CANDIDATE_SHA
 # When the benchmark finishes:
 node scripts/release-candidate.mjs check
 # Optionally bind the check to a specific run; it must still be the latest exact-commit run:
@@ -77,7 +61,7 @@ node scripts/release-candidate.mjs check --run 123456789
 
 The helper requires a named branch other than `main`, a clean index/worktree including untracked files and submodules, no assume-unchanged or skip-worktree index flags, and matching GitHub origin fetch/push destinations. Ignored build/dependency files are outside the clean-worktree check. It reads current remote refs with `git ls-remote`, requires local `origin/main` to match live main, and verifies that main is an ancestor of the candidate. A stale remote-tracking ref requires an explicit `git fetch origin` and a new preflight. A same-named remote tag is rejected so benchmark dispatch cannot select the wrong ref.
 
-`--dispatch` is the only remote write: when no existing manual benchmark is found, it requests `performance-monitor.yml` on the already-pushed branch at the checked HEAD. Pending or successful existing benchmarks are reused without another dispatch; failed or cancelled results are not silently retried. It never dispatches on main. GitHub resolves the branch during dispatch, so the helper rechecks refs immediately afterwards and treats dispatch as a request, not a successful validation. `check` separately requires the remote branch and the latest manual benchmark to match the exact local SHA, branch, repository, workflow ID and workflow path. PR merge runs, schedules, another branch's success, an older green run beneath a newer failed/pending run, and earlier rerun attempts do not satisfy the gate. It checks the current attempt's complete job list and the successful sealed release-gate step; only the intentionally skipped branch production-health job is exempt. Incomplete or ambiguous API responses fail closed.
+`--dispatch` is the only remote write: it requests `performance-monitor.yml` on the already-pushed branch at the checked HEAD. It never dispatches on main. GitHub resolves the branch during dispatch, so the helper rechecks refs immediately afterwards and treats dispatch as a request, not a successful validation. `check` separately requires the remote branch and the latest manual benchmark to match the exact local SHA, branch, repository, workflow ID and workflow path. PR merge runs, schedules, another branch's success, an older green run beneath a newer failed/pending run, and earlier rerun attempts do not satisfy the gate. It checks the current attempt's complete job list and the successful sealed release-gate step; only the intentionally skipped branch production-health job is exempt. Incomplete or ambiguous API responses fail closed.
 
 A passing check prints the immutable candidate SHA, benchmark run/attempt, main base, and the normal fast-forward push command for a release owner to execute when authorized. It performs no main push. Worktree, branch, origin and remote refs are checked again before reporting success; the latest run is also reread after job inspection. This remains a point-in-time preflight, not an atomic lock on GitHub. Rerun it immediately before publishing, and integrate/rebenchmark if main or the candidate changes. Main's candidate-proof verification, sealed artifact verification, current-main deployment guard, production health and exact-live canaries remain required. Deploy compatible database/reporting dependencies before the frontend. Record the proof identity and exact-live results with the release report; reaching main alone is not completion.
 

@@ -114,37 +114,12 @@ test('unpublished and out-of-date branches are only prepared; dispatch/check req
 });
 
 test('only explicit prepare --dispatch starts one branch benchmark', () => {
-  const f = fixture({ runs: [] });
+  const f = fixture();
   assert.equal(f.run(['prepare', '--dispatch']).state, 'benchmark-dispatched');
   assert.deepEqual(f.calls.filter(call => call.args[0] === 'workflow').map(call => call.args), [
     ['workflow', 'run', 'performance-monitor.yml', '--repo', `github.com/${repository}`, '--ref', branch],
   ]);
-  assert.match(f.output.join('\n'), new RegExp(`release-watch\\.mjs --repo '${repository}' --branch '${branch}' --sha ${head}`));
   assert.doesNotMatch(f.output.join('\n'), /Verified candidate|refs\/heads\/main/);
-});
-
-test('prepare --dispatch reuses the latest exact-commit pending or successful benchmark', () => {
-  for (const run of [
-    benchmark(),
-    { ...benchmark(), status: 'queued', conclusion: null },
-    { ...benchmark(), status: 'in_progress', conclusion: null },
-  ]) {
-    const f = fixture({ runs: [run] });
-    const result = f.run(['prepare', '--dispatch']);
-    assert.equal(result.state, 'benchmark-reused');
-    assert.equal(result.runId, 42);
-    assert.ok(f.calls.every(call => call.args[0] !== 'workflow'));
-    assert.match(f.output.join('\n'), /reuse does not approve a release/);
-    assert.match(f.output.join('\n'), new RegExp(`release-watch\\.mjs --repo '${repository}' --run 42 --sha ${head}`));
-  }
-});
-
-test('prepare --dispatch refuses to silently replace a failed or cancelled benchmark', () => {
-  for (const conclusion of ['failure', 'cancelled', 'timed_out']) {
-    const f = fixture({ runs: [{ ...benchmark(), conclusion }] });
-    assert.throws(() => f.run(['prepare', '--dispatch']), /CANDIDATE_BENCHMARK_NOT_GREEN/);
-    assert.ok(f.calls.every(call => call.args[0] !== 'workflow'));
-  }
 });
 
 test('unknown flags, main dispatch, and malformed run IDs fail without writes', () => {
@@ -302,7 +277,7 @@ test('a newly dirty file immediately before dispatch prevents the remote write',
 });
 
 test('dispatch does not approve a release and detects a concurrent branch move afterwards', () => {
-  const f = fixture({ runs: [], before(program, args, state) {
+  const f = fixture({ before(program, args, state) {
     if (program === 'gh' && args[0] === 'workflow') state.remoteBranch = other;
   } });
   assert.throws(() => f.run(['prepare', '--dispatch']), /CANDIDATE_CHANGED/);
