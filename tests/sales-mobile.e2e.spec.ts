@@ -25,9 +25,14 @@ async function expectPhoneLayout(page: Page, area: Locator) {
     expect(bounds).not.toBeNull();
     expect(bounds!.x).toBeGreaterThanOrEqual(-1);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
-    const badTargets = await area.locator('button:visible,label.sw-button:visible,input[type=search]:visible').evaluateAll(nodes =>
-      nodes.filter(node => node.getBoundingClientRect().height < 43.5).map(node => node.textContent?.trim()));
-    expect(badTargets).toEqual([]);
+    // Theme changes and premium decoration settle asynchronously. Keep the
+    // minimum hit-target assertion strict, but measure the settled render.
+    await expect.poll(() => area.locator('button:visible,label.sw-button:visible,input[type=search]:visible').evaluateAll(nodes =>
+      nodes.filter(node => node.getBoundingClientRect().height < 43.5).map(node => ({
+        label: node.textContent?.trim(), height: node.getBoundingClientRect().height,
+        minHeight: getComputedStyle(node).minHeight, transform: getComputedStyle(node).transform,
+        transition: getComputedStyle(node).transition, className: node.className,
+      }))), { message: `Sales controls must retain 44px hit targets in ${theme} theme` }).toEqual([]);
   }
   const footer = page.locator('#bottom-nav > .footer-nav-btn:visible');
   expect(await footer.count()).toBe(8);
