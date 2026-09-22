@@ -5,6 +5,16 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   const attemptedMutations: string[] = [];
   const runtimeResponses: string[] = [];
   const pageErrors: string[] = [];
+  await page.addInitScript(() => {
+    const counts = { resizeObserverUndelivered: 0, resizeObserverLoopLimit: 0 };
+    Object.defineProperty(window, '__footerRuntimeErrorCounts', { value: counts, configurable: false });
+    window.addEventListener('error', (event) => {
+      if (event.error != null) return;
+      const message = String(event.message || '').trim().toLowerCase();
+      if (message === 'resizeobserver loop completed with undelivered notifications.') counts.resizeObserverUndelivered += 1;
+      else if (message === 'resizeobserver loop limit exceeded') counts.resizeObserverLoopLimit += 1;
+    });
+  });
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('response', (response) => {
     if (/\/assets\/live-app-runtime[^/]*\.js/.test(new URL(response.url()).pathname)) {
@@ -96,6 +106,23 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   await expectView('home');
   await activate('#bottom-nav [data-footer-view="drive"]');
   await expectView('drive');
+  if (isMobile) {
+    await page.locator('#drive-search').focus();
+    await page.setViewportSize({ width: 320, height: 300 });
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const footerHeight = await page.evaluate(() => ({
+      measured: `${Math.ceil(document.getElementById('bottom-nav')!.getBoundingClientRect().height)}px`,
+      reserved: document.documentElement.style.getPropertyValue('--gnc-footer-height'),
+    }));
+    expect(footerHeight.reserved, 'footer reserve must settle to the measured navigation height').toBe(footerHeight.measured);
+  }
+  expect(await page.evaluate(() => (window as any).__footerRuntimeErrorCounts),
+    'viewport changes must not leave ResizeObserver notifications undelivered').toEqual({
+    resizeObserverUndelivered: 0,
+    resizeObserverLoopLimit: 0,
+  });
   expect(pageErrors, 'startup and native navigation must not throw browser errors').toEqual([]);
   // The app may POST telemetry and its read-only user-directory RPC on entry.
   // They were blocked above, along with all other non-GET traffic.

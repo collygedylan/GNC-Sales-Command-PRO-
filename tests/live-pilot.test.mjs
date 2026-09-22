@@ -1443,6 +1443,22 @@ test('V03 request-manager Queue loads the canonical set but hides completed rows
   assert.match(html, /getSanitizedClientRuntimeCode\(event && event\.reason/);
 });
 
+test('browser health classifies null-error events without recording arbitrary messages or suppressing failures', () => {
+  const runtimeCode = html.slice(html.indexOf('function getSanitizedClientRuntimeCode('), html.indexOf('function reportSemanticHealthEvent('));
+  const windowCode = html.slice(html.indexOf('function getSanitizedWindowErrorCode('), html.indexOf("window.addEventListener('error', (event) =>"));
+  const classify = new Function(`${runtimeCode}\n${windowCode}\nreturn getSanitizedWindowErrorCode;`)();
+  assert.equal(classify({ error: null, message: 'ResizeObserver loop completed with undelivered notifications.' }), 'RESIZE_OBSERVER_UNDELIVERED');
+  assert.equal(classify({ message: 'ResizeObserver loop limit exceeded' }), 'RESIZE_OBSERVER_LOOP_LIMIT');
+  assert.equal(classify({ message: 'Script error.' }), 'CROSS_ORIGIN_SCRIPT_ERROR');
+  assert.equal(classify({ error: new TypeError('private detail'), message: 'private detail' }), 'TypeError');
+  assert.equal(classify({ message: 'private account token https://private.invalid/path?secret=value' }), 'UNHANDLED_ERROR_NO_OBJECT');
+  assert.equal(classify({ message: 'ResizeObserver loop limit exceeded: private detail' }), 'UNHANDLED_ERROR_NO_OBJECT');
+  assert.equal(classify(null), 'UNHANDLED_ERROR_NO_OBJECT');
+  const handler = html.slice(html.indexOf("window.addEventListener('error', (event) =>"), html.indexOf("window.addEventListener('unhandledrejection'"));
+  assert.match(handler, /reportSemanticHealthEvent\('unhandled_client_error', 'client_runtime', code\)/);
+  assert.doesNotMatch(handler, /preventDefault|stopPropagation|return false|severity/);
+});
+
 test('request completion delivery is leased, idempotent, threaded, and independent of Drive sync', () => {
   assert.match(reliableDeliveryMigration, /for update skip locked/);
   assert.match(reliableDeliveryMigration, /lease_expires_at = now\(\) \+ interval '2 minutes'/);
@@ -1837,4 +1853,74 @@ test('recoverable local request photo blobs remain visible as warnings without f
   assert.match(html, /LOCAL_REQUEST_BLOB_PENDING'[\s\S]*?\}, 'warning'\)/);
   assert.match(productionAuthHealthWorkflow, /production-auth-health/);
   assert.match(productionAuthHealthProbe, /sanitized_code'[\s\S]*neq\.LOCAL_REQUEST_BLOB_PENDING/);
+});
+
+test('mobile footer resize measurements defer, coalesce, skip unchanged writes, and replace observers', () => {
+  const dom = new JSDOM('<!doctype html><html><body><nav id="bottom-nav"></nav></body></html>', { runScripts: 'outside-only' });
+  const frames = [];
+  const observers = [];
+  let height = 80;
+  let writes = 0;
+  dom.window.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  dom.window.ResizeObserver = class {
+    constructor(callback) {
+      this.callback = callback;
+      this.disconnectCount = 0;
+      observers.push(this);
+    }
+    observe(element) {
+      this.element = element;
+    }
+    disconnect() {
+      this.disconnectCount += 1;
+    }
+  };
+  const style = dom.window.document.documentElement.style;
+  const setProperty = style.setProperty.bind(style);
+  style.setProperty = (...args) => {
+    writes += 1;
+    return setProperty(...args);
+  };
+  const measure = (element) => {
+    element.getBoundingClientRect = () => ({ height });
+  };
+  measure(dom.window.document.getElementById('bottom-nav'));
+  dom.window.eval(read('assets/mobile-workspace.js'));
+
+  dom.window.GncMobileWorkspace.shell();
+  assert.equal(style.getPropertyValue('--gnc-footer-height'), '');
+  assert.equal(frames.length, 1);
+  frames.shift()(0);
+  assert.equal(style.getPropertyValue('--gnc-footer-height'), '80px');
+  assert.equal(writes, 1);
+
+  height = 96;
+  observers[0].callback();
+  observers[0].callback();
+  assert.equal(style.getPropertyValue('--gnc-footer-height'), '80px');
+  assert.equal(frames.length, 1);
+  frames.shift()(16);
+  assert.equal(style.getPropertyValue('--gnc-footer-height'), '96px');
+  assert.equal(writes, 2);
+  observers[0].callback();
+  frames.shift()(32);
+  assert.equal(writes, 2);
+
+  const replacement = dom.window.document.createElement('nav');
+  replacement.id = 'bottom-nav';
+  height = 104;
+  measure(replacement);
+  observers[0].element.replaceWith(replacement);
+  dom.window.GncMobileWorkspace.shell();
+  assert.equal(observers[0].disconnectCount, 1);
+  assert.equal(observers.length, 2);
+  assert.equal(observers[1].element, replacement);
+  assert.equal(style.getPropertyValue('--gnc-footer-height'), '96px');
+  frames.shift()(48);
+  assert.equal(style.getPropertyValue('--gnc-footer-height'), '104px');
+  assert.equal(writes, 3);
+  dom.window.close();
 });

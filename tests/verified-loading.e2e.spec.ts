@@ -336,6 +336,42 @@ test('mobile Pending Requests renders its required rows while unrelated reads ar
   expect(control.fixture.blockedMutations).toEqual([]);
 });
 
+test('native mobile search viewport changes settle without browser resize errors', async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, 'Native mobile viewport regression');
+  await page.addInitScript(() => {
+    (window as any).__nativeResizeErrors = 0;
+    window.addEventListener('error', event => {
+      if (/^ResizeObserver loop (completed with undelivered notifications|limit exceeded)\.?$/i.test(event.message || '')) {
+        (window as any).__nativeResizeErrors++;
+      }
+    });
+  });
+  const fixture = await installColdFixture(page, baseURL!);
+  const original = page.viewportSize()!;
+  await page.locator('#home-tile-drive').click();
+  await waitForVerifiedDrive(page);
+  const search = page.locator('#drive-search');
+  await search.fill('Rose');
+  for (const height of [Math.round(original.height * 0.6), original.height]) {
+    await page.setViewportSize({ width: original.width, height });
+    await search.focus();
+    for (const id of ['global-header-inline-back', 'drive-search-clear']) {
+      await expect.poll(() => page.evaluate(value => {
+        const button = document.getElementById(value)!;
+        const rect = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return rect.width > 0 && rect.height > 0 && !!hit && (hit === button || button.contains(hit));
+      }, id), `${id} must remain unobstructed`).toBe(true);
+    }
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  }
+  await search.blur();
+  await expect(page.locator('#footer-menu-btn')).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__nativeResizeErrors)).toBe(0);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
 test('navigation clears a stale draft warning without discarding the retained input value', async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!);
   await page.locator('#bottom-nav [data-footer-view="docks"]').click();

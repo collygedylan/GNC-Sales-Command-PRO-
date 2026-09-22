@@ -112,6 +112,12 @@ async function harness(page: Page, baseURL: string) {
     const grid = page.locator(dynamic ? '#home-rep-dashboard-grid' : '#home-dashboard-grid');
     if (views.length) await expect(grid).toBeVisible(); else await expect(grid).toBeAttached();
     await expect(grid.locator(':scope > button:visible')).toHaveCount(views.length);
+    if (dynamic) {
+      expect(await grid.locator(':scope > button:visible').evaluateAll(buttons => buttons.map(button =>
+        button.getAttribute('data-home-module-view')
+      ))).toEqual(views);
+      expect(await page.evaluate(() => window.eval("assertRepHomeModuleParity('home-role-fixture')"))).toBe(true);
+    }
     if (page.viewportSize()!.width >= 1100 && views.length) {
       await page.mouse.move(1,1); // Measure resting cards, outside their hover animation.
       await expect.poll(() => grid.evaluate((element) => {
@@ -207,6 +213,28 @@ test('REP Home preserves module denials and shows Request loading and retry stat
     await app.assertTiles(salesViews.filter(view => !denied.includes(view) && view !== 'request'), true, false);
     if (status === 'error') await expect(statusCard.getByRole('button', { name: 'Retry' })).toBeVisible();
   }
+  app.assertClean();
+});
+
+test('REP Home parity rejects wrong module identity and missing cards without relying on count alone', async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!);
+  await app.seed('tony_bono', 'REP');
+  await app.assertTiles(salesViews, true, false);
+  const parity = await page.evaluate(() => window.eval(`(() => {
+    const grid = document.getElementById('home-rep-dashboard-grid');
+    const first = grid.querySelector(':scope > button');
+    const originalView = first.getAttribute('data-home-module-view');
+    first.setAttribute('data-home-module-view', 'sales');
+    const wrongIdentity = assertRepHomeModuleParity('home-role-wrong-identity');
+    first.setAttribute('data-home-module-view', originalView);
+    first.remove();
+    const missingCard = assertRepHomeModuleParity('home-role-missing-card');
+    grid.prepend(first);
+    const restored = assertRepHomeModuleParity('home-role-restored');
+    return { wrongIdentity, missingCard, restored };
+  })()`));
+  expect(parity).toEqual({ wrongIdentity: false, missingCard: false, restored: true });
+  await app.assertTiles(salesViews, true, false);
   app.assertClean();
 });
 

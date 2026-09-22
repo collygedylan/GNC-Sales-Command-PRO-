@@ -26,10 +26,26 @@
    const allowed=canAccessView(item.view);button.hidden=!allowed;button.classList.toggle('hidden',!allowed);
   }
  }
- let initialized=false,observedNav=null;
+ let initialized=false,observedNav=null,footerResizeObserver=null,footerMeasureFrame=0;
+ function scheduleFooterHeightMeasure(){
+  if(footerMeasureFrame)return;
+  const schedule=typeof root.requestAnimationFrame==='function'?root.requestAnimationFrame.bind(root):(callback)=>root.setTimeout(callback,0);
+  footerMeasureFrame=schedule(()=>{
+   footerMeasureFrame=0;
+   const nav=observedNav;if(!nav)return;
+   const height=Math.ceil(nav.getBoundingClientRect().height);if(!height)return;
+   const value=height+'px',style=document.documentElement.style;
+   if(style.getPropertyValue('--gnc-footer-height')!==value)style.setProperty('--gnc-footer-height',value);
+  });
+ }
  function shell(){
-  const nav=document.getElementById('bottom-nav');if(!nav)return;
-  if(nav!==observedNav){observedNav=nav;new ResizeObserver(()=>{const height=Math.ceil(nav.getBoundingClientRect().height);if(height)document.documentElement.style.setProperty('--gnc-footer-height',height+'px');}).observe(nav);}
+  const nav=document.getElementById('bottom-nav');
+  if(!nav){footerResizeObserver?.disconnect();footerResizeObserver=null;observedNav=null;return;}
+  if(nav!==observedNav){
+   footerResizeObserver?.disconnect();observedNav=nav;
+   footerResizeObserver=new root.ResizeObserver(scheduleFooterHeightMeasure);footerResizeObserver.observe(nav);
+   scheduleFooterHeightMeasure();
+  }
   if(!initialized){initialized=true;document.documentElement.classList.add('gnc-mobile-workspace');}
  }
  root.GncMobileWorkspace={syncHub,shell,hubs};
