@@ -30,6 +30,7 @@
         let pollTimer = null, signalTimer = null, signalAt = Infinity, signalReason = '', signalIdentity = '', unsubscribe = null, subscribedScope = '';
         const readinessReasons = new Set(['visible-view', 'view-entry', 'login-shell-open', 'drive-detail-tab', 'av-notes-input']);
         let lastVerifiedAt = null, currentStatus = { state: 'Syncing', lastVerifiedAt: null };
+        const verifiedAtByIdentity = new Map();
         let backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
         const statistics = { revisionReads: 0, adapterReads: 0, discardedLoads: 0, commits: 0, signals: 0, cacheHits: 0 };
         function publish(state, message = '', extra = {}) {
@@ -63,7 +64,7 @@
             unsubscribe = null; subscribedScope = '';
         }
         function reset() {
-            epoch++; clearTimers(); closeSubscription(); applied.clear(); requested.clear();
+            epoch++; clearTimers(); closeSubscription(); applied.clear(); requested.clear(); verifiedAtByIdentity.clear();
             permission = ''; scope = ''; lastVerifiedAt = null; queued = false;
             backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
             publish('Syncing', 'Waiting to verify current data.');
@@ -73,7 +74,7 @@
             if (!next || !next.scope || next.visible === false || next.online === false) return next;
             if (scope !== next.scope) {
                 invalidateBackground();
-                epoch++; applied.clear(); requested.clear(); permission = ''; lastVerifiedAt = null;
+                epoch++; applied.clear(); requested.clear(); verifiedAtByIdentity.clear(); permission = ''; lastVerifiedAt = null;
                 scope = next.scope; closeSubscription();
             }
             return { ...next, adapters: (next.adapters || []).map((adapter) => ({ ...adapter, sourceKeys: [...adapter.sourceKeys] })) };
@@ -137,7 +138,9 @@
             if (background) backgroundController = run.controller;
             if (!background) arm(ctx);
             if (!ctx?.scope || ctx.visible === false) return false;
-            const emit = background ? publishBackground : (state, message = '', extra = {}) => publish(state, message, { ...extra, contextKey: identity(ctx) });
+            const contextKey = identity(ctx);
+            if (!background) lastVerifiedAt = verifiedAtByIdentity.get(contextKey) ?? null;
+            const emit = background ? publishBackground : (state, message = '', extra = {}) => publish(state, message, { ...extra, contextKey });
             if (ctx.online === false) { emit('Offline', 'Showing the last verified data, if available.'); return false; }
             const startedEpoch = epoch;
             const current = () => stillCurrent(ctx, startedEpoch) && (!background || run.generation === backgroundGeneration
@@ -165,7 +168,7 @@
                 return false;
             }
             if (permission && permission !== before.permissionVersion) {
-                applied.clear(); lastVerifiedAt = null;
+                applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
                 await options.onPermissionChange?.(before.permissionVersion);
                 if (!current()) return discard();
             }
@@ -195,11 +198,17 @@
                 }
             };
             let failure = null, cursor = 0;
+            const fail = (error) => {
+                if (failure) return;
+                failure = error;
+                if (current()) emit('Needs attention', error?.message || String(error));
+                run.controller?.abort(error);
+            };
             if (changed.length) {
                 emit('Syncing', 'Checking and loading changed data.');
                 options.onStageStart?.(ctx, before);
                 await Promise.all(Array.from({ length: Math.min(background ? options.backgroundConcurrency || 1 : options.concurrency || 2, changed.length) }, async () => {
-                    while (cursor < changed.length && current()) {
+                    while (cursor < changed.length && !failure && current()) {
                         const adapter = changed[cursor++];
                         try {
                             const meta = cacheMeta(adapter, ctx, before);
@@ -215,12 +224,13 @@
                             if (value === undefined) throw new Error(`${adapter.id} did not return a snapshot.`);
                             if (!display.has(adapter.id) || !adapter.id.startsWith('core:')) preview(adapter, value);
                             staged.push({ adapter, value });
-                        } catch (error) { failure = error; }
+                        } catch (error) { fail(error); }
                     }
                 }));
                 // An adapter may finish after pagehide suspended this cycle.
                 // Check before starting another fetch in the departing page.
                 if (!current()) return discard();
+                if (failure) return false;
                 statistics.revisionReads++;
                 const afterValue = await options.readRevisions(keys, { signal: run.controller?.signal });
                 if (!current()) return discard('Source data changed while loading; checking again.');
@@ -229,7 +239,6 @@
                     if (background) { publish('Syncing', 'Source data changed; verifying visible data.'); signal('background-source-changed', 0); }
                     return discard('Source data changed while loading; checking again.');
                 }
-                if (failure) { emit('Needs attention', failure.message || String(failure)); return false; }
                 // No asynchronous work is permitted between final validation and application.
                 if (staged.length) {
                     if (options.commitSnapshots) options.commitSnapshots(staged, ctx, after);
@@ -245,8 +254,10 @@
                     });
                 }
             }
-            if (failure) { emit('Needs attention', failure.message || String(failure)); return false; }
-            if (!background) lastVerifiedAt = now();
+            if (!background) {
+                lastVerifiedAt = now();
+                verifiedAtByIdentity.set(contextKey, lastVerifiedAt);
+            }
             emit('Up to date');
             return true;
         }
@@ -295,7 +306,7 @@
                     activeRun = run;
                     try { result = await cycle(run); }
                     catch (error) {
-                        if (epoch === run.epoch && stillCurrent(run.context || {}, run.epoch)) publish('Needs attention', error.message || String(error));
+                        if (epoch === run.epoch && stillCurrent(run.context || {}, run.epoch)) publish('Needs attention', error.message || String(error), { contextKey: identity(run.context || {}) });
                         result = false;
                     }
                 }

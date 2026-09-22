@@ -86,6 +86,114 @@ test('network failures keep old data visibly stale instead of committing an empt
     assert.equal(f.coordinator.getStatus().state, 'Needs attention');
     assert.match(f.coordinator.getStatus().message, /timed out/);
 });
+test('verification timestamps and metadata failures belong to the current screen', async () => {
+    const f = fixture();
+    await f.coordinator.check();
+    const verifiedAt = f.coordinator.getStatus().lastVerifiedAt;
+    assert.equal(verifiedAt, 1000);
+    f.context.viewKey = 'request:pending';
+    f.metadataHook = async () => { throw new Error('Request metadata failed'); };
+    assert.equal(await f.coordinator.check(), false);
+    const status = f.coordinator.getStatus();
+    assert.equal(status.state, 'Needs attention');
+    assert.equal(status.lastVerifiedAt, null, 'a new screen must not inherit another screen verification');
+    assert.equal(status.contextKey, JSON.stringify([f.context.scope, f.context.viewKey, [[f.adapter.id, f.adapter.cacheKey]]]));
+    f.context.viewKey = 'docks';
+    await f.coordinator.check();
+    assert.equal(f.coordinator.getStatus().lastVerifiedAt, verifiedAt, 'retained data keeps its own previous verification');
+});
+
+test('account changes discard all prior screen verification timestamps', async () => {
+    const f = fixture();
+    const firstScope = f.context.scope;
+    await f.coordinator.check();
+    f.context.scope = 'other-account';
+    await f.coordinator.check();
+    f.context.scope = firstScope;
+    f.metadataHook = async () => { throw new Error('New session read failed'); };
+    await f.coordinator.check();
+    assert.equal(f.coordinator.getStatus().lastVerifiedAt, null);
+});
+
+test('the first required-read failure publishes promptly, aborts siblings and leaves retryable state', async () => {
+    const siblingStarted = deferred(), statuses = [], commits = [], attempts = [];
+    let shouldFail = true, queuedReads = 0, statusAtAbort = '';
+    const adapters = [
+        { id: 'core:primary', cacheKey: 'primary/all', sourceKeys: ['primary'], stage: async () => {
+            attempts.push('primary'); await siblingStarted.promise;
+            if (shouldFail) throw new Error('Primary request timed out');
+            return ['primary'];
+        }, commit: value => commits.push(value) },
+        { id: 'core:sibling', cacheKey: 'sibling/all', sourceKeys: ['sibling'], stage: async ({ signal }) => {
+            attempts.push('sibling'); siblingStarted.resolve();
+            if (!shouldFail) return ['sibling'];
+            return new Promise((resolve, reject) => signal.addEventListener('abort', () => {
+                statusAtAbort = statuses.at(-1)?.state || '';
+                reject(signal.reason || new Error('Sibling aborted'));
+            }, { once: true }));
+        }, commit: value => commits.push(value) },
+        { id: 'core:queued', cacheKey: 'queued/all', sourceKeys: ['queued'], stage: async () => {
+            queuedReads++; return ['queued'];
+        }, commit: value => commits.push(value) },
+    ];
+    const context = { scope: 'same-user/site-role-v1', viewKey: 'requests', visible: true, online: true, adapters };
+    const coordinator = createCoordinator({ getContext: () => context, concurrency: 2,
+        setTimeout: () => 1, clearTimeout() {}, onStatus: status => statuses.push(status),
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1',
+            sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }) });
+
+    assert.equal(await coordinator.check(), false);
+    assert.equal(statusAtAbort, 'Needs attention', 'failure status must publish before sibling cancellation settles');
+    assert.equal(statuses.at(-1).message, 'Primary request timed out', 'a sibling abort must not replace the original error');
+    assert.equal(statuses.at(-1).contextKey, JSON.stringify([context.scope, context.viewKey,
+        adapters.map(adapter => [adapter.id, adapter.cacheKey])]));
+    assert.equal(queuedReads, 0, 'no queued sibling may start after the first failure');
+    assert.equal(commits.length, 0, 'an incomplete cohort must never commit');
+
+    shouldFail = false;
+    assert.equal(await coordinator.check(), true);
+    assert.equal(queuedReads, 1);
+    assert.deepEqual(attempts, ['primary', 'sibling', 'primary', 'sibling']);
+    assert.deepEqual(commits, [['primary'], ['sibling'], ['queued']]);
+    assert.equal(coordinator.getStatus().state, 'Up to date');
+    coordinator.reset();
+});
+test('a background failure finishing after navigation cannot replace the new foreground state', async () => {
+    const backgroundGate = deferred(), timers = new Map(), foregroundStatuses = [], backgroundStatuses = [];
+    let timerId = 0, backgroundStarted = false;
+    const first = { id: 'core:first', cacheKey: 'first/all', sourceKeys: ['first'], stage: async () => ['first'], commit() {} };
+    const second = { id: 'core:second', cacheKey: 'second/all', sourceKeys: ['second'], stage: async () => ['second'], commit() {} };
+    const deferredBackground = { id: 'core:deferred', cacheKey: 'deferred/all', sourceKeys: ['deferred'], stage: async () => {
+        backgroundStarted = true; await backgroundGate.promise; throw new Error('obsolete background failure');
+    }, commit() {} };
+    const context = { scope: 'same-user/site-role-v1', viewKey: 'first', visible: true, online: true,
+        adapters: [first], backgroundAdapters: [deferredBackground] };
+    const coordinator = createCoordinator({ getContext: () => context, backgroundDelayMs: 0,
+        setTimeout: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, delay }); return id; },
+        clearTimeout: id => timers.delete(id),
+        onStatus: status => foregroundStatuses.push(status), onBackgroundStatus: status => backgroundStatuses.push(status),
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1',
+            sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }) });
+
+    assert.equal(await coordinator.check(), true);
+    await settle();
+    const backgroundTimer = Array.from(timers.entries()).find(([, timer]) => timer.delay === 0);
+    assert.ok(backgroundTimer, 'successful foreground verification must schedule its background cohort');
+    timers.delete(backgroundTimer[0]); backgroundTimer[1].callback(); await settle();
+    assert.equal(backgroundStarted, true);
+
+    context.viewKey = 'second'; context.adapters = [second]; context.backgroundAdapters = [];
+    assert.equal(await coordinator.check('view-entry'), true);
+    const nextContextKey = JSON.stringify([context.scope, context.viewKey, [[second.id, second.cacheKey]]]);
+    assert.equal(coordinator.getStatus().contextKey, nextContextKey);
+    backgroundGate.resolve(); await settle();
+    assert.equal(coordinator.getStatus().state, 'Up to date');
+    assert.equal(coordinator.getStatus().contextKey, nextContextKey);
+    assert.ok(!backgroundStatuses.some(status => status.state === 'Needs attention'),
+        'obsolete background failure must be discarded instead of publishing stale attention');
+    assert.equal(foregroundStatuses.at(-1).state, 'Up to date');
+    coordinator.reset();
+});
 test('a newer revision during fetch is retained and automatically reconciled', async () => {
     const f = fixture(); let first = true;
     f.loadHook = async () => { if (first) { first = false; f.revision = '9007199254740993'; f.rows = [{ id: 'newer' }]; } };

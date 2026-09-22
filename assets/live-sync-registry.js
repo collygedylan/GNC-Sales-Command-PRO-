@@ -95,7 +95,9 @@
         'detail:reserves': data([], ['driveReserves']),
         'detail:open-orders': data([], ['driveOpenOrders']),
         'request:bunch-notes': data([], ['bunchNotes']),
-        'request:pending': data(['requests', 'requestHistory', 'salesCredits', 'inventoryEditRequests']),
+        // Pending rows are fully expanded by the requests dataset. History,
+        // credits and edit-request joins belong to their consuming subviews.
+        'request:pending': data([]),
         'request:reps': data(['requests', 'requestHistory', 'salesCredits']),
         'request:suspend-tag': data(['soc', 'master']),
         'request:eval-work': data(['master'], ['evalWork']),
@@ -138,7 +140,12 @@
     function getEntries(viewId, context = {}) {
         const view = views[viewId];
         if (!view) throw new Error(`Unregistered live-sync view: ${viewId}`);
-        const entries = [viewId === 'request' && (context.surfaces || []).includes('request:bunch-notes') ? data([], ['bunchNotes']) : viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
+        const requestedSurfaces = context.surfaces || [];
+        const requestBunchNotes = viewId === 'request' && requestedSurfaces.includes('request:bunch-notes');
+        const requestPending = viewId === 'request' && requestedSurfaces.includes('request:pending');
+        const entries = [requestBunchNotes ? data([], ['bunchNotes'])
+            : requestPending ? data(['requests'])
+            : viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
         if ((viewId === 'drive' || viewId === 'detail' && context.driveDetail) && context.driveAssignmentsRequired) {
             entries.push(data(['warehouseAssignedItems']));
         }
@@ -152,7 +159,7 @@
             if ([task, filter].includes('av-blanks')) entries.push(data(['cavAvBlankKeys', 'cav']));
             if (task === 'reserves') entries.push(data(['reserves', 'customerRepMap']));
         }
-        (context.surfaces || []).forEach((surface) => {
+        requestedSurfaces.forEach((surface) => {
             if (!surfaces[surface]) throw new Error(`Unregistered live-sync surface: ${surface}`);
             entries.push(surfaces[surface]);
         });

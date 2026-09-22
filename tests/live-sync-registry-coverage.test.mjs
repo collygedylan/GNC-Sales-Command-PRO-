@@ -116,6 +116,28 @@ test('every implemented request subview has an explicit surface instead of silen
   for (const tab of tabs) assert.ok(registry.surfaces[`request:${tab}`], `Unclassified Que surface request:${tab}`);
 });
 
+test('Pending requests verifies only its queue cohort while every other request tab keeps its joins', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:pending'] })),
+    ['core:requests', 'side:settings']);
+  const expected = {
+    'request:reps': ['core:requests', 'core:master', 'core:customerRepMap', 'core:requestHistory', 'core:salesCredits', 'side:settings'],
+    'request:suspend-tag': ['core:requests', 'core:master', 'core:customerRepMap', 'core:soc', 'side:settings'],
+    'request:eval-work': ['core:requests', 'core:master', 'core:customerRepMap', 'side:evalWork', 'side:settings'],
+    'request:av-check': ['core:requests', 'core:master', 'core:customerRepMap', 'side:avOptionEval', 'side:settings'],
+    'request:moves': ['core:requests', 'core:master', 'core:customerRepMap', 'core:inventoryEditRequests', 'side:locationWork', 'side:settings'],
+    'request:recount': ['core:requests', 'core:master', 'core:customerRepMap', 'core:salesOffice', 'side:ncr', 'side:settings'],
+    'request:shear-list': ['core:requests', 'core:master', 'core:customerRepMap', 'core:reserves', 'side:shear', 'side:settings'],
+    'request:shear-test': ['core:requests', 'core:master', 'core:customerRepMap', 'core:reserves', 'core:inventoryEditRequests', 'side:shear', 'side:settings'],
+  };
+  for (const [surface, adapters] of Object.entries(expected)) {
+    assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: [surface] })), adapters, surface);
+  }
+  assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:bunch-notes'] })), ['side:bunchNotes']);
+  assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:pending', 'dialog:request'] })),
+    ['core:requests', 'core:master', 'core:reserves', 'core:customerRepMap', 'side:settings']);
+});
+
 test('demand revision surfaces are Drive-detail-only and do not alter AV detail loading', () => {
   const context = harness();
   Object.assign(context, {

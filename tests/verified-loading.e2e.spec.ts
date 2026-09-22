@@ -131,6 +131,94 @@ async function installColdFixture(page: Page, baseURL: string, options: Record<s
   });
 }
 
+async function closeMenuAccessibly(page: Page) {
+  const closeMenu = page.getByRole('button', { name: 'Close menu', exact: true });
+  await expect(closeMenu).toBeVisible();
+  await closeMenu.press('Enter');
+}
+
+async function retryFreshnessFromMenu(page: Page, beforeRetry: () => void = () => {}) {
+  expect(await page.locator('#live-data-warning-dot').evaluate(element => element.parentElement?.id)).toBe('footer-menu-btn');
+  await expect(page.locator('#live-data-warning-dot')).toBeVisible();
+  await page.locator('#footer-menu-btn').click();
+  await expect(page.locator('#side-drawer')).toHaveClass(/open/);
+  await expect(page.locator('#live-data-freshness')).toBeVisible();
+  await expect(page.locator('#live-data-retry')).toBeVisible();
+  beforeRetry();
+  await page.locator('#live-data-retry').click();
+  await closeMenuAccessibly(page);
+  await expect(page.locator('#side-drawer')).not.toHaveClass(/open/);
+}
+
+type PendingRequestReadMode = 'rows' | 'failed' | 'empty';
+
+const pendingRequestRow = {
+  unique_id: 'verified-loading-pending-request', itemcode: 'REQ.001', commonname: 'Synthetic pending request Hosta',
+  contsize: '#1', locationcode: 'C.09.001', lotcode: '27.F1', season: 'F1', saleyear: '27',
+  req_status: 'Pending', req_archived: false, req_qty: '5', req_match: '100', request_folder: 'verified-loading-folder',
+  req_customer: 'Synthetic Request Customer', salesrepname: 'Fixture Rep', requested_by: 'verified_loading_admin'
+};
+
+async function installPendingRequestFixture(page: Page, baseURL: string, initialMode: PendingRequestReadMode) {
+  const origin = new URL(baseURL).origin;
+  let mode = initialMode;
+  let releaseUnrelatedReads!: () => void;
+  const unrelatedGate = new Promise<void>(resolve => { releaseUnrelatedReads = resolve; });
+  let released = false;
+  const reads: string[] = [];
+  const fixture = await installColdFixture(page, baseURL, {
+    beforeLogin: async () => {
+      await page.route(/\/rest\/v1\/(?:ph_request_queue_live_rows|ph_active_request_live_rows|ph_master_inventory|ph_request_history|ph_sales_credit_requests|ph_inventory_edit_requests|ph_customer_consignee_sales_reps)(?:\?|$)/, async route => {
+        const table = new URL(route.request().url()).pathname.split('/').pop() || '';
+        reads.push(table);
+        const headers = {
+          'access-control-allow-origin': origin,
+          'access-control-expose-headers': 'content-range',
+          'content-range': mode === 'rows' ? '0-0/1' : '*/0'
+        };
+        const fulfill = (value: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(value) });
+        if (table === 'ph_request_queue_live_rows' || table === 'ph_active_request_live_rows') {
+          if (mode === 'failed') return fulfill({ message: 'Synthetic required request read failure' }, 500);
+          return fulfill(mode === 'rows' ? [pendingRequestRow] : []);
+        }
+        if (['ph_master_inventory', 'ph_inventory_edit_requests', 'ph_customer_consignee_sales_reps'].includes(table)) {
+          await unrelatedGate;
+          return fulfill({ message: `Synthetic held ${table} failure` }, 500);
+        }
+        return fulfill({ message: `Synthetic unrelated ${table} failure` }, 500);
+      });
+      await expect(page.locator('#login-button')).toBeEnabled();
+    }
+  });
+  return {
+    fixture,
+    reads,
+    setMode(nextMode: PendingRequestReadMode) { mode = nextMode; },
+    releaseUnrelatedReads() {
+      if (released) return;
+      released = true;
+      releaseUnrelatedReads();
+    }
+  };
+}
+
+async function openPendingRequests(page: Page) {
+  await page.locator('#footer-request-btn').click();
+  await expect(page.locator('#view-request')).toBeVisible();
+}
+
+async function expectPendingRequestScope(page: Page) {
+  await page.waitForFunction(() => window.eval(`getCurrentVisibleViewId() === 'request'
+    && productionLiveSyncVerifiedView === productionVerifiedViewKey()`));
+  const context = await page.evaluate(() => window.eval(`(() => {
+    const current = getProductionLiveSyncContext();
+    return { view: current.viewKey, surfaces: current.surfaces, adapters: current.adapters.map((adapter) => adapter.id) };
+  })()`));
+  expect(context.view).toContain('request');
+  expect(context.surfaces).toContain('request:pending');
+  expect(context.adapters).toEqual(['side:settings', 'core:requests']);
+}
+
 const COMMON_NAME_TOTAL = 1581;
 const commonNameAt = (index: number) => `Common Name ${String(index).padStart(4, '0')}`;
 function commonNameMasterRows() {
@@ -224,11 +312,78 @@ for (const failure of ['failed', 'empty'] as const) test(`Common Name retains ea
   expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView'))).toBe('');
   if (failure === 'failed') {
     fixture.clearMasterPageFaults();
-    await page.locator('#live-data-freshness').click();
+    await retryFreshnessFromMenu(page);
     await waitForVerifiedDrive(page);
     await expect(commonNameButtons(page)).toHaveCount(COMMON_NAME_TOTAL, { timeout: 20000 });
   }
   expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('mobile Pending Requests renders its required rows while unrelated reads are held or failing', async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
+  const control = await installPendingRequestFixture(page, baseURL!, 'rows');
+  try {
+    await openPendingRequests(page);
+    await expect(page.locator('#request-content')).toContainText('Synthetic pending request Hosta');
+    await expect(page.locator('#request-content')).not.toContainText('Load Failed');
+    await expectPendingRequestScope(page);
+    expect(control.reads.some(table => ['ph_request_queue_live_rows', 'ph_active_request_live_rows'].includes(table)),
+      'Pending Requests must fetch its own required queue rows').toBe(true);
+  } finally {
+    control.releaseUnrelatedReads();
+  }
+  expect(control.fixture.errors).toEqual([]);
+  expect(control.fixture.blockedMutations).toEqual([]);
+});
+
+test('navigation clears a stale draft warning without discarding the retained input value', async ({ page, baseURL }) => {
+  const fixture = await installColdFixture(page, baseURL!);
+  await page.locator('#home-tile-drive').click();
+  await waitForVerifiedDrive(page);
+  await page.locator('#drive-search').fill('Synthetic retained search');
+  fixture.datasetRevision += 1;
+  await page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().check('draft-warning-navigation')`));
+  await expect(page.locator('#live-data-freshness')).toContainText('Edit needs review');
+  await expect(page.locator('#live-data-warning-dot')).toBeVisible();
+  await page.locator('#bottom-nav [data-footer-view="home"]').click();
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('#live-data-freshness')).not.toContainText('Edit needs review');
+  await expect(page.locator('#live-data-warning-dot')).toBeHidden();
+  await expect(page.locator('#drive-search')).toHaveValue('Synthetic retained search');
+  expect(await page.evaluate(() => window.eval('productionLiveSyncDraftChanged'))).toBe(false);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('mobile Pending Requests exposes required-read failure and recovers through Retry', async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
+  const control = await installPendingRequestFixture(page, baseURL!, 'failed');
+  try {
+    await openPendingRequests(page);
+    await expect(page.locator('#request-content')).toContainText('Load Failed');
+    await retryFreshnessFromMenu(page, () => control.setMode('rows'));
+    await expect(page.locator('#request-content')).toContainText('Synthetic pending request Hosta');
+    await expectPendingRequestScope(page);
+  } finally {
+    control.releaseUnrelatedReads();
+  }
+  expect(control.fixture.errors).toEqual([]);
+  expect(control.fixture.blockedMutations).toEqual([]);
+});
+
+test('mobile Pending Requests verifies an empty required list without waiting on other datasets', async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
+  const control = await installPendingRequestFixture(page, baseURL!, 'empty');
+  try {
+    await openPendingRequests(page);
+    await expect(page.locator('#request-content')).toContainText('No pending requests.');
+    await expect(page.locator('#request-content')).not.toContainText('Load Failed');
+    await expectPendingRequestScope(page);
+  } finally {
+    control.releaseUnrelatedReads();
+  }
+  expect(control.fixture.errors).toEqual([]);
+  expect(control.fixture.blockedMutations).toEqual([]);
 });
 
 test('Drive verifies cards before unopened reserves and AV-note sources are requested', async ({ page, baseURL }) => {

@@ -24,6 +24,12 @@ const dock28 = [
 ];
 const newDock29 = Array.from({ length: 32 }, (_, i) => row(`new-${i}`, 'New Customer', '29'));
 
+async function closeMenuAccessibly(page: Page) {
+  const closeMenu = page.getByRole('button', { name: 'Close menu', exact: true });
+  await expect(closeMenu).toBeVisible();
+  await closeMenu.press('Enter');
+}
+
 /** Exercises the published-shell renderer and real saved filter handlers.
  * Inventory arrives through an isolated fixture boundary; ALL business requests
  * and WebSockets are blocked before navigation, including in remote mode.
@@ -71,12 +77,13 @@ async function harness(page: Page, baseURL: string, rows: Row[], customCustomers
         document.getElementById('app-wrapper').classList.remove('hidden');
         dockViewMode = 'docks'; dockViewLevel = 0; selectedDockNum = selectedDockStop = null;
         document.getElementById('docks-search').value = '';
-        showOnlyPrimaryView('docks');
         invalidateResolvedViewStateCaches();
-        renderDocks();
+        markViewDirty('docks');
+        switchView('docks', { force: true });
       })()`);
     }, { fixtureRows: nextRows, customers: initialCustomers });
     await expect(page.locator('#view-docks')).toBeVisible();
+    await expect(page.locator('#global-header-search-slot #docks-search')).toBeVisible();
   };
   await page.goto('/?post_deploy_access_canary=1&docks_filter_canary=1', { waitUntil: 'load' });
   await seed(rows, customCustomers);
@@ -207,22 +214,37 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
     })`)));
     throw error;
   }
-  const headerGeometry = await page.locator('#live-data-freshness').evaluate(element => {
+  await expect(page.locator('#live-data-freshness')).toHaveAttribute('role', 'status');
+  await expect(page.locator('#live-data-freshness')).toHaveAttribute('aria-label', 'Data status');
+  await expect(page.locator('#live-data-freshness')).toHaveAttribute('aria-live', 'polite');
+  expect(await page.locator('#live-data-freshness').evaluate(element => element.parentElement?.id)).toBe('side-drawer');
+  await page.locator('#footer-menu-btn').click();
+  await expect(page.locator('#side-drawer')).toHaveClass(/open/);
+  await expect(page.getByRole('heading', { name: 'Data status', exact: true })).toBeVisible();
+  await expect(page.locator('#live-data-status-label')).toContainText('Up to date');
+  await page.screenshot({path:test.info().outputPath('native-freshness-menu.png')});
+  await closeMenuAccessibly(page);
+  await expect(page.locator('#side-drawer')).not.toHaveClass(/open/);
+  await page.locator('#docks-search').fill('Synthetic');
+  await expect(page.locator('#docks-search')).toBeFocused();
+  await expect(page.locator('#docks-search-clear')).toBeVisible();
+  const clearHitTarget = await page.locator('#docks-search-clear').evaluate(element => {
     const rect = element.getBoundingClientRect();
-    const obscured = ['global-header-inline-back', 'docks-search'].filter(id => {
-      const target = document.getElementById(id);
-      if (!target || !target.getClientRects().length) return false;
-      const targetRect = target.getBoundingClientRect();
-      const hit = document.elementFromPoint(targetRect.left + targetRect.width / 2, targetRect.top + targetRect.height / 2);
-      return !!hit?.closest('#live-data-freshness');
-    });
-    return {left:rect.left, right:rect.right, top:rect.top, width:window.innerWidth, obscured};
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return hit === element || !!hit?.closest('#docks-search-clear');
   });
-  expect(headerGeometry.left).toBeGreaterThanOrEqual(0);
-  expect(headerGeometry.right).toBeLessThanOrEqual(headerGeometry.width + 1);
-  expect(headerGeometry.top).toBeGreaterThanOrEqual(0);
-  expect(headerGeometry.obscured, 'Freshness status must not cover header action centers').toEqual([]);
-  await page.screenshot({path:test.info().outputPath('native-freshness-header.png')});
+  expect(clearHitTarget, 'Docks search X must remain unobstructed').toBe(true);
+  const hitTargetObstructions = (selector: string) => page.locator(selector).evaluateAll(elements => elements.flatMap(element => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return rect.width > 0 && rect.height > 0 && (hit === element || element.contains(hit)) ? [] : [element.id];
+  }));
+  await expect.poll(() => hitTargetObstructions('#global-header-inline-back, #docks-search-clear, #footer-menu-btn'), {
+    message: 'Focused search must leave Back, clear, and Menu as hit targets'
+  }).toEqual([]);
+  await page.locator('#docks-search-clear').click();
+  await expect(page.locator('#docks-search')).toHaveValue('');
+  await page.screenshot({path:test.info().outputPath('native-search-clear.png')});
 }
 
 test('native shared coordinator preserves filtered sessions, stages import races and resumes after a lost connection', async ({ page, browser, baseURL }, testInfo) => {
