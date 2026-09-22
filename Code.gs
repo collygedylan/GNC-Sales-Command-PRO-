@@ -132,6 +132,8 @@ function getSupabaseHeaders_(extraHeaders) {
 // retries, so an expired/superseded writer cannot finish an old snapshot.
 let datasetImportFenceContext_ = null;
 let datasetImportProcessorLock_ = null;
+const DATASET_IMPORT_RECONCILIATION_RETRY_DELAYS_MS_ = Object.freeze([2000, 4000, 8000]);
+const DATASET_IMPORT_RECONCILIATION_MAX_ELAPSED_MS_ = 120000;
 function withDatasetImportProcessorLock_(work, existingLock) {
   const previousLock = datasetImportProcessorLock_;
   const lock = existingLock || previousLock || LockService.getScriptLock();
@@ -197,12 +199,48 @@ function beginDatasetImportFence_(sourceTables) {
     throw error;
   }
 }
-function heartbeatDatasetImportFence_() {
+function heartbeatDatasetImportFence_(force) {
   const context = datasetImportFenceContext_;
-  if (!context || Date.now() - context.lastHeartbeatAt < 60000) return;
+  if (!context || (!force && Date.now() - context.lastHeartbeatAt < 60000)) return;
   const result = callDatasetImportFenceRpc_('heartbeat_dataset_import_v1', { p_run_id: context.runId });
   if (!result || result.ok !== true || result.state !== 'active') throw new Error('DATASET_IMPORT_FENCE_LOST');
   context.lastHeartbeatAt = Date.now();
+}
+
+function getDatasetImportReconciliationFailureCode_(stageCode, error) {
+  const safeStage = String(stageCode || 'DATASET_IMPORT_RECONCILIATION').replace(/[^A-Z0-9_]/g, '_');
+  const message = String(error && error.message || error || '');
+  const sqlState = message.match(/(?:"code"\s*:\s*"|\b)([0-9A-Z]{5})(?:"|\b)/i);
+  return safeStage + '_FAILED' + (sqlState ? '_' + String(sqlState[1]).toUpperCase() : '');
+}
+
+function runRequiredDatasetImportReconciliation_(stageCode, reconcile) {
+  if (!datasetImportFenceContext_) return reconcile();
+  const attempts = DATASET_IMPORT_RECONCILIATION_RETRY_DELAYS_MS_.length + 1;
+  const deadline = Date.now() + DATASET_IMPORT_RECONCILIATION_MAX_ELAPSED_MS_;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    let result;
+    try {
+      result = reconcile();
+    } catch (error) {
+      const failureCode = getDatasetImportReconciliationFailureCode_(stageCode, error);
+      console.error(`[DATASET SYNC][${stageCode}] ${failureCode}`);
+      throw new Error(failureCode);
+    }
+    const status = String(result && result.status || '').trim().toLowerCase();
+    const code = String(result && result.code || '').trim().toUpperCase();
+    if (status === 'completed' && (!Object.prototype.hasOwnProperty.call(result || {}, 'ok') || result.ok === true)) return result;
+    if (status !== 'maintenance_deferred' && status !== 'deferred' && code !== 'MAINTENANCE_DEFERRED') {
+      throw new Error(String(stageCode) + '_INCOMPLETE');
+    }
+    if (attempt === attempts) throw new Error(String(stageCode) + '_DEFERRED_EXHAUSTED');
+    const delayMs = DATASET_IMPORT_RECONCILIATION_RETRY_DELAYS_MS_[attempt - 1];
+    if (Date.now() + delayMs >= deadline) throw new Error(String(stageCode) + '_RETRY_BUDGET_EXHAUSTED');
+    console.warn(`[DATASET SYNC][${stageCode}] deferred; retry ${attempt + 1}/${attempts} after ${delayMs}ms.`);
+    Utilities.sleep(delayMs);
+    heartbeatDatasetImportFence_(true);
+  }
+  throw new Error(String(stageCode) + '_INCOMPLETE');
 }
 function closeDatasetImportFence_(context, succeeded) {
   if (!context || context.closed) return;
@@ -365,15 +403,17 @@ function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
   const tokenSeed = [safeSource, safeRevision].join('|');
   const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, tokenSeed, Utilities.Charset.UTF_8);
   const idempotencyKey = 'season-sales-' + Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, '').slice(0, 80);
-  const result = callSupabaseRpc_('reconcile_season_sales_office_v1', {
-    p_itemcodes: null,
-    p_dry_run: false,
-    p_import_revision: safeSource + ':' + safeRevision,
-    p_idempotency_key: idempotencyKey
-  });
-  if (datasetImportFenceContext_ && (!result || result.ok !== true || result.status !== 'completed')) {
-    throw new Error('SEASON_SALES_RECONCILIATION_INCOMPLETE');
-  }
+  const reconcile = function() {
+    return callSupabaseRpc_('reconcile_season_sales_office_v1', {
+      p_itemcodes: null,
+      p_dry_run: false,
+      p_import_revision: safeSource + ':' + safeRevision,
+      p_idempotency_key: idempotencyKey
+    });
+  };
+  const result = datasetImportFenceContext_
+    ? runRequiredDatasetImportReconciliation_('SEASON_SALES_RECONCILIATION', reconcile)
+    : reconcile();
   if (result && (result.status === 'maintenance_deferred' || result.code === 'MAINTENANCE_DEFERRED')) {
     console.warn('[SEASON SALES NOTES] MAINTENANCE_DEFERRED');
   } else {
@@ -4511,12 +4551,14 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     if (isMasterInventoryTable_(tableName)) {
       reconcileSeasonSalesOfficeAfterImport_(syncStartTime, 'master_inventory');
       try {
-        evalReport2Reconciliation = callSupabaseRpc_('reconcile_eval_report2_work_v1', {
-          p_import_revision: syncStartTime, p_dry_run: false, p_limit: 5000
-        });
-        if (revisionFence && (!evalReport2Reconciliation || evalReport2Reconciliation.status !== 'completed')) {
-          throw new Error('EVAL_REPORT2_RECONCILIATION_INCOMPLETE');
-        }
+        const reconcileEvalReport2 = function() {
+          return callSupabaseRpc_('reconcile_eval_report2_work_v1', {
+            p_import_revision: syncStartTime, p_dry_run: false, p_limit: 5000
+          });
+        };
+        evalReport2Reconciliation = revisionFence
+          ? runRequiredDatasetImportReconciliation_('EVAL_REPORT2_RECONCILIATION', reconcileEvalReport2)
+          : reconcileEvalReport2();
         if (evalReport2Reconciliation && evalReport2Reconciliation.status === 'deferred') {
           console.warn('[EVAL REPORTS #2] RECONCILIATION_DEFERRED');
         } else {

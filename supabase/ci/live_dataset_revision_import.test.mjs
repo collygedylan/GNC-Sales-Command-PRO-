@@ -5,14 +5,16 @@ import vm from 'node:vm';
 import test from 'node:test';
 const code = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
-function environment({ changed = true, recovery = false, deleteFailure = false, archiveFailure = false, deferred = false, lostBeginResponse = false } = {}) {
-  const events = []; let locked = false; let lost = lostBeginResponse;
+function environment({ changed = true, recovery = false, deleteFailure = false, archiveFailure = false,
+  deferredAttempts = 0, codeOnlyDeferred = false, reconciliationFailure = false,
+  heartbeatFailure = false, lostBeginResponse = false } = {}) {
+  const events = []; let locked = false; let lost = lostBeginResponse; let reconciliationCalls = 0;
   const lock = { hasLock: () => locked, waitLock: () => { assert.equal(locked, false); locked = true; events.push('lock'); }, releaseLock: () => { locked = false; events.push('unlock'); } };
   const ctx = vm.createContext({
     console: { log() {}, warn() {}, error() {} },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => '' }) },
     LockService: { getScriptLock: () => lock },
-    Utilities: { getUuid: randomUUID, sleep() {}, DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
+    Utilities: { getUuid: randomUUID, sleep: ms => events.push({ action: 'sleep', ms }), DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (_, value) => Array.from(createHash('sha256').update(value).digest()),
       base64EncodeWebSafe: bytes => Buffer.from(bytes).toString('base64url') },
     UrlFetchApp: { fetchAll: requests => requests.map(request => {
@@ -29,10 +31,22 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
       if (lost) { lost = false; throw new Error('Network response lost'); }
       return { ok: true, state: 'active' };
     }
-    if (name === 'heartbeat_dataset_import_v1') return { ok: true, state: 'active' };
+    if (name === 'heartbeat_dataset_import_v1') {
+      if (heartbeatFailure) throw new Error('DATASET_IMPORT_FENCE_LOST');
+      return { ok: true, state: 'active' };
+    }
     if (name === 'finish_dataset_import_v1') return { ok: true, state: 'completed' };
     if (name === 'fail_dataset_import_v1') return { ok: true, state: 'failed' };
-    if (name === 'reconcile_season_sales_office_v1') return { ok: true, status: deferred ? 'maintenance_deferred' : 'completed', openCount: 1 };
+    if (name === 'reconcile_season_sales_office_v1') {
+      reconciliationCalls++;
+      if (reconciliationFailure) throw new Error('ordinary synthetic failure');
+      if (reconciliationCalls <= deferredAttempts) {
+        return codeOnlyDeferred
+          ? { ok: true, code: 'MAINTENANCE_DEFERRED' }
+          : { ok: true, status: 'maintenance_deferred' };
+      }
+      return { ok: true, status: 'completed', openCount: 1 };
+    }
     throw new Error(`Unexpected RPC ${name}`);
   };
   vm.runInContext(`
@@ -72,12 +86,47 @@ test('failed pruning does not publish ready or archive canonical input', () => {
   assert.ok(!actions(env).includes('archive'));
   assert.equal(env.locked(), false);
 });
-test('deferred derived reconciliation leaves the file retryable and interrupted', () => {
-  const env = environment({ deferred: true });
+test('deferred derived reconciliation retries with bounded backoff and completes before ready', () => {
+  const env = environment({ deferredAttempts: 3 });
+  assert.equal(env.run().failedFiles, 0);
+  assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 4);
+  assert.deepEqual(env.events.filter(event => event.action === 'sleep').map(event => event.ms), [2000, 4000, 8000]);
+  assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 3);
+  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+});
+test('code-only maintenance deferral retries and completes before ready', () => {
+  const env = environment({ deferredAttempts: 1, codeOnlyDeferred: true });
+  assert.equal(env.run().failedFiles, 0);
+  assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 2);
+  assert.deepEqual(env.events.filter(event => event.action === 'sleep').map(event => event.ms), [2000]);
+  assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 1);
+  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+});
+test('exhausted deferred reconciliation fails the fence and leaves the file retryable', () => {
+  const env = environment({ deferredAttempts: 4 });
   assert.equal(env.run().failedFiles, 1);
+  assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 4);
   assert.ok(actions(env).includes('fail_dataset_import_v1'));
   assert.ok(!actions(env).includes('finish_dataset_import_v1'));
   assert.ok(!actions(env).includes('archive'));
+});
+test('ordinary reconciliation failures are not retried and persist only a safe stage code', () => {
+  const env = environment({ reconciliationFailure: true });
+  const result = env.run();
+  assert.equal(result.failedFiles, 1);
+  assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 1);
+  assert.equal(result.failedFileErrors[0].error, 'SEASON_SALES_RECONCILIATION_FAILED');
+  assert.ok(actions(env).includes('fail_dataset_import_v1'));
+});
+test('heartbeat lease failure stops deferred reconciliation before another attempt', () => {
+  const env = environment({ deferredAttempts: 1, heartbeatFailure: true });
+  const result = env.run();
+  assert.equal(result.failedFiles, 1);
+  assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 1);
+  assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 1);
+  assert.equal(result.failedFileErrors[0].error, 'DATASET_IMPORT_FENCE_LOST');
+  assert.ok(actions(env).includes('fail_dataset_import_v1'));
+  assert.ok(!actions(env).includes('finish_dataset_import_v1'));
 });
 test('normal zero-delta imports do not emit a revision fence', () => {
   const env = environment({ changed: false });
