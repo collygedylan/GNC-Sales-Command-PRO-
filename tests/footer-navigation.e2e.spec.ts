@@ -5,6 +5,9 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   const attemptedMutations: string[] = [];
   const runtimeResponses: string[] = [];
   const pageErrors: string[] = [];
+  let releaseInitialPreferences!: () => void;
+  const initialPreferencesGate = new Promise<void>(resolve => { releaseInitialPreferences = resolve; });
+  let preferencesReadStarted = false;
   await page.addInitScript(() => {
     const counts = { resizeObserverUndelivered: 0, resizeObserverLoopLimit: 0 };
     Object.defineProperty(window, '__footerRuntimeErrorCounts', { value: counts, configurable: false });
@@ -33,8 +36,12 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
         && url.pathname === '/functions/v1/app-api' && body?.action === 'navigation_preferences'
         && body.operation === 'get' && !body.commandId && !body.command_id
         && Object.keys(body.payload || {}).length === 0;
-      if (preferenceRead) return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
-        body: JSON.stringify({ ok: true, data: { username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } }) });
+      if (preferenceRead) {
+        preferencesReadStarted = true;
+        await initialPreferencesGate;
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ ok: true, data: { username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } }) });
+      }
       attemptedMutations.push(`${request.method()}:${url.pathname}`);
       await route.abort('blockedbyclient');
     } else if (new URL(request.url()).origin !== appOrigin) {
@@ -55,8 +62,8 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   await expect.poll(() => page.evaluate(() => localStorage.getItem('gnc_app_shell_build_v1')))
     .toBe(await page.evaluate(() => (window as any).__APP_SHELL_VERSION__));
 
-  // Supply a local, mutation-blocked identity and empty data only. In particular,
-  // do not initialize the chrome, rebind controls, or replace the navigation/renderers.
+  // Supply a local, mutation-blocked identity and empty data, then finish the
+  // normal role/default-view startup. Do not rebind controls or replace renderers.
   await page.evaluate(() => window.eval(`(() => {
     if (!installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Hosted Footer Canary', 'ADMIN')) {
       throw new Error('FOOTER_CANARY_IDENTITY_UNAVAILABLE');
@@ -72,6 +79,7 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
     });
     document.getElementById('view-login').style.setProperty('display', 'none', 'important');
     document.getElementById('app-wrapper').classList.remove('hidden');
+    applyRolePermissions();
     showOnlyPrimaryView('home');
     updateFooterNavState();
   })()`));
@@ -95,9 +103,18 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   };
 
   // First visits must build each real destination; revisits exercise warm reuse.
+  let preferencesReleased = false;
   for (const viewId of ['drive', 'tasks', 'docks', 'communication', 'home', 'drive', 'tasks', 'docks', 'communication', 'home']) {
     await activate(`#bottom-nav [data-footer-view="${viewId}"]`);
     await expectView(viewId);
+    if (!preferencesReleased) {
+      await expect.poll(() => preferencesReadStarted).toBe(true);
+      releaseInitialPreferences();
+      preferencesReleased = true;
+      await page.waitForFunction(() => (window as any).GncNavigationPreferences.snapshot?.username === 'dylan_collyge');
+      // A preference response arriving after navigation must not reopen Home.
+      await expectView(viewId);
+    }
   }
   await activate('#footer-menu-btn');
   await expect(page.locator('#side-drawer')).toHaveClass(/open/);
