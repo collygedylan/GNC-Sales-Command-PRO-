@@ -135958,6 +135958,7 @@ C.14.043 C.15.000
             const dynamicContent = document.getElementById('home-dynamic-content');
             const dashboardContent = document.getElementById('home-dashboard-content');
             if (!dynamicContent || !dashboardContent) return;
+            syncGoogleScriptButton();
             auditLocalRequestDurability('home').catch(() => {});
             const dashboardSticky = document.getElementById('home-dashboard-sticky');
             const dashboardHero = document.getElementById('home-dashboard-hero');
