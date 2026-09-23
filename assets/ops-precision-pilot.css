@@ -8694,6 +8694,8 @@ body.ops-precision-pilot #docks-filter-controls.docks-top-inline .docks-filter-r
 body.ops-precision-pilot #docks-filter-controls.docks-top-inline :is(.workflow-control,.task-top-control-shell)>:is(select,.task-top-control-button){width:100%}
 body.ops-precision-pilot #docks-filter-controls .docks-filter-row{align-content:start}
 body.ops-precision-pilot .compact-filter-panel{padding:8px!important;border:0!important;box-shadow:none!important}
+/* The compact Assigned Items rail needs no floating module banner or reserved spacer. */
+body.ops-precision-pilot #view-managers:has(.assigned-filter-controls) .manager-module-freeze{position:relative!important;top:auto!important;left:auto!important;right:auto!important;width:100%!important;max-width:100%!important}
 body.ops-precision-pilot .compact-filter-rail>label{min-width:0!important;font-size:11px;letter-spacing:normal}
 body.ops-precision-pilot .compact-filter-rail>label>span:first-child{font-size:11px!important;line-height:1.2!important;letter-spacing:.04em!important}
 body.ops-precision-pilot #docks-filter-controls .docks-filter-row .workflow-control{position:relative;display:block;min-height:48px;margin:0;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}

@@ -14282,6 +14282,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function shouldUseFixedFilterRailForView(viewId = '') {
             const id = String(viewId || '').trim();
             if (!id) return false;
+            if (id === 'managers' && document.querySelector('#managers-content .assigned-filter-controls')) return false;
             const body = document.body;
             const iosActive = isIOSDevice() || (body && body.classList.contains('ios-device'));
             if (iosActive && body && body.classList.contains('viewport-phone')) return false;
