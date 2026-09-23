@@ -7,20 +7,48 @@ on:
     paths:
       - Code.gs
       - scripts/apps-script-sync-lib.mjs
+      - scripts/apps-script-recovery-evidence.mjs
+      - scripts/lib/production-release-guard.mjs
+      - scripts/release-proof.mjs
       - scripts/sync-codegs-to-apps-script.js
       - .github/workflows/apps-script-sync.yml
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: apps-script-codegs-sync
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  authorize-production:
+    name: Authorize exact current-main release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      authorized: ${{ steps.guard.outputs.authorized }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Require current main and validated sealed candidate proof
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/lib/production-release-guard.mjs
+
   sync-codegs:
     name: Update Apps Script Code.gs
+    needs: authorize-production
+    if: needs.authorize-production.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -36,10 +64,29 @@ jobs:
       - name: Install Google API client
         run: npm install --no-save googleapis@144.0.0
 
+      - name: Recheck current main and release proof immediately before deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/lib/production-release-guard.mjs
+
       - name: Sync Code.gs into Apps Script
         env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
           APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
           APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
           APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
-          GITHUB_SHA: ${{ github.sha }}
+          APPS_SCRIPT_PRODUCTION_SCRIPT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_SCRIPT_ID }}
+          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
         run: node scripts/sync-codegs-to-apps-script.js
+
+      - name: Retain sanitized Apps Script recovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: apps-script-recovery-evidence-${{ github.sha }}
+          path: .gnc-local/apps-script-recovery-evidence.json
+          if-no-files-found: error
+          retention-days: 90

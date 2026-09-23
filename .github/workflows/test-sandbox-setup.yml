@@ -1,0 +1,36 @@
+name: Provision isolated GNC test resources
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: gnc-test-sandbox-setup
+  cancel-in-progress: false
+jobs:
+  provision:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: Require authorized current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/lib/production-release-guard.mjs
+      - name: Create or update test-only project and folders
+        env:
+          APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
+          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
+        run: node scripts/google-sandbox-admin.mjs provision
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gnc-test-sandbox-status
+          path: .gnc-local/sandbox-status.json
+          if-no-files-found: ignore
+          retention-days: 90

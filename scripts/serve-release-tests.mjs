@@ -64,6 +64,7 @@ async function openFile(root, parts) {
 export async function createReleaseTestServer({
   siteDir = path.join(repositoryRoot, '_site'),
   fixtureDir = path.join(repositoryRoot, 'tests', 'fixtures'),
+  responseHeaders = {},
 } = {}) {
   const site = await checkedRoot(siteDir);
   const fixtures = await checkedRoot(fixtureDir);
@@ -73,6 +74,7 @@ export async function createReleaseTestServer({
   return createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
+    for (const [name, value] of Object.entries(responseHeaders)) response.setHeader(name, value);
     if (!['GET', 'HEAD'].includes(request.method || '')) {
       response.writeHead(405, { Allow: 'GET, HEAD' });
       response.end();

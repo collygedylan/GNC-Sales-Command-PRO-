@@ -4,6 +4,8 @@ This changes release orchestration, not the app shell, user permissions, invento
 
 ## Working protocol before CI
 
+Follow `protected-releases.md` for environment isolation, the diagnostic report, incident checkpoints and recovery evidence. Pages now waits for a byte-compatible live Apps Script before publication; candidate validation never deploys it. Follow `model-routing.md` for bounded model selection. `prepare --dispatch` reuses exact-commit pending/green runs and prints a quiet `release-watch.mjs` command; it does not silently retry a failed candidate. Record phase timing and available shared-account usage with `ops:record` for the next three changes.
+
 Use one implementation/release owner and one bounded independent reviewer. Keep the 30-minute active-repair checkpoint separate from automated check time. Stop when a failure repeats after a verified fix. Allow one complete candidate validation and at most one corrected candidate validation; preserve progress and identify the blocker when the limit is reached.
 
 Reproduce the reported failure with a focused fixture while implementation proceeds. Integrate the workers' changes once, then run the targeted regression against the compiled shell before pushing. Preserve unrelated worktree changes and keep unrelated improvements out of an urgent repair. Database, client, and delivery changes still follow their required compatibility order.

@@ -11,6 +11,7 @@ permissions:
 jobs:
   sync-models:
     name: Download Drive model files
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

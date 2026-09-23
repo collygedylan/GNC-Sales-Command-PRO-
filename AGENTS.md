@@ -7,3 +7,12 @@
 - Main verifies the successful exact-commit candidate proof and deploys its existing sealed artifact; it does not rebuild or repeat full candidate validation. Sealed artifact verification, current-main check, exact-live verification, all hosted suites and production health remain required. Missing or expired proof blocks publication. A passing candidate check is not a deployment or a guarantee of infrastructure availability.
 - Prepare versions with `npm run release:version` using `package.json` as the source, before committing. Use one implementation/release owner and one bounded reviewer; retain the 30-minute active-repair checkpoint and one candidate validation plus at most one corrected validation.
 - Never store secrets or local recovery snapshots in Git. Do not remove old worktrees merely because they are under Temp or appear merged. Inspect uncommitted/untracked/ignored work, shared Git ownership, active processes, backups, and reparse points first.
+
+## Production protection and efficient repairs
+
+- Every change follows `docs/protected-releases.md`: isolated worktree, isolated test data/services, exact-commit validation, then automatic promotion when authorized by the task. Never repair a live source copy while developing.
+- Use `docs/model-routing.md` and supported task/delegation controls. One owner and one bounded reviewer; no duplicate investigations or default Max/Ultra. A difficult bounded problem may use Astra Max/Ultra without another permission question; record the reason.
+- Target routine fixes/service restoration within 30 minutes, not a guarantee. During outages restore service first; reassess/escalate at ten minutes without a clear cause, and report restoration or the precise blocker at thirty. Do not waive tests or add unrelated features.
+- Start diagnosis with `npm run ops:diagnose`. Preserve the failure evidence and working live build. Never overwrite business data to roll back an application.
+- Record phases and available shared-account usage with `npm run ops:record -- PHASE MODEL EFFORT [USED_PERCENT]`, especially for the next three changes. Record unknown model/usage as unavailable, not guessed.
+- Use `release-candidate.mjs prepare --dispatch` and the printed `release-watch.mjs` command. Reuse unchanged exact-commit evidence, let automation wait, and inspect only actionable failures. Keep all required candidate/live gates.

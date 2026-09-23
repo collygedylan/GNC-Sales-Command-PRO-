@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   published-release:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       should-probe: ${{ steps.published.outputs.should-probe }}

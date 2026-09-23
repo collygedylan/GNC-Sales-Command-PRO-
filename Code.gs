@@ -865,7 +865,49 @@ function loadManualSyncStatus_() {
 }
 
 function saveManualSyncStatus_(status) {
+  // Retain bounded metadata before the next attempt replaces failed status.
+  // Diagnostic storage must not prevent the import status itself being saved.
+  try {
+    preserveManualSyncFailure_(loadManualSyncStatus_());
+    preserveManualSyncFailure_(status);
+  } catch (error) { console.warn('[MANUAL SYNC] FAILURE_HISTORY_UNAVAILABLE'); }
   setScriptPropertyWithQuotaCleanup_(MANUAL_SYNC_STATUS_KEY, JSON.stringify(status || {}));
+}
+
+function readManualSyncFailureHistory_() {
+  try {
+    const value = JSON.parse(PropertiesService.getScriptProperties().getProperty('MANUAL_SYNC_FAILURE_HISTORY_V1') || '[]');
+    return Array.isArray(value) ? value.slice(-8) : [];
+  } catch (error) { return []; }
+}
+
+function preserveManualSyncFailure_(status) {
+  if (!status || !(status.error || status.errorCode || /failed/.test(String(status.currentStage || '')))) return;
+  const safeCode = function(value, fallback) {
+    return /^[A-Z][A-Z0-9_]{1,63}$/.test(String(value || '')) ? String(value) : fallback;
+  };
+  const at = status.finishedAt || status.updatedAt;
+  if (!at || isNaN(Date.parse(at))) return;
+  const entry = { at: new Date(at).toISOString(),
+    run: /^[a-zA-Z0-9_-]{1,64}$/.test(String(status.runId || '')) ? status.runId : '',
+    stage: safeCode(String(status.currentStage || '').toUpperCase(), 'UNKNOWN_STAGE'),
+    code: safeCode(status.errorCode, 'MANUAL_SYNC_STAGE_FAILED') };
+  const history = readManualSyncFailureHistory_();
+  if (history.some(function(row) { return (entry.run ? row.run === entry.run : row.at === entry.at) && row.stage === entry.stage && row.code === entry.code; })) return;
+  history.push(entry);
+  PropertiesService.getScriptProperties().setProperty('MANUAL_SYNC_FAILURE_HISTORY_V1', JSON.stringify(history.slice(-8)));
+}
+
+function getManualSyncImportDiagnostics_() {
+  const status = loadManualSyncStatus_() || {};
+  const stage = String(status.currentStage || '').toUpperCase();
+  return { active: status.active === true, stale: isManualSyncStatusStale_(status),
+    stage: /^[A-Z][A-Z0-9_]{1,63}$/.test(stage) ? stage : 'IDLE',
+    recentFailures: readManualSyncFailureHistory_().filter(function(row) { return row && Date.now() - Date.parse(row.at) < 7 * 24 * 60 * 60 * 1000; }).map(function(row) {
+      return { at: !isNaN(Date.parse(row.at)) ? new Date(row.at).toISOString() : null,
+        stage: /^[A-Z][A-Z0-9_]{1,63}$/.test(String(row.stage || '')) ? row.stage : 'UNKNOWN_STAGE',
+        code: /^[A-Z][A-Z0-9_]{1,63}$/.test(String(row.code || '')) ? row.code : 'MANUAL_SYNC_STAGE_FAILED' };
+    }) };
 }
 
 function parseManualSyncTimestampMs_(value) {
@@ -6748,7 +6790,14 @@ function getAppsScriptDeploymentHealth_() {
     service: 'gnc-apps-script',
     deployedCommit: APPS_SCRIPT_DEPLOYMENT_COMMIT_,
     lifecycleRecipientPolicyVersion: REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_,
-    requiredRecipientCount: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.length
+    requiredRecipientCount: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.length,
+    importDiagnostics: (function() {
+      const details = getManualSyncImportDiagnostics_();
+      // Public health contains aggregates only; detailed history remains in
+      // script properties / authorized editor diagnostics, not a public feed.
+      return { active: details.active, stale: details.stale,
+        failureCountLastSevenDays: details.recentFailures.length };
+    })()
   };
 }
 

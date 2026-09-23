@@ -7,6 +7,12 @@ import {
   REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT,
   syncAppsScriptProject
 } from './apps-script-sync-lib.mjs';
+import {
+  assertProductionAppsScriptTarget,
+  authorizeProductionReleaseFromEnvironment,
+  verifyAppsScriptDeploymentOwnership
+} from './lib/production-release-guard.mjs';
+import { createAppsScriptRecoveryEvidence } from './apps-script-recovery-evidence.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -14,6 +20,8 @@ const codeGsPath = path.join(repoRoot, 'Code.gs');
 const scriptId = String(process.env.APPS_SCRIPT_SCRIPT_ID || '').trim();
 const claspRcJson = String(process.env.APPS_SCRIPT_CLASPRC_JSON || process.env.CLASPRC_JSON || '').trim();
 const deploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
+const expectedScriptId = String(process.env.APPS_SCRIPT_PRODUCTION_SCRIPT_ID || '').trim();
+const expectedDeploymentId = String(process.env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID || '').trim();
 const githubSha = String(process.env.GITHUB_SHA || '').trim();
 const supabaseServiceRolePlaceholder = '__SUPABASE_SERVICE_ROLE_KEY__';
 
@@ -77,7 +85,11 @@ function appendSummary(result) {
 }
 
 async function main() {
-  if (!scriptId) fail('APPS_SCRIPT_SCRIPT_ID_MISSING');
+  try {
+    assertProductionAppsScriptTarget({ scriptId, deploymentId, expectedScriptId, expectedDeploymentId });
+  } catch (error) {
+    fail(error?.code || 'PRODUCTION_RELEASE_GUARD_TARGET_INVALID');
+  }
   if (!fs.existsSync(codeGsPath)) fail('APPS_SCRIPT_SOURCE_NOT_FOUND');
   const source = fs.readFileSync(codeGsPath, 'utf8');
   if (!source.trim()) fail('APPS_SCRIPT_SOURCE_EMPTY');
@@ -85,10 +97,13 @@ async function main() {
     console.log('Supabase service credentials remain in Apps Script Properties; no credential is embedded in source.');
   }
 
+  await authorizeProductionReleaseFromEnvironment();
   const claspRc = parseClaspRc(claspRcJson);
   const auth = getOAuthClientFromClaspRc(claspRc);
   const script = google.script({ version: 'v1', auth });
 
+  await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId });
+  console.log('Production Apps Script deployment ownership verified.');
   console.log('Preflighting Apps Script version capacity before source update...');
   const result = await syncAppsScriptProject({
     script,
@@ -101,6 +116,15 @@ async function main() {
 
   console.log(`Version capacity verified (${result.versionCountBefore}/200 before sync).`);
   if (result.deploymentUpdated) {
+    const evidence = await createAppsScriptRecoveryEvidence({
+      script,
+      scriptId,
+      deploymentId,
+      expectedCommit: githubSha
+    });
+    const evidenceDirectory = path.join(repoRoot, '.gnc-local');
+    fs.mkdirSync(evidenceDirectory, { recursive: true });
+    fs.writeFileSync(path.join(evidenceDirectory, 'apps-script-recovery-evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`);
     console.log(`Deployment updated and verified at Apps Script version ${result.versionNumber}.`);
     console.log(`Deployment health verified for commit ${result.health.deployedCommit.slice(0, 7)}.`);
     console.log(`Lifecycle recipient policy ${REQUEST_LIFECYCLE_POLICY_VERSION} verified with ${REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT} required recipients.`);

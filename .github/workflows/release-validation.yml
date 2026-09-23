@@ -182,6 +182,8 @@ jobs:
           digest: ${{ needs.build.outputs.digest }}
       - name: Scroll and throttled startup on a quiet runner
         run: npx playwright test --config playwright.release-timing.config.ts --workers=1 --retries=0
+      - name: Verify isolated preview blocks production requests
+        run: node scripts/check-isolated-preview.mjs
       - name: Android startup and protected photo persistence
         run: npx playwright test --config playwright.release-android.config.ts --project=android --workers=1 --retries=0
       - uses: actions/upload-artifact@v4
