@@ -36,6 +36,8 @@ delete fixtures[1].STATE_REVISION;
  */
 async function harness(page: Page, baseURL: string, rows = fixtures) {
   const origin = new URL(baseURL).origin;
+  const serviceOrigin = 'https://kzrnyjsosryejjejliii.supabase.co';
+  const startupReadPaths = new Set(['/rest/v1/ph_request_queue_live_rows', '/rest/v1/ph_active_request']);
   const requests: CompletionRequest[] = [];
   const unexpectedMutations: string[] = [];
   const pageErrors: string[] = [];
@@ -58,6 +60,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
+    // Reload starts footer reads before seed() reinstalls the dataset boundary.
+    // Supply only these read-only empty fixtures; every other external request
+    // still follows the fail-closed routing below, including writes to these paths.
+    if (request.method() === 'GET' && url.origin === serviceOrigin && startupReadPaths.has(url.pathname)) {
+      return fulfill(route, []);
+    }
     if (url.pathname.endsWith('/functions/v1/app-api') && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
       const preferenceRead = url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
@@ -287,6 +295,15 @@ test('ambiguous network failure leaves Done actionable and reuses the request to
   expect(app.requests).toHaveLength(1);
   const firstToken = app.requests[0].token;
   await page.reload({ waitUntil: 'load' });
+  // Exercise both reload fixtures deterministically even when background timing
+  // happens not to request them on this browser. No real service is contacted.
+  const startupRows = await page.evaluate(async () => Promise.all(
+    ['ph_request_queue_live_rows', 'ph_active_request'].map(async table => {
+      const response = await fetch(`https://kzrnyjsosryejjejliii.supabase.co/rest/v1/${table}?select=*&limit=1`);
+      return { status: response.status, rows: await response.json() };
+    })
+  ));
+  expect(startupRows).toEqual([{ status: 200, rows: [] }, { status: 200, rows: [] }]);
   await app.seed();
   await expect(app.done(row)).toBeEnabled();
   await app.done(row).tap();
