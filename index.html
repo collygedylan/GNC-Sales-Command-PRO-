@@ -128406,6 +128406,55 @@ C.14.043 C.15.000
             return [getDatasetLoadSignature('master'), fullInventory.length, getDatasetLoadSignature('warehouseAssignedItems'), warehouseAssignedItemsInventory.length, resolvedViewStateEpoch, getConfiguredCurrentSeasonCode(), getConfiguredCurrentSalesYearCode(), nextTarget.season, nextTarget.salesYear, managerEvalReportSettings.lowStockMaxSLts, managerEvalReportSettings.holdAgeDays, managerEvalReportSettings.locationNoteAgeDays, getManagerEvalReportCentralDateKey()].join('::');
         }
 
+        function getManagerEvalReport2WorkerSource() {
+            return `self.onmessage = (event) => {
+                try {
+                    importScripts(event.data.engineUrl);
+                    const api = self.GncEvalReports;
+                    const assignment = api.buildAuthoritativeAssignmentModel(event.data.inventory, event.data.assignments);
+                    const classified = api.classifyScriptCompatibleRows(assignment.rows, event.data.options);
+                    const first = (...values) => {
+                        for (const value of values) {
+                            if (value !== null && value !== undefined && String(value).trim() !== '') return value;
+                        }
+                        return '';
+                    };
+                    // Match getManagerEvalReport2RowKey, including UID aliases
+                    // and identity-less rows; report-local offsets are not identities.
+                    const rowKey = (row, index) => {
+                        const id = String(first(row.UNIQUE_ID, row.unique_id, row.MASTER_UNIQUE_ID, row.master_unique_id, row.ID, row.id, '') || '').trim();
+                        if (id) return 'uid:' + id;
+                        const parts = [row.WAREHOUSEI, row.ITEMCODE, row.GENUSNAME, row.CONTSIZE,
+                            row.LOCATIONCODE, row.LOTCODE, row.SEASON, first(row.SALEYEAR, row.SALESYEAR, ''),
+                            first(row.SOURCE, row.source, ''), first(row.ROW_NUMBER, row.row_number, '')]
+                            .map(value => String(value == null ? '' : value).trim().toLowerCase());
+                        return parts.some(Boolean) ? 'row:' + parts.join('|') : 'row-index:' + index;
+                    };
+                    const rowsByItemCode = new Map(), rowByKey = new Map(), memberships = new Map(), keys = new Map();
+                    assignment.rows.forEach((row, index) => {
+                        const code = String(first(row.ITEMCODE, row.itemcode, '') || '').trim().toUpperCase();
+                        if (code) {
+                            if (!rowsByItemCode.has(code)) rowsByItemCode.set(code, []);
+                            rowsByItemCode.get(code).push(row);
+                        }
+                        const key = rowKey(row, index);
+                        keys.set(row, key);
+                        rowByKey.set(key, row);
+                    });
+                    api.REPORT_IDS.forEach(reportId => {
+                        (classified.reports[reportId] || []).forEach(row => {
+                            const key = keys.get(row);
+                            if (!memberships.has(key)) memberships.set(key, new Set());
+                            memberships.get(key).add(reportId);
+                        });
+                    });
+                    self.postMessage({ classified, assignedToOptions: assignment.assignedToOptions,
+                        stats: { assignmentCount: assignment.assignmentCount, matchedCount: assignment.matchedCount, unassignedCount: assignment.unassignedCount },
+                        allRows: assignment.rows, rowsByItemCode, rowByKey, memberships });
+                } catch (error) { self.postMessage({ error: String(error && error.message || error) }); }
+            }`;
+        }
+
         async function buildManagerEvalReport2IndexAsync() {
             const cacheKey = getManagerEvalReport2CacheKeyValue();
             const owner = getSupabaseReadIdentityScope();
@@ -128419,7 +128468,7 @@ C.14.043 C.15.000
                 let workerUrl = '';
                 try {
                     const engineUrl = new URL('./assets/eval-reports-engine.js', window.location.href).href;
-                    const workerSource = `self.onmessage=(event)=>{try{importScripts(event.data.engineUrl);const api=self.GncEvalReports;const assignment=api.buildAuthoritativeAssignmentModel(event.data.inventory,event.data.assignments);const classified=api.classifyScriptCompatibleRows(assignment.rows,event.data.options);const rowKey=(row,i)=>{const id=String(row.UNIQUE_ID||row.unique_id||row.MASTER_UNIQUE_ID||row.master_unique_id||row.ID||row.id||'').trim();return id?'uid:'+id:['row',row.ITEMCODE||row.itemcode||'',row.LOCATIONCODE||row.locationcode||'',row.LOTCODE||row.lotcode||'',row.SOURCE||row.source||'',i].join('|')};const rowsByItemCode=new Map(),rowByKey=new Map(),memberships=new Map();assignment.rows.forEach((row,i)=>{const code=String(row.ITEMCODE||row.itemcode||'').trim().toUpperCase();if(code){if(!rowsByItemCode.has(code))rowsByItemCode.set(code,[]);rowsByItemCode.get(code).push(row)}rowByKey.set(rowKey(row,i),row)});api.REPORT_IDS.forEach((reportId)=>{(classified.reports[reportId]||[]).forEach((row,i)=>{const key=rowKey(row,i);if(!memberships.has(key))memberships.set(key,new Set());memberships.get(key).add(reportId)})});self.postMessage({classified,assignedToOptions:assignment.assignedToOptions,stats:{assignmentCount:assignment.assignmentCount,matchedCount:assignment.matchedCount,unassignedCount:assignment.unassignedCount},allRows:assignment.rows,rowsByItemCode,rowByKey,memberships})}catch(error){self.postMessage({error:String(error&&error.message||error)})}}`;
+                    const workerSource = getManagerEvalReport2WorkerSource();
                     workerUrl = URL.createObjectURL(new Blob([workerSource], { type:'text/javascript' }));
                     const result = await new Promise((resolve, reject) => {
                         const worker = new Worker(workerUrl);
@@ -128428,7 +128477,13 @@ C.14.043 C.15.000
                         worker.onerror = (event) => { clearTimeout(timeout); worker.terminate(); reject(new Error(event.message || 'EVAL_REPORT_WORKER_FAILED')); };
                         worker.postMessage({ engineUrl, inventory:fullInventory, assignments:warehouseAssignedItemsInventory, options:{ currentSeason:getConfiguredCurrentSeasonCode(), currentSalesYear:getConfiguredCurrentSalesYearCode(), nextSeason:nextTarget.season, nextSalesYear:nextTarget.salesYear, settings:managerEvalReportSettings, now:new Date().toISOString() } });
                     });
-                    if (owner !== getSupabaseReadIdentityScope() || cacheKey !== getManagerEvalReport2CacheKeyValue()) return managerEvalReport2Cache;
+                    if (owner !== getSupabaseReadIdentityScope() || !canViewManagerEvalReports2()
+                        || cacheKey !== getManagerEvalReport2CacheKeyValue()) return managerEvalReport2Cache;
+                    result.rowByKey.forEach((row, key) => {
+                        if (key.startsWith('row-index:')) Object.defineProperty(row, '__evalReport2SourceIndex', {
+                            value: Number(key.slice('row-index:'.length)), enumerable: false, configurable: false
+                        });
+                    });
                     managerEvalReport2Cache = result.classified;
                     managerEvalReport2Cache.assignedToOptions = result.assignedToOptions;
                     managerEvalReport2Cache.assignmentStats = result.stats;
@@ -128448,16 +128503,18 @@ C.14.043 C.15.000
                 if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout:500 });
                 else setTimeout(resolve, 0);
             });
-            if (owner !== getSupabaseReadIdentityScope()) return null;
-            return getManagerEvalReport2Index();
+            if (owner !== getSupabaseReadIdentityScope() || !canViewManagerEvalReports2()) return null;
+            // A real worker failure retains the monitored synchronous fallback.
+            // The owning load is still marked loading until this call completes.
+            return getManagerEvalReport2Index(true);
         }
 
-        function getManagerEvalReport2Index() {
+        function getManagerEvalReport2Index(allowSynchronousBuild = false) {
             const api = getManagerEvalReports2Api();
             if (!api) return null;
             if (canUseProductionLiveSync() && getCurrentVisibleViewId() === 'managers'
                 && productionLiveSyncVerifiedView !== productionVerifiedViewKey()) return managerEvalReport2Cache;
-            if (managerEvalReport2LoadState.loading) return managerEvalReport2Cache;
+            if (managerEvalReport2LoadState.loading && !allowSynchronousBuild) return managerEvalReport2Cache;
             if (managerEvalReport2LoadState.error && managerEvalReport2Cache) return managerEvalReport2Cache;
             if (!isDatasetLoaded('master', 'full') || !isDatasetLoaded('warehouseAssignedItems', 'full')) return managerEvalReport2Cache;
             const currentSeason = getConfiguredCurrentSeasonCode();
@@ -128468,16 +128525,15 @@ C.14.043 C.15.000
                 reconcileManagerEvalReport2Navigation();
                 return managerEvalReport2Cache;
             }
+            if (!allowSynchronousBuild && typeof Worker === 'function' && fullInventory.length >= 1000) {
+                // Rendering a large invalidated snapshot must use the same
+                // identity-guarded loading path as Refresh, not block the UI.
+                // That lifecycle retains complete results and disables edits.
+                if (!managerEvalReport2LoadState.error) void loadManagerEvalReports2(false);
+                return managerEvalReport2Cache;
+            }
             const startedAt = performance.now();
             const assignmentModel = api.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
-            assignmentModel.rows.forEach((row, sourceIndex) => {
-                if (!row || typeof row !== 'object') return;
-                try {
-                    Object.defineProperty(row, '__evalReport2SourceIndex', { value: sourceIndex, enumerable: false, configurable: false });
-                } catch (error) {
-                    row.__evalReport2SourceIndex = sourceIndex;
-                }
-            });
             managerEvalReport2Cache = api.classifyScriptCompatibleRows(assignmentModel.rows, {
                 currentSeason,
                 currentSalesYear,
@@ -128495,19 +128551,29 @@ C.14.043 C.15.000
             managerEvalReport2Cache.allRows = assignmentModel.rows;
             managerEvalReport2Cache.rowsByItemCode = new Map();
             managerEvalReport2Cache.rowByKey = new Map();
+            const rowKeyByRow = new Map();
             assignmentModel.rows.forEach((row, sourceIndex) => {
+                if (row && typeof row === 'object') {
+                    try {
+                        Object.defineProperty(row, '__evalReport2SourceIndex', { value: sourceIndex, enumerable: false, configurable: false });
+                    } catch (error) {
+                        row.__evalReport2SourceIndex = sourceIndex;
+                    }
+                }
                 const itemCode = getManagerEvalReport2ItemCode(row);
                 if (itemCode) {
                     if (!managerEvalReport2Cache.rowsByItemCode.has(itemCode)) managerEvalReport2Cache.rowsByItemCode.set(itemCode, []);
                     managerEvalReport2Cache.rowsByItemCode.get(itemCode).push(row);
                 }
-                managerEvalReport2Cache.rowByKey.set(getManagerEvalReport2RowKey(row, sourceIndex), row);
+                const rowKey = getManagerEvalReport2RowKey(row, sourceIndex);
+                rowKeyByRow.set(row, rowKey);
+                managerEvalReport2Cache.rowByKey.set(rowKey, row);
             });
             managerEvalReport2Cache.reportMembershipByKey = new Map();
             api.REPORT_IDS.forEach((reportId) => {
                 const reportRows = Array.isArray(managerEvalReport2Cache.reports[reportId]) ? managerEvalReport2Cache.reports[reportId] : [];
                 reportRows.forEach((row, reportIndex) => {
-                    const key = getManagerEvalReport2RowKey(row, reportIndex);
+                    const key = rowKeyByRow.get(row) || getManagerEvalReport2RowKey(row, reportIndex);
                     if (!managerEvalReport2Cache.reportMembershipByKey.has(key)) managerEvalReport2Cache.reportMembershipByKey.set(key, new Set());
                     managerEvalReport2Cache.reportMembershipByKey.get(key).add(reportId);
                 });

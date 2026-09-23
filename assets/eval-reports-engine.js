@@ -124,13 +124,6 @@
         return `${itemCode}|${contSize}|${locationCode}`;
     }
 
-    function getAuthoritativeAssignmentLookupKeys(row) {
-        // ph_warehouse_assigned_items is uniquely authoritative at
-        // ITEMCODE + GENUSNAME. Its container and location columns are sample
-        // display values populated with max(...), not assignment boundaries.
-        return [buildAuthoritativeAssignmentKey(row)].filter(Boolean);
-    }
-
     function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows) {
         const sourceInventory = Array.isArray(inventoryRows) ? inventoryRows.filter(Boolean) : [];
         const sourceAssignments = Array.isArray(assignmentRows) ? assignmentRows.filter(Boolean) : [];
@@ -158,11 +151,12 @@
         let matchedCount = 0;
         let unassignedCount = 0;
         const rows = sourceInventory.map((row) => {
-            const key = getAuthoritativeAssignmentLookupKeys(row).find((candidate) => assignmentByKey.has(candidate)) || '';
-            const matched = !!key;
+            const key = buildAuthoritativeAssignmentKey(row);
+            const matched = !!key && assignmentByKey.has(key);
             if (matched) matchedCount += 1;
-            const assignments = matched ? Array.from(assignmentByKey.get(key).values()) : [''];
-            const assignedToUsers = assignments.map((value) => String(value || '').trim());
+            const assignedToUsers = matched
+                ? Array.from(assignmentByKey.get(key).values(), (value) => String(value || '').trim())
+                : [''];
             const assignedTo = assignedToUsers.find(Boolean) || '';
             if (!assignedTo) {
                 hasUnassigned = true;
@@ -502,8 +496,10 @@
             const itemCode = normalizeItemCode(row);
             if (!itemCode) return;
             const season = normalizeSeason(row);
+            const seasonIndex = SEASON_ORDER.indexOf(season);
             const salesYear = getRowSalesYear(row);
             const validSalesYear = salesYear != null && salesYear > 0 && salesYear <= currentSalesYear;
+            const assignedTo = getAssignedTo(row);
             const holdStopCode = getHoldStopCode(row);
             const holdStartValue = getHoldStart(row);
             const locationNoteDateValue = getLocationNoteDate(row);
@@ -513,11 +509,14 @@
             if (locationNoteDateValue && locationNoteDay == null) diagnostics.invalidLocationNoteDateCount += 1;
             const metadata = {
                 itemCode,
+                itemCodeSort: itemCode.toLowerCase(),
                 season,
+                seasonRank: seasonIndex < 0 ? SEASON_ORDER.length : seasonIndex,
                 salesYear,
                 validSalesYear,
                 priority: getPriority(row),
-                assignedTo: getAssignedTo(row),
+                assignedTo,
+                assignedToSort: assignedTo.toLowerCase(),
                 holdStopCode,
                 oldHold: isActiveHoldStopCode(holdStopCode) && holdStartDay != null && todayEpochDay - holdStartDay > settings.holdAgeDays,
                 oldLocationNote: locationNoteDay != null && todayEpochDay - locationNoteDay > settings.locationNoteAgeDays,
@@ -547,10 +546,31 @@
             return acc;
         }, {});
         const supportSeasons = new Set(['U1', 'U2', 'U3', 'X']);
-
-        sourceRows.forEach((row) => {
-            const metadata = rowMetadata.get(row);
-            if (!metadata) return;
+        const compareScriptRows = (left, right) => {
+            const leftMeta = left.metadata;
+            const rightMeta = right.metadata;
+            let result = leftMeta.assignedToSort < rightMeta.assignedToSort ? -1
+                : (leftMeta.assignedToSort > rightMeta.assignedToSort ? 1 : 0);
+            if (result) return result;
+            result = leftMeta.itemCodeSort < rightMeta.itemCodeSort ? -1
+                : (leftMeta.itemCodeSort > rightMeta.itemCodeSort ? 1 : 0);
+            if (result) return result;
+            result = leftMeta.seasonRank - rightMeta.seasonRank;
+            if (result) return result;
+            result = (leftMeta.validSalesYear ? 1 : 2) - (rightMeta.validSalesYear ? 1 : 2);
+            if (result) return result;
+            result = Number(leftMeta.salesYear || 0) - Number(rightMeta.salesYear || 0);
+            return result || leftMeta.sourceIndex - rightMeta.sourceIndex;
+        };
+        // Every report uses the same total ordering. Sorting each overlapping
+        // report independently repeats the expensive comparator for the same
+        // rows, so order the eligible copy once and append memberships in that
+        // order. Keep sourceRows untouched and retain duplicate references.
+        const orderedRows = sourceRows
+            .filter((row) => rowMetadata.has(row))
+            .map((row) => ({ row, metadata: rowMetadata.get(row) }))
+            .sort(compareScriptRows);
+        orderedRows.forEach(({ row, metadata }) => {
             const aggregate = aggregates.get(metadata.itemCode);
             if (!aggregate) return;
             const isNextTarget = metadata.season === nextSeason && metadata.salesYear === nextSalesYear;
@@ -570,24 +590,6 @@
             if (metadata.season === 'X') reports.culls.push(row);
             if (!aggregate.hasValidF1) reports['not-in-f1'].push(row);
         });
-
-        const compareScriptRows = (left, right) => {
-            const leftMeta = rowMetadata.get(left);
-            const rightMeta = rowMetadata.get(right);
-            let result = compareText(leftMeta.assignedTo, rightMeta.assignedTo);
-            if (result) return result;
-            result = compareText(leftMeta.itemCode, rightMeta.itemCode);
-            if (result) return result;
-            const leftRank = SEASON_ORDER.indexOf(leftMeta.season);
-            const rightRank = SEASON_ORDER.indexOf(rightMeta.season);
-            result = (leftRank < 0 ? SEASON_ORDER.length : leftRank) - (rightRank < 0 ? SEASON_ORDER.length : rightRank);
-            if (result) return result;
-            result = (leftMeta.validSalesYear ? 1 : 2) - (rightMeta.validSalesYear ? 1 : 2);
-            if (result) return result;
-            result = Number(leftMeta.salesYear || 0) - Number(rightMeta.salesYear || 0);
-            return result || leftMeta.sourceIndex - rightMeta.sourceIndex;
-        };
-        REPORT_IDS.forEach((reportId) => reports[reportId].sort(compareScriptRows));
         const counts = REPORT_IDS.reduce((acc, reportId) => {
             acc[reportId] = reports[reportId].length;
             return acc;

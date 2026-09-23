@@ -73,6 +73,7 @@ const allSpecs = specFiles();
 const selected = config => allSpecs.filter(file => matches(config.testMatch, file) && !matches(config.testIgnore, file));
 const originalBrowserFiles = [
   'tests/block-clearing.e2e.spec.ts',
+  'tests/eval-report2-async-index.e2e.spec.ts',
   'tests/eval-report2-header-filters.e2e.spec.ts',
   'tests/eval-work.e2e.spec.ts',
   'tests/login-photo-repair.e2e.spec.ts',
@@ -168,7 +169,7 @@ test('functional, timing and database lanes cover the original browser files wit
   assert.deepEqual(selected(base), originalBrowserFiles);
   const functionalFiles = selected(functional);
   const timingFiles = selected(timing);
-  assert.deepEqual(timingFiles, ['tests/login-photo-repair.e2e.spec.ts', 'tests/scroll-performance.e2e.spec.ts']);
+  assert.deepEqual(timingFiles, ['tests/eval-report2-async-index.e2e.spec.ts', 'tests/login-photo-repair.e2e.spec.ts', 'tests/scroll-performance.e2e.spec.ts']);
   assert.deepEqual(selected(database), ['tests/native-auth-provisioning-local.spec.js', 'tests/request-integrity-local.spec.js']);
   const databaseOriginalFiles = selected(database).filter(file => originalBrowserFiles.includes(file));
   const union = [...functionalFiles, ...timingFiles, ...databaseOriginalFiles];

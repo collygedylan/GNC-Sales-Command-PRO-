@@ -456,6 +456,237 @@ test('script-compatible sorting keeps valid years before future or invalid years
   assert.deepEqual(ids(result.reports['s1-with-pri']), ['valid', 'invalid', 'future']);
 });
 
+test('script-compatible shared ordering preserves duplicates, source ties, aggregates, and input', () => {
+  const tiedSecond = row('TIE', 'U1', 27, { TEST_ID: 'tied-second', ASSIGNEDTO: 'same', PRIORITY: '1' });
+  const missingItemCode = row('', 'U1', 27, { TEST_ID: 'missing-itemcode', ASSIGNEDTO: 'same', PRIORITY: '1' });
+  const duplicate = row('DUP', 'U1', 27, { TEST_ID: 'duplicate', ASSIGNEDTO: 'same', PRIORITY: '1' });
+  const tiedFirst = row('TIE', 'U1', 27, { TEST_ID: 'tied-first', ASSIGNEDTO: 'same', PRIORITY: '1' });
+  const rows = [tiedSecond, missingItemCode, duplicate, tiedFirst, duplicate];
+  const originalOrder = rows.slice();
+
+  const result = engine.classifyScriptCompatibleRows(rows, {
+    currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27, now
+  });
+
+  assert.deepEqual(ids(result.reports.u1), ['duplicate', 'duplicate', 'tied-second', 'tied-first']);
+  assert.deepEqual(ids(result.reports['s1-with-pri']), ['duplicate', 'duplicate', 'tied-second', 'tied-first']);
+  assert.equal(result.reports.u1[0], duplicate);
+  assert.equal(result.reports.u1[1], duplicate);
+  assert.ok(!Object.values(result.reports).flat().includes(missingItemCode));
+  assert.deepEqual(Array.from(result.aggregates.keys()), ['TIE', 'DUP']);
+  assert.deepEqual(rows, originalOrder);
+  assert.equal(Object.hasOwn(duplicate, '__evalReport2SourceIndex'), false);
+});
+
+test('script-compatible shared ordering retains punctuation and Unicode item-code collation', () => {
+  const rows = [
+    row('A', 'U1', 27, { TEST_ID: 'ascii', ASSIGNEDTO: 'same' }),
+    row('Å', 'U1', 27, { TEST_ID: 'unicode', ASSIGNEDTO: 'same' }),
+    row('_A', 'U1', 27, { TEST_ID: 'punctuation', ASSIGNEDTO: 'same' })
+  ];
+
+  const result = engine.classifyScriptCompatibleRows(rows, {
+    currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27, now
+  });
+
+  assert.deepEqual(ids(result.reports.u1), ['punctuation', 'ascii', 'unicode']);
+});
+
+test('cached row keys preserve synchronous index and membership semantics', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const functionStart = html.indexOf('function getManagerEvalReport2RowKey(');
+  const functionEnd = html.indexOf('function getManagerEvalReport2EditFieldConfig(', functionStart);
+  assert.ok(functionStart >= 0 && functionEnd > functionStart);
+  const keyContext = vm.createContext({});
+  keyContext.firstNonEmptyValue = (...values) => values.find((value) => (
+    value !== null && value !== undefined && String(value).trim() !== ''
+  )) ?? '';
+  vm.runInContext(`${html.slice(functionStart, functionEnd)}\nglobalThis.rowKey = getManagerEvalReport2RowKey;`, keyContext);
+  const getRowKey = keyContext.rowKey;
+
+  const makeFixture = () => {
+    const duplicate = { TEST_ID: 'duplicate', ITEMCODE: 'DUP', LOCATIONCODE: 'A.01.001', SEASON: 'U1', SALEYEAR: 27 };
+    const uid = { TEST_ID: 'uid', UNIQUE_ID: 'uid-1', ITEMCODE: 'UID' };
+    const blank = { TEST_ID: 'blank' };
+    return {
+      rows: [uid, duplicate, blank, duplicate],
+      reports: { u1: [duplicate, duplicate], 'no-pri': [uid, duplicate, blank, duplicate] }
+    };
+  };
+  const assemble = (fixture, cacheKeys) => {
+    const rowByKey = new Map();
+    const rowKeyByRow = new Map();
+    fixture.rows.forEach((record, sourceIndex) => {
+      try {
+        Object.defineProperty(record, '__evalReport2SourceIndex', { value: sourceIndex, enumerable: false, configurable: false });
+      } catch {}
+      const key = getRowKey(record, sourceIndex);
+      if (cacheKeys) rowKeyByRow.set(record, key);
+      rowByKey.set(key, record);
+    });
+    const memberships = new Map();
+    Object.entries(fixture.reports).forEach(([reportId, reportRows]) => {
+      reportRows.forEach((record, reportIndex) => {
+        const key = (cacheKeys && rowKeyByRow.get(record)) || getRowKey(record, reportIndex);
+        if (!memberships.has(key)) memberships.set(key, new Set());
+        memberships.get(key).add(reportId);
+      });
+    });
+    return {
+      rowByKey: Array.from(rowByKey, ([key, record]) => [key, record.TEST_ID]),
+      memberships: Array.from(memberships, ([key, reports]) => [key, Array.from(reports)])
+    };
+  };
+
+  const previous = assemble(makeFixture(), false);
+  const cached = assemble(makeFixture(), true);
+  assert.deepEqual(cached, previous);
+  assert.deepEqual(cached.rowByKey, [
+    ['uid:uid-1', 'uid'],
+    ['row:|dup|||a.01.001||u1|27||', 'duplicate'],
+    ['row-index:2', 'blank']
+  ]);
+});
+
+test('worker report identities and memberships match the synchronous contract', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = html.slice(html.indexOf('function getManagerEvalReport2WorkerSource('), html.indexOf('async function buildManagerEvalReport2IndexAsync('));
+  const helper = vm.createContext({});
+  vm.runInContext(`${source};globalThis.workerSource = getManagerEvalReport2WorkerSource();`, helper);
+  let result;
+  const worker = vm.createContext({ Intl, Date, Map, Set, Object, Array, String, Number, Math });
+  worker.self = worker;
+  worker.importScripts = () => vm.runInContext(engineSource, worker);
+  worker.postMessage = value => { result = value; };
+  vm.runInContext(helper.workerSource, worker);
+  const inventory = [
+    row('A', 'U1', 27, { TEST_ID: 'a', UNIQUE_ID: ' ', unique_id: 'a', GENUSNAME: 'oak' }),
+    row('B', 'U2', 27, { TEST_ID: 'b', MASTER_UNIQUE_ID: 'b', GENUSNAME: 'maple' }),
+    row('_A', 'U1', 27, { TEST_ID: 'no-uid', WAREHOUSEI: 'PH', GENUSNAME: 'pine', SOURCE: 'LD', ROW_NUMBER: '3' }),
+    { TEST_ID: 'blank' },
+    row('_A', 'U1', 27, { TEST_ID: 'same-key', WAREHOUSEI: 'PH', GENUSNAME: 'pine', SOURCE: 'LD', ROW_NUMBER: '3' })
+  ];
+  const assignments = [{ ITEMCODE: 'A', GENUSNAME: 'oak', ASSIGNEDTO: 'dylan_collyge' }];
+  const options = { currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27, now };
+  worker.onmessage({ data: { engineUrl: 'fixture-engine', inventory, assignments, options } });
+  assert.equal(result.error, undefined);
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments);
+  const expected = engine.classifyScriptCompatibleRows(model.rows, options);
+  const keyStart = html.indexOf('function getManagerEvalReport2RowKey(');
+  const keyEnd = html.indexOf('function getManagerEvalReport2EditFieldConfig(', keyStart);
+  const keyScope = vm.createContext({ firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '' });
+  vm.runInContext(`${html.slice(keyStart, keyEnd)};globalThis.rowKey = getManagerEvalReport2RowKey;`, keyScope);
+  const keys = new Map(model.rows.map((record, index) => [record, keyScope.rowKey(record, index)]));
+  const memberships = new Map();
+  for (const reportId of engine.REPORT_IDS) {
+    assert.deepEqual(ids(result.classified.reports[reportId]), ids(expected.reports[reportId]));
+    for (const record of expected.reports[reportId]) {
+      const key = keys.get(record);
+      if (!memberships.has(key)) memberships.set(key, new Set());
+      memberships.get(key).add(reportId);
+    }
+  }
+  const serialize = map => Array.from(map, ([key, values]) => [key, Array.from(values)]);
+  assert.deepEqual(serialize(result.memberships), serialize(memberships));
+  assert.deepEqual(Array.from(result.rowByKey, ([key, record]) => [key, record.TEST_ID]),
+    Array.from(new Map(model.rows.map(record => [keys.get(record), record.TEST_ID]))));
+  assert.deepEqual(JSON.parse(JSON.stringify(result.stats)), {
+    assignmentCount: model.assignmentCount, matchedCount: model.matchedCount, unassignedCount: model.unassignedCount
+  });
+});
+
+test('large getter uses one guarded loading lifecycle and retains monitored fallback', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('function getManagerEvalReport2Index(');
+  const end = html.indexOf('let managerEvalReport2SelectedReportIds', start);
+  const state = { loading: false, error: '' };
+  let loads = 0, builds = 0, clock = 0;
+  const events = [];
+  const api = { REPORT_IDS: [], buildAuthoritativeAssignmentModel: () => {
+    builds++;
+    return { rows: [], assignedToOptions: [], assignmentCount: 0, matchedCount: 0, unassignedCount: 0 };
+  }, classifyScriptCompatibleRows: () => ({ reports: {}, counts: {} }) };
+  const scope = vm.createContext({ Worker: class {}, Map, Set, Date, Object, Array,
+    getManagerEvalReports2Api: () => api, canUseProductionLiveSync: () => false,
+    isDatasetLoaded: () => true, managerEvalReport2LoadState: state,
+    managerEvalReport2Cache: null, managerEvalReport2CacheKey: '', fullInventory: Array(9364), warehouseAssignedItemsInventory: [],
+    getConfiguredCurrentSeasonCode: () => 'F1', getConfiguredCurrentSalesYearCode: () => 27,
+    getConfiguredNextSaleSeasonTarget: () => ({ season: 'S1', salesYear: 27 }),
+    getManagerEvalReport2CacheKeyValue: () => 'current', managerEvalReportSettings: {},
+    reconcileManagerEvalReport2Navigation: () => {}, performance: { now: () => (clock++ % 2) * 600 },
+    reportSemanticHealthEvent: (...args) => events.push(args),
+    loadManagerEvalReports2: () => { loads++; state.loading = true; return Promise.resolve(); }
+  });
+  vm.runInContext(`${html.slice(start, end)};globalThis.getIndex = getManagerEvalReport2Index;`, scope);
+  assert.equal(scope.getIndex(), null);
+  assert.equal(scope.getIndex(), null);
+  assert.equal(loads, 1);
+  assert.equal(builds, 0);
+  const stale = { counts: { u1: 2 } };
+  scope.managerEvalReport2Cache = stale;
+  assert.equal(scope.getIndex(), stale);
+  // Only the owning worker fallback may build while the load is still active.
+  assert.ok(scope.getIndex(true));
+  assert.equal(builds, 1);
+  assert.equal(events[0][2], 'EVAL_REPORT_2_CLASSIFICATION_SLOW');
+  assert.equal(events[0][3].duration_bucket, 750);
+  scope.managerEvalReport2Cache = null;
+  state.loading = false;
+  state.error = 'fixture load failure';
+  assert.equal(scope.getIndex(), null);
+  assert.equal(loads, 1, 'an error must not create an automatic retry loop');
+});
+
+test('async report results reject changed identity, snapshot, and access', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('async function buildManagerEvalReport2IndexAsync(');
+  const end = html.indexOf('function getManagerEvalReport2Index(', start);
+  for (const changed of ['identity', 'snapshot', 'access', 'none']) {
+    let identity = 'owner-a', snapshot = 'snapshot-a', allowed = true, pending;
+    class FixtureWorker {
+      constructor() { pending = this; }
+      postMessage() {}
+      terminate() {}
+    }
+    class FixtureURL extends URL {
+      static createObjectURL() { return 'blob:fixture'; }
+      static revokeObjectURL() {}
+    }
+    const scope = vm.createContext({ Worker: FixtureWorker, URL: FixtureURL, Blob, Map, Object,
+      managerEvalReport2Cache: null, managerEvalReport2CacheKey: '',
+      getManagerEvalReport2CacheKeyValue: () => snapshot, getSupabaseReadIdentityScope: () => identity,
+      canViewManagerEvalReports2: () => allowed, getManagerEvalReports2Api: () => engine,
+      getConfiguredNextSaleSeasonTarget: () => ({ season: 'S1', salesYear: 27 }),
+      getConfiguredCurrentSeasonCode: () => 'F1', getConfiguredCurrentSalesYearCode: () => 27,
+      getManagerEvalReport2WorkerSource: () => 'fixture', window: { location: { href: 'https://fixture.invalid/' } },
+      fullInventory: [], warehouseAssignedItemsInventory: [], managerEvalReportSettings: {},
+      setTimeout: () => 1, clearTimeout: () => {}, reconcileManagerEvalReport2Navigation: () => {},
+      reportSemanticHealthEvent: () => assert.fail('unexpected worker fallback'),
+      getManagerEvalReport2Index: () => assert.fail('unexpected synchronous build')
+    });
+    vm.runInContext(`${html.slice(start, end)};globalThis.build = buildManagerEvalReport2IndexAsync;`, scope);
+    const promise = scope.build();
+    if (changed === 'identity') identity = 'owner-b';
+    if (changed === 'snapshot') snapshot = 'snapshot-b';
+    if (changed === 'access') allowed = false;
+    const identitylessRow = {};
+    const classified = { reports: {}, counts: {} };
+    pending.onmessage({ data: { classified, assignedToOptions: [], stats: {}, allRows: [identitylessRow],
+      rowsByItemCode: new Map(), rowByKey: new Map([['row-index:4', identitylessRow]]), memberships: new Map() } });
+    const result = await promise;
+    if (changed !== 'none') {
+      assert.equal(result, null);
+      assert.equal(scope.managerEvalReport2Cache, null);
+      assert.equal(scope.managerEvalReport2CacheKey, '');
+    } else {
+      assert.equal(result, classified);
+      assert.equal(scope.managerEvalReport2CacheKey, 'snapshot-a');
+      assert.equal(identitylessRow.__evalReport2SourceIndex, 4);
+      assert.equal(Object.keys(identitylessRow).includes('__evalReport2SourceIndex'), false);
+    }
+  }
+});
+
 test('item inquiry builds dependent filters and the three Apps Script sections', () => {
   const rows = [
     row('A', 'U1', 27, { ASSIGNEDTO: 'dylan_collyge', COMMONNAME: 'Alpha', CONTSIZE: '#3', PLANTGROUPCODE: 'PG-A', GENUSNAME: 'Genus A', LOTCODE: '27.F1', LOCATIONCODE: 'A.01.001' }),
@@ -629,7 +860,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function openManagerEvalReport2BatchSetup\(\)/);
   assert.match(html, /function createManagerEvalReport2Batch\(button = null\)/);
   assert.match(html, /id="manager-eval-report-2-done-button"/);
-  assert.match(html, /if \(managerEvalReport2LoadState\.loading\) return managerEvalReport2Cache/);
+  assert.match(html, /if \(managerEvalReport2LoadState\.loading && !allowSynchronousBuild\) return managerEvalReport2Cache/);
   assert.match(html, /if \(managerEvalReport2LoadState\.error && managerEvalReport2Cache\) return managerEvalReport2Cache/);
   assert.match(html, /evalWorkApi\('create_batch'/);
   assert.match(html, /PDF assignment/);

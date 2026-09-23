@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   testIgnore: [
     /request-integrity-local\.spec\.js$/,
-    /(?:scroll-performance|login-photo-repair)\.e2e\.spec\.ts$/,
+    /(?:scroll-performance|login-photo-repair|eval-report2-async-index)\.e2e\.spec\.ts$/,
   ],
   webServer: {
     command: 'node scripts/serve-release-tests.mjs',
