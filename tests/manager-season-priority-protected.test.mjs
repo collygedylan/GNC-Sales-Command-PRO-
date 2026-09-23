@@ -1,12 +1,49 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { assertSingleScopeProducer, seasonPriorityListQuery } from '../scripts/test-manager-season-priority-scale.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const migration = read('supabase/migrations/20260922233000_manager_season_priority_inquiry_v1.sql');
 const optimization = read('supabase/migrations/20260923174000_optimize_manager_season_priority_scope.sql');
+const materialization = read('supabase/migrations/20260923222348_materialize_manager_season_priority_scope_hashes.sql');
 const api = read('supabase/functions/app-api/index.ts');
+
+test('list scale correction changes only the grouped fingerprint materialization fence', () => {
+  const extract=source=>source.match(/create or replace function public\.manager_season_priority_list_v1\([\s\S]*?\$function\$;/i)?.[0].replace(/\r\n/g,'\n');
+  const original=extract(migration), corrected=extract(materialization);
+  assert.ok(original&&corrected);
+  assert.equal(corrected.replace('scope_hashes as materialized (','scope_hashes as ('),original);
+  assert.match(corrected,/scope_hashes as materialized \(/);
+  assert.doesNotMatch(materialization,/\b(?:grant|revoke|insert into|update public|delete from|truncate)\b/i);
+  const query=seasonPriorityListQuery(corrected);
+  assert.match(query,/scope_hashes as materialized \(/);
+  assert.doesNotMatch(query,/\b(current_season|current_sales_year|roster_available|filter_value|inventory_revision)\b/);
+  assert.match(query,/\$1::text/);
+});
+
+test('scale plan guard rejects missing or repeated scope fingerprint production', () => {
+  const producer={'Subplan Name':'CTE scope_hashes','Actual Loops':1,'Actual Rows':50};
+  assertSingleScopeProducer({Plans:[producer]},50);
+  assert.throws(()=>assertSingleScopeProducer({Plans:[]},50),/one materialized producer/);
+  assert.throws(()=>assertSingleScopeProducer({Plans:[{...producer,'Actual Loops':50}]},50),/must not be recalculated/);
+  assert.throws(()=>assertSingleScopeProducer({Plans:[{...producer,'Actual Rows':49}]},50),/Every complete eligible group/);
+});
+
+test('scale fixture keeps isolated database guards, rollback, timeout, parity and no-delivery assertions', () => {
+  const fixture=read('scripts/test-manager-season-priority-scale.mjs');
+  assert.match(fixture,/assert\.equal\(process\.env\.CI,'true'/);
+  assert.match(fixture,/\['127\.0\.0\.1','localhost','\[::1\]'\]\.includes\(target\.hostname\)/);
+  assert.match(fixture,/assert\.equal\(target\.pathname,'\/postgres'/);
+  assert.match(fixture,/set local statement_timeout='8s'/);
+  assert.match(fixture,/finally \{ await db\.query\('rollback'\)/);
+  assert.match(fixture,/generate_series\(1,9364\)/);
+  assert.match(fixture,/generate_series\(0,4054\)/);
+  assert.match(fixture,/assertSingleScopeProducer\(explained\.Plan,50\)/);
+  assert.match(fixture,/Every returned fingerprint must equal the full frozen scope helper/);
+  assert.match(fixture,/List must not create inquiries or delivery/);
+});
 
 test('Season Priority is a service-only Manager/Admin protected Reclass extension', () => {
   for (const role of ['ADMIN', 'ADMINISTRATOR', 'MANAGER']) {
