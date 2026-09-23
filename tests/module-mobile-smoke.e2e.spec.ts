@@ -45,6 +45,15 @@ async function fixture(page: Page, baseURL: string) {
       headers: { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' },
       body: JSON.stringify({ ok: true, allowed: true, canManage: true, users: ['dylan_collyge'] }),
     });
+    // Opening Season Priority reads its list and receipt status. Fulfill both
+    // locally; submit/retry and unknown operations still reach mutation rejection.
+    if (body.action === 'drive_reclass_inquiry'
+        && ['season_priority_list', 'season_priority_state'].includes(operation)) return route.fulfill({
+      status: 200, contentType: 'application/json',
+      headers: { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' },
+      body: JSON.stringify({ ok: true, inventoryRevision: 10, inventoryState: 'ready',
+        ...(operation === 'season_priority_list' ? { rows: [], assignedToOptions: [] } : { requests: [] }) }),
+    });
     if (body.action === 'navigation_preferences' && operation === 'users') return reply([{ id: source.navigation.profileId, username: 'dylan_collyge', displayName: 'Dylan fixture', role: 'ADMIN', active: true }]);
     if (body.action === 'navigation_preferences' && operation === 'user_access') return reply(source.navigation);
     if (body.action === 'bunch_note') {
@@ -206,6 +215,10 @@ test('phone opening smoke: each accessible Manager module and footer settings', 
         view, tab: tab === 'hours' ? 'dashboard' : tab,
       });
       await checkScreen(page, view, `Manager/${label}`, evidence);
+      if (tab === 'season-priority') {
+        await expect(page.locator('#manager-season-priority')).toContainText('No selected Season Sales Notes at priority 2, 3, or 4 match these filters.');
+        await expect(page.locator('#manager-season-priority [role="alert"]')).toHaveCount(0);
+      }
       await page.locator('#global-header-inline-back').tap();
       await expect(page.locator('#view-managers .manager-module-card:visible').first()).toBeVisible();
     });
