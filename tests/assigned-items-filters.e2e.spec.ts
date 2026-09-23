@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Assigned Items header and phone filters share complete rows, export, sorting and safe editing', async ({ page, baseURL }) => {
+test('Assigned Items header and phone filters share complete rows, export, sorting and safe editing', async ({ page, baseURL }, testInfo) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', async route => {
     if (new URL(route.request().url()).origin === origin) return route.continue();
@@ -45,11 +45,19 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
   await expect(rows).toHaveCount(125);
   const trigger = (field: string) => fixture.locator(`${phone ? '.assigned-phone-filters' : '[data-manager-assigned-desktop-table]'} [data-assigned-filter-trigger="${field}"]`);
   const open = async (field: string) => {
-    if (phone && !(await fixture.locator('.assigned-phone-filters').getAttribute('open') !== null)) await fixture.getByText('Filters & Sort', { exact: true }).click();
     await trigger(field).click();
     await expect(page.locator('#manager-assigned-filter-panel')).toBeVisible();
   };
   const panel = page.locator('#manager-assigned-filter-panel');
+  await expect(fixture.locator('.assigned-filter-chip')).toHaveCount(0);
+  await expect(fixture.locator('.assigned-filter-clear')).toHaveCount(0);
+  await expect(trigger('COMMONNAME').locator('.assigned-filter-value')).toHaveText('All');
+  if (phone) {
+    const phoneFilters = fixture.locator('.assigned-phone-filters');
+    await expect(phoneFilters).toBeVisible();
+    await expect(phoneFilters.locator('summary')).toHaveCount(0);
+    expect(await phoneFilters.evaluate(element => element.tagName)).toBe('DIV');
+  }
   for (const theme of ['light', 'dark', 'outdoor']) {
     await page.evaluate(theme => (window as any).__gncOpsPilot.primeCachedAppearance({ userKey: 'dylan_collyge', theme }), theme);
     await page.evaluate(theme => document.body.setAttribute('data-ops-theme', theme), theme);
@@ -59,6 +67,18 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
     await expect(panel.getByRole('button', { name: 'Apply', exact: true })).toBeVisible();
+    const layout = await fixture.evaluate(element => {
+      const scope = element.querySelector(window.innerWidth < 768 ? '.assigned-phone-filters' : '[data-manager-assigned-desktop-table]');
+      const targets = Array.from(scope?.querySelectorAll<HTMLElement>('[data-assigned-filter-trigger]') || [])
+        .filter(node => node.getClientRects().length).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
+      const search = document.getElementById('manager-assigned-value-search');
+      return { targets, pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
+        searchFont: search ? parseFloat(getComputedStyle(search).fontSize) : 0 };
+    });
+    expect(layout.targets.every(target => target.width >= 44 && target.height >= 44), JSON.stringify(layout)).toBe(true);
+    expect(layout.pageOverflow, JSON.stringify(layout)).toBeLessThanOrEqual(1);
+    if (phone) expect(layout.searchFont).toBeGreaterThanOrEqual(16);
+    if (theme === 'light' || theme === 'dark') await page.screenshot({ path: testInfo.outputPath(`assigned-items-compact-${theme}.png`) });
     await panel.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(trigger('COMMONNAME')).toBeFocused();
   }
@@ -71,6 +91,8 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('000124');
+  await expect(trigger('COMMONNAME').locator('.assigned-filter-value')).toHaveText('Zebra Rose');
+  await expect(fixture.locator('.assigned-filter-clear')).toBeVisible();
   await expect(fixture).toContainText('1 bulk selection is hidden');
   await fixture.getByRole('button', { name: 'Export Excel' }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__assignedExport?.rows?.length)).toBe(1);
@@ -86,17 +108,24 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
   await panel.getByRole('button', { name: 'Clear Selection', exact: true }).click();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(rows).toHaveCount(0);
+  await expect(trigger('CONTSIZE').locator('.assigned-filter-value')).toHaveText('0 selected');
   await open('CONTSIZE');
   await panel.getByRole('button', { name: 'Clear Column Filter', exact: true }).click();
   await expect(rows).toHaveCount(1);
   await fixture.getByRole('button', { name: 'Clear All Filters', exact: true }).click();
   await expect(rows).toHaveCount(125);
+  await expect(fixture.locator('.assigned-filter-clear')).toHaveCount(0);
   await open('ITEMCODE');
   await panel.getByRole('button', { name: 'Sort Z–A ↓', exact: true }).click();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(rows.first()).toContainText('000124');
   await expect(fixture.locator('[data-manager-assigned-group]')).toHaveCount(0);
-  await fixture.getByRole('button', { name: 'Sort: Item Code ↓ ×', exact: true }).click();
+  await expect(trigger('ITEMCODE').locator('.assigned-filter-value')).toHaveText('All');
+  await expect(trigger('ITEMCODE')).toContainText('↓');
+  await expect(fixture.locator('.assigned-filter-chip')).toHaveCount(0);
+  await open('ITEMCODE');
+  await panel.getByRole('button', { name: 'Clear Sort', exact: true }).click();
+  await panel.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(rows.first()).toContainText('000000');
   await expect(fixture.locator('[data-manager-assigned-group]')).toHaveCount(2);
   for (const field of ['ASSIGNEDTO', 'WAREHOUSEI', 'ITEMCODE', 'CONTSIZE', 'COMMONNAME', 'LOCATIONCODE', 'SOURCE', 'GENUSNAME']) {
@@ -160,8 +189,6 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   const panel = page.locator('#manager-assigned-filter-panel');
   const rows = page.locator(phone ? '[data-manager-assigned-item-card]' : '[data-manager-assigned-item-row]');
   const open = async (field: string) => {
-    const details = page.locator('.assigned-phone-filters');
-    if (phone && await details.getAttribute('open') === null) await details.locator('summary').click();
     await page.locator(`${phone ? '.assigned-phone-filters' : '[data-manager-assigned-desktop-table]'} [data-assigned-filter-trigger="${field}"]`).click();
     await expect(panel).toBeVisible();
   };
@@ -195,15 +222,19 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   expect(exported.ids).toEqual(['nav-23', ...Array.from({ length: 9 }, (_, i) => 'nav-' + (230 + i))]);
   expect(exported.values.every((row: string[]) => row[1] === '0' && row[5] === 'D.08.002')).toBe(true);
   expect(exported.values[0][2]).toBe('000023');
-  const countCard = page.getByText('Visible Rows', { exact: true }).locator('..');
-  await expect(countCard).toContainText('10');
-  await expect(page.getByText('Total Rows', { exact: true }).locator('..')).toContainText('240');
+  await expect(rows).toHaveCount(10);
+  const assignedTo = page.getByRole('combobox', { name: 'AssignedTo', exact: true });
+  await expect(assignedTo).toHaveValue('all');
+  await expect(assignedTo).toContainText('All AssignedTo (240)');
+  await expect(page.getByText('Visible Rows', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Total Rows', { exact: true })).toHaveCount(0);
   await open('ITEMCODE');
   await panel.getByRole('button', { name: 'Sort Z–A ↓', exact: true }).click();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
   await page.getByRole('button', { name: 'Clear All Filters', exact: true }).click();
   await expect(rows).toHaveCount(240);
-  await expect(page.getByRole('button', { name: 'Sort: Item Code ↓ ×', exact: true })).toBeVisible();
+  await expect(page.locator(`${phone ? '.assigned-phone-filters' : '[data-manager-assigned-desktop-table]'} [data-assigned-filter-trigger="ITEMCODE"]`)).toContainText('↓');
+  await expect(page.locator('.assigned-filter-chip')).toHaveCount(0);
   await page.getByRole('button', { name: /Export Excel/ }).click();
   expect(await page.evaluate(() => (window as any).__assignedExport.ids[0])).toBe('new');
   await page.evaluate(() => window.eval(`managersSearchTerm = 'Rose'; managerAssignedItemsAssignedToFilter = 'unassigned'; renderManagers(); new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => { setMainAreaScrollTop(500); resolve(true); })));`));

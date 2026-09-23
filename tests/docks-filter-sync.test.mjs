@@ -36,7 +36,7 @@ function storage(seed = {}) {
 }
 
 function device({ local = storage(), session = storage(), user = 'dylan_collyge' } = {}) {
-  const status = { innerHTML: '', classList: { toggle() {} } };
+  const status = { innerHTML: '', className: '', dataset: {}, classList: { toggle() {} } };
   const search = { value: '' };
   const clearSearch = { classList: { add() {} } };
   const escaped = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -171,9 +171,11 @@ test('two devices keep intentional 55 vs 117 row results; new Dock 29 appears on
   assert.equal(all.filter(item => item.DOCK_NUM === '29').length, 32);
   assert.equal(filtered.some(item => item.DOCK_NUM === '29'), false);
   iphone.ctx.updateDockFilterSummary(rows, filtered);
-  assert.match(iphone.status.innerHTML, /Showing 55 of 149 rows across docks · 1 dock hidden by filters/);
-  assert.match(iphone.status.innerHTML, /Customers: 4 selected/);
-  assert.match(iphone.status.innerHTML, /Saved on this device/);
+  assert.deepEqual(iphone.status.dataset, { shown: '55', total: '149', hiddenDocks: '1' });
+  assert.match(iphone.status.innerHTML, /data-shown="55" data-total="149" data-hidden-docks="1"/);
+  assert.match(iphone.status.innerHTML, />55 of 149 rows</);
+  assert.equal(iphone.status.className, 'sr-only');
+  assert.doesNotMatch(iphone.status.innerHTML, /Showing|Customers:|Saved on this device/);
   iphone.ctx.clearDocksFilters();
   assert.deepEqual(ids(iphone.ctx.applyDockRepCustomerFiltersOnly(rows)), ids(all));
   assert.equal(android.ctx.dockCustomerSelectionMode, 'all');
@@ -237,13 +239,16 @@ test('mobile choices expose All/None and distinguish custom-all from future-incl
   assert.match(ctx.buildDockMobileFilterSheetFragments('customer').optionsHtml, /Custom · 0 selected/);
 });
 
-test('summary safely escapes customer and query text', () => {
+test('compact warning safely escapes unavailable selections without restoring removed summary rows', () => {
   const d = device();
   d.ctx.restoreDockRepCustomerFilterState({ selectedDockCustomers: ['<img onerror="alert(1)">'] });
   d.ctx.updateDockFilterSummary([], [], '<script>bad</script>');
   assert.doesNotMatch(d.status.innerHTML, /<script>|<img /);
-  assert.match(d.status.innerHTML, /&lt;script&gt;/);
-  assert.match(d.status.innerHTML, /saved selection is not in the current data/);
+  assert.match(d.status.innerHTML, /&lt;img onerror=&quot;alert\(1\)&quot;&gt;/);
+  assert.match(d.status.innerHTML, /1 saved selection unavailable; retained\./);
+  assert.equal(d.status.className, 'compact-filter-warning');
+  assert.deepEqual(d.status.dataset, { shown: '0', total: '0', hiddenDocks: '0' });
+  assert.doesNotMatch(d.status.innerHTML, /Showing|Saved on this device|data-dock-active-filter-chips/);
 });
 
 test('production capture/restore and render are wired to the tested helpers', () => {

@@ -194,3 +194,15 @@ test('export metadata uses retained display labels, Unassigned, and readable sor
   assert.equal(metadata.get('Column Filters'), 'AssignedTo: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
   assert.equal(metadata.get('Sort'), 'Item Code descending');
 });
+
+test('compact Assigned Items controls expose values and sort in triggers without collapsible or chip rows', () => {
+  const trigger = helper('renderManagerAssignedColumnTrigger');
+  const controls = helper('renderManagerAssignedColumnControls');
+  assert.match(trigger, /assigned-filter-value/);
+  assert.match(trigger, /state\.filters\[field\]\.length === 1/);
+  assert.match(trigger, /selectedLabel/);
+  assert.match(trigger, /sort\.direction === 'desc' \? '↓' : '↑'/);
+  assert.match(controls, /<div class="assigned-phone-filters">/);
+  assert.match(controls, /hasFilters \? '<button[^']*assigned-filter-clear/);
+  assert.doesNotMatch(controls, /<details|<summary|assigned-filter-chip/);
+});

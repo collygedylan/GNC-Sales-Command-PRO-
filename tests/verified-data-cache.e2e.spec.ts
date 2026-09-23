@@ -30,6 +30,101 @@ async function closeMenuAccessibly(page: Page) {
   await closeMenu.press('Enter');
 }
 
+async function expectDockCounts(page: Page, shown: number, total: number, hiddenDocks = 0) {
+  const status = page.locator('[data-dock-filter-status]');
+  const counts = status.locator('[data-dock-filter-counts]');
+  for (const [name, value] of Object.entries({ shown, total, 'hidden-docks': hiddenDocks })) {
+    await expect(status).toHaveAttribute(`data-${name}`, String(value));
+    await expect(counts).toHaveAttribute(`data-${name}`, String(value));
+  }
+}
+
+async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: string): string, project: { name: string } }) {
+  const controls = page.locator('#docks-filter-controls');
+  const shells = controls.locator('[data-dock-filter-shell]');
+  await expect(shells).toHaveCount(4);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => document.body.setAttribute('data-ops-theme', value), theme);
+    const geometry = await controls.evaluate(element => {
+      const shellRects = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell]'), node => node.getBoundingClientRect());
+      const targets = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell] button, [data-dock-filter-shell] select'))
+        .filter(node => node.getClientRects().length).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
+      return {
+        railHeight: Math.max(...shellRects.map(rect => rect.bottom)) - Math.min(...shellRects.map(rect => rect.top)),
+        targets,
+        pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
+        phone: window.innerWidth < 768,
+      };
+    });
+    expect(geometry.targets.every(target => target.width >= 44 && target.height >= 44), JSON.stringify(geometry)).toBe(true);
+    expect(geometry.pageOverflow, JSON.stringify(geometry)).toBeLessThanOrEqual(1);
+    if (geometry.phone) expect(geometry.railHeight, JSON.stringify(geometry)).toBeLessThanOrEqual(120);
+    await page.screenshot({ path: testInfo.outputPath(`docks-compact-${theme}.png`) });
+  }
+  await page.locator('[data-dock-filter-shell="customer"] > button').click();
+  const sheet = page.locator('#dock-mobile-filter-sheet');
+  const popup = await sheet.isVisible() ? sheet : page.locator('[data-dock-customer-panel]');
+  await expect(popup).toBeVisible();
+  const popupGeometry = await popup.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const search = element.querySelector('input[type="search"]');
+    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+      viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+      searchFont: search ? parseFloat(getComputedStyle(search).fontSize) : 0 };
+  });
+  expect(popupGeometry.left).toBeGreaterThanOrEqual(0);
+  expect(popupGeometry.right).toBeLessThanOrEqual(popupGeometry.viewportWidth + 1);
+  expect(popupGeometry.top).toBeGreaterThanOrEqual(0);
+  expect(popupGeometry.bottom).toBeLessThanOrEqual(popupGeometry.viewportHeight + 1);
+  if ((page.viewportSize()?.width || 1000) < 768) expect(popupGeometry.searchFont).toBeGreaterThanOrEqual(16);
+  const done = popup.getByRole('button', { name: 'Done', exact: true });
+  expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await done.click();
+  if (!testInfo.project.name.includes('android')) return;
+
+  const viewport = page.viewportSize()!;
+  await page.setViewportSize({ width: viewport.width, height: 360 });
+  await page.evaluate(() => { document.documentElement.style.fontSize = '125%'; });
+  try {
+    await page.locator('#docks-search').fill('Synthetic');
+    await expect(page.locator('#docks-search-clear')).toBeVisible();
+    const unobstructed = await page.locator('#global-header-inline-back, #docks-search-clear, #footer-menu-btn').evaluateAll(elements => elements.flatMap(element => {
+      const bounds = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+      return hit === element || element.contains(hit) ? [] : [element.id];
+    }));
+    expect(unobstructed).toEqual([]);
+    await page.locator('[data-dock-filter-shell="customer"] > button').click();
+    const compactPopup = await sheet.isVisible() ? sheet : page.locator('[data-dock-customer-panel]');
+    await expect(compactPopup).toBeVisible();
+    const compactGeometry = await page.evaluate(() => {
+      const visible = (element: Element) => element.getClientRects().length > 0;
+      const rect = (element: Element) => element.getBoundingClientRect();
+      const popup = Array.from(document.querySelectorAll<HTMLElement>('#dock-mobile-filter-sheet, [data-dock-customer-panel]')).find(visible)!;
+      const controls = Array.from(document.querySelectorAll<HTMLElement>('#docks-filter-controls [data-dock-filter-shell], #global-header-inline-back, #docks-search, #docks-search-clear, #footer-menu-btn')).filter(visible);
+      const popupRect = rect(popup);
+      return {
+        controls: controls.map(element => ({ id: element.id || element.getAttribute('data-dock-filter-shell'), width: rect(element).width, height: rect(element).height })),
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        popup: { left: popupRect.left, right: popupRect.right, top: popupRect.top, bottom: popupRect.bottom },
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+      };
+    });
+    expect(compactGeometry.controls.every(control => control.width >= 44 && control.height >= 44), JSON.stringify(compactGeometry)).toBe(true);
+    expect(compactGeometry.overflow, JSON.stringify(compactGeometry)).toBeLessThanOrEqual(1);
+    expect(compactGeometry.popup.left).toBeGreaterThanOrEqual(0);
+    expect(compactGeometry.popup.right).toBeLessThanOrEqual(compactGeometry.viewport.width + 1);
+    expect(compactGeometry.popup.top).toBeGreaterThanOrEqual(0);
+    expect(compactGeometry.popup.bottom).toBeLessThanOrEqual(compactGeometry.viewport.height + 1);
+    await page.screenshot({ path: testInfo.outputPath('docks-larger-text-short-viewport.png') });
+    await compactPopup.getByRole('button', { name: 'Done', exact: true }).click();
+    await page.locator('#docks-search-clear').click();
+  } finally {
+    await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+    await page.setViewportSize(viewport);
+  }
+}
+
 /** Exercises the published-shell renderer and real saved filter handlers.
  * Inventory arrives through an isolated fixture boundary; ALL business requests
  * and WebSockets are blocked before navigation, including in remote mode.
@@ -100,6 +195,14 @@ async function harness(page: Page, baseURL: string, rows: Row[], customCustomers
   return { seed, importRows, assertClean: () => expect(errors).toEqual([]) };
 }
 
+test('compact filter rail remains usable across themes, larger text and shortened phone height', async ({ page, baseURL }, testInfo) => {
+  const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
+  await expectDockCounts(page, 55, 117);
+  await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
+  await assertCompactDockLayout(page, testInfo);
+  session.assertClean();
+});
+
 test('two sessions retain local choices, converge after clear, and keep All inclusive after import/relaunch', async ({ page, browser, baseURL }, testInfo) => {
   // A separate context is essential: filters are intentionally isolated per device.
   const use = testInfo.project.use;
@@ -109,32 +212,28 @@ test('two sessions retain local choices, converge after clear, and keep All incl
   try {
     const all = await harness(page, baseURL!, dock28);
     const custom = await harness(other, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
-    await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 117 of 117');
-    await expect(other.locator('[data-dock-filter-counts]')).toContainText('Showing 55 of 117');
+    await expectDockCounts(page, 117, 117);
+    await expectDockCounts(other, 55, 117);
     const imported = [...dock28, ...newDock29];
     await Promise.all([all.importRows(imported), custom.importRows(imported)]);
-    await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 149 of 149');
-    await expect(other.locator('[data-dock-filter-counts]')).toContainText('Showing 55 of 149');
-    await expect(other.locator('[data-dock-filter-counts]')).toContainText('1 dock hidden by filters');
-    await expect(other.locator('[data-dock-active-filter-chips]')).toContainText('Customers: 4 selected');
-    const filterBounds = await other.locator('[data-dock-filter-status]').evaluate(element => {
-      const rect = element.getBoundingClientRect();
-      const controls = document.getElementById('docks-filter-controls')!.getBoundingClientRect();
-      return { left: rect.left, right: rect.right, top: rect.top, controlsBottom: controls.bottom, viewport: window.innerWidth };
-    });
-    expect(filterBounds.left).toBeGreaterThanOrEqual(0);
-    expect(filterBounds.right).toBeLessThanOrEqual(filterBounds.viewport + 1);
-    expect(filterBounds.top, 'Summary must be below controls, not squeeze them into its row').toBeGreaterThanOrEqual(filterBounds.controlsBottom - 1);
-    expect(await other.locator('[data-dock-filter-shell="customer"] > button').evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(44);
+    await expectDockCounts(page, 149, 149);
+    await expectDockCounts(other, 55, 149, 1);
+    await expect(other.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
+    await expect(other.locator('[data-dock-active-filter-chips]')).toHaveCount(0);
+    await expect(other.locator('[data-dock-clear-filters]')).toBeVisible();
+    await expect(other.locator('#docks-content')).toContainText('55 Items');
+    await expect(other.locator('#docks-content')).not.toContainText('Dock 29');
     await other.screenshot({ path: testInfo.outputPath('docks-custom-filter.png') });
-    await other.getByRole('button', { name: 'Clear Docks filters', exact: true }).click();
-    await expect(other.locator('[data-dock-filter-counts]')).toContainText('Showing 149 of 149');
+    await other.locator('[data-dock-clear-filters]').click();
+    await expectDockCounts(other, 149, 149);
+    await expect(other.locator('[data-dock-clear-filters]')).toBeHidden();
+    await expect(other.locator('#docks-content')).toContainText('Dock 29');
     await other.reload({ waitUntil: 'load' });
     await custom.seed(imported);
     await expect(other.locator('[data-dock-customer-summary]')).toHaveText('All Customers');
     const latest = [...imported, row('late-new', 'Another New Customer', '30')];
     await custom.importRows(latest);
-    await expect(other.locator('[data-dock-filter-counts]')).toContainText('Showing 150 of 150');
+    await expectDockCounts(other, 150, 150);
     all.assertClean(); custom.assertClean();
   } finally {
     await secondContext.close();
@@ -242,6 +341,12 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
   await expect.poll(() => hitTargetObstructions('#global-header-inline-back, #docks-search-clear, #footer-menu-btn'), {
     message: 'Focused search must leave Back, clear, and Menu as hit targets'
   }).toEqual([]);
+  const searchChrome = await page.locator('#global-header-inline-back, #docks-search, #docks-search-clear, #footer-menu-btn').evaluateAll(elements => elements.map(element => {
+    const rect = element.getBoundingClientRect();
+    return { id: element.id, width: rect.width, height: rect.height, fontSize: parseFloat(getComputedStyle(element).fontSize) };
+  }));
+  expect(searchChrome.every(control => control.width >= 44 && control.height >= 44), JSON.stringify(searchChrome)).toBe(true);
+  if ((page.viewportSize()?.width || 1000) < 768) expect(searchChrome.find(control => control.id === 'docks-search')!.fontSize).toBeGreaterThanOrEqual(16);
   await page.locator('#docks-search-clear').click();
   await expect(page.locator('#docks-search')).toHaveValue('');
   await page.screenshot({path:test.info().outputPath('native-search-clear.png')});
@@ -257,7 +362,6 @@ test('native shared coordinator preserves filtered sessions, stages import races
     const custom = await harness(other, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
     await enableNativeCoordinator(page, dock28);
     await enableNativeCoordinator(other, dock28);
-    const counts = (p: Page) => p.locator('[data-dock-filter-counts]');
     const reads = () => page.evaluate(() => (window as any).__nativeSyncFixture.reads.length);
     const before = await reads();
     await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("unchanged-fixture")'));
@@ -270,14 +374,14 @@ test('native shared coordinator preserves filtered sessions, stages import races
       }, imported);
       await expect(p.locator('#live-data-freshness')).toContainText('Importing');
     }
-    await expect(counts(page)).toContainText('Showing 117 of 117');
-    await expect(counts(other)).toContainText('Showing 55 of 117');
+    await expectDockCounts(page, 117, 117);
+    await expectDockCounts(other, 55, 117);
     for (const p of [page, other]) {
       await p.evaluate(() => { const fixture = (window as any).__nativeSyncFixture; fixture.state = 'ready'; fixture.changed(); });
       await expect(p.locator('#live-data-freshness')).toContainText('Up to date');
     }
-    await expect(counts(page)).toContainText('Showing 149 of 149');
-    await expect(counts(other)).toContainText('Showing 55 of 149');
+    await expectDockCounts(page, 149, 149);
+    await expectDockCounts(other, 55, 149, 1);
     // Freeze the first changed snapshot, update its revision while it is in flight.
     await page.evaluate(() => {
       const fixture = (window as any).__nativeSyncFixture;
@@ -288,19 +392,19 @@ test('native shared coordinator preserves filtered sessions, stages import races
     });
     await expect(page.locator('#live-data-freshness')).toContainText('Showing available rows · Refreshing');
     expect(await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().getStatus().state'))).toBe('Syncing');
-    await expect(counts(page)).toContainText('Showing 149 of 149');
+    await expectDockCounts(page, 149, 149);
     await page.evaluate(data => {
       const fixture = (window as any).__nativeSyncFixture;
       fixture.rows = data; fixture.revision = '4'; const release = fixture.release; fixture.gate = null; release();
     }, [...imported, row('latest', 'Newest Customer', '30')]);
-    await expect(counts(page)).toContainText('Showing 150 of 150');
+    await expectDockCounts(page, 150, 150);
     await expect.poll(() => page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().getStatistics().discardedLoads'))).toBeGreaterThan(0);
     await page.evaluate(() => {
       (window as any).__nativeSyncFixture.readFailure = true;
       window.dispatchEvent(new Event('focus'));
     });
     await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
-    await expect(counts(page)).toContainText('Showing 150 of 150');
+    await expectDockCounts(page, 150, 150);
     await page.evaluate(() => {
       (window as any).__nativeSyncFixture.readFailure = false;
       (window as any).__nativeSyncFixture.reconnected();
@@ -322,13 +426,14 @@ test('real customer controls expose empty Custom, All and device-saved selection
   await options.getByRole('button', { name: 'None', exact: true }).click();
   await options.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
-  await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 0 of 2');
-  await expect(page.locator('[data-dock-filter-status]')).toContainText('Saved on this device');
+  await expectDockCounts(page, 0, 2, 2);
+  await expect(page.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
+  await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   await page.reload({ waitUntil: 'load' });
   await app.seed([row('a', 'Customer A'), row('b', 'Customer B', '29')]);
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
-  await page.getByRole('button', { name: 'Clear Docks filters', exact: true }).click();
-  await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 2 of 2');
+  await page.locator('[data-dock-clear-filters]').click();
+  await expectDockCounts(page, 2, 2);
   app.assertClean();
 });
 
@@ -365,9 +470,9 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   }, [...initial, row('draft-b', 'Customer B', '29')]);
   await expect(page.locator('#live-data-freshness')).toContainText('Edit needs review');
   await expect(page.locator('#dock-status')).toHaveValue('Palletize');
-  await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 1 of 1');
+  await expectDockCounts(page, 1, 1);
   await page.locator('#dock-info-modal').getByRole('button', { name: 'CANCEL', exact: true }).click();
-  await expect(page.locator('[data-dock-filter-counts]')).toContainText('Showing 2 of 2');
+  await expectDockCounts(page, 2, 2);
   await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
   await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
 

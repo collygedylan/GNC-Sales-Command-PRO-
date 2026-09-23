@@ -8667,3 +8667,69 @@ html.outdoor-mode body.ops-precision-pilot #item-inquiry-panel :is(
 
 /* Assigned Items restores a saved pixel position; native anchoring must not offset it as header chrome settles. */
 body.current-view-managers #main-scroll-area:has(#managers-content .assigned-filter-controls){overflow-anchor:none}
+
+/* Compact filters: one clear hit target per field, with the current choice carried by the trigger.
+   This intentionally scopes to the list/report rails; specialised editors retain their own controls. */
+#docks-search-clear{width:44px;min-width:44px;height:100%;min-height:44px;border:0;background:transparent;cursor:pointer}
+#docks-search-clear:not(.hidden){display:grid;place-items:center}
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail,#request-dylan-filter-panel.compact-filter-rail,#view-request .request-view-filters,.compact-filter-panel,.compact-filter-rail){--compact-filter-gap:8px;min-width:0}
+
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline .drive-top-controls-row,#drive-plant-filters.drive-top-inline .drive-top-controls-row,#review-plant-filters.drive-top-inline .drive-top-controls-row,#move-up-plant-filters.drive-top-inline .drive-top-controls-row,#av-top-filters.av-top-inline .av-top-controls-row,#docks-filter-controls .docks-filter-row,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail,#request-dylan-filter-panel.compact-filter-rail,#view-request .request-view-filters,.compact-filter-rail){gap:var(--compact-filter-gap)!important}
+
+/* Shells only anchor menus; the button/select is the lone visible field surface. */
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls) .task-top-control-shell{position:relative!important;min-width:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls.docks-top-inline) .task-top-control-button,
+body.ops-precision-pilot :is(#docks-filter-controls.docks-top-inline,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail,#view-request .request-view-filters,.compact-filter-rail) :is(select,.compact-filter-field){box-sizing:border-box;min-width:0;min-height:44px!important;border:1px solid var(--ops-border-strong)!important;border-radius:10px!important;color:var(--ops-text)!important;background:var(--ops-surface-muted)!important;box-shadow:none!important}
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls.docks-top-inline) .task-top-control-button{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:7px!important;padding:7px 10px!important;text-align:left}
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls.docks-top-inline) :is(.task-top-control-title,.task-top-control-summary){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls.docks-top-inline) .task-top-control-title{font-size:11px!important;line-height:1.1!important;letter-spacing:.06em!important}
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls.docks-top-inline) .task-top-control-summary{margin-top:2px!important;font-size:13px!important;line-height:1.15!important;font-weight:750!important}
+
+/* Selection state belongs on the field itself, never in a separate explanatory row. */
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline,#docks-filter-controls.docks-top-inline,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail,#view-request .request-view-filters,.compact-filter-rail) :is(.task-top-control-button[aria-expanded="true"],.task-top-control-button.is-active,.task-top-control-button.is-filtered,.task-top-control-shell.is-filtered,.compact-filter-field.is-filtered,[aria-pressed="true"].compact-filter-field){border-color:var(--ops-brand)!important;color:var(--ops-brand-strong)!important;background:var(--ops-brand-soft)!important}
+body.ops-precision-pilot :is(.compact-filter-rail,.compact-filter-panel,#docks-filter-controls.docks-top-inline,.workflow-control-rail,#view-request .request-view-filters) :is(button,select,input):focus-visible,
+body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline,#drive-plant-filters.drive-top-inline,#review-plant-filters.drive-top-inline,#move-up-plant-filters.drive-top-inline,#av-top-filters.av-top-inline) .task-top-control-button:focus-visible{outline:3px solid var(--ops-focus)!important;outline-offset:2px!important}
+
+body.ops-precision-pilot #docks-filter-controls.docks-top-inline .docks-filter-row>*{min-width:0!important}
+body.ops-precision-pilot #docks-filter-controls.docks-top-inline :is(.workflow-control,.task-top-control-shell)>:is(select,.task-top-control-button){width:100%}
+body.ops-precision-pilot #docks-filter-controls .docks-filter-row{align-content:start}
+body.ops-precision-pilot .compact-filter-panel{padding:8px!important;border:0!important;box-shadow:none!important}
+body.ops-precision-pilot .compact-filter-rail>label{min-width:0!important;font-size:11px;letter-spacing:normal}
+body.ops-precision-pilot .compact-filter-rail>label>span:first-child{font-size:11px!important;line-height:1.2!important;letter-spacing:.04em!important}
+body.ops-precision-pilot #docks-filter-controls .docks-filter-row .workflow-control{position:relative;display:block;min-height:48px;margin:0;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+body.ops-precision-pilot #docks-filter-controls .docks-filter-row .workflow-control>span{position:absolute;z-index:1;top:6px;left:10px;right:28px;overflow:hidden;color:var(--ops-text-muted);font-size:11px;font-weight:700;line-height:1;pointer-events:none;text-overflow:ellipsis;white-space:nowrap}
+body.ops-precision-pilot #docks-filter-controls .docks-filter-row .workflow-control>select{appearance:none;-webkit-appearance:none;min-height:48px!important;padding:18px 30px 5px 10px!important;font-size:14px!important;font-weight:650!important;letter-spacing:normal!important;text-transform:none!important}
+body.ops-precision-pilot #docks-filter-controls .docks-filter-row .workflow-control::after{content:"";position:absolute;right:13px;top:20px;width:7px;height:7px;border-right:2px solid var(--ops-text-muted);border-bottom:2px solid var(--ops-text-muted);transform:rotate(45deg);pointer-events:none}
+
+/* Opt-in native fields are filters, not general data-entry inputs. */
+body.ops-precision-pilot .compact-filter-rail>label>:is(select,input:not([readonly]):not([data-entry])),
+body.ops-precision-pilot .compact-filter-rail>div>input:not([readonly]):not([data-entry]),
+body.ops-precision-pilot .compact-filter-rail>.compact-filter-field:is(select,input:not([readonly]):not([data-entry])){box-sizing:border-box;min-height:44px!important;padding:7px 10px!important;border:1px solid var(--ops-border-strong)!important;border-radius:10px!important;color:var(--ops-text)!important;background:var(--ops-surface-muted)!important;box-shadow:none!important}
+body.ops-precision-pilot .compact-filter-clear{min-height:44px;border:1px solid var(--ops-border-strong);border-radius:10px;color:var(--ops-text);background:var(--ops-surface-muted);box-shadow:none}
+body.ops-precision-pilot .compact-filter-clear.hidden,body.ops-precision-pilot .compact-filter-clear[hidden]{display:none!important}
+body.ops-precision-pilot .ops-module-filter-band:has(#docks-filter-controls,#task-tabs-container,#drive-season-filters,#av-top-filters){min-height:0!important;padding:6px!important;margin-bottom:8px!important;border:0!important;box-shadow:none!important}
+body.ops-precision-pilot .compact-filter-warning{grid-column:1/-1;margin:0;color:var(--ops-warning,#b45309);font-size:13px;font-weight:700;line-height:1.3}
+
+/* Assigned Items uses the same compact field contract without a collapsible summary or chip ledger. */
+body.ops-precision-pilot .assigned-filter-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px}
+body.ops-precision-pilot .assigned-phone-filters{display:block;margin:0}
+body.ops-precision-pilot .assigned-filter-fields.compact-filter-rail{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;min-width:0}
+body.ops-precision-pilot .assigned-column-trigger,body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{min-height:44px;border-color:var(--ops-border-strong);color:var(--ops-text);background:var(--ops-surface-muted);box-shadow:none}
+body.ops-precision-pilot .assigned-column-trigger{width:100%;padding:8px 10px}
+body.ops-precision-pilot .assigned-column-trigger>:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body.ops-precision-pilot .assigned-filter-value{display:block;min-width:0;margin-top:2px;overflow:hidden;color:var(--ops-text-muted);font-size:11px;font-weight:700;line-height:1.15;text-overflow:ellipsis;white-space:nowrap}
+body.ops-precision-pilot .assigned-column-trigger.is-filtered{border-color:var(--ops-brand);color:var(--ops-brand-strong);background:var(--ops-brand-soft)}
+body.ops-precision-pilot .assigned-filter-chips:empty{display:none}
+body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space:nowrap}
+
+@media (min-width:768px){
+  body.ops-precision-pilot :is(#docks-filter-controls.docks-top-inline .docks-filter-row,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail:not(:has(.docks-filter-row)),#request-dylan-filter-panel.compact-filter-rail,#view-request .request-view-filters,.compact-filter-rail){display:grid!important;grid-template-columns:repeat(auto-fit,minmax(148px,1fr))!important;align-items:stretch!important}
+}
+
+@media (max-width:767px){
+  body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline .drive-top-controls-row,#drive-plant-filters.drive-top-inline .drive-top-controls-row,#review-plant-filters.drive-top-inline .drive-top-controls-row,#move-up-plant-filters.drive-top-inline .drive-top-controls-row,#av-top-filters.av-top-inline .av-top-controls-row,#docks-filter-controls.docks-top-inline .docks-filter-row,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail:not(:has(.docks-filter-row)),#request-dylan-filter-panel.compact-filter-rail,#view-request .request-view-filters,.compact-filter-rail){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:stretch!important}
+  body.ops-precision-pilot #docks-filter-controls.docks-top-inline :is(.workflow-control,.task-top-control-shell)>:is(select,.task-top-control-button){font-size:14px!important;font-weight:650!important;letter-spacing:normal!important;text-transform:none!important}
+  body.ops-precision-pilot .assigned-filter-controls{grid-template-columns:minmax(0,1fr);align-items:stretch}
+  body.ops-precision-pilot .assigned-filter-fields.compact-filter-rail{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{width:100%}
+}
