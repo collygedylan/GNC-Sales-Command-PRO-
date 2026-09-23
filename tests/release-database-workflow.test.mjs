@@ -1,8 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { startIsolatedDatabase, collectDatabaseEvidence, excludedServices } from '../scripts/release-database-startup.mjs';
 
 const workflow = fs.readFileSync(new URL('../.github/workflows/release-database.yml', import.meta.url), 'utf8');
+const yaml = createRequire(import.meta.url)('js-yaml');
+const databaseJob = yaml.load(workflow).jobs['database-and-functions'];
 const browserConfig = fs.readFileSync(new URL('../playwright.database.config.ts', import.meta.url), 'utf8');
 const provisioning = fs.readFileSync(new URL('./native-auth-provisioning-local.spec.js', import.meta.url), 'utf8');
 const legacyBaseline = fs.readFileSync(new URL('../supabase/ci/native_auth_legacy_user_baseline.sql', import.meta.url), 'utf8');
@@ -88,7 +93,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
 
 test('database migration, pgTAP, concurrency, browser, and Edge checks stay serialized', () => {
   const commands = [
-    'supabase --workdir "$SUPABASE_CI_ROOT" start',
+    'node scripts/release-database-startup.mjs start',
     'supabase --workdir "$SUPABASE_CI_ROOT" db reset --local --no-seed',
     'supabase --workdir "$SUPABASE_CI_ROOT" test db',
     'CI=true EVAL_REVIEW_TEST_DB_URL="$DB_URL" node scripts/test-reclass-review-concurrency.mjs',
@@ -106,6 +111,87 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     previous = at;
   }
   assert.doesNotMatch(workflow, /strategy:|matrix:/);
+});
+
+test('pinned CLI fallback is restored after setup and remains active for all database steps', () => {
+  const steps = databaseJob.steps;
+  const cli = steps.findIndex(step => step.uses === 'supabase/setup-cli@v1');
+  const registry = steps.findIndex(step => step.id === 'registry');
+  const start = steps.findIndex(step => step.id === 'stack');
+  assert.equal(steps[cli].with.version, '2.111.0');
+  assert.ok(cli < registry && registry < start);
+  assert.equal(steps[registry].run, 'echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"');
+  assert.equal(excludedServices, 'studio,imgproxy,logflare,vector');
+  assert.equal(databaseJob['timeout-minutes'], 35);
+  assert.ok(steps.every(step => !step['continue-on-error']));
+  assert.doesNotMatch(workflow, /--ignore-health-check|gh run rerun|nick-fields\/retry/);
+  const evidence = steps.find(step => step.run === 'node scripts/release-database-startup.mjs evidence');
+  assert.equal(evidence.if, 'always()');
+  assert.equal(evidence.env.DATABASE_STEPS, '${{ toJSON(steps) }}');
+});
+
+function startupFixture(result) {
+  const runnerTemp = path.resolve('isolated-runner');
+  const records = [];
+  const calls = [];
+  let clock = 1000;
+  const options = {
+    env: { RUNNER_TEMP: runnerTemp, SUPABASE_CI_ROOT: path.join(runnerTemp, 'gnc-supabase-ci'),
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: 'ghcr.io', PRIVATE_SENTINEL: 'do-not-record' },
+    run: (...args) => { calls.push(args); return result; },
+    now: () => { clock += 25; return clock; },
+    save: (name, report) => records.push({ name, report }),
+  };
+  return { options, records, calls };
+}
+
+test('isolated startup preserves failure codes, records timing, and never retries the stack', () => {
+  for (const status of [0, 7]) {
+    const f = startupFixture({ status });
+    assert.equal(startIsolatedDatabase(f.options), status);
+    assert.equal(f.calls.length, 1);
+    assert.deepEqual(f.calls[0].slice(0, 2), ['supabase', ['--workdir', f.options.env.SUPABASE_CI_ROOT,
+      'start', '--exclude', 'studio,imgproxy,logflare,vector']]);
+    assert.equal(f.calls[0][2].env.SUPABASE_INTERNAL_IMAGE_REGISTRY, '');
+    assert.equal(f.records[0].report.exitCode, status);
+    assert.equal(f.records[0].report.durationMs, 25);
+    assert.equal(f.records[0].report.failure, status ? 'STACK_START_FAILED' : null);
+    assert.doesNotMatch(JSON.stringify(f.records), /do-not-record/);
+  }
+});
+
+test('invalid workdir and missing or terminated CLI fail closed with sanitized evidence', () => {
+  const invalid = startupFixture({ status: 0 });
+  invalid.options.env.SUPABASE_CI_ROOT = path.resolve('some-other-project');
+  assert.equal(startIsolatedDatabase(invalid.options), 1);
+  assert.equal(invalid.calls.length, 0);
+  assert.equal(invalid.records[0].report.failure, 'ISOLATED_WORKDIR_REQUIRED');
+  for (const result of [{ status: null, error: new Error('do-not-record') }, { status: null, signal: 'SIGTERM' }]) {
+    const f = startupFixture(result);
+    assert.equal(startIsolatedDatabase(f.options), 1);
+    assert.equal(f.records[0].report.failure, 'START_PROCESS_FAILED');
+    assert.doesNotMatch(JSON.stringify(f.records), /do-not-record/);
+  }
+});
+
+test('stage evidence retains failures and public image identities without step outputs or Docker secrets', () => {
+  const records = [];
+  const digest = 'sha256:' + 'a'.repeat(64);
+  const options = {
+    steps: { stack: { outcome: 'failure', outputs: { token: 'do-not-record' } }, migrations: { outcome: 'skipped' } },
+    run: () => ({ status: 0, stdout: JSON.stringify({ Repository: 'public.ecr.aws/supabase/postgres',
+      Tag: '17.6.1.156', ID: digest, Digest: digest, Secret: 'do-not-record' }) }),
+    save: (name, report) => records.push({ name, report }),
+  };
+  assert.equal(collectDatabaseEvidence(options), 0);
+  assert.deepEqual(records[0].report.failedStages, ['stack']);
+  assert.deepEqual(records[0].report.images, [{ repository: 'public.ecr.aws/supabase/postgres',
+    tag: '17.6.1.156', id: digest, digest }]);
+  assert.doesNotMatch(JSON.stringify(records), /do-not-record/);
+  options.run = () => ({ status: 1, stderr: 'do-not-record' });
+  assert.equal(collectDatabaseEvidence(options), 1);
+  assert.equal(records[1].report.imageInventoryAvailable, false);
+  assert.deepEqual(records[1].report.failedStages, ['stack']);
 });
 
 test('local browser config explicitly includes provisioning and prevents silent missing-environment skips', () => {

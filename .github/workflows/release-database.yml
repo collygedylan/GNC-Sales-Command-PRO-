@@ -12,13 +12,22 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
       - uses: supabase/setup-cli@v1
         with:
           version: 2.111.0
+      - name: Restore pinned CLI registry fallback
+        id: registry
+        shell: bash
+        run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
       - name: Prepare isolated migration project
+        id: prepare
         shell: bash
         run: |
           set -euo pipefail
@@ -198,23 +207,25 @@ jobs:
           cp supabase/tests/manager_season_priority_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
-        run: supabase --workdir "$SUPABASE_CI_ROOT" start
+        id: stack
+        run: node scripts/release-database-startup.mjs start
       - name: Apply migrations to isolated database
+        id: migrations
         run: supabase --workdir "$SUPABASE_CI_ROOT" db reset --local --no-seed
       - name: Run pgTAP and RLS tests
+        id: sql
         run: supabase --workdir "$SUPABASE_CI_ROOT" test db
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: |
+      - id: dependencies
+        run: npm ci
+      - id: browser_setup
+        run: |
           node --test tests/prepare-ci-playwright-apt.test.mjs
           PLAYWRIGHT_CI_NODE="$(command -v node)"
           test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
           sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
           npx playwright install --with-deps chromium
       - name: Run browser request transactions against local Supabase
+        id: transactions
         shell: bash
         run: |
           set -euo pipefail
@@ -232,6 +243,7 @@ jobs:
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
           npx playwright test --config playwright.database.config.ts --project=chromium
       - name: Run Edge Function unit tests
+        id: edge
         run: |
           deno check supabase/functions/app-api/index.ts supabase/functions/request-delivery-worker/index.ts
           deno check supabase/functions/hl-po-pdf-import/index.ts
@@ -245,6 +257,11 @@ jobs:
           cp scripts/report-secret-bearing-functions.sql artifacts/report-secret-bearing-functions.sql
           cp scripts/report-drive-around-compaction-parity.sql artifacts/report-drive-around-compaction-parity.sql
           cp scripts/report-app-live-events-retirement.sql artifacts/report-app-live-events-retirement.sql
+      - name: Record sanitized database stage and image evidence
+        if: always()
+        env:
+          DATABASE_STEPS: ${{ toJSON(steps) }}
+        run: node scripts/release-database-startup.mjs evidence
       - uses: actions/upload-artifact@v4
         if: always()
         with:
