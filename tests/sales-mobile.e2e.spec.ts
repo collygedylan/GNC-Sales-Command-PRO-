@@ -81,7 +81,10 @@ test('history searches the complete permitted result set, pages newest first, an
   await area.getByRole('button', { name: 'All', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards.first()).toContainText('Pending Magnolia');
   await area.getByRole('button', { name: 'Browse customer / consignee', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await area.getByRole('button', { name: new RegExp(folderName) })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(area.getByText('Saving or loading…', { exact: true })).toHaveCount(0);
+  const folder = area.getByRole('button', { name: `${folderName} 64 records`, exact: true });
+  await expect(folder).toHaveCount(1);
+  await folder[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(cards.first()).toContainText('Pending Magnolia');
   // A denied scoped response must be reported instead of appearing as a successful empty search.
   f.denyHistory = true;
