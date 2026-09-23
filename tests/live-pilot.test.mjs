@@ -99,6 +99,8 @@ test('Request entry uses semantic high-contrast fields, bounded lists, cached gr
   assert.match(html, /if \(requestSubmitInFlight\) return false/);
   assert.match(css, /#request-rep-modal \.request-entry-control[\s\S]*min-height: 48px/);
   assert.match(css, /data-ops-theme="dark"[\s\S]*#request-rep-modal \.request-entry-label[\s\S]*#9ff3c9/);
+  assert.match(css, /body\.ops-precision-pilot #request-rep-modal \.request-create-panel :is\([\s\S]*?input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\),\s*select,\s*textarea,\s*button\s*\)\s*\{\s*transition-property: border-color, box-shadow, transform !important;/);
+  assert.match(css, /body\.ops-precision-pilot\[data-ops-theme="dark"\] #request-rep-modal \.request-create-panel \.request-primary-action\s*\{\s*border-color: #19b979 !important;\s*background: #19b979 !important;\s*color: #07120e !important;/);
 });
 
 test('Request rep selection returns folder groups and cannot leave a blank customer step', () => {

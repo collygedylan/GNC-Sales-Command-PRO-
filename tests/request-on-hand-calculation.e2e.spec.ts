@@ -30,9 +30,21 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
           </div>`;
       }, theme);
 
-      const state = await page.locator('.request-entry-card').evaluate((card) => {
+      const state = await page.locator('.request-entry-card').evaluate((card, activeTheme) => {
         const labels = Array.from(card.querySelectorAll<HTMLElement>('.request-entry-label'));
         const controls = Array.from(card.querySelectorAll<HTMLElement>('.request-entry-control'));
+        const actions = Array.from(document.querySelectorAll<HTMLElement>('#request-rep-modal .request-primary-action, #request-rep-modal .request-cancel-btn'))
+          .filter(action => action.getClientRects().length > 0);
+        const setTheme = (value: string) => {
+          document.body.setAttribute('data-ops-theme', value);
+          document.body.setAttribute('data-ops-theme-mode', value);
+          document.body.style.colorScheme = value;
+        };
+        // Resolve the opposite palette, then measure the immediate theme switch.
+        // Waiting for animation completion would hide unreadable first frames.
+        setTheme(activeTheme === 'dark' ? 'light' : 'dark');
+        for (const element of [...controls, ...actions]) getComputedStyle(element).backgroundColor;
+        setTheme(activeTheme);
         const qty = card.querySelector<HTMLElement>('.request-entry-field--qty')!;
         const est = labels[1].parentElement as HTMLElement;
         const reserve = labels[2].parentElement as HTMLElement;
@@ -51,6 +63,12 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
         return {
           minLabelContrast: Math.min(...labels.map((label) => contrast(getComputedStyle(label).color, getComputedStyle(card).backgroundColor))),
           minControlContrast: Math.min(...controls.map((control) => contrast(getComputedStyle(control).color, getComputedStyle(control).backgroundColor))),
+          minActionContrast: Math.min(...actions.map((action) => contrast(getComputedStyle(action).color, getComputedStyle(action).backgroundColor))),
+          actionColors: actions.map(action => ({ id: action.id || action.className,
+            color: getComputedStyle(action).color, background: getComputedStyle(action).backgroundColor })),
+          actionCount: actions.length,
+          paletteTransitions: [...controls, ...actions].flatMap(element => getComputedStyle(element).transitionProperty.split(',').map(value => value.trim()))
+            .filter(property => ['all', 'color', 'background-color'].includes(property)),
           minControlHeight: Math.min(...controls.map((control) => control.getBoundingClientRect().height)),
           minControlFont: Math.min(...controls.map((control) => Number.parseFloat(getComputedStyle(control).fontSize))),
           qtyWidth: qty.getBoundingClientRect().width,
@@ -59,9 +77,12 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
           reserveTop: Math.round(reserve.getBoundingClientRect().top),
           overflow: Math.max(0, card.scrollWidth - card.clientWidth),
         };
-      });
+      }, theme);
       expect(state.minLabelContrast, `${viewport.width}/${theme}: ${JSON.stringify(state)}`).toBeGreaterThanOrEqual(4.5);
-      expect(state.minControlContrast).toBeGreaterThanOrEqual(4.5);
+      expect(state.paletteTransitions, `${viewport.width}/${theme}: palette changes must be atomic`).toEqual([]);
+      expect(state.minControlContrast, `${viewport.width}/${theme}: ${JSON.stringify(state)}`).toBeGreaterThanOrEqual(4.5);
+      expect(state.actionCount).toBe(2);
+      expect(state.minActionContrast, `${viewport.width}/${theme}: ${JSON.stringify(state)}`).toBeGreaterThanOrEqual(4.5);
       expect(state.minControlHeight).toBeGreaterThanOrEqual(44);
       expect(state.minControlFont).toBeGreaterThanOrEqual(16);
       expect(state.qtyWidth).toBeGreaterThan(state.estWidth * 1.8);
