@@ -199,13 +199,19 @@ async function waitForRealManagerShellSettled(page: Page) {
   }).toMatchObject({ navigationPending: false, renderPending: false, stickyFramePending: false });
 }
 
-async function waitForMobileTextEntrySettled(page: Page) {
+async function waitForMobileTextEntrySettled(page: Page, options: { expectCleared?: boolean } = {}) {
   // Focus has both frame and trailing-timer visibility work. Let those native
   // guards finish before inspecting the focused control or choosing another one.
   await expect.poll(() => appEval(page, `({
     inputPending: !!mobileTextEntryInputSettleTimer,
-    visibilityPending: !!mobileTextEntryVisibilitySettleTimer || !!mobileTextEntryVisibilitySettleFrame
-  })`)).toEqual({ inputPending: false, visibilityPending: false });
+    visibilityPending: !!mobileTextEntryVisibilitySettleTimer || !!mobileTextEntryVisibilitySettleFrame,
+    active: document.body.classList.contains('mobile-text-entry-active'),
+    target: !mobileTextEntryState.target ? 'none' : (mobileTextEntryState.target.isConnected ? 'connected' : 'detached')
+  })`)).toMatchObject({
+    inputPending: false,
+    visibilityPending: false,
+    ...(options.expectCleared ? { active: false, target: 'none' } : {})
+  });
   await waitForRealManagerShellSettled(page);
 }
 
@@ -593,9 +599,14 @@ for (const width of [390, 1280]) {
     await expect(page.locator('[data-block-clearing-itemcode="BC.ROSE"] input[type="checkbox"]')).toBeVisible();
     await appEval(page, `document.getElementById('main-scroll-area').scrollTop = 180; finishManagerBlockClearingSelection();`);
     await expect(page.locator('[data-block-clearing-quantity]')).toHaveValue('7');
-    await appEval(page, 'new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+    // Back blurred and replaced the focused textarea. Wait for its focusout cleanup,
+    // trailing visibility work and queued manager render before choosing a scroll.
+    await waitForMobileTextEntrySettled(page, { expectCleared: true });
     await appEval(page, `document.getElementById('main-scroll-area').scrollTop = 360;`);
-    await page.locator('#global-header-inline-back').click();
+    const globalBack = page.locator('#global-header-inline-back');
+    await expect(globalBack).toBeVisible();
+    expect(await appEval(page, 'getMainAreaScrollTop()')).toBe(360);
+    await globalBack.click();
     await expect(page.locator('[data-block-clearing-itemcode="BC.ROSE"] input[type="checkbox"]')).toBeVisible();
     expect(await appEval(page, `managerBlockClearingDraftState.views.get('2|A|A.05|instructions').scroll`)).toBe(360);
     // The general renderer also schedules a delayed restore; the saved browse position

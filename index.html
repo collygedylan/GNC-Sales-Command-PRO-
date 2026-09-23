@@ -132290,6 +132290,12 @@ C.14.043 C.15.000
         }
         function backManagerBlockClearing() {
             saveManagerBlockClearingNavigation();
+            // Back can be invoked before the browser blurs the worksheet field.
+            // Save its exact scroll first, then blur while the field is connected so
+            // mobile focus cleanup is reliable without touching another view's focus.
+            const activeField = document.activeElement;
+            const managerContent = document.getElementById('managers-content');
+            if (activeField && managerContent && managerContent.contains(activeField) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeField.tagName)) activeField.blur();
             if (managerBlockClearingInstructionMode) managerBlockClearingInstructionMode = false;
             else if (managerBlockClearingLevel >= 2) { managerBlockClearingLevel = 1; managerBlockClearingSelectedLocation = null; }
             else if (managerBlockClearingLevel === 1) { managerBlockClearingLevel = 0; managerBlockClearingSelectedBlock = null; }
