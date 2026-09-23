@@ -148,6 +148,7 @@ jobs:
           cp supabase/migrations/20260921034349_production_workflow_and_atomic_inventory_audit.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260921034506_navigation_preferences_and_live_view_grants.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260921123226_hl_draft_review_removal.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260922233000_manager_season_priority_inquiry_v1.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -193,6 +194,7 @@ jobs:
           cp supabase/tests/hl_order_po_receipts_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/hl_order_restock_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/hl_po_seasons_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/manager_season_priority_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         run: supabase --workdir "$SUPABASE_CI_ROOT" start
@@ -223,6 +225,7 @@ jobs:
           CI=true HL_ORDER_TEST_DB_URL="$DB_URL" node scripts/test-hl-order-concurrency.mjs
           CI=true BUNCH_NOTE_TEST_DB_URL="$DB_URL" node scripts/test-bunch-note-concurrency.mjs
           CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs
+          CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs
           SUPABASE_LOCAL_URL="$API_URL" \
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \

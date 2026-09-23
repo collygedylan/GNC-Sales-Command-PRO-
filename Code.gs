@@ -12073,7 +12073,18 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
   const safeOptions = options && typeof options === 'object' ? options : {};
   const allowEmptyActions = safeOptions.allowEmptyActions === true;
   const now = safeOptions.now instanceof Date ? safeOptions.now : new Date();
-  const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope'], 'The Reclass transaction');
+  const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope', 'seasonPriority'], 'The Reclass transaction');
+  const seasonPriority = safeTransaction.seasonPriority;
+  if (seasonPriority) {
+    assertReclassInquiryObjectKeysV2_(seasonPriority, ['contractVersion', 'mode', 'selectedLineageHash', 'selectedPriority', 'scopeFingerprint', 'requestFingerprint', 'beforeStateHash', 'afterStateHash'], 'The Season Priority contract');
+    if (seasonPriority.contractVersion !== 'manager-season-priority-v1' || seasonPriority.mode !== 'priority_one_rotation'
+        || [2, 3, 4].indexOf(Number(seasonPriority.selectedPriority)) === -1
+        || !/^[a-f0-9]{64}$/.test(String(seasonPriority.selectedLineageHash || ''))
+        || !/^[a-f0-9]{64}$/.test(String(seasonPriority.scopeFingerprint || ''))
+        || !/^[a-f0-9]{64}$/.test(String(seasonPriority.requestFingerprint || ''))
+        || !/^[a-f0-9]{64}$/.test(String(seasonPriority.beforeStateHash || ''))
+        || !/^[a-f0-9]{64}$/.test(String(seasonPriority.afterStateHash || ''))) throw new Error('The Season Priority contract is invalid.');
+  }
   const safeRows = Array.isArray(authoritativeRows) ? authoritativeRows : [];
   const safeOverlays = Array.isArray(overlays) ? overlays : [];
   if (!safeRows.length || safeRows.length !== safeOverlays.length) {
@@ -12145,12 +12156,14 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
   const actionUnion = new Set(holdProposal ? [holdProposal.action] : []);
   let holdAffectedCount = 0;
   const reportRows = [];
+  let seasonPrioritySelectedRows = 0;
+  const seasonPriorityLineages = new Set();
   for (let i = 0; i < safeRows.length; i++) {
     const row = safeRows[i];
     const uid = getInventoryTransactionRowUid_(row);
     const overlay = overlayByUid.get(uid);
     if (!overlay) return { ok: false, status: 'conflict', message: 'An Item Inquiry row changed or is no longer available. Sync and try again.' };
-    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, ['itemcode', 'lotcode', 'locationcode', 'ptronhand'], 'The expected row identity');
+    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, ['itemcode', 'lotcode', 'locationcode', 'ptronhand', 'priority', 'ptravailable', 'lineageHash', 'lineage'], 'The expected row identity');
     const checks = [
       ['ItemCode', getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''), expected.itemcode],
       ['Lot', getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''), expected.lotcode],
@@ -12158,6 +12171,41 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     ];
     const mismatch = checks.find(function(check) { return normalizeInventoryTransactionCompareText_(check[1]) !== normalizeInventoryTransactionCompareText_(check[2]); });
     if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
+    const originalPriority = String(getInventoryTransactionRowValue_(row, ['priority', 'PRIORITY'], '')).trim();
+    if (seasonPriority && !Object.prototype.hasOwnProperty.call(expected, 'priority')) throw new Error('Season Priority requires every expected Priority.');
+    if (Object.prototype.hasOwnProperty.call(expected, 'priority') && originalPriority !== String(expected.priority == null ? '' : expected.priority).trim()) {
+      return { ok: false, status: 'conflict', message: 'Priority changed for an Item Inquiry row. Review the Season Priority request again.' };
+    }
+    if (seasonPriority) {
+      const lineage = assertReclassInquiryObjectKeysV2_(expected.lineage, ['warehouse', 'itemcode', 'contsize', 'locationcode', 'lotcode', 'source', 'desigitem', 'desigcust', 'desigloc'], 'The expected Season Priority lineage');
+      const lineageHash = String(expected.lineageHash || '');
+      if (!/^[a-f0-9]{64}$/.test(lineageHash) || seasonPriorityLineages.has(lineageHash)) throw new Error('Season Priority row identity is missing or ambiguous.');
+      seasonPriorityLineages.add(lineageHash);
+      for (const key of ['warehouse', 'itemcode', 'contsize', 'locationcode', 'lotcode', 'source', 'desigitem', 'desigcust', 'desigloc']) {
+        const aliases = key === 'warehouse' ? ['warehouseid', 'WAREHOUSEID', 'warehousei', 'WAREHOUSEI'] : [key, key.toUpperCase()];
+        if (!Object.prototype.hasOwnProperty.call(lineage, key)
+            || normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, aliases, '')) !== normalizeInventoryTransactionCompareText_(lineage[key])) {
+          return { ok: false, status: 'conflict', message: 'Season Priority row identity changed. Review the request again.' };
+        }
+      }
+      if (!Object.prototype.hasOwnProperty.call(expected, 'ptravailable')) throw new Error('Season Priority requires expected availability.');
+      const currentAvailable = String(getInventoryTransactionRowValue_(row, ['ptravailable', 'PTRAVAILABLE'], '')).trim().replace(/,/g, '');
+      if (currentAvailable !== String(expected.ptravailable == null ? '' : expected.ptravailable).trim().replace(/,/g, '')) {
+        return { ok: false, status: 'conflict', message: 'Availability changed for a Season Priority row. Review the request again.' };
+      }
+      const selected = lineageHash === seasonPriority.selectedLineageHash;
+      if (selected) seasonPrioritySelectedRows++;
+      const currentRank = /^[1-4]$/.test(originalPriority) ? Number(originalPriority) : null;
+      const k = Number(seasonPriority.selectedPriority);
+      if (selected && currentRank !== k) throw new Error('The selected Season Priority changed.');
+      const nextRank = selected ? 1 : currentRank !== null && currentRank < k ? currentRank + 1 : null;
+      if (overlay.temporaryValues || (overlay.temporaryChangedFields || []).length || (safeTransaction.holdStopProposals || []).length
+          || (safeTransaction.requestActions || []).join('|') !== 'priority_change'
+          || (nextRank === null ? overlay.proposals.length !== 0 : overlay.proposals.length !== 1
+            || overlay.proposals[0].action !== 'priority_change' || String(overlay.proposals[0].priority) !== String(nextRank))) {
+        throw new Error('The Season Priority rotation does not match the reviewed inventory.');
+      }
+    }
     if (Object.prototype.hasOwnProperty.call(expected, 'ptronhand')) {
       const currentOh = String(getInventoryTransactionRowValue_(row, ['ptronhand', 'PTRONHAND'], '')).trim().replace(/,/g, '');
       const expectedOh = String(expected.ptronhand == null ? '' : expected.ptronhand).trim().replace(/,/g, '');
@@ -12236,6 +12284,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const orderedRowActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return rowActions.indexOf(action) !== -1; });
     reportRows.push({
       unique_id: uid,
+      expectedPriority: seasonPriority ? originalPriority : undefined,
       values: values,
       actionValues: actionValues,
       changedFields: Array.from(new Set(changedFields)),
@@ -12244,6 +12293,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
       included: orderedRowActions.length > 0 || temporaryChanges.length > 0
     });
   }
+  if (seasonPriority && seasonPrioritySelectedRows !== 1) throw new Error('The selected Season Priority row is missing or ambiguous.');
   if (overlayByUid.size !== safeRows.length) return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
   if (holdProposal && !holdAffectedCount) throw new Error(getReclassInquiryActionLabel_(holdProposal.action) + ' has no eligible rows in the configured current-season scope.');
   const canonicalActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return actionUnion.has(action); });
@@ -12370,7 +12420,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     holdProposalSummary: holdProposalSummary,
     requestAction: requestAction,
     requestActions: requestActions,
-    requestActionLabel: hasLocationDetailChanges && !requestActions.length
+    requestActionLabel: transaction.seasonPriority ? 'Season Priority - Make Priority 1 (requested)' : hasLocationDetailChanges && !requestActions.length
       ? 'Location Detail Update'
       : (requestActions.length > 1 || (!requestAction && requestActions.length)
         ? getReclassInquiryActionsLabelV3_(requestActions)
@@ -12409,9 +12459,20 @@ function buildReclassInquiryReportText_(model) {
     'Container: ' + String(identity.contsize || ''),
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
+    buildSeasonPriorityDecisionText_(safeModel),
     '',
     'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.'
   ].join('\n');
+}
+
+function buildSeasonPriorityDecisionText_(model) {
+  if (!(model && model.transaction && model.transaction.seasonPriority)) return '';
+  return ['Requested priorities only - no inventory has been changed.'].concat((model.rows || []).filter(function(row) {
+    return (row.changedFields || []).indexOf('priority') !== -1;
+  }).map(function(row) {
+    return String(row.values.locationcode || '') + ' / ' + String(row.values.lotcode || '') + ' / ' + String(row.values.source || '')
+      + ': ' + String(row.expectedPriority || '[blank]') + ' -> ' + String(row.values.priority || '[blank]');
+  })).join('\n');
 }
 
 function buildReclassInquiryEmailHtml_(model) {
@@ -12425,6 +12486,7 @@ function buildReclassInquiryEmailHtml_(model) {
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
+    safeModel.transaction && safeModel.transaction.seasonPriority ? '<p style="white-space:pre-line;overflow-wrap:anywhere;">' + escapeEmailHtml_(buildSeasonPriorityDecisionText_(safeModel)) + '</p>' : '',
     '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.</p>',
     '</div>'
   ].join(''));
@@ -12493,6 +12555,9 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       const edited = changedFields.indexOf(field.key) !== -1;
       const sourceValues = field.source === 'actionValues' ? row && row.actionValues : row && row.values;
       let rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
+      if (field.key === 'priority' && edited && safeModel.transaction && safeModel.transaction.seasonPriority) {
+        rawValue = String(row.expectedPriority || '[blank]') + ' -> ' + String(rawValue || '[blank]');
+      }
       if (field.key === 'ptronhand') {
         const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
         const movementLines = [];
@@ -12765,6 +12830,9 @@ function handleReclassInquiryRetry_(payload) {
 
 function enqueueReclassInquiryEmail_(payload) {
   const safePayload = payload && typeof payload === 'object' ? payload : {};
+  if (safePayload.transaction && Object.prototype.hasOwnProperty.call(safePayload.transaction, 'seasonPriority')) {
+    return { ok: false, status: 'unauthorized', message: 'Use the protected Managers Season Priority view to create this inquiry.' };
+  }
   const token = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safePayload.idempotencyToken, safePayload.idempotency_token));
   if (!token || token.length < 12 || token.length > 180) throw new Error('The Reclass inquiry idempotency token is invalid.');
   const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};

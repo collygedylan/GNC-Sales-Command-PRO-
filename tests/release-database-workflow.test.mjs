@@ -16,12 +16,13 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 111);
+  assert.equal(migrations.length, 112);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
   }
   for (const filename of [
+    '20260922233000_manager_season_priority_inquiry_v1.sql',
     '20260815043342_dylan_live_pilot_preferences.sql',
     '20260904003007_sales_marketing_and_kayla_limited_access.sql',
     '20260902002912_flatten_eval_reports_2_and_reconcile_work.sql',
@@ -55,6 +56,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     ...[...workflow.matchAll(/"([a-z_]+_test\.sql)": "[a-z_]+_checks"/g)].map(match => match[1]),
   ];
   assert.deepEqual([...sqlTests].sort(), [
+    'manager_season_priority_test.sql',
     'bunch_note_workflow_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
     'pikes_orders_rls_test.sql', 'request_eval_drive_reliability_test.sql',
     'reclass_review_assignedto_test.sql', 'request_option_append_test.sql',
@@ -92,6 +94,7 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'CI=true HL_ORDER_TEST_DB_URL="$DB_URL" node scripts/test-hl-order-concurrency.mjs',
     'CI=true BUNCH_NOTE_TEST_DB_URL="$DB_URL" node scripts/test-bunch-note-concurrency.mjs',
     'CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs',
+    'CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
     'deno test --allow-env --allow-net supabase/functions',
   ];
