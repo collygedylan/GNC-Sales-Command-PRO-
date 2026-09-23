@@ -42,7 +42,8 @@ values
 ('SP-CAV-4','SP-ITEM-4','Season Priority Four','#3','F1',''),
 ('SP-CAV-A','SP-ITEM-AMBIG','Season Priority Ambiguous','#3','F1',''),
 ('SP-CAV-S','SP-ITEM-STALE','Season Priority Stale','#3','F1',''),
-('SP-CAV-R','SP-ITEM-RECIP','Season Priority Recipient','#3','F1','');
+('SP-CAV-R','SP-ITEM-RECIP','Season Priority Recipient','#3','F1',''),
+('SP-CAV-SCOPE','SP-ITEM-SCOPE','Season Priority Scope','#3','F1','');
 insert into public.ph_master_inventory(
   unique_id,itemcode,genusname,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
   priority,source,season,saleyear,blockalpha,desigitem,desigloc,assignedto,app_tab_assignment
@@ -64,11 +65,16 @@ insert into public.ph_master_inventory(
 ('SP-S-1','SP-ITEM-STALE','Acer','Season Priority Stale','#3','A.07.001','27.F1','5','4','1','PH','F1','27','A','D1','L1','','season'),
 ('SP-S-2','SP-ITEM-STALE','Acer','Season Priority Stale','#3','B.07.001','27.F1','20','19','2','PH','F1','27','B','D2','L2','','season'),
 ('SP-R-1','SP-ITEM-RECIP','Acer','Season Priority Recipient','#3','A.08.001','27.F1','5','4','1','PH','F1','27','A','D1','L1','','season'),
-('SP-R-2','SP-ITEM-RECIP','Acer','Season Priority Recipient','#3','B.08.001','27.F1','20','19','2','PH','F1','27','B','D2','L2','','season');
+('SP-R-2','SP-ITEM-RECIP','Acer','Season Priority Recipient','#3','B.08.001','27.F1','20','19','2','PH','F1','27','B','D2','L2','','season'),
+('SP-SCOPE-1','SP-ITEM-SCOPE','Acer','Season Priority Scope','#3','A.10.001','27.F1','5','4','1','PH','F1','27','A','D1','L1','','season'),
+('SP-SCOPE-3','SP-ITEM-SCOPE','Acer','Season Priority Scope','#3','Z.10.001','27.F1','100','99','3','PH','F1','27','Z','D3','L3','','season'),
+('SP-SCOPE-OFF','SP-ITEM-SCOPE','Acer','Season Priority Scope','#3','Y.10.001','27.F2','15','14','','PH','F2','27','Y','D4','L4','','other');
 update public.ph_master_inventory set date_completed=now() where unique_id='SP-X-3';
 insert into public.ph_warehouse_assigned_items(
   assignedto,itemcode,itemcode_normalized,genusname,source,present_in_drive,unique_id
-) values('sp_manager_1','SP-ITEM-X','SP-ITEM-X','Acer','fixture',true,'SP-ASSIGN-X');
+) values
+('sp_manager_1','SP-ITEM-X','SP-ITEM-X','Acer','fixture',true,'SP-ASSIGN-X'),
+('sp_manager_1','SP-ITEM-SCOPE','SP-ITEM-SCOPE','Acer','fixture',false,'SP-ASSIGN-SCOPE');
 update public.app_dataset_revisions
 set state='ready', revision=greatest(revision,1)
 where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items');
@@ -80,9 +86,56 @@ declare
   rep uuid:='98004000-0000-0000-0000-000000000003';
   listed jsonb; submitted jsonb; duplicate_result jsonb; state_result jsonb;
   scope_fingerprint text; before_inventory jsonb; overlays jsonb; v_event_id uuid;
+  frozen_scope jsonb; frozen_hash text; scope_row jsonb;
 begin
   listed:=public.manager_season_priority_list_v1(manager1,'sp_manager_1');
   perform pg_temp.sp_check(listed->>'contractVersion'='manager-season-priority-v1','list returns the protected contract');
+  -- Frozen pre-optimization scope expression: compare both JSON and its digest
+  -- so a faster helper cannot silently omit a same-item inventory row.
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'sourceUid', row_json->>'unique_id',
+    'lineageHash', private.manager_season_priority_lineage_v1(row_json),
+    'warehouse', coalesce(row_json->>'warehouseid', row_json->>'warehousei', ''),
+    'itemcode', coalesce(row_json->>'itemcode', ''),
+    'contsize', coalesce(row_json->>'contsize', ''),
+    'locationcode', coalesce(row_json->>'locationcode', ''),
+    'lotcode', coalesce(row_json->>'lotcode', ''),
+    'source', coalesce(row_json->>'source', ''),
+    'desigitem', coalesce(row_json->>'desigitem', ''),
+    'desigcust', coalesce(row_json->>'desigcust', ''),
+    'desigloc', coalesce(row_json->>'desigloc', ''),
+    'priority', btrim(coalesce(row_json->>'priority', '')),
+    'ptronhand', coalesce(row_json->>'ptronhand', ''),
+    'ptravailable', coalesce(row_json->>'ptravailable', '')
+  ) order by private.manager_season_priority_lineage_v1(row_json), row_json->>'unique_id'), '[]'::jsonb)
+    into frozen_scope
+  from (
+    select to_jsonb(m) row_json
+    from public.ph_master_inventory m
+    where upper(btrim(coalesce(m.itemcode, ''))) = 'SP-ITEM-SCOPE'
+  ) rows;
+  frozen_hash:=encode(extensions.digest(frozen_scope::text, 'sha256'), 'hex');
+  select value into scope_row
+  from jsonb_array_elements(listed->'rows') value
+  where value->>'sourceUid'='SP-SCOPE-3';
+  perform pg_temp.sp_check(jsonb_array_length(frozen_scope)=3,
+    'frozen scope contains eligible, other-season, and blank-priority lots');
+  perform pg_temp.sp_check(frozen_scope @> '[{"sourceUid":"SP-SCOPE-OFF","priority":""}]'::jsonb,
+    'frozen scope retains the off-season blank-priority lot');
+  perform pg_temp.sp_check(private.manager_season_priority_scope_v1('SP-ITEM-SCOPE')=frozen_scope,
+    'optimized scope JSON equals the frozen pre-optimization expression');
+  perform pg_temp.sp_check(private.manager_season_priority_scope_fingerprint_v1('SP-ITEM-SCOPE')=frozen_hash
+    and scope_row->>'scopeFingerprint'=frozen_hash,
+    'listed scope fingerprint equals the frozen hash');
+  perform pg_temp.sp_check(scope_row->>'assignmentAuthoritative'='true'
+    and scope_row->'warehouseAssignedTo'='["sp_manager_1"]'::jsonb
+    and scope_row->'resolvedAssignedTo'='["sp_manager_1"]'::jsonb,
+    'present_in_drive=false roster row remains visible and filterable');
+  perform pg_temp.sp_check(not exists (
+    select 1 from jsonb_array_elements(listed->'rows') value
+    where value->>'scopeFingerprint' is distinct from
+      private.manager_season_priority_scope_fingerprint_v1(value->>'itemcode')
+  ), 'every listed fingerprint matches the submitted scope helper');
   perform pg_temp.sp_check((
     select count(*)=1
     from jsonb_array_elements(listed->'rows') value
@@ -213,6 +266,6 @@ end $$;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public,extensions,pg_temp;
 select plan(1);
-select ok((select count(*) >= 35 from season_priority_checks), 'Manager Season Priority acceptance checks completed');
+select ok((select count(*) >= 41 from season_priority_checks), 'Manager Season Priority acceptance checks completed');
 select * from finish();
 rollback;

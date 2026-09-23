@@ -5,6 +5,7 @@ import { test } from 'node:test';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const migration = read('supabase/migrations/20260922233000_manager_season_priority_inquiry_v1.sql');
+const optimization = read('supabase/migrations/20260923174000_optimize_manager_season_priority_scope.sql');
 const api = read('supabase/functions/app-api/index.ts');
 
 test('Season Priority is a service-only Manager/Admin protected Reclass extension', () => {
@@ -36,6 +37,21 @@ test('list is ready-fenced, server-selected, assignment-aware, and returns the f
   for (const field of ['sourceUid', 'ptravailable', 'source', 'currentAssignment', 'warehouseAssignedTo', 'resolvedAssignedTo', 'assignmentAuthoritative', 'noteContext', 'lineageHash', 'scopeFingerprint']) {
     assert.match(migration, new RegExp(`'${field}'`));
   }
+});
+
+test('scope optimization preserves the protected contract and indexes every assignment row', () => {
+  const scope = optimization.match(/create or replace function private\.manager_season_priority_scope_v1\(p_itemcode text\)[\s\S]*?\$function\$;/i)?.[0];
+  assert.ok(scope, 'scope helper is replaced');
+  assert.match(scope, /scope_rows as materialized\s*\(/i);
+  assert.match(scope, /hashed_rows as materialized\s*\(/i);
+  assert.match(scope, /to_jsonb\(m\)/);
+  assert.match(scope, /private\.manager_season_priority_lineage_v1\(/);
+  assert.match(scope, /security definer\s+set search_path = ''/i);
+  const assignmentIndex = optimization.match(/create\s+index(?:\s+if\s+not\s+exists)?\s+\w+\s+on\s+public\.ph_warehouse_assigned_items\s*\([^;]*upper\(btrim\(coalesce\(itemcode_normalized,\s*itemcode,\s*''\)\)\)[^;]*;/i)?.[0];
+  assert.ok(assignmentIndex, 'all-row assignment index matches the list lookup expression');
+  assert.doesNotMatch(assignmentIndex, /\bwhere\b/i);
+  assert.doesNotMatch(optimization, /\b(?:insert\s+into|update|delete\s+from|truncate(?:\s+table)?)\s+(?:public\.)?(?:ph_master_inventory|ph_warehouse_assigned_items|ph_cav_import)\b/i);
+  assert.doesNotMatch(optimization, /\bgrant\b[^;]*\b(?:public|anon|authenticated)\b|\brevoke\b[^;]*\bservice_role\b|\bdisable\s+row\s+level\s+security\b/i);
 });
 
 test('submit freezes every same-item row and rotates duplicate and missing ranks without inventory writes', () => {
