@@ -40,6 +40,13 @@ test('scale fixture keeps isolated database guards, rollback, timeout, parity an
   assert.match(fixture,/finally \{ await db\.query\('rollback'\)/);
   assert.match(fixture,/generate_series\(1,9364\)/);
   assert.match(fixture,/generate_series\(0,4054\)/);
+  assert.doesNotMatch(fixture,/assert\.equal\(initial\.assignments,0/);
+  assert.match(fixture,/assignments:initial\.assignments\+4055,fixture_assignments:4055/);
+  assert.match(fixture,/Synthetic assignment namespace must not overlap the migration baseline/);
+  assert.match(fixture,/Scale seed must preserve all migration assignments/);
+  assert.match(fixture,/List and plan probes must leave all assignments unchanged/);
+  assert.match(fixture,/Migration assignments must remain unchanged/);
+  assert.match(fixture,/baselineAssignmentRows:initial\.assignments,syntheticAssignmentRows:4055,totalAssignmentRows:seeded\.assignments/);
   assert.match(fixture,/assertSingleScopeProducer\(explained\.Plan,50\)/);
   assert.match(fixture,/Every returned fingerprint must equal the full frozen scope helper/);
   assert.match(fixture,/List must not create inquiries or delivery/);

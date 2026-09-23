@@ -57,11 +57,25 @@ export async function runSeasonPriorityScaleFixture(db) {
       (select count(*)::int from private.manager_season_priority_receipts) receipts,
       (select count(*)::int from public.ph_request_delivery_outbox) deliveries`)).rows[0];
     assert.equal(initial.inventory,0,'Scale fixture requires an empty isolated inventory');
-    assert.equal(initial.assignments,0,'Scale fixture requires an empty isolated assignment table');
+    const assignmentFingerprint=async(excludeFixture=false)=> (await db.query(`select
+      md5(string_agg(to_jsonb(a)::text,',' order by unique_id)) value
+      from public.ph_warehouse_assigned_items a where not $2::boolean or unique_id not like $1||'-%'`,[prefix,excludeFixture])).rows[0].value;
+    const baselineAssignments=await assignmentFingerprint();
+    const namespaceCount=(await db.query(`select count(*)::int count from public.ph_warehouse_assigned_items where unique_id like $1||'-%'`,[prefix])).rows[0].count;
+    assert.equal(namespaceCount,0,'Synthetic assignment namespace must not overlap the migration baseline');
     await db.query("insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data) values($1,$2,now(),'{}','{}')",[actor,`${prefix}@example.invalid`]);
     await db.query("insert into public.profiles(id,username,display_name,role,must_change_password) values($1,$2,'Scale Manager','MANAGER',false)",[actor,prefix.toLowerCase()]);
     await db.query("insert into public.ph_app_settings(key,value) values('current_season_salesyear','{\"seasonCode\":\"F1\",\"salesYear\":27}') on conflict(key) do update set value=excluded.value");
     await seedSeasonPriorityScaleRows(db,prefix);
+    const seeded=(await db.query(`select
+      (select count(*)::int from public.ph_master_inventory) inventory,
+      (select count(*)::int from public.ph_master_inventory where unique_id like $1||'-%') fixture_inventory,
+      (select count(*)::int from public.ph_warehouse_assigned_items) assignments,
+      (select count(*)::int from public.ph_warehouse_assigned_items where unique_id like $1||'-%') fixture_assignments`,[prefix])).rows[0];
+    assert.deepEqual(seeded,{inventory:initial.inventory+9364,fixture_inventory:9364,
+      assignments:initial.assignments+4055,fixture_assignments:4055},'Scale seed must add every synthetic row without replacing migration data');
+    assert.equal(await assignmentFingerprint(true),baselineAssignments,'Scale seed must preserve all migration assignments');
+    const assignmentsBefore=await assignmentFingerprint();
     await db.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items')");
     await db.query('analyze public.ph_master_inventory');
     await db.query('analyze public.ph_cav_import');
@@ -89,9 +103,12 @@ export async function runSeasonPriorityScaleFixture(db) {
     const explained=(await db.query('explain (analyze,format json) '+seasonPriorityListQuery(definition),['F1',27,true,'all'])).rows[0]['QUERY PLAN'][0];
     assertSingleScopeProducer(explained.Plan,50);
     assert.equal(await fingerprint(),before,'List and plan probes must leave inventory priorities unchanged');
+    assert.equal(await assignmentFingerprint(),assignmentsBefore,'List and plan probes must leave all assignments unchanged');
+    assert.equal(await assignmentFingerprint(true),baselineAssignments,'Migration assignments must remain unchanged');
     const final=(await db.query(`select (select count(*)::int from private.manager_season_priority_receipts) receipts,(select count(*)::int from public.ph_request_delivery_outbox) deliveries`)).rows[0];
     assert.deepEqual(final,{receipts:initial.receipts,deliveries:initial.deliveries},'List must not create inquiries or delivery');
-    console.log(JSON.stringify({ok:true,fixture:'season-priority-production-scale',inventoryRows:9364,assignmentRows:4055,
+    console.log(JSON.stringify({ok:true,fixture:'season-priority-production-scale',inventoryRows:seeded.inventory,
+      baselineAssignmentRows:initial.assignments,syntheticAssignmentRows:4055,totalAssignmentRows:seeded.assignments,assignmentsUnchanged:true,
       eligibleRows:50,coldMs,scopeProducerLoops:1,planExecutionMs:explained['Execution Time'],fingerprintParity:true,filters:true,inventoryUnchanged:true,deliveryUnchanged:true}));
   } finally { await db.query('rollback'); }
 }
