@@ -30,7 +30,7 @@ test('destination sales years use only the actual year and keep mixed groups sep
 
 test('top-level Back traverses item, bay and base while retaining planned destination and draft input',async()=>{
  const row={unique_id:'source',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',commonname:'Plant',salesyear:'26',contsize:'#3',lotcode:'LOT',stock:0,review:null,available:0};
- const element={classList:{add(){}},innerHTML:'',setAttribute(){},querySelectorAll:()=>[]};let saved,serial=0;
+ const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};let saved,serial=0;
  const option={id:'move',category:'grading',label:'Grade and Save / Move To',kind:'move',active:true};
  const ctx=runtime({crypto:{randomUUID:()=>String(++serial)},document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},postAppFunctionJson:async(_url,body)=>{
   const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.08.001','D.09.001']}:body.operation==='inventory'?{rows:[row]}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.08.001','D.09.001','OTHER'],matching:[{...row,locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
@@ -50,6 +50,44 @@ test('top-level Back traverses item, bay and base while retaining planned destin
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08"'));
  assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);
 });
+test('shell repaint preserves creator navigation; explicit refresh and account reset reload metadata',async()=>{
+ const row={unique_id:'source',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT'};
+ const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
+ const commands=[],viewState={initialized:false,dirty:true};
+ const ctx=runtime({document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},
+  window:{},ensureViewRenderState:()=>viewState,beginInternalPerfMeasure:()=>0,incrementInternalPerfCounter(){},scheduleIosPhoneTaskStyleModuleFlowCleanup(){},recordInternalPerfDuration(){},reportPerformanceHealthEvent(){},getAdaptivePerfElapsedMs:()=>0,
+  postAppFunctionJson:async(_url,body)=>{commands.push(body.operation);return {ok:true,data:body.operation==='inventory'?{rows:[row]}:{blocks:['D'],users:[],drafts:[],options:[],locations:[]}};}});
+ const shell=read('index.html');
+ vm.runInContext(shell.slice(shell.indexOf('        function renderViewContent('),shell.indexOf('        function getCurrentVisibleViewId()',shell.indexOf('        function renderViewContent('))),ctx);
+ ctx.renderViewContent('bunch-note',false,true);await new Promise(r=>setImmediate(r));
+ assert.deepEqual(commands,['blocks','directory','drafts','catalog']);
+ await ctx.BunchNote.chooseBlock('D');ctx.BunchNote.openBase('D.08');ctx.BunchNote.openLocation('D.08.001');ctx.BunchNote.edit(0,'purposes','Keep this draft');
+ const count=commands.length;
+ ctx.renderViewContent('bunch-note',false,true);
+ assert.equal(commands.length,count);
+ assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/Open location D.08.001/);
+ ctx.BunchNote.openLocation('D.08.001');assert.match(element.innerHTML,/Keep this draft/);
+ ctx.renderViewContent('bunch-note',true,true);await new Promise(r=>setImmediate(r));
+ assert.equal(commands.length,count+4);assert.match(element.innerHTML,/Keep this draft/);
+ ctx.BunchNote.reset();ctx.renderViewContent('bunch-note',false,true);await new Promise(r=>setImmediate(r));
+ assert.equal(commands.length,count+8);assert.doesNotMatch(element.innerHTML,/Keep this draft/);
+});
+
+test('metadata reads coalesce while pending and retry after failed initialization',async()=>{
+ const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
+ let calls=0,fail=true,release;
+ const held=new Promise(resolve=>{release=resolve;});
+ const ctx=runtime({document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},postAppFunctionJson:async(_url,body)=>{
+  calls++;if(body.operation==='blocks'){await held;if(fail)throw new Error('offline');}
+  return {ok:true,data:{blocks:['D'],users:[],drafts:[],options:[],locations:[]}};
+ }});
+ const pending=ctx.BunchNote.open({refresh:false});await ctx.BunchNote.open({refresh:false});assert.equal(calls,4);
+ release();await pending;assert.match(element.innerHTML,/offline/);
+ fail=false;await ctx.BunchNote.open({refresh:false});assert.equal(calls,8);assert.doesNotMatch(element.innerHTML,/offline/);
+ await ctx.BunchNote.open({refresh:false});assert.equal(calls,8);
+ await ctx.BunchNote.open();assert.equal(calls,12);
+});
+
 test('complete normalized block/location grouping keeps all seasons and deduplicates identity',()=>{
  const b=runtime().BunchNote;
  const r={unique_id:'1',blockalpha:' c.12.full ',locationcode:' c.12.0001 ',season:'26.F1'};
@@ -102,7 +140,7 @@ test('uncertain command retains its id and same-user reauthentication rejects ol
  await assert.rejects(pending,/session changed/);
 });
 test('failed initial Queue read does not auto-loop; explicit refresh can recover',async()=>{
- let calls=0;const element={classList:{add(){}},innerHTML:'',setAttribute(){},querySelectorAll:()=>[]};
+ let calls=0;const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
@@ -110,7 +148,7 @@ test('failed initial Queue read does not auto-loop; explicit refresh can recover
 });
 
 test('refresh commits preserve active controls and cannot overwrite newer commands',async()=>{
- const element={classList:{add(){}},innerHTML:'unchanged',setAttribute(){},querySelectorAll:()=>[]};
+ const element={classList:{add(){}},innerHTML:'unchanged',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
  const stale=await ctx.BunchNote.stage({});
  await ctx.BunchNote.api('claim',{job_id:'work'},1,'claim-id');
@@ -123,7 +161,7 @@ test('refresh commits preserve active controls and cannot overwrite newer comman
 });
 test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
  const controls=Array.from({length:4},()=>({disabled:false})),attributes={},requests=[];
- const element={classList:{add(){}},set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:()=>controls};
+ const element={classList:{add(){}},childNodes:[],set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:()=>controls};
  const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[{id:'ta',kind:'ta',group:'inventory',scope:'location',instructions:'TA'}],source:[]},actuals:[]};
  let release,fail=false,command=0;
  const ctx=runtime({crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async(_url,body)=>{
@@ -213,7 +251,7 @@ test('setup and action saves retain values on failure; source changes preserve c
  const rows=[{unique_id:'a',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',salesyear:'26',contsize:'#3',lotcode:'A'},
  {unique_id:'b',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',salesyear:null,contsize:'#5',lotcode:'B'}];
  const option={id:'move',category:'inventory',label:'Move',kind:'move',active:true};
- const element={classList:{add(){}},innerHTML:'',setAttribute(){},querySelectorAll:()=>[]};let serial=0,saved,fail=true,lookups=0;
+ const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};let serial=0,saved,fail=true,lookups=0;
  const ctx=runtime({crypto:{randomUUID:()=>String(++serial)},document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},postAppFunctionJson:async(_url,body)=>{
   if(body.operation==='save'&&fail)return {ok:false,message:'Save unavailable'};
   if(body.operation==='destination_lookup')lookups++;

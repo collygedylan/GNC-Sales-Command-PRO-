@@ -77422,7 +77422,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (forceReset || !state.initialized) resetLowStockView(false);
                 renderLowStock();
             } else if (viewId === 'bunch-note') {
-                void BunchNote.open();
+                void BunchNote.open({ refresh: forceReset });
             } else if (viewId === 'hl-order') {
                 void loadHlOrderState();
                 renderHlOrder();

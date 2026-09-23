@@ -8,6 +8,7 @@
   inventory: ['TA / culls follow-up','Move','Designated-location review','Pull-tag notes','Priority review','Season error review','Obsolete-location review']
  };
  const templates = Object.entries(groups).flatMap(([group, labels]) => labels.map(label => ({ group, label, instructions: label, kind: label === 'TA / culls follow-up' ? 'ta' : ['Move','Grade and Save / Move To'].includes(label) ? 'move' : group === 'hauling' && !label.startsWith('Wait') ? 'hauling' : 'instruction' })));
+ const renderedQueues = new WeakMap();
  const normalize = value => String(value ?? '').trim().toUpperCase();
  const baseLocation = value => root.LocationCode.base(value);
  const locationGroups = values => root.LocationCode.group(values);
@@ -105,11 +106,14 @@
   try { const result = await api('list'); state.jobs = result.jobs; state.loaded = true; state.epoch++; }
   finally { state.loading = false; }
  }
- async function open() {
+ async function open({refresh = true} = {}) {
   ensureAccount(); render();
+  // Shell repaints must not start a new busy read while the user navigates.
+  if (!refresh && state.metadataLoaded) return;
   return run(async () => {
    const results = await Promise.all([api('blocks'), api('directory'), api('drafts'),api('catalog')]);
    state.blocks = results[0].blocks; state.users = results[1].users; state.drafts = results[2].drafts; state.options=results[3].options; state.destinations=results[3].locations;
+   state.metadataLoaded = true;
   });
  }
  const button = (label, action, disabled = false, pressed = null, id = '') => `<button type="button" class="bn-button" ${id ? `id="${esc(id)}"` : ''} onclick="${action}" ${disabled ? 'disabled' : ''} ${pressed === null ? '' : `aria-pressed="${pressed}"`}>${esc(label)}</button>`;
@@ -334,10 +338,20 @@
   if((state.actionEdit?.worker||state.customEdit&&state.targets[state.customEdit.key]?.worker||state.picker?.kind==='actual')&&(!state.detail?.job||state.detail.job.status!=='open'||state.detail.job.owner_id!==nativeAuthProfile?.id)){
    state.actionEdit=null;state.customEdit=null;state.picker=null;state.pendingActions={};state.item='';
   }
-  container.innerHTML = (state.error ? `<p role="alert">${esc(state.error)}</p>` : '') + (state.picker ? pickerHtml() : state.customEdit ? customEditor() : state.actionEdit ? actionEditor() : state.preview && view==='bunch-note' ? previewHtml() : state.screen==='destinations' ? destinationsHtml() : view === 'bunch-note' && author() ? editor() : queue());
-  container.setAttribute('aria-busy', String(state.busy));
+  const markup = (state.error ? `<p role="alert">${esc(state.error)}</p>` : '') + (state.picker ? pickerHtml() : state.customEdit ? customEditor() : state.actionEdit ? actionEditor() : state.preview && view==='bunch-note' ? previewHtml() : state.screen==='destinations' ? destinationsHtml() : view === 'bunch-note' && author() ? editor() : queue());
+  const busy = String(state.busy);
+  // A live list commit may land between touchstart and click. Replacing an
+  // unchanged queue drops that in-flight tap. Compare intended markup and
+  // owned child nodes: shell decoration adds classes and replaces icons.
+  const previous = renderedQueues.get(container);
+  if (previous?.markup === markup && previous.busy === busy
+    && previous.nodes.length === container.childNodes.length
+    && previous.nodes.every((node, index) => node === container.childNodes[index])) return;
+  container.innerHTML = markup;
+  container.setAttribute('aria-busy', busy);
   if (state.busy) container.querySelectorAll('input,select,textarea,button').forEach(control => { control.disabled = true; });
- }
+  renderedQueues.set(container, {markup, nodes: Array.from(container.childNodes), busy});
+}
  const invalidate = () => { state.preview = null; state.urls.forEach(url => URL.revokeObjectURL(url)); state.urls = []; };
  async function saveDraft() {
   const d = state.draft;
