@@ -113,6 +113,8 @@ jobs:
             shard: 2/2
           - suite: season
             config: playwright.season-sales-office.config.ts
+          - suite: season-priority
+            config: playwright.season-priority.config.ts
           - suite: suspend
             config: playwright.suspend-tag.config.ts
           - suite: docks
