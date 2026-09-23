@@ -216,6 +216,86 @@ test('cancellation during proxy preparation prevents a native fetch', async () =
     assert.equal(calls, 0);
 });
 
+function requestQueueLifecycleFixture() {
+    const calls = [], warnings = [];
+    const ctx = { Error, Object, String, AbortController,
+        productionLiveSyncNavigation: new AbortController(),
+        REQUEST_QUEUE_LIVE_ROWS_TABLE: 'ph_request_queue_live_rows', ACTIVE_REQUEST_TABLE: 'ph_active_request',
+        console: { warn: (...args) => warnings.push(args) },
+        transport: async () => [{ unique_id: 'isolated-request' }],
+        fetchAllSupabaseRows: (table, query, options) => {
+            calls.push({ table, query, options });
+            return ctx.transport(table, query, options);
+        }
+    };
+    vm.createContext(ctx);
+    const from = html.indexOf('let activeRequestLiveRowsViewReady =');
+    const to = html.indexOf('async function fetchSupabasePage(', from);
+    assert.ok(from > 0 && to > from);
+    vm.runInContext(html.slice(from, to), ctx);
+    return { ctx, calls, warnings, ready: () => vm.runInContext('activeRequestLiveRowsViewReady', ctx) };
+}
+
+test('request queue reads do not start after navigation or poison view availability on cancellation', async () => {
+    const { ctx, calls, warnings, ready } = requestQueueLifecycleFixture();
+    ctx.productionLiveSyncNavigation.abort();
+    await assert.rejects(ctx.fetchActiveRequestLiveRows(), error => error.code === 'REQUEST_ABORTED');
+    assert.equal(calls.length, 0);
+    assert.equal(ready(), null);
+    assert.equal(warnings.length, 0);
+});
+
+test('navigation during a request queue read aborts the same read and never launches the fallback', async () => {
+    const { ctx, calls, warnings, ready } = requestQueueLifecycleFixture();
+    const gate = deferred();
+    ctx.transport = async () => { await gate.promise; throw new TypeError('Load failed'); };
+    const pending = ctx.fetchActiveRequestLiveRows();
+    await settle();
+    const signal = ctx.productionLiveSyncNavigation.signal;
+    ctx.productionLiveSyncNavigation.abort();
+    gate.resolve();
+    await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
+    assert.equal(calls.length, 1, 'a teardown failure must not launch an authenticated fallback');
+    assert.equal(calls[0].options.signal, signal);
+    assert.equal(signal.aborted, true);
+    assert.equal(ready(), null, 'navigation is not evidence the database view is missing');
+    assert.equal(warnings.length, 0);
+    ctx.productionLiveSyncNavigation = new AbortController();
+    ctx.transport = async () => [{ unique_id: 'restored-request' }];
+    assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'restored-request');
+    assert.equal(calls[1].table, 'ph_request_queue_live_rows');
+    assert.equal(ready(), true);
+});
+
+test('request queue navigation rejects late successful data without changing view availability', async () => {
+    const { ctx, calls, ready } = requestQueueLifecycleFixture();
+    const gate = deferred();
+    ctx.transport = () => gate.promise;
+    const pending = ctx.fetchActiveRequestLiveRows();
+    await settle();
+    ctx.productionLiveSyncNavigation.abort();
+    gate.resolve([{ unique_id: 'old-document' }]);
+    await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
+    assert.equal(calls.length, 1);
+    assert.equal(ready(), null);
+});
+
+test('active request queue still falls back for real view failures and shares its navigation signal', async () => {
+    const { ctx, calls, warnings, ready } = requestQueueLifecycleFixture();
+    ctx.transport = async table => {
+        if (table === 'ph_request_queue_live_rows') throw new Error('view unavailable');
+        return [{ unique_id: 'pending-request' }];
+    };
+    assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'pending-request');
+    assert.deepEqual(calls.map(call => call.table), ['ph_request_queue_live_rows', 'ph_active_request']);
+    assert.ok(calls.every(call => call.options.signal === ctx.productionLiveSyncNavigation.signal));
+    assert.equal(ready(), false);
+    assert.equal(warnings.length, 1);
+    assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'pending-request');
+    assert.equal(calls[2].table, 'ph_active_request');
+    assert.equal(warnings.length, 1);
+});
+
 test('navigation stops visible-document reads until restoration or trusted interaction', () => {
     const handlers = new Map(), signals = [], original = new AbortController();
     const listen = (name, callback) => handlers.set(name, callback);

@@ -38862,13 +38862,23 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function fetchActiveRequestLiveRows(selectFields = '*') {
+            // Legacy request/footer reads share the same document lifetime as
+            // verified reads. Reload cancellation is not a missing-view error.
+            const signal = productionLiveSyncNavigation.signal;
+            const requireActiveDocument = () => {
+                if (signal.aborted) throw Object.assign(new Error('Request queue read cancelled.'), { code: 'REQUEST_ABORTED' });
+            };
+            requireActiveDocument();
             const query = buildActiveRequestLiveRowsQuery(selectFields);
             if (activeRequestLiveRowsViewReady !== false) {
                 try {
-                    const rows = await fetchAllSupabaseRows(REQUEST_QUEUE_LIVE_ROWS_TABLE, query);
+                    const rows = await fetchAllSupabaseRows(REQUEST_QUEUE_LIVE_ROWS_TABLE, query, { signal });
+                    requireActiveDocument();
                     activeRequestLiveRowsViewReady = true;
                     return rows;
                 } catch (error) {
+                    requireActiveDocument();
+                    if (error && error.code === 'REQUEST_ABORTED') throw error;
                     activeRequestLiveRowsViewReady = false;
                     if (!activeRequestLiveRowsViewWarningShown) {
                         activeRequestLiveRowsViewWarningShown = true;
@@ -38876,7 +38886,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     }
                 }
             }
-            return fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc');
+            requireActiveDocument();
+            const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc', { signal });
+            requireActiveDocument();
+            return rows;
         }
 
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0) {

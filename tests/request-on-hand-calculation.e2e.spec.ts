@@ -30,6 +30,76 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
           </div>`;
       }, theme);
 
+      const state = await page.locator('.request-entry-card').evaluate((card) => {
+        const labels = Array.from(card.querySelectorAll<HTMLElement>('.request-entry-label'));
+        const controls = Array.from(card.querySelectorAll<HTMLElement>('.request-entry-control'));
+        const qty = card.querySelector<HTMLElement>('.request-entry-field--qty')!;
+        const est = labels[1].parentElement as HTMLElement;
+        const reserve = labels[2].parentElement as HTMLElement;
+        const rgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+        const luminance = (value: string) => {
+          const channels = rgb(value).map((channel) => {
+            const normalized = channel / 255;
+            return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+        };
+        const contrast = (foreground: string, background: string) => {
+          const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+          return (lighter + 0.05) / (darker + 0.05);
+        };
+        return {
+          minLabelContrast: Math.min(...labels.map((label) => contrast(getComputedStyle(label).color, getComputedStyle(card).backgroundColor))),
+          minControlContrast: Math.min(...controls.map((control) => contrast(getComputedStyle(control).color, getComputedStyle(control).backgroundColor))),
+          minControlHeight: Math.min(...controls.map((control) => control.getBoundingClientRect().height)),
+          minControlFont: Math.min(...controls.map((control) => Number.parseFloat(getComputedStyle(control).fontSize))),
+          qtyWidth: qty.getBoundingClientRect().width,
+          estWidth: est.getBoundingClientRect().width,
+          estTop: Math.round(est.getBoundingClientRect().top),
+          reserveTop: Math.round(reserve.getBoundingClientRect().top),
+          overflow: Math.max(0, card.scrollWidth - card.clientWidth),
+        };
+      });
+      expect(state.minLabelContrast, `${viewport.width}/${theme}: ${JSON.stringify(state)}`).toBeGreaterThanOrEqual(4.5);
+      expect(state.minControlContrast).toBeGreaterThanOrEqual(4.5);
+      expect(state.minControlHeight).toBeGreaterThanOrEqual(44);
+      expect(state.minControlFont).toBeGreaterThanOrEqual(16);
+      expect(state.qtyWidth).toBeGreaterThan(state.estWidth * 1.8);
+      expect(state.estTop).toBe(state.reserveTop);
+      expect(state.overflow).toBe(0);
+    }
+  }
+});
+
+test('Request theme switches keep controls and actions readable on the first frame', async ({ page }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
+    for (const theme of ['light', 'dark']) {
+      await page.setViewportSize(viewport);
+      await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
+      await page.evaluate((activeTheme) => {
+        document.body.classList.add('ops-precision-pilot');
+        document.body.setAttribute('data-ops-theme', activeTheme);
+        const modal = document.getElementById('request-rep-modal')!;
+        modal.classList.remove('hidden');
+        modal.classList.add('request-qty-active');
+        modal.style.setProperty('display', 'flex', 'important');
+        for (const id of ['step-1-rep', 'step-1.5-folder', 'step-2-cust']) document.getElementById(id)!.classList.add('hidden');
+        const qtyStep = document.getElementById('step-3-qty')!;
+        qtyStep.classList.remove('hidden');
+        qtyStep.style.setProperty('display', 'flex', 'important');
+        document.getElementById('qty-list-container')!.innerHTML = `
+          <div class="request-entry-card">
+            <div><div class="request-entry-name">Dallas Blues Switch Grass</div><div class="request-entry-meta">#3 · Location C.16.000 · Source LD</div></div>
+            <div class="request-entry-fields">
+              <div class="request-entry-field request-entry-field--qty"><label class="request-entry-label">Quantity</label><input class="request-entry-control item-qty-input" placeholder="Enter quantity" value="150"></div>
+              <div class="request-entry-field"><label class="request-entry-label">Estimated Ship</label><select class="request-entry-control"><option>ASAP</option></select></div>
+              <div class="request-entry-field"><label class="request-entry-label">Reserve</label><select class="request-entry-control"><option>NO</option></select></div>
+              <div class="request-entry-field request-entry-field--wide"><label class="request-entry-label">Desired Spec</label><input class="request-entry-control item-spec-input" placeholder="Enter Spec or N/A" value="24-30 inch"></div>
+              <div class="request-entry-field request-entry-field--wide"><label class="request-entry-label">Row Note</label><textarea class="request-entry-control">Visible note</textarea></div>
+            </div>
+          </div>`;
+      }, theme);
+
       const state = await page.locator('.request-entry-card').evaluate((card, activeTheme) => {
         const labels = Array.from(card.querySelectorAll<HTMLElement>('.request-entry-label'));
         const controls = Array.from(card.querySelectorAll<HTMLElement>('.request-entry-control'));

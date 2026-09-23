@@ -314,6 +314,45 @@ test('ambiguous network failure leaves Done actionable and reuses the request to
   app.assertClean();
 });
 
+test('navigation cancels an in-flight request queue read without launching a teardown fallback', async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!, [fixtures[0]]);
+  let beginRead: () => void = () => {};
+  let releaseRead: () => void = () => {};
+  const readStarted = new Promise<void>(resolve => { beginRead = resolve; });
+  const readGate = new Promise<void>(resolve => { releaseRead = resolve; });
+  const fallbackReads: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/rest/v1/ph_active_request') fallbackReads.push(request.url());
+  });
+  await page.route(/\/rest\/v1\/ph_request_queue_live_rows\?select=unique_id&/, async route => {
+    beginRead();
+    await readGate;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+  await page.evaluate(() => window.eval(`
+    activeRequestLiveRowsViewReady = null;
+    window.__queueNavigationResult = 'pending';
+    void fetchActiveRequestLiveRows('unique_id').then(
+      () => { window.__queueNavigationResult = 'unexpected-success'; },
+      error => { window.__queueNavigationResult = error.code || error.message; }
+    );
+  `));
+  try {
+    await readStarted;
+    await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+    await expect.poll(() => page.evaluate(() => (window as any).__queueNavigationResult)).toBe('REQUEST_ABORTED');
+    expect(await page.evaluate(() => window.eval('activeRequestLiveRowsViewReady'))).toBeNull();
+    expect(fallbackReads).toEqual([]);
+  } finally {
+    releaseRead();
+  }
+  await page.reload({ waitUntil: 'load' });
+  await app.seed();
+  expect(await page.evaluate(async () => window.eval("fetchActiveRequestLiveRows('*')"))).toEqual([]);
+  expect(await page.evaluate(() => window.eval('activeRequestLiveRowsViewReady'))).toBe(true);
+  app.assertClean();
+});
+
 test('a dataset read started before Done cannot resurrect its card when it arrives late', async ({ page, baseURL }) => {
   const row = fixtures[0];
   const app = await harness(page, baseURL!, [row]);
