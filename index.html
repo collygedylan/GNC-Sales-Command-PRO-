@@ -70477,7 +70477,7 @@ function toggleDriveQuickRequestItem(domId) {
                 <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Bay Number Optional</span>
                 <input id="production-workflow-bay-${escapeHtml(domKey)}" class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-[#007a4d]" placeholder="Bay #">
             </label>` : '';
-            return `<div class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
+            return `<div data-production-workflow-open="${alreadyOpen}" class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
@@ -70761,6 +70761,37 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        const productionWorkflowPanelOwners = new WeakMap();
+        function setProductionWorkflowPanelHtml(panel, html) {
+            const session = window.AgMetricLifecycle.getSignal('session');
+            const view = window.AgMetricLifecycle.getSignal('view');
+            const owner = JSON.stringify([currentUser, productionWorkflowActive]);
+            const previous = productionWorkflowPanelOwners.get(panel);
+            const selector = 'input[id^="production-workflow-qty-"], input[id^="production-workflow-bay-"], input[id^="production-workflow-instructions-"]';
+            // A late inventory/list response must not erase edits already visible
+            // on this exact workflow row. Never carry them across logins or visits.
+            const fields = previous && previous.owner === owner && previous.session === session && previous.view === view && !session.aborted && !view.aborted
+                ? Array.from(panel.querySelectorAll(selector), input => ({
+                    id: input.id, value: input.value, focused: document.activeElement === input,
+                    start: input.selectionStart, end: input.selectionEnd
+                })) : [];
+            setContainerHtml(panel, html);
+            productionWorkflowPanelOwners.set(panel, { owner, session, view });
+            const replacements = new Map(Array.from(panel.querySelectorAll(selector), input => [input.id, input]));
+            fields.forEach(field => {
+                const input = replacements.get(field.id);
+                // Committed rows start clean; only unsaved forms retain edits.
+                if (!input || input.closest('[data-production-workflow-open]')?.dataset.productionWorkflowOpen === 'true') return;
+                input.value = field.value;
+                if (field.focused) {
+                    try { input.focus({ preventScroll: true }); } catch (_) {}
+                    if (field.start !== null && field.end !== null) {
+                        try { input.setSelectionRange(field.start, field.end); } catch (_) {}
+                    }
+                }
+            });
+        }
+
         function renderProductionWorkflowPanel() {
             const pageVisible = isViewVisible('production-workflow');
             const inlinePanel = document.getElementById('production-workflow-panel');
@@ -70780,7 +70811,7 @@ function toggleDriveQuickRequestItem(domId) {
             panel.classList.remove('hidden');
             const isDriveEnabled = meta.mode === 'drive';
             if (isDriveEnabled) {
-                setContainerHtml(panel, renderProductionWorkflowDrivePanel());
+                setProductionWorkflowPanelHtml(panel, renderProductionWorkflowDrivePanel());
                 ensureProductionWorkflowData();
                 return;
             }

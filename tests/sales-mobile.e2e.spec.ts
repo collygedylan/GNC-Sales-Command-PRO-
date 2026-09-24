@@ -341,9 +341,18 @@ test('propagation and planting retain protected work after reload and complete w
     await panel.getByLabel(quantityLabel, { exact: true }).fill('5');
     await panel.getByLabel('Instructions Optional', { exact: true }).fill(`Keep ${type} stock together.`);
     if (type === 'planting') await panel.getByLabel('Bay Number Optional', { exact: true }).fill('001');
+    // A late list/inventory response can render after typing. Reproduce that
+    // boundary deterministically instead of relying on network timing.
+    await page.evaluate(() => (window as any).eval('renderProductionWorkflowPanel()'));
+    await expect(panel.getByLabel(quantityLabel, { exact: true })).toHaveValue('5');
+    await expect(panel.getByLabel('Instructions Optional', { exact: true })).toHaveValue(`Keep ${type} stock together.`);
+    if (type === 'planting') await expect(panel.getByLabel('Bay Number Optional', { exact: true })).toHaveValue('001');
     await panel.getByRole('button', { name: `Move To ${title}`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
     await page.locator('#app-prompt-dialog').getByRole('button', { name: 'Confirm', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
     await expect(panel.getByRole('button', { name: 'Already Open', exact: true })).toBeDisabled();
+    await expect(panel.getByLabel(quantityLabel, { exact: true })).toHaveValue('');
+    await expect(panel.getByLabel('Instructions Optional', { exact: true })).toHaveValue('');
+    if (type === 'planting') await expect(panel.getByLabel('Bay Number Optional', { exact: true })).toHaveValue('');
     const added = [...f.productionRows.values()].find(row => row.workflow_type === type);
     expect(added.quantity).toBe(5);
     expect(added.locationcode).toBe('D.08.001');

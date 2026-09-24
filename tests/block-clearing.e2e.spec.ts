@@ -1,6 +1,17 @@
 import { createBackend } from './helpers/block-clearing-pdf-harness.mjs';
 import { expect, test, type Page } from '@playwright/test';
 
+// WebKit page startup can consume most of the scenario's timeout before the
+// app is loaded. Bound that environment setup separately; navigation, rendering,
+// all assertions and both RAF settle guards keep the unchanged test timeout.
+const realShellTest = test.extend<{ realShellPage: Page }>({
+  realShellPage: [async ({ context }, use) => {
+    const page = await context.newPage();
+    await use(page);
+    if (!page.isClosed()) await page.close();
+  }, { scope: 'test', timeout: 30_000 }],
+});
+
 const sourceRows = [
   { UNIQUE_ID: 'bc-source-26', ITEMCODE: 'BC.ROSE', COMMONNAME: 'Clearing Rose', CONTSIZE: '#3', BLOCKALPHA: 'A', LOCATIONCODE: 'A.05.001', LOTCODE: '26.F1', SALEYEAR: 26, SEASON: 'F1', SOURCE: 'Nursery', PTRONHAND: 10 },
   { UNIQUE_ID: 'bc-source-27', ITEMCODE: 'BC.ROSE', COMMONNAME: 'Clearing Rose', CONTSIZE: '#3', BLOCKALPHA: 'A', LOCATIONCODE: 'A.05.002', LOTCODE: '27.U2', SALEYEAR: 27, SEASON: 'U2', SOURCE: 'Nursery', PTRONHAND: 12 },
@@ -302,8 +313,7 @@ async function installPdfFetch(page: Page, response: 'success' | 'http-error' | 
   })()`);
 }
 
-for (const width of [390, 1280]) {
-  test(`Block Clearing real shell keeps one Back and top actions visible on long lists and a short viewport at ${width}px`, async ({ page }, testInfo) => {
+async function setupLongRealShell(page: Page, width: number) {
     await setupBlockClearing(page, width, { realShell: true });
     await appEval(page, `(() => {
       const rows = [];
@@ -326,6 +336,40 @@ for (const width of [390, 1280]) {
     })()`);
     await expect(page.locator('#app-wrapper')).toBeVisible();
     await expect(page.locator('#main-scroll-area #view-wrapper #view-managers')).toBeVisible();
+}
+
+async function openLongRealShellLocation(page: Page) {
+  await appEval(page, `selectManagerBlockClearingBlock('A')`);
+  await expect.poll(() => appEval(page, 'managerBlockClearingDraftState.restore === null')).toBe(true);
+  await expect.poll(() => appEval(page, 'managerBlockClearingLevel')).toBe(1);
+  await appEval(page, `selectManagerBlockClearingLocation('A.05')`);
+  await expect.poll(() => appEval(page, 'managerBlockClearingDraftState.restore === null')).toBe(true);
+  await expect.poll(() => appEval(page, 'managerBlockClearingLevel')).toBe(2);
+}
+
+async function selectLongRealShellItems(page: Page) {
+  await appEval(page, `getManagerBlockClearingItemGroupsForSelectedLocation().forEach(group => toggleManagerBlockClearingItemcode(group.key, true))`);
+  await expect(page.locator('#block-clearing-continue')).toBeEnabled();
+  await scrollRealManagerShell(page, 0.75);
+  await assertRealShellControls(page, ['#block-clearing-continue']);
+}
+
+async function openLongRealShellWorksheet(page: Page) {
+  const selectionScroll = await appEval<number>(page, 'getMainAreaScrollTop()');
+  // Already visible and hit-tested: avoid an automatic scrollIntoView changing
+  // the selection position that the Back restoration assertion must preserve.
+  const continueBox = (await page.locator('#block-clearing-continue').boundingBox())!;
+  await page.mouse.click(continueBox.x + continueBox.width / 2, continueBox.y + continueBox.height / 2);
+  await expect(page.locator('[data-block-clearing-action]')).toHaveCount(30);
+  await appEval(page, `(() => { buildManagerBlockClearingGroups().forEach(group => { setManagerBlockClearingDecision(encodeURIComponent(group.key), 'action', 'ta'); setManagerBlockClearingDecision(encodeURIComponent(group.key), 'quantity', '1'); }); renderManagers(); })()`);
+  const actions = ['#block-clearing-download-pdf', '#block-clearing-email-send-btn', '#block-clearing-cancel'];
+  for (const selector of actions) await expect(page.locator(selector)).toBeEnabled();
+  return { actions, selectionScroll };
+}
+
+for (const width of [390, 1280]) {
+  realShellTest(`Block Clearing real shell preserves long-list navigation and Back controls at ${width}px`, async ({ realShellPage: page }) => {
+    await setupLongRealShell(page, width);
     for (const level of [0, 1, 2]) {
       await expect.poll(() => appEval(page, 'managerBlockClearingLevel')).toBe(level);
       await expect(page.locator('#managers-content').getByRole('heading', { name: ['Block Clearing', 'Block A', 'Block Clearing A.05'][level], exact: true })).toBeVisible();
@@ -338,26 +382,15 @@ for (const width of [390, 1280]) {
       else if (level === 1) await appEval(page, `selectManagerBlockClearingLocation('A.05')`);
       await expect.poll(() => appEval(page, 'managerBlockClearingDraftState.restore === null')).toBe(true);
     }
-    await appEval(page, `getManagerBlockClearingItemGroupsForSelectedLocation().forEach(group => toggleManagerBlockClearingItemcode(group.key, true))`);
-    await expect(page.locator('#block-clearing-continue')).toBeEnabled();
-    await scrollRealManagerShell(page, 0.75);
-    await assertRealShellControls(page, ['#block-clearing-continue']);
+    await assertInventoryUnchanged(page);
+  });
+
+  realShellTest(`Block Clearing real shell preserves selection and worksheet action rails at ${width}px`, async ({ realShellPage: page }, testInfo) => {
+    await setupLongRealShell(page, width);
+    await openLongRealShellLocation(page);
+    await selectLongRealShellItems(page);
     await page.screenshot({ path: testInfo.outputPath('selection-actions-deep-scroll.png') });
-    const selectionScroll = await appEval(page, 'getMainAreaScrollTop()');
-    // The button is already visible and hit-tested above. A physical click avoids
-    // Playwright's extra scrollIntoView shifting the saved selection by a few pixels.
-    const continueBox = (await page.locator('#block-clearing-continue').boundingBox())!;
-    await page.mouse.click(continueBox.x + continueBox.width / 2, continueBox.y + continueBox.height / 2);
-    await expect(page.locator('[data-block-clearing-action]')).toHaveCount(30);
-    await appEval(page, `(() => {
-      buildManagerBlockClearingGroups().forEach(group => {
-        setManagerBlockClearingDecision(encodeURIComponent(group.key), 'action', 'ta');
-        setManagerBlockClearingDecision(encodeURIComponent(group.key), 'quantity', '1');
-      });
-      renderManagers();
-    })()`);
-    const actions = ['#block-clearing-download-pdf', '#block-clearing-email-send-btn', '#block-clearing-cancel'];
-    for (const selector of actions) await expect(page.locator(selector)).toBeEnabled();
+    const { actions } = await openLongRealShellWorksheet(page);
     for (const fraction of [0, 0.6, 1]) {
       await scrollRealManagerShell(page, fraction);
       await assertRealShellControls(page, actions);
@@ -369,6 +402,15 @@ for (const width of [390, 1280]) {
     await assertRealShellControls(page, actions);
     await assertControlBelowActionRail(page, '[data-block-clearing-action]', 10);
     await page.screenshot({ path: testInfo.outputPath('worksheet-actions-deep-scroll.png') });
+    await assertInventoryUnchanged(page);
+  });
+
+  realShellTest(`Block Clearing real shell preserves Back restoration and short-viewport keyboard controls at ${width}px`, async ({ realShellPage: page }, testInfo) => {
+    await setupLongRealShell(page, width);
+    await openLongRealShellLocation(page);
+    await selectLongRealShellItems(page);
+    const { actions, selectionScroll } = await openLongRealShellWorksheet(page);
+    await waitForRealManagerShellSettled(page);
     await page.locator('#global-header-inline-back').click();
     await expect(page.locator('#block-clearing-continue')).toBeEnabled();
     await expect.poll(() => appEval(page, 'getMainAreaScrollTop()')).toBeCloseTo(selectionScroll, 0);

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { test } from 'node:test';
+import { JSDOM } from 'jsdom';
 import {
   normalizeProductionCommand, handleProductionWorkflow, handleInventoryTransactionHistory,
   normalizeInventoryHistoryQuery, workflowError,
@@ -9,6 +10,45 @@ import {
 
 const actor = { id: 'ec34e498-ed81-4b30-8236-5751af4e68cb', username: 'dylan_collyge', role: 'Admin', must_change_password: false };
 const source = { unique_id: 'row-1', itemcode: '006138.051.1', contsize: '5DP', locationcode: 'D.08.001', lotcode: null };
+
+test('production render retains exact-row edits and focus but never crosses workflows or sessions', () => {
+  const app = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = app.indexOf('function setProductionWorkflowPanelHtml(');
+  const end = app.indexOf('\n        function renderProductionWorkflowPanel(', start);
+  assert.ok(start >= 0 && end > start);
+  const dom = new JSDOM('<div id="panel"></div>');
+  const { window } = dom, { document } = window;
+  let session = new AbortController(), view = new AbortController();
+  window.AgMetricLifecycle = { getSignal: lifetime => (lifetime === 'view' ? view : session).signal };
+  const context = vm.createContext({ window, document, currentUser: 'rep-a', productionWorkflowActive: 'planting',
+    productionWorkflowPanelOwners: new WeakMap(), setContainerHtml: (panel, html) => { panel.innerHTML = html; } });
+  vm.runInContext(app.slice(start, end), context);
+  const panel = document.getElementById('panel');
+  const markup = (row, open) => `<div data-production-workflow-open="${open}">${['qty', 'bay', 'instructions'].map(field => `<input id="production-workflow-${field}-${row}">`).join('')}</div>`;
+  const render = (row, open = false) => context.setProductionWorkflowPanelHtml(panel, markup(row, open));
+  const fill = () => {
+    [...panel.querySelectorAll('input')].forEach((input, index) => { input.value = ['5', '001', 'Keep together'][index]; });
+    const input = panel.querySelector('input:last-child'); input.focus(); input.setSelectionRange(2, 6);
+  };
+  const values = () => [...panel.querySelectorAll('input')].map(input => input.value);
+  render('row-a'); fill(); render('row-a');
+  assert.deepEqual(values(), ['5', '001', 'Keep together']);
+  assert.equal(document.activeElement, panel.querySelector('input:last-child'));
+  assert.equal(document.activeElement.selectionStart, 2); assert.equal(document.activeElement.selectionEnd, 6);
+  render('row-b'); assert.deepEqual(values(), ['', '', '']);
+  fill(); context.productionWorkflowActive = 'propagation'; render('row-b');
+  assert.deepEqual(values(), ['', '', '']);
+  fill(); context.currentUser = 'rep-b'; render('row-b');
+  assert.deepEqual(values(), ['', '', '']);
+  fill(); session.abort(); session = new AbortController(); render('row-b');
+  assert.deepEqual(values(), ['', '', '']);
+  fill(); view.abort(); view = new AbortController(); render('row-b');
+  assert.deepEqual(values(), ['', '', ''], 'close/reopen cannot revive the previous visit');
+  fill(); render('row-b', true); render('row-b', false);
+  assert.deepEqual(values(), ['', '', ''], 'saved values cannot reappear if a row becomes addable again');
+  dom.window.close();
+  assert.match(app, /setProductionWorkflowPanelHtml\(panel, renderProductionWorkflowDrivePanel\(\)\)/);
+});
 const add = () => ({ operation: 'add', workflow_type: 'planting', command_id: 'test-command-0001', expected_revision: 0,
   row: { source_unique_id: 'row-1', quantity: '12.5', baynumber: '001', instructions: 'Use marked rows', snapshot: source,
     created_by_username: 'attacker', unique_id: 'client-chosen-id' } });
