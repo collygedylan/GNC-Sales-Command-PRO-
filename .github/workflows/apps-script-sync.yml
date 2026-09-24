@@ -124,6 +124,7 @@ jobs:
           import { assertProductionAppsScriptTarget, verifyAppsScriptDeploymentOwnership } from './scripts/lib/production-release-guard.mjs';
           import { applyDeploymentFingerprint } from './scripts/apps-script-sync-lib.mjs';
           import { createAppsScriptRecoveryEvidence } from './scripts/apps-script-recovery-evidence.mjs';
+          let stage = 'current-main';
           try {
             const commit = 'e78f614ec5118b539ebc1c9d2c568a095198106e';
             const repository = 'collygedylan/GNC-Sales-Command-PRO-';
@@ -137,12 +138,15 @@ jobs:
             };
             const requireCurrentMain = async () => assert.equal((await api(`repos/${repository}/git/ref/heads/main`)).object.sha, commit, 'MAIN_CHANGED');
             await requireCurrentMain();
+            stage = 'candidate-proof';
             const proof = await selectReleaseProof({ repository, commit, api });
+            stage = 'pinned-target';
             const scriptId = process.env.APPS_SCRIPT_SCRIPT_ID;
             const deploymentId = process.env.APPS_SCRIPT_DEPLOYMENT_ID;
             assertProductionAppsScriptTarget({ scriptId, deploymentId,
               expectedScriptId: process.env.APPS_SCRIPT_PRODUCTION_SCRIPT_ID,
               expectedDeploymentId: process.env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID });
+            stage = 'protected-credential';
             const rc = JSON.parse(process.env.APPS_SCRIPT_CLASPRC_JSON);
             const tokens = rc.tokens && typeof rc.tokens === 'object' ? rc.tokens : {};
             const mapped = tokens.default || Object.values(tokens).find(value => value && value.refresh_token) || {};
@@ -154,7 +158,9 @@ jobs:
             const auth = new google.auth.OAuth2(clientId, clientSecret, settings.redirectUri || settings.redirect_uri || token.redirect_uri || token.redirectUri || 'http://localhost');
             auth.setCredentials({ refresh_token: token.refresh_token });
             const script = google.script({ version: 'v1', auth });
+            stage = 'deployment-ownership';
             await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId });
+            stage = 'expected-source';
             const expectedSource = applyDeploymentFingerprint(fs.readFileSync('Code.gs', 'utf8'), commit);
             const expectedDigest = createHash('sha256').update(expectedSource).digest('hex');
             const summarize = async versionNumber => {
@@ -162,29 +168,46 @@ jobs:
               const code = response.data.files.find(file => file.name.replace(/\.(gs|js)$/i, '') === 'Code' && file.type === 'SERVER_JS');
               assert.ok(code && code.source, 'CODE_SOURCE_MISSING');
               const matches = [...code.source.matchAll(/\bAPPS_SCRIPT_DEPLOYMENT_COMMIT_\s*=\s*(['"])([a-f0-9]{40})\1\s*;/g)];
-              assert.equal(matches.length, 1, 'SOURCE_FINGERPRINT_INVALID');
-              return { commit: matches[0][2], digest: createHash('sha256').update(code.source).digest('hex') };
+              return { commit: matches.length === 1 ? matches[0][2] : null, fingerprintCount: matches.length,
+                digest: createHash('sha256').update(code.source).digest('hex') };
             };
+            stage = 'deployment-version';
             const before = await script.projects.deployments.get({ scriptId, deploymentId });
             const versionNumber = Number(before.data.deploymentConfig.versionNumber);
             assert.ok(Number.isSafeInteger(versionNumber) && versionNumber > 0, 'VERSION_INVALID');
+            console.log(JSON.stringify({ mode: 'read-only', versionNumber, candidateRunId: proof.runId }));
+            stage = 'versioned-source';
             const versioned = await summarize(versionNumber);
+            console.log(JSON.stringify({ mode: 'read-only', versionNumber, expectedCommit: commit,
+              versionedCommit: versioned.commit, fingerprintCount: versioned.fingerprintCount,
+              versionedSourceMatches: versioned.digest === expectedDigest }));
+            stage = 'head-source';
             const head = await summarize();
             console.log(JSON.stringify({ mode: 'read-only', versionNumber, expectedCommit: commit,
               versionedCommit: versioned.commit, headCommit: head.commit,
               versionedSourceMatches: versioned.digest === expectedDigest, headSourceMatches: head.digest === expectedDigest,
               candidateRunId: proof.runId }));
+            stage = 'verify-deployed-source';
+            assert.equal(versioned.fingerprintCount, 1, 'SOURCE_FINGERPRINT_INVALID');
             assert.equal(versioned.commit, commit, 'DEPLOYED_COMMIT_MISMATCH');
             assert.equal(versioned.digest, expectedDigest, 'DEPLOYED_SOURCE_MISMATCH');
+            stage = 'authoritative-recovery-evidence';
             const evidence = await createAppsScriptRecoveryEvidence({ script, scriptId, deploymentId, expectedCommit: commit });
             assert.equal(evidence.versionNumber, versionNumber, 'DEPLOYMENT_CHANGED');
             assert.equal(evidence.sourceDigest, expectedDigest, 'RECOVERY_SOURCE_MISMATCH');
+            stage = 'final-current-main';
             await requireCurrentMain();
+            stage = 'save-sanitized-evidence';
             fs.mkdirSync('.gnc-local', { recursive: true });
             fs.writeFileSync('.gnc-local/apps-script-recovery-evidence.json', JSON.stringify(evidence, null, 2) + '\n');
             console.log(JSON.stringify({ ok: true, mode: 'read-only', ...evidence }));
           } catch (error) {
-            console.error('READ_ONLY_RECOVERY_VERIFICATION_FAILED');
+            const named = String(error?.code || error?.message || '');
+            const code = /^(?:RELEASE_PROOF_|PRODUCTION_RELEASE_GUARD_|APPS_SCRIPT_RECOVERY_EVIDENCE_)[A-Z_]+$/.test(named)
+              || named === 'ERR_ASSERTION' ? named : 'READ_ONLY_RECOVERY_VERIFICATION_FAILED';
+            const rawStatus = Number(error?.response?.status || error?.response?.statusCode);
+            const status = Number.isInteger(rawStatus) && rawStatus >= 100 && rawStatus <= 599 ? rawStatus : null;
+            console.error(JSON.stringify({ ok: false, mode: 'read-only', stage, code, status }));
             process.exitCode = 1;
           }
           NODE
