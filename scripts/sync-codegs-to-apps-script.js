@@ -5,7 +5,8 @@ import { google } from 'googleapis';
 import {
   REQUEST_LIFECYCLE_POLICY_VERSION,
   REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT,
-  syncAppsScriptProject
+  syncAppsScriptProject,
+  applyDeploymentFingerprint
 } from './apps-script-sync-lib.mjs';
 import {
   assertProductionAppsScriptTarget,
@@ -120,7 +121,11 @@ async function main() {
       script,
       scriptId,
       deploymentId,
-      expectedCommit: githubSha
+      expectedCommit: githubSha,
+      expectedVersionNumber: result.versionNumber,
+      expectedSource: applyDeploymentFingerprint(source, githubSha),
+      attempts: 13,
+      onObservation: observation => console.warn(JSON.stringify(observation))
     });
     const evidenceDirectory = path.join(repoRoot, '.gnc-local');
     fs.mkdirSync(evidenceDirectory, { recursive: true });

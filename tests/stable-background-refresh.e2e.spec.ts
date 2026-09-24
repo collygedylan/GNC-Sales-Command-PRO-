@@ -194,10 +194,14 @@ async function openLowStockLocationCards(page: any) {
   const loaded = await page.evaluate(() => window.eval(`(async () => {
     await ensureDatasetLoaded('master', 'full', { force: true, preserveRequestedMode: true });
     await ensureDatasetLoaded('warehouseAssignedItems', 'full', { force: true, preserveRequestedMode: true });
+    // Finish settings initialization while still at Home. Its completion may
+    // schedule a full Manager render; it is not part of the refresh under test.
+    await loadManagerEvalReportSettings(false);
     invalidateManagerEvalReport2Cache();
-    return { master: fullInventory.length, assignments: warehouseAssignedItemsInventory.length };
+    return { master: fullInventory.length, assignments: warehouseAssignedItemsInventory.length,
+      settingsReady: managerEvalReportSettingsState.loaded && !managerEvalReportSettingsState.loading };
   })()`));
-  expect(loaded).toEqual({ master: inventory.length, assignments: assignments.length });
+  expect(loaded).toEqual({ master: inventory.length, assignments: assignments.length, settingsReady: true });
   await page.locator('#home-tile-managers').click();
   await expect(page.locator('#view-managers')).toBeVisible();
   await page.getByRole('button', { name: /Eval Reports #2/i }).click();

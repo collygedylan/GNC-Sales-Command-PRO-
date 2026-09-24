@@ -275,14 +275,20 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await expect(page.locator('#home-tile-bunch-note')).toHaveCount(0);
  await expect(page.locator('[data-request-category="bunch-notes"]')).toBeVisible();
  await expect(page.locator('[data-request-category="pending"]')).toHaveCount(0);
- // A live list commit can repaint the queue while an iPhone tap is in flight.
- // Reproduce that replacement at the parent drill card; navigation must still
- // reach the full-location card without retrying the tap.
+ // Reproduce a verified update through the entire shell while the parent
+ // press is in flight, not only the Bunch module's own render entry point.
+ // The real navigation handler must run exactly once without retrying the press.
  await page.evaluate(async()=>{
   const note=(window as any).BunchNote,update=await note.stage({});
-  document.getElementById('request-content')!.addEventListener('pointerdown',()=>{note.commit(update);note.render();},{capture:true,once:true});
+  const openBase=note.queueBase;
+  (window as any).__bunchParentActivations=0;
+  note.queueBase=(value:string)=>{(window as any).__bunchParentActivations++;return openBase(value);};
+  document.getElementById('request-content')!.addEventListener('pointerdown',()=>{
+   note.commit(update);window.eval("renderViewContent('request',false,true)");
+  },{capture:true,once:true});
  });
  await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ expect(await page.evaluate(()=>(window as any).__bunchParentActivations)).toBe(1);
  await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await page.getByRole('button',{name:'Claim work',exact:true}).click();
