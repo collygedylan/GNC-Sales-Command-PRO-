@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 
-const RELEASE = 'V2026.09.23.02';
+const RELEASE = 'V2026.09.23.03';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -132,7 +132,7 @@ replaceLoginMarkup('<button id="login-button"', '<button id="login-button" disab
 replaceLoginMarkup('<button id="login-password-toggle"', '<button id="login-password-toggle" disabled');
 replaceLoginMarkup('onclick="return triggerLoginFromUI(event)"', 'onclick="if(this.disabled || typeof triggerLoginFromUI!==\'function\'){event.preventDefault();return false;}return triggerLoginFromUI(event)"');
 replaceLoginMarkup('onkeydown="if(event.key===\'Enter\'){return triggerLoginFromUI(event);}"', 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();if(!document.getElementById(\'login-button\').disabled && typeof triggerLoginFromUI===\'function\'){return triggerLoginFromUI(event);}return false;}"');
-replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing app\u2026</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
+replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing app\u2026</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.suspendShellMaintenanceForNavigation();window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
 
 // The legacy shell carries hundreds of kilobytes of route-specific CSS in the
 // document head. Parsing those rules delays the login logo even though none of

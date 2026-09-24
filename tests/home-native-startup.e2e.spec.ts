@@ -84,6 +84,58 @@ test('failed compiled runtime keeps login disabled and Reload app recovers norma
   expect(fixture.blockedMutations).toEqual([]);
 });
 
+test('Reload app aborts an in-flight inline manifest check before recovering a failed runtime', async ({ page, baseURL }) => {
+  await page.addInitScript(() => {
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      if (String(input).includes('manifest.json?') && String(input).includes('&check=') && init?.signal) {
+        init.signal.addEventListener('abort', () => sessionStorage.setItem('fixture-manifest-aborted', 'true'), { once: true });
+      }
+      return originalFetch.call(this, input, init);
+    };
+  });
+  let releaseManifest!: () => void;
+  const manifestGate = new Promise<void>(resolve => { releaseManifest = resolve; });
+  let heldManifest = false;
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    username: 'native_start_admin', role: 'ADMIN', startupMode: 'cold',
+    runtimeRequest: async (route: any, control: any) => control.runtimeRequests === 1
+      ? route.abort('failed') : route.continue(),
+    beforeLogin: async (control: any) => {
+      await expect(page.locator('#login-runtime-status')).toHaveText('App could not load');
+      await page.route('**/manifest.json?*', async route => {
+        if (!heldManifest && route.request().url().includes('&check=')) {
+          heldManifest = true;
+          await manifestGate;
+        }
+        await route.continue();
+      });
+      try {
+        // Exercise the real inline scheduler while the compiled runtime is absent.
+        await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow')));
+        await expect.poll(() => heldManifest).toBe(true);
+        expect(control.authTokenRequests).toBe(0);
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+          page.locator('#login-runtime-reload').click()
+        ]);
+        expect(await page.evaluate(() => sessionStorage.getItem('fixture-manifest-aborted'))).toBe('true');
+        await expect.poll(() => control.runtimeRequests).toBe(2);
+        await expect(page.locator('#login-button')).toBeEnabled();
+        await expect(page.locator('#login-runtime-reload')).toBeHidden();
+        expect(control.authTokenRequests).toBe(0);
+      } finally {
+        releaseManifest();
+      }
+    }
+  });
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/role-access-ready/);
+  expect(fixture.authTokenRequests).toBe(1);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
 const nativeStartupCases = [
   { username: 'native_start_admin', role: 'ADMIN', startupMode: 'cold', dynamic: false, visible: ['drive', 'managers'] },
   { username: 'native_start_manager', role: 'MANAGER', startupMode: 'restored', dynamic: false, visible: ['drive', 'managers'] },
