@@ -167,6 +167,7 @@ jobs:
           cp supabase/migrations/20260924155225_request_metadata_notification_guard.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260924172552_request_drive_evidence_reset_guard.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260924181019_optimize_request_history_read_projection.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -251,6 +252,7 @@ jobs:
           CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs
           CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs
           CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs
+          CI=true REQUEST_HISTORY_TEST_DB_URL="$DB_URL" node scripts/test-request-history-scale.mjs
           SUPABASE_LOCAL_URL="$API_URL" \
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \

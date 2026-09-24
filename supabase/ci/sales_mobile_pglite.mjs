@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { runRequestHistoryScaleFixture } from '../../scripts/test-request-history-scale.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const args = process.argv.slice(2);
@@ -59,6 +60,7 @@ try {
     'supabase/migrations/20260924155225_request_metadata_notification_guard.sql',
     'supabase/migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql',
     'supabase/migrations/20260924172552_request_drive_evidence_reset_guard.sql',
+    'supabase/migrations/20260924181019_optimize_request_history_read_projection.sql',
     'supabase/tests/request_drive_reset_test.sql',
     'supabase/tests/request_metadata_notifications_test.sql',
     'supabase/tests/sales_credit_workflow_test.sql',
@@ -86,6 +88,10 @@ try {
     await db.exec(read(file));
   }
   console.log('PASS: Sales/Credits, Navigation, and Production/Audit migrations and transactional SQL checks. Native platform and concurrent-connection checks remain required in CI.');
+  if (args.includes('--history-scale')) {
+    currentStep='production-scale request history';
+    await runRequestHistoryScaleFixture(db);
+  }
 } catch (error) {
   console.error(`FAILED STEP: ${currentStep}`);
   console.error(error.message);
