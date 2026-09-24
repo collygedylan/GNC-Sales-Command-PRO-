@@ -90,3 +90,140 @@ jobs:
           path: .gnc-local/apps-script-recovery-evidence.json
           if-no-files-found: error
           retention-days: 90
+
+  recovery-evidence-readonly:
+    name: Read-only deployed version and recovery evidence
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/diagnostics/eval2-recovery-56b'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the exact validated live source
+        uses: actions/checkout@v4
+        with:
+          ref: 56b83ae3cd4ef6975eed0cf60ab07c8a2890e76e
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install pinned Google API client
+        run: npm install --no-save googleapis@144.0.0
+      - name: Verify current main, proof, ownership and immutable source using reads only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
+          APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          APPS_SCRIPT_PRODUCTION_SCRIPT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_SCRIPT_ID }}
+          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { google } from 'googleapis';
+          import { selectReleaseProof } from './scripts/release-proof.mjs';
+          import { assertProductionAppsScriptTarget, verifyAppsScriptDeploymentOwnership } from './scripts/lib/production-release-guard.mjs';
+          import { applyDeploymentFingerprint } from './scripts/apps-script-sync-lib.mjs';
+          import { createAppsScriptRecoveryEvidence } from './scripts/apps-script-recovery-evidence.mjs';
+          let stage = 'current-main';
+          try {
+            const commit = '56b83ae3cd4ef6975eed0cf60ab07c8a2890e76e';
+            const repository = 'collygedylan/GNC-Sales-Command-PRO-';
+            const api = async endpoint => {
+              const response = await fetch('https://api.github.com/' + endpoint, {
+                headers: { accept: 'application/vnd.github+json', authorization: 'Bearer ' + process.env.GH_TOKEN },
+                signal: AbortSignal.timeout(15000)
+              });
+              assert.equal(response.ok, true, 'GITHUB_READ_FAILED');
+              return response.json();
+            };
+            const requireCurrentMain = async () => assert.equal((await api(`repos/${repository}/git/ref/heads/main`)).object.sha, commit, 'MAIN_CHANGED');
+            await requireCurrentMain();
+            stage = 'candidate-proof';
+            const proof = await selectReleaseProof({ repository, commit, api });
+            stage = 'pinned-target';
+            const scriptId = String(process.env.APPS_SCRIPT_SCRIPT_ID || '').trim();
+            const deploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
+            assertProductionAppsScriptTarget({ scriptId, deploymentId,
+              expectedScriptId: process.env.APPS_SCRIPT_PRODUCTION_SCRIPT_ID,
+              expectedDeploymentId: process.env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID });
+            stage = 'protected-credential';
+            const rawCredential = String(process.env.APPS_SCRIPT_CLASPRC_JSON || '').trim();
+            assert.ok(rawCredential, 'PROTECTED_CREDENTIAL_UNAVAILABLE');
+            const credentialText = !rawCredential.startsWith('{') && fs.existsSync(rawCredential)
+              ? fs.readFileSync(rawCredential, 'utf8') : rawCredential;
+            const rc = JSON.parse(credentialText);
+            const tokens = rc.tokens && typeof rc.tokens === 'object' ? rc.tokens : {};
+            const mapped = tokens.default && typeof tokens.default === 'object'
+              ? tokens.default : Object.values(tokens).find(value => value && typeof value === 'object' && value.refresh_token);
+            const token = rc.token || (tokens.refresh_token ? tokens : mapped) || {};
+            const settings = rc.oauth2ClientSettings || rc.oauth2Client || {};
+            const clientId = String(settings.clientId || settings.client_id || token.client_id || '').trim();
+            const clientSecret = String(settings.clientSecret || settings.client_secret || token.client_secret || '').trim();
+            const refreshToken = String(token.refresh_token || '').trim();
+            const redirectUri = String(settings.redirectUri || settings.redirect_uri || token.redirect_uri || token.redirectUri || 'http://localhost').trim();
+            assert.ok(clientId && clientSecret && refreshToken, 'PROTECTED_CREDENTIAL_UNAVAILABLE');
+            const auth = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+            auth.setCredentials({ refresh_token: refreshToken, access_token: token.access_token,
+              token_type: token.token_type || 'Bearer', expiry_date: token.expiry_date });
+            const script = google.script({ version: 'v1', auth });
+            stage = 'deployment-ownership';
+            await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId });
+            stage = 'expected-source';
+            const expectedSource = applyDeploymentFingerprint(fs.readFileSync('Code.gs', 'utf8'), commit);
+            const expectedDigest = createHash('sha256').update(expectedSource).digest('hex');
+            const summarize = async versionNumber => {
+              const response = await script.projects.getContent({ scriptId, ...(versionNumber ? { versionNumber } : {}) });
+              const code = response.data.files.find(file => file.name.replace(/\.(gs|js)$/i, '') === 'Code' && file.type === 'SERVER_JS');
+              assert.ok(code && code.source, 'CODE_SOURCE_MISSING');
+              const matches = [...code.source.matchAll(/\bAPPS_SCRIPT_DEPLOYMENT_COMMIT_\s*=\s*(['"])([a-f0-9]{40})\1\s*;/g)];
+              return { commit: matches.length === 1 ? matches[0][2] : null, fingerprintCount: matches.length,
+                digest: createHash('sha256').update(code.source).digest('hex') };
+            };
+            stage = 'deployment-version';
+            const before = await script.projects.deployments.get({ scriptId, deploymentId });
+            const versionNumber = Number(before.data.deploymentConfig.versionNumber);
+            assert.ok(Number.isSafeInteger(versionNumber) && versionNumber > 0, 'VERSION_INVALID');
+            console.log(JSON.stringify({ mode: 'read-only', versionNumber, candidateRunId: proof.runId }));
+            stage = 'versioned-source';
+            const versioned = await summarize(versionNumber);
+            console.log(JSON.stringify({ mode: 'read-only', versionNumber, expectedCommit: commit,
+              versionedCommit: versioned.commit, fingerprintCount: versioned.fingerprintCount,
+              versionedSourceMatches: versioned.digest === expectedDigest }));
+            stage = 'head-source';
+            const head = await summarize();
+            console.log(JSON.stringify({ mode: 'read-only', versionNumber, expectedCommit: commit,
+              versionedCommit: versioned.commit, headCommit: head.commit,
+              versionedSourceMatches: versioned.digest === expectedDigest, headSourceMatches: head.digest === expectedDigest,
+              candidateRunId: proof.runId }));
+            stage = 'verify-deployed-source';
+            assert.equal(versioned.fingerprintCount, 1, 'SOURCE_FINGERPRINT_INVALID');
+            assert.equal(versioned.commit, commit, 'DEPLOYED_COMMIT_MISMATCH');
+            assert.equal(versioned.digest, expectedDigest, 'DEPLOYED_SOURCE_MISMATCH');
+            stage = 'authoritative-recovery-evidence';
+            const evidence = await createAppsScriptRecoveryEvidence({ script, scriptId, deploymentId, expectedCommit: commit, expectedVersionNumber: versionNumber, expectedSource });
+            assert.equal(evidence.versionNumber, versionNumber, 'DEPLOYMENT_CHANGED');
+            assert.equal(evidence.sourceDigest, expectedDigest, 'RECOVERY_SOURCE_MISMATCH');
+            stage = 'final-current-main';
+            await requireCurrentMain();
+            stage = 'save-sanitized-evidence';
+            fs.mkdirSync('.gnc-local', { recursive: true });
+            fs.writeFileSync('.gnc-local/apps-script-recovery-evidence.json', JSON.stringify(evidence, null, 2) + '\n');
+            console.log(JSON.stringify({ ok: true, mode: 'read-only', ...evidence }));
+          } catch (error) {
+            const named = String(error?.code || error?.message || '');
+            const code = /^(?:RELEASE_PROOF_|PRODUCTION_RELEASE_GUARD_|APPS_SCRIPT_RECOVERY_EVIDENCE_)[A-Z_]+$/.test(named)
+              || named === 'ERR_ASSERTION' ? named : 'READ_ONLY_RECOVERY_VERIFICATION_FAILED';
+            const rawStatus = Number(error?.response?.status || error?.response?.statusCode);
+            const status = Number.isInteger(rawStatus) && rawStatus >= 100 && rawStatus <= 599 ? rawStatus : null;
+            const errorType = ['SyntaxError', 'TypeError', 'AssertionError'].includes(error?.name) ? error.name : null;
+            console.error(JSON.stringify({ ok: false, mode: 'read-only', stage, code, status, errorType }));
+            process.exitCode = 1;
+          }
+          NODE
+      - name: Retain only sanitized verified recovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: apps-script-recovery-evidence-56b83ae3cd4ef6975eed0cf60ab07c8a2890e76e
+          path: .gnc-local/apps-script-recovery-evidence.json
+          if-no-files-found: error
+          retention-days: 90
