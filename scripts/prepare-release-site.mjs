@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const site = path.join(root, '_site');
+const site = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
+const relativeSite = path.relative(root, site).replaceAll('\\', '/');
+if (relativeSite !== '_site' && !/^\.gnc-local\/foundation-site-[\w-]+$/.test(relativeSite)) {
+  throw new Error('RELEASE_SITE_PATH_INVALID');
+}
 const files = [
   'index.html', 'manifest.json', 'sw.js', 'CNAME', '.nojekyll', 'OneSignalSDKWorker.js',
   'ag-data-solutions-logo-v2026080923.png', 'ag-data-solutions-splash-v2026080923.png',

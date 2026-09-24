@@ -3,11 +3,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 
-const RELEASE = 'V2026.09.23.03';
+const RELEASE = 'V2026.09.23.04';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
-const sourceHtml = await readFile(htmlPath, 'utf8');
+const lifecycleTag = '<script src="./assets/app-lifecycle.js" data-app-lifecycle></script>';
+const rawHtml = await readFile(htmlPath, 'utf8');
+if (rawHtml.split(lifecycleTag).length !== 2) throw new Error('Expected exactly one lifecycle bootstrap marker.');
+// Compile the single owner inline so a failed runtime download cannot disable Reload cleanup.
+const lifecycleSource = await readFile(path.join(root, 'assets', 'app-lifecycle.js'), 'utf8');
+const sourceHtml = rawHtml.replace(lifecycleTag, () => `<script id="app-lifecycle-owner">${lifecycleSource}</script>`);
 const pilotCss = await readFile(path.join(root, 'assets', 'ops-precision-pilot.css'), 'utf8');
 const inlineScriptPattern = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
 const candidates = [...sourceHtml.matchAll(inlineScriptPattern)]

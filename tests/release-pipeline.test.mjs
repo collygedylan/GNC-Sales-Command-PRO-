@@ -18,7 +18,7 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.ok(pages.jobs.validation.steps.some(s => s.run === 'node scripts/release-proof.mjs verify'));
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','functional','compiled','timing','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -44,9 +44,9 @@ test('browser shards and compiled suites use isolated runners without racing per
 });
 
 test('every build consumer verifies the original manifest, never rebuilds or reseals', () => {
-  for (const name of ['functional','compiled','timing','lighthouse']) {
+  for (const name of ['foundation','functional','compiled','timing','lighthouse']) {
     const job = validation.jobs[name];
-    assert.equal(job.needs, 'build');
+    assert.deepEqual(job.needs, ['functional','compiled'].includes(name) ? ['build','foundation'] : 'build');
     assert.equal(job.steps.filter(s => s.uses === './.github/actions/download-release').length, 1);
     assert.doesNotMatch(job.steps.map(s=>s.run||'').join('\n'), /npm run build|artifact\.mjs seal/);
   }
@@ -77,7 +77,7 @@ test('live probes await exact commit and all retained suites run with writes blo
   assert.equal(pages.jobs['exact-live'].needs, 'deploy');
   assert.deepEqual(pages.jobs['post-deployment-canary'].needs, ['deploy','exact-live']);
   const matrix = pages.jobs['post-deployment-canary'].strategy.matrix.include;
-  assert.deepEqual(matrix.map(x=>x.suite), ['requests','session','assignedto','footer','home-1','home-2','season','suspend','docks','login-photo','hl-restock']);
+  assert.deepEqual(matrix.map(x=>x.suite), ['foundation','requests','session','assignedto','footer','home-1','home-2','season','suspend','docks','login-photo','hl-restock']);
   assert.deepEqual(matrix.filter(x=>x.suite.startsWith('home-')).map(x=>x.command), [
     'npm run test:home-roles -- --workers=1 --shard=1/2',
     'npm run test:home-roles -- --workers=1 --shard=2/2',

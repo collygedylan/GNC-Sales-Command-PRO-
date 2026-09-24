@@ -24,6 +24,7 @@ while ((match = scriptPattern.exec(html))) {
 }
 
 for (const relativePath of [
+  'assets/app-lifecycle.js',
   'assets/ops-precision-pilot.js',
   'assets/eval-reports-engine.js',
   'assets/photo-history-v2026090401.js',
@@ -44,4 +45,4 @@ for (const relativePath of [
 }
 
 if (parsed < 3) throw new Error(`Expected at least 3 inline scripts, parsed ${parsed}.`);
-console.log(`Parsed ${parsed} inline scripts and 10 shell assets.`);
+console.log(`Parsed ${parsed} inline scripts and 11 shell assets.`);

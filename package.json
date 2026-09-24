@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.09.23.03",
+  "version": "2026.09.23.04",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -25,6 +25,8 @@
     "test:v2:e2e": "playwright test",
     "test:footer": "playwright test --config playwright.footer.config.ts",
     "test:home-roles": "playwright test --config playwright.home-role.config.ts",
+    "test:foundation": "playwright test --config playwright.app-lifecycle.config.ts --workers=1 --retries=0",
+    "check:foundation": "node scripts/check-foundation.mjs",
     "test:season-sales-office": "playwright test --config playwright.season-sales-office.config.ts",
     "test:suspend-tag": "playwright test --config playwright.suspend-tag.config.ts",
     "test:docks-filter": "playwright test --config playwright.docks-filter.config.ts",

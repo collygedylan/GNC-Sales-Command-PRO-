@@ -22,6 +22,8 @@ The build lane installs the locked dependencies, builds pilot monitoring, live a
 
 Independent checks run in parallel:
 
+- After the sealed build, a small mandatory foundation lane exercises deterministic shared lifecycle failures on Chromium and WebKit. Functional and compiled feature suites wait for it; database, timing and Lighthouse keep their isolated runners. The original artifact is reverified after foundation checks. Hosted foundation checks run with all existing post-deployment canaries. See `feature-foundation.md` for the shorter local loop and credit controls.
+
 - Four functional browser shards, with **one Playwright worker per runner**.
 - Compiled-shell suites in a matrix with at most **six concurrent jobs**, also one worker per runner.
 - Home uses two complementary Playwright shards and HL Orders uses three, with their existing configurations. Every shard is required. Three HL shards keep the 96-case group from exhausting the 12-minute compiled-job timeout without removing tests or increasing timeouts. Hosted Home checks use the same two Home shards so their setup and final checks also fit within the existing limit.

@@ -10,6 +10,8 @@
 
 ## Production protection and efficient repairs
 
+- Follow `docs/feature-foundation.md` for feature boundaries, shared lifecycle scopes and the fast local feedback loop. New features must use the shared owner instead of adding document/session cleanup controllers. Run affected focused regressions first; preserve all full candidate and hosted gates.
+
 - Every change follows `docs/protected-releases.md`: isolated worktree, isolated test data/services, exact-commit validation, then automatic promotion when authorized by the task. Never repair a live source copy while developing.
 - Use `docs/model-routing.md` and supported task/delegation controls. One owner and one bounded reviewer; no duplicate investigations or default Max/Ultra. A difficult bounded problem may use Astra Max/Ultra without another permission question; record the reason.
 - Target routine fixes/service restoration within 30 minutes, not a guarantee. During outages restore service first; reassess/escalate at ten minutes without a clear cause, and report restoration or the precise blocker at thirty. Do not waive tests or add unrelated features.

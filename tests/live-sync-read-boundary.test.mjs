@@ -4,6 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
 const start = html.indexOf('const supabaseReadInFlight = new Map();');
 const end = html.indexOf('async function getResponseError(', start);
 assert.ok(start > 0 && end > start);
@@ -297,40 +298,52 @@ test('active request queue still falls back for real view failures and shares it
 });
 
 test('navigation stops visible-document reads until restoration or trusted interaction', () => {
-    const handlers = new Map(), signals = [], original = new AbortController();
-    const listen = (name, callback) => handlers.set(name, callback);
-    const coordinator = { suspend() {}, signal: reason => signals.push(reason) };
-    const ctx = { AbortController, document: { hidden: false, addEventListener: listen, body: { classList: { contains: () => true } } }, window: { addEventListener: listen },
+    const handlers = new Map(), signals = [], suspends = [];
+    const listen = target => (name, callback) => {
+        const key = `${target}:${name}`;
+        handlers.set(key, [...(handlers.get(key) || []), callback]);
+    };
+    const dispatch = (target, name, isTrusted = true) => {
+        for (const callback of handlers.get(`${target}:${name}`) || []) callback({ type: name, isTrusted });
+    };
+    const coordinator = { suspend: () => suspends.push('suspend'), signal: reason => signals.push(reason) };
+    const document = { hidden: false, addEventListener: listen('document'), body: { classList: { contains: () => true } } };
+    const window = { document, AbortController, console, addEventListener: listen('window'),
+        setTimeout, clearTimeout, requestIdleCallback: callback => setTimeout(callback, 0), cancelIdleCallback: clearTimeout };
+    const ctx = { AbortController, console, document, window,
         appAccessSnapshotState: { status: 'ready', stale: false, username: 'fixture' }, currentUser: 'fixture', getRequestCapabilityUsernameKey: value => value,
-        productionLiveSyncNavigation: original, productionLiveSyncCoordinator: coordinator,
+        productionLiveSyncCoordinator: coordinator,
         getProductionLiveSyncCoordinator: () => coordinator, canUseProductionLiveSync: () => false,
         observeHlOrderVerificationContext: value => value, navigator: { onLine: true }
     };
     vm.createContext(ctx);
+    vm.runInContext(lifecycle, ctx, { filename: 'assets/app-lifecycle.js' });
+    ctx.productionLiveSyncNavigation = { get signal() { return ctx.window.AgMetricLifecycle.getSignal('session'); } };
+    const original = ctx.productionLiveSyncNavigation.signal;
     const contextStart = html.indexOf('function getProductionLiveSyncContext()');
     vm.runInContext(html.slice(contextStart, html.indexOf('function renderProductionDataFreshness(', contextStart)), ctx);
     const from = html.indexOf('function signalProductionLiveSync(');
-    vm.runInContext(html.slice(from, html.indexOf('function resetProductionLiveSync()', from)), ctx);
-    const events = html.indexOf("['focus', 'pageshow'].forEach");
-    vm.runInContext(html.slice(events, html.indexOf("document.addEventListener('focusout'", events)), ctx);
-    handlers.get('beforeunload')({ isTrusted: true });
-    assert.equal(original.signal.aborted, true);
+    vm.runInContext(html.slice(from, html.indexOf("document.addEventListener('focusout'", from)), ctx);
+    dispatch('window', 'beforeunload');
+    assert.equal(original.aborted, true);
     assert.equal(ctx.getProductionLiveSyncContext().visible, false, 'beforeunload precedes document.hidden');
     ctx.signalProductionLiveSync('loader');
-    handlers.get('pointerdown')({ isTrusted: false });
-    handlers.get('focus')({ isTrusted: false });
+    dispatch('document', 'pointerdown', false);
+    dispatch('window', 'focus', false);
     assert.deepEqual(signals, []);
-    handlers.get('pointerdown')({ isTrusted: true });
+    dispatch('document', 'pointerdown');
     assert.equal(ctx.getProductionLiveSyncContext().visible, true);
-    assert.deepEqual(signals, ['navigation-cancelled']);
-    assert.equal(original.signal.aborted, true, 'old reads cannot inherit the resumed signal');
-    handlers.get('pagehide')({ isTrusted: true });
+    assert.deepEqual(signals, ['pointerdown']);
+    assert.equal(original.aborted, true, 'old reads cannot inherit the resumed signal');
+    dispatch('window', 'pagehide');
     ctx.document.hidden = true;
-    handlers.get('pageshow')({ isTrusted: true });
+    dispatch('window', 'pageshow');
     assert.equal(ctx.getProductionLiveSyncContext().visible, false);
     ctx.document.hidden = false;
-    handlers.get('pageshow')({ isTrusted: true });
+    dispatch('window', 'pageshow');
     assert.equal(ctx.getProductionLiveSyncContext().visible, true);
+    assert.deepEqual(signals, ['pointerdown', 'pageshow']);
+    assert.equal(suspends.length, 3, 'both navigations and a blocked loader suspend the coordinator');
 });
 function fixture(concurrency = 3) {
     const ctx = { Map, Promise, JSON, String, Error, SUPABASE_READ_CONCURRENCY_LIMIT: concurrency,

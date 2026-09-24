@@ -156,6 +156,8 @@ jobs:
       max-parallel: 6
       matrix:
         include:
+          - suite: foundation
+            command: npm run test:foundation -- --reporter=github
           - suite: requests
             command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts
           - suite: session
@@ -188,6 +190,7 @@ jobs:
           CANARY_BASE_URL: https://agmetricapp.com
           EXPECTED_COMMIT: ${{ github.sha }}
           SESSION_RECOVERY_BASE_URL: https://agmetricapp.com
+          APP_LIFECYCLE_BASE_URL: https://agmetricapp.com
           FOOTER_BASE_URL: https://agmetricapp.com
           HOME_ROLE_BASE_URL: https://agmetricapp.com
           SEASON_SALES_OFFICE_BASE_URL: https://agmetricapp.com

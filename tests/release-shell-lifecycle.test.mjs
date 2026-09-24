@@ -4,6 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync(process.env.GNC_SHELL_TEST_STDIN === '1' ? 0 : new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
 function section(start, end) {
   const a = html.indexOf(start);
   assert.ok(a >= 0, `missing ${start}`);
@@ -11,23 +12,31 @@ function section(start, end) {
   assert.ok(b >= 0, `missing ${end}`);
   return html.slice(a, b);
 }
-const lifecycle = section('(function installShellMaintenanceLifecycle()', '        (function() {\n            const manifestLink');
 const inline = section('const checkLatestShellAndReload = async', 'navigator.serviceWorker.register(');
 const runtime = section('async function fetchLatestShellManifestInfo(', 'async function forceShellBuildReload(');
 const held = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { resolve, promise }; };
 
 function harness() {
   const listeners = new Map(), timers = [], idle = [], fetches = [], registrations = [], reloads = [];
-  let hidden = false, now = 100_000;
+  let hidden = false, now = 100_000, nextTimerId = 1;
   const add = (target, name, callback) => {
     const key = `${target}:${name}`;
     listeners.set(key, [...(listeners.get(key) || []), callback]);
   };
-  const window = { __APP_SHELL_VERSION__: 'current', __APP_SHELL_BUILD__: 'current', addEventListener: (n, f) => add('window', n, f) };
+  const queue = (items, fn) => { const item = { id: nextTimerId++, fn, cancelled: false }; items.push(item); return item.id; };
+  const cancel = (items, id) => { const item = items.find(entry => entry.id === id); if (item) item.cancelled = true; };
   const document = { get hidden() { return hidden; }, addEventListener: (n, f) => add('document', n, f) };
+  const window = {
+    __APP_SHELL_VERSION__: 'current', __APP_SHELL_BUILD__: 'current', AbortController, console, document,
+    addEventListener: (n, f) => add('window', n, f),
+    setTimeout: fn => queue(timers, fn), clearTimeout: id => cancel(timers, id),
+    requestIdleCallback: fn => queue(idle, fn), cancelIdleCallback: id => cancel(idle, id),
+  };
   const context = vm.createContext({
     window, document, navigator: { onLine: true }, AbortController, URL, console,
-    Date: { now: () => now }, setTimeout: fn => timers.push(fn), requestIdleCallback: fn => idle.push(fn),
+    Date: { now: () => now },
+    setTimeout: window.setTimeout, clearTimeout: window.clearTimeout,
+    requestIdleCallback: window.requestIdleCallback, cancelIdleCallback: window.cancelIdleCallback,
     fetch: (url, options) => { const pending = held(); fetches.push({ url, options, pending }); return pending.promise; },
     isTouchConstrainedDevice: () => false,
     updateShellRegistration: async reason => { registrations.push(reason); return {}; },
@@ -37,7 +46,7 @@ function harness() {
     firstNonEmptyValue: (...values) => values.find(Boolean) || '', logShellDiagnostics: () => {},
     APP_SHELL_VERSION: 'current', APP_SHELL_BUILD: 'current', APP_SHELL_MANIFEST_CHECK_TTL_MS: 30_000,
   });
-  vm.runInContext(lifecycle, context);
+  vm.runInContext(lifecycle, context, { filename: 'assets/app-lifecycle.js' });
   vm.runInContext(`
     const shellBuild = 'current';
     let latestShellCheckAt = 0, latestShellCheckSignal = null, latestShellCheckPromise = null;
@@ -52,8 +61,8 @@ function harness() {
     window, inline: context.inlineApi, runtime: context.runtimeApi, fetches, registrations, reloads,
     event: (target, name, isTrusted = true) => { for (const fn of listeners.get(`${target}:${name}`) || []) fn({ type: name, isTrusted }); },
     hidden: value => { hidden = value; }, tick: value => { now += value; },
-    timer: () => { assert.ok(timers.length); timers.shift()(); },
-    idle: () => { assert.ok(idle.length); idle.shift()(); },
+    timer: () => { assert.ok(timers.length); const item = timers.shift(); if (!item.cancelled) item.fn(); },
+    idle: () => { assert.ok(idle.length); const item = idle.shift(); if (!item.cancelled) item.fn(); },
     queuedIdle: () => idle.length,
     resolve: (index, build = 'current') => fetches[index].pending.resolve({ ok: true, json: async () => ({ start_url: `/?shellv=${build}`, version: build }) }),
     flush: async () => { for (let i = 0; i < 4; i++) await Promise.resolve(); },
