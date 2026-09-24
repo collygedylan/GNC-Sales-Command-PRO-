@@ -16,7 +16,7 @@ const source = (number: number, name: string) => ({
     customername: 'Acme Nursery', consigneename: 'North Farm', assigned_rep_id: hlUserId },
 });
 
-export async function installSalesMobileFixture(page: Page, baseURL: string, options: { role?: string } = {}) {
+export async function installSalesMobileFixture(page: Page, baseURL: string, options: { role?: string; username?: string; hiddenViews?: string[] } = {}) {
   const sources = [source(1, 'Blue Hydrangea'), source(2, 'Red Hydrangea')];
   const history = Array.from({ length: 63 }, (_, index) => {
     const at = new Date(Date.UTC(2026, 8, 20, 12, -index)).toISOString();
@@ -46,13 +46,13 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
     source_before: { ptronhand: 20, ptravailable: 15 }, source_after: index === 100 ? null : { ptronhand: 18, ptravailable: 13 } }));
   const commands: any[] = [], replay = new Map<string, { fingerprint: string; data: any }>();
   const navigation: any = {
-    profileId: hlUserId, username: 'dylan_collyge', role: 'ADMIN', manager: true,
+    profileId: hlUserId, username: options.username || 'dylan_collyge', role: options.role || 'ADMIN', manager: !options.role || options.role === 'ADMIN',
     accessRevision: 0, footerRevision: 0, shortcuts: ['drive', 'tasks', 'docks', 'request', 'bloom'],
     views: [['drive', 'Drive'], ['tasks', 'Tasks'], ['docks', 'Docks'], ['request', 'Queue'], ['bloom', 'Bloom'],
       ['sales', 'Sales'], ['sales-office', 'Sales Office'], ['request-history', 'Request History'],
       ['sales-credit', 'Credit'], ['credit-request', 'Credit Request'], ['communication', 'Communication'], ['reports', 'Reports']]
       .map(([view, label]) => ({ view, label, parent: ['request-history', 'sales-credit', 'credit-request'].includes(view) ? 'sales' : null,
-        selectable: view !== 'communication', allowed: true, override: null, protectedReason: view === 'credit-request' ? 'Reviewer actions remain protected' : null })),
+        selectable: view !== 'communication', allowed: !options.hiddenViews?.includes(view), override: null, protectedReason: view === 'credit-request' ? 'Reviewer actions remain protected' : null })),
   };
   const control = {
     sources, requestSources, history, drafts, submissions, attachments, commands, navigation, productionRows, inventoryRows,
@@ -224,6 +224,7 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
   };
   control.native = await installHlOrderFixture(page, baseURL, {
     role: options.role,
+    username: options.username,
     ...(options.role === 'SALES' ? { rows: sources.map(row => hlSoc(row.source_id, { ...row.snapshot, salesrepname: 'Dylan Collyge' })) } : {}),
     master: [hlMaster('production-source', { blockalpha: 'D', locationcode: 'D.08.001',
       itemcode: 'PROP.001', commonname: 'Propagation Holly', ptronhand: '20', ptravailable: '15' })],

@@ -49,6 +49,119 @@ function expectIsolated(fixture: Awaited<ReturnType<typeof installSalesMobileFix
   expect(fixture.contractErrors).toEqual([]);
 }
 
+async function expectHubContrast(page: Page, selector = '#sales-hub-grid .gnc-hub-card:visible') {
+  const readings = await page.locator(selector).evaluateAll(nodes => {
+    const luminance = (color: string) => {
+      const channels = (color.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+      if (channels.length !== 3) throw new Error(`Unsupported computed color: ${color}`);
+      const linear = channels.map(channel => {
+        const value = color.startsWith('color(srgb ') ? channel : channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return .2126 * linear[0] + .7152 * linear[1] + .0722 * linear[2];
+    };
+    const contrast = (a: string, b: string) => {
+      const values = [luminance(a), luminance(b)].sort((a, b) => b - a);
+      return (values[0] + .05) / (values[1] + .05);
+    };
+    return nodes.map(node => {
+      const style = getComputedStyle(node), label = node.querySelector('span')!, icon = node.querySelector('i')!;
+      return { id: node.id, background: style.backgroundColor,
+        labelContrast: contrast(getComputedStyle(label).color, style.backgroundColor),
+        iconContrast: contrast(getComputedStyle(icon).color, style.backgroundColor) };
+    });
+  });
+  expect(readings.length).toBeGreaterThan(0);
+  for (const row of readings) {
+    expect(row.background, row.id).not.toBe('rgba(0, 0, 0, 0)');
+    expect(row.labelContrast, JSON.stringify(row)).toBeGreaterThanOrEqual(4.5);
+    expect(row.iconContrast, JSON.stringify(row)).toBeGreaterThanOrEqual(3);
+  }
+}
+
+for (const role of ['ADMIN', 'SALES']) {
+  test(`shared module tiles remain readable in every theme for ${role}`, async ({ page, baseURL }) => {
+    const f = await installSalesMobileFixture(page, baseURL!, role === 'SALES'
+      ? { role, username: 'theme_sales_rep', hiddenViews: ['credit-request'] } : { role });
+    const activate = async (locator: Locator) => locator[test.info().project.use.isMobile ? 'tap' : 'click']();
+    await activate(page.locator('#footer-home-btn'));
+    await activate(page.locator('#home-tile-sales:visible, #home-sales-open-sales:visible').first());
+    const history = page.locator('#hub-extra-sales-request-history');
+    const credit = page.locator('#hub-extra-sales-sales-credit');
+    const review = page.locator('#hub-extra-sales-credit-request');
+    await expect(history).toHaveAccessibleName('Request History');
+    await expect(credit).toHaveAccessibleName('Credit');
+    const shortcuts = structuredClone(f.navigation.shortcuts);
+    const before = await page.locator('#sales-hub-grid button').evaluateAll(nodes => nodes.map(node => ({
+      id: node.id, title: node.textContent?.trim(), action: node.getAttribute('onclick'),
+    })));
+    // Generate real shared tiles in sibling hubs too; only Sales navigation is exercised here.
+    if (role === 'ADMIN') await page.evaluate(() => {
+      const workspace = (window as any).GncMobileWorkspace;
+      Object.keys(workspace.hubs).forEach(view => workspace.syncHub(view));
+    });
+    for (const theme of ['light', 'dark']) for (const outdoor of [false, true]) {
+      await page.evaluate(({ theme, outdoor }) => {
+        document.body.classList.add('ops-precision-pilot');
+        document.body.dataset.opsTheme = theme;
+        document.documentElement.classList.toggle('outdoor-mode', outdoor);
+        document.body.classList.toggle('outdoor-mode', outdoor);
+      }, { theme, outdoor });
+      await expect(history).toBeVisible();
+      await expect(credit).toBeVisible();
+      if (role === 'SALES') await expect(review).toBeHidden();
+      else await expect(review).toBeVisible();
+      await expectHubContrast(page);
+      if (role === 'ADMIN') {
+        expect(await page.locator('[id^="hub-extra-"]:not([id^="hub-extra-sales-"]):not([hidden]):not(.hidden)').count()).toBeGreaterThan(0);
+        await expectHubContrast(page, '.gnc-hub-card:not([hidden]):not(.hidden)');
+      }
+      await expect.poll(() => history.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      if (theme === 'dark') {
+        expect(await history.evaluate(node => getComputedStyle(node).backgroundColor)).not.toBe('rgb(255, 255, 255)');
+      }
+      if (test.info().project.name === 'sales-android' && role === 'SALES' && theme === 'dark' && outdoor) {
+        await history.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: test.info().outputPath('sales-modules-dark-outdoor.png') });
+      }
+    }
+    expect(await page.locator('#sales-hub-grid button').evaluateAll(nodes => nodes.map(node => ({
+      id: node.id, title: node.textContent?.trim(), action: node.getAttribute('onclick'),
+    })))).toEqual(before);
+    expect(f.navigation.shortcuts).toEqual(shortcuts);
+    if (!test.info().project.use.isMobile) {
+      await page.keyboard.press('Tab');
+      await history.focus();
+      const focus = await history.evaluate(node => ({ visible: node.matches(':focus-visible'),
+        style: getComputedStyle(node).outlineStyle, width: parseFloat(getComputedStyle(node).outlineWidth) }));
+      expect(focus.visible).toBe(true); expect(focus.style).not.toBe('none'); expect(focus.width).toBeGreaterThanOrEqual(2);
+      await expectHubContrast(page);
+    }
+    await activate(history);
+    const area = page.locator('#request-history-content');
+    await expect(area.getByRole('heading', { name: 'Request History', level: 1, exact: true })).toBeVisible();
+    await expect(area.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await activate(page.locator('#global-header-inline-back'));
+    await expect(history).toBeVisible();
+    await expectHubContrast(page);
+    // A server permission refresh must not leave a white, clickable placeholder.
+    f.navigation.views.find((row: any) => row.view === 'sales-credit').allowed = false;
+    await page.evaluate(async () => {
+      await (window as any).GncNavigationPreferences.refresh();
+      (window as any).GncMobileWorkspace.syncHub('sales');
+    });
+    await expect(credit).toBeHidden();
+    // Support both visibility markers used by the existing hub and navigation code.
+    await credit.evaluate(node => node.removeAttribute('hidden'));
+    await expect(credit).toBeHidden();
+    await credit.evaluate(node => { node.setAttribute('hidden', ''); node.classList.remove('hidden'); });
+    await expect(credit).toBeHidden();
+    expect(f.commands.filter(call => call.action === 'navigation_preferences').every(call => call.operation === 'get')).toBe(true);
+    expectIsolated(f);
+  });
+}
+
 test('history searches the complete permitted result set, pages newest first, and preserves detail Back', async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const area = await openSales(page, 'Request History', 'request-history');

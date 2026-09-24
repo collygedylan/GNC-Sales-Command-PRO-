@@ -645,6 +645,7 @@ body.ops-precision-pilot .footer-nav-btn[aria-current="page"] {
 }
 
 body.ops-precision-pilot :is(
+  .gnc-hub-card,
   #home-dashboard-grid > div,
   #home-rep-dashboard-grid > button,
   #view-sales button[id^="sales-open-"],
@@ -664,6 +665,7 @@ body.ops-precision-pilot :is(
 }
 
 body.ops-precision-pilot :is(
+  .gnc-hub-card,
   #home-dashboard-grid > div,
   #home-rep-dashboard-grid > button,
   #view-sales button[id^="sales-open-"],
@@ -685,6 +687,7 @@ body.ops-precision-pilot :is(
   #home-rep-dashboard-grid > button
 ) > :is(i, span),
 body.ops-precision-pilot :is(
+  .gnc-hub-card,
   #view-sales button[id^="sales-open-"],
   #view-production button[id^="production-open-"],
   #view-sales-inventory #sales-inventory-hub-grid > button,
@@ -695,6 +698,11 @@ body.ops-precision-pilot :is(
   #view-managers .manager-module-card
 ) :is(i, .manager-module-icon, .manager-module-title) {
   color: var(--ops-brand) !important;
+}
+
+/* Dynamically added modules use the same surfaces and focus states as legacy hubs. */
+body.ops-precision-pilot .gnc-hub-card > span {
+  color: var(--ops-text) !important;
 }
 
 body.ops-precision-pilot #view-home .home-dashboard-sticky {
