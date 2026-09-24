@@ -61,6 +61,63 @@ for (const width of [390, 1280]) {
   });
 }
 
+for (const width of [360, 390, 1280]) {
+  for (const theme of ['light', 'dark']) {
+    test(`Eval Reports #2 six-column inventory card preserves row values at ${width}px in ${theme} theme`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/?e2e=eval2-six-column-card&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => typeof (window as any).renderManagerEvalReport2SelectableCard === 'function');
+      await page.evaluate((activeTheme) => {
+        document.body.classList.add('ops-precision-pilot');
+        document.body.classList.toggle('dark-mode', activeTheme === 'dark');
+        document.body.dataset.opsTheme = activeTheme;
+        document.body.style.colorScheme = activeTheme;
+        window.eval('(() => { const rows = [{ UNIQUE_ID:"six-upper", LOCATIONCODE:"A.01.001", LOTCODE:"27.U1", PRIORITY:"P1", PTRONHAND:12, PTRAVAILABLE:10, S_LTS:123456 }, { UNIQUE_ID:"six-lower-zero", LOCATIONCODE:"B.02.002", LOTCODE:"27.U2", priority:0, ptronhand:0, available:-2, s_lts:0 }, { UNIQUE_ID:"six-mixed-negative", LOCATIONCODE:"C.03.003", LOTCODE:"27.U3", priority:"P3", PTRONHAND:-5, PTRAVAILABLE:0, s_LTS:-7 }, { UNIQUE_ID:"six-missing", LOCATIONCODE:"", LOTCODE:null, PRIORITY:"", PTRONHAND:"", PTRAVAILABLE:null, S_LTS:"" }]; const group = { key:"SIX.COLUMN.CARD", itemCode:"SIX.COLUMN.CARD", commonName:"Six Column Card", rows, representativeRow:rows[0], containerSizes:["#3"], assignedToUsers:["dylan_collyge"], rowCount:4, locationCount:3 }; const host = document.createElement("main"); host.id = "eval2-six-column-card-host"; host.style.cssText = "position:fixed;inset:0;z-index:2147483647;box-sizing:border-box;padding:12px;overflow:auto;"; host.innerHTML = renderManagerEvalReport2SelectableCard(group); document.body.appendChild(host); })()');
+      }, theme);
+      await page.evaluate(async () => { await document.fonts.ready; });
+      const host = page.locator('#eval2-six-column-card-host');
+      const card = host.locator('.manager-eval2-item-card');
+      await expect(card).toHaveCount(1);
+      await expect(card.locator('.manager-eval2-inventory-header > span')).toHaveCount(6);
+      await expect(card.locator('.manager-eval2-inventory-row')).toHaveCount(4);
+      await expect(card.locator('.manager-eval2-inventory-row > span')).toHaveCount(24);
+      const rendered = await card.evaluate((element) => ({
+        header: Array.from(element.querySelectorAll('.manager-eval2-inventory-header > span'), (cell) => cell.textContent?.trim()),
+        rows: Array.from(element.querySelectorAll('.manager-eval2-inventory-row'), (row) => Array.from(row.querySelectorAll(':scope > span'), (cell) => cell.textContent?.trim()))
+      }));
+      expect(rendered.header).toEqual(['Location', 'Lot', 'Priority', 'On Hand', 'Available', 'Open Stock Qty']);
+      expect(rendered.rows).toEqual([
+        ['A.01.001', '27.U1', 'P1', '12', '10', '123456'],
+        ['B.02.002', '27.U2', '0', '0', '-2', '0'],
+        ['C.03.003', '27.U3', 'P3', '-5', '0', '-7'],
+        ['-', '-', '\u2014', '\u2014', '\u2014', '\u2014']
+      ]);
+      const layout = await card.evaluate((element) => {
+        const tolerance = 1.5, card = element.getBoundingClientRect();
+        const grids = Array.from(element.querySelectorAll<HTMLElement>('.manager-eval2-inventory-header, .manager-eval2-inventory-row')).map((grid) => Array.from(grid.querySelectorAll<HTMLElement>(':scope > span')));
+        const header = grids[0].map((cell) => cell.getBoundingClientRect());
+        const textFits = (cell: HTMLElement) => {
+          const bounds = cell.getBoundingClientRect(), range = document.createRange();
+          range.selectNodeContents(cell);
+          return cell.scrollWidth <= cell.clientWidth + tolerance && Array.from(range.getClientRects()).every((rect) => rect.left >= bounds.left - tolerance && rect.right <= bounds.right + tolerance);
+        };
+        return {
+          noPageOverflow: document.documentElement.scrollWidth <= window.innerWidth + tolerance,
+          noCardOverflow: element.scrollWidth <= element.clientWidth + tolerance,
+          sixDirectCells: grids.every((cells) => cells.length === 6),
+          cellsInsideCard: grids.flat().every((cell) => { const rect = cell.getBoundingClientRect(); return rect.left >= card.left - tolerance && rect.right <= card.right + tolerance; }),
+          textFits: grids.flat().every(textFits),
+          unbrokenHeadings: [0, 1, 2, 4].every((index) => { const range = document.createRange(); range.selectNodeContents(grids[0][index]); return range.getClientRects().length === 1; }),
+          sharedColumns: grids.slice(1).every((cells) => cells.every((cell, index) => { const rect = cell.getBoundingClientRect(); return Math.abs(rect.left - header[index].left) <= tolerance && Math.abs(rect.right - header[index].right) <= tolerance; }))
+        };
+      });
+      expect(layout, width + 'px ' + theme + ': ' + JSON.stringify(layout)).toEqual({ noPageOverflow:true, noCardOverflow:true, sixDirectCells:true, cellsInsideCard:true, textFits:true, unbrokenHeadings:true, sharedColumns:true });
+      await testInfo.attach('eval2-six-column-' + width + '-' + theme + '.png', { body:await card.screenshot(), contentType:'image/png' });
+      await host.evaluate((element) => element.remove());
+    });
+  }
+}
+
 for (const width of [390, 1280]) {
   test(`Eval Reports #2 Low Stock season picker matches any selected season at ${width}px`, async ({ page }) => {
     test.setTimeout(60_000);
