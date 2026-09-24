@@ -2,7 +2,7 @@ import type { AppSessionClaims } from "./app-auth.ts";
 
 export const SALES_CREDIT_BUCKET = "sales-credit-evidence";
 export const SALES_CREDIT_PHOTO_LIMIT = 8 * 1024 * 1024;
-const READ_OPERATIONS = new Set(["compatibility", "folders", "sources", "drafts", "detail", "submissions", "attachment_download"]);
+const READ_OPERATIONS = new Set(["compatibility", "folders", "sources", "source", "drafts", "detail", "submissions", "attachment_download"]);
 const WRITE_OPERATIONS = new Set(["save_draft", "submit", "review_line", "authorize_repeat", "amend_line", "resolve_source"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

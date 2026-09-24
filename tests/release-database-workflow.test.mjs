@@ -21,7 +21,7 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 114);
+  assert.equal(migrations.length, 115);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
@@ -30,6 +30,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     '20260922233000_manager_season_priority_inquiry_v1.sql',
     '20260923174000_optimize_manager_season_priority_scope.sql',
     '20260923222348_materialize_manager_season_priority_scope_hashes.sql',
+    '20260924115226_sales_history_customer_docks_ownership.sql',
     '20260815043342_dylan_live_pilot_preferences.sql',
     '20260904003007_sales_marketing_and_kayla_limited_access.sql',
     '20260902002912_flatten_eval_reports_2_and_reconcile_work.sql',
@@ -76,7 +77,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     'hl_order_lifecycle_test.sql', 'hl_order_delivery_test.sql', 'hl_order_ship_dates_test.sql', 'hl_order_po_receipts_test.sql',
     'hl_order_restock_test.sql', 'hl_po_seasons_test.sql', 'hl_po_health_test.sql',
     'sep09_eval_review_compatibility_test.sql',
-    'sales_credit_workflow_test.sql', 'navigation_preferences_test.sql', 'production_workflow_test.sql',
+    'sales_credit_workflow_test.sql', 'sales_history_docks_test.sql', 'navigation_preferences_test.sql', 'production_workflow_test.sql',
   ].sort());
   for (const filename of sqlTests) {
     assert.ok(fs.existsSync(new URL(`../supabase/tests/${filename}`, import.meta.url)), filename);

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(26);
 
 select has_function(
   'public',
@@ -50,7 +50,7 @@ select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001
 select lives_ok(
   $q$select public.create_request_batch(
     '91000000-0000-0000-0000-000000000010',
-    '[{"unique_id":"REQUEST-APPEND-SOURCE-1","master_id":"REQUEST-APPEND-MASTER-1","requested_by":"Persisted Rep Missing From Picker","request_folder":"REQUEST-APPEND-FOLDER-1","req_customer":"Persisted Customer","req_qty":"17","req_reserve":"YES","est_ship":"09/15/2026","desired_spec":"24 IN","desired_caliper":"2 IN","request_note":"Choose the best option"}]'::jsonb
+    '[{"unique_id":"REQUEST-APPEND-SOURCE-1","master_id":"REQUEST-APPEND-MASTER-1","requested_by":"Persisted Rep Missing From Picker","request_folder":"REQUEST-APPEND-FOLDER-1","req_customer":"Persisted Customer","customeridentityid":"APPEND-C","customername":"Persisted Customer","consigneeidentityid":"APPEND-CN","consigneename":"Persisted Destination","req_qty":"17","req_reserve":"YES","est_ship":"09/15/2026","desired_spec":"24 IN","desired_caliper":"2 IN","request_note":"Choose the best option"}]'::jsonb
   )$q$,
   'an authoritative source Request can be created without a current REP-directory record'
 );
@@ -93,6 +93,12 @@ select is(
    where request_folder = 'REQUEST-APPEND-FOLDER-1' and master_id = 'REQUEST-APPEND-MASTER-2'),
   1,
   'duplicate selected row identities create one Request row'
+);
+select ok(
+  (select customeridentityid='APPEND-C' and customername='Persisted Customer'
+    and consigneeidentityid='APPEND-CN' and consigneename='Persisted Destination'
+    from public.ph_active_request where request_folder='REQUEST-APPEND-FOLDER-1' and master_id='REQUEST-APPEND-MASTER-2'),
+  'appended option preserves the source request customer and consignee identities'
 );
 select is(
   (select concat_ws('|', requested_by, req_customer, req_qty, req_reserve, est_ship, desired_spec, desired_caliper, request_note)

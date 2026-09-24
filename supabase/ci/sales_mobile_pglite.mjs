@@ -40,6 +40,9 @@ try {
     'supabase/migrations/20260815043342_dylan_live_pilot_preferences.sql',
     'supabase/migrations/20260820114722_request_integrity_and_eval_assignments.sql',
     'supabase/migrations/20260820150000_legacy_completion_atomic_guard.sql',
+    'supabase/migrations/20260820230245_reliable_request_delivery_worker.sql',
+    'supabase/migrations/20260821012500_restore_request_email_threads_schema.sql',
+    'supabase/migrations/20260901192727_repair_request_option_append.sql',
     'supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql',
     'supabase/migrations/20260828070741_access_control_manager_read_v2.sql',
     'supabase/migrations/20260904003007_sales_marketing_and_kayla_limited_access.sql',
@@ -48,12 +51,23 @@ try {
     'supabase/migrations/20260921034331_sales_history_permanent_credit_workflow.sql',
     'supabase/migrations/20260921034349_production_workflow_and_atomic_inventory_audit.sql',
     'supabase/migrations/20260921034506_navigation_preferences_and_live_view_grants.sql',
+    'supabase/migrations/20260924115226_sales_history_customer_docks_ownership.sql',
     'supabase/tests/sales_credit_workflow_test.sql',
+    'supabase/tests/sales_history_docks_test.sql',
     'supabase/tests/navigation_preferences_test.sql',
     'supabase/tests/production_workflow_test.sql',
   ];
   for (const file of files) {
     currentStep = file;
+    if (file.endsWith('20260901192727_repair_request_option_append.sql')) {
+      // Load the real folder-state DDL required by the append reconciler. Its
+      // unrelated Eval writers are exercised by the full native CI chain.
+      const folderMigration = read('supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
+      const start = folderMigration.indexOf('create table if not exists private.ph_request_folder_delivery_state');
+      const end = folderMigration.indexOf('create or replace function private.reconcile_request_folder_completion_v2', start);
+      if (start < 0 || end < start) throw new Error('FOLDER_STATE_BASELINE_NOT_FOUND');
+      await db.exec(folderMigration.slice(start, end));
+    }
     await db.exec(read(file));
   }
   console.log('PASS: Sales/Credits, Navigation, and Production/Audit migrations and transactional SQL checks. Native platform and concurrent-connection checks remain required in CI.');

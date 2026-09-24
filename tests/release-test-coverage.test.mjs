@@ -93,6 +93,7 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/assigned-items-filters.test.mjs',
     'tests/bunch-note.test.mjs',
     'tests/sales-workflow.test.mjs',
+    'tests/sales-history-context.test.mjs',
     'tests/navigation-preferences.test.mjs',
     'tests/production-workflow.test.mjs',
     'tests/drive-demand-detail.test.mjs',

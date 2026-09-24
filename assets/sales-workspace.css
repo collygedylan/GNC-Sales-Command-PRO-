@@ -6,6 +6,7 @@
 .sales-workspace .sw-button[aria-pressed=true]{background:#007a4d;color:#fff}.sales-workspace button:disabled{opacity:.6;cursor:wait}
 .sw-card{display:grid;gap:.6rem;min-width:0;padding:1rem;border:1px solid #007a4d;border-radius:1rem;background:var(--ops-surface,#fff);overflow-wrap:anywhere}
 .sw-open{text-align:left;min-height:64px;width:100%;color:inherit}.sw-open span{font-size:.9rem}.sw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(21rem,100%),1fr));gap:.75rem}
+.sw-history-card{display:grid;gap:.4rem;min-width:0}.sw-history-card>.sw-button{width:100%}
 .sw-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(9rem,100%),1fr));gap:.55rem}.sw-facts dt{font-size:.75rem;font-weight:700;opacity:.8}.sw-facts dd{overflow-wrap:anywhere}
 .sw-actions,.sw-tabs{display:flex;flex-wrap:wrap;gap:.5rem}.sw-actions>*{flex:1 1 9rem}.sw-tabs>*{flex:1 1 6rem}
 .sales-workspace .sw-select{display:flex;align-items:center;gap:.6rem;min-height:44px}.sales-workspace input[type=checkbox]{width:24px;height:24px;flex:0 0 24px;accent-color:#007a4d}

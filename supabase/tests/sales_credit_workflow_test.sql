@@ -19,11 +19,8 @@ insert into public.profiles(id,username,display_name,role,must_change_password) 
 ('97000000-0000-4000-8000-000000000002','credit_rep','Credit Rep','REP',false),
 ('97000000-0000-4000-8000-000000000003','credit_other','Credit Other','REP',false),
 ('97000000-0000-4000-8000-000000000004','credit_csr','Credit CSR','CSR',false);
-insert into sales_private.rep_identities(kind,identity_key,profile_id) values
-('username','credit_rep','97000000-0000-4000-8000-000000000002'),
-('name','credit_rep','97000000-0000-4000-8000-000000000002'),
-('external_id','cr1','97000000-0000-4000-8000-000000000002'),
-('username','credit_other','97000000-0000-4000-8000-000000000003');
+insert into public.ph_customer_consignee_sales_reps(unique_id,salesrepid,salesrepname)
+values('CR-MAP','cr1','Rep, Credit');
 select set_config('request.jwt.claims','{"role":"service_role"}',true),set_config('request.jwt.claim.role','service_role',true);
 insert into public.ph_soc_master(unique_id,itemcode,commonname,contsize,locationcode,lotcode,quantityordered,dock,stopnumber,transactionnumber,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid)
 values ('CR-A','CR-I',' Hydrangea ','#3','D.08.001','26.F1','12','Dock 1','1','CR-SHIP-1','CR-C','Same name','CR-CN','Destination','cr1'),
@@ -84,7 +81,7 @@ begin
   perform pg_temp.sales_check((select snapshot=old_snapshot from public.ph_sales_credit_requests where unique_id=first_id::text),'source refresh never rewrites submitted evidence');
   select count(*) into total_sources from public.ph_credit_sources;
   insert into public.ph_soc_master(unique_id,invoicedate) values('CR-PAST','2020-01-01');
-  perform pg_temp.sales_check((select count(*)=total_sources from public.ph_credit_sources),'old invoiced rows do not enter credit archive');
+  perform pg_temp.sales_check((select count(*)=total_sources+1 from public.ph_credit_sources),'retained older invoices enter permanent credit archive');
   perform pg_temp.sales_check((select count(*)=old_outbox from public.ph_request_delivery_outbox),'credit changes never send automatic emails');
   perform pg_temp.sales_check(not has_table_privilege('authenticated','public.ph_sales_credit_requests','select') and not has_table_privilege('anon','public.ph_sales_credit_requests','insert'),'direct legacy credit access removed');
   perform pg_temp.sales_check(not has_function_privilege('authenticated','public.sales_credit_command_v1(uuid,text,jsonb,uuid,bigint)','execute'),'browser cannot impersonate actor through RPC');

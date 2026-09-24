@@ -41,6 +41,16 @@ test('request history uses the fresh trusted profile actor and forwards keyset p
   assert.equal(received.args.p_payload.cursor.id, 'r9');
 });
 
+test('exact Docks lookup forwards the source ID and trusted actor without a mutation identity', async () => {
+  let received;
+  const response = await handleSalesWorkflow({ session, payload: { action: 'sales_credit', operation: 'source', payload: { sourceKind: 'docks', sourceUniqueId: 'SOC-EXACT-1' } },
+    resolveActiveSessionProfile: async () => ({ id: actorId }), supabase: { rpc: async (name, args) => { received = { name, args }; return { data: { source: { id: sourceId }, folder: { customerKey: 'id:customer' } } }; } } });
+  assert.equal(response.status, 200);
+  assert.equal(received.name, 'sales_credit_command_v1');
+  assert.equal(received.args.p_actor_id, actorId);
+  assert.deepEqual(received.args.p_payload, { sourceKind: 'docks', sourceUniqueId: 'SOC-EXACT-1' });
+});
+
 function uploadHarness({ uploadError = false, existingBytes = bytes } = {}) {
   const operations = [];
   let reserved;
@@ -134,5 +144,28 @@ test('background refresh preserves expanded drafts and does not detach unchanged
     w.SalesWorkspace.applyRefresh(await w.SalesWorkspace.stageRefresh());
     assert.equal(w.document.querySelector('details').open, true, 'changed records retain the expanded draft list');
     assert.match(w.document.getElementById('sales-credit-content').textContent, /2 records/);
+  } finally { dom.window.close(); }
+});
+
+test('late exact-source lookup respects the shared view lifetime', async () => {
+  const { JSDOM } = await import('jsdom');
+  const { readFileSync } = await import('node:fs');
+  const dom = new JSDOM('<div id="sales-credit-content"></div>', { url: 'https://test.invalid', runScripts: 'outside-only' });
+  const w = dom.window;
+  let current = true, disposed = false, finishSource;
+  Object.assign(w, { currentUser: 'rep', APP_API_FUNCTION_URL: '/api', getCurrentVisibleViewId: () => 'sales-credit',
+    AgMetricLifecycle: { createScope: () => ({ isCurrent: () => current, dispose: () => { disposed = true; } }) },
+    postAppFunctionJson: async (_url, request) => request.operation === 'source'
+      ? new Promise(resolve => { finishSource = resolve; })
+      : { ok: true, data: request.operation === 'drafts' ? { drafts: [] } : { folders: [] } } });
+  w.eval(readFileSync(new URL('../assets/sales-workspace.js', import.meta.url), 'utf8'));
+  try {
+    await w.SalesWorkspace.open('sales-credit');
+    const pending = w.SalesWorkspace.openSource('docks', 'SOC-1');
+    current = false;
+    finishSource({ ok: true, data: { source: { id: sourceId, snapshot: { commonname: 'Stale shipment' } }, folder: { customerKey: 'C1' } } });
+    await pending;
+    assert.equal(disposed, true);
+    assert.doesNotMatch(w.document.body.textContent, /Credit draft|Stale shipment/);
   } finally { dom.window.close(); }
 });

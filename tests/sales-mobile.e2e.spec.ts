@@ -52,26 +52,33 @@ function expectIsolated(fixture: Awaited<ReturnType<typeof installSalesMobileFix
 test('history searches the complete permitted result set, pages newest first, and preserves detail Back', async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const area = await openSales(page, 'Request History', 'request-history');
-  await expect(area.getByRole('button', { name: 'Completed', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(area.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const cards = area.locator('button.sw-card');
   await expect(cards).toHaveCount(50);
-  await expect(cards.first()).toContainText('Cedar 00');
-  await expect(cards.first()).toContainText('2026-09-20T12:00:00.000Z');
+  await expect(cards.first()).toContainText('Pending Magnolia');
+  await expect(cards.nth(1)).toContainText('2026-09-20T12:00:00.000Z');
+  await expect(area.locator('.sw-history-card').filter({ hasText: 'Cedar 01' }).getByRole('button', { name: 'Request Credit', exact: true })).toHaveCount(0);
   await area.getByRole('button', { name: 'Load more', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(cards).toHaveCount(63);
+  await expect(cards).toHaveCount(64);
   await expect(cards.last()).toContainText('Rare Orchid');
   await expect(area.getByRole('button', { name: 'Load more', exact: true })).toHaveCount(0);
-  const search = area.getByLabel('Search common name', { exact: true });
+  const search = area.getByLabel('Search customer, consignee, item, common name, or folder', { exact: true });
   await search.fill('  ORCHID  ');
   await expect(cards).toHaveCount(1);
   expect(f.commands.some(call => call.action === 'request_history' && call.operation === 'search' && call.payload.query === '  ORCHID  ')).toBe(true);
+  await search.fill('HIST.62');
+  await expect(cards).toHaveCount(1);
+  await search.fill(folderName);
+  await expect(cards).toHaveCount(50);
+  await search.fill('Rare Orchid');
+  await expect(cards).toHaveCount(1);
   await expectPhoneLayout(page, area);
   await cards.first()[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('heading', { name: 'Rare Orchid', level: 2 })).toBeVisible();
   await expect(area).toContainText('Completed instruction 62');
   await expect(page.locator('button[aria-label="Back"]:visible')).toHaveCount(1);
   await page.locator('#global-header-inline-back')[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(search).toHaveValue('  ORCHID  ');
+  await expect(search).toHaveValue('Rare Orchid');
   await expect(cards).toHaveCount(1);
   await search.fill('');
   await expect(cards).toHaveCount(50);
@@ -82,14 +89,94 @@ test('history searches the complete permitted result set, pages newest first, an
   await expect(cards.first()).toContainText('Pending Magnolia');
   await area.getByRole('button', { name: 'Browse customer / consignee', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByText('Saving or loading…', { exact: true })).toHaveCount(0);
-  const folder = area.getByRole('button', { name: `${folderName} 64 records`, exact: true });
+  const folder = area.getByRole('button', { name: `${folderName} 63 records`, exact: true });
   await expect(folder).toHaveCount(1);
+  await expect(area.getByRole('button', { name: 'Acme Nursery — Unknown consignee 1 records', exact: true })).toHaveCount(1);
   await folder[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(cards.first()).toContainText('Pending Magnolia');
+  await expect(cards.first()).toContainText('Cedar 00');
   // A denied scoped response must be reported instead of appearing as a successful empty search.
   f.denyHistory = true;
   await area.getByRole('button', { name: 'Refresh records', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(area.getByRole('alert')).toContainText('SALES_ACCESS_DENIED');
+  expectIsolated(f);
+});
+
+test('Credit tabs keep source lists and selections separate', async ({ page, baseURL }) => {
+  const f = await installSalesMobileFixture(page, baseURL!);
+  const area = await openSales(page, 'Credit', 'sales-credit');
+  const docksTab = area.getByRole('button', { name: 'Docks History', exact: true });
+  const requestsTab = area.getByRole('button', { name: 'Completed Requests', exact: true });
+  await expect(docksTab).toHaveAttribute('aria-pressed', 'true');
+  await area.getByRole('button', { name: `${folderName} 2 records`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await area.getByRole('checkbox', { name: 'Blue Hydrangea', exact: true }).check();
+  await requestsTab[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(requestsTab).toHaveAttribute('aria-pressed', 'true');
+  await area.getByRole('button', { name: `${folderName} 63 records`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await area.getByRole('checkbox', { name: 'Cedar 00', exact: true }).check();
+  await docksTab[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(area.getByRole('checkbox', { name: 'Blue Hydrangea', exact: true })).toBeChecked();
+  await expect(area.getByRole('checkbox', { name: 'Cedar 00', exact: true })).toHaveCount(0);
+  await requestsTab[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(area.getByRole('checkbox', { name: 'Cedar 00', exact: true })).toBeChecked();
+  // Live-sync can refresh either visible tab at any point. Require both exact
+  // transport contracts without asserting a timing-dependent request count.
+  expect([...new Set(f.commands.filter(call => call.action === 'sales_credit' && ['folders', 'sources'].includes(call.operation))
+    .map(call => `${call.operation}:${call.payload.sourceKind}`))].sort())
+    .toEqual(['folders:docks', 'folders:request_history', 'sources:docks', 'sources:request_history']);
+  expect(f.commands.filter(call => call.action === 'sales_credit' && ['folders', 'sources'].includes(call.operation))
+    .every(call => ['docks', 'request_history'].includes(call.payload.sourceKind))).toBe(true);
+  expectIsolated(f);
+});
+
+test('history Request Credit resolves the exact archive and a denied source shows an alert', async ({ page, baseURL }) => {
+  const f = await installSalesMobileFixture(page, baseURL!);
+  const history = await openSales(page, 'Request History', 'request-history');
+  await history.getByLabel('Search customer, consignee, item, common name, or folder', { exact: true }).fill('Rare Orchid');
+  await expect(history.locator('.sw-history-card')).toHaveCount(1);
+  await history.getByRole('button', { name: 'Request Credit', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  const credit = page.locator('#sales-credit-content');
+  await expect(credit.getByRole('heading', { name: 'Credit draft', exact: true })).toBeVisible();
+  await expect(credit.getByRole('heading', { name: 'Rare Orchid', exact: true })).toBeVisible();
+  expect(f.commands.some(call => call.action === 'sales_credit' && call.operation === 'source' &&
+    call.payload.sourceKind === 'request_history' && call.payload.sourceUniqueId === 'history-62')).toBe(true);
+  await page.locator('#global-header-inline-back')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(credit.getByRole('button', { name: 'Completed Requests', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toBeChecked();
+  f.denySource = true;
+  await page.evaluate(() => (window as any).SalesWorkspace.openSource('docks', 'dock-2'));
+  await expect(credit.getByRole('alert')).toContainText('SOURCE_ACCESS_DENIED');
+  await expect(credit.getByRole('heading', { name: 'Credit draft', exact: true })).toHaveCount(0);
+  f.denySource = false;
+  await page.evaluate(() => (window as any).SalesWorkspace.openSource('docks', 'dock-2'));
+  await expect(credit.getByRole('heading', { name: 'Red Hydrangea', exact: true })).toBeVisible();
+  await expect(credit.getByRole('button', { name: 'Docks History', exact: true })).toHaveCount(0);
+  expectIsolated(f);
+});
+
+test('Docks Request Credit keeps the existing unsaved draft and photos', async ({ page, baseURL }) => {
+  const f = await installSalesMobileFixture(page, baseURL!, { role: 'SALES' });
+  const credit = await openSales(page, 'Credit', 'sales-credit');
+  await credit.getByRole('button', { name: `${folderName} 2 records`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await credit.getByRole('checkbox', { name: 'Blue Hydrangea', exact: true }).check();
+  await credit.getByRole('button', { name: 'Prepare credit (1 rows)', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  const blue = credit.locator('article.sw-card').filter({ has: page.getByRole('heading', { name: 'Blue Hydrangea', exact: true }) });
+  await blue.getByLabel('Affected quantity', { exact: true }).fill('2');
+  await blue.getByRole('textbox', { name: 'What happened?', exact: true }).fill('Two plants arrived damaged.');
+  await blue.locator('input[capture="environment"]').setInputFiles(photo('unsaved-capture.png'));
+  await expect(blue.getByText('unsaved-capture.png', { exact: true })).toBeVisible();
+  await page.locator('#footer-docks-btn')[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await page.getByRole('button', { name: 'Open Dock 8', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await page.getByRole('button', { name: 'Open Stop 2', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  const redDock = page.locator('#docks-content .item-row').filter({ hasText: 'Red Hydrangea' });
+  await expect(redDock.getByRole('button', { name: 'Request Credit', exact: true })).toBeVisible();
+  await redDock.getByRole('button', { name: 'Request Credit', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(credit.getByRole('heading', { name: 'Credit draft', exact: true })).toBeVisible();
+  await expect(credit.getByRole('heading', { name: 'Red Hydrangea', exact: true })).toBeVisible();
+  await expect(blue.getByLabel('Affected quantity', { exact: true })).toHaveValue('2');
+  await expect(blue.getByText('unsaved-capture.png', { exact: true })).toBeVisible();
+  expect(f.commands.some(call => call.action === 'sales_credit' && call.operation === 'source' &&
+    call.payload.sourceKind === 'docks' && call.payload.sourceUniqueId === 'dock-2')).toBe(true);
+  expect(f.drafts.size).toBe(0);
   expectIsolated(f);
 });
 

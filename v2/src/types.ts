@@ -42,6 +42,14 @@ export type WorkflowRow = {
 
 export type RequestRow = Record<string, unknown> & {
   unique_id?: string | number;
+  customeridentityid?: string | null;
+  customername?: string | null;
+  consigneeidentityid?: string | null;
+  consigneename?: string | null;
+  CUSTOMERIDENTITYID?: string | null;
+  CUSTOMERNAME?: string | null;
+  CONSIGNEEIDENTITYID?: string | null;
+  CONSIGNEENAME?: string | null;
   COMMONNAME?: string;
   commonname?: string;
   LOCATIONCODE?: string;

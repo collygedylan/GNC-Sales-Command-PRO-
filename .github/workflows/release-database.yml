@@ -160,6 +160,7 @@ jobs:
           cp supabase/migrations/20260922233000_manager_season_priority_inquiry_v1.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260923174000_optimize_manager_season_priority_scope.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260923222348_materialize_manager_season_priority_scope_hashes.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260924115226_sales_history_customer_docks_ownership.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -168,6 +169,7 @@ jobs:
           destination = Path(sys.argv[1]) / "supabase" / "tests"
           cases = {
               "sales_credit_workflow_test.sql": "sales_checks",
+              "sales_history_docks_test.sql": "sales_history_docks_checks",
               "navigation_preferences_test.sql": "navigation_checks",
               "production_workflow_test.sql": "workflow_checks",
           }

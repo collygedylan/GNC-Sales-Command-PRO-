@@ -610,6 +610,9 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     return route.abort('blockedbyclient');
   });
+  // Install specialized routes after the catch-all and before navigation.
+  // Keep interception stable while the compiled runtime starts.
+  if (options.beforeNavigate) await options.beforeNavigate(control);
   await page.addInitScript((value) => {
     if (value.startupMode === 'cold') {
       ['gnc_user_v3', 'gnc_role_v3', 'gnc_division_v1', 'gnc_language_v1', 'gnc_native_auth_profile_v1'].forEach(key => localStorage.removeItem(key));

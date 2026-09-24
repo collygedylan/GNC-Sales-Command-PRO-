@@ -8,7 +8,7 @@
  const snapshot = row => ({...(row||{}),...(row?.snapshot||row?.source_snapshot||{})});
  const first = (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '';
  const uuid = () => crypto.randomUUID();
- const fresh = () => ({account:'',view:'',mode:'list',status:'completed',query:'',customerKey:'',folder:null,rows:[],folders:[],drafts:[],nextCursor:null,detail:null,draft:null,selection:new Map(),selections:new Map(),localDrafts:new Map(),requesters:[],files:new Map(),history:[],commands:new Map(),formValues:new Map(),disclosures:new Map(),busy:false,error:'',loaded:false,epoch:0,searchTimer:null,pendingSearch:false});
+ const fresh = () => ({account:'',view:'',mode:'list',status:'all',sourceKind:'docks',creditTabs:new Map(),query:'',customerKey:'',folder:null,rows:[],folders:[],drafts:[],nextCursor:null,detail:null,draft:null,selection:new Map(),selections:new Map(),localDrafts:new Map(),requesters:[],files:new Map(),history:[],commands:new Map(),formValues:new Map(),disclosures:new Map(),busy:false,inFlight:null,error:'',loaded:false,epoch:0,searchTimer:null,pendingSearch:false});
  let state=fresh();
  const account = () => typeof currentUser === 'undefined' ? '' : String(currentUser || '');
  function reset() { clearTimeout(state.searchTimer); state=fresh(); state.account=account(); }
@@ -17,7 +17,7 @@
  const button=(label,action,disabled=false)=>`<button type="button" class="sw-button" onclick="${action}" ${disabled||state.busy?'disabled':''}>${esc(label)}</button>`;
  const qty=value=>value===null||value===undefined||String(value).trim()===''?'Unknown':String(value);
  const label=row=>{const s=snapshot(row);return field(s,'commonname')||field(s,'itemcode')||'Request row';};
- const customer=row=>{const s=snapshot(row);return [field(s,'customername'),field(s,'consigneename')].filter(Boolean).join(' — ')||'Customer information unavailable';};
+ const customer=row=>{const s=snapshot(row);return [field(s,'customername')||'Unknown customer',field(s,'consigneename')||'Unknown consignee'].join(' — ');};
  function describe(row) {
   const s=snapshot(row);
   return `<dl class="sw-facts">${[['Item',field(s,'itemcode')],['Size',field(s,'contsize')],['Lot',field(s,'lotcode')],['Location',field(s,'locationcode')],['Quantity',qty(first(field(s,'quantityordered'),field(s,'qty'),field(s,'quantity')))],['Dock',field(s,'dock')],['Plan date',field(s,'planstart')||field(s,'planstartdate')],['Shipment',field(s,'transactionnumber')]].filter(([,v])=>v!==''&&v!==undefined).map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
@@ -34,29 +34,67 @@
  }
  async function run(work) {
   ensureAccount(); if(state.busy)return false; const owner=state; state.busy=true;state.error='';render();
-  try{await work();}catch(error){if(owner===state)state.error=String(error.message||error);}
-  finally{if(owner===state){state.busy=false;render();if(state.pendingSearch){state.pendingSearch=false;void run(()=>load());}}}
-  return false;
+  const pending=(async()=>{
+   try{await work();}catch(error){if(owner===state)state.error=String(error.message||error);}
+   finally{if(owner===state){state.busy=false;render();if(state.pendingSearch){state.pendingSearch=false;void run(()=>load());}}}
+   return false;
+  })();
+  owner.inFlight=pending;
+  return pending;
  }
- function park(){clearTimeout(state.searchTimer);state.pendingSearch=false;state.history.push({view:state.view,mode:state.mode,status:state.status,query:state.query,customerKey:state.customerKey,folder:state.folder,rows:state.rows,folders:state.folders,nextCursor:state.nextCursor,detail:state.detail,selection:state.selection,scroll:typeof getMainAreaScrollTop==='function'?getMainAreaScrollTop():0});if(typeof ensureNativeBackGuard==='function')ensureNativeBackGuard();}
+ function park(){clearTimeout(state.searchTimer);state.pendingSearch=false;state.history.push({view:state.view,mode:state.mode,status:state.status,sourceKind:state.sourceKind,query:state.query,customerKey:state.customerKey,folder:state.folder,rows:state.rows,folders:state.folders,nextCursor:state.nextCursor,detail:state.detail,selection:state.selection,scroll:typeof getMainAreaScrollTop==='function'?getMainAreaScrollTop():0});if(typeof ensureNativeBackGuard==='function')ensureNativeBackGuard();}
  function back(){ensureAccount();if(!isView(getCurrentVisibleViewId())||!state.history.length)return false;clearTimeout(state.searchTimer);state.pendingSearch=false;const prev=state.history.pop();Object.assign(state,prev);state.epoch++;state.error='';render();requestAnimationFrame(()=>typeof setMainAreaScrollTop==='function'&&setMainAreaScrollTop(prev.scroll||0));return true;}
  async function load(more=false) {
   const epoch=++state.epoch, action=state.view==='request-history'?'request_history':'sales_credit';
   let operation=state.view==='request-history'?(state.mode==='folders'?'folders':'search'):state.view==='credit-request'?'submissions':state.customerKey?'sources':'folders';
-  const result=await api(action,operation,{query:state.query,status:state.status,customerKey:state.customerKey||undefined,cursor:more?state.nextCursor:undefined,limit:50});
+  const result=await api(action,operation,{query:state.query,status:state.status,customerKey:state.customerKey||undefined,...(state.view==='sales-credit'&&['folders','sources'].includes(operation)?{sourceKind:state.sourceKind}:{}),cursor:more?state.nextCursor:undefined,limit:50});
   if(epoch!==state.epoch)return;
   const rows=result.rows||result.submissions||result.folders||[];
   state.requesters=result.requesters||state.requesters;state.rows=more?[...state.rows,...rows]:rows;state.nextCursor=result.nextCursor||null;state.loaded=true;
   if(state.view==='sales-credit'&&!state.customerKey){const drafts=await api('sales_credit','drafts');if(epoch===state.epoch)state.drafts=drafts.drafts||[];}
  }
- function open(view){ensureAccount();if(state.view!==view){state.view=view;state.mode='list';state.status=view==='request-history'?'completed':'pending';state.query='';state.customerKey='';state.folder=null;state.rows=[];state.history=[];state.detail=null;state.loaded=false;}render();if(!state.loaded)return run(()=>load());return false;}
- async function stageRefresh(){ensureAccount();if(!isView(getCurrentVisibleViewId())||state.busy||!['list','folders'].includes(state.mode))return null;const owner=state;const epoch=state.epoch;const action=state.view==='request-history'?'request_history':'sales_credit';const operation=state.view==='request-history'?(state.mode==='folders'?'folders':'search'):state.view==='credit-request'?'submissions':state.customerKey?'sources':'folders';const result=await api(action,operation,{status:state.status,query:state.query,customerKey:state.customerKey||undefined,limit:Math.min(100,Math.max(50,state.rows.length))});return {owner,epoch,result};}
+ function open(view){ensureAccount();if(state.view!==view){rememberCreditTab();state.epoch++;state.view=view;state.mode='list';state.status=view==='request-history'?'all':'pending';state.sourceKind='docks';state.query='';state.customerKey='';state.folder=null;state.rows=[];state.history=[];state.detail=null;state.loaded=false;state.selection=new Map();}render();if(!state.loaded)return run(()=>load());return false;}
+ async function stageRefresh(){ensureAccount();if(!isView(getCurrentVisibleViewId())||state.busy||!['list','folders'].includes(state.mode))return null;const owner=state;const epoch=state.epoch;const action=state.view==='request-history'?'request_history':'sales_credit';const operation=state.view==='request-history'?(state.mode==='folders'?'folders':'search'):state.view==='credit-request'?'submissions':state.customerKey?'sources':'folders';const result=await api(action,operation,{status:state.status,query:state.query,customerKey:state.customerKey||undefined,...(state.view==='sales-credit'&&['folders','sources'].includes(operation)?{sourceKind:state.sourceKind}:{}),limit:Math.min(100,Math.max(50,state.rows.length))});return {owner,epoch,result};}
  function applyRefresh(update){if(!update||update.owner!==state||update.epoch!==state.epoch||state.busy||state.rows.length>100)return;const active=document.activeElement;if(active?.closest('.sales-workspace')&&active.matches('input,textarea,select'))return;const rows=update.result.rows||update.result.submissions||update.result.folders||[],nextCursor=update.result.nextCursor||null;if(JSON.stringify([state.rows,state.nextCursor])===JSON.stringify([rows,nextCursor]))return;state.rows=rows;state.nextCursor=nextCursor;render();}
  function search(value){state.query=value;state.epoch++;clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>{if(state.busy)state.pendingSearch=true;else void run(()=>load());},300);}
  function filter(value){return run(async()=>{state.status=value;await load();});}
+ function rememberCreditTab(){if(state.view!=='sales-credit')return;state.creditTabs.set(state.sourceKind,{mode:state.mode==='folders'?'folders':'list',query:state.query,customerKey:state.customerKey,folder:state.folder,rows:state.rows,nextCursor:state.nextCursor,selection:state.selection,loaded:state.loaded});}
+ function creditTab(sourceKind){if(state.view!=='sales-credit'||!['docks','request_history'].includes(sourceKind)||state.busy||state.sourceKind===sourceKind)return false;rememberCreditTab();clearTimeout(state.searchTimer);state.pendingSearch=false;state.epoch++;state.sourceKind=sourceKind;const saved=state.creditTabs.get(sourceKind);Object.assign(state,saved||{mode:'list',query:'',customerKey:'',folder:null,rows:[],nextCursor:null,selection:new Map(),loaded:false});state.history=[];state.error='';render();if(!state.loaded)return run(()=>load());return false;}
  function folders(){park();state.mode='folders';state.query='';return run(()=>load());}
- function selectFolder(index){const folder=state.rows[index];park();state.customerKey=folder.customerKey||folder.customer_key;if(!state.selections.has(state.customerKey))state.selections.set(state.customerKey,new Map());state.selection=state.selections.get(state.customerKey);state.folder=folder;state.mode='list';state.query='';return run(()=>load());}
+ function selectFolder(index){const folder=state.rows[index];park();state.customerKey=folder.customerKey||folder.customer_key;const selectionKey=state.sourceKind+':'+state.customerKey;if(!state.selections.has(selectionKey))state.selections.set(selectionKey,new Map());state.selection=state.selections.get(selectionKey);state.folder=folder;state.mode='list';state.query='';return run(()=>load());}
  function detail(index){park();state.detail=state.rows[index];state.mode='detail';render();return false;}
+ async function openSource(sourceKind,sourceUniqueId){
+  ensureAccount();
+  const requestedAccount=state.account;
+  if(state.view!=='sales-credit'&&typeof getCurrentVisibleViewId==='function'&&getCurrentVisibleViewId()==='sales-credit')open('sales-credit');
+  while(state.busy&&state.inFlight)await state.inFlight;
+  if(state.account!==requestedAccount||state.view!=='sales-credit'||(typeof getCurrentVisibleViewId==='function'&&getCurrentVisibleViewId()!=='sales-credit'))return false;
+  return run(async()=>{
+   const scope=root.AgMetricLifecycle?.createScope({lifetime:'view'});
+   try{
+   if(!['docks','request_history'].includes(sourceKind)||!String(sourceUniqueId||'').trim())throw new Error('The shipment reference is missing. Open its history and try again.');
+   const result=await api('sales_credit','source',{sourceKind,sourceUniqueId:String(sourceUniqueId).trim()});
+   if(scope&&!scope.isCurrent())return;
+   const source=result?.source,folder=result?.folder,customerKey=folder?.customerKey||folder?.customer_key;
+   if(!source?.id||!customerKey)throw new Error('The shipment could not be matched to a credit folder.');
+   if(state.localDrafts.get(customerKey)?.pendingSubmit)throw new Error('Confirm the previous submission for this customer before adding another shipment.');
+   rememberCreditTab();
+   clearTimeout(state.searchTimer);state.pendingSearch=false;state.epoch++;
+   state.sourceKind=sourceKind;state.customerKey=customerKey;state.folder=folder;state.mode='list';state.query='';state.rows=[source];state.nextCursor=null;state.loaded=true;state.history=[];
+   const selectionKey=sourceKind+':'+customerKey;
+   if(!state.selections.has(selectionKey))state.selections.set(selectionKey,new Map());
+   state.selection=state.selections.get(selectionKey);state.selection.set(source.id,source);
+   compose();
+   }finally{scope?.dispose();}
+  });
+ }
+ async function historyCredit(index){
+  const row=state.rows[index],sourceKind=row?.source_kind||row?.sourceKind||'request_history';
+  const sourceUniqueId=row?.source_id||row?.sourceUniqueId||row?.source_unique_id||field(snapshot(row),'unique_id');
+  if(!String(sourceUniqueId||'').trim()){state.error='This request has no shipment reference for credit.';render();return false;}
+  if(typeof switchView==='function')await Promise.resolve(switchView('sales-credit'));
+  return openSource(sourceKind,sourceUniqueId);
+ }
  function toggle(index,selected){const row=state.rows[index];if(selected)state.selection.set(row.id,row);else state.selection.delete(row.id);render();}
  function compose(){
   if(!state.selection.size)return false;
@@ -80,7 +118,9 @@
   if(!state.draft.pendingSubmit){await saveDraft();state.draft.pendingSubmit={id:state.draft.id,revision:state.draft.revision};}
   const intent=state.draft.pendingSubmit;
   await api('sales_credit','submit',{id:intent.id},intent.revision,true);
-  state.localDrafts.delete(state.draft.customerKey);state.draft=null;state.selection.clear();state.files.clear();state.history=[];state.mode='list';state.customerKey='';state.folder=null;await load();showToast('Credit submitted','The submitted lines are waiting for review.');
+  const submittedCustomerKey=state.draft.customerKey;state.localDrafts.delete(submittedCustomerKey);state.draft=null;
+  for(const [key,selection] of state.selections)if(key.endsWith(':'+submittedCustomerKey))selection.clear();
+  state.selection.clear();state.files.clear();state.history=[];state.mode='list';state.customerKey='';state.folder=null;await load();showToast('Credit submitted','The submitted lines are waiting for review.');
  });}
  function reopen(id){return run(async()=>{const data=await api('sales_credit','detail',{id});park();state.draft=data.draft||data.submission||data;state.draft.customerKey=state.draft.customerKey||state.draft.customer_key;state.draft.lines=(data.lines||state.draft.lines||[]).map(l=>({...l,sourceId:l.sourceId||l.source_id,attachmentIds:l.attachmentIds||l.attachment_ids||[]}));state.mode='compose';});}
  function review(index){return run(async()=>{const row=state.rows[index];const data=await api('sales_credit','detail',{id:row.id||row.submission_id});park();state.detail=data;state.mode='review';});}
@@ -90,7 +130,7 @@
  function amend(lineId){const line=(state.detail.lines||[]).find(l=>l.id===lineId);const quantity=Number(document.getElementById('amend-quantity-'+lineId)?.value);const explanation=document.getElementById('amend-explanation-'+lineId)?.value.trim();const reason=document.getElementById('amend-reason-'+lineId)?.value.trim();return run(async()=>{if(!(quantity>0)||!explanation||!reason)throw new Error('A correction requires quantity, explanation, and the reason for the amendment.');await api('sales_credit','amend_line',{lineId,quantity,explanation,reason},line.revision,true);state.detail=await api('sales_credit','detail',{id:state.detail.submission?.id||line.submission_id});});}
  function photo(id){return run(async()=>{const data=await api('sales_credit','attachment_download',{id});const url=data.url;if(!/^https:\/\//i.test(url||''))throw new Error('The photo is not available.');if(typeof openPhotoModal==='function')openPhotoModal(url);else{const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.click();}});}
  function photos(ids){return (ids||[]).map((id,n)=>button('Photo '+(n+1),`SalesWorkspace.photo(${arg(id)})`)).join('');}
- function historyCard(row,index){const s=snapshot(row);return `<button type="button" class="sw-card sw-open" onclick="SalesWorkspace.detail(${index})"><strong>${esc(label(row))}</strong><span>${esc(field(s,'itemcode'))} · ${esc(field(s,'contsize'))}</span><span>${esc(customer(row))}</span><span>${esc(row.sort_at||row.completed_at||field(s,'completed_at')||field(s,'completeddate')||row.created_at||field(s,'created_at'))}</span></button>`;}
+ function historyCard(row,index){const s=snapshot(row),sourceUniqueId=row.source_id||row.sourceUniqueId||row.source_unique_id||field(s,'unique_id'),completed=String(row.status||field(s,'req_status')).toLowerCase()==='completed';return `<article class="sw-history-card"><button type="button" class="sw-card sw-open" onclick="SalesWorkspace.detail(${index})"><strong>${esc(label(row))}</strong><span>${esc(field(s,'itemcode'))} · ${esc(field(s,'contsize'))}</span><span>${esc(customer(row))}</span><span>${esc(row.sort_at||row.completed_at||field(s,'completed_at')||field(s,'completeddate')||row.created_at||field(s,'created_at'))}</span></button>${completed&&sourceUniqueId&&row.canRequestCredit===true?button('Request Credit',`SalesWorkspace.historyCredit(${index})`):''}</article>`;}
  function folderCard(row,index){return `<button type="button" class="sw-card sw-open" onclick="SalesWorkspace.selectFolder(${index})"><strong>${esc(row.label||customer(row))}</strong><span>${esc(row.count??'')} records</span></button>`;}
  function sourceCard(row,index){const claims=row.claims||[];return `<article class="sw-card"><label class="sw-select"><input type="checkbox" ${state.selection.has(row.id)?'checked':''} onchange="SalesWorkspace.toggle(${index},this.checked)"><strong>${esc(label(row))}</strong></label>${describe(row)}${claims.length?`<details data-sw-disclosure="claims-${esc(row.id)}"><summary>Earlier claims (${claims.length})</summary>${claims.map(c=>`<p>${esc(c.status)} · ${esc(c.quantity??c.credit_qty)} · ${esc(c.submitted_at||'')}</p>`).join('')}</details>`:''}${row.needs_review&&!row.canResolve?'<p role="status">Shipment identity needs reviewer confirmation before submission.</p>':''}${row.needs_review&&row.canResolve?`<details data-sw-disclosure="identity-${esc(row.id)}"><summary>Shipment identity needs review</summary><label>Shipment match<select id="source-match-${esc(row.id)}"><option value="">This is a distinct shipment</option>${(row.possibleMatches||[]).map(m=>`<option value="${esc(m.id)}">${esc(m.label||m.id)}</option>`).join('')}</select></label><label>Reason<textarea id="source-reason-${esc(row.id)}"></textarea></label>${button('Resolve shipment identity',`SalesWorkspace.resolveSource(${index})`)}</details>`:''}${row.canAuthorizeRepeat?`<label>Requester<select id="repeat-requester-${esc(row.id)}">${state.requesters.map(u=>`<option value="${esc(u.id)}">${esc(u.display_name||u.username)}</option>`).join('')}</select></label><label>Additional-claim reason<input id="repeat-reason-${esc(row.id)}"></label>${button('Authorize another claim',`SalesWorkspace.authorize(${index})`)}`:''}</article>`;}
  function composeHtml(){const d=state.draft;if(!d)return '';return `<h2>Credit draft</h2>${d.pendingSubmit?'<p role="status">Confirming the previous submission. Retry Submit to recover its result; do not create another claim.</p>':''}<p>${esc(state.folder?.label||customer(state.folder||d.lines[0]))}</p>${d.lines.map(line=>`<article class="sw-card"><h3>${esc(label(line.source||line))}</h3>${describe(line.source||line)}<label>Affected quantity<input type="number" inputmode="decimal" min="0" step="any" value="${esc(line.quantity)}" ${d.pendingSubmit||state.busy?'disabled':''} oninput="SalesWorkspace.editLine(${arg(line.id)},'quantity',this.value)"></label><label>What happened?<textarea rows="3" ${d.pendingSubmit||state.busy?'disabled':''} oninput="SalesWorkspace.editLine(${arg(line.id)},'explanation',this.value)">${esc(line.explanation)}</textarea></label><div class="sw-actions"><label class="sw-button">Take photo<input class="sw-file" type="file" ${d.pendingSubmit||state.busy?'disabled':''} accept="image/*" capture="environment" onchange="SalesWorkspace.addFiles(${arg(line.id)},this)"></label><label class="sw-button">Choose photos<input class="sw-file" type="file" ${d.pendingSubmit||state.busy?'disabled':''} accept="image/*" multiple onchange="SalesWorkspace.addFiles(${arg(line.id)},this)"></label></div><p>Photos are optional. You can take another photo each time.</p><div class="sw-actions">${photos(line.attachmentIds)}</div>${(state.files.get(line.id)||[]).map(f=>`<div class="sw-file-row"><span>${esc(f.file.name)}</span>${button('Remove photo',`SalesWorkspace.removeFile(${arg(line.id)},${arg(f.id)})`,!!d.pendingSubmit)}</div>`).join('')}${button('Remove line',`SalesWorkspace.removeLine(${arg(line.id)})`,!!d.pendingSubmit)}</article>`).join('')}<div class="sw-primary"><div class="sw-actions">${button('Save draft','SalesWorkspace.save()',!!d.pendingSubmit)}${button('Submit credit request','SalesWorkspace.submit()')}</div></div>`;}
@@ -104,9 +144,10 @@
   else if(state.mode==='detail'){const row=snapshot(state.detail);html+=`<article class="sw-card"><h2>${esc(label(state.detail))}</h2><p>${esc(customer(state.detail))}</p>${describe(state.detail)}${typeof renderSalesCreditPhotoStrip==='function'?renderSalesCreditPhotoStrip(field(row,'req_photo_link')||field(row,'photo_link')||field(row,'request_photo_link'),'Request Photos'):''}<dl class="sw-facts">${Object.entries(row).filter(([k,v])=>v!==null&&typeof v!=='object'&&!/token|password|secret|photo.*(link|url)/i.test(k)).map(([k,v])=>`<div><dt>${esc(k.replace(/_/g,' '))}</dt><dd class="sw-pre">${esc(v)}</dd></div>`).join('')}</dl></article>`;}
   else {
    html+=button('Refresh records','SalesWorkspace.refresh()');
-   const statusOptions=state.view==='request-history'?[['completed','Completed'],['all','All'],['pending','Pending']]:state.view==='credit-request'?[['pending','Pending Credit'],['approved','Approved Credit Request'],['denied','Credit Denial']]:[];
+   if(state.view==='sales-credit')html+=`<div class="sw-tabs" aria-label="Credit sources">${[['docks','Docks History'],['request_history','Completed Requests']].map(([value,text])=>`<button type="button" class="sw-button" aria-pressed="${state.sourceKind===value}" onclick="SalesWorkspace.creditTab(${arg(value)})" ${state.busy?'disabled':''}>${esc(text)}</button>`).join('')}</div>`;
+   const statusOptions=state.view==='request-history'?[['all','All'],['pending','Pending'],['completed','Completed']]:state.view==='credit-request'?[['pending','Pending Credit'],['approved','Approved Credit Request'],['denied','Credit Denial']]:[];
    if(statusOptions.length)html+=`<div class="sw-tabs" aria-label="Status">${statusOptions.map(([value,text])=>`<button type="button" class="sw-button" aria-pressed="${state.status===value}" onclick="SalesWorkspace.filter(${arg(value)})" ${state.busy?'disabled':''}>${esc(text)}</button>`).join('')}</div>`;
-   html+=`<label>Search ${state.view==='request-history'?'common name':'item code or common name'}<input type="search" value="${esc(state.query)}" oninput="SalesWorkspace.search(this.value)"></label>`;
+   if(state.mode!=='folders'||state.view!=='request-history')html+=`<label>${state.view==='request-history'?'Search customer, consignee, item, common name, or folder':'Search item code or common name'}<input type="search" value="${esc(state.query)}" oninput="SalesWorkspace.search(this.value)"></label>`;
    if(state.view==='request-history'&&state.mode!=='folders')html+=button('Browse customer / consignee','SalesWorkspace.folders()');
    if(state.folder)html+=`<h2>${esc(state.folder.label||customer(state.folder))}</h2>`;
    if(state.view==='sales-credit'&&!state.customerKey&&state.drafts.length)html+=`<details data-sw-disclosure="saved-drafts"><summary>Saved drafts (${state.drafts.length})</summary>${state.drafts.map(d=>button(d.label||customer(d.lines?.[0]||d),`SalesWorkspace.reopen(${arg(d.id)})`)).join('')}</details>`;
@@ -122,5 +163,5 @@
   container.querySelectorAll('input[id],textarea[id],select[id]').forEach(el=>{if(state.formValues.has(el.id))el.value=state.formValues.get(el.id);});
   if(editing){const input=container.querySelector('input[type="search"]');input?.focus({preventScroll:true});try{input?.setSelectionRange(start,start);}catch(_){}}
  }
- root.SalesWorkspace={open,render,reset,isView,back,stageRefresh,applyRefresh,search,filter,folders,selectFolder,detail,toggle,compose,editLine,removeLine,addFiles,removeFile,save,submit,reopen,review,decision,authorize,resolveSource,amend,photo,more:()=>run(()=>load(true)),refresh:()=>{state.loaded=false;if(isView(getCurrentVisibleViewId())&&state.mode==='list'&&!state.busy)return run(()=>load());},test:{normalize,field,snapshot}};
+ root.SalesWorkspace={open,openSource,render,reset,isView,back,stageRefresh,applyRefresh,search,filter,creditTab,folders,selectFolder,detail,historyCredit,toggle,compose,editLine,removeLine,addFiles,removeFile,save,submit,reopen,review,decision,authorize,resolveSource,amend,photo,more:()=>run(()=>load(true)),refresh:()=>{state.loaded=false;if(isView(getCurrentVisibleViewId())&&state.mode==='list'&&!state.busy)return run(()=>load());},test:{normalize,field,snapshot}};
 })(typeof window==='undefined'?globalThis:window);

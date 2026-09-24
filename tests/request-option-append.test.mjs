@@ -40,7 +40,7 @@ test('append RPC is authenticated, server-authoritative, transactional, and appe
   assert.doesNotMatch(migration, /delete from public\.(?:ph_active_request|ph_request_history|ph_request_delivery_outbox)/i);
   assert.match(performanceWorkflow, /20260901192727_repair_request_option_append\.sql/);
   assert.match(performanceWorkflow, /request_option_append_test\.sql/);
-  assert.match(sqlTest, /select plan\(25\)/);
+  assert.match(sqlTest, /select plan\(26\)/);
 });
 
 test('server accepts only compatible current inventory options and deduplicates retries', () => {
