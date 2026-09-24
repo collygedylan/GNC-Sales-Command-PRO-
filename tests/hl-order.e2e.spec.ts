@@ -265,7 +265,20 @@ test('Open Orders waits for an importing revision and cannot commit an obsolete 
   await navigateHl(page, page.locator('#hl-order-detail [data-hl-drive-location="C.12.001"] .app-drive-compact-card'));
   const openReadsBeforeImport = fixture.demandReads.openOrders;
   fixture.setDatasetSourceState('ph_soc_master', 'importing');
-  await selectDriveDetailTab(page, 'open-orders');
+  // Reproduce a delayed detail hydration landing between a real press and release.
+  // Reparenting an already ordered tab here discards the browser's native click.
+  const openOrdersTab = page.locator('#dtab-open-orders');
+  await expect(openOrdersTab).toBeVisible();
+  const tabOrder = await page.locator('#det-tabs-container > .detail-tab').evaluateAll(tabs => tabs.map(tab => tab.id));
+  await openOrdersTab.hover();
+  await page.mouse.down();
+  try {
+    expect(await page.evaluate(() => window.eval('clearPendingDetailHydration(); runDeferredDetailHydration(detailHydrationToken)'))).toBe(true);
+  } finally {
+    await page.mouse.up();
+  }
+  await expect(openOrdersTab).toHaveClass(/\bactive\b/);
+  expect(await page.locator('#det-tabs-container > .detail-tab').evaluateAll(tabs => tabs.map(tab => tab.id))).toEqual(tabOrder);
   const openPanel = page.locator('#det-open-orders-panel [data-drive-demand-kind="open-orders"]');
   await expect(openPanel).toContainText(/Import in progress/i);
   expect(fixture.demandReads.openOrders).toBe(openReadsBeforeImport,
