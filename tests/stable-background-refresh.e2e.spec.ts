@@ -393,6 +393,7 @@ test('touch-held Eval Reports #2 refresh keeps location cards in place until the
     window.__eval2GestureProbe = {
       key: first?.getAttribute('data-manager-eval2-selection-key') || '',
       anchor: first?.textContent || '',
+      onHand: first?.querySelector('.manager-eval2-inventory-row > span:nth-child(4)')?.textContent?.trim() || '',
       top: first?.getBoundingClientRect().top - bounds.top,
       node: first
     };
@@ -407,12 +408,14 @@ test('touch-held Eval Reports #2 refresh keeps location cards in place until the
   const held = await page.evaluate(() => window.eval(`(() => {
     const card = document.querySelector('[data-manager-eval2-selection-key="' + CSS.escape(window.__eval2GestureProbe.key) + '"]');
     return { drill: managerEvalReport2DrillLevel, location: managerEvalReport2SelectedLocationCode,
-      sameVisibleNode: card === window.__eval2GestureProbe.node, firstText: card?.textContent || '' };
+      sameVisibleNode: card === window.__eval2GestureProbe.node, beforeOnHand: window.__eval2GestureProbe.onHand,
+      onHand: card?.querySelector('.manager-eval2-inventory-row > span:nth-child(4)')?.textContent?.trim() || '' };
   })()`));
   expect(held.drill).toBe(2);
   expect(held.location).toBe('A.01.001');
   expect(held.sameVisibleNode).toBe(true);
-  expect(held.firstText).not.toContain('9');
+  expect(held.beforeOnHand).toBe('1');
+  expect(held.onHand).toBe(held.beforeOnHand);
 
   await scroller.dispatchEvent('pointerup', { pointerId: 47, pointerType: 'touch', isPrimary: true, button: 0 });
   await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
@@ -420,11 +423,12 @@ test('touch-held Eval Reports #2 refresh keeps location cards in place until the
     const scroller = document.getElementById('main-scroll-area'), bounds = scroller.getBoundingClientRect();
     const first = document.querySelector('[data-manager-eval2-selection-key="' + CSS.escape(window.__eval2GestureProbe.key) + '"]');
     return { drill: managerEvalReport2DrillLevel, location: managerEvalReport2SelectedLocationCode,
-      firstText: first?.textContent || '', anchorDelta: Math.abs((first?.getBoundingClientRect().top - bounds.top) - window.__eval2GestureProbe.top) };
+      onHand: first?.querySelector('.manager-eval2-inventory-row > span:nth-child(4)')?.textContent?.trim() || '',
+      anchorDelta: Math.abs((first?.getBoundingClientRect().top - bounds.top) - window.__eval2GestureProbe.top) };
   })()`));
   expect(released.drill).toBe(2);
   expect(released.location).toBe('A.01.001');
-  expect(released.firstText).toContain('9');
+  expect(released.onHand).toBe('9');
   expect(released.anchorDelta).toBeLessThanOrEqual(2);
   expect(fixture.blockedMutations).toEqual([]);
 });
