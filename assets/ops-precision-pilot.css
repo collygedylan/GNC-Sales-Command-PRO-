@@ -701,6 +701,11 @@ body.ops-precision-pilot :is(
 }
 
 /* Dynamically added modules use the same surfaces and focus states as legacy hubs. */
+body.ops-precision-pilot #app-wrapper .gnc-hub-card {
+  /* Switch text and surface together; fading only the parent can hide its label. */
+  transition-property: border-color, box-shadow, transform !important;
+}
+
 body.ops-precision-pilot .gnc-hub-card > span {
   color: var(--ops-text) !important;
 }

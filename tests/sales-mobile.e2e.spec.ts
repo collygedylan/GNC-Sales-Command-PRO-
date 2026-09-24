@@ -49,8 +49,8 @@ function expectIsolated(fixture: Awaited<ReturnType<typeof installSalesMobileFix
   expect(fixture.contractErrors).toEqual([]);
 }
 
-async function expectHubContrast(page: Page, selector = '#sales-hub-grid .gnc-hub-card:visible') {
-  const readings = await page.locator(selector).evaluateAll(nodes => {
+async function expectHubContrast(page: Page, selector = '#sales-hub-grid .gnc-hub-card:visible', themeState?: { theme: string; outdoor: boolean }) {
+  const readings = await page.locator(selector).evaluateAll(async (nodes, state) => {
     const luminance = (color: string) => {
       const channels = (color.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
       if (channels.length !== 3) throw new Error(`Unsupported computed color: ${color}`);
@@ -64,13 +64,26 @@ async function expectHubContrast(page: Page, selector = '#sales-hub-grid .gnc-hu
       const values = [luminance(a), luminance(b)].sort((a, b) => b - a);
       return (values[0] + .05) / (values[1] + .05);
     };
-    return nodes.map(node => {
+    const sample = () => nodes.map(node => {
       const style = getComputedStyle(node), label = node.querySelector('span')!, icon = node.querySelector('i')!;
       return { id: node.id, background: style.backgroundColor,
         labelContrast: contrast(getComputedStyle(label).color, style.backgroundColor),
         iconContrast: contrast(getComputedStyle(icon).color, style.backgroundColor) };
     });
-  });
+    if (!state) return sample();
+    // Flush the old palette, then measure the switch itself, not just its settled render.
+    sample();
+    document.body.classList.add('ops-precision-pilot');
+    document.body.dataset.opsTheme = state.theme;
+    document.documentElement.classList.toggle('outdoor-mode', state.outdoor);
+    document.body.classList.toggle('outdoor-mode', state.outdoor);
+    const readings = sample(), started = performance.now();
+    do {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      readings.push(...sample());
+    } while (performance.now() - started < 200);
+    return readings;
+  }, themeState);
   expect(readings.length).toBeGreaterThan(0);
   for (const row of readings) {
     expect(row.background, row.id).not.toBe('rgba(0, 0, 0, 0)');
@@ -100,13 +113,8 @@ for (const role of ['ADMIN', 'SALES']) {
       const workspace = (window as any).GncMobileWorkspace;
       Object.keys(workspace.hubs).forEach(view => workspace.syncHub(view));
     });
-    for (const theme of ['light', 'dark']) for (const outdoor of [false, true]) {
-      await page.evaluate(({ theme, outdoor }) => {
-        document.body.classList.add('ops-precision-pilot');
-        document.body.dataset.opsTheme = theme;
-        document.documentElement.classList.toggle('outdoor-mode', outdoor);
-        document.body.classList.toggle('outdoor-mode', outdoor);
-      }, { theme, outdoor });
+    for (const theme of ['light', 'dark', 'light']) for (const outdoor of [false, true]) {
+      await expectHubContrast(page, undefined, { theme, outdoor });
       await expect(history).toBeVisible();
       await expect(credit).toBeVisible();
       if (role === 'SALES') await expect(review).toBeHidden();
