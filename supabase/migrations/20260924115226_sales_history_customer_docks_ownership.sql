@@ -1,5 +1,20 @@
 begin;
 
+-- Mixed import APIs must use the same map-first lock order as source writers.
+-- Change only lock acquisition; persisted source/canonical key sorting is intact.
+do $$ declare signature regprocedure; definition text; needle text:='order by key for update;'; begin
+  foreach signature in array array[
+    'app_sync_private.begin_import(text[],uuid,text[])'::regprocedure,
+    'app_sync_private.advance_import(uuid,text)'::regprocedure
+  ] loop
+    definition:=pg_get_functiondef(signature);
+    if (length(definition)-length(replace(definition,needle,'')))/length(needle)<>1 then
+      raise exception 'SALES_IMPORT_LOCK_ORDER_PATCH_FAILED: %',signature;
+    end if;
+    execute replace(definition,needle,'order by (key=''ph_customer_consignee_sales_reps'') desc,key for update;');
+  end loop;
+end $$;
+
 -- Explicit comma inversion, never fuzzy token matching.
 create function sales_private.rep_name_key(p_value text) returns text
 language sql immutable set search_path='' as $$
@@ -18,6 +33,10 @@ begin
   end if;
   candidate:=nullif(sales_private.key(p_row->>'salesrepid'),'');
   if candidate is not null then
+    -- The last published aliases are not authority for a new assignment while
+    -- the underlying multi-request import is incomplete or interrupted.
+    if not exists(select 1 from public.app_dataset_revisions
+      where key='ph_customer_consignee_sales_reps' and state='ready') then return null; end if;
     select profile_id into result from sales_private.rep_identities where kind='external_id' and identity_key=candidate;
     -- An explicit unknown/conflicting ID must not fall through to a name.
     return result;
@@ -30,7 +49,13 @@ end $$;
 
 create function sales_private.refresh_rep_identities() returns void
 language plpgsql security definer set search_path='' as $$
+declare map_state text;
 begin
+  -- Share the publication lock before the identity lock: an import cannot begin
+  -- between this readiness check and the mapping read/ownership repair.
+  select state into map_state from public.app_dataset_revisions
+    where key='ph_customer_consignee_sales_reps' for update;
+  if map_state is distinct from 'ready' then return; end if;
   perform pg_advisory_xact_lock(694873,1);
   delete from sales_private.rep_identities;
   insert into sales_private.rep_identities(kind,identity_key,profile_id)
@@ -65,12 +90,57 @@ on public.ph_customer_consignee_sales_reps for each statement execute function s
 create trigger credit_rep_profile_refresh after insert or update of username,display_name,role or delete
 on public.profiles for each statement execute function sales_private.refresh_rep_identities_trigger();
 
-create or replace function sales_private.capture_source(p_kind text,p_row jsonb) returns uuid
+create function sales_private.refresh_rep_identities_after_import() returns trigger
 language plpgsql security definer set search_path='' as $$
+declare original_headers text:=current_setting('request.headers',true);
+begin
+  -- advance_import has already completed the run before publishing ready.
+  -- Its validated finalization owns the revision lock until all derived repairs
+  -- commit. Derived writes are ordinary writes, not another batch from the now
+  -- closed token; restore the caller header immediately after this internal work.
+  perform set_config('request.headers',(coalesce(nullif(original_headers,'')::jsonb,'{}'::jsonb)-'x-gnc-import-run-id')::text,true);
+  perform sales_private.refresh_rep_identities();
+  perform set_config('request.headers',coalesce(original_headers,''),true);
+  return null;
+end $$;
+create trigger credit_rep_mapping_published after update of state on public.app_dataset_revisions
+for each row when (new.key='ph_customer_consignee_sales_reps' and new.state='ready' and old.state is distinct from new.state)
+execute function sales_private.refresh_rep_identities_after_import();
+
+create function sales_private.lock_rep_publication_before_write() returns trigger
+language plpgsql volatile security definer set search_path='' as $$
+begin
+  -- All writers enter through the map revision before taking source/profile row
+  -- locks. Source transactions share it; identity refresh and import publication
+  -- exclude them. Never upgrade a shared lock after locking business rows.
+  if tg_argv[0]='refresh' then
+    perform 1 from public.app_dataset_revisions where key='ph_customer_consignee_sales_reps' for update;
+  else
+    perform 1 from public.app_dataset_revisions where key='ph_customer_consignee_sales_reps' for share;
+  end if;
+  return null;
+end $$;
+create trigger aa_credit_rep_publication_lock before insert or update or delete on public.ph_soc_master
+for each statement execute function sales_private.lock_rep_publication_before_write('source');
+create trigger aa_credit_rep_publication_lock before insert or update or delete on public.ph_request_history
+for each statement execute function sales_private.lock_rep_publication_before_write('source');
+create trigger aa_credit_rep_publication_lock before insert or update or delete on public.ph_active_request
+for each statement execute function sales_private.lock_rep_publication_before_write('source');
+create trigger aa_credit_rep_publication_lock before insert or update or delete or truncate on public.ph_customer_consignee_sales_reps
+for each statement execute function sales_private.lock_rep_publication_before_write('refresh');
+create trigger aa_credit_rep_publication_lock before insert or update of username,display_name,role or delete on public.profiles
+for each statement execute function sales_private.lock_rep_publication_before_write('refresh');
+
+create or replace function sales_private.capture_source(p_kind text,p_row jsonb) returns uuid
+language plpgsql volatile security definer set search_path='' as $$
 declare sid uuid; existing public.ph_credit_sources; candidates uuid[]; source_key text:=p_row->>'unique_id'; key text; owner_id uuid;
 begin
   if nullif(source_key,'') is null then return null; end if;
   if p_kind='request_history' and lower(coalesce(p_row->>'req_status','')) not in ('complete','completed') then return null; end if;
+  -- Direct recovery calls obey the same lock order as trigger-driven writes.
+  -- This volatile function's subsequent SQL sees publication after any wait;
+  -- read APIs continue using the lock-free stable assigned_rep function.
+  perform 1 from public.app_dataset_revisions r where r.key='ph_customer_consignee_sales_reps' for share;
   perform pg_advisory_xact_lock(hashtextextended(p_kind||':'||source_key,694873));
   select * into existing from public.ph_credit_sources where source_kind=p_kind and source_id=source_key for update;
   owner_id:=coalesce(existing.assigned_rep_id,
@@ -137,7 +207,7 @@ do $$ declare definition text; original text; signature regprocedure; begin
 end $$;
 
 create or replace function sales_private.history_identity_trigger() returns trigger
-language plpgsql security definer set search_path='' as $$
+language plpgsql volatile security definer set search_path='' as $$
 declare context jsonb;
 begin
   select to_jsonb(a) into context from public.ph_active_request a where a.unique_id=new.unique_id;

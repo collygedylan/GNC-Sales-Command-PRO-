@@ -12,11 +12,12 @@ assert.equal(target.pathname, '/postgres', 'Unexpected isolated database');
 const run = randomUUID(), prefix = `SALES-CONCURRENT-${run}`, repName = `credit_${run.replaceAll('-', '')}`;
 const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
 const [dylan, jd, rep, grower] = ids;
-const sourceId = `${prefix}-SOC`, masterId = `${prefix}-INVENTORY`;
+const sourceId = `${prefix}-SOC`, masterId = `${prefix}-INVENTORY`, repMapId = `${prefix}-REP-MAP`;
 const draftIds = [randomUUID(), randomUUID(), randomUUID()], lineIds = [randomUUID(), randomUUID(), randomUUID()];
 const config = { connectionString, connectionTimeoutMillis: 10000, statement_timeout: 15000, application_name: `sales-concurrency-${run}` };
 const admin = new pg.Client(config), clients = [new pg.Client(config), new pg.Client(config)];
 const workerPids = [];
+const publicationSourceIds = [], publicationRunIds = [], publicationActiveIds = [];
 let fixtureCommitted = false, step = 'connect', failure;
 
 const serviceSession = client => client.query("select set_config('request.jwt.claims','{\"role\":\"service_role\"}',false),set_config('request.jwt.claim.role','service_role',false)");
@@ -58,6 +59,75 @@ function oneWinner(results, code) {
   return results.find(result => result.status === 'fulfilled').value;
 }
 
+async function waitForBlock(workerPid, blockerPid, description) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    await admin.query('select pg_stat_clear_snapshot()');
+    const result = await admin.query('select $2::int=any(pg_blocking_pids($1::int)) blocked', [workerPid, blockerPid]);
+    if (result.rows[0].blocked) return;
+    await new Promise(resolve => setTimeout(resolve, 40));
+  }
+  assert.fail(description);
+}
+
+const settle = promise => promise.then(value => ({ value }), error => ({ error }));
+function requireSuccess(result) { if (result.error) throw result.error; return result.value; }
+const mappingKeys = ['ph_customer_consignee_sales_reps'];
+const beginMappingImport = (client, id) => client.query('select public.begin_dataset_import_v1($1::text[],$2::uuid)', [mappingKeys, id]);
+const finishMappingImport = (client, id) => client.query('select public.finish_dataset_import_v1($1::uuid)', [id]);
+const insertPublicationSource = (client, kind, id) => kind === 'docks'
+  ? client.query('insert into public.ph_soc_master(unique_id,salesrepid) values($1,$2)', [id, repName])
+  : client.query("insert into public.ph_request_history(unique_id,req_status,snapshot) values($1,'Complete',$2::jsonb)", [id, { salesrepid: repName }]);
+const publicationOwner = async (client, kind, id) =>
+  (await client.query('select assigned_rep_id from public.ph_credit_sources where source_kind=$1 and source_id=$2', [kind, id])).rows[0]?.assigned_rep_id;
+
+// Start the source statement before the publisher commits, so its outer SQL
+// snapshot is deliberately stale. The volatile capture must reread after waiting.
+async function insertAcrossPublication(kind, id, publish) {
+  await admin.query('begin');
+  let pending;
+  try {
+    await publish(admin);
+    const adminPid = (await admin.query('select pg_backend_pid() pid')).rows[0].pid;
+    pending = settle(insertPublicationSource(clients[0], kind, id));
+    await waitForBlock(workerPids[0], adminPid, 'Source statement must wait for map publication before taking business row locks');
+    await admin.query('commit');
+    requireSuccess(await pending);
+  } finally {
+    await admin.query('rollback');
+    if (pending) await pending;
+  }
+}
+
+async function mixedImportAcrossActiveWriter(operation, importId, activeId) {
+  await clients[0].query('begin');
+  let pending;
+  try {
+    // Pause at the BEFORE STATEMENT barrier, before the active-row mutation.
+    await clients[0].query('select key from public.app_dataset_revisions where key=$1 for share', [mappingKeys[0]]);
+    pending = settle(operation === 'begin'
+      ? clients[1].query('select public.begin_dataset_import_v1($1::text[],$2::uuid)', [['ph_active_request', ...mappingKeys], importId])
+      : finishMappingImport(clients[1], importId));
+    await waitForBlock(workerPids[1], workerPids[0], 'Mixed import must wait at the map revision before taking the active revision');
+    await admin.query('begin');
+    try {
+      await admin.query("select key from public.app_dataset_revisions where key='ph_active_request' for update nowait");
+    } finally {
+      await admin.query('rollback');
+    }
+    if (operation === 'begin') {
+      await clients[0].query("insert into public.ph_active_request(unique_id,req_status,requested_by,request_selected_rep_username) values($1,'Pending',$2,$2)", [activeId, repName]);
+    } else {
+      await clients[0].query("update public.ph_active_request set request_note='Mixed import lock-order fixture' where unique_id=$1", [activeId]);
+    }
+    await clients[0].query('commit');
+    requireSuccess(await pending);
+  } finally {
+    await clients[0].query('rollback');
+    if (pending) await pending;
+  }
+}
+
 await admin.connect();
 try {
   step = 'isolated fixture setup';
@@ -71,7 +141,8 @@ try {
     await admin.query('insert into public.profiles(id,username,display_name,role,must_change_password) values($1,$2,$2,$3,false)',
       [ids[index], names[index], index < 2 ? 'ADMIN' : index === 2 ? 'REP' : 'GROWER']);
   }
-  await admin.query("insert into sales_private.rep_identities(kind,identity_key,profile_id) values('external_id',$1,$2),('username',$1,$2)", [repName, rep]);
+  await admin.query('insert into public.ph_customer_consignee_sales_reps(unique_id,salesrepid,salesrepname) values($1,$2,$2)',
+    [repMapId, repName]);
   await admin.query(`insert into public.ph_soc_master(unique_id,itemcode,commonname,contsize,locationcode,lotcode,quantityordered,dock,stopnumber,
     transactionnumber,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid)
     values($1,$2,'Concurrency plant','#3','D.08.001','27.F1','20','Dock 1','1',$3,$3,'Concurrency customer',$3,'Concurrency consignee',$4)`,
@@ -140,7 +211,52 @@ try {
   assert.deepEqual(replay.row, completedRow, 'Completion acknowledgement loss replays the same row and revision');
   assert.equal(replay.duplicate, true);
   assert.equal((await admin.query('select ptronhand from public.ph_master_inventory where unique_id=$1', [masterId])).rows[0].ptronhand, '20', 'Production work never changes stock');
-  console.log('PASS: competing credit submissions/reviewers, single-use authorization, production deduplication, and stale completion.');
+
+  // Direct business-table fixture writes use the isolated database owner. The
+  // preceding API races still execute as service_role, with their real grants.
+  await Promise.all(clients.map(client => client.query('reset role')));
+  assert.equal((await admin.query('select state from public.app_dataset_revisions where key=$1', [mappingKeys[0]])).rows[0].state, 'ready');
+  for (const kind of ['docks', 'request_history']) {
+    const importId = randomUUID(), nextImportId = randomUUID();
+    publicationRunIds.push(importId, nextImportId);
+    const duringBegin = `${prefix}-${kind}-BEGIN`, beforeFinish = `${prefix}-${kind}-UNCOMMITTED`, duringFinish = `${prefix}-${kind}-FINISH`;
+    publicationSourceIds.push(duringBegin, beforeFinish, duringFinish);
+
+    step = `${kind} statement waits for import begin and rejects its pre-begin snapshot`;
+    await insertAcrossPublication(kind, duringBegin, client => beginMappingImport(client, importId));
+    assert.equal(await publicationOwner(admin, kind, duringBegin), null, 'Statement started before import begin must observe importing after lock wait');
+
+    step = `${kind} uncommitted source blocks finish until the new archive is visible`;
+    await clients[0].query('begin');
+    let finishing;
+    try {
+      await insertPublicationSource(clients[0], kind, beforeFinish);
+      assert.equal(await publicationOwner(clients[0], kind, beforeFinish), null, 'Importing source starts unassigned');
+      finishing = settle(finishMappingImport(clients[1], importId));
+      await waitForBlock(workerPids[1], workerPids[0], 'Finish must wait for an in-flight source transaction before repairing owners');
+      await clients[0].query('commit');
+      requireSuccess(await finishing);
+    } finally {
+      await clients[0].query('rollback');
+      if (finishing) await finishing;
+    }
+    assert.equal(await publicationOwner(admin, kind, beforeFinish), rep, 'Finish sees and repairs the newly committed source');
+    assert.equal(await publicationOwner(admin, kind, duringBegin), rep, 'Finish also repairs the source deferred at begin');
+
+    step = `${kind} statement waits for finish and rejects its pre-finish snapshot`;
+    await beginMappingImport(admin, nextImportId);
+    await insertAcrossPublication(kind, duringFinish, client => finishMappingImport(client, nextImportId));
+    assert.equal(await publicationOwner(admin, kind, duringFinish), rep, 'Statement started during importing observes ready after finish commits');
+  }
+  const mixedRun = randomUUID(), mixedActive = `${prefix}-MIXED-ACTIVE`;
+  publicationRunIds.push(mixedRun);
+  publicationActiveIds.push(mixedActive);
+  step = 'mixed import begin locks map before active revision';
+  await mixedImportAcrossActiveWriter('begin', mixedRun, mixedActive);
+  step = 'mixed import finish locks map before active revision';
+  await mixedImportAcrossActiveWriter('finish', mixedRun, mixedActive);
+  assert.equal((await admin.query("select bool_and(state='ready') ready from public.app_dataset_revisions where key=any($1::text[])", [['ph_active_request', ...mappingKeys]])).rows[0].ready, true);
+  console.log('PASS: competing credit submissions/reviewers, single-use authorization, production deduplication, stale completion, and eight independent-connection ownership/publication barriers.');
 } catch (error) {
   console.error(`FAILED STEP: ${step}`);
   failure = error;
@@ -149,15 +265,26 @@ try {
   try {
     await admin.query('rollback');
     if (fixtureCommitted) {
+      // Every import above changes only metadata, so complete any interrupted
+      // test barrier before deleting this run's exact isolated fixture records.
+      const unfinished = await admin.query("select id from app_sync_private.import_runs where id=any($1::uuid[]) and state='active'", [publicationRunIds]);
+      for (const row of unfinished.rows) await finishMappingImport(admin, row.id);
       await admin.query('begin');
       await admin.query('delete from sales_private.commands where actor_id=any($1::uuid[])', [ids]);
       await admin.query('delete from sales_private.review_events where actor_id=any($1::uuid[])', [ids]);
       await admin.query('delete from sales_private.repeat_authorizations where requester_id=$1', [rep]);
       await admin.query('delete from public.ph_sales_credit_requests where submission_id=any($1::uuid[])', [draftIds]);
       await admin.query('delete from public.ph_credit_submissions where id=any($1::uuid[])', [draftIds]);
+      await admin.query('delete from sales_private.source_versions where source_id in (select id from public.ph_credit_sources where source_id=any($1::text[]))', [publicationSourceIds]);
+      await admin.query('delete from public.ph_credit_sources where source_id=any($1::text[])', [publicationSourceIds]);
+      await admin.query('delete from public.ph_request_history where unique_id=any($1::text[])', [publicationSourceIds]);
+      await admin.query('delete from public.ph_soc_master where unique_id=any($1::text[])', [publicationSourceIds]);
+      await admin.query('delete from public.ph_active_request where unique_id=any($1::text[])', [publicationActiveIds]);
+      await admin.query('delete from app_sync_private.import_runs where id=any($1::uuid[])', [publicationRunIds]);
       await admin.query("delete from sales_private.source_versions where source_id in (select id from public.ph_credit_sources where source_kind='docks' and source_id=$1)", [sourceId]);
       await admin.query("delete from public.ph_credit_sources where source_kind='docks' and source_id=$1", [sourceId]);
       await admin.query('delete from public.ph_soc_master where unique_id=$1', [sourceId]);
+      await admin.query('delete from public.ph_customer_consignee_sales_reps where unique_id=$1', [repMapId]);
       await admin.query('delete from workflow_private.commands where actor_id=any($1::uuid[])', [ids]);
       await admin.query('delete from public.ph_production_workflow_rows where source_unique_id=$1', [masterId]);
       await admin.query('delete from public.ph_master_inventory where unique_id=$1', [masterId]);

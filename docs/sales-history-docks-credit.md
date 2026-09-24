@@ -14,7 +14,7 @@ Drafts, multiple affected lines, optional camera/gallery photos, uncertain-submi
 
 - Apply `20260924115226_sales_history_customer_docks_ownership.sql` before deploying the updated `app-api` and frontend.
 - `ph_credit_sources` remains the permanent table; `sales_private.source_versions` retains changes. Capture survives active-row removal and invoice/import updates. Recovery reads retained `ph_soc_master` rows without a date cutoff and is repeatable.
-- Exact normalized account aliases and verified imported external IDs resolve rep ownership. Ambiguous or unknown identities stay unassigned. Import/profile changes refresh mappings and repair missing owners without reassigning established history.
+- Exact normalized account aliases and verified imported external IDs resolve rep ownership. Ambiguous or unknown identities stay unassigned. Import/profile changes refresh mappings and repair missing owners without reassigning established history. Incomplete or interrupted rep-map imports cannot assign external-ID ownership; successful publication repairs waiting records after every batch has been considered.
 - New optional request fields: `customeridentityid`, `customername`, `consigneeidentityid`, `consigneename`. Same-request snapshots can restore missing information; names never establish IDs. Legacy clients remain accepted.
 - Credit folders/sources accept optional `sourceKind`. `source` requires `sourceKind` plus exact `sourceUniqueId`, returning `{source,folder}`. It cannot create a source and applies module/ownership checks, including canonical sources.
 - `sales_history_unresolved_sources_v1()` is a service-only review report. Do not expose its results to reps.
@@ -24,6 +24,8 @@ Previously deleted shipments without retained source evidence cannot be reconstr
 ## Verification and release evidence
 
 Focused SQL fixtures cover real imported names, future reps, ambiguity, immutable ownership, invoiced recovery, repeated capture, exact source access denial, creator visibility, context preservation, full search and pagination. Native isolated CI additionally runs the existing append, private photo, duplicate claim, and concurrent-review suites.
+
+The import regression reproduces a unique-looking first batch followed by a conflicting second batch, interrupted imports, and successful retries. It verifies unchanged historical owners, preserved import-token enforcement, and no new claims or notifications during repair. Source writers and import publication take the mapping-revision lock before business-row locks, while read APIs remain lock-free. Eight native independent-connection tests cover overlapping Docks/history capture and mixed-dataset import begin/finish. Mixed imports retain their existing payload and sorted-key contracts. The native concurrency fixture imports rep mappings through the same automatic identity path instead of manually duplicating generated aliases.
 
 Compiled browser fixtures cover desktop, Android, iPhone, narrow phones, source tabs, Back navigation, active Docks entry, multi-line/photo drafts, failed uploads, lost acknowledgements, and review decisions. The protected complete candidate and hosted validation gates remain mandatory.
 

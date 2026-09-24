@@ -131,5 +131,75 @@ do $$ declare response jsonb; next_page jsonb; begin
   next_page:=public.request_history_command_v1('97100000-0000-4000-8000-000000000001','search',jsonb_build_object('query','HD-PAGINATION','limit',100,'cursor',response->'nextCursor'));
   perform pg_temp.history_check(jsonb_array_length(response->'rows')=100 and jsonb_array_length(next_page->'rows')=5,'expanded history search retains stable pagination');
 end $$;
+-- Simulate separate HTTP import batches with their real token and publication API.
+-- The first batch appears unique, but the second reveals a conflicting rep.
+create temporary table sales_history_import_baseline as
+select (select count(*) from public.ph_request_delivery_outbox) deliveries,
+  (select count(*) from public.ph_sales_credit_requests) claims;
+insert into public.ph_customer_consignee_sales_reps(unique_id,salesrepid,salesrepname)
+values('HD-FENCE-STABLE-MAP','HD-FENCE-STABLE','Brown, History Ben');
+insert into public.ph_soc_master(unique_id,salesrepid) values
+('HD-FENCE-ESTABLISHED','HD-FENCE-STABLE'),('HD-FENCE-WAITING','HD-FENCE-SPLIT');
+select public.begin_dataset_import_v1(array['ph_customer_consignee_sales_reps'],'97100000-0000-4000-8000-000000000020');
+select set_config('request.headers','{"x-gnc-import-run-id":"97100000-0000-4000-8000-000000000020","x-test-retained":"yes"}',true);
+select set_config('app_sync.touched','{}',true);
+insert into public.ph_customer_consignee_sales_reps(unique_id,salesrepid,salesrepname)
+values('HD-FENCE-SPLIT-A','HD-FENCE-SPLIT','Brown, History Ben');
+select pg_temp.history_check((select assigned_rep_id is null from public.ph_credit_sources where source_id='HD-FENCE-WAITING'),'partial first mapping batch cannot permanently assign waiting history');
+select pg_temp.history_check(sales_private.assigned_rep('{"salesrepid":"HD-FENCE-STABLE"}') is null,'importing map blocks stale external aliases for new assignments');
+update public.profiles set display_name=display_name where username='history_ben_brown';
+select pg_temp.history_check((select assigned_rep_id is null from public.ph_credit_sources where source_id='HD-FENCE-WAITING'),'profile refresh cannot repair against partial import');
+insert into public.ph_soc_master(unique_id,salesrepid) values('HD-FENCE-NEW-DURING','HD-FENCE-STABLE');
+select pg_temp.history_check((select assigned_rep_id is null from public.ph_credit_sources where source_id='HD-FENCE-NEW-DURING'),'Docks capture during import defers external ownership');
+select set_config('app_sync.touched','{}',true);
+insert into public.ph_customer_consignee_sales_reps(unique_id,salesrepid,salesrepname)
+values('HD-FENCE-SPLIT-B','HD-FENCE-SPLIT','Rep, History Other');
+select public.finish_dataset_import_v1('97100000-0000-4000-8000-000000000020');
+select pg_temp.history_check((select assigned_rep_id is null from public.ph_credit_sources where source_id='HD-FENCE-WAITING'),'successful finish evaluates both batches and leaves conflicting history unresolved');
+select pg_temp.history_check((select assigned_rep_id='97100000-0000-4000-8000-000000000001'::uuid from public.ph_credit_sources where source_id='HD-FENCE-NEW-DURING'),'successful finish repairs null owners without another source write');
+select pg_temp.history_check((select assigned_rep_id='97100000-0000-4000-8000-000000000001'::uuid from public.ph_credit_sources where source_id='HD-FENCE-ESTABLISHED'),'import fence preserves established historical owner');
+select pg_temp.history_check(current_setting('request.headers')::jsonb='{"x-gnc-import-run-id":"97100000-0000-4000-8000-000000000020","x-test-retained":"yes"}'::jsonb,'finish-derived repair restores exact caller headers');
+select set_config('app_sync.touched','{}',true);
+do $$ begin
+  begin
+    update public.ph_customer_consignee_sales_reps set salesrepname=salesrepname where unique_id='HD-FENCE-SPLIT-A';
+    raise exception 'Closed import token must not write another mapping batch';
+  exception when others then if sqlerrm<>'DATASET_IMPORT_FENCE_LOST' then raise; end if; end;
+end $$;
+select pg_temp.history_check(true,'restored closed token still rejects later batch writes');
+select public.finish_dataset_import_v1('97100000-0000-4000-8000-000000000020');
+select set_config('request.headers','{}',true);
+select set_config('app_sync.touched','{}',true);
+insert into public.ph_soc_master(unique_id,salesrepid) values('HD-FENCE-FAILED','HD-FENCE-FAIL');
+select public.begin_dataset_import_v1(array['ph_customer_consignee_sales_reps'],'97100000-0000-4000-8000-000000000021');
+select set_config('request.headers','{"x-gnc-import-run-id":"97100000-0000-4000-8000-000000000021"}',true);
+select set_config('app_sync.touched','{}',true);
+insert into public.ph_customer_consignee_sales_reps(unique_id,salesrepid,salesrepname)
+values('HD-FENCE-FAIL-MAP','HD-FENCE-FAIL','Brown, History Ben');
+select public.fail_dataset_import_v1('97100000-0000-4000-8000-000000000021');
+select set_config('request.headers','{}',true);
+select set_config('app_sync.touched','{}',true);
+select sales_private.refresh_rep_identities();
+update public.profiles set display_name=display_name where username='history_ben_brown';
+select pg_temp.history_check((select assigned_rep_id is null from public.ph_credit_sources where source_id='HD-FENCE-FAILED'),'failed/import-interrupted mapping cannot repair history even through profile/manual refresh');
+select pg_temp.history_check(sales_private.assigned_rep('{"salesrepid":"HD-FENCE-STABLE"}') is null,'interrupted map blocks stale external aliases');
+insert into public.ph_soc_master(unique_id,salesrepid) values('HD-FENCE-INTERRUPTED','HD-FENCE-STABLE');
+select pg_temp.history_check((select assigned_rep_id is null from public.ph_credit_sources where source_id='HD-FENCE-INTERRUPTED'),'Docks capture after failed import remains unassigned');
+select public.begin_dataset_import_v1(array['ph_customer_consignee_sales_reps'],'97100000-0000-4000-8000-000000000022');
+select set_config('request.headers','{"x-gnc-import-run-id":"97100000-0000-4000-8000-000000000022"}',true);
+select set_config('app_sync.touched','{}',true);
+select public.finish_dataset_import_v1('97100000-0000-4000-8000-000000000022');
+select pg_temp.history_check((select assigned_rep_id='97100000-0000-4000-8000-000000000001'::uuid from public.ph_credit_sources where source_id='HD-FENCE-FAILED'),'validated zero-delta recovery repairs owner after failed import');
+select pg_temp.history_check((select assigned_rep_id='97100000-0000-4000-8000-000000000001'::uuid from public.ph_credit_sources where source_id='HD-FENCE-INTERRUPTED'),'validated recovery repairs shipments captured while interrupted');
+select pg_temp.history_check((select deliveries=(select count(*) from public.ph_request_delivery_outbox)
+  and claims=(select count(*) from public.ph_sales_credit_requests) from sales_history_import_baseline),'import publication ownership repairs create no claims or notifications');
+select set_config('request.headers','{}',true);
+select public.begin_dataset_import_v1(array['ph_customer_consignee_sales_reps','ph_active_request'],'97100000-0000-4000-8000-000000000023');
+select pg_temp.history_check((select source_keys=array['ph_active_request','ph_customer_consignee_sales_reps']
+  and canonical_keys=array['ph_active_request','ph_customer_consignee_sales_reps'] from app_sync_private.import_runs
+  where id='97100000-0000-4000-8000-000000000023'),'map-first locking preserves the mixed-import sorted source and canonical key contract');
+select public.finish_dataset_import_v1('97100000-0000-4000-8000-000000000023');
+select pg_temp.history_check((select bool_and(state='ready') from public.app_dataset_revisions
+  where key in ('ph_active_request','ph_customer_consignee_sales_reps')),'mixed import publishes both datasets with unchanged finish contract');
 select count(*) as sales_history_docks_checks from sales_history_docks_checks;
 rollback;
