@@ -58,6 +58,8 @@ try {
     'supabase/migrations/20260924145930_incident_pause_request_delivery_claims.sql',
     'supabase/migrations/20260924155225_request_metadata_notification_guard.sql',
     'supabase/migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql',
+    'supabase/migrations/20260924172552_request_drive_evidence_reset_guard.sql',
+    'supabase/tests/request_drive_reset_test.sql',
     'supabase/tests/request_metadata_notifications_test.sql',
     'supabase/tests/sales_credit_workflow_test.sql',
     'supabase/tests/sales_history_docks_test.sql',
@@ -66,6 +68,11 @@ try {
   ];
   for (const file of files) {
     currentStep = file;
+    if (args.includes('--before-reset-guard') && file.endsWith('20260924172552_request_drive_evidence_reset_guard.sql')) {
+      const original = read('supabase/migrations/20260905233900_safe_request_drive_evidence_repair_and_rpc_hardening.sql');
+      await db.exec(original.slice(0, original.indexOf('-- Trigger and maintenance functions')) + '\ncommit;');
+      continue;
+    }
     if (file.endsWith('20260901192727_repair_request_option_append.sql')) {
       // Load the real folder state AND all completion triggers. Omitting the
       // active-row trigger would hide metadata-backfill notification fanout.

@@ -21,7 +21,7 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 119);
+  assert.equal(migrations.length, 120);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
@@ -35,6 +35,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     '20260924145930_incident_pause_request_delivery_claims.sql',
     '20260924155225_request_metadata_notification_guard.sql',
     '20260924155542_restore_request_delivery_after_metadata_guard.sql',
+    '20260924172552_request_drive_evidence_reset_guard.sql',
     '20260815043342_dylan_live_pilot_preferences.sql',
     '20260904003007_sales_marketing_and_kayla_limited_access.sql',
     '20260902002912_flatten_eval_reports_2_and_reconcile_work.sql',
@@ -83,6 +84,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     'sep09_eval_review_compatibility_test.sql',
     'sales_credit_workflow_test.sql', 'sales_history_docks_test.sql', 'navigation_preferences_test.sql', 'production_workflow_test.sql',
     'request_metadata_notifications_test.sql',
+    'request_drive_reset_test.sql',
   ].sort());
   for (const filename of sqlTests) {
     assert.ok(fs.existsSync(new URL(`../supabase/tests/${filename}`, import.meta.url)), filename);
@@ -109,6 +111,7 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'CI=true BUNCH_NOTE_TEST_DB_URL="$DB_URL" node scripts/test-bunch-note-concurrency.mjs',
     'CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs',
     'CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs',
+    'CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
     'deno test --allow-env --allow-net supabase/functions',
   ];
