@@ -161,6 +161,11 @@ jobs:
           cp supabase/migrations/20260923174000_optimize_manager_season_priority_scope.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260923222348_materialize_manager_season_priority_scope_hashes.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260924115226_sales_history_customer_docks_ownership.sql "$ci_root/supabase/migrations/"
+          cp supabase/ci/request_notification_history_baseline.sql "$ci_root/supabase/migrations/20260924115225_ci_request_notification_history_baseline.sql"
+          cp supabase/migrations/20260924145431_incident_pause_request_delivery_wakes.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260924145930_incident_pause_request_delivery_claims.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260924155225_request_metadata_notification_guard.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -170,6 +175,7 @@ jobs:
           cases = {
               "sales_credit_workflow_test.sql": "sales_checks",
               "sales_history_docks_test.sql": "sales_history_docks_checks",
+              "request_metadata_notifications_test.sql": "request_metadata_notification_checks",
               "navigation_preferences_test.sql": "navigation_checks",
               "production_workflow_test.sql": "workflow_checks",
           }
