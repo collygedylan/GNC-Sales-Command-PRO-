@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { validateSalesEnvelope, decodeCreditPhoto, handleSalesWorkflow, SALES_CREDIT_BUCKET } from '../supabase/functions/_shared/sales-workflow.ts';
 
 const actorId = '11111111-1111-4111-8111-111111111111';
@@ -9,6 +10,16 @@ const session = { ver: 2, authUserId: actorId, username: 'sales_rep', displayNam
 const bytes = new Uint8Array([255, 216, 255, 224, 1, 2, 3]);
 const base64 = Buffer.from(bytes).toString('base64');
 const photoPayload = { sourceId, mime: 'image/jpeg', base64 };
+
+test('profile-triggered identity refresh scopes deletion to its generated alias kinds', () => {
+  const migration = readFileSync(new URL('../supabase/migrations/20260924115226_sales_history_customer_docks_ownership.sql', import.meta.url), 'utf8');
+  const refresh = migration.match(/create function sales_private\.refresh_rep_identities\(\)[\s\S]*?end \$\$;/)?.[0];
+  assert.ok(refresh, 'Identity refresh function must be present');
+  assert.match(refresh, /delete from sales_private\.rep_identities\s+where kind in \('username','name','external_id'\);/i,
+    'REST profile writes keep safe-update protection and explicitly scope generated aliases');
+  assert.doesNotMatch(migration, /safeupdate\.(?:enabled|allow_update|allow_delete)\s*(?:=|,|to)/i,
+    'Do not disable the database guard to make refresh succeed');
+});
 
 test('envelopes accept paginated history and reject client actors and missing mutation IDs', () => {
   assert.equal(validateSalesEnvelope({ action: 'request_history', operation: 'folders', payload: { status: 'completed', cursor: { key: 'x' } } }).operation, 'folders');

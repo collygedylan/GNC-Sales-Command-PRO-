@@ -57,7 +57,9 @@ begin
     where key='ph_customer_consignee_sales_reps' for update;
   if map_state is distinct from 'ready' then return; end if;
   perform pg_advisory_xact_lock(694873,1);
-  delete from sales_private.rep_identities;
+  -- Scope generated aliases explicitly so REST-triggered refresh preserves
+  -- safe-update protection instead of attempting an unqualified table delete.
+  delete from sales_private.rep_identities where kind in ('username','name','external_id');
   insert into sales_private.rep_identities(kind,identity_key,profile_id)
   with candidates as (
     select p.id,a.kind,a.key from public.profiles p cross join lateral (values
