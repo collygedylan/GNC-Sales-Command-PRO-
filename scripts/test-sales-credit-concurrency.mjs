@@ -150,10 +150,12 @@ try {
   await admin.query("insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,blockalpha,ptronhand,ptravailable) values($1,$2,'Concurrency plant','#3','D.08.001','27.F1','D','20','20')", [masterId, prefix]);
   await admin.query('commit');
   fixtureCommitted = true;
-  await Promise.all(clients.map(async client => {
+  await Promise.all(clients.map(async (client, index) => {
     await client.connect();
     await serviceSession(client);
-    workerPids.push((await client.query('select pg_backend_pid() pid')).rows[0].pid);
+    // Connection setup can finish out of order. Publication barriers address
+    // clients by index, so their backend identities must use that same index.
+    workerPids[index] = (await client.query('select pg_backend_pid() pid')).rows[0].pid;
     await client.query('set role service_role');
   }));
   const source = (await admin.query("select * from public.ph_credit_sources where source_kind='docks' and source_id=$1", [sourceId])).rows[0];
