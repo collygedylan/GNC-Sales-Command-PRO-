@@ -17,6 +17,10 @@ const pathWorkflow = read('../.github/workflows/codex-mobile-path-policy.yml');
 const html = read('../index.html');
 const healthProbe = read('../scripts/probe-production-auth-health.mjs');
 const productionCanary = read('./production-request-canary.spec.ts');
+const projectConfig = read('../.codex/config.toml');
+const modelRouting = read('../docs/model-routing.md');
+const agentRules = read('../AGENTS.md');
+const releasePipeline = read('../docs/parallel-release-pipeline.md');
 
 function capabilityHarness() {
   const state = () => ({ capabilities: null, capabilitiesLoading: false, capabilitiesLoaded: false, error: '' });
@@ -137,6 +141,22 @@ test('official Codex Action is immutable-pinned and model routing is bounded', (
   assert.doesNotMatch(workflow, /self-hosted|pull_request_target/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /needs\.diagnose\.outputs\.repair_allowed == 'true'/);
+});
+
+test('project defaults, bounded review, and automatic release policy stay aligned', () => {
+  assert.match(projectConfig, /^model = "gpt-6-luna"$/m);
+  assert.match(projectConfig, /^model_reasoning_effort = "low"$/m);
+  assert.match(projectConfig, /^default_subagent_model = "gpt-6-luna"$/m);
+  assert.match(projectConfig, /^default_subagent_reasoning_effort = "low"$/m);
+  assert.match(projectConfig, /^max_concurrent_threads_per_session = 2$/m);
+  assert.match(modelRouting, /GPT-6 Luna \/ low/);
+  assert.match(modelRouting, /bounded diff or contract under review/);
+  assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
+  assert.match(agentRules, /request to implement[\s\S]*automatic release/i);
+  assert.match(agentRules, /Do not fork the full conversation or repository history/);
+  assert.match(agentRules, /Do not poll or narrate unchanged jobs/);
+  assert.match(releasePipeline, /single source of progress/);
+  assert.match(releasePipeline, /Planning, explanation, diagnosis, status, and review-only requests do not authorize/);
 });
 
 test('publisher, exact SHA approval, required checks, and deterministic revert are separated', () => {

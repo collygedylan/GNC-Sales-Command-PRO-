@@ -751,6 +751,16 @@ body.ops-precision-pilot #app-wrapper #view-home #home-rep-dashboard-modules #ho
   color: var(--ops-module-tile-label) !important;
 }
 
+/* Shared module-tile contract. Legacy selectors above remain as fallbacks while
+   each hub is upgraded in place without replacing its DOM or click handlers. */
+body.ops-precision-pilot #app-wrapper .gnc-module-tile .gnc-module-tile__label {
+  color: var(--ops-module-tile-label) !important;
+}
+
+body.ops-precision-pilot #app-wrapper .gnc-module-tile .gnc-module-tile__icon {
+  color: var(--ops-brand) !important;
+}
+
 body.ops-precision-pilot #view-home .home-dashboard-sticky {
   margin: 0 !important;
   padding: 0 !important;

@@ -1,8 +1,9 @@
 # GNC defaults for new project sessions; explicit app/session choices take precedence.
-model = "gpt-5.6-sol"
-model_reasoning_effort = "medium"
+# Standard speed is intentionally inherited. Do not enable Fast mode for routine work.
+model = "gpt-6-luna"
+model_reasoning_effort = "low"
 
 [agents]
 max_concurrent_threads_per_session = 2
-default_subagent_model = "gpt-5.6-terra"
-default_subagent_reasoning_effort = "medium"
+default_subagent_model = "gpt-6-luna"
+default_subagent_reasoning_effort = "low"

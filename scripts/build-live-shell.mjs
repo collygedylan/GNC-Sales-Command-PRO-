@@ -2,8 +2,9 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
+import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'V2026.09.25.01';
+const RELEASE = 'V2026.09.25.02';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -24,7 +25,9 @@ if (!runtime || runtime.source.length < 1_000_000) {
   throw new Error('Unable to locate the live inline application runtime.');
 }
 
-const minified = await minify(runtime.source, {
+const runtimeManifest = await loadLiveRuntimeManifest({ root });
+const runtimeSource = assembleLiveRuntime(runtime.source, runtimeManifest);
+const minified = await minify(runtimeSource, {
   compress: false,
   mangle: false,
   module: false,
@@ -33,9 +36,7 @@ const minified = await minify(runtime.source, {
   format: { comments: false }
 });
 
-if (!minified.code || minified.code.length < 500_000) {
-  throw new Error('Live runtime output was unexpectedly small.');
-}
+assertLiveRuntimeOutputSize(minified.code);
 
 const runtimeName = 'live-app-runtime-v2026082010.min.js';
 const runtimeTarget = path.join(siteRoot, 'assets', runtimeName);

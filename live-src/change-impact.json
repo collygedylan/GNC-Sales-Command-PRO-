@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "gnc-change-impact-v1",
+  "fallbackCommands": [
+    "npm run check:foundation"
+  ],
+  "modules": [
+    {
+      "id": "codex-workflow",
+      "paths": [".codex/**", "AGENTS.md", "docs/model-routing.md", "docs/parallel-release-pipeline.md", "tests/codex-operations.test.mjs"],
+      "commands": ["node --test tests/codex-operations.test.mjs"]
+    },
+    {
+      "id": "runtime-foundation",
+      "paths": ["live-src/**", "scripts/build-live-shell.mjs", "scripts/live-runtime-manifest.mjs", "scripts/select-focused-tests.mjs", "tests/live-runtime-manifest.test.mjs", "tests/focused-test-selector.test.mjs", "package.json", "package-lock.json"],
+      "commands": [
+        "node --test tests/live-runtime-manifest.test.mjs tests/focused-test-selector.test.mjs",
+        "npm run check:foundation"
+      ]
+    },
+    {
+      "id": "module-hubs",
+      "paths": ["assets/mobile-workspace.js", "assets/mobile-workspace.css", "assets/ops-precision-pilot.css", "tests/live-pilot.test.mjs", "tests/sales-mobile.e2e.spec.ts", "playwright.sales-mobile.config.ts"],
+      "commands": [
+        "node --test tests/live-pilot.test.mjs",
+        "npm run check:foundation",
+        "npx playwright test --config playwright.sales-mobile.config.ts"
+      ]
+    }
+  ]
+}

@@ -14,7 +14,10 @@
 
 - Every change follows `docs/protected-releases.md`: isolated worktree, isolated test data/services, exact-commit validation, then automatic promotion when authorized by the task. Never repair a live source copy while developing.
 - Use `docs/model-routing.md` and supported task/delegation controls. One owner and one bounded reviewer; no duplicate investigations or default Max/Ultra. A difficult bounded problem may use Astra Max/Ultra without another permission question; record the reason.
+- A request to implement, change, fix, build, or repair authorizes the normal automatic release after every required gate passes. Planning, explanation, diagnosis, status, and review-only requests remain read-only unless they separately request a change.
+- Run one focused local regression against the freshly compiled shell, then one exact candidate validation. Run at most one corrected candidate after a diagnosed fix. Do not duplicate broad suites locally and in CI without a concrete unresolved failure.
+- Give the bounded reviewer only the changed diff, affected contracts, and test evidence. Do not fork the full conversation or repository history for routine review.
 - Target routine fixes/service restoration within 30 minutes, not a guarantee. During outages restore service first; reassess/escalate at ten minutes without a clear cause, and report restoration or the precise blocker at thirty. Do not waive tests or add unrelated features.
 - Start diagnosis with `npm run ops:diagnose`. Preserve the failure evidence and working live build. Never overwrite business data to roll back an application.
 - Record phases and available shared-account usage with `npm run ops:record -- PHASE MODEL EFFORT [USED_PERCENT]`, especially for the next three changes. Record unknown model/usage as unavailable, not guessed.
-- Use `release-candidate.mjs prepare --dispatch` and the printed `release-watch.mjs` command. Reuse unchanged exact-commit evidence, let automation wait, and inspect only actionable failures. Keep all required candidate/live gates.
+- Use `release-candidate.mjs prepare --dispatch` and the printed `release-watch.mjs` command. Reuse unchanged exact-commit evidence, let automation wait silently, and inspect only completion or actionable failures. Do not poll or narrate unchanged jobs. Keep all required candidate/live gates.

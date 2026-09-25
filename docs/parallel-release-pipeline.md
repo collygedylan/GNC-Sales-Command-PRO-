@@ -12,6 +12,8 @@ Reproduce the reported failure with a focused fixture while implementation proce
 
 Report implementation, validation, publication, and exact-live verification separately. A fast publish step does not make diagnosis or coding instantaneous. Record time spent in each phase so the next bottleneck can be measured rather than guessed. Any failed required check stops publication; fix the cause instead of bypassing it or repeatedly rerunning an unexplained failure.
 
+An authorized implementation request proceeds through the normal release automatically after focused checks and the exact candidate gate pass. Planning, explanation, diagnosis, status, and review-only requests do not authorize a change or release. During validation, run the printed watcher as the single source of progress; do not feed unchanged job lists back through the model. The reviewer receives only the bounded diff, affected contracts, and completed test evidence.
+
 ## One build; isolated checks
 
 Set `package.json` to the next unused `YYYY.MM.DD.NN` version, then run `npm run release:version` before committing. This synchronizes the manifest, shell, service worker, compiler and lockfile to `VYYYY.MM.DD.NN`. `npm run release:version -- --check` verifies the markers without writing. Read-only production health must be checked before lengthy candidate validation and immediately before publication.

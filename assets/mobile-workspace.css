@@ -1,7 +1,11 @@
 .gnc-hub-card{min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;padding:.7rem;border:1.5px solid #007a4d;border-radius:12px;background:var(--ops-surface,#fff);color:var(--ops-text,#007a4d);font-weight:800;text-align:center;overflow-wrap:anywhere}
 .gnc-hub-card i{font-size:1.5rem}
+.gnc-module-tile{--gnc-module-tile-label:var(--ops-module-tile-label,var(--ops-text,#000));--gnc-module-tile-icon:var(--ops-brand,#007a4d)}
+.gnc-module-tile .gnc-module-tile__label{color:var(--gnc-module-tile-label)!important}
+.gnc-module-tile .gnc-module-tile__icon{color:var(--gnc-module-tile-icon)!important}
+.gnc-module-tile:focus-visible{outline:2px solid var(--ui-focus,var(--ops-brand,#007a4d))!important;outline-offset:3px!important}
 /* Hub layout uses !important; permission-hidden tiles must stay hidden too. */
-#app-wrapper .gnc-hub-card:is([hidden],.hidden){display:none!important}
+#app-wrapper :is(.gnc-module-tile,.gnc-hub-card):is([hidden],.hidden){display:none!important}
 .gnc-settings-dialog{max-width:42rem;max-height:calc(100dvh - 2rem);overflow:auto;margin:auto;padding:1rem;border-radius:1rem;background:var(--ops-surface,#fff);color:var(--ops-text,#10281a)}
 .gnc-settings-dialog>button{min-height:44px;min-width:44px;padding:.6rem;border:1px solid #007a4d;border-radius:.7rem}
 @media(max-width:640px),(pointer:coarse){
@@ -10,7 +14,7 @@
  .gnc-mobile-workspace [id^="view-"]{min-width:0;max-width:100%;overflow-wrap:break-word}
  .gnc-mobile-workspace [id^="view-"] input[type=checkbox],.gnc-mobile-workspace [id^="view-"] input[type=radio]{flex-shrink:0;width:24px;height:24px}
  .gnc-mobile-workspace #app-wrapper #main-scroll-area{padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem + env(safe-area-inset-bottom))!important;scroll-padding-bottom:calc(var(--gnc-footer-height,80px) + 1rem)}
- .gnc-mobile-workspace [id^="view-"] .gnc-hub-card span{white-space:normal;line-height:1.2}
+ .gnc-mobile-workspace [id^="view-"] :is(.gnc-module-tile__label,.gnc-hub-card span){white-space:normal;line-height:1.2}
  .gnc-mobile-workspace #app-wrapper #bottom-nav .footer-nav-btn{min-width:44px;min-height:48px}
 }
 @media(max-width:359px){

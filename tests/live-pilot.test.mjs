@@ -1926,3 +1926,85 @@ test('mobile footer resize measurements defer, coalesce, skip unchanged writes, 
   assert.equal(writes, 3);
   dom.window.close();
 });
+
+test('module tiles share one descriptor and style contract without replacing legacy DOM', () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <div id="home-dashboard-grid">
+      <button id="home-tile-sales"><i class="ph-bold ph-storefront"></i><span>Sales</span></button>
+    </div>
+    <section id="view-sales"><div id="sales-hub-grid">
+      <button id="legacy-history" onclick="return switchView('request-history')">
+        <i class="ph-bold ph-clock-counter-clockwise"></i><div>Request History</div>
+      </button>
+    </div></section>
+    <section id="view-office"><div id="office-hub-grid"></div></section>
+    <section id="view-managers"><div class="manager-module-grid">
+      <button><span><i class="ph-bold ph-chart-bar"></i></span><span class="manager-module-title">First Manager Card</span></button>
+    </div></section>
+  </body></html>`, { runScripts: 'outside-only' });
+  const routed = [];
+  dom.window.switchView = (view) => routed.push(view);
+  dom.window.openSalesOfficeView = () => routed.push('sales-office');
+  dom.window.openInventoryOfficeView = () => routed.push('inventory-office');
+  dom.window.canAccessView = (view) => view !== 'credit-request';
+  dom.window.eval(read('assets/mobile-workspace.js'));
+
+  const workspace = dom.window.GncMobileWorkspace;
+  const legacyHistory = dom.window.document.getElementById('legacy-history');
+  const originalOnclick = legacyHistory.getAttribute('onclick');
+  workspace.syncHub('sales');
+  workspace.syncHub('office');
+  workspace.upgradeAllModuleTiles();
+
+  assert.equal(dom.window.document.getElementById('legacy-history'), legacyHistory);
+  assert.equal(legacyHistory.getAttribute('onclick'), originalOnclick);
+  assert.ok(legacyHistory.classList.contains('gnc-module-tile'));
+  assert.ok(legacyHistory.querySelector('i').classList.contains('gnc-module-tile__icon'));
+  assert.ok(legacyHistory.querySelector('div').classList.contains('gnc-module-tile__label'));
+  assert.equal(workspace.registry.descriptorFor(legacyHistory).targetView, 'request-history');
+  assert.deepEqual([...dom.window.document.getElementById('sales-hub-grid').children].map(({ id }) => id), [
+    'legacy-history',
+    'hub-extra-sales-sales-office',
+    'hub-extra-sales-sales-credit',
+    'hub-extra-sales-credit-request',
+    'hub-extra-sales-communication'
+  ]);
+
+  const descriptor = workspace.registry.sales[0];
+  assert.deepEqual(
+    { id: descriptor.id, targetView: descriptor.targetView, label: descriptor.label, iconClass: descriptor.iconClass, order: descriptor.order },
+    { id: 'sales-office', targetView: 'sales-office', label: 'Sales Office', iconClass: 'ph-flower-lotus', order: 0 }
+  );
+  descriptor.activate();
+  workspace.registry.office[0].activate();
+  assert.deepEqual(routed, ['sales-office', 'communication']);
+
+  const generated = dom.window.document.getElementById('hub-extra-office-communication');
+  assert.ok(generated.classList.contains('gnc-hub-card'));
+  assert.ok(generated.classList.contains('gnc-module-tile'));
+  assert.ok(generated.querySelector('i').classList.contains('gnc-module-tile__icon'));
+  assert.ok(generated.querySelector('span').classList.contains('gnc-module-tile__label'));
+  assert.equal(generated.dataset.moduleTileId, 'communication');
+  assert.equal(generated.dataset.moduleTargetView, 'communication');
+  assert.equal(generated.getAttribute('onclick'), "return switchView('communication')");
+
+  const restricted = dom.window.document.getElementById('hub-extra-sales-credit-request');
+  assert.equal(restricted.hidden, true);
+  assert.ok(restricted.classList.contains('hidden'));
+  const homeTile = dom.window.document.getElementById('home-tile-sales');
+  assert.ok(homeTile.classList.contains('gnc-module-tile'));
+  assert.equal(homeTile.dataset.moduleTargetView, 'sales');
+  assert.deepEqual(
+    { id: workspace.registry.descriptorFor(homeTile).id, targetView: workspace.registry.descriptorFor(homeTile).targetView, order: workspace.registry.descriptorFor(homeTile).displayOrder },
+    { id: 'home-tile-sales', targetView: 'sales', order: 0 }
+  );
+  const managerGrid = dom.window.document.querySelector('.manager-module-grid');
+  managerGrid.replaceChildren();
+  const replacementManager = dom.window.document.createElement('button');
+  replacementManager.innerHTML = '<span><i class="ph-bold ph-users"></i></span><span class="manager-module-title">Replacement Manager Card</span>';
+  managerGrid.append(replacementManager);
+  workspace.upgradeAllModuleTiles();
+  assert.deepEqual(Array.from(workspace.registry.descriptorsForHub('managers'), item => item.label), ['Replacement Manager Card']);
+  assert.equal(workspace.registry.descriptorFor(replacementManager).targetView, 'managers');
+  dom.window.close();
+});
