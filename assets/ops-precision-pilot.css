@@ -6,6 +6,7 @@ body.ops-precision-pilot {
   --ops-surface-strong: #edf4f0;
   --ops-text: #13221b;
   --ops-text-muted: #617068;
+  --ops-module-tile-label: #000000;
   --ops-border: #cbd8d1;
   --ops-border-strong: #8fa69a;
   --ops-brand: #08784a;
@@ -37,6 +38,7 @@ body.ops-precision-pilot[data-ops-theme="dark"] {
   --ops-surface-strong: #1b2b26;
   --ops-text: #f2fbf6;
   --ops-text-muted: #9db4aa;
+  --ops-module-tile-label: #ffffff;
   --ops-border: rgba(99, 230, 173, 0.34);
   --ops-border-strong: rgba(99, 230, 173, 0.62);
   --ops-brand: #19b979;
@@ -700,14 +702,53 @@ body.ops-precision-pilot :is(
   color: var(--ops-brand) !important;
 }
 
-/* Dynamically added modules use the same surfaces and focus states as legacy hubs. */
-body.ops-precision-pilot #app-wrapper .gnc-hub-card {
-  /* Switch text and surface together; fading only the parent can hide its label. */
+/* Switch each module tile's surface and label as one palette to retain contrast. */
+body.ops-precision-pilot #app-wrapper :is(
+  .gnc-hub-card,
+  #home-dashboard-grid > div,
+  #home-rep-dashboard-grid > button,
+  #view-sales #sales-hub-grid > button,
+  #view-sales button[id^="sales-open-"],
+  #view-production #production-hub-grid > button,
+  #view-production button[id^="production-open-"],
+  #view-sales-inventory #sales-inventory-hub-grid > button,
+  #view-qc #qc-hub-grid > button,
+  #view-qc button[id^="qc-open-"],
+  #view-office #office-hub-grid > button,
+  #view-office button[id^="office-open-"],
+  #view-communication #communication-hub-grid > button,
+  #view-communication button[id^="communication-open-"],
+  #view-disease-pest #disease-pest-hub-grid > button,
+  #view-disease-pest button[id^="disease-pest-open-"]
+) {
   transition-property: border-color, box-shadow, transform !important;
 }
 
-body.ops-precision-pilot .gnc-hub-card > span {
-  color: var(--ops-text) !important;
+body.ops-precision-pilot #app-wrapper :is(
+  .gnc-hub-card > span,
+  #home-dashboard-grid > div > span,
+  #home-rep-dashboard-grid > button > span,
+  #view-sales #sales-hub-grid > button > div:nth-child(2),
+  #view-sales button[id^="sales-open-"] > div:nth-child(2),
+  #view-production #production-hub-grid > button > div:nth-child(2),
+  #view-production button[id^="production-open-"] > div:nth-child(2),
+  #view-sales-inventory #sales-inventory-hub-grid > button > div:nth-child(2),
+  #view-qc #qc-hub-grid > button > div:nth-child(2),
+  #view-qc button[id^="qc-open-"] > div:nth-child(2),
+  #view-office #office-hub-grid > button > div:nth-child(2),
+  #view-office button[id^="office-open-"] > div:nth-child(2),
+  #view-communication #communication-hub-grid > button > div:nth-child(2),
+  #view-communication #communication-hub-grid > button > div:nth-child(2) .text-lg,
+  #view-communication button[id^="communication-open-"] > div:nth-child(2),
+  #view-disease-pest #disease-pest-hub-grid > button > div:nth-child(2),
+  #view-disease-pest button[id^="disease-pest-open-"] > div:nth-child(2),
+  #view-managers .manager-module-title
+) {
+  color: var(--ops-module-tile-label) !important;
+}
+
+body.ops-precision-pilot #app-wrapper #view-home #home-rep-dashboard-modules #home-rep-dashboard-grid > button > span {
+  color: var(--ops-module-tile-label) !important;
 }
 
 body.ops-precision-pilot #view-home .home-dashboard-sticky {

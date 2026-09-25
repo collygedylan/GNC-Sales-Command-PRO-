@@ -92,6 +92,20 @@ async function expectHubContrast(page: Page, selector = '#sales-hub-grid .gnc-hu
   }
 }
 
+async function expectModuleTileLabelColor(page: Page, theme: 'light' | 'dark', selector: string) {
+  const labels = await page.locator(selector).evaluateAll(nodes => nodes.map(tile => {
+    const label = tile.querySelector('.manager-module-title')
+      || tile.querySelector(':scope > div:nth-child(2) .text-lg')
+      || tile.querySelector(':scope > span')
+      || tile.querySelector(':scope > div:nth-child(2)');
+    if (!label) throw new Error(`Module tile is missing its label: ${tile.id || tile.className}`);
+    return { tile: tile.id || tile.className, label: label.textContent?.trim(), color: getComputedStyle(label).color };
+  }));
+  expect(labels.length).toBeGreaterThan(0);
+  const expected = theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
+  for (const row of labels) expect(row.color, JSON.stringify(row)).toBe(expected);
+}
+
 for (const role of ['ADMIN', 'SALES']) {
   test(`shared module tiles remain readable in every theme for ${role}`, async ({ page, baseURL }) => {
     const f = await installSalesMobileFixture(page, baseURL!, role === 'SALES'
@@ -115,6 +129,7 @@ for (const role of ['ADMIN', 'SALES']) {
     });
     for (const theme of ['light', 'dark', 'light']) for (const outdoor of [false, true]) {
       await expectHubContrast(page, undefined, { theme, outdoor });
+      await expectModuleTileLabelColor(page, theme as 'light' | 'dark', '#sales-hub-grid > button:visible, .gnc-hub-card:visible, #view-sales button[id^="sales-open-"]:visible');
       await expect(history).toBeVisible();
       await expect(credit).toBeVisible();
       if (role === 'SALES') await expect(review).toBeHidden();
@@ -133,6 +148,16 @@ for (const role of ['ADMIN', 'SALES']) {
         await history.scrollIntoViewIfNeeded();
         await page.screenshot({ path: test.info().outputPath('sales-modules-dark-outdoor.png') });
       }
+    }
+    if (role === 'ADMIN') {
+      await page.evaluate(() => (window as any).switchView('communication'));
+      await expect(page.locator('#communication-hub-grid')).toBeVisible();
+      for (const theme of ['light', 'dark']) {
+        await page.evaluate(nextTheme => { document.body.dataset.opsTheme = nextTheme; }, theme);
+        await expectModuleTileLabelColor(page, theme as 'light' | 'dark', '#communication-hub-grid > button:visible');
+      }
+      await page.evaluate(() => (window as any).switchView('sales'));
+      await expect(page.locator('#sales-hub-grid')).toBeVisible();
     }
     expect(await page.locator('#sales-hub-grid button').evaluateAll(nodes => nodes.map(node => ({
       id: node.id, title: node.textContent?.trim(), action: node.getAttribute('onclick'),
