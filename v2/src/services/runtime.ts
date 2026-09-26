@@ -1,4 +1,4 @@
-import type { AppRuntimeConfig } from './types';
+import type { AppRuntimeConfig } from '../types';
 
 const DEFAULT_PRODUCTION_REF = 'kzrnyjsosryejjejliii';
 let runtimePromise: Promise<AppRuntimeConfig> | null = null;

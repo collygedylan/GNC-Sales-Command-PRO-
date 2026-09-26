@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
-import { compareAvRows, normalizeItemcode } from '../avSort';
-import type { InventoryRow } from '../types';
+import { compareAvRows, normalizeItemcode } from '../../utils/avSort';
+import type { InventoryRow } from '../../types';
 
 type WorkerRequest = {
   id: string;

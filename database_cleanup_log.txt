@@ -1,0 +1,34 @@
+Database cleanup audit
+Timestamp UTC: 09/26/2026 23:21:45
+Production project: kzrnyjsosryejjejliii
+Public tables inventoried: 119
+Tables dropped: NONE (0)
+Cascade effects: NONE
+Database schema and business data unchanged.
+
+Catalog inspection covered tables, row estimates, access statistics, routines, views, foreign keys, triggers, RLS policies and publications.
+Cross-reference covered tracked HTML, React, Apps Script, JavaScript/TypeScript, Python, SQL and workflow configuration.
+19 tables lacked direct runtime source references; 18 of these have routine dependencies. The archive manifest has retained archival data and observed reads.
+Dynamic SQL, external clients and deployed service differences prevent proving these tables orphaned.
+No DROP statements executed. Destructive data backup/restore rehearsal was unnecessary because no destructive candidate qualified.
+
+Retained tables without direct runtime references:
+ph_dock_trip_status_audit
+ph_drive_around_report_rows_archive_manifest
+ph_eval_assignment_users
+ph_hold_learning_refresh_itemcodes
+ph_hold_learning_refresh_jobs
+ph_location_work_audit
+ph_location_work_delivery_events
+ph_master_inventory_user_assignments
+ph_photo_history_assets
+ph_photo_history_audit
+ph_photo_history_index_state
+ph_photo_history_shares
+ph_pikes_order_assignment_repair_audit
+ph_pikes_order_inventory_rows
+ph_request_delivery_worker_state
+ph_season_sales_note_user_events
+ph_season_sales_office_events
+ph_shear_location_events
+ph_shear_location_submissions

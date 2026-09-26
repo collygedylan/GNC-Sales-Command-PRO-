@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { selectAndSortAvRows } from './avSort';
-import { cacheInventoryPage, readCachedInventoryPage, savePreference as cachePreference } from './db';
+import { selectAndSortAvRows } from '../utils/avSort';
+import { cacheInventoryPage, readCachedInventoryPage, savePreference as cachePreference } from './cache';
 import { loadRuntimeConfig } from './runtime';
 import type {
   AvOptionRow,
@@ -9,7 +9,7 @@ import type {
   RequestRow as RequestRecord,
   UserPreferences,
   WorkflowRow
-} from './types';
+} from '../types';
 
 export const APP_VERSION = 'V2026.09.07.v2.17';
 export const REQUEST_TABLE = 'ph_active_request';

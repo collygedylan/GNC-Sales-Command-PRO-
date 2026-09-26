@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PartnerWorkspace, isPartnerReady, partnerWorkspaceUrl } from './PartnerWorkspace';
-import { App, viewFromHash } from './App';
+import { App, viewFromHash } from '../pages/App';
 
 beforeEach(() => {
   vi.useFakeTimers();

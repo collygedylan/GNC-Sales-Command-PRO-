@@ -21,4 +21,5 @@ _site/
 artifacts/
 .gnc-local/
 .lighthouseci/
+legacy_fallback/
 

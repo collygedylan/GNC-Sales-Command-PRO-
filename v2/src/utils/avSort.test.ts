@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeItemcode, selectAndSortAvRows } from './avSort';
-import type { InventoryRow } from './types';
+import type { InventoryRow } from '../types';
 
 function row(
   id: string,

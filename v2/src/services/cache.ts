@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { InventoryRow, UploadJob, UserPreferences } from './types';
+import type { InventoryRow, UploadJob, UserPreferences } from '../types';
 
 export type CachedRow = InventoryRow & { cachedAt: number };
 export type DraftRecord = { id: string; moduleKey: string; payload: Record<string, unknown>; updatedAt: number };

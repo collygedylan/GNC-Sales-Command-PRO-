@@ -1,4 +1,4 @@
-import type { AvOptionRow, InventoryRow } from './types';
+import type { AvOptionRow, InventoryRow } from '../types';
 
 export function normalizeItemcode(value: unknown) {
   return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '');

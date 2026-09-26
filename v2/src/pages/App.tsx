@@ -51,9 +51,9 @@ import {
   storeSession,
   uniqueId,
   uploadRequestPhoto
-} from './services';
-import type { AvOptionRow } from './types';
-import { PartnerWorkspace } from './PartnerWorkspace';
+} from '../services/api';
+import type { AvOptionRow } from '../types';
+import { PartnerWorkspace } from '../components/PartnerWorkspace';
 
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'partner-av' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';

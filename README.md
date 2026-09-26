@@ -1,4 +1,7 @@
-# GNC Sales Command Pro
+# GNC Codex App
+
+See [workspace layout and recovery](docs/gnc-codex-app.md) for the canonical local
+repository, Drive source mirror, modular React layout and private fallback.
 
 Current production repo contents:
 
