@@ -270,13 +270,16 @@ test('Open Orders waits for an importing revision and cannot commit an obsolete 
   const openOrdersTab = page.locator('#dtab-open-orders');
   await expect(openOrdersTab).toBeVisible();
   const tabOrder = await page.locator('#det-tabs-container > .detail-tab').evaluateAll(tabs => tabs.map(tab => tab.id));
-  await openOrdersTab.hover();
-  await page.mouse.down();
-  try {
-    expect(await page.evaluate(() => window.eval('clearPendingDetailHydration(); runDeferredDetailHydration(detailHydrationToken)'))).toBe(true);
-  } finally {
-    await page.mouse.up();
-  }
+  // Run hydration inside the native press, without a driver round trip that
+  // leaves mouse.up using a stale coordinate after unrelated layout work.
+  await openOrdersTab.evaluate((tab) => {
+    tab.addEventListener('mousedown', () => {
+      const hydrated = window.eval('clearPendingDetailHydration(); runDeferredDetailHydration(detailHydrationToken)');
+      tab.setAttribute('data-test-hydration-result', String(hydrated));
+    }, { once: true });
+  });
+  await openOrdersTab.click();
+  await expect(openOrdersTab).toHaveAttribute('data-test-hydration-result', 'true');
   await expect(openOrdersTab).toHaveClass(/\bactive\b/);
   expect(await page.locator('#det-tabs-container > .detail-tab').evaluateAll(tabs => tabs.map(tab => tab.id))).toEqual(tabOrder);
   const openPanel = page.locator('#det-open-orders-panel [data-drive-demand-kind="open-orders"]');
