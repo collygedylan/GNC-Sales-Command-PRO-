@@ -102,7 +102,9 @@ test('AV cards keep readable priority, stock and actions across themes and width
   await settleIosShellVersion(page, testInfo.project.name);
   // Exercise the compiled renderer with cached rows. The fixture blocks production writes.
   const cases = [
-    { sourceView: 'av', tab: 'open', fields: { PRIORITY: '1' }, expected: '1' },
+    { sourceView: 'av', tab: 'open', fields: { PRIORITY: '1', AV_RESERVE_ROW_COUNT: 2,
+      AV_RESERVE_CUSTOMER_COUNT: 2, AV_RESERVE_CUSTOMER_PREVIEW: 'Northside Nursery',
+      AV_RESERVE_CONSIGNEE_PREVIEW: 'Main Store', AV_RESERVE_SALESREP_PREVIEW: 'Riley Sales' }, expected: '1' },
     { sourceView: 'av-photo', tab: 'open', fields: { PRIORITY: '  ', priority: '12', SOURCE: 'HL' }, expected: '12' },
     { sourceView: 'av', tab: 'reserves', fields: { PRIORITY: 0 }, expected: '0' },
     { sourceView: 'av', tab: 'open', fields: { PRIORITY: null }, expected: '—' },
@@ -147,6 +149,14 @@ test('AV cards keep readable priority, stock and actions across themes and width
         await expect(card).toContainText('Keep near shade');
         await expect(card).toContainText('Well branched');
         await expect(card).toContainText('Quality review');
+        const reserveSummary = card.locator('.app-av-catalog-note--reserve');
+        await expect(reserveSummary).toHaveCount(entry === cases[0] ? 1 : 0);
+        if (entry === cases[0]) {
+          await expect(reserveSummary).toContainText('Reserved For');
+          await expect(reserveSummary).toContainText('Northside Nursery');
+          await expect(reserveSummary).toContainText('Riley Sales | Main Store');
+          await expect(reserveSummary).toContainText('2 customers');
+        }
         await expect(card.locator('.app-av-catalog-photo-status')).toContainText(/No photo yet|Loading photos…/);
         const geometry = await card.evaluate((el, theme) => {
           const rect = el.getBoundingClientRect();
