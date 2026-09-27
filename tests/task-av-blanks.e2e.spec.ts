@@ -115,6 +115,20 @@ test('AV cards keep readable priority, stock and actions across themes and width
     root.id = 'av-priority-fixture';
     root.style.cssText = 'position:fixed;inset:0;z-index:1000;overflow-y:auto;padding:8px;width:100%;height:100vh;box-sizing:border-box;background:var(--ops-surface,#fff)';
     document.body.prepend(root);
+    const homeContent = document.getElementById('home-dynamic-content');
+    if (homeContent) {
+      const anchor = document.createElement('span');
+      anchor.id = 'av-priority-fixture-home-anchor';
+      anchor.setAttribute('aria-hidden', 'true');
+      anchor.textContent = 'AV card layout fixture active';
+      anchor.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:.01;pointer-events:none';
+      homeContent.append(anchor);
+      const observer = new MutationObserver(() => {
+        if (!homeContent.contains(anchor)) homeContent.append(anchor);
+      });
+      observer.observe(homeContent, { childList: true });
+      (window as any).__avCardHomeAnchorObserver = observer;
+    }
   });
   const widths = testInfo.project.name.includes('iphone') ? [360, 390] : [360, 390, 1280];
   for (const width of widths) {
@@ -140,6 +154,7 @@ test('AV cards keep readable priority, stock and actions across themes and width
         const card = page.locator('#av-priority-fixture .app-av-catalog-card');
         const priority = card.locator('.app-av-priority-badge');
         await expect(priority).toHaveText(`Priority ${entry.expected}`);
+        await expect(card.locator('.app-av-catalog-title-row .app-av-priority-badge')).toHaveCount(1);
         await expect(priority.locator('b')).toHaveCount(0);
         await expect(card.locator('.app-av-catalog-heading')).toContainText('Priority Fixture Plant');
         for (const label of ['Open stock', 'Location on hand', 'List price']) {
@@ -212,6 +227,10 @@ test('AV cards keep readable priority, stock and actions across themes and width
       }
     }
   }
+  await page.evaluate(() => {
+    (window as any).__avCardHomeAnchorObserver?.disconnect();
+    document.getElementById('av-priority-fixture-home-anchor')?.remove();
+  });
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);
 });
