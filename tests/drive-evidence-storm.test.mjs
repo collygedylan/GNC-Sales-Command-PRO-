@@ -98,7 +98,7 @@ test('hosted health fails on retry-storm thresholds and the isolated CI includes
 
 test('all shell references match the package release', () => {
   const release = `V${JSON.parse(read('../package.json')).version}`;
-  assert.match(release, /^V\d{4}\.\d{2}\.\d{2}\.\d{2}$/);
+  assert.match(release, /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/);
   assert.equal(html.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1], release);
   assert.equal(serviceWorker.match(/const APP_SHELL_BUILD = '([^']+)'/)?.[1], release);
   assert.equal(JSON.parse(read('../manifest.json')).version, release);

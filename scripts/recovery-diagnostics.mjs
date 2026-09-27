@@ -23,7 +23,7 @@ export async function collectRecoveryDiagnostics({ fetchImpl = fetch, db, appOri
   const jobs = [check('frontend', async () => {
     const fingerprint = await json(`${appOrigin.replace(/\/$/, '')}/deployment.json?diagnostic=${now()}`);
     if (fingerprint.schemaVersion !== 'gnc-deployment-fingerprint-v1' || !/^[a-f0-9]{40}$/.test(fingerprint.commit)
-      || !/^V\d{4}\.\d{2}\.\d{2}\.\d{2}$/.test(fingerprint.release)) throw new Error();
+      || !/^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(fingerprint.release)) throw new Error();
     return { commit: fingerprint.commit, release: fingerprint.release };
   }), check('appsScript', async () => {
     if (!deploymentId) throw Object.assign(new Error(), { code: 'CONFIGURATION_MISSING' });

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const RELEASE_PATTERN = /^V\d{4}\.\d{2}\.\d{2}\.\d{2}$/;
+const RELEASE_PATTERN = /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/;
 const COMMIT_PATTERN = /^[a-f0-9]{40}$/i;
 
 export function normalizeRelease(value = '') {

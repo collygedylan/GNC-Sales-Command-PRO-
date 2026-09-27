@@ -16,7 +16,7 @@ An authorized implementation request proceeds through the normal release automat
 
 ## One build; isolated checks
 
-Set `package.json` to the next unused `YYYY.MM.DD.NN` version, then run `npm run release:version` before committing. This synchronizes the manifest, shell, service worker, compiler and lockfile to `VYYYY.MM.DD.NN`. `npm run release:version -- --check` verifies the markers without writing. Read-only production health must be checked before lengthy candidate validation and immediately before publication.
+Set `package.json` to the next unused `YYYY.MM.DD.NN` version (or a three-digit sequence when needed), then run `npm run release:version` before committing. This synchronizes the manifest, shell, service worker, compiler and lockfile to the matching `VYYYY.MM.DD.NN[N]` version. `npm run release:version -- --check` verifies the markers without writing. Read-only production health must be checked before lengthy candidate validation and immediately before publication.
 
 The build lane installs the locked dependencies, builds pilot monitoring, live assets and v2, then runs `scripts/prepare-release-site.mjs`. That script preserves the former Pages static copy list, hidden files, compiled live shell, deployment fingerprints, HTML-size bound, and external-CDN guard.
 

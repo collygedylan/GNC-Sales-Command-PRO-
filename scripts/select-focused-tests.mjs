@@ -50,7 +50,7 @@ export function releaseMarkerOnly(file, before, after) {
   if (!releaseMarkerFiles.has(file)) return false;
   if (file === 'package.json' || file === 'package-lock.json') {
     const old = JSON.parse(before), next = JSON.parse(after);
-    if (!/^\d{4}\.\d{2}\.\d{2}\.\d{2}$/.test(old.version) || !/^\d{4}\.\d{2}\.\d{2}\.\d{2}$/.test(next.version)) return false;
+    if (!/^\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(old.version) || !/^\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(next.version)) return false;
     old.version = next.version;
     if (file === 'package-lock.json') old.packages[''].version = next.packages[''].version;
     return JSON.stringify(old) === JSON.stringify(next);
@@ -62,7 +62,7 @@ export function releaseMarkerOnly(file, before, after) {
     'scripts/build-live-shell.mjs': /const RELEASE\s*=\s*['"]([^'"]+)['"]/,
   };
   const previous = before.match(markers[file])?.[1], next = after.match(markers[file])?.[1];
-  return /^V\d{4}\.\d{2}\.\d{2}\.\d{2}$/.test(previous || '') && /^V\d{4}\.\d{2}\.\d{2}\.\d{2}$/.test(next || '')
+  return /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(previous || '') && /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(next || '')
     && before.replaceAll(previous, next).replaceAll('\r\n', '\n') === after.replaceAll('\r\n', '\n');
 }
 

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 export function prepareReleaseVersion(root=process.cwd(), check=false) {
   const read=p=>fs.readFileSync(path.join(root,p),'utf8');
   const version=JSON.parse(read('package.json')).version;
-  if (!/^\d{4}\.\d{2}\.\d{2}\.\d{2}$/.test(version)) throw new Error('RELEASE_VERSION_INVALID');
+  if (!/^\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(version)) throw new Error('RELEASE_VERSION_INVALID');
   const next=`V${version}`, changes=[];
   const markers={
     'index.html':/window\.__APP_SHELL_VERSION__\s*=\s*['"]([^'"]+)['"]/, 
@@ -15,7 +15,7 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
   };
   for (const [file,marker] of Object.entries(markers)) {
     const before=read(file), previous=before.match(marker)?.[1];
-    if (!/^V\d{4}\.\d{2}\.\d{2}\.\d{2}$/.test(previous || '')) throw new Error(`RELEASE_MARKER_MISSING:${file}`);
+    if (!/^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(previous || '')) throw new Error(`RELEASE_MARKER_MISSING:${file}`);
     const after=before.replaceAll(previous,next);
     if (check && before!==after) throw new Error(`RELEASE_VERSION_MISMATCH:${file}`);
     if (before!==after) changes.push([file,after]);

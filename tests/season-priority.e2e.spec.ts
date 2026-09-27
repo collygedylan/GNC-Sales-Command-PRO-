@@ -291,6 +291,10 @@ test('a changed source UID keeps its stable-lineage request blocked until import
 
 test('late list responses cannot repaint after navigation or an account change', async ({ page, baseURL }) => {
   const app = await fixture(page, baseURL!);
+  // Wait for the initial server options before holding a forced refresh.
+  // Otherwise the force call can abort the initial request while auth headers
+  // are still resolving, before the request reaches the route handler.
+  await expect(app.panel.locator('select#season-priority-assigned option[value="jordan_smith"]')).toHaveCount(1);
   app.holdList();
   await page.evaluate(() => window.eval(`void loadManagerSeasonPriority(true)`));
   await expect.poll(() => app.listBodies.length).toBeGreaterThan(1);

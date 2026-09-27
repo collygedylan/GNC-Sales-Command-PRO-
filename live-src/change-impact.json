@@ -98,6 +98,16 @@
       ]
     },
     {
+      "id": "season-priority",
+      "paths": [
+        "tests/season-priority.e2e.spec.ts",
+        "playwright.season-priority.config.ts"
+      ],
+      "commands": [
+        "npx playwright test --config playwright.season-priority.config.ts"
+      ]
+    },
+    {
       "id": "navigation",
       "paths": [
         "assets/navigation-preferences.js",
