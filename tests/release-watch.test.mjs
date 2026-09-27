@@ -97,6 +97,21 @@ test('successful watch pins github.com, stays quiet and reports status only', as
   assert.match(f.output.join('\n'), /Status only; release approval still requires release-candidate check/);
 });
 
+test('candidate timing records actual supplied timestamps and leaves missing timing unavailable', async () => {
+  for (const withTiming of [true, false]) {
+    const recorded = [];
+    const f = fixture([
+      { stdout: JSON.stringify(workflow) },
+      { stdout: JSON.stringify({ ...identity, ...(withTiming ? { created_at: '2026-09-26T01:00:00Z' } : {}) }) },
+      { code: 0 },
+      { stdout: JSON.stringify({ ...completed, jobs: completed.jobs.map(job => ({ ...job, ...(withTiming ? { completedAt: '2026-09-26T01:03:00Z' } : {}) })) }) },
+    ]);
+    await f.run({ record: event => recorded.push(event) });
+    assert.equal(recorded[0].candidateMs, withTiming ? 180000 : null);
+    assert.equal(recorded[0].sha, sha);
+  }
+});
+
 test('branch discovery waits quietly for the latest exact run and rejects wrong runs', async () => {
   const f = fixture([
     { stdout: JSON.stringify(workflow) },

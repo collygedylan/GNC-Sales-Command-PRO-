@@ -198,9 +198,20 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  expect(f.commands.find(c=>c.operation==='publish').payload.send_email).toBe(true);
  f.jobs[0].status='complete';f.jobs[0].actuals=[];f.jobs[0].worker_actions=[];
  await page.evaluate(()=>window.eval(`switchView('request'); setReqTab('bunch-notes');`));
- await page.getByRole('button',{name:'Completed',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
+ const queue=page.locator('#request-content');
+ const press=test.info().project.use.isMobile?'tap':'click';
+ await expect(queue).toHaveAttribute('aria-busy','false');
+ await queue.getByRole('button',{name:'Completed',exact:true})[press]();
+ await expect(queue.getByRole('button',{name:'Completed',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(queue).toHaveAttribute('aria-busy','false');
+ // Use the real touch input on phones. The prior trace showed a successful
+ // mouse click with no parent-to-child transition during the mobile repaint.
+ const parent=queue.getByRole('button',{name:'Open location C.12',exact:true});
+ await expect(parent).toBeVisible();
+ await parent[press]();
+ const location=queue.getByRole('button',{name:'Open location C.12.001',exact:true});
+ await expect(location).toBeVisible();
+ await location[press]();
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await page.getByText('Completed-work PDF and recipients',{exact:true}).click();
  await page.getByRole('button',{name:'Preview completed-work PDF',exact:true}).click();

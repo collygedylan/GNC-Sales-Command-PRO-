@@ -3,6 +3,24 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const phases = ['diagnosis', 'implementation', 'validation', 'deployment', 'verification', 'complete', 'blocked'];
+export function recordCandidateValidation(root, result) {
+  const directory = path.join(root, '.gnc-local');
+  fs.mkdirSync(directory, { recursive: true });
+  fs.appendFileSync(path.join(directory, 'validation-history.jsonl'), JSON.stringify({ kind: 'candidate', at: new Date().toISOString(), ...result }) + '\n');
+}
+export function recordValidationRun(root, report) {
+  const file = path.join(root, '.gnc-local', 'validation-history.jsonl');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const foundation = report.foundationStages || [];
+  const sum = stages => stages.reduce((total, stage) => total + stage.durationMs, 0);
+  fs.appendFileSync(file, JSON.stringify({ kind: 'local', at: report.completedAt, ok: report.ok,
+    sourceDigest: report.sourceDigest || null, report: path.join(report.output, 'report.json'),
+    buildMs: sum(foundation.filter(stage => ['monitoring', 'assets', 'v2', 'complete-site'].includes(stage.name))),
+    baselineMs: sum(foundation.filter(stage => ['syntax', 'contracts', 'browser'].includes(stage.name))),
+    focusedMs: sum(report.stages.filter(stage => stage.name !== 'foundation')),
+    suites: report.plan || null, unknown: report.selection?.unknown || [],
+  }) + '\n');
+}
 function validateEvents(events) {
   if (!Array.isArray(events) || events.some((e, i) => !e || !phases.includes(e.phase) || !Number.isFinite(Date.parse(e.at))
     || (i > 0 && Date.parse(e.at) < Date.parse(events[i - 1].at)))) throw new Error('REPAIR_LEDGER_INVALID_HISTORY');
@@ -29,7 +47,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const [phase, model, effort, used] = process.argv.slice(2);
     const file = path.resolve('.gnc-local', 'repair-ledger.json');
     const events = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
-    if (phase === 'report') console.log(JSON.stringify(summarizeRepair(events), null, 2));
+    if (phase === 'validation-report') {
+      const history = path.resolve('.gnc-local', 'validation-history.jsonl');
+      const runs = fs.existsSync(history) ? fs.readFileSync(history, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
+      console.log(JSON.stringify({ runs, reviewAfterChanges: 3, note: 'Compare distinct changes; repeated runs are not separate changes. Candidate timing comes from report-release-timings.mjs.' }, null, 2));
+    } else if (phase === 'report') console.log(JSON.stringify(summarizeRepair(events), null, 2));
     else {
       const next = appendRepairEvent(events, { phase, model, effort, usedPercent: used === undefined ? null : Number(used) });
       fs.mkdirSync(path.dirname(file), { recursive: true });

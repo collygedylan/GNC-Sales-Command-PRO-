@@ -52,6 +52,8 @@ After deployment, exact-live release and commit verification runs before paralle
 
 ## Local candidate preflight
 
+Run `npm run check:local` after preparing the release version and before sealing the commit. `prepare --dispatch` requires its passing source and compiled-artifact fingerprints, so failed or stale local evidence stops dispatch. The local check's one fresh build and selected regressions replace separate repeated foundation/feature runs; all candidate and hosted gates below remain required. Details: [local-validation.md](local-validation.md).
+
 Use `scripts/release-candidate.mjs` from the candidate checkout before an authorized release. It does not fetch, commit, merge, push, deploy, or save an approval file. `prepare` and `check` are read-only. Start from a committed release branch that includes current `origin/main`:
 
 ```powershell

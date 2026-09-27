@@ -1,30 +1,322 @@
 {
   "schemaVersion": "gnc-change-impact-v1",
   "fallbackCommands": [
-    "npm run check:foundation"
+    "npm run check:foundation",
+    "npx playwright test --config playwright.home-role.config.ts tests/home-native-startup.e2e.spec.ts --project=home-desktop-chromium --project=home-iphone-webkit",
+    "npx playwright test --config playwright.session-recovery.config.ts --grep=REP|HL --project=session-chromium --project=session-iphone"
   ],
   "modules": [
     {
       "id": "codex-workflow",
-      "paths": [".codex/**", "AGENTS.md", "docs/model-routing.md", "docs/parallel-release-pipeline.md", "tests/codex-operations.test.mjs"],
-      "commands": ["node --test tests/codex-operations.test.mjs"]
+      "paths": [
+        ".codex/**",
+        "AGENTS.md",
+        "docs/model-routing.md",
+        "docs/parallel-release-pipeline.md",
+        "tests/codex-operations.test.mjs"
+      ],
+      "commands": [
+        "node --test tests/codex-operations.test.mjs"
+      ]
     },
     {
       "id": "runtime-foundation",
-      "paths": ["live-src/**", "scripts/build-live-shell.mjs", "scripts/live-runtime-manifest.mjs", "scripts/select-focused-tests.mjs", "tests/live-runtime-manifest.test.mjs", "tests/focused-test-selector.test.mjs", "package.json", "package-lock.json"],
+      "paths": [
+        "live-src/**",
+        "scripts/build-live-shell.mjs",
+        "scripts/live-runtime-manifest.mjs",
+        "scripts/select-focused-tests.mjs",
+        "tests/live-runtime-manifest.test.mjs",
+        "tests/focused-test-selector.test.mjs",
+        "package.json",
+        "package-lock.json",
+        "index.html",
+        "sw.js",
+        "assets/app-lifecycle.js",
+        "assets/live-sync-coordinator.js",
+        "assets/live-sync-adapters.js",
+        "assets/live-sync-registry.js",
+        "assets/master-detail-snapshots.js",
+        "scripts/prepare-release-site.mjs"
+      ],
       "commands": [
         "node --test tests/live-runtime-manifest.test.mjs tests/focused-test-selector.test.mjs",
-        "npm run check:foundation"
+        "npm run check:foundation",
+        "npx playwright test --config playwright.home-role.config.ts tests/home-native-startup.e2e.spec.ts --project=home-desktop-chromium --project=home-iphone-webkit",
+        "npx playwright test --config playwright.session-recovery.config.ts --grep=REP|HL --project=session-chromium --project=session-iphone"
       ]
     },
     {
       "id": "module-hubs",
-      "paths": ["assets/mobile-workspace.js", "assets/mobile-workspace.css", "assets/ops-precision-pilot.css", "tests/live-pilot.test.mjs", "tests/sales-mobile.e2e.spec.ts", "playwright.sales-mobile.config.ts"],
+      "paths": [
+        "assets/mobile-workspace.js",
+        "assets/mobile-workspace.css",
+        "assets/ops-precision-pilot.css",
+        "tests/live-pilot.test.mjs",
+        "tests/sales-mobile.e2e.spec.ts",
+        "playwright.sales-mobile.config.ts"
+      ],
       "commands": [
         "node --test tests/live-pilot.test.mjs",
         "npm run check:foundation",
         "npx playwright test --config playwright.sales-mobile.config.ts"
       ]
+    },
+    {
+      "id": "local-validation",
+      "paths": [
+        "scripts/check-local.mjs",
+        "scripts/check-foundation.mjs",
+        "scripts/local-validation-evidence.mjs",
+        "scripts/repair-ledger.mjs",
+        "scripts/serve-release-tests.mjs",
+        "scripts/release-candidate.mjs",
+        "playwright.local.config.ts",
+        "tests/release-local-validation.test.mjs",
+        "tests/release-test-server.test.mjs",
+        "scripts/release-watch.mjs",
+        "tests/release-watch.test.mjs"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/release-local-validation.test.mjs tests/release-test-server.test.mjs tests/release-candidate.test.mjs tests/focused-test-selector.test.mjs tests/release-watch.test.mjs"
+      ]
+    },
+    {
+      "id": "bunch-notes",
+      "paths": [
+        "assets/bunch-note.js",
+        "assets/bunch-note.css",
+        "tests/bunch-note.e2e.spec.ts",
+        "tests/bunch-note.test.mjs",
+        "playwright.bunch-note.config.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/bunch-note.test.mjs",
+        "npx playwright test --config playwright.bunch-note.config.ts"
+      ]
+    },
+    {
+      "id": "navigation",
+      "paths": [
+        "assets/navigation-preferences.js",
+        "assets/navigation-preferences.css",
+        "playwright.footer.config.ts",
+        "tests/footer-navigation.e2e.spec.ts",
+        "tests/navigation-preferences.test.mjs"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/navigation-preferences.test.mjs",
+        "npx playwright test --config playwright.footer.config.ts"
+      ]
+    },
+    {
+      "id": "sales",
+      "paths": [
+        "assets/sales-workspace.js",
+        "assets/sales-workspace.css",
+        "tests/sales-workflow.test.mjs",
+        "tests/sales-history-context.test.mjs"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/sales-workflow.test.mjs tests/sales-history-context.test.mjs",
+        "npx playwright test --config playwright.sales-mobile.config.ts"
+      ]
+    },
+    {
+      "id": "inventory",
+      "paths": [
+        "assets/inventory-list-contract.js",
+        "assets/location-code.js",
+        "tests/inventory-list-read-fixture.test.mjs",
+        "tests/verified-data-cache.e2e.spec.ts",
+        "playwright.verified-data-cache.config.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/inventory-list-read-fixture.test.mjs",
+        "npx playwright test --config playwright.verified-data-cache.config.ts --project=cache-chromium --project=cache-iphone"
+      ]
+    },
+    {
+      "id": "eval",
+      "paths": [
+        "assets/eval-reports-engine.js",
+        "tests/eval-reports-engine.test.mjs",
+        "tests/eval-work.e2e.spec.ts",
+        "tests/eval-report2-header-filters.e2e.spec.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/eval-reports-engine.test.mjs tests/eval-work.test.mjs",
+        "npx playwright test --config playwright.release-functional.config.ts tests/eval-work.e2e.spec.ts tests/eval-report2-header-filters.e2e.spec.ts"
+      ]
+    },
+    {
+      "id": "drive",
+      "paths": [
+        "assets/drive-demand-detail.js",
+        "tests/drive-demand-detail.test.mjs"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/drive-demand-detail.test.mjs tests/drive-evidence-storm.test.mjs tests/drive-reclass-protected.test.mjs"
+      ]
+    },
+    {
+      "id": "photos",
+      "paths": [
+        "assets/photo-history-v2026090401.js",
+        "tests/photo-history.test.mjs",
+        "tests/photo-egress.test.mjs",
+        "tests/request-photo-completion.e2e.spec.ts",
+        "playwright.request-photo.config.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/photo-history.test.mjs tests/photo-egress.test.mjs tests/av-photo-evidence-integrity.test.mjs",
+        "npx playwright test --config playwright.request-photo.config.ts --project=cache-chromium --project=cache-iphone"
+      ]
+    },
+    {
+      "id": "requests",
+      "paths": [
+        "tests/request-entry-source.e2e.spec.ts",
+        "tests/request-on-hand-calculation.e2e.spec.ts",
+        "tests/request-editing.e2e.spec.ts",
+        "playwright.request-reliability.config.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/request-completion-resilience.test.mjs tests/request-edit-performance.test.mjs",
+        "npx playwright test --config playwright.request-reliability.config.ts --project=cache-chromium --project=cache-iphone"
+      ]
+    },
+    {
+      "id": "hl-orders",
+      "paths": [
+        "tests/hl-order.e2e.spec.ts",
+        "playwright.hl-order.config.ts",
+        "tests/hl-order.test.mjs",
+        "tests/fixtures/hl-order-state.mjs"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/hl-order.test.mjs tests/hl-order-delivery.test.mjs",
+        "npx playwright test --config playwright.hl-order.config.ts --project=cache-chromium --project=cache-iphone",
+        "npx playwright test --config playwright.bunch-note.config.ts"
+      ]
+    },
+    {
+      "id": "docks",
+      "paths": [
+        "playwright.docks-filter.config.ts",
+        "tests/docks-filter.e2e.spec.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/docks-filter-sync.test.mjs",
+        "npx playwright test --config playwright.docks-filter.config.ts"
+      ]
+    },
+    {
+      "id": "suspend",
+      "paths": [
+        "playwright.suspend-tag.config.ts",
+        "tests/suspend-tag-completion.e2e.spec.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/suspend-tag-completion.test.mjs tests/suspend-tag-import.test.mjs",
+        "npx playwright test --config playwright.suspend-tag.config.ts"
+      ]
+    },
+    {
+      "id": "av-blanks",
+      "paths": [
+        "playwright.task-av-blanks.config.ts",
+        "tests/task-av-blanks.e2e.spec.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "npx playwright test --config playwright.task-av-blanks.config.ts"
+      ]
+    },
+    {
+      "id": "season-office",
+      "paths": [
+        "playwright.season-sales-office.config.ts",
+        "tests/season-sales-office-completion.e2e.spec.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/season-sales-office-completion.test.mjs",
+        "npx playwright test --config playwright.season-sales-office.config.ts"
+      ]
+    },
+    {
+      "id": "session",
+      "paths": [
+        "playwright.session-recovery.config.ts",
+        "tests/session-recovery.e2e.spec.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "npx playwright test --config playwright.session-recovery.config.ts"
+      ]
+    },
+    {
+      "id": "home",
+      "paths": [
+        "playwright.home-role.config.ts",
+        "tests/home-native-startup.e2e.spec.ts"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "npx playwright test --config playwright.home-role.config.ts"
+      ]
+    },
+    {
+      "id": "v2",
+      "paths": [
+        "v2/**",
+        "vite.v2.config.ts",
+        "tsconfig.json"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "npm run test:v2"
+      ]
+    },
+    {
+      "id": "backend",
+      "paths": [
+        "supabase/**",
+        "Code.gs"
+      ],
+      "commands": [
+        "npm run check:foundation",
+        "node --test tests/apps-script-sync.test.mjs tests/apps-script-lifecycle.test.mjs tests/request-completion-resilience.test.mjs tests/hl-order-delivery.test.mjs"
+      ]
+    },
+    {
+      "id": "documentation",
+      "paths": [
+        "docs/**",
+        "README.md",
+        ".gitignore"
+      ],
+      "commands": [
+        "npm run check:foundation"
+      ]
     }
+  ],
+  "notes": [
+    "All local runs include foundation once. Unknown files also select shared startup, Request and account-isolation checks and require coverage review.",
+    "index.html still contains many features; changes conservatively select shared checks. Add a mapped regression for the edited behavior; local selection does not certify every monolithic feature.",
+    "Database, functions integration, real service compatibility and complete browser matrices remain required in candidate CI."
   ]
 }

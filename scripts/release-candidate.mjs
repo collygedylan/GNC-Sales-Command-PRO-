@@ -211,7 +211,13 @@ export function runReleaseCandidate({ argv = [], invoke = spawnSync, cwd = proce
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  try { runReleaseCandidate({ argv: process.argv.slice(2) }); }
+  try {
+    if (process.argv.includes('--dispatch')) {
+      const { assertLocalValidation } = await import('./local-validation-evidence.mjs');
+      assertLocalValidation(process.cwd());
+    }
+    runReleaseCandidate({ argv: process.argv.slice(2) });
+  }
   catch (error) {
     console.error(error.message);
     process.exitCode = 1;

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { recordCandidateValidation } from './repair-ledger.mjs';
 
 const SHA = /^[a-f0-9]{40}$/i;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -37,6 +38,7 @@ export async function runReleaseWatch({
   argv = [], spawnProcess = spawn, print = console.log, cwd = process.cwd(),
   timeoutMs = DEFAULT_TIMEOUT_MS, setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout,
   now = Date.now,
+  record = () => {},
 } = {}) {
   const expected = parseArgs(argv);
   const deadline = now() + timeoutMs;
@@ -192,6 +194,11 @@ export async function runReleaseWatch({
     .filter(job => !['success', 'skipped'].includes(job?.conclusion))
     .map(job => `${job.name || 'unnamed job'} (${job.conclusion || job.status || 'unknown'})`);
   const state = summary.conclusion || summary.status || 'unknown';
+  const completed = summary.jobs.map(job => Date.parse(job.completedAt)).filter(Number.isFinite);
+  const created = Date.parse(before.created_at);
+  record({ runId: expected.runId, sha: observedSha, state, failedJobs,
+    candidateMs: summary.status === 'completed' && completed.length && Number.isFinite(created)
+      ? Math.max(0, Math.max(...completed) - created) : null });
   if (watched.timedOut) {
     print(`Run ${expected.runId} timed out while ${state}. Failed jobs: ${failedJobs.join(', ') || 'none reported'}.`);
     fail('RELEASE_WATCH_TIMEOUT', `Run watch exceeded ${timeoutMs}ms and was stopped.`);
@@ -206,7 +213,7 @@ export async function runReleaseWatch({
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  try { await runReleaseWatch({ argv: process.argv.slice(2) }); }
+  try { await runReleaseWatch({ argv: process.argv.slice(2), record: result => recordCandidateValidation(process.cwd(), result) }); }
   catch (error) {
     console.error(error.message);
     process.exitCode = 1;

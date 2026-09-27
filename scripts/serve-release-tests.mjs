@@ -62,7 +62,7 @@ async function openFile(root, parts) {
 }
 
 export async function createReleaseTestServer({
-  siteDir = path.join(repositoryRoot, '_site'),
+  siteDir = process.env.GNC_LOCAL_SITE_DIR || path.join(repositoryRoot, '_site'),
   fixtureDir = path.join(repositoryRoot, 'tests', 'fixtures'),
   responseHeaders = {},
 } = {}) {
