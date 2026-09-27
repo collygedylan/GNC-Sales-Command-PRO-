@@ -3,9 +3,20 @@
 import { expect, test } from '@playwright/test';
 import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
-test('AV cards show priority across card modes without hiding stock or overflowing', async ({ page, baseURL }) => {
+async function settleIosShellVersion(page: import('@playwright/test').Page, projectName: string) {
+  if (!projectName.includes('iphone')) return;
+  const version = await page.evaluate(() => String((window as any).__APP_SHELL_VERSION__ || ''));
+  expect(version).toMatch(/^V\d/);
+  await page.goto(`/?shellv=${encodeURIComponent(version)}`, { waitUntil: 'load' });
+  await page.locator('#view-login').waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.body.classList.contains('role-access-ready')
+    && window.eval('hasAppliedInitialHomeView === true'));
+}
+
+test('AV cards keep readable priority, stock and actions across themes and widths', async ({ page, baseURL }, testInfo) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_priority_fixture', role: 'ADMIN' });
-  // Exercise the compiled card renderer with cached rows and no live services.
+  await settleIosShellVersion(page, testInfo.project.name);
+  // Exercise the compiled renderer with cached rows. The fixture blocks production writes.
   const cases = [
     { sourceView: 'av', tab: 'open', fields: { PRIORITY: '1' }, expected: '1' },
     { sourceView: 'av-photo', tab: 'open', fields: { PRIORITY: '  ', priority: '12', SOURCE: 'HL' }, expected: '12' },
@@ -16,35 +27,204 @@ test('AV cards show priority across card modes without hiding stock or overflowi
   await page.evaluate(() => {
     const root = document.createElement('section');
     root.id = 'av-priority-fixture';
-    root.style.cssText = 'position:relative;z-index:99999;background:white;padding:12px;max-width:680px';
+    root.style.cssText = 'position:fixed;inset:0;z-index:1000;overflow-y:auto;padding:8px;width:100%;height:100vh;box-sizing:border-box;background:var(--ops-surface,#fff)';
     document.body.prepend(root);
   });
-  for (const entry of cases) {
-    await page.evaluate(({ sourceView, tab, fields }) => {
-      window.eval(`activeAVTab = ${JSON.stringify(tab)}`);
-      const row = { UNIQUE_ID: 'av-priority-1', DOM_ID: 'av-priority-1', ITEMCODE: 'SYNTH.001',
-        COMMONNAME: 'Priority Fixture Plant', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001',
-        LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: 120, S_LTS: 80, LISTPRICE: '24.50', ...fields };
-      document.getElementById('av-priority-fixture')!.innerHTML = (window as any).generateCard(row, sourceView);
-    }, entry);
-    const card = page.locator('#av-priority-fixture .app-av-catalog-card');
-    const priority = card.locator('.app-av-catalog-stock-stat--priority');
-    await expect(priority.locator('.app-av-catalog-stock-label')).toHaveText('Priority');
-    await expect(priority.locator('.app-av-catalog-stock-value')).toHaveText(entry.expected);
-    await expect(priority.locator('b')).toHaveCount(0);
-    for (const label of ['Open Stock', 'Loc On Hand', 'Loc Photo Match']) {
-      await expect(card.getByText(label, { exact: true })).toBeVisible();
-    }
-    if (entry.fields.SOURCE === 'HL') await expect(card.getByText('Season OH', { exact: true })).toBeVisible();
-    expect(await card.evaluate(el => {
-      const bounds = el.getBoundingClientRect();
-      return el.scrollWidth <= el.clientWidth + 1 && bounds.right <= innerWidth + 1
-        && [...el.querySelectorAll('.app-av-catalog-stock-stat')].every(stat => {
-          const rect = stat.getBoundingClientRect();
-          return rect.width > 0 && rect.left >= bounds.left && rect.right <= bounds.right;
+  const widths = testInfo.project.name.includes('iphone') ? [360, 390] : [360, 390, 1280];
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(compact => document.body.classList.toggle('viewport-compact', compact), width < 900);
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(theme => {
+        localStorage.setItem('gnc_last_theme_v1', theme);
+        (window as any).__gncOpsPilot.primeCachedAppearance({ userKey: 'av_priority_fixture' });
+      }, theme);
+      await expect(page.locator('body')).toHaveAttribute('data-ops-theme', theme);
+      expect(await page.evaluate(() => (window as any).__gncOpsPilot.getState().effectiveTheme)).toBe(theme);
+      for (const entry of cases) {
+        await page.evaluate(({ sourceView, tab, fields }) => {
+          window.eval(`activeAVTab = ${JSON.stringify(tab)}`);
+          const row = { UNIQUE_ID: 'av-priority-1', DOM_ID: 'av-priority-1', ITEMCODE: 'SYNTH.001',
+            COMMONNAME: 'Priority Fixture Plant with a very long botanical description and cultivar name that must wrap',
+            CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', SEASON: 'F1',
+            PTRONHAND: 120, S_LTS: 80, LISTPRICE: '24.50', AV_NOTE: 'Keep near shade',
+            SPEC: 'Well branched', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Quality review', ...fields };
+          document.getElementById('av-priority-fixture')!.innerHTML = (window as any).generateCard(row, sourceView);
+        }, entry);
+        const card = page.locator('#av-priority-fixture .app-av-catalog-card');
+        const priority = card.locator('.app-av-priority-badge');
+        await expect(priority).toHaveText(`Priority ${entry.expected}`);
+        await expect(priority.locator('b')).toHaveCount(0);
+        await expect(card.locator('.app-av-catalog-heading')).toContainText('Priority Fixture Plant');
+        for (const label of ['Open stock', 'Location on hand', 'List price']) {
+          await expect(card.getByText(label, { exact: true })).toBeVisible();
+        }
+        await expect(card.getByText('Season OH', { exact: true })).toHaveCount(entry.fields.SOURCE === 'HL' ? 1 : 0);
+        await expect(card).toContainText('Keep near shade');
+        await expect(card).toContainText('Well branched');
+        await expect(card).toContainText('Quality review');
+        await expect(card.locator('.app-av-catalog-photo-status')).toContainText(/No photo yet|Loading photos…/);
+        const geometry = await card.evaluate((el, theme) => {
+          const rect = el.getBoundingClientRect();
+          const frame = el.querySelector('.app-av-catalog-frame')!;
+          const areas = ['header', 'media', 'details'];
+          const controls = [...el.querySelectorAll<HTMLElement>('.app-av-primary-action, .app-av-secondary-action')]
+            .filter(control => !control.hasAttribute('disabled'));
+          const color = (value: string) => (value.match(/[\d.]+/g) || []).map(Number);
+          const background = (node: Element) => {
+            for (let current: Element | null = node; current; current = current.parentElement) {
+              const channels = color(getComputedStyle(current).backgroundColor);
+              if (channels.length === 3 || channels[3] === 1) return channels;
+            }
+            return [255, 255, 255];
+          };
+          const luminance = (rgb: number[]) => rgb.slice(0, 3).map(channel => {
+            const value = channel / 255;
+            return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+          }).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
+          const contrast = (node: Element) => {
+            const light = luminance(color(getComputedStyle(node).color));
+            const dark = luminance(background(node));
+            return (Math.max(light, dark) + .05) / (Math.min(light, dark) + .05);
+          };
+          const text = (selector: string) => el.querySelector(selector)!;
+          const font = (selector: string) => parseFloat(getComputedStyle(text(selector)).fontSize);
+          return {
+            cardFits: el.scrollWidth <= el.clientWidth + 1 && rect.left >= -1 && rect.right <= innerWidth + 1,
+            frameFits: frame.scrollWidth <= frame.clientWidth + 1,
+            themeSurface: theme === 'dark' ? luminance(background(el)) < .2 : luminance(background(el)) > .7,
+            namedAreas: areas.every(area => getComputedStyle(frame).gridTemplateAreas.includes(area)),
+            readable: font('.app-av-catalog-title') >= 24
+              && font('.app-av-priority-badge') >= 16
+              && font('.app-av-catalog-stock-label') >= 16
+              && font('.app-av-catalog-price-label') >= 16
+              && font('.app-av-catalog-code') >= 14
+              && font('.app-av-catalog-note-text') >= 14
+              && font('.app-av-primary-action') >= 16,
+            contrast: ['.app-av-catalog-title', '.app-av-priority-badge', '.app-av-catalog-stock-label',
+              '.app-av-catalog-code', '.app-av-catalog-note-text'].every(selector => contrast(text(selector)) >= 4.5),
+            targets: controls.every(control => {
+              const bounds = control.getBoundingClientRect();
+              return bounds.width >= 44 && bounds.height >= 44;
+            })
+          };
+        }, theme);
+        expect(geometry, `${width}px ${theme} ${entry.sourceView} priority ${entry.expected}`).toEqual({
+          cardFits: true, frameFits: true, themeSurface: true, namedAreas: true, readable: true, contrast: true, targets: true
         });
-    })).toBe(true);
+        if (entry === cases[0] && ((width === 1280 && theme === 'light') || (width === 390 && theme === 'dark'))) {
+          await card.screenshot({ path: testInfo.outputPath(`av-card-${width}-${theme}.png`) });
+        }
+      }
+    }
   }
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('AV cached card refreshes priority and preserves photo and picker hooks offline', async ({ page, context, baseURL }, testInfo) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_photo_fixture', role: 'ADMIN' });
+  await settleIosShellVersion(page, testInfo.project.name);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => document.body.classList.add('viewport-compact'));
+  let releasePhotos!: () => void;
+  const photoGate = new Promise<void>(resolve => { releasePhotos = resolve; });
+  const fulfillPhoto = async (route: import('@playwright/test').Route) => {
+    await photoGate;
+    return route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480"><rect width="640" height="480" fill="#387a59"/></svg>'
+    });
+  };
+  await page.route('**/storage/v1/object/public/request_photos/**', fulfillPhoto);
+  await page.route('**/storage/v1/render/image/public/request_photos/**', fulfillPhoto);
+  const photoDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const setup = await page.evaluate(photoDate => {
+    const row = { UNIQUE_ID: 'av-photo-1', DOM_ID: 'av-photo-1', ITEMCODE: 'SYNTH.002',
+      COMMONNAME: 'Photo Fixture Plant', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001',
+      LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: 120, S_LTS: 80, LISTPRICE: '24.50',
+      PRIORITY: '1', DATE_COMPLETED: `${photoDate}T12:00:00Z`,
+      PHOTO_NAME: `${photoDate}-one.webp,${photoDate}-two.webp`,
+      PHOTO_LINK: `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/one.webp,https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/two.webp` };
+    const root = document.createElement('section');
+    root.id = 'av-photo-fixture';
+    root.style.cssText = 'position:fixed;inset:0;z-index:1000;overflow-y:auto;padding:8px;width:100%;height:100vh;box-sizing:border-box;background:var(--ops-surface,#fff)';
+    document.body.prepend(root);
+    (window as any).__avPhotoFixtureRow = row;
+    window.eval('fullInventory.push(window.__avPhotoFixtureRow); invalidateInventoryDomIdLookup()');
+    root.innerHTML = (window as any).generateCard(row, 'av-photo');
+    const first = window.eval('buildRowsRenderSignature("av:cached", [window.__avPhotoFixtureRow])');
+    return { first };
+  }, photoDate);
+  const card = page.locator('#av-photo-fixture .app-av-catalog-card');
+  await expect(card.locator('.app-av-photo-track .app-av-photo-slide')).toHaveCount(2);
+  await expect(card.locator('.app-av-catalog-photo-loading').first()).toBeVisible();
+  await page.evaluate(() => window.eval('scheduleDeferredCardPhotoHydration(document.getElementById("av-photo-fixture"))'));
+  releasePhotos();
+  await expect(card.locator('.app-av-photo-track img').first()).toHaveAttribute('src', /request_photos/);
+  await expect(card.locator('.app-av-photo-track img').first()).toHaveAttribute('data-av-photo-loaded', '1');
+  await expect(card.locator('.app-av-catalog-photo-loading').first()).toBeHidden();
+  const photoText = await card.evaluate(el => {
+    const date = el.querySelector('.app-inline-thumb-date')!;
+    const fullScreen = el.querySelector('.app-av-hero-action')!;
+    return {
+      dateReadable: parseFloat(getComputedStyle(date).fontSize) >= 14,
+      fullScreenReadable: parseFloat(getComputedStyle(fullScreen).fontSize) >= 14,
+      dateSurfaceMatchesCard: getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
+    };
+  });
+  expect(photoText).toEqual({ dateReadable: true, fullScreenReadable: true, dateSurfaceMatchesCard: true });
+  await card.screenshot({ path: testInfo.outputPath('av-photo-loaded-390.png') });
+  if (!testInfo.project.name.includes('iphone')) {
+    await page.setViewportSize({ width: 1280, height: 844 });
+    await page.evaluate(() => document.body.classList.remove('viewport-compact'));
+    await card.screenshot({ path: testInfo.outputPath('av-photo-loaded-1280.png') });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => document.body.classList.add('viewport-compact'));
+  }
+  await page.evaluate(() => {
+    localStorage.setItem('gnc_last_theme_v1', 'dark');
+    (window as any).__gncOpsPilot.primeCachedAppearance({ userKey: 'av_photo_fixture' });
+  });
+  await expect(page.locator('body')).toHaveAttribute('data-ops-theme', 'dark');
+  await expect.poll(() => card.evaluate(el => {
+    const date = el.querySelector('.app-inline-thumb-date')!;
+    return getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
+      && parseFloat(getComputedStyle(date).fontSize) >= 14;
+  })).toBe(true);
+  await card.screenshot({ path: testInfo.outputPath('av-photo-loaded-390-dark.png') });
+  await expect(card.locator('.app-av-primary-action')).toHaveAttribute('aria-pressed', 'false');
+  expect(await card.locator('.app-av-photo-nav--next').evaluate(el => {
+    const bounds = el.getBoundingClientRect();
+    return bounds.width >= 44 && bounds.height >= 44;
+  })).toBe(true);
+  await card.locator('.app-av-photo-nav--next').click();
+  await expect.poll(() => card.locator('.app-av-photo-track').evaluate(track =>
+    Math.round(track.scrollLeft / Math.max(1, track.clientWidth)))).toBe(1);
+  await card.locator('.app-av-secondary-action').click();
+  await expect(page.locator('#photo-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#photo-modal-counter')).toContainText('2 / 2');
+  await page.locator('#photo-modal-close').click();
+  await expect(page.locator('#photo-modal')).toHaveClass(/hidden/);
+  await context.setOffline(true);
+  const changed = await page.evaluate(() => {
+    const row = (window as any).__avPhotoFixtureRow;
+    row.PRIORITY = '2';
+    const signature = window.eval('buildRowsRenderSignature("av:cached", [window.__avPhotoFixtureRow])');
+    document.getElementById('av-photo-fixture')!.innerHTML = (window as any).generateCard(row, 'av-photo');
+    return signature;
+  });
+  expect(changed).not.toBe(setup.first);
+  await expect(card.locator('.app-av-priority-badge')).toHaveText('Priority 2');
+  await card.locator('.app-av-primary-action').click();
+  expect(await page.evaluate(() => window.eval('selectedItems.has("av-photo-1")'))).toBe(true);
+  await page.evaluate(() => {
+    document.getElementById('av-photo-fixture')!.innerHTML = (window as any).generateCard((window as any).__avPhotoFixtureRow, 'av-photo');
+  });
+  await expect(card.locator('.app-av-primary-action')).toHaveAttribute('aria-pressed', 'true');
+  await expect(card.locator('.app-av-primary-action')).toContainText('In Bloom Picker');
+  await page.evaluate(() => window.eval('selectedItems.delete("av-photo-1")'));
+  await context.setOffline(false);
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);
 });
