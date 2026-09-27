@@ -1,6 +1,53 @@
 // September 9 behavior coverage; preserved complete tests/sales-marketing-tasks.e2e.spec.ts fixture.
 // See docs/rollback-sep09-validation.md for deliberately removed later contracts.
 import { expect, test } from '@playwright/test';
+import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
+
+test('AV cards show priority across card modes without hiding stock or overflowing', async ({ page, baseURL }) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_priority_fixture', role: 'ADMIN' });
+  // Exercise the compiled card renderer with cached rows and no live services.
+  const cases = [
+    { sourceView: 'av', tab: 'open', fields: { PRIORITY: '1' }, expected: '1' },
+    { sourceView: 'av-photo', tab: 'open', fields: { PRIORITY: '  ', priority: '12', SOURCE: 'HL' }, expected: '12' },
+    { sourceView: 'av', tab: 'reserves', fields: { PRIORITY: 0 }, expected: '0' },
+    { sourceView: 'av', tab: 'open', fields: { PRIORITY: null }, expected: '—' },
+    { sourceView: 'av', tab: 'open', fields: { PRIORITY: '<b>2</b>' }, expected: '<b>2</b>' },
+  ];
+  await page.evaluate(() => {
+    const root = document.createElement('section');
+    root.id = 'av-priority-fixture';
+    root.style.cssText = 'position:relative;z-index:99999;background:white;padding:12px;max-width:680px';
+    document.body.prepend(root);
+  });
+  for (const entry of cases) {
+    await page.evaluate(({ sourceView, tab, fields }) => {
+      window.eval(`activeAVTab = ${JSON.stringify(tab)}`);
+      const row = { UNIQUE_ID: 'av-priority-1', DOM_ID: 'av-priority-1', ITEMCODE: 'SYNTH.001',
+        COMMONNAME: 'Priority Fixture Plant', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001',
+        LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: 120, S_LTS: 80, LISTPRICE: '24.50', ...fields };
+      document.getElementById('av-priority-fixture')!.innerHTML = (window as any).generateCard(row, sourceView);
+    }, entry);
+    const card = page.locator('#av-priority-fixture .app-av-catalog-card');
+    const priority = card.locator('.app-av-catalog-stock-stat--priority');
+    await expect(priority.locator('.app-av-catalog-stock-label')).toHaveText('Priority');
+    await expect(priority.locator('.app-av-catalog-stock-value')).toHaveText(entry.expected);
+    await expect(priority.locator('b')).toHaveCount(0);
+    for (const label of ['Open Stock', 'Loc On Hand', 'Loc Photo Match']) {
+      await expect(card.getByText(label, { exact: true })).toBeVisible();
+    }
+    if (entry.fields.SOURCE === 'HL') await expect(card.getByText('Season OH', { exact: true })).toBeVisible();
+    expect(await card.evaluate(el => {
+      const bounds = el.getBoundingClientRect();
+      return el.scrollWidth <= el.clientWidth + 1 && bounds.right <= innerWidth + 1
+        && [...el.querySelectorAll('.app-av-catalog-stock-stat')].every(stat => {
+          const rect = stat.getBoundingClientRect();
+          return rect.width > 0 && rect.left >= bounds.left && rect.right <= bounds.right;
+        });
+    })).toBe(true);
+  }
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
 
 for (const username of ['madison_austin', 'madelyn_gray']) {
   test(`${username} sees shared AV Blanks but only Season Sales Notes`, async ({ page }) => {
