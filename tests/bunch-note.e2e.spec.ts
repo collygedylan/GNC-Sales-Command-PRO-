@@ -399,6 +399,11 @@ test('phone steps retain failed saves and make mixed-year and unknown-year desti
  await expect(page.getByLabel('Planned quantity',{exact:true})).toHaveValue('3');
  await expect(page.locator('.bn-destination')).toContainText('D.08.001');
  await page.getByRole('button',{name:'Done',exact:true}).click();
+ // The click finishes before the retried save/render promise. Back while busy
+ // is intentionally consumed, so first establish the saved item view.
+ await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
+ await expect(page.getByLabel('Planned quantity',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Edit Move',exact:true})).toBeVisible();
  await page.goBack();
  await expect(page.getByRole('button',{name:'Open item BN-I',exact:true})).toBeVisible();
  const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body.locations[0];

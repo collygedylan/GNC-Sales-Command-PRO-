@@ -18,6 +18,8 @@ Read the one failing stage's log/trace first. Record app defect, fixture/test de
 
 The prior Bunch Notes iPhone failure (candidate `8e9e375`, run `36287893736`) contained the completed location data and visible parent card; a mouse click reported success without opening its child card. The focused correction waits for completed-queue readiness, uses touch input on mobile, and asserts the parent-to-child transition. Repeated focused reproduction is justified for this observed failure, not a default for every edit.
 
+Candidate `6036d89`, run `36290534097`, exposed a separate save/Back race in the phone-steps test: browser Back started while the retried save still rendered `aria-busy="true"`. The test now establishes the saved item view and closed action editor before Back. A fixture request being received or fulfilled is not proof that its client transition has completed.
+
 ## Three-change measurement
 
 `npm run ops:record -- validation-report` lists local baseline, build and focused durations, selected suites and source identities from the existing operations ledger directory. The quiet release watcher adds the candidate SHA, outcome and elapsed time from workflow creation to the last completed job when GitHub supplies those timestamps; unavailable timing stays null. Compare three distinct completed changes, not three reruns of one change. Keep account usage snapshots with the normal phase ledger; local test execution time is not model token usage. Use `scripts/report-release-timings.mjs` for detailed candidate/hosted timings. Review redundant local coverage after those three changes; do not remove any required candidate/live gate to meet a time target.
