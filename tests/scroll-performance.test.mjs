@@ -10,6 +10,32 @@ const html = read('index.html');
 const pilot = read('assets/ops-precision-pilot.js');
 const playwrightConfig = read('playwright.config.ts');
 
+test('sticky offsets count only header overlap with the main scroller', () => {
+  const source = html.slice(html.indexOf('        function getScrollerStickyRailOffsetPx('), html.indexOf('        function getModuleFilterGapPx('));
+  let inside = false, visible = true, ios = false, bottom = 74, top = 75, marginBottom = '0px';
+  const search = { getBoundingClientRect: () => ({ bottom }) };
+  const scroller = { getBoundingClientRect: () => ({ top }) };
+  const context = vm.createContext({
+    document: { getElementById: () => scroller },
+    window: { getComputedStyle: () => ({ marginBottom }) },
+    isIosFixedTopChromeActive: () => ios,
+    isStickyOffsetSourceInMainScrollArea: () => inside,
+    isStickyOffsetSourceVisible: () => visible,
+    getStickyRailOffsetPx: () => visible ? 74 : 0,
+  });
+  vm.runInContext(source, context);
+  const offset = () => context.getScrollerStickyRailOffsetPx(search);
+  assert.equal(offset(), 0, 'a header above the scroller must not be counted twice');
+  bottom = 95; marginBottom = '4px';
+  assert.equal(offset(), 24, 'an overlapping external header reserves only the overlap');
+  inside = true;
+  assert.equal(offset(), 74, 'a header inside the scroller retains its full offset');
+  inside = false; visible = false;
+  assert.equal(offset(), 0, 'hidden chrome must not reserve space');
+  visible = true; ios = true;
+  assert.equal(offset(), 0, 'fixed iOS chrome already positions the scroller');
+});
+
 test('the shared scroll path has no universal restyle or synchronous sticky geometry scan', () => {
   const guardrailStyles = html.slice(
     html.indexOf('<style id="app-performance-guardrails">'),

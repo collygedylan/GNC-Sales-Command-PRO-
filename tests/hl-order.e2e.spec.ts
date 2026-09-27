@@ -269,17 +269,25 @@ test('Open Orders waits for an importing revision and cannot commit an obsolete 
   // Reparenting an already ordered tab here discards the browser's native click.
   const openOrdersTab = page.locator('#dtab-open-orders');
   await expect(openOrdersTab).toBeVisible();
+  // Start from the short opening shell even if the ordinary hydration timer has
+  // already fired. Synchronize sticky geometry before growing its content so
+  // this also catches a header offset counted twice outside the main scroller.
+  await page.evaluate(() => window.eval('clearPendingDetailHydration(); resetDetailOverviewShellState("drive"); syncStickyRailOffsets();'));
   const tabOrder = await page.locator('#det-tabs-container > .detail-tab').evaluateAll(tabs => tabs.map(tab => tab.id));
   // Run hydration inside the native press, without a driver round trip that
   // leaves mouse.up using a stale coordinate after unrelated layout work.
   await openOrdersTab.evaluate((tab) => {
     tab.addEventListener('mousedown', () => {
+      const before = tab.getBoundingClientRect();
       const hydrated = window.eval('clearPendingDetailHydration(); runDeferredDetailHydration(detailHydrationToken)');
+      const after = tab.getBoundingClientRect();
       tab.setAttribute('data-test-hydration-result', String(hydrated));
+      tab.setAttribute('data-test-hydration-shift', String(Math.max(Math.abs(after.x - before.x), Math.abs(after.y - before.y))));
     }, { once: true });
   });
   await openOrdersTab.click();
   await expect(openOrdersTab).toHaveAttribute('data-test-hydration-result', 'true');
+  expect(Number(await openOrdersTab.getAttribute('data-test-hydration-shift'))).toBeLessThan(1);
   await expect(openOrdersTab).toHaveClass(/\bactive\b/);
   expect(await page.locator('#det-tabs-container > .detail-tab').evaluateAll(tabs => tabs.map(tab => tab.id))).toEqual(tabOrder);
   const openPanel = page.locator('#det-open-orders-panel [data-drive-demand-kind="open-orders"]');

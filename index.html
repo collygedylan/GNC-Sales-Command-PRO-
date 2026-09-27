@@ -14145,6 +14145,14 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getScrollerStickyRailOffsetPx(searchEl) {
             if (isIosFixedTopChromeActive()) return 0;
+            const scrollArea = document.getElementById('main-scroll-area');
+            if (scrollArea && !isStickyOffsetSourceInMainScrollArea(searchEl)) {
+                if (!isStickyOffsetSourceVisible(searchEl)) return 0;
+                // An external header is already above the scroller in normal
+                // flow. Reserve only the part that actually overlaps it.
+                const marginBottom = parseFloat(window.getComputedStyle(searchEl).marginBottom || '0') || 0;
+                return Math.max(0, Math.ceil(searchEl.getBoundingClientRect().bottom + marginBottom - scrollArea.getBoundingClientRect().top));
+            }
             return getStickyRailOffsetPx(searchEl);
         }
 

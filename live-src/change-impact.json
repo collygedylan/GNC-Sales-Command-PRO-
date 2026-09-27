@@ -47,6 +47,15 @@
       ]
     },
     {
+      "id": "sticky-layout",
+      "paths": [
+        "tests/scroll-performance.test.mjs"
+      ],
+      "commands": [
+        "node --test tests/scroll-performance.test.mjs"
+      ]
+    },
+    {
       "id": "module-hubs",
       "paths": [
         "assets/mobile-workspace.js",
