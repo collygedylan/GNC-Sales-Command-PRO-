@@ -261,7 +261,7 @@
       ],
       "commands": [
         "npm run check:foundation",
-        "node --test tests/photo-history.test.mjs tests/photo-egress.test.mjs tests/av-photo-evidence-integrity.test.mjs",
+        "node --test tests/photo-history.test.mjs tests/photo-egress.test.mjs tests/av-photo-evidence-integrity.test.mjs tests/release-test-coverage.test.mjs",
         "npx playwright test --config playwright.task-av-blanks.config.ts"
       ]
     },

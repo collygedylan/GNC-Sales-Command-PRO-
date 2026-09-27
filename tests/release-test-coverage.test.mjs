@@ -213,7 +213,7 @@ const compiledSuites = [
   ['season-sales-office', 'season-sales-office-completion', ['season-sales-office-android-chromium', 'season-sales-office-iphone-webkit']],
   ['suspend-tag', 'suspend-tag-completion', ['suspend-tag-android-chromium', 'suspend-tag-iphone-webkit']],
   ['docks-filter', 'docks-filter', ['docks-android', 'docks-iphone', 'docks-desktop']],
-  ['task-av-blanks', 'task-av-blanks', ['task-av-chromium', 'task-av-iphone']],
+  ['task-av-blanks', 'task-av-blanks', ['task-av-chromium', 'task-av-webkit', 'task-av-iphone']],
   ['session-recovery', 'session-recovery', ['session-chromium', 'session-iphone']],
   ['review-assignedto', 'review-assignedto', ['chromium', 'firefox', 'webkit']],
   ['verified-data-cache', 'verified-data-cache', ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']],
