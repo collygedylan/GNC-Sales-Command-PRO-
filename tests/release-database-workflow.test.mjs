@@ -21,12 +21,13 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 121);
+  assert.equal(migrations.length, 122);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
   }
   for (const filename of [
+    '20260928145055_item_low_stock_targets.sql',
     '20260922233000_manager_season_priority_inquiry_v1.sql',
     '20260923174000_optimize_manager_season_priority_scope.sql',
     '20260923222348_materialize_manager_season_priority_scope_hashes.sql',
@@ -70,6 +71,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     ...[...workflow.matchAll(/"([a-z_]+_test\.sql)": "[a-z_]+_checks"/g)].map(match => match[1]),
   ];
   assert.deepEqual([...sqlTests].sort(), [
+    'eval_item_low_stock_targets_test.sql',
     'manager_season_priority_test.sql',
     'bunch_note_workflow_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
     'pikes_orders_rls_test.sql', 'request_eval_drive_reliability_test.sql',

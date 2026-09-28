@@ -145,7 +145,12 @@ test('Warehouse Assigned Items export converts the keyed Supabase result into co
   vm.runInContext(`
     __selectedColumns = '';
     __writtenValues = null;
-    callSupabaseRpc_ = function() { return { ok: true }; };
+    callSupabaseRpc_ = function(name, args) {
+      if (name !== 'get_eval_item_low_stock_targets_v1') throw new Error('Unexpected RPC');
+      return args.p_itemcodes.map(itemcode_normalized => ({ itemcode_normalized, mean_quantity: 12,
+        effective_qty: 35, suggested_qty: 30, qualifying_line_count: 15,
+        qualifying_day_count: 3, history_ready: true, calculated_at: '2026-09-28T12:00:00Z', updated_at: '2026-09-28T13:00:00Z' }));
+    };
     getSupabaseFetchOptionsForTable_ = function() { return {}; };
     fetchAllSupabaseData = function(tableName, selectColumns) {
       __selectedColumns = selectColumns;
@@ -189,4 +194,6 @@ test('Warehouse Assigned Items export converts the keyed Supabase result into co
   assert.equal(writtenValues.length, 4);
   assert.deepEqual(writtenValues.slice(1).map((row) => row[0]), ['2', '10', '100']);
   assert.deepEqual(writtenValues.slice(1).map((row) => row[1]), ['', 'megan_kelly', 'dylan_collyge']);
+  assert.deepEqual(writtenValues[0].slice(11), ['AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY', 'SUGGESTED_LOW_STOCK_QTY', 'ORDER_LINE_OBSERVATIONS', 'HISTORY_DAYS', 'HISTORY_CALCULATED_AT']);
+  assert.deepEqual(writtenValues[1].slice(11, 16), [12, 35, 30, 15, 3]);
 });

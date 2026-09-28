@@ -72,6 +72,13 @@ test('every rendered route and root DOM view has an explicit registry classifica
   assert.equal(registry.views.hours.kind, 'static');
 });
 
+test('manager live-sync watches per-item low-stock targets for Eval2 cache invalidation', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+    const sources = ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
+    assert.ok(sources.every(table => registry.getSourceKeys(registry.getViewAdapters('managers')).includes(table)));
+    assert.ok(sources.every(table => registry.getSourceKeys(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports'] })).includes(table)));
+});
+
 test('actual loader dependencies remain covered for every route, request tab, task state and Eval role', () => {
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;
   const requestTabs = [...new Set([...functionSource('renderRequest').matchAll(/activeReqTab === '([^']+)'/g)].map(match => match[1]))];

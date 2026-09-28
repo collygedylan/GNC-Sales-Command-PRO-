@@ -11,6 +11,8 @@ on:
       - scripts/lib/production-release-guard.mjs
       - scripts/release-proof.mjs
       - scripts/sync-codegs-to-apps-script.js
+      - scripts/apply-item-low-stock-migration.mjs
+      - supabase/migrations/20260928145055_item_low_stock_targets.sql
       - .github/workflows/apps-script-sync.yml
   workflow_dispatch:
 
@@ -68,6 +70,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/lib/production-release-guard.mjs
+
+      - name: Apply the item low-stock schema before the compatible importer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/apply-item-low-stock-migration.mjs
 
       - name: Sync Code.gs into Apps Script
         env:

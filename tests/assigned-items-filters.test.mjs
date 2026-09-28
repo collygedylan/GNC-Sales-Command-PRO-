@@ -25,7 +25,10 @@ function context(data = rows, normalize = false) {
   const ctx = vm.createContext({ currentUser: 'dylan_collyge', managersSearchTerm: '', managerAssignedItemsAssignedToFilter: 'all',
     managerEvalAssignmentSelection: new Set(['001|rosa']),
     managerAssignedColumnState: { owner: 'dylan_collyge', filters: {}, sort: null, editor: null },
+    managerEvalReportSettings: { lowStockMaxSLts: 150 },
     normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
+    getManagerItemLowStockTarget: () => null,
+    normalizeManagerItemLowStockTargetCode: value => String(value || '').trim().toUpperCase(),
     warehouseAssignedItemsInventory: data,
     disposeManagerAssignedColumnEditor: () => {},
     renderManagerAssignedColumnOptions: () => {},
@@ -162,7 +165,7 @@ test('real normalization preserves zeros, codes and location codes in exported v
   const result = ctx.getFilteredManagerAssignedItemsExportRows();
   assert.equal(result.length, 1);
   assert.deepEqual(Array.from(ctx.getManagerAssignedItemsExportColumns(), col => col.value(result[0])),
-    ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '']);
+      ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '']);
   assert.equal(ctx.getManagerAssignedColumnOptions('WAREHOUSEI')[0].label, '0');
   assert.equal(data[0].warehousei, 0, 'source dataset remains unchanged');
 });

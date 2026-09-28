@@ -232,6 +232,29 @@
         };
     }
 
+    function normalizeLowStockTargetIndex(value) {
+        const index = new Map();
+        const add = (key, target) => {
+            const itemCode = String(key == null ? '' : key).trim().toUpperCase();
+            if (!itemCode || !target || typeof target !== 'object') return;
+            index.set(itemCode, target);
+        };
+        if (value instanceof Map) value.forEach((target, key) => add(key, target));
+        else if (Array.isArray(value)) value.forEach((target) => add(firstValue(target, ['itemcode_normalized', 'ITEMCODE', 'itemcode'], ''), target));
+        else if (value && typeof value === 'object') Object.entries(value).forEach(([key, target]) => add(key, target));
+        return index;
+    }
+
+    function resolveLowStockLimit(itemCode, settings, targetIndex) {
+        const target = targetIndex.get(String(itemCode || '').trim().toUpperCase());
+        if (!target) return settings.lowStockMaxSLts;
+        const override = normalizeNumber(firstValue(target, ['manual_override_qty', 'manualOverrideQty'], ''), NaN);
+        if (Number.isFinite(override) && override >= 0) return override;
+        const suggestion = normalizeNumber(firstValue(target, ['suggested_qty', 'suggestedQty'], ''), NaN);
+        if (Number.isFinite(suggestion) && suggestion >= 0) return suggestion;
+        return settings.lowStockMaxSLts;
+    }
+
     function getCentralDateParts(now) {
         const date = now instanceof Date ? now : new Date(now || Date.now());
         const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
@@ -354,6 +377,7 @@
         const sourceRows = Array.isArray(rows) ? rows.filter((row) => row && !isExcludedShiftSeasonRow(row)) : [];
         const config = options && typeof options === 'object' ? options : {};
         const settings = normalizeSettings(config.settings);
+        const lowStockTargets = normalizeLowStockTargetIndex(config.itemLowStockTargets);
         const currentSeason = String(config.currentSeason || 'F1').trim().toUpperCase() || 'F1';
         const currentSalesYear = normalizeConfiguredSalesYear(config.currentSalesYear);
         const configuredYearCode = currentSalesYear % 100;
@@ -406,7 +430,8 @@
             if (priority) aggregate.hasPriority = true;
             if (season === 'F1' && validThroughCurrent) aggregate.hasValidF1 = true;
             if (metadata.oldHold) aggregate.hasOldHold = true;
-            if (season === currentSeason && validThroughCurrent && metadata.slts < settings.lowStockMaxSLts) {
+            const lowStockLimit = resolveLowStockLimit(itemCode, settings, lowStockTargets);
+            if (season === currentSeason && validThroughCurrent && metadata.slts < lowStockLimit) {
                 aggregate.hasLowStockCurrent = true;
             }
         });
@@ -480,6 +505,7 @@
         const sourceRows = Array.isArray(rows) ? rows.filter((row) => row && !isExcludedShiftSeasonRow(row)) : [];
         const config = options && typeof options === 'object' ? options : {};
         const settings = normalizeSettings(config.settings);
+        const lowStockTargets = normalizeLowStockTargetIndex(config.itemLowStockTargets);
         const currentSeason = String(config.currentSeason || 'F1').trim().toUpperCase() || 'F1';
         const currentSalesYear = normalizeConfiguredSalesYear(config.currentSalesYear);
         const nextSeason = String(config.nextSeason || (currentSeason === 'F1' ? 'S1' : 'F1')).trim().toUpperCase();
@@ -535,7 +561,8 @@
             const aggregate = aggregates.get(itemCode);
             if (metadata.priority) aggregate.hasPriority = true;
             if (season === 'F1' && validSalesYear) aggregate.hasValidF1 = true;
-            if (season === currentSeason && validSalesYear && metadata.slts < settings.lowStockMaxSLts) {
+            const lowStockLimit = resolveLowStockLimit(itemCode, settings, lowStockTargets);
+            if (season === currentSeason && validSalesYear && metadata.slts < lowStockLimit) {
                 aggregate.qualifiesLowStock = true;
             }
             if (metadata.oldHold) aggregate.hasOldHold = true;
@@ -716,6 +743,7 @@
         UNASSIGNED_INQUIRY_LABEL,
         normalizeSalesYear,
         normalizeSettings,
+        resolveLowStockLimit: (itemCode, settings, targets) => resolveLowStockLimit(String(itemCode || '').toUpperCase(), normalizeSettings(settings), normalizeLowStockTargetIndex(targets)),
         isExcludedShiftSeasonRow,
         parseInventoryDateEpochDay,
         getCentralDateParts,

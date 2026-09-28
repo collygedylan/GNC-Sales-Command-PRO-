@@ -468,3 +468,67 @@ test('an obsolete Eval refresh cannot restore its old account cache after a fail
     assert.equal(ctx.managerEvalReport2LoadState.loading, false);
     assert.equal(renders, 1, 'only the initial refresh may request a render');
 });
+
+test('Eval2 does not build from global fallbacks when the ItemCode target read fails, and forced refresh retries it', async () => {
+    let builds = 0, semanticFailures = 0;
+    const targetReadForces = [], loadOptions = [];
+    const ctx = {
+        managerEvalReport2LoadState: {}, managerEvalReport2Cache: null, managerEvalReport2CacheKey: '',
+        canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => 'user-a:permission-a',
+        getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: async (...args) => { loadOptions.push(args); },
+        loadManagerEvalReportSettings: async () => {}, isDatasetLoaded: () => true,
+        canReadItemLowStockTargets: () => true,
+        loadManagerItemLowStockTargets: async force => { targetReadForces.push(force); throw new Error('ItemCode target RPC unavailable'); },
+        scheduleManagersRender() {}, fullInventory: [], warehouseAssignedItemsInventory: [], activeHomeTab: 'eval2',
+        MANAGER_EVAL_REPORTS_2_VIEW: 'eval2', getCurrentVisibleViewId: () => 'managers',
+        invalidateManagerEvalReport2Cache() { builds += 100; },
+        buildManagerEvalReport2IndexAsync: async () => { builds += 1; return { reports: {} }; },
+        getManagerEvalReport2LatestSourceUpdate: () => '',
+        getFriendlyBackendErrorMessage: error => error.message,
+        reportSemanticHealthEvent: () => { semanticFailures += 1; },
+        showToast() {}, Date
+    };
+    const start = html.indexOf('        async function loadManagerEvalReports2(');
+    const end = html.indexOf('        function getManagerEvalReport2CacheKeyValue(', start);
+    vm.createContext(ctx); vm.runInContext(html.slice(start, end), ctx);
+
+    assert.equal(await ctx.loadManagerEvalReports2(), null);
+    assert.equal(ctx.managerEvalReport2Cache, null);
+    assert.match(ctx.managerEvalReport2LoadState.error, /ItemCode target RPC unavailable/);
+    assert.equal(builds, 0, 'a failed target read cannot build a report with only the global fallback');
+    assert.equal(semanticFailures, 1);
+
+    await ctx.loadManagerEvalReports2(true);
+    assert.deepEqual(targetReadForces, [false, true]);
+    assert.equal(builds, 0);
+    assert.deepEqual(loadOptions.slice(-2).map(args => args[2]?.force === true), [true, true]);
+});
+
+test('cached target-read errors stay failures until an explicit retry succeeds', async () => {
+    const state = { owner: 'user-a', key: '', loadingKey: '', errorKey: 'current-key', error: 'target RPC offline',
+        rowsByCode: new Map([['ORCHID-1', { itemcode_normalized: 'ORCHID-1', suggested_qty: 12 }]]),
+        loading: false, promise: null, requestId: 4, revision: 1 };
+    let reads = 0;
+    const ctx = {
+        currentUser: 'user-a', canReadItemLowStockTargets: () => true,
+        getManagerItemLowStockTargetsState: () => state,
+        getManagerAssignedItemTargetKey: () => 'current-key',
+        normalizeManagerItemLowStockTargetCode: value => String(value || '').trim().toUpperCase(),
+        fullInventory: [{ ITEMCODE: 'ORCHID-1' }], warehouseAssignedItemsInventory: [],
+        fetchManagerItemLowStockTargets: async codes => { reads++; return codes.map(itemcode_normalized => ({ itemcode_normalized, history_ready: true, suggested_qty: 14 })); },
+        invalidateManagerEvalReport2Cache() {}, getCurrentVisibleViewId: () => 'reports',
+        getDatasetLoadSignature: () => 'master', resolvedViewStateEpoch: 1, activeHomeTab: 'dashboard',
+        getFriendlyBackendErrorMessage: error => error.message, scheduleManagersRender() {},
+        SUPABASE_READ_TIMEOUT_MS: 1000, Math, Array, Map, Set, String, Number, Date, Promise
+    };
+    const start = html.indexOf('        async function loadManagerItemLowStockTargets(');
+    const end = html.indexOf('        function getManagerItemLowStockTarget(', start);
+    vm.createContext(ctx); vm.runInContext(html.slice(start, end), ctx);
+
+    await assert.rejects(ctx.loadManagerItemLowStockTargets(false), /target RPC offline/);
+    assert.equal(reads, 0, 'ordinary refresh must not silently accept cached data after its target read failed');
+    const refreshed = await ctx.loadManagerItemLowStockTargets(true);
+    assert.equal(reads, 1);
+    assert.equal(refreshed.get('ORCHID-1').suggested_qty, 14);
+    assert.equal(state.error, '');
+});

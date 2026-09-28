@@ -35,6 +35,7 @@ function harness() {
             if (name === 'get_manager_order_sources_v1') return { sources: rows };
             if (name === 'get_transactions_keyed_dashboard') return { availableDates: [], dateMetrics: [], allDates: [], files: [], summary: {} };
             if (name === 'get_request_delivery_recovery_queue' || name === 'search_historical_inventory_common_names') return rows;
+            if (name === 'get_eval_item_low_stock_targets_v1') return [];
             return {};
         },
         postAppFunctionJson: async (_url, payload) => { calls.push(['api', payload.action, payload.operation || 'read']); return {ok:true, rows, hasMore:false}; },
@@ -61,6 +62,11 @@ function harness() {
         getProductivityHistoryState: () => ctx.productivityState, getArgosInventoryTransactionActorEmail: () => '',
         invalidateDockWorkflowResolvedState() {}, rebuildSpreadCountIndexes() {}, invalidateManagerEvalReportCache() {},
         currentUser: 'dylan_collyge', currentRole: 'ADMIN', currentUserDisplay: 'Dylan', managersSearchTerm: '',
+        fullInventory: [], warehouseAssignedItemsInventory: [], managerItemLowStockTargetsState: { owner: 'dylan_collyge', key: '', rowsByCode: new Map(), revision: 0 },
+        normalizeManagerItemLowStockTargetCode: value => String(value || '').trim().toUpperCase(),
+        fetchManagerItemLowStockTargets: async codes => { calls.push(['RPC', 'get_eval_item_low_stock_targets_v1', { p_itemcodes: codes }]); return []; },
+        getManagerAssignedItemTargetKey: () => 'fixture-target-key', getManagerItemLowStockTargetsState: () => ctx.managerItemLowStockTargetsState,
+        invalidateManagerEvalReport2Cache() {}, canReadItemLowStockTargets: () => true,
         APP_SHELL_VERSION: 'fixture', APP_SHELL_BUILD: 'fixture', REQUEST_EMAIL_SCRIPT_TIMEOUT_MS: 1000,
         dockTeamStatusByTrip: new Map([['old', {}]]), dockItemProgressByUid: new Map([['old', {}]]),
         dockIssueStatusByUid: new Map([['old', {}]]), dockIssueAllocationsById: new Map([['old', {}]]), dockIssueAllocationsBySourceUid: new Map([['old', []]]),
@@ -149,6 +155,32 @@ test('every side adapter executes a read-only stage and a synchronous commit', a
     assert.equal(h.ctx.shearListState.draft, 'keep me');
     assert.equal(h.ctx.accessControlAdminState.editor.draft, 'keep');
     assert.equal(h.ctx.codexOpsState.draft, 'keep');
+});
+
+test('low-stock target adapter fetches assigned item codes and commits a fresh Eval2 snapshot', async () => {
+    const h = harness();
+    h.ctx.fullInventory = [{ ITEMCODE: 'drive-only-3' }, { ITEMCODE: 'orchid-1' }];
+    h.ctx.warehouseAssignedItemsInventory = [{ ITEMCODE: ' orchid-1 ' }, { itemcode: 'ORCHID-1' }, { ITEMCODE: 'CEDAR-2' }];
+    const fetched = [];
+    h.ctx.fetchManagerItemLowStockTargets = async codes => {
+        fetched.push(codes);
+        return [{ itemcode_normalized: 'ORCHID-1', effective_qty: 18, override_revision: 3 },
+            { itemcode_normalized: 'DRIVE-ONLY-3', manual_override_qty: 5, effective_qty: 5, override_revision: 8 }];
+    };
+    let invalidated = 0;
+    h.ctx.invalidateManagerEvalReport2Cache = () => { invalidated += 1; };
+    const adapter = descriptor(h, 'side:itemLowStockTargets');
+    const snapshot = await adapter.stage();
+    assert.deepEqual(fetched, [['DRIVE-ONLY-3', 'ORCHID-1', 'CEDAR-2']]);
+    assert.deepEqual(snapshot.rows, [{ itemcode_normalized: 'ORCHID-1', effective_qty: 18, override_revision: 3 },
+        { itemcode_normalized: 'DRIVE-ONLY-3', manual_override_qty: 5, effective_qty: 5, override_revision: 8 }]);
+    assert.equal(adapter.commit(snapshot), undefined);
+    assert.equal(h.ctx.managerItemLowStockTargetsState.rowsByCode.get('ORCHID-1').effective_qty, 18);
+    assert.equal(h.ctx.managerItemLowStockTargetsState.rowsByCode.get('DRIVE-ONLY-3').effective_qty, 5,
+        'the target map includes an overridden inventory item without an Assigned Items row');
+    assert.equal(h.ctx.managerItemLowStockTargetsState.key, 'fixture-target-key');
+    assert.equal(h.ctx.managerItemLowStockTargetsState.revision, 1);
+    assert.equal(invalidated, 1);
 });
 
 test('Docks stages in isolation and replaces authoritative maps, including deletions', async () => {

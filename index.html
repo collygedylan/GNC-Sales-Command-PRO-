@@ -51,7 +51,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.28.001">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.28.002">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -59,7 +59,7 @@
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script src="./assets/app-lifecycle.js" data-app-lifecycle></script>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.28.001';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.28.002';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2617,6 +2617,12 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         #username-input,#pin-code,#login-button,#new-password,#confirm-password,#save-password-button{position:relative;z-index:3;pointer-events:auto;touch-action:manipulation}
         [data-manager-assigned-mobile-list]{display:block}
         [data-manager-assigned-desktop-table]{display:none}
+        .manager-item-low-stock-editor{min-width:0}
+        .manager-item-low-stock-editor input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;border:1px solid #a7f3d0;border-radius:.65rem;background:#fff;padding:.45rem .55rem;font-size:14px;font-weight:900;color:#0f172a;outline:none}
+        .manager-item-low-stock-editor button{font-size:12px;letter-spacing:normal;line-height:1.2}
+        .manager-item-low-stock-editor input:focus{border-color:#007a4d;box-shadow:0 0 0 3px rgba(0,122,77,.14)}
+        .manager-item-low-stock-editor input:disabled{background:#f8fafc;color:#64748b}
+        .manager-item-low-stock-editor details summary{line-height:1.35}
         @media (min-width: 768px){
             .login-card{max-width:390px;border-radius:24px;box-shadow:0 24px 48px rgba(15,23,42,.2)}
             #main-scroll-area{padding-top:.35rem}
@@ -6787,7 +6793,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.28.001">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.28.002">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -6985,13 +6991,13 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.28.001"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.28.001"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.28.001"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.28.001"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.28.001"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.28.001"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.28.001"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.28.002"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.28.002"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.28.002"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.28.002"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.28.002"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.28.002"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.28.002"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7759,7 +7765,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.28.001').trim() || 'V2026.09.28.001';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.28.002').trim() || 'V2026.09.28.002';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9275,7 +9281,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.28.001';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.28.002';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -31836,6 +31842,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     stage: async () => normalizeManagerEvalReportSettings(await supabaseRpc('get_eval_report_settings', {}, { timeoutMs: 15000 })),
                     commit: (value) => { managerEvalReportSettings = value; stateReady(managerEvalReportSettingsState, { fallback: false }); invalidateManagerEvalReportCache(); }
                 },
+                'side:itemLowStockTargets': {
+                    enabled: () => canReadItemLowStockTargets(),
+                    scope: () => getManagerAssignedItemTargetKey(),
+                    stage: async () => {
+                        const assignedRows = Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [];
+                        const sourceRows = (Array.isArray(fullInventory) ? fullInventory : []).concat(assignedRows);
+                        const codes = Array.from(new Set(sourceRows.map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode))).filter(Boolean)));
+                        return { key: getManagerAssignedItemTargetKey(assignedRows), rows: await fetchManagerItemLowStockTargets(codes) };
+                    },
+                    commit: (snapshot) => {
+                        const state = getManagerItemLowStockTargetsState();
+                        const rowsByCode = new Map();
+                        (Array.isArray(snapshot && snapshot.rows) ? snapshot.rows : []).forEach(target => {
+                            const code = normalizeManagerItemLowStockTargetCode(target && target.itemcode_normalized);
+                            if (code) rowsByCode.set(code, target);
+                        });
+                        state.rowsByCode = rowsByCode;
+                        state.key = snapshot && snapshot.key || getManagerAssignedItemTargetKey();
+                        state.revision += 1;
+                        invalidateManagerEvalReport2Cache();
+                    }
+                },
                 'side:ncr': {
                     stage: async () => api.keyed(await read(NCR_COMPLETIONS_TABLE, `select=${NCR_COMPLETION_SELECT_FIELDS}&order=completed_at.desc`), (row) => row, (row) => String(row.source_unique_id || '').trim()),
                     commit: (value) => { ncrCompletionRecordsByUid = value; ncrCompletionsLoaded = true; ncrCompletionSchemaReady = true; }
@@ -32523,7 +32551,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.28.001').trim() || 'V2026.09.28.001';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.28.002').trim() || 'V2026.09.28.002';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -128452,6 +128480,7 @@ C.14.043 C.15.000
                 if (!isCurrent()) return null;
                 if (!isDatasetLoaded('master', 'full')) throw new Error('The complete master inventory snapshot is not available yet.');
                 if (!isDatasetLoaded('warehouseAssignedItems', 'full')) throw new Error('The complete Assigned Items snapshot is not available yet.');
+                if (canReadItemLowStockTargets()) await loadManagerItemLowStockTargets(force);
                 const nextSourceSignature = [getDatasetLoadSignature('master'), getDatasetLoadSignature('warehouseAssignedItems')].join('::');
                 if (lastCompleteCache && lastCompleteSourceSignature === nextSourceSignature) {
                     managerEvalReport2Cache = lastCompleteCache;
@@ -128484,7 +128513,7 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2CacheKeyValue() {
             const nextTarget = getConfiguredNextSaleSeasonTarget();
-            return [getDatasetLoadSignature('master'), fullInventory.length, getDatasetLoadSignature('warehouseAssignedItems'), warehouseAssignedItemsInventory.length, resolvedViewStateEpoch, getConfiguredCurrentSeasonCode(), getConfiguredCurrentSalesYearCode(), nextTarget.season, nextTarget.salesYear, managerEvalReportSettings.lowStockMaxSLts, managerEvalReportSettings.holdAgeDays, managerEvalReportSettings.locationNoteAgeDays, getManagerEvalReportCentralDateKey()].join('::');
+            return [getDatasetLoadSignature('master'), fullInventory.length, getDatasetLoadSignature('warehouseAssignedItems'), warehouseAssignedItemsInventory.length, resolvedViewStateEpoch, getConfiguredCurrentSeasonCode(), getConfiguredCurrentSalesYearCode(), nextTarget.season, nextTarget.salesYear, managerEvalReportSettings.lowStockMaxSLts, managerEvalReportSettings.holdAgeDays, managerEvalReportSettings.locationNoteAgeDays, getManagerItemLowStockTargetsState().revision, getManagerEvalReportCentralDateKey()].join('::');
         }
 
         function getManagerEvalReport2WorkerSource() {
@@ -128556,7 +128585,7 @@ C.14.043 C.15.000
                         const timeout = setTimeout(() => { worker.terminate(); reject(new Error('EVAL_REPORT_WORKER_TIMEOUT')); }, 30000);
                         worker.onmessage = (event) => { clearTimeout(timeout); worker.terminate(); event.data && event.data.error ? reject(new Error(event.data.error)) : resolve(event.data); };
                         worker.onerror = (event) => { clearTimeout(timeout); worker.terminate(); reject(new Error(event.message || 'EVAL_REPORT_WORKER_FAILED')); };
-                        worker.postMessage({ engineUrl, inventory:fullInventory, assignments:warehouseAssignedItemsInventory, options:{ currentSeason:getConfiguredCurrentSeasonCode(), currentSalesYear:getConfiguredCurrentSalesYearCode(), nextSeason:nextTarget.season, nextSalesYear:nextTarget.salesYear, settings:managerEvalReportSettings, now:new Date().toISOString() } });
+                        worker.postMessage({ engineUrl, inventory:fullInventory, assignments:warehouseAssignedItemsInventory, options:{ currentSeason:getConfiguredCurrentSeasonCode(), currentSalesYear:getConfiguredCurrentSalesYearCode(), nextSeason:nextTarget.season, nextSalesYear:nextTarget.salesYear, settings:managerEvalReportSettings, itemLowStockTargets:new Map(getManagerItemLowStockTargetsState().rowsByCode), now:new Date().toISOString() } });
                     });
                     if (owner !== getSupabaseReadIdentityScope() || !canViewManagerEvalReports2()
                         || cacheKey !== getManagerEvalReport2CacheKeyValue()) return managerEvalReport2Cache;
@@ -128621,6 +128650,7 @@ C.14.043 C.15.000
                 nextSeason: nextTarget.season,
                 nextSalesYear: nextTarget.salesYear,
                 settings: managerEvalReportSettings,
+                itemLowStockTargets: new Map(getManagerItemLowStockTargetsState().rowsByCode),
                 now: new Date()
             });
             managerEvalReport2Cache.assignedToOptions = assignmentModel.assignedToOptions;
@@ -131405,11 +131435,241 @@ C.14.043 C.15.000
 
         // null means All; [] is an intentionally empty selection. Never persist across accounts.
         let managerAssignedColumnState = { owner: '', filters: {}, sort: null, editor: null };
+        let managerItemLowStockTargetsState = { owner: '', key: '', loadingKey: '', errorKey: '', rowsByCode: new Map(), loading: false, error: '', promise: null, requestId: 0, revision: 0, drafts: new Map(), saving: new Set() };
+
+        const MANAGER_ITEM_LOW_STOCK_TARGET_EDITORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones']);
+
+        function canManageItemLowStockTargets(userOverride = '') {
+            return [userOverride, currentUser, currentUserDisplay]
+                .map(value => normalizeEvalAccessUserKey(value))
+                .some(key => MANAGER_ITEM_LOW_STOCK_TARGET_EDITORS.has(key));
+        }
+
+        function canReadItemLowStockTargets() {
+            return canViewAssignedItemsExport() || canViewManagerEvalReports2();
+        }
+
+        function getManagerItemLowStockTargetsState() {
+            const owner = String(currentUser || '').trim().toLowerCase();
+            if (managerItemLowStockTargetsState.owner !== owner) {
+                managerItemLowStockTargetsState = { owner, key: '', loadingKey: '', errorKey: '', rowsByCode: new Map(), loading: false, error: '', promise: null, requestId: 0, revision: 0, drafts: new Map(), saving: new Set() };
+            }
+            return managerItemLowStockTargetsState;
+        }
+
+        function normalizeManagerItemLowStockTargetCode(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function getManagerAssignedItemTargetKey(rows = null) {
+            const assignedRows = Array.isArray(rows) ? rows : warehouseAssignedItemsInventory;
+            const sourceRows = (Array.isArray(fullInventory) ? fullInventory : []).concat(Array.isArray(assignedRows) ? assignedRows : []);
+            const codes = Array.from(new Set(sourceRows
+                .map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode)))
+                .filter(Boolean))).sort();
+            return `${getDatasetLoadSignature('master')}|${getDatasetLoadSignature('warehouseAssignedItems')}|${resolvedViewStateEpoch}|${codes.join(',')}`;
+        }
+
+        async function fetchManagerItemLowStockTargets(codes = []) {
+            const uniqueCodes = Array.from(new Set((Array.isArray(codes) ? codes : []).map(normalizeManagerItemLowStockTargetCode).filter(Boolean)));
+            const rows = [];
+            for (let offset = 0; offset < uniqueCodes.length; offset += 500) {
+                const result = await supabaseRpc('get_eval_item_low_stock_targets_v1', {
+                    p_itemcodes: uniqueCodes.slice(offset, offset + 500)
+                }, { timeoutMs: Math.max(SUPABASE_READ_TIMEOUT_MS, 30000) });
+                if (!Array.isArray(result)) throw new Error('Low-stock target lookup returned an invalid response.');
+                rows.push(...result);
+            }
+            const returnedCodes = new Set(rows.map(target => normalizeManagerItemLowStockTargetCode(target && target.itemcode_normalized)).filter(Boolean));
+            const missingCodes = uniqueCodes.filter(code => !returnedCodes.has(code));
+            if (missingCodes.length) throw new Error(`Low-stock target lookup omitted ${missingCodes.length} requested ItemCode summaries.`);
+            return rows;
+        }
+
+        async function fetchAllManagerItemLowStockTargets() {
+            const output = [];
+            let after = null;
+            for (let page = 0; page < 10000; page += 1) {
+                const result = await supabaseRpc('get_eval_item_low_stock_targets_v1', {
+                    p_itemcodes: null, p_after_itemcode: after, p_limit: 500
+                }, { timeoutMs: Math.max(SUPABASE_READ_TIMEOUT_MS, 30000) });
+                if (!Array.isArray(result)) throw new Error('Low-stock summary returned an invalid response.');
+                const rows = result;
+                output.push(...rows);
+                if (rows.length < 500) return output;
+                const nextAfter = normalizeManagerItemLowStockTargetCode(rows[rows.length - 1].itemcode_normalized);
+                if (!nextAfter || nextAfter === after) throw new Error('Low-stock summary paging did not advance.');
+                after = nextAfter;
+            }
+            throw new Error('Low-stock summary exceeded the supported item-code page limit.');
+        }
+
+        function areManagerAssignedItemTargetsHistoryReady() {
+            const state = getManagerItemLowStockTargetsState();
+            const rows = Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [];
+            const codes = new Set(rows.map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode))).filter(Boolean));
+            if (!codes.size || state.key !== getManagerAssignedItemTargetKey(rows)) return false;
+            return Array.from(codes).every(code => state.rowsByCode.get(code)?.history_ready === true);
+        }
+
+        async function loadManagerItemLowStockTargets(force = false) {
+            if (!canReadItemLowStockTargets()) return null;
+            const state = getManagerItemLowStockTargetsState();
+            const rows = Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [];
+            const key = getManagerAssignedItemTargetKey(rows);
+            if (!force && state.key === key) return state.rowsByCode;
+            if (!force && state.loading && state.promise && state.loadingKey === key) return state.promise;
+            if (!force && state.error && state.errorKey === key) throw new Error(state.error);
+            const codes = (Array.isArray(fullInventory) ? fullInventory : []).concat(rows)
+                .map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode))).filter(Boolean);
+            const owner = state.owner;
+            const requestId = ++state.requestId;
+            state.loading = true;
+            state.loadingKey = key;
+            state.error = '';
+            state.promise = fetchManagerItemLowStockTargets(codes).then(result => {
+                if (state.owner !== owner || state.requestId !== requestId || !canReadItemLowStockTargets() || key !== getManagerAssignedItemTargetKey()) return state.rowsByCode;
+                const next = new Map();
+                result.forEach(target => {
+                    const code = normalizeManagerItemLowStockTargetCode(target && target.itemcode_normalized);
+                    if (code) next.set(code, target);
+                });
+                state.rowsByCode = next;
+                state.key = key;
+                state.errorKey = '';
+                state.revision += 1;
+                state.error = '';
+                state.promise = null;
+                invalidateManagerEvalReport2Cache();
+                return next;
+            }).catch(error => {
+                if (state.owner === owner && state.requestId === requestId) {
+                    state.error = getFriendlyBackendErrorMessage(error, 'Could not load item order history and low-stock targets.');
+                    state.errorKey = key;
+                }
+                throw error;
+            }).finally(() => {
+                if (state.owner !== owner || state.requestId !== requestId) return;
+                state.loading = false;
+                state.loadingKey = '';
+                state.promise = null;
+                if (getCurrentVisibleViewId() === 'managers' && [MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, MANAGER_EVAL_REPORTS_2_VIEW].includes(activeHomeTab)) scheduleManagersRender(true);
+            });
+            return state.promise;
+        }
+
+        function getManagerItemLowStockTarget(itemCode = '') {
+            return getManagerItemLowStockTargetsState().rowsByCode.get(normalizeManagerItemLowStockTargetCode(itemCode)) || null;
+        }
+
+        function formatManagerItemLowStockQuantity(value, digits = 1) {
+            if (value == null || value === '') return '—';
+            const numeric = Number(value);
+            return Number.isFinite(numeric) ? numeric.toLocaleString(undefined, { maximumFractionDigits: digits }) : '—';
+        }
+
+        function renderManagerItemLowStockHistory(target = null) {
+            if (!target) return `<div class="mt-1 text-[10px] font-semibold text-slate-400">${getManagerItemLowStockTargetsState().error ? 'History unavailable' : 'Waiting for history summary'}</div>`;
+            const lines = Number(target.qualifying_line_count || 0);
+            const days = Number(target.qualifying_day_count || 0);
+            const files = Number(target.source_file_count || 0);
+            if (target.history_ready !== true) {
+                const pending = Math.max(0, Number(target.history_pending_files || 0));
+                const total = Math.max(0, Number(target.history_total_files || 0));
+                const hasPriorSuggestion = target.suggested_qty != null && Number.isFinite(Number(target.suggested_qty));
+                return `<div class="mt-1 text-[10px] font-bold text-blue-700" role="status">${hasPriorSuggestion ? 'Refreshing history; active targets remain in effect' : 'Processing order history; manual targets and fallback remain in effect'}${total ? ` · ${pending} of ${total} files pending` : ''}</div>`;
+            }
+            const fromDate = String(target.history_from_date || '').slice(0, 10) || '—';
+            const throughDate = String(target.history_through_date || '').slice(0, 10) || '—';
+            const calculatedAt = String(target.calculated_at || '').replace('T', ' ').slice(0, 16) || '—';
+            if (lines === 0) return `<div class="mt-1 text-[10px] font-semibold text-slate-500">No qualifying history · using target ${escapeHtml(formatManagerItemLowStockQuantity(target.effective_qty))}</div>`;
+            const limited = lines < 10 ? ' · Limited history' : '';
+            return `<details class="mt-1 text-[10px] font-semibold text-slate-500"><summary class="cursor-pointer">${lines.toLocaleString()} lines · ${days} days · ${files} files${limited}</summary><div class="mt-1">History ${escapeHtml(fromDate)} to ${escapeHtml(throughDate)} · Calculated ${escapeHtml(calculatedAt)} · Suggested ${escapeHtml(formatManagerItemLowStockQuantity(target.suggested_qty))} · P75 ${escapeHtml(formatManagerItemLowStockQuantity(target.p75_quantity))}</div></details>`;
+        }
+
+        function renderManagerItemLowStockEditor(row = {}) {
+            const state = getManagerItemLowStockTargetsState();
+            const code = normalizeManagerItemLowStockTargetCode(row.ITEMCODE || row.itemcode);
+            const target = getManagerItemLowStockTarget(code);
+            const allowed = canManageItemLowStockTargets();
+            const rawFallback = Number(managerEvalReportSettings && managerEvalReportSettings.lowStockMaxSLts);
+            const fallback = Number.isFinite(rawFallback) ? rawFallback : 150;
+            const value = state.drafts.has(code) ? state.drafts.get(code)
+                : target && target.manual_override_qty != null ? target.manual_override_qty
+                    : target && target.suggested_qty != null ? target.suggested_qty : fallback;
+            const saving = state.saving.has(code);
+            const input = `<input type="text" inputmode="numeric" autocomplete="off" aria-label="Low-stock target ${escapeHtml(code)}" data-low-stock-override="${escapeHtml(code)}" value="${escapeHtml(String(value))}" ${allowed ? '' : 'disabled'} ${saving ? 'disabled' : ''} oninput="updateManagerItemLowStockDraft(this.dataset.lowStockOverride, this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();saveManagerItemLowStockOverride(this.dataset.lowStockOverride)}">`;
+            const actions = allowed ? `<div class="mt-1 flex min-w-0 flex-wrap gap-1"><button type="button" class="min-h-[44px] rounded-lg bg-[#007a4d] px-2 text-[9px] font-black uppercase text-white disabled:opacity-50" onmousedown="event.preventDefault()" onclick="return saveManagerItemLowStockOverride('${escJsAttrValue(code)}')" ${saving ? 'disabled' : ''}>${saving ? 'Saving' : 'Save'}</button><button type="button" class="min-h-[44px] max-w-full whitespace-normal rounded-lg border border-slate-200 px-2 text-[9px] font-black uppercase text-slate-600 disabled:opacity-50" onmousedown="event.preventDefault()" onclick="return resetManagerItemLowStockOverride('${escJsAttrValue(code)}')" ${saving || !target || target.manual_override_qty == null ? 'disabled' : ''}>Use suggestion</button></div>` : '<div class="mt-1 text-[10px] font-bold text-slate-500">Read only</div>';
+            return `<div class="manager-item-low-stock-editor">${input}${actions}</div>`;
+        }
+
+        function updateManagerItemLowStockDraft(itemCode = '', value = '') {
+            const code = normalizeManagerItemLowStockTargetCode(itemCode);
+            if (canManageItemLowStockTargets() && code) getManagerItemLowStockTargetsState().drafts.set(code, String(value));
+            return false;
+        }
+
+        async function saveManagerItemLowStockOverride(itemCode = '', overrideValue = undefined) {
+            if (!canManageItemLowStockTargets()) return false;
+            const code = normalizeManagerItemLowStockTargetCode(itemCode);
+            const state = getManagerItemLowStockTargetsState();
+            if (!code || state.saving.has(code)) return false;
+            const prior = state.rowsByCode.get(code) || {};
+            const configuredFallback = Number(managerEvalReportSettings && managerEvalReportSettings.lowStockMaxSLts);
+            const fallbackValue = Number.isFinite(configuredFallback) ? configuredFallback : 150;
+            const displayedValue = prior.manual_override_qty != null ? prior.manual_override_qty
+                : prior.suggested_qty != null ? prior.suggested_qty : fallbackValue;
+            const rawValue = overrideValue === null ? null : (overrideValue === undefined
+                ? state.drafts.has(code) ? state.drafts.get(code) : displayedValue
+                : overrideValue);
+            const quantity = rawValue === null ? null : (String(rawValue).trim() === '' ? NaN : Number(rawValue));
+            if (quantity !== null && (!Number.isInteger(quantity) || quantity < 0 || quantity > 100000000)) {
+                showToast('Invalid Target', 'Enter a whole, non-negative target quantity.', true);
+                return false;
+            }
+            state.saving.add(code);
+            try {
+                const result = await supabaseRpc('set_eval_item_low_stock_override_v1', {
+                    p_itemcode: code,
+                    p_override_qty: quantity,
+                    p_expected_revision: Number(prior.override_revision || 0)
+                }, { timeoutMs: Math.max(SUPABASE_WRITE_TIMEOUT_MS, 30000) });
+                const saved = Array.isArray(result) ? result[0] : result;
+                if (!saved || normalizeManagerItemLowStockTargetCode(saved.itemcode_normalized) !== code) throw new Error('Low-stock target verification failed.');
+                state.rowsByCode.set(code, saved);
+                state.drafts.delete(code);
+                state.revision += 1;
+                invalidateManagerEvalReport2Cache();
+                showToast('Low-Stock Target Saved', `${code} now uses ${formatManagerItemLowStockQuantity(saved.effective_qty)}.`);
+            } catch (error) {
+                if (Number(error && error.status) === 40001 || String(error && error.message || error).includes('LOW_STOCK_OVERRIDE_CONFLICT')) {
+                    try {
+                        const latestRows = await fetchManagerItemLowStockTargets([code]);
+                        const latest = latestRows.find(target => normalizeManagerItemLowStockTargetCode(target.itemcode_normalized) === code);
+                        if (latest) state.rowsByCode.set(code, latest);
+                        state.drafts.delete(code);
+                        state.revision += 1;
+                        invalidateManagerEvalReport2Cache();
+                    } catch (refreshError) {}
+                    showToast('Target Changed', 'Another manager changed this target. The latest value was loaded; review it before saving again.', true);
+                } else {
+                    showToast('Target Not Saved', getFriendlyBackendErrorMessage(error, 'Could not save the low-stock target.'), true);
+                }
+            } finally {
+                state.saving.delete(code);
+                scheduleManagersRender(true);
+            }
+            return false;
+        }
+
+        function resetManagerItemLowStockOverride(itemCode = '') {
+            return saveManagerItemLowStockOverride(itemCode, null);
+        }
 
         function getManagerAssignedColumnDefinitions() {
             return [['ASSIGNEDTO', 'AssignedTo'], ['WAREHOUSEI', 'Warehouse'], ['ITEMCODE', 'Item Code'],
                 ['CONTSIZE', 'Container Size'], ['COMMONNAME', 'Common Name'], ['LOCATIONCODE', 'Location Code'],
-                ['SOURCE', 'Source'], ['GENUSNAME', 'Genus Name']];
+                ['SOURCE', 'Source'], ['GENUSNAME', 'Genus Name'], ['AVG_ORDER_QTY', 'Average Order Qty'], ['LOW_STOCK_TARGET', 'Low Stock Qty']];
         }
 
         function getManagerAssignedColumnState() {
@@ -131768,6 +132028,21 @@ C.14.043 C.15.000
                 const warehouseCompare = String(a.WAREHOUSEI || '').localeCompare(String(b.WAREHOUSEI || ''), undefined, { numeric: true });
                 if (warehouseCompare !== 0) return warehouseCompare;
                 return String(a.ASSIGNEDTO || '').localeCompare(String(b.ASSIGNEDTO || ''), undefined, { numeric: true });
+            }).map(row => {
+                const target = getManagerItemLowStockTarget(row.ITEMCODE);
+                const isHistoryReady = !!target && target.history_ready === true;
+                const rawFallback = Number(managerEvalReportSettings && managerEvalReportSettings.lowStockMaxSLts);
+                const fallback = Number.isFinite(rawFallback) ? rawFallback : 150;
+                const effectiveTarget = target && target.manual_override_qty != null ? Number(target.manual_override_qty)
+                    : target && target.suggested_qty != null ? Number(target.suggested_qty) : fallback;
+                return Object.assign({}, row, {
+                    AVG_ORDER_QTY: target && target.mean_quantity != null ? Number(target.mean_quantity) : (row.AVG_ORDER_QTY ?? ''),
+                    LOW_STOCK_TARGET: target ? effectiveTarget : (row.LOW_STOCK_TARGET ?? fallback),
+                    LOW_STOCK_SUGGESTED: target && target.suggested_qty != null ? Number(target.suggested_qty) : (row.LOW_STOCK_SUGGESTED ?? ''),
+                    HISTORY_FROM_DATE: isHistoryReady ? target.history_from_date || '' : '',
+                    HISTORY_THROUGH_DATE: isHistoryReady ? target.history_through_date || '' : '',
+                    LOW_STOCK_CALCULATED_AT: isHistoryReady ? target.calculated_at || '' : ''
+                });
             });
         }
 
@@ -131835,8 +132110,80 @@ C.14.043 C.15.000
                 { label: 'COMMONNAME', value: (row) => row.COMMONNAME || '' },
                 { label: 'LOCATIONCODE', value: (row) => row.LOCATIONCODE || '' },
                 { label: 'SOURCE', value: (row) => row.SOURCE || '' },
-                { label: 'GENUSNAME', value: (row) => row.GENUSNAME || '' }
+                { label: 'GENUSNAME', value: (row) => row.GENUSNAME || '' },
+                { label: 'Average Order Qty', value: (row) => row.AVG_ORDER_QTY === '' ? '' : row.AVG_ORDER_QTY },
+                { label: 'Suggested Low-Stock Target', value: (row) => row.LOW_STOCK_SUGGESTED ?? '' },
+                { label: 'Low Stock Qty', value: (row) => row.LOW_STOCK_TARGET ?? '' },
+                { label: 'History From', value: row => row.HISTORY_FROM_DATE || '' },
+                { label: 'History Through', value: row => row.HISTORY_THROUGH_DATE || '' },
+                { label: 'Calculated At', value: row => row.LOW_STOCK_CALCULATED_AT || '' }
             ];
+        }
+
+        async function exportManagerAssignedAverageSummaryToExcel() {
+            if (!canViewAssignedItemsExport() || !canReadItemLowStockTargets()) return false;
+            let targets = [];
+            try {
+                targets = await fetchAllManagerItemLowStockTargets();
+                if (!targets.length || targets.some(target => target.history_ready !== true)) {
+                    showToast('History Still Processing', 'The average summary is available after all order-history files finish processing.', true);
+                    return false;
+                }
+            } catch (error) {
+                showToast('Summary Not Ready', getFriendlyBackendErrorMessage(error, 'Could not load the complete order-history summary.'), true);
+                return false;
+            }
+            const namesByCode = new Map();
+            getManagerAssignedItemsDisplayRows().forEach(row => {
+                const code = normalizeManagerItemLowStockTargetCode(row.ITEMCODE);
+                if (code && !namesByCode.has(code)) namesByCode.set(code, row.COMMONNAME || '');
+            });
+            const globalFallback = Number(managerEvalReportSettings && managerEvalReportSettings.lowStockMaxSLts);
+            const fallback = Number.isFinite(globalFallback) ? globalFallback : 150;
+            const rows = targets.map(target => {
+                const code = normalizeManagerItemLowStockTargetCode(target.itemcode_normalized);
+                const effective = target.manual_override_qty != null ? Number(target.manual_override_qty)
+                    : target.suggested_qty != null ? Number(target.suggested_qty) : fallback;
+                return {
+                    ITEMCODE: code, COMMONNAME: namesByCode.get(code) || '',
+                    AVG_ORDER_QTY: target.mean_quantity == null ? '' : Number(target.mean_quantity),
+                    P75_ORDER_QTY: target.p75_quantity == null ? '' : Number(target.p75_quantity),
+                    LOW_STOCK_SUGGESTED: target.suggested_qty == null ? '' : Number(target.suggested_qty),
+                    LOW_STOCK_OVERRIDE: target.manual_override_qty == null ? '' : Number(target.manual_override_qty),
+                    LOW_STOCK_TARGET: effective,
+                    HISTORY_FROM_DATE: target.history_from_date || '',
+                    HISTORY_THROUGH_DATE: target.history_through_date || '',
+                    CALCULATED_AT: target.calculated_at || '',
+                    QUALIFYING_LINES: Number(target.qualifying_line_count || 0),
+                    QUALIFYING_DAYS: Number(target.qualifying_day_count || 0),
+                    SOURCE_FILES: Number(target.source_file_count || 0)
+                };
+            }).sort((a, b) => String(a.ITEMCODE || '').localeCompare(String(b.ITEMCODE || ''), undefined, { numeric: true }));
+            if (!rows.length) {
+                showToast('No Items', 'No ItemCodes have an order-history summary to export.', true);
+                return false;
+            }
+            const columns = [
+                { label: 'ITEMCODE', value: row => row.ITEMCODE || '' },
+                { label: 'COMMONNAME', value: row => row.COMMONNAME || '' },
+                { label: 'Average Order Qty', value: row => row.AVG_ORDER_QTY },
+                { label: 'P75 Order Qty', value: row => row.P75_ORDER_QTY },
+                { label: 'Suggested Low-Stock Target', value: row => row.LOW_STOCK_SUGGESTED },
+                { label: 'Manual Override', value: row => row.LOW_STOCK_OVERRIDE },
+                { label: 'Low Stock Qty', value: row => row.LOW_STOCK_TARGET ?? '' },
+                { label: 'Qualifying Lines', value: row => row.QUALIFYING_LINES },
+                { label: 'Qualifying Days', value: row => row.QUALIFYING_DAYS },
+                { label: 'Source Files', value: row => row.SOURCE_FILES },
+                { label: 'History From', value: row => row.HISTORY_FROM_DATE },
+                { label: 'History Through', value: row => row.HISTORY_THROUGH_DATE },
+                { label: 'Calculated At', value: row => row.CALCULATED_AT }
+            ];
+            downloadExcelWorkbook(columns, rows, 'Assigned Items Average Order Summary', '', 'assigned-items-average-summary', [
+                ['Module', 'Assigned Items'], ['Summary', 'All archived history; for each warehouse/order/consignee/ItemCode group, use its latest qualifying daily snapshot and weight individual order lines equally.'],
+                ['Rows', String(rows.length)], ['Exported By', currentUser || ''], ['Exported At', new Date().toLocaleString()]
+            ], { filenameBase: 'Assigned Items Average Order Summary', freezeHeaderRow: true, includeAutoFilter: true });
+            showToast('Average Summary Ready', `Downloading ${rows.length} unique ItemCode summaries.`);
+            return false;
         }
 
         function getManagerAssignedItemsExportMetaRows(rows = []) {
@@ -131863,6 +132210,7 @@ C.14.043 C.15.000
             if (!canViewAssignedItemsExport()) return false;
             try {
                 await ensureDatasetLoaded('warehouseAssignedItems', 'full', { force: true, preserveRequestedMode: true });
+                await loadManagerItemLowStockTargets(true);
                 scheduleManagersRender(true);
                 showToast('Assigned Items Refreshed', 'Loaded the latest AssignedTo rows.');
             } catch (error) {
@@ -131907,6 +132255,8 @@ C.14.043 C.15.000
                 : 1024;
             const useMobileLayout = viewportWidth > 0 && viewportWidth < 768;
             const canManageAssignments = canManageEvalItemcodeAssignments();
+            const targetState = getManagerItemLowStockTargetsState();
+            const targetColCount = getManagerAssignedColumnDefinitions().length + (canManageAssignments ? 1 : 0);
             const showAssignmentGroups = getManagerAssignedItemsActiveAssigneeKey() === 'all' && !getManagerAssignedColumnState().sort;
             const mobileCards = useMobileLayout ? previewRows.map((row, index) => {
                 const assignmentKey = buildManagerEvalAssignmentKey(row.ITEMCODE, row.GENUSNAME);
@@ -131923,6 +132273,7 @@ C.14.043 C.15.000
                 const source = String(row.SOURCE || '-');
                 const genusName = String(row.GENUSNAME || '-');
                 const assignedTo = String(row.ASSIGNEDTO || 'Unassigned');
+                const target = getManagerItemLowStockTarget(itemCode);
                 return `${groupLabel}<article data-manager-assigned-item-card class="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" style="content-visibility:auto;contain-intrinsic-size:280px">
                     <div class="flex min-w-0 items-start gap-3">
                         <div class="min-w-0 flex-1">
@@ -131934,6 +132285,10 @@ C.14.043 C.15.000
                     <div class="mt-3 grid min-w-0 grid-cols-2 gap-2 text-[11px] font-bold">
                         <div class="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">Location</div><div class="mt-0.5 break-all text-slate-800">${escapeHtml(locationCode)}</div></div>
                         <div class="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">Warehouse</div><div class="mt-0.5 break-all text-slate-800">${escapeHtml(warehouse)}</div></div>
+                    </div>
+                    <div class="mt-3 grid min-w-0 grid-cols-2 gap-2">
+                        <div class="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">Average Order Qty</div><div data-manager-item-average="${escapeHtml(normalizeManagerItemLowStockTargetCode(itemCode))}" class="mt-1 text-sm font-black text-slate-900">${escapeHtml(formatManagerItemLowStockQuantity(target && target.mean_quantity))}</div>${renderManagerItemLowStockHistory(target)}</div>
+                        <div class="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.1em] text-emerald-800">Low Stock Qty</div>${renderManagerItemLowStockEditor(row)}</div>
                     </div>
                     <div class="mt-3 min-w-0">
                         <label class="block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">AssignedTo
@@ -131950,7 +132305,8 @@ C.14.043 C.15.000
                 const isAssigned = !!normalizeEvalAssignableUser(row.ASSIGNEDTO);
                 const priorRow = index > 0 ? previewRows[index - 1] : null;
                 const beginsGroup = showAssignmentGroups && (!priorRow || !!normalizeEvalAssignableUser(priorRow.ASSIGNEDTO) !== isAssigned);
-                const groupRow = beginsGroup ? `<tr data-manager-assigned-group="${isAssigned ? 'assigned' : 'unassigned'}"><td colspan="9" class="border-y ${isAssigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'} px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]">${isAssigned ? 'Assigned' : 'Unassigned'}</td></tr>` : '';
+                const groupRow = beginsGroup ? `<tr data-manager-assigned-group="${isAssigned ? 'assigned' : 'unassigned'}"><td colspan="${targetColCount}" class="border-y ${isAssigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'} px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]">${isAssigned ? 'Assigned' : 'Unassigned'}</td></tr>` : '';
+                const target = getManagerItemLowStockTarget(row.ITEMCODE);
                 return `${groupRow}<tr data-manager-assigned-item-row class="border-b border-slate-100" style="content-visibility:auto;contain-intrinsic-size:52px">
                 ${canManageAssignments ? `<td class="px-3 py-2"><input type="checkbox" class="h-5 w-5 rounded border-slate-300 text-[#007a4d]" aria-label="Select ${escapeHtml(row.ITEMCODE || 'item')} for bulk assignment" title="Select for bulk assignment" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" ${managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE, row.GENUSNAME)) ? 'checked' : ''} onchange="toggleManagerEvalAssignmentItem(this.dataset.itemcode, this.dataset.genusname, this.checked)"></td>` : ''}
                 <td class="px-3 py-2 font-black text-slate-900">${canManageAssignments ? `<select class="min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black disabled:cursor-wait disabled:opacity-60" aria-label="Assign ${escapeHtml(row.ITEMCODE || 'item')}" data-itemcode="${escapeHtml(row.ITEMCODE || '')}" data-genusname="${escapeHtml(row.GENUSNAME || '')}" onchange="setSingleEvalItemcodeAssignment(this.dataset.itemcode, this.dataset.genusname, this.value, this)">${getManagerEvalAssigneeOptionsHtml(row.ASSIGNEDTO || '')}</select>` : escapeHtml(row.ASSIGNEDTO || '-')}</td>
@@ -131961,6 +132317,8 @@ C.14.043 C.15.000
                 <td class="px-3 py-2">${escapeHtml(row.LOCATIONCODE || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.SOURCE || '-')}</td>
                 <td class="px-3 py-2">${escapeHtml(row.GENUSNAME || '-')}</td>
+                <td class="px-3 py-2"><div data-manager-item-average="${escapeHtml(normalizeManagerItemLowStockTargetCode(row.ITEMCODE || ''))}" class="font-black text-slate-900">${escapeHtml(formatManagerItemLowStockQuantity(target && target.mean_quantity))}</div>${renderManagerItemLowStockHistory(target)}</td>
+                <td class="px-3 py-2">${renderManagerItemLowStockEditor(row)}</td>
             </tr>`;
             }).join('');
             const fullListStatus = `<div data-manager-assigned-full-list-status class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-800">Showing all ${previewRows.length} matching row${previewRows.length === 1 ? '' : 's'}. Search checks the complete ${completeRowCount}-row list.</div>`;
@@ -131976,7 +132334,7 @@ C.14.043 C.15.000
                                 ${getManagerAssignedColumnDefinitions().map(([field, label]) => `<th aria-sort="${getManagerAssignedColumnState().sort?.field === field ? (getManagerAssignedColumnState().sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}">${renderManagerAssignedColumnTrigger(field, label)}</th>`).join('')}
                             </tr>
                         </thead>
-                        <tbody>${body || `<tr><td colspan="${canManageAssignments ? 9 : 8}" class="p-4">No rows match. Change or clear filters above.</td></tr>`}</tbody>
+                                <tbody>${body || `<tr><td colspan="${targetColCount}" class="p-4">No rows match. Change or clear filters above.</td></tr>`}</tbody>
                     </table>
                 </div>
             </div>${fullListStatus}`;
@@ -131989,6 +132347,12 @@ C.14.043 C.15.000
             if (!isDatasetLoaded('warehouseAssignedItems', 'full')) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
                 return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading AssignedTo rows...</div>';
+            }
+            const lowStockState = getManagerItemLowStockTargetsState();
+            const lowStockKey = getManagerAssignedItemTargetKey();
+            if (canReadItemLowStockTargets() && lowStockState.key !== lowStockKey
+                && lowStockState.loadingKey !== lowStockKey && lowStockState.errorKey !== lowStockKey) {
+                loadManagerItemLowStockTargets(false).catch(() => {});
             }
             const allRows = getManagerAssignedItemsDisplayRows();
             if (canManageEvalItemcodeAssignments() && !evalAssignableUsersDirectoryResolved && !evalAssignableUsersPromise) {
@@ -132008,7 +132372,7 @@ C.14.043 C.15.000
                 .join('');
             return `<div class="space-y-4">
                 <div class="compact-filter-panel rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
-                    <div class="compact-filter-rail grid grid-cols-2 gap-2 lg:grid-cols-[minmax(220px,360px)_auto_auto] lg:items-end">
+                    <div class="compact-filter-rail grid grid-cols-2 gap-2 lg:grid-cols-[minmax(220px,360px)_auto_auto_auto] lg:items-end">
                         <label class="col-span-2 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 lg:col-span-1">AssignedTo
                             <select class="mt-1 w-full rounded-xl border border-emerald-100 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">
                                 ${optionHtml}
@@ -132016,7 +132380,11 @@ C.14.043 C.15.000
                         </label>
                         <button type="button" class="min-h-[48px] rounded-xl border border-emerald-100 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#007a4d] shadow-sm transition hover:bg-emerald-50 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return refreshManagerAssignedItemsExport()"><i class="ph ph-arrow-clockwise mr-1 sm:mr-2"></i>Refresh</button>
                         <button type="button" class="ops-view-option-action min-h-[48px] rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#1d4ed8] shadow-sm transition hover:bg-blue-100 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedItemsToExcel()"><i class="ph ph-download-simple mr-1 sm:mr-2"></i>Export Excel</button>
+                        ${canReadItemLowStockTargets() ? `<button type="button" class="min-h-[48px] rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-violet-800 shadow-sm transition hover:bg-violet-100 disabled:cursor-wait disabled:opacity-50 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedAverageSummaryToExcel()" ${areManagerAssignedItemTargetsHistoryReady() ? '' : 'disabled'}><i class="ph ph-chart-line-up mr-1 sm:mr-2"></i>${areManagerAssignedItemTargetsHistoryReady() ? 'Average Summary' : 'History Processing'}</button>` : ''}
                     </div>
+                    ${lowStockState.loading ? '<div class="mt-3 text-[10px] font-bold text-blue-700" role="status">Loading order history and low-stock targets…</div>' : ''}
+                    ${canReadItemLowStockTargets() && !lowStockState.loading && !areManagerAssignedItemTargetsHistoryReady() ? '<div class="mt-3 text-[10px] font-bold text-blue-700" role="status">Order-history suggestions are processing. Existing item targets remain active; new items use manual targets or the shared fallback.</div>' : ''}
+                    ${lowStockState.error ? `<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-900" role="status">${escapeHtml(lowStockState.error)} ${canReadItemLowStockTargets() ? '<button type="button" class="ml-2 underline" onclick="loadManagerItemLowStockTargets(true).catch(()=>{})">Retry</button>' : ''}</div>` : ''}
                     ${canManageEvalItemcodeAssignments() ? `<div class="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-[11px] font-bold leading-4 text-blue-800"><span class="font-black">Single item:</span> changing its AssignedTo menu saves immediately. Checkboxes and Assign Selected are only for changing multiple items.</div><div class="mt-3 grid gap-2 md:grid-cols-[minmax(220px,360px)_auto]">
                         <select id="manager-eval-bulk-assignee" class="w-full rounded-xl border border-blue-100 bg-white px-3 py-3 text-sm font-black text-slate-900">${getManagerEvalAssigneeOptionsHtml('')}</select>
                         <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return assignSelectedEvalItemcodes()">Assign Selected</button>
@@ -136189,6 +136557,12 @@ C.14.043 C.15.000
             if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) ensureSeasonSalesNoteAccessFresh();
             const container = document.getElementById('managers-content');
             if (!container) return;
+            let lowStockFocus = null;
+            if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && container.contains(document.activeElement)
+                && document.activeElement.matches('[data-low-stock-override]')) {
+                const focusedInput = document.activeElement;
+                lowStockFocus = { code: focusedInput.dataset.lowStockOverride || '', start: focusedInput.selectionStart, end: focusedInput.selectionEnd };
+            }
             const assignedStateBeforeRender = getManagerAssignedColumnState();
             if (assignedStateBeforeRender.editor && (activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
                 || !canAccessView('managers') || !canViewAssignedItemsExport())) closeManagerAssignedColumnFilter(false, false);
@@ -136266,6 +136640,16 @@ C.14.043 C.15.000
                 if (slot) slot.replaceWith(retainedRecords);
                 container.replaceChildren(...shell.childNodes);
             } else container.innerHTML = html;
+            if (lowStockFocus && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
+                const input = Array.from(container.querySelectorAll('[data-low-stock-override]'))
+                    .find(candidate => candidate.dataset.lowStockOverride === lowStockFocus.code);
+                if (input) {
+                    input.focus({ preventScroll: true });
+                    if (Number.isInteger(lowStockFocus.start) && Number.isInteger(lowStockFocus.end)) {
+                        try { input.setSelectionRange(lowStockFocus.start, lowStockFocus.end); } catch (error) {}
+                    }
+                }
+            }
             if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW && document.getElementById('effective-user-access-editor')) GncNavigationPreferences.renderAccessEditor(document.getElementById('effective-user-access-editor'));
             GncMobileWorkspace.syncHub('managers');
             syncManagersHeaderChrome();
