@@ -1,0 +1,97 @@
+name: Publish validated candidate
+
+on:
+  workflow_run:
+    workflows: [PWA and Supabase performance]
+    types: [completed]
+
+# GITHUB_TOKEN merges do not trigger the Pages push workflow. This trusted
+# default-branch handler explicitly dispatches Pages after PR validation.
+concurrency:
+  group: publish-validated-candidate
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Never check out or execute PR files in this privileged workflow.
+      - name: Complete the approved merge and dispatch Pages
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const event = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+            const repository = `${owner}/${repo}`;
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner, repo, run_id: event.id,
+            });
+            if (run.path !== '.github/workflows/performance-monitor.yml' ||
+                run.event !== 'pull_request' || run.status !== 'completed' ||
+                run.conclusion !== 'success' || run.run_attempt !== event.run_attempt ||
+                run.head_sha !== event.head_sha || run.head_repository?.full_name !== repository) {
+              core.notice('Ignoring an untrusted, incomplete, or superseded validation run.');
+              return;
+            }
+
+            // workflow_run.pull_requests can be empty after a PR has merged.
+            const associated = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+              owner, repo, commit_sha: run.head_sha, per_page: 100,
+            });
+            const candidates = associated.filter(pr =>
+              pr.base?.repo?.full_name === repository && pr.base.ref === 'main' &&
+              pr.head?.repo?.full_name === repository && pr.head.sha === run.head_sha);
+            if (candidates.length !== 1) {
+              core.notice('No unique main PR matches this validated head commit.');
+              return;
+            }
+            const pull_number = candidates[0].number;
+            let { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+            if (pr.draft || pr.base?.repo?.full_name !== repository || pr.base.ref !== 'main' ||
+                pr.head?.repo?.full_name !== repository || pr.head.sha !== run.head_sha) {
+              core.notice('PR no longer matches the validated candidate.');
+              return;
+            }
+            if (!pr.merged) {
+              // Preserve the existing auto-merge opt-in if branch rules deferred it.
+              // The API enforces branch protection and the expected head SHA.
+              if (pr.state !== 'open' || !pr.auto_merge) {
+                core.notice('PR is neither merged nor awaiting an enabled auto-merge.');
+                return;
+              }
+              const { data: merge } = await github.rest.pulls.merge({
+                owner, repo, pull_number, sha: run.head_sha, merge_method: 'merge',
+              });
+              if (!merge.merged) throw new Error('CANDIDATE_MERGE_NOT_COMPLETED');
+              ({ data: pr } = await github.rest.pulls.get({ owner, repo, pull_number }));
+            }
+            if (!pr.merged || !pr.merge_commit_sha) throw new Error('CANDIDATE_MERGE_NOT_CONFIRMED');
+
+            const { data: main } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+            if (main.object.sha !== pr.merge_commit_sha) {
+              core.notice('A newer main commit will publish through its own validation.');
+              return;
+            }
+            const existing = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner, repo, workflow_id: 'pages-static.yml', head_sha: pr.merge_commit_sha, per_page: 100,
+            });
+            if (existing.some(candidate => candidate.head_branch === 'main' &&
+                candidate.head_sha === pr.merge_commit_sha &&
+                (candidate.status !== 'completed' || candidate.conclusion === 'success'))) {
+              core.notice('Pages is already queued, running, or successful for this merge.');
+              return;
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner, repo, workflow_id: 'pages-static.yml', ref: 'main',
+            });
+            core.notice(`Dispatched Pages for PR #${pull_number}, merge ${pr.merge_commit_sha}. Pages revalidates main before publication.`);
