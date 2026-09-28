@@ -16,6 +16,13 @@ const { PGlite } = require('@electric-sql/pglite');
 const db = new PGlite();
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const expect = (condition, message) => { if (!condition) throw new Error(message); };
+// Reuse the inventory schema loaded by release-database.yml. A separate local
+// table definition previously hid a missing CI column used by Eval Reports #2.
+const inventoryBaseline = read('supabase/ci/request_workflow_baseline.sql')
+  .match(/create table if not exists public\.ph_master_inventory\s*\([\s\S]*?\n\);/)?.[0];
+const inventoryExtensions = read('supabase/ci/request_eval_drive_reliability_baseline.sql')
+  .match(/alter table public\.ph_master_inventory\b[\s\S]*?;/)?.[0];
+expect(inventoryBaseline && inventoryExtensions, 'release database inventory baselines must be available');
 
 async function expectSqlError(sql, message) {
   try { await db.exec(sql); }
@@ -81,10 +88,6 @@ try {
     );
     insert into public.ph_eval_report_settings(singleton,low_stock_max_slts,hold_age_days,location_note_age_days)
     values(true,150,5,10);
-    create table public.ph_master_inventory(
-      unique_id text primary key,itemcode text,season text,saleyear text,priority text,
-      holdstopbegindate text,locationnotedate text,s_lts text,desigitem text,holdstopcode text
-    );
     insert into public.profiles(id,username,role) values
       ('91000000-0000-4000-8000-000000000001','dylan_collyge','ADMIN'),
       ('91000000-0000-4000-8000-000000000002','megan_kelly','ADMIN'),
@@ -92,7 +95,15 @@ try {
       ('91000000-0000-4000-8000-000000000004','unrelated_user','USER');
   `);
 
+  await db.exec(inventoryBaseline + '\n' + inventoryExtensions);
   await db.exec(read('supabase/migrations/20260928145055_item_low_stock_targets.sql'));
+  // Reproduce the observed CI error and roll back the deliberate fixture
+  // damage before running the complete positive contract checks below.
+  await db.exec('begin; alter table public.ph_master_inventory drop column holdstopbegindate;');
+  await expectSqlError("select private.eval_report2_item_qualifies_v1('low-stock','FIXTURE-COLUMN-CHECK')", 'column m.holdstopbegindate does not exist');
+  await db.exec('rollback;');
+  const holdDateColumn = await db.query("select data_type, is_nullable from information_schema.columns where table_schema='public' and table_name='ph_master_inventory' and column_name='holdstopbegindate'");
+  expect(holdDateColumn.rows[0]?.data_type === 'text' && holdDateColumn.rows[0]?.is_nullable === 'YES', 'CI inventory fixture preserves the nullable production hold-start text column');
   const activationTimeout = await db.query("select proconfig from pg_proc where oid='public.activate_eval_item_low_stock_import_v1(uuid)'::regprocedure");
   expect(activationTimeout.rows[0].proconfig.includes('statement_timeout=55s'), 'archive activation is bounded below the PostgREST 60-second cap');
 
@@ -216,7 +227,7 @@ try {
   await db.query("select set_config('request.jwt.claims',$1,false)", [JSON.stringify({role:'service_role'})]);
   const all = await db.query('select * from public.get_eval_item_low_stock_targets_v1(null,null,1)');
   expect(all.rows.length === 1 && all.rows[0].itemcode_normalized === 'ITEM-X', 'service role can page the complete aggregate for export');
-  console.log('PASS: SOC file manifest staging, idempotent row chunks, complete-coverage activation, daily group snapshots, suggestion formula, Eval #2 threshold parity, manual override revision/audit, and read/write ACLs.');
+  console.log('PASS: shared CI inventory fixture, missing-column regression, SOC file manifest staging, idempotent row chunks, complete-coverage activation, daily group snapshots, suggestion formula, Eval #2 threshold parity, manual override revision/audit, and read/write ACLs.');
 } catch (error) {
   console.error(error.message);
   if (error.detail) console.error(`DETAIL: ${error.detail}`);

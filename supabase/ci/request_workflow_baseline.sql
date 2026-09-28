@@ -37,6 +37,7 @@ create table if not exists public.ph_master_inventory (
   desigitem text,
   desigloc text,
   holdstopcode text,
+  holdstopbegindate text,
   holdstopreason text,
   itemspec text,
   locationnote text,

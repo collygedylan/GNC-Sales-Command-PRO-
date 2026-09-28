@@ -11,6 +11,15 @@ const databaseJob = yaml.load(workflow).jobs['database-and-functions'];
 const browserConfig = fs.readFileSync(new URL('../playwright.database.config.ts', import.meta.url), 'utf8');
 const provisioning = fs.readFileSync(new URL('./native-auth-provisioning-local.spec.js', import.meta.url), 'utf8');
 const legacyBaseline = fs.readFileSync(new URL('../supabase/ci/native_auth_legacy_user_baseline.sql', import.meta.url), 'utf8');
+const requestWorkflowBaseline = fs.readFileSync(new URL('../supabase/ci/request_workflow_baseline.sql', import.meta.url), 'utf8');
+const evalReport2Migration = fs.readFileSync(new URL('../supabase/migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql', import.meta.url), 'utf8');
+
+test('request workflow baseline provides the text hold start date consumed by Eval Report #2', () => {
+  const inventory = requestWorkflowBaseline.match(/create table if not exists public\.ph_master_inventory\s*\(([\s\S]*?)\n\);/i);
+  assert.ok(inventory, 'CI baseline defines the legacy master inventory table');
+  assert.match(inventory[1], /\bholdstopbegindate\s+text\b/i);
+  assert.match(evalReport2Migration, /eval_report2_inventory_date_v1\(m\.holdstopbegindate\)/i);
+});
 
 test('database reusable workflow is secret-free and has read-only repository permissions', () => {
   assert.match(workflow, /on:\s+workflow_call:/);
