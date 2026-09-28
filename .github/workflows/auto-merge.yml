@@ -1,6 +1,6 @@
 name: Auto-Merge Candidates
 # GITHUB_TOKEN merges do not emit a usable Pages push trigger.
-# publish-candidate.yml dispatches Pages after the PR validation succeeds.
+# publish-candidate.yml dispatches the backend-to-Pages handoff after PR validation.
 on:
   pull_request:
     branches:

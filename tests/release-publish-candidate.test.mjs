@@ -8,6 +8,7 @@ const yaml = createRequire(import.meta.url)('js-yaml');
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const workflow = yaml.load(read('.github/workflows/publish-candidate.yml'));
 const pages = yaml.load(read('.github/workflows/pages-static.yml'));
+const backend = yaml.load(read('.github/workflows/apps-script-sync.yml'));
 const script = workflow.jobs.publish.steps.find(step => step.uses === 'actions/github-script@v7').with.script;
 const repository = 'example/gnc';
 const headSha = 'validated-head-sha';
@@ -52,11 +53,12 @@ function fixture(options = {}) {
   } };
 }
 
-test('trusted completed PR validation dispatches Pages only for its confirmed main merge', async () => {
+test('trusted completed PR validation dispatches the backend handoff for its confirmed main merge', async () => {
   const f = fixture();
   await f.execute();
   assert.equal(f.calls.dispatches.length, 1);
-  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.dispatches[0])), { owner: 'example', repo: 'gnc', workflow_id: 'pages-static.yml', ref: 'main' });
+  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.dispatches[0])), { owner: 'example', repo: 'gnc', workflow_id: 'apps-script-sync.yml', ref: 'main' });
+  assert.equal(f.calls.workflowRuns.workflow_id, 'apps-script-sync.yml');
   assert.deepEqual(f.calls.merges, []);
   assert.deepEqual(JSON.parse(JSON.stringify(f.calls.associated)), [{ owner: 'example', repo: 'gnc', commit_sha: headSha, per_page: 100 }]);
 });
@@ -100,7 +102,7 @@ test('untrusted, failed, cancelled, superseded, or non-PR validation runs cannot
   });
 });
 
-test('queued, running, or successful Pages runs deduplicate dispatch; a failed run can retry', async t => {
+test('queued, running, or successful backend handoffs deduplicate dispatch; a failed run can retry', async t => {
   for (const existing of [
     { status: 'queued', conclusion: null },
     { status: 'in_progress', conclusion: null },
@@ -115,7 +117,7 @@ test('queued, running, or successful Pages runs deduplicate dispatch; a failed r
   assert.equal(failed.calls.dispatches.length, 1);
 });
 
-test('a failed guarded merge cannot dispatch Pages', async () => {
+test('a failed guarded merge cannot dispatch the backend handoff', async () => {
   const f = fixture({ pr: { state: 'open', merged: false, merge_commit_sha: null, auto_merge: { enabled_by: { login: 'bot' } } },
     mergeResult: { merged: false, message: 'head changed' } });
   await assert.rejects(f.execute(), /CANDIDATE_MERGE_NOT_COMPLETED/);
@@ -134,7 +136,79 @@ test('the dispatcher is trusted, least-scoped, and cannot recursively dispatch i
   assert.match(script, /getWorkflowRun/);
   assert.match(script, /run\.head_sha !== event\.head_sha/);
   assert.match(script, /pulls\.merge\([\s\S]*sha: run\.head_sha/);
-  assert.match(script, /workflow_id: 'pages-static\.yml'[\s\S]*ref: 'main'/);
+  assert.match(script, /workflow_id: 'apps-script-sync\.yml'[\s\S]*ref: 'main'/);
+  assert.doesNotMatch(script, /workflow_id: 'pages-static\.yml'/);
+  assert.ok(Object.hasOwn(backend.on, 'workflow_dispatch'));
   assert.ok(Object.hasOwn(pages.on, 'workflow_dispatch'));
   assert.doesNotMatch(workflow.on.workflow_run.workflows.join(' '), /Publish validated candidate|Deploy static app to Pages/);
+});
+
+const handoff = backend.jobs['publish-pages'];
+const handoffScript = handoff.steps.find(step => step.uses === 'actions/github-script@v7').with.script;
+
+async function runHandoff({ mainShas = [mergeSha, mergeSha], existing = [], lookupError = false } = {}) {
+  const calls = { dispatches: [], notices: [], refs: 0 };
+  const github = { rest: {
+    git: { getRef: async () => ({ data: { object: { sha: mainShas[calls.refs++] } } }) },
+    actions: {
+      listWorkflowRuns: async args => {
+        assert.equal(args.workflow_id, 'pages-static.yml');
+        assert.equal(args.head_sha, mergeSha);
+        if (lookupError) throw Error('GITHUB_API_UNAVAILABLE');
+        return { data: existing };
+      },
+      createWorkflowDispatch: async args => { calls.dispatches.push(JSON.parse(JSON.stringify(args))); },
+    },
+  }, paginate: async (method, args) => (await method(args)).data };
+  await vm.runInNewContext(`(async () => {\n${handoffScript}\n})()`, {
+    github, context: { repo: { owner: 'example', repo: 'gnc' }, sha: mergeSha },
+    core: { notice: message => calls.notices.push(message) },
+  });
+  return calls;
+}
+
+test('schema and verified Apps Script health must succeed before the Pages handoff', () => {
+  assert.deepEqual(handoff.needs, ['authorize-production', 'sync-codegs']);
+  assert.match(handoff.if, /refs\/heads\/main/);
+  assert.match(handoff.if, /authorized == 'true'/);
+  assert.doesNotMatch(handoff.if, /always\(|failure\(|cancelled\(/);
+  assert.equal(backend.permissions['pull-requests'], 'read');
+  assert.equal(backend.permissions.actions, 'read');
+  assert.deepEqual(handoff.permissions, { contents: 'read', actions: 'write' });
+  assert.doesNotMatch(JSON.stringify(handoff), /secrets\.|APPS_SCRIPT_CLASPRC_JSON/);
+  const steps = backend.jobs['sync-codegs'].steps;
+  const schema = steps.findIndex(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
+  const compatibility = steps.findIndex(step => step.run === 'node scripts/apps-script-sync-preflight.mjs');
+  const deploy = steps.findIndex(step => step.run === 'node scripts/sync-codegs-to-apps-script.js');
+  assert.ok(schema >= 0 && compatibility > schema && deploy > compatibility);
+  assert.equal(steps[deploy].if, "steps.compatibility.outputs.sync-required == 'true'");
+  assert.equal(steps.find(step => step.uses === 'actions/upload-artifact@v4').if, steps[deploy].if);
+  assert.equal(steps[compatibility].env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID, '${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}');
+  assert.equal(steps.some(step => step['continue-on-error']), false);
+  assert.match(read('scripts/sync-codegs-to-apps-script.js'), /await createAppsScriptRecoveryEvidence/);
+  assert.match(read('.github/workflows/pages-static.yml'), /node scripts\/check-compatible-apps-script\.mjs/);
+});
+
+test('successful backend handoff dispatches Pages on current main', async () => {
+  const calls = await runHandoff();
+  assert.deepEqual(calls.dispatches, [{ owner: 'example', repo: 'gnc', workflow_id: 'pages-static.yml', ref: 'main' }]);
+  assert.equal(calls.refs, 2);
+});
+
+test('Pages handoff rejects main advancing before or during lookup and fails closed on API errors', async () => {
+  for (const mainShas of [['newer-main'], [mergeSha, 'newer-main']]) {
+    assert.deepEqual((await runHandoff({ mainShas })).dispatches, []);
+  }
+  await assert.rejects(runHandoff({ lookupError: true }), /GITHUB_API_UNAVAILABLE/);
+});
+
+test('Pages handoff deduplicates the same main release and permits recovery from a failed run', async () => {
+  for (const state of [{ status: 'queued' }, { status: 'in_progress' }, { status: 'completed', conclusion: 'success' }]) {
+    assert.deepEqual((await runHandoff({ existing: [{ head_branch: 'main', head_sha: mergeSha, ...state }] })).dispatches, []);
+  }
+  for (const existing of [
+    [{ head_branch: 'main', head_sha: mergeSha, status: 'completed', conclusion: 'failure' }],
+    [{ head_branch: 'main', head_sha: 'older-sha', status: 'completed', conclusion: 'success' }],
+    [{ head_branch: 'feature', head_sha: mergeSha, status: 'in_progress' }],
+  ]) assert.equal((await runHandoff({ existing })).dispatches.length, 1);
 });
