@@ -51,7 +51,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.27.007">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.27.008">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -59,7 +59,7 @@
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script src="./assets/app-lifecycle.js" data-app-lifecycle></script>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.27.007';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.27.008';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -683,8 +683,8 @@ body .app-av-catalog-card .app-av-photo-slide{min-width:100%;height:100%}
  body .app-av-catalog-card .app-av-catalog-title-row{gap:6px}
  body .app-av-catalog-card .app-av-photo-carousel,body .app-av-catalog-card .app-av-hero-empty{height:62px}
  body .app-av-catalog-card .app-av-catalog-stock-value,body .app-av-catalog-card .app-av-catalog-price-value{font-size:22px}
- body .app-av-catalog-card .app-av-catalog-actions{flex-direction:row;max-width:none;flex-wrap:wrap}
- body .app-av-catalog-card .app-av-catalog-actions>*{flex:1 1 auto}
+ body .app-av-catalog-card .app-av-catalog-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:none}
+ body .app-av-catalog-card .app-av-catalog-actions>:only-child{grid-column:1 / -1}
  body .app-av-catalog-card .card-checkbox-container{margin-right:4px}
 }
 @media(prefers-reduced-motion:reduce){body .app-av-catalog-card .app-av-photo-track{scroll-behavior:auto}}
@@ -6786,7 +6786,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.27.007">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.27.008">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -6984,13 +6984,13 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.27.007"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.27.007"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.27.007"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.27.007"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.27.007"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.27.007"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.27.007"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.27.008"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.27.008"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.27.008"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.27.008"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.27.008"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.27.008"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.27.008"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7758,7 +7758,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.27.007').trim() || 'V2026.09.27.007';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.27.008').trim() || 'V2026.09.27.008';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9274,7 +9274,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.27.007';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.27.008';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -32519,7 +32519,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.27.007').trim() || 'V2026.09.27.007';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.27.008').trim() || 'V2026.09.27.008';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -55992,7 +55992,7 @@ function toggleDriveQuickRequestItem(domId) {
             photoModalState.index = boundedIndex;
             const left = slides[boundedIndex].offsetLeft;
             try {
-                gallery.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
+                gallery.scrollTo({ left, behavior: smooth ? 'smooth' : 'instant' });
             } catch (err) {
                 gallery.scrollLeft = left;
             }
@@ -56005,7 +56005,9 @@ function toggleDriveQuickRequestItem(domId) {
             let nextIndex = photoModalState.index + direction;
             if (nextIndex >= total) nextIndex = 0;
             if (nextIndex < 0) nextIndex = total - 1;
-            snapPhotoModalToIndex(nextIndex, true);
+            // A button selects one photo immediately. Intermediate smooth-scroll
+            // events can restore the previous index before WebKit reaches it.
+            snapPhotoModalToIndex(nextIndex, false);
         }
 
         function openPhotoModal(urlStr, caption, startIndex = 0) {

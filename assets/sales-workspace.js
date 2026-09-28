@@ -42,21 +42,37 @@
   owner.inFlight=pending;
   return pending;
  }
- function park(){clearTimeout(state.searchTimer);state.pendingSearch=false;state.history.push({view:state.view,mode:state.mode,status:state.status,sourceKind:state.sourceKind,query:state.query,customerKey:state.customerKey,folder:state.folder,rows:state.rows,folders:state.folders,nextCursor:state.nextCursor,detail:state.detail,selection:state.selection,scroll:typeof getMainAreaScrollTop==='function'?getMainAreaScrollTop():0});if(typeof ensureNativeBackGuard==='function')ensureNativeBackGuard();}
- function back(){ensureAccount();if(!isView(getCurrentVisibleViewId())||!state.history.length)return false;clearTimeout(state.searchTimer);state.pendingSearch=false;const prev=state.history.pop();Object.assign(state,prev);state.epoch++;state.error='';render();requestAnimationFrame(()=>typeof setMainAreaScrollTop==='function'&&setMainAreaScrollTop(prev.scroll||0));return true;}
+ function park(){clearTimeout(state.searchTimer);state.searchTimer=null;state.pendingSearch=false;state.history.push({view:state.view,mode:state.mode,status:state.status,sourceKind:state.sourceKind,query:state.query,customerKey:state.customerKey,folder:state.folder,rows:state.rows,folders:state.folders,nextCursor:state.nextCursor,detail:state.detail,selection:state.selection,scroll:typeof getMainAreaScrollTop==='function'?getMainAreaScrollTop():0});if(typeof ensureNativeBackGuard==='function')ensureNativeBackGuard();}
+ function back(){ensureAccount();if(!isView(getCurrentVisibleViewId())||!state.history.length)return false;clearTimeout(state.searchTimer);state.searchTimer=null;state.pendingSearch=false;const prev=state.history.pop();Object.assign(state,prev);state.epoch++;state.error='';render();requestAnimationFrame(()=>typeof setMainAreaScrollTop==='function'&&setMainAreaScrollTop(prev.scroll||0));return true;}
+ function preserveSelectedRows(rows){
+  if(state.view!=='sales-credit'||!state.customerKey||!state.selection.size)return [...rows];
+  const unique=new Map();
+  const next=[];
+  for(const row of rows){
+   if(row?.id===null||row?.id===undefined){next.push(row);continue;}
+   if(unique.has(row.id))next[unique.get(row.id)]=row;
+   else{unique.set(row.id,next.length);next.push(row);}
+  }
+  const present=new Set(next.map(row=>row.id)),query=normalize(state.query);
+  for(const row of state.selection.values()){
+   const item=snapshot(row),searchable=normalize(`${field(item,'itemcode')} ${field(item,'commonname')}`);
+   if(!present.has(row.id)&&(!query||searchable.includes(query))){next.push(row);present.add(row.id);}
+  }
+  return next;
+ }
  async function load(more=false) {
   const epoch=++state.epoch, action=state.view==='request-history'?'request_history':'sales_credit';
   let operation=state.view==='request-history'?(state.mode==='folders'?'folders':'search'):state.view==='credit-request'?'submissions':state.customerKey?'sources':'folders';
   const result=await api(action,operation,{query:state.query,status:state.status,customerKey:state.customerKey||undefined,...(state.view==='sales-credit'&&['folders','sources'].includes(operation)?{sourceKind:state.sourceKind}:{}),cursor:more?state.nextCursor:undefined,limit:50});
   if(epoch!==state.epoch)return;
   const rows=result.rows||result.submissions||result.folders||[];
-  state.requesters=result.requesters||state.requesters;state.rows=more?[...state.rows,...rows]:rows;state.nextCursor=result.nextCursor||null;state.loaded=true;
+  state.requesters=result.requesters||state.requesters;state.rows=preserveSelectedRows(more?[...state.rows,...rows]:rows);state.nextCursor=result.nextCursor||null;state.loaded=true;
   if(state.view==='sales-credit'&&!state.customerKey){const drafts=await api('sales_credit','drafts');if(epoch===state.epoch)state.drafts=drafts.drafts||[];}
  }
- function open(view){ensureAccount();if(state.view!==view){rememberCreditTab();state.epoch++;state.view=view;state.mode='list';state.status=view==='request-history'?'all':'pending';state.sourceKind='docks';state.query='';state.customerKey='';state.folder=null;state.rows=[];state.history=[];state.detail=null;state.loaded=false;state.selection=new Map();}render();if(!state.loaded)return run(()=>load());return false;}
+ function open(view){ensureAccount();if(state.view!==view){rememberCreditTab();clearTimeout(state.searchTimer);state.searchTimer=null;state.pendingSearch=false;state.epoch++;state.view=view;state.mode='list';state.status=view==='request-history'?'all':'pending';state.sourceKind='docks';state.query='';state.customerKey='';state.folder=null;state.rows=[];state.history=[];state.detail=null;state.loaded=false;state.selection=new Map();}render();if(!state.loaded){if(state.busy){state.pendingSearch=true;return false;}return run(()=>load());}return false;}
  async function stageRefresh(){ensureAccount();if(!isView(getCurrentVisibleViewId())||state.busy||!['list','folders'].includes(state.mode))return null;const owner=state;const epoch=state.epoch;const action=state.view==='request-history'?'request_history':'sales_credit';const operation=state.view==='request-history'?(state.mode==='folders'?'folders':'search'):state.view==='credit-request'?'submissions':state.customerKey?'sources':'folders';const result=await api(action,operation,{status:state.status,query:state.query,customerKey:state.customerKey||undefined,...(state.view==='sales-credit'&&['folders','sources'].includes(operation)?{sourceKind:state.sourceKind}:{}),limit:Math.min(100,Math.max(50,state.rows.length))});return {owner,epoch,result};}
- function applyRefresh(update){if(!update||update.owner!==state||update.epoch!==state.epoch||state.busy||state.rows.length>100)return;const active=document.activeElement;if(active?.closest('.sales-workspace')&&active.matches('input,textarea,select'))return;const rows=update.result.rows||update.result.submissions||update.result.folders||[],nextCursor=update.result.nextCursor||null;if(JSON.stringify([state.rows,state.nextCursor])===JSON.stringify([rows,nextCursor]))return;state.rows=rows;state.nextCursor=nextCursor;render();}
- function search(value){state.query=value;state.epoch++;clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>{if(state.busy)state.pendingSearch=true;else void run(()=>load());},300);}
+ function applyRefresh(update){if(!update||update.owner!==state||update.epoch!==state.epoch||state.busy||state.rows.length>100)return;const active=document.activeElement;if(active?.closest('.sales-workspace')&&active.matches('input,textarea,select'))return;const rows=preserveSelectedRows(update.result.rows||update.result.submissions||update.result.folders||[]),nextCursor=update.result.nextCursor||null;if(JSON.stringify([state.rows,state.nextCursor])===JSON.stringify([rows,nextCursor]))return;state.rows=rows;state.nextCursor=nextCursor;render();}
+ function search(value){state.query=value;state.epoch++;clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>{state.searchTimer=null;if(state.busy)state.pendingSearch=true;else void run(()=>load());},300);}
  function filter(value){return run(async()=>{state.status=value;await load();});}
  function rememberCreditTab(){if(state.view!=='sales-credit')return;state.creditTabs.set(state.sourceKind,{mode:state.mode==='folders'?'folders':'list',query:state.query,customerKey:state.customerKey,folder:state.folder,rows:state.rows,nextCursor:state.nextCursor,selection:state.selection,loaded:state.loaded});}
  function creditTab(sourceKind){if(state.view!=='sales-credit'||!['docks','request_history'].includes(sourceKind)||state.busy||state.sourceKind===sourceKind)return false;rememberCreditTab();clearTimeout(state.searchTimer);state.pendingSearch=false;state.epoch++;state.sourceKind=sourceKind;const saved=state.creditTabs.get(sourceKind);Object.assign(state,saved||{mode:'list',query:'',customerKey:'',folder:null,rows:[],nextCursor:null,selection:new Map(),loaded:false});state.history=[];state.error='';render();if(!state.loaded)return run(()=>load());return false;}
@@ -65,6 +81,7 @@
  function detail(index){park();state.detail=state.rows[index];state.mode='detail';render();return false;}
  async function openSource(sourceKind,sourceUniqueId){
   ensureAccount();
+  clearTimeout(state.searchTimer);state.searchTimer=null;state.pendingSearch=false;
   const requestedAccount=state.account;
   if(state.view!=='sales-credit'&&typeof getCurrentVisibleViewId==='function'&&getCurrentVisibleViewId()==='sales-credit')open('sales-credit');
   while(state.busy&&state.inFlight)await state.inFlight;

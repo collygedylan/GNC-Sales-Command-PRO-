@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {selectReleaseProof,verifyReleaseProof} from '../scripts/release-proof.mjs';
+import {selectReleaseProof,verifyReleaseProof,verifySameRunReleaseProof} from '../scripts/release-proof.mjs';
 const commit='a'.repeat(40), repository='example/app';
 function fixture() {
   const run={id:12,run_number:4,run_attempt:1,workflow_id:9,path:'.github/workflows/performance-monitor.yml',event:'workflow_dispatch',head_sha:commit,head_branch:'repair/example',head_repository:{full_name:repository},status:'completed',conclusion:'success'};
@@ -17,6 +17,20 @@ test('a release-branch benchmark supplies an immutable same-commit artifact for 
   for(const field of ['commit','repository','runId','attempt','siteArtifactId','digest','release']) {
     assert.throws(()=>verifyReleaseProof({...proof,[field]:'wrong'},selected,proof.release),/RELEASE_PROOF_/);
   }
+});
+test('same-run Pages proof binds reusable gate outputs to the exact caller run and artifact identity',()=>{
+  const selected={repository,commit,runId:88,attempt:2,siteArtifactId:30,proofArtifactId:31,digest:'b'.repeat(64)};
+  const proof={schemaVersion:'gnc-release-proof-v1',repository,commit,runId:88,attempt:2,siteArtifactId:30,release:'V2026.09.14.02',digest:'b'.repeat(64)};
+  assert.equal(verifySameRunReleaseProof(proof,selected,proof.release),proof.digest);
+  for(const change of [
+    ['commit',x=>x.commit='c'.repeat(40)], ['repository',x=>x.repository='fork/app'],
+    ['run',x=>x.runId=89], ['attempt',x=>x.attempt=1], ['site artifact',x=>x.siteArtifactId=32],
+    ['proof artifact',x=>x.proofArtifactId=0],
+  ].map(([, mutate]) => mutate)) {
+    const altered={...selected};change(altered);
+    assert.throws(()=>verifySameRunReleaseProof(proof,altered,proof.release),/RELEASE_PROOF_/);
+  }
+  assert.throws(()=>verifySameRunReleaseProof(proof,{...selected,digest:'c'.repeat(64)},proof.release),/RELEASE_PROOF_DIGEST_MISMATCH/);
 });
 for(const [name,change] of [
   ['wrong SHA',f=>f.runs[0].head_sha='c'.repeat(40)],

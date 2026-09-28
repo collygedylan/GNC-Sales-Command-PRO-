@@ -137,7 +137,7 @@ test('background refresh preserves expanded drafts and does not detach unchanged
     postAppFunctionJson: async (_url, request) => {
       calls.push(request.operation);
       return { ok: true, data: request.operation === 'drafts' ? { drafts: [{ id: commandId, label: 'Saved customer' }] }
-        : { folders: [{ customerKey: 'customer', label: 'Customer', count }] } };
+        : { folders: [{ customerKey: 'customer', label: 'Customer', count }, { customerKey: 'customer-2', label: 'Second customer', count: 1 }] } };
     } });
   w.eval(readFileSync(new URL('../assets/sales-workspace.js', import.meta.url), 'utf8'));
   try {
@@ -146,6 +146,7 @@ test('background refresh preserves expanded drafts and does not detach unchanged
     const control = disclosure.querySelector('button');
     w.SalesWorkspace.applyRefresh(await w.SalesWorkspace.stageRefresh());
     assert.equal(w.document.querySelector('details button'), control);
+    assert.match(w.document.getElementById('sales-credit-content').textContent, /Second customer/);
     assert.equal(disclosure.open, true);
     const reads = calls.length;
     await w.SalesWorkspace.open('sales-credit');
@@ -154,6 +155,7 @@ test('background refresh preserves expanded drafts and does not detach unchanged
     count = 2;
     w.SalesWorkspace.applyRefresh(await w.SalesWorkspace.stageRefresh());
     assert.equal(w.document.querySelector('details').open, true, 'changed records retain the expanded draft list');
+    assert.match(w.document.getElementById('sales-credit-content').textContent, /Second customer/);
     assert.match(w.document.getElementById('sales-credit-content').textContent, /2 records/);
   } finally { dom.window.close(); }
 });

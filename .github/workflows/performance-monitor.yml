@@ -14,8 +14,8 @@ concurrency:
   group: performance-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# Manual candidate checks run every required lane once against one sealed build.
-# Main Pages verifies this run's proof and deploys its artifact without rebuilding.
+# PR and manual checks run every required lane against one sealed build.
+# Main Pages invokes the same validation workflow in its own publication run.
 jobs:
   validation:
     uses: ./.github/workflows/release-validation.yml

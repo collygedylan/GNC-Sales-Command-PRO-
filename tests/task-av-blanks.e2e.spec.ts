@@ -291,6 +291,12 @@ test('ordinary compact AV cards stay within the row budget', async ({ page, base
         expect(compact.thumbnail.height).toBeCloseTo(width <= 900 ? 64 : 88, 0);
         expect(compact.besideHeader).toBe(true);
         expect(compact.phoneDetailsFullWidth).toBe(true);
+        if (hasPhoto && width <= 900) {
+          const actions = await card.locator('.app-av-catalog-actions > button').evaluateAll(buttons =>
+            buttons.map(button => button.getBoundingClientRect().top));
+          expect(actions).toHaveLength(2);
+          expect(Math.abs(actions[0] - actions[1]), 'phone photo actions share one row').toBeLessThanOrEqual(1);
+        }
         await testInfo.attach(`card-${width}-${hasPhoto ? 'photo' : 'empty'}-${source || 'standard'}`, { body: JSON.stringify(compact), contentType: 'application/json' });
         if (!source && (width === 1280 || width === 390)) await card.screenshot({ path: testInfo.outputPath(`compact-${width}-${hasPhoto ? 'photo' : 'empty'}.png`) });
       }
@@ -416,6 +422,13 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
   await expect(page.locator('#photo-modal')).not.toHaveClass(/hidden/);
   await expect(page.locator('#photo-modal-counter')).toContainText('1 / 2');
   await activate(page.locator('#photo-modal-next'));
+  await expect(page.locator('#photo-modal-counter')).toContainText('2 / 2');
+  await expect.poll(() => page.locator('#photo-modal-gallery').evaluate(el =>
+    Math.abs(el.scrollLeft - el.clientWidth))).toBeLessThanOrEqual(1);
+  await activate(page.locator('#photo-modal-next'));
+  await expect(page.locator('#photo-modal-counter')).toContainText('1 / 2');
+  await expect.poll(() => page.locator('#photo-modal-gallery').evaluate(el => el.scrollLeft)).toBe(0);
+  await activate(page.locator('#photo-modal-prev'));
   await expect(page.locator('#photo-modal-counter')).toContainText('2 / 2');
   await activate(page.locator('#photo-modal-close'));
   await expect(page.locator('#photo-modal')).toHaveClass(/hidden/);

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # Do not cancel a release mid-publish or while exact-live checks are running.
 # Feature-branch validation can run independently; checks within a release fan out.
@@ -31,31 +32,35 @@ jobs:
       contents: read
       actions: read
     outputs:
-      digest: ${{ steps.proof.outputs.digest }}
-      run-id: ${{ steps.proof.outputs.run-id }}
-      site-id: ${{ steps.proof.outputs.site-id }}
-      proof-id: ${{ steps.select.outputs.proof-id }}
+      digest: ${{ needs.candidate-validation.outputs.digest }}
+      run-id: ${{ needs.candidate-validation.outputs.run-id }}
+      attempt: ${{ needs.candidate-validation.outputs.attempt }}
+      site-id: ${{ needs.candidate-validation.outputs.site-id }}
+      proof-id: ${{ needs.candidate-validation.outputs.proof-id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Select latest fully validated candidate
-        id: select
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/release-proof.mjs select
       - uses: actions/download-artifact@v4
         with:
-          artifact-ids: ${{ steps.select.outputs.proof-id }}
-          run-id: ${{ steps.select.outputs.run-id }}
+          artifact-ids: ${{ needs.candidate-validation.outputs.proof-id }}
+          run-id: ${{ needs.candidate-validation.outputs.run-id }}
           github-token: ${{ github.token }}
           path: artifacts/candidate-proof
           merge-multiple: true
       - name: Verify candidate commit, run, attempt, version and digest
         id: proof
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RELEASE_PROOF_RUN_ID: ${{ needs.candidate-validation.outputs.run-id }}
+          RELEASE_PROOF_ATTEMPT: ${{ needs.candidate-validation.outputs.attempt }}
+          RELEASE_PROOF_SITE_ID: ${{ needs.candidate-validation.outputs.site-id }}
+          RELEASE_PROOF_ID: ${{ needs.candidate-validation.outputs.proof-id }}
+          RELEASE_PROOF_DIGEST: ${{ needs.candidate-validation.outputs.digest }}
         run: node scripts/release-proof.mjs verify
       - name: Require compatible Apps Script before frontend publication
         env:
@@ -116,7 +121,15 @@ jobs:
       - name: Recheck candidate proof immediately before artifact publication
         if: steps.current.outputs.publish == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RELEASE_PROOF_RUN_ID: ${{ needs.validation.outputs.run-id }}
+          RELEASE_PROOF_ATTEMPT: ${{ needs.validation.outputs.attempt }}
+          RELEASE_PROOF_SITE_ID: ${{ needs.validation.outputs.site-id }}
+          RELEASE_PROOF_ID: ${{ needs.validation.outputs.proof-id }}
+          RELEASE_PROOF_DIGEST: ${{ needs.validation.outputs.digest }}
         run: node scripts/release-proof.mjs verify
       - uses: ./.github/actions/download-release
         if: steps.current.outputs.publish == 'true'
