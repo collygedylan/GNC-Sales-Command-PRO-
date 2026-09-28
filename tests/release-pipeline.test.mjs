@@ -52,6 +52,39 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(validation.jobs.database.uses, './.github/workflows/release-database.yml');
 });
 
+test('Pages job guards allow validated reuse without ignoring failures or cancellation', () => {
+  function eligible(job, needs, { ref = 'refs/heads/main', cancelled = false } = {}) {
+    const condition = pages.jobs[job].if;
+    // A status function is required to override GitHub's implicit success()
+    // when candidate-validation is intentionally skipped in the ancestor DAG.
+    assert.match(condition, /!cancelled\(\)/, `${job} must handle the skipped reuse ancestor`);
+    const expression = condition.replace(/needs\.([\w-]+)/g, 'needs["$1"]');
+    return vm.runInNewContext(expression, { needs, github: { ref }, cancelled: () => cancelled });
+  }
+  const valid = {
+    validation: { result: 'success' },
+    deploy: { result: 'success', outputs: { published: 'true' } },
+    'exact-live': { result: 'success' },
+  };
+  for (const job of ['deploy', 'exact-live', 'post-deployment-canary']) {
+    assert.equal(eligible(job, valid), true, `${job}: valid reused candidate`);
+    assert.equal(eligible(job, valid, { cancelled: true }), false, `${job}: cancelled workflow`);
+  }
+  assert.equal(eligible('deploy', valid, { ref: 'refs/heads/codex/example' }), false);
+  for (const result of ['failure', 'skipped', 'cancelled', '']) {
+    assert.equal(eligible('deploy', { ...valid, validation: { result } }), false);
+    for (const job of ['exact-live', 'post-deployment-canary']) {
+      assert.equal(eligible(job, { ...valid, deploy: { ...valid.deploy, result } }), false);
+    }
+    assert.equal(eligible('post-deployment-canary', { ...valid, 'exact-live': { result } }), false);
+  }
+  for (const published of ['false', '', undefined]) {
+    for (const job of ['exact-live', 'post-deployment-canary']) {
+      assert.equal(eligible(job, { ...valid, deploy: { result: 'success', outputs: { published } } }), false);
+    }
+  }
+});
+
 test('browser shards and compiled suites use isolated runners without racing performance tests', () => {
   assert.deepEqual(validation.jobs.functional.strategy.matrix.shard, [1,2,3,4]);
   assert.equal(validation.jobs.functional.strategy['max-parallel'], 4);

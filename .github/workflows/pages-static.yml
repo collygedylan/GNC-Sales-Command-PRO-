@@ -124,7 +124,11 @@ jobs:
 
   deploy:
     needs: validation
-    if: github.ref == 'refs/heads/main'
+    # Candidate reuse skips an ancestor job. Override implicit success() while
+    # still requiring verified validation and respecting cancellation.
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main' &&
+      needs.validation.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
@@ -226,7 +230,9 @@ jobs:
 
   exact-live:
     needs: deploy
-    if: needs.deploy.outputs.published == 'true'
+    if: >-
+      !cancelled() && needs.deploy.result == 'success' &&
+      needs.deploy.outputs.published == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
@@ -244,7 +250,9 @@ jobs:
 
   post-deployment-canary:
     needs: [deploy, exact-live]
-    if: needs.deploy.outputs.published == 'true'
+    if: >-
+      !cancelled() && needs.deploy.result == 'success' &&
+      needs.deploy.outputs.published == 'true' && needs.exact-live.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     strategy:
