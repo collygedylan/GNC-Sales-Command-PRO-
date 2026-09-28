@@ -5,3 +5,10 @@ All production promotions, validations, and merges are handled autonomously by G
 
 # AUTO-PR REQUIREMENT
 Agents must ALWAYS automatically create a pull request using the GitHub CLI (gh pr create --fill) immediately after pushing a candidate branch. Do not wait for the user to explicitly request a production publication. Create the PR and terminate.
+
+# OVERRIDE: STAY AWAKE AND MONITOR PROTOCOL
+Agents must ALWAYS automatically create a pull request using the GitHub CLI (gh pr create --fill) immediately after pushing a candidate branch. 
+DO NOT terminate immediately. Instead, you MUST monitor the GitHub Actions pipeline using gh pr checks --watch.
+If the checks pass, you may terminate.
+If the checks fail, you must read the failure logs and ask the user for permission to fix the errors.
+This rule completely overrides any previous "fire-and-forget" or "terminate immediately" instructions.
