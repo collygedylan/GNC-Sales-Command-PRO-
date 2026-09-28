@@ -283,25 +283,9 @@ async function finish(info: TestInfo, evidence: Evidence[], f: Awaited<ReturnTyp
   expect(f.source.native.runtime).toBeGreaterThan(0);
 }
 
-const drawerGroups = {
-  'inventory and work modules': ['drive', 'tasks', 'request', 'av', 'reserves', 'docks', 'take-back', 'crop-roll', 'low-stock', 'review', 'move-up'],
-  'hubs and specialist modules': ['sales', 'sales-inventory', 'production', 'office', 'qc', 'communication', 'sales-office', 'advertisement', 'grower', 'pest-management', 'disease-pest', 'hours', 'bunch-note', 'hl-order'],
-};
-for (const [group, views] of Object.entries(drawerGroups)) test(`phone opening smoke: ${group}`, async ({ page, baseURL }, info) => {
-  const f = await fixture(page, baseURL!), evidence: Evidence[] = [];
-  try {
-    for (const view of views) await test.step(view, async () => {
-      await drawer(page, view);
-      await checkScreen(page, view, `drawer/${view}`, evidence);
-      await page.locator('#global-header-inline-back').tap();
-      await expect(page.locator('#view-home'), `Back from ${view} returns Home`).toBeVisible();
-    });
-  } finally { await finish(info, evidence, f); }
-});
-
-test('phone opening smoke: hub children, production states, detail and Reports', async ({ page, baseURL }, info) => {
-  const f = await fixture(page, baseURL!), evidence: Evidence[] = [];
-  const routes = [
+type HubRoute = readonly [parent: string, selector: string, view: string];
+const phoneHubRouteGroups: Record<string, HubRoute[]> = {
+  'Sales and inventory routes': [
     ['sales', '#hub-extra-sales-request-history', 'request-history'],
     ['sales', '#hub-extra-sales-sales-credit', 'sales-credit'],
     ['sales', '#hub-extra-sales-credit-request', 'credit-request'],
@@ -309,18 +293,26 @@ test('phone opening smoke: hub children, production states, detail and Reports',
     ['sales-inventory', '#inventory-open-weather-hold', 'weather-hold'],
     ['sales-inventory', '#inventory-open-inventory-office', 'moves'],
     ['sales-inventory', '#inventory-open-not-on-inventory', 'detail'],
+  ],
+  'Production routes': [
     ['production', '#production-open-shear-list', 'shear-list'],
     ['production', '#production-open-propagation', 'production-workflow'],
     ['production', '#production-open-planting', 'production-workflow'],
     ['production', '#production-open-can-filling', 'production-workflow'],
     ['production', '#production-open-order-pulling', 'production-workflow'],
     ['production', '#production-open-84rd', 'sales-inventory'],
+  ],
+  'Communication and Reports routes': [
     ['communication', '#communication-hub-grid button[onclick*="switchView(\'chat\')"]', 'chat'],
     ['communication', '#communication-hub-grid button[onclick*="switchView(\'department-calendar\')"]', 'department-calendar'],
     ['managers', '#hub-extra-managers-reports', 'reports'],
-  ];
+  ],
+};
+
+async function checkHubRoutes(page: Page, baseURL: string, info: TestInfo, routes: HubRoute[]) {
+  const f = await fixture(page, baseURL), evidence: Evidence[] = [];
   try {
-    for (const [parent, selector, view] of routes) await test.step(`${parent}/${selector}`, async () => {
+    for (const [parent, selector, view] of routes) await test.step(`${parent}/${view}`, async () => {
       await drawer(page, parent);
       await page.locator(selector).tap();
       await checkScreen(page, view, selector, evidence);
@@ -332,10 +324,10 @@ test('phone opening smoke: hub children, production states, detail and Reports',
       await expect(page.locator(`#view-${parent}`), `Back to ${parent}`).toBeVisible();
     });
   } finally { await finish(info, evidence, f); }
-});
+}
 
-test('phone opening smoke: each accessible Manager module and footer settings', async ({ page, baseURL }, info) => {
-  const f = await fixture(page, baseURL!), evidence: Evidence[] = [];
+async function checkManagerModuleGroup(page: Page, baseURL: string, info: TestInfo, group: 0 | 1) {
+  const f = await fixture(page, baseURL), evidence: Evidence[] = [];
   try {
     await drawer(page, 'managers');
     const moduleButtons = page.locator('#view-managers .manager-module-card:visible');
@@ -345,7 +337,10 @@ test('phone opening smoke: each accessible Manager module and footer settings', 
       tab: (node.getAttribute('onclick') || '').match(/setHomeTab\('([^']+)'/)?.[1] || '',
     })));
     expect(modules.length, 'real Manager module inventory').toBeGreaterThan(5);
-    for (const { label, tab } of modules) await test.step(label, async () => {
+    const midpoint = Math.ceil(modules.length / 2);
+    const selectedModules = group === 0 ? modules.slice(0, midpoint) : modules.slice(midpoint);
+    expect(selectedModules.length, `Manager module group ${group + 1} is nonempty`).toBeGreaterThan(0);
+    for (const { label, tab } of selectedModules) await test.step(label, async () => {
       expect(tab, 'module has a concrete navigation target').not.toBe('');
       await page.locator('#view-managers').getByRole('button', { name: label, exact: true }).tap();
       const view = tab === 'hours' ? 'hours' : 'managers';
@@ -363,6 +358,42 @@ test('phone opening smoke: each accessible Manager module and footer settings', 
       await page.locator('#global-header-inline-back').tap();
       await expect(page.locator('#view-managers .manager-module-card:visible').first()).toBeVisible();
     });
+  } finally { await finish(info, evidence, f); }
+}
+
+const drawerGroups = {
+  'inventory and work modules': ['drive', 'tasks', 'request', 'av', 'reserves', 'docks', 'take-back', 'crop-roll', 'low-stock', 'review', 'move-up'],
+  'hubs and specialist modules': ['sales', 'sales-inventory', 'production', 'office', 'qc', 'communication', 'sales-office', 'advertisement', 'grower', 'pest-management', 'disease-pest', 'hours', 'bunch-note', 'hl-order'],
+};
+for (const [group, views] of Object.entries(drawerGroups)) test(`phone opening smoke: ${group}`, async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!), evidence: Evidence[] = [];
+  try {
+    for (const view of views) await test.step(view, async () => {
+      await drawer(page, view);
+      await checkScreen(page, view, `drawer/${view}`, evidence);
+      await page.locator('#global-header-inline-back').tap();
+      await expect(page.locator('#view-home'), `Back from ${view} returns Home`).toBeVisible();
+    });
+  } finally { await finish(info, evidence, f); }
+});
+
+for (const [group, routes] of Object.entries(phoneHubRouteGroups)) {
+  test(`phone opening smoke: ${group}`, async ({ page, baseURL }, info) => {
+    await checkHubRoutes(page, baseURL!, info, routes);
+  });
+}
+
+test('phone opening smoke: first half of accessible Manager modules', async ({ page, baseURL }, info) => {
+  await checkManagerModuleGroup(page, baseURL!, info, 0);
+});
+
+test('phone opening smoke: second half of accessible Manager modules', async ({ page, baseURL }, info) => {
+  await checkManagerModuleGroup(page, baseURL!, info, 1);
+});
+
+test('phone opening smoke: footer shortcut settings', async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!), evidence: Evidence[] = [];
+  try {
     await home(page);
     await page.locator('#footer-menu-btn').tap();
     await page.getByRole('button', { name: 'Customize shortcuts', exact: true }).tap();

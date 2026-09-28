@@ -11,6 +11,28 @@ export const hlMaster = (unique_id, changes = {}) => inventoryReadFixture.row({ 
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const uuid = (index) => `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
+export function noHistoryLowStockTargets(itemcodes = []) {
+  const codes = Array.isArray(itemcodes) ? itemcodes : [];
+  return [...new Set(codes.map((code) => String(code || '').trim().toUpperCase()).filter(Boolean))].map((code) => ({
+    itemcode_normalized: code,
+    qualifying_line_count: 0,
+    qualifying_day_count: 0,
+    source_file_count: 0,
+    mean_quantity: null,
+    p75_quantity: null,
+    suggested_qty: null,
+    manual_override_qty: null,
+    effective_qty: 150,
+    override_revision: 0,
+    updated_at: null,
+    calculated_at: null,
+    history_ready: true,
+    history_pending_files: 0,
+    history_total_files: 0,
+    history_from_date: null,
+    history_through_date: null,
+  }));
+}
 const fixtureShipDate = (value) => {
   const text = String(value || '').trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
@@ -539,6 +561,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       }
       if (op === 'get_request_capabilities') return json(route, { contract_version: 2, username, scope: 'global', can_view_queue: true, can_edit: true, can_complete: true });
       if (op === 'get_request_schema_compatibility') return json(route, { compatible: true, contract_version: 2 });
+      if (op === 'get_eval_item_low_stock_targets_v1') return json(route, noHistoryLowStockTargets(body.p_itemcodes));
       if (/^(get_|list_|report_app_health_event)/.test(op || '')) return json(route, []);
       control.blockedMutations.push(`RPC ${op}`); return json(route, { error: 'Blocked' }, 403);
     }

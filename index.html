@@ -31844,11 +31844,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 'side:itemLowStockTargets': {
                     enabled: () => canReadItemLowStockTargets(),
-                    scope: () => getManagerAssignedItemTargetKey(),
+                    // Source timestamps and view epochs change when this adapter commits; using them as scope would invalidate the same lookup forever.
+                    scope: () => JSON.stringify(getManagerItemLowStockTargetCodes()),
                     stage: async () => {
                         const assignedRows = Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [];
-                        const sourceRows = (Array.isArray(fullInventory) ? fullInventory : []).concat(assignedRows);
-                        const codes = Array.from(new Set(sourceRows.map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode))).filter(Boolean)));
+                        const codes = getManagerItemLowStockTargetCodes(assignedRows);
                         return { key: getManagerAssignedItemTargetKey(assignedRows), rows: await fetchManagerItemLowStockTargets(codes) };
                     },
                     commit: (snapshot) => {
@@ -131462,12 +131462,15 @@ C.14.043 C.15.000
         }
 
         function getManagerAssignedItemTargetKey(rows = null) {
+            return `${getDatasetLoadSignature('master')}|${getDatasetLoadSignature('warehouseAssignedItems')}|${resolvedViewStateEpoch}|${getManagerItemLowStockTargetCodes(rows).join(',')}`;
+        }
+
+        function getManagerItemLowStockTargetCodes(rows = null) {
             const assignedRows = Array.isArray(rows) ? rows : warehouseAssignedItemsInventory;
             const sourceRows = (Array.isArray(fullInventory) ? fullInventory : []).concat(Array.isArray(assignedRows) ? assignedRows : []);
-            const codes = Array.from(new Set(sourceRows
+            return Array.from(new Set(sourceRows
                 .map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode)))
                 .filter(Boolean))).sort();
-            return `${getDatasetLoadSignature('master')}|${getDatasetLoadSignature('warehouseAssignedItems')}|${resolvedViewStateEpoch}|${codes.join(',')}`;
         }
 
         async function fetchManagerItemLowStockTargets(codes = []) {

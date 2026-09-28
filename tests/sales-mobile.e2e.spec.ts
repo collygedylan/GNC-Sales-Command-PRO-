@@ -566,8 +566,9 @@ test('Inventory Transaction History pages and searches on the server, preserving
   await expect(area.locator('article')).toHaveCount(0);
   await expect(area.getByText('No QTY, Transfer, Reclass, or Priority Change history matched those filters.', { exact: true })).toBeVisible();
   expect(f.commands.some(call => call.action === 'inventory_transaction_history' && call.filter_action === 'transfer' && call.offset === 0)).toBe(true);
-  // The fixture leaves the optional capability endpoint unavailable. History
-  // must remain usable instead of retrying it on each render and replacing taps.
-  expect(capabilityRequests).toHaveLength(1);
+  // The Manager tools header can start one optional Codex Operations probe for
+  // Dylan, but navigation may cancel it before transport. It must not retry on
+  // each render while Transaction History remains usable.
+  expect(capabilityRequests.length).toBeLessThanOrEqual(1);
   expectIsolated(f);
 });
