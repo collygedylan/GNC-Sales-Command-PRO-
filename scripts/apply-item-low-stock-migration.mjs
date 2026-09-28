@@ -5,6 +5,25 @@ import pg from 'pg';
 
 export const migrationName = '20260928145055_item_low_stock_targets.sql';
 
+const NETWORK_ERROR_CODES = new Set([
+  'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET',
+  'EHOSTUNREACH', 'ENETUNREACH', 'EPIPE', 'EADDRNOTAVAIL'
+]);
+const TLS_ERROR_CODES = new Set([
+  'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'ERR_SSL_WRONG_VERSION_NUMBER'
+]);
+const SAFE_ERROR_MARKERS = new Set([
+  'LOW_STOCK_SUPABASE_DB_URL_MISSING', 'LOW_STOCK_DATABASE_TARGET_INVALID',
+  'LOW_STOCK_DATABASE_TARGET_MISMATCH', 'LOW_STOCK_DATABASE_TLS_REQUIRED',
+  'LOW_STOCK_MIGRATION_TRANSACTION_REQUIRED', 'LOW_STOCK_MIGRATION_HISTORY_MISMATCH',
+  'LOW_STOCK_DATABASE_CONTRACT_MISSING', 'LOW_STOCK_CLOUD_MAIN_REQUIRED',
+  'LOW_STOCK_RELEASE_IDENTITY_REQUIRED', 'LOW_STOCK_CURRENT_MAIN_REQUIRED',
+  'LOW_STOCK_DIAGNOSTIC_CONTEXT_INVALID', 'LOW_STOCK_DIAGNOSTIC_WORKFLOW_INVALID',
+  'LOW_STOCK_ARGUMENTS_INVALID'
+]);
+
 export function validateDatabaseTarget(connectionString, supabaseUrl) {
   if (!connectionString) throw new Error('LOW_STOCK_SUPABASE_DB_URL_MISSING');
   let database, api;
@@ -31,59 +50,188 @@ export function validateDatabaseTarget(connectionString, supabaseUrl) {
   return database.toString();
 }
 
+export function summarizeDatabaseTarget(connectionString) {
+  const database = new URL(connectionString);
+  const port = Number(database.port || 5432);
+  const route = /^db\.[a-z0-9]+\.supabase\.co$/.test(database.hostname)
+    ? (port === 6543 ? 'dedicated_pooler' : 'direct')
+    : database.hostname.endsWith('.pooler.supabase.com') ? 'pooler' : 'unknown';
+  const sslmode = database.searchParams.get('sslmode') || 'require';
+  return {
+    route,
+    port: Number.isInteger(port) && port > 0 && port <= 65535 ? port : 0,
+    sslmode: ['require', 'verify-ca', 'verify-full'].includes(sslmode) ? sslmode : 'other'
+  };
+}
+
+export function classifyDatabaseError(error) {
+  let code = '';
+  try { code = typeof error?.code === 'string' ? error.code : ''; } catch { /* hostile error getter */ }
+  if (NETWORK_ERROR_CODES.has(code)) return { errorClass: 'network', errorCode: code };
+  if (TLS_ERROR_CODES.has(code)) return { errorClass: 'tls', errorCode: code };
+  if (/^[0-9A-Z]{5}$/.test(code)) return { errorClass: 'postgres', errorCode: code };
+  return { errorClass: 'other', errorCode: '' };
+}
+
+const DIAGNOSTIC_PHASES = new Set([
+  'diagnostic_authorization', 'target_validation', 'release_ref', 'database_connect',
+  'transaction_begin', 'advisory_lock', 'migration_history_read', 'migration_sql',
+  'migration_history_write', 'contract_check', 'transaction_commit', 'schema_probe',
+  'transaction_rollback', 'client_close'
+]);
+
+export function formatSafeFailure({ phase, error, connectionString = '' }) {
+  const safePhase = DIAGNOSTIC_PHASES.has(phase) ? phase : 'unknown';
+  let marker = 'LOW_STOCK_SCHEMA_APPLY_FAILED';
+  try {
+    if (typeof error?.message === 'string' && SAFE_ERROR_MARKERS.has(error.message)) marker = error.message;
+  } catch { /* hostile error getter */ }
+  const classified = classifyDatabaseError(error);
+  let summary = null;
+  try { if (connectionString) summary = summarizeDatabaseTarget(connectionString); } catch { /* invalid URLs are omitted */ }
+  const target = summary ? ` route=${summary.route} port=${summary.port} sslmode=${summary.sslmode}` : '';
+  const code = classified.errorCode ? ` error_code=${classified.errorCode}` : '';
+  return `${marker} phase=${safePhase} error_class=${classified.errorClass}${code}${target}`;
+}
+
+export function validateDiagnosticContext(env) {
+  const validRepository = /^[\w.-]+\/[\w.-]+$/.test(String(env.GITHUB_REPOSITORY || ''));
+  const validSha = /^[a-f0-9]{40}$/.test(String(env.GITHUB_SHA || ''));
+  const ref = String(env.GITHUB_REF || '');
+  const allowedRef = ref === 'refs/heads/main';
+  if (env.GITHUB_ACTIONS !== 'true' || env.GITHUB_EVENT_NAME !== 'workflow_dispatch'
+      || !validRepository || !validSha || !allowedRef || ref.includes('..') || ref.endsWith('/')) {
+    throw new Error('LOW_STOCK_DIAGNOSTIC_CONTEXT_INVALID');
+  }
+  const expectedWorkflowRef = `${env.GITHUB_REPOSITORY}/.github/workflows/apps-script-sync.yml@${ref}`;
+  if (!env.GITHUB_WORKFLOW_REF || env.GITHUB_WORKFLOW_REF !== expectedWorkflowRef) {
+    throw new Error('LOW_STOCK_DIAGNOSTIC_WORKFLOW_INVALID');
+  }
+  return { repository: env.GITHUB_REPOSITORY, sha: env.GITHUB_SHA, ref };
+}
+
+export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }) {
+  let transactionOpen = false;
+  let result;
+  let failure;
+  let failurePhase = '';
+  let currentPhase = '';
+  const setPhase = value => { currentPhase = value; onPhase(value); };
+  try {
+    setPhase('transaction_begin');
+    await client.query('begin read only');
+    transactionOpen = true;
+    setPhase('schema_probe');
+    result = await client.query("select to_regprocedure('public.get_eval_item_low_stock_targets_v1(text[],text,integer)') is not null as installed");
+  } catch (error) {
+    failure = error;
+    failurePhase = currentPhase;
+  }
+  if (transactionOpen) {
+    setPhase('transaction_rollback');
+    try { await client.query('rollback'); }
+    catch (error) { if (!failure) { failure = error; failurePhase = currentPhase; } }
+  }
+  if (failure) { setPhase(failurePhase); throw failure; }
+  return { installed: result?.rows?.[0]?.installed === true };
+}
+
 export function migrationBody(source) {
   if (!/^begin;\s/i.test(source) || !/\scommit;\s*$/i.test(source)) throw new Error('LOW_STOCK_MIGRATION_TRANSACTION_REQUIRED');
   return source.replace(/^begin;\s*/i, '').replace(/\scommit;\s*$/i, '');
 }
 
-export async function applyItemLowStockMigration({ client, source }) {
+export async function applyItemLowStockMigration({ client, source, onPhase = () => {} }) {
   const version = migrationName.split('_')[0];
   const name = migrationName.slice(version.length + 1, -4);
   const body = migrationBody(source);
+  onPhase('transaction_begin');
   await client.query('begin');
   try {
+    onPhase('advisory_lock');
     await client.query("select pg_advisory_xact_lock(hashtext('gnc-item-low-stock-schema-v1'))");
+    onPhase('migration_history_read');
     const prior = await client.query('select name, statements from supabase_migrations.schema_migrations where version = $1', [version]);
     if (prior.rows.length) {
       if (prior.rows[0].name !== name || prior.rows[0].statements?.join('\n') !== body) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
     } else {
+      onPhase('migration_sql');
       await client.query(body);
+      onPhase('migration_history_write');
       await client.query('insert into supabase_migrations.schema_migrations(version,name,statements) values ($1,$2,$3)', [version,name,[body]]);
     }
+    onPhase('contract_check');
     const result = await client.query("select to_regprocedure('public.get_eval_item_low_stock_targets_v1(text[],text,integer)') is not null as installed");
     if (result.rows[0]?.installed !== true) throw new Error('LOW_STOCK_DATABASE_CONTRACT_MISSING');
+    onPhase('transaction_commit');
     await client.query('commit');
     return { status: prior.rows.length ? 'already_applied' : 'applied' };
   } catch (error) {
-    await client.query('rollback');
+    try { await client.query('rollback'); } catch { /* retain the migration error for sanitized reporting */ }
     throw error;
   }
 }
 
-async function main() {
-  // This command runs only after the existing cloud release-proof verifier.
-  // Recheck current main immediately before opening the database connection.
-  if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_REF !== 'refs/heads/main'
-      || !['push','workflow_dispatch'].includes(process.env.GITHUB_EVENT_NAME)) throw new Error('LOW_STOCK_CLOUD_MAIN_REQUIRED');
-  const repository = process.env.GITHUB_REPOSITORY || '', sha = process.env.GITHUB_SHA || '';
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repository) || !/^[a-f0-9]{40}$/.test(sha) || !process.env.GH_TOKEN) throw new Error('LOW_STOCK_RELEASE_IDENTITY_REQUIRED');
-  const response = await fetch(`https://api.github.com/repos/${repository}/git/ref/heads/main`, {
-    headers: { authorization: `Bearer ${process.env.GH_TOKEN}`, accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000)
-  });
-  if (!response.ok || (await response.json()).object?.sha !== sha) throw new Error('LOW_STOCK_CURRENT_MAIN_REQUIRED');
-  const connectionString = validateDatabaseTarget(process.env.SUPABASE_DB_URL, process.env.SUPABASE_URL);
-  const client = new pg.Client({ connectionString, connectionTimeoutMillis: 15000, statement_timeout: 120000 });
+async function main(args = process.argv.slice(2)) {
+  const diagnose = args.length === 1 && args[0] === '--diagnose';
+  if (args.length && !diagnose) throw new Error('LOW_STOCK_ARGUMENTS_INVALID');
+  let phase = diagnose ? 'diagnostic_authorization' : 'release_ref';
+  let connectionString = '';
+  let client;
+  let primaryError;
   try {
+    if (diagnose) validateDiagnosticContext(process.env);
+    else {
+      // This command runs only after the existing cloud release-proof verifier.
+      // Recheck current main immediately before opening the database connection.
+      if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_REF !== 'refs/heads/main'
+          || !['push','workflow_dispatch'].includes(process.env.GITHUB_EVENT_NAME)) throw new Error('LOW_STOCK_CLOUD_MAIN_REQUIRED');
+      const repository = process.env.GITHUB_REPOSITORY || '', sha = process.env.GITHUB_SHA || '';
+      if (!/^[\w.-]+\/[\w.-]+$/.test(repository) || !/^[a-f0-9]{40}$/.test(sha) || !process.env.GH_TOKEN) throw new Error('LOW_STOCK_RELEASE_IDENTITY_REQUIRED');
+      const response = await fetch(`https://api.github.com/repos/${repository}/git/ref/heads/main`, {
+        headers: { authorization: `Bearer ${process.env.GH_TOKEN}`, accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000)
+      });
+      if (!response.ok || (await response.json()).object?.sha !== sha) throw new Error('LOW_STOCK_CURRENT_MAIN_REQUIRED');
+    }
+    phase = 'target_validation';
+    connectionString = validateDatabaseTarget(process.env.SUPABASE_DB_URL, process.env.SUPABASE_URL);
+    client = new pg.Client({
+      connectionString,
+      connectionTimeoutMillis: 15000,
+      statement_timeout: 120000,
+      ...(diagnose ? { options: '-c default_transaction_read_only=on' } : {})
+    });
+    phase = 'database_connect';
     await client.connect();
-    const source = fs.readFileSync(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), 'utf8');
-    console.log(`Item low-stock schema: ${(await applyItemLowStockMigration({ client, source })).status}.`);
-  } finally { await client.end(); }
+    if (diagnose) {
+      const probe = await runReadOnlySchemaDiagnostic({ client, onPhase: next => { phase = next; } });
+      console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
+    } else {
+      const source = fs.readFileSync(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), 'utf8');
+      const applied = await applyItemLowStockMigration({ client, source, onPhase: next => { phase = next; } });
+      console.log(`Item low-stock schema: ${applied.status}.`);
+    }
+  } catch (error) {
+    primaryError = error;
+    console.error(formatSafeFailure({ phase, error, connectionString }));
+    process.exitCode = 1;
+  } finally {
+    if (client) {
+      phase = 'client_close';
+      try { await client.end(); }
+      catch (error) {
+        if (!primaryError) {
+          console.error(formatSafeFailure({ phase, error, connectionString }));
+          process.exitCode = 1;
+        }
+      }
+    }
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch(error => {
-    // Never include a connection string or raw database error in CI output.
-    console.error(/^LOW_STOCK_[A-Z_]+$/.test(error.message) ? error.message : 'LOW_STOCK_SCHEMA_APPLY_FAILED');
+    console.error(formatSafeFailure({ phase: 'release_ref', error }));
     process.exitCode = 1;
   });
 }
