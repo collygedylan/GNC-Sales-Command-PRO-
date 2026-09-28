@@ -304,3 +304,22 @@ test('deploy script reauthorizes exact main and proof before creating OAuth cred
   assert.ok(ownership > oauth);
   assert.ok(mutation > ownership);
 });
+
+test('database diagnosis is explicit, read-only, and cannot authorize a release', () => {
+  const workflow = yaml.load(fs.readFileSync('.github/workflows/apps-script-sync.yml', 'utf8'));
+  assert.equal(workflow.on.workflow_dispatch.inputs.diagnose_database.type, 'boolean');
+  assert.equal(workflow.on.workflow_dispatch.inputs.diagnose_database.default, false);
+  const diagnostic = workflow.jobs['diagnose-database'];
+  assert.match(diagnostic.if, /github.event_name == 'workflow_dispatch' && inputs.diagnose_database/);
+  assert.match(diagnostic.if, /github.ref == 'refs\/heads\/main'/);
+  assert.doesNotMatch(diagnostic.if, /codex|startsWith/);
+  assert.deepEqual(diagnostic.permissions, { contents: 'read' });
+  assert.equal(diagnostic.outputs, undefined);
+  const probe = diagnostic.steps.find(step => step.run?.endsWith(' --diagnose'));
+  assert.equal(probe.run, 'node scripts/apply-item-low-stock-migration.mjs --diagnose');
+  assert.deepEqual(Object.keys(probe.env).sort(), ['SUPABASE_DB_URL', 'SUPABASE_URL']);
+  assert.doesNotMatch(JSON.stringify(diagnostic), /APPS_SCRIPT_|GH_TOKEN|pages-static|sync-codegs/);
+  assert.match(workflow.jobs['authorize-production'].if, /!inputs.diagnose_database/);
+  assert.equal(workflow.jobs['sync-codegs'].needs, 'authorize-production');
+  assert.deepEqual(workflow.jobs['publish-pages'].needs, ['authorize-production', 'sync-codegs']);
+});
