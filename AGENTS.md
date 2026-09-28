@@ -12,3 +12,6 @@ DO NOT terminate immediately. Instead, you MUST monitor the GitHub Actions pipel
 If the checks pass, you may terminate.
 If the checks fail, you must read the failure logs and ask the user for permission to fix the errors.
 This rule completely overrides any previous "fire-and-forget" or "terminate immediately" instructions.
+
+# STRICT ENVIRONMENT SYNCHRONIZATION AND FILE HYGIENE
+Maintain strict environment synchronization and file hygiene. Keep all codebase and external integrations highly organized. Automatically clean up temporary, legacy, or obsolete files, and ensure no excess or orphaned files are left behind in GitHub, Google Drive, or local directories after a task is completed or refactored.
