@@ -6,6 +6,7 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const registrySource = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
 const adapterSource = readFileSync(new URL('../assets/live-sync-adapters.js', import.meta.url), 'utf8');
+const coordinatorSource = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
 const demandDetailSource = readFileSync(new URL('../assets/drive-demand-detail.js', import.meta.url), 'utf8');
 const start = html.indexOf('function createProductionLiveSyncSideAdapters()');
 const end = html.indexOf('async function loadAvOptionEvalRequests(', start);
@@ -15,7 +16,20 @@ const demandStart = html.indexOf('function getDriveDemandContext(');
 const demandEnd = html.indexOf('function refreshDriveDemandDetail(', demandStart);
 assert.ok(demandStart > 0 && demandEnd > demandStart);
 const demandBindingSource = html.slice(demandStart, demandEnd);
-function harness() {
+function inlineFunctionSource(name) {
+    const functionStart = html.indexOf(`        function ${name}(`);
+    assert.ok(functionStart > 0, name);
+    const functionEnd = html.slice(functionStart + 1).search(/\r?\n        (?:async )?function \w+\(/);
+    assert.ok(functionEnd > 0, `${name} end`);
+    return html.slice(functionStart, functionStart + 1 + functionEnd);
+}
+const targetCodesSource = inlineFunctionSource('getManagerItemLowStockTargetCodes');
+const targetKeySource = inlineFunctionSource('getManagerAssignedItemTargetKey')
+    .replace('function getManagerAssignedItemTargetKey(', 'function getManagerAssignedItemTargetKeyActual(');
+const coordinatorSandbox = { module: { exports: {} }, setTimeout, clearTimeout, AbortController };
+vm.runInNewContext(coordinatorSource, coordinatorSandbox);
+const { createCoordinator } = coordinatorSandbox.module.exports;
+function harness(sourceFactory = factorySource) {
     const calls = [];
     const rows = [{ unique_id: 'new', source_unique_id: 'new', id: 'new', tripnumber: 'T1', issueSourceUniqueId: 'new', allocationUniqueId: 'new', UNIQUE_ID: 'new', conversationId: 'new' }];
     const ctx = { SalesWorkspace: {isView:()=>true,stageRefresh:async()=>{calls.push(['api','sales_credit','sources']);return {rows};},applyRefresh(){}}, BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
@@ -62,6 +76,8 @@ function harness() {
         getProductivityHistoryState: () => ctx.productivityState, getArgosInventoryTransactionActorEmail: () => '',
         invalidateDockWorkflowResolvedState() {}, rebuildSpreadCountIndexes() {}, invalidateManagerEvalReportCache() {},
         currentUser: 'dylan_collyge', currentRole: 'ADMIN', currentUserDisplay: 'Dylan', managersSearchTerm: '',
+        resolvedViewStateEpoch: 0, datasetLoadSignatures: { master: '1', warehouseAssignedItems: '1' },
+        getDatasetLoadSignature: key => ctx.datasetLoadSignatures[key] || '',
         fullInventory: [], warehouseAssignedItemsInventory: [], managerItemLowStockTargetsState: { owner: 'dylan_collyge', key: '', rowsByCode: new Map(), revision: 0 },
         normalizeManagerItemLowStockTargetCode: value => String(value || '').trim().toUpperCase(),
         fetchManagerItemLowStockTargets: async codes => { calls.push(['RPC', 'get_eval_item_low_stock_targets_v1', { p_itemcodes: codes }]); return []; },
@@ -91,7 +107,7 @@ function harness() {
     ctx.window.AgMetricLiveSyncAdapters = ctx.AgMetricLiveSyncAdapters;
     vm.runInContext(demandDetailSource, ctx);
     ctx.window.AgMetricDriveDemandDetail = ctx.AgMetricDriveDemandDetail;
-    vm.runInContext(`${demandBindingSource}\n${factorySource}`, ctx);
+    vm.runInContext(`${demandBindingSource}\n${targetCodesSource}\n${targetKeySource}\n${sourceFactory}`, ctx);
     return { ctx, calls, rows, api: ctx.createProductionLiveSyncSideAdapters() };
 }
 const context = { scope: 'user:division', username: 'dylan_collyge', productionType: 'propagation', countType: 'spread', productivityUser: 'dylan_collyge', managerOrders: { level: 'sources', sourceKey: '', assignees: [], rowCount: 0, batchCount: 0 }, pendingOrderCount: 0, transactions: {}, transactionsKeyed: { dateCount: 0, fileCount: 0 }, historical: { level: 'names', columns: [], search: '', rowCount: 0 }, accessQuery: {}, codexTaskId: '' };
@@ -171,7 +187,7 @@ test('low-stock target adapter fetches assigned item codes and commits a fresh E
     h.ctx.invalidateManagerEvalReport2Cache = () => { invalidated += 1; };
     const adapter = descriptor(h, 'side:itemLowStockTargets');
     const snapshot = await adapter.stage();
-    assert.deepEqual(fetched, [['DRIVE-ONLY-3', 'ORCHID-1', 'CEDAR-2']]);
+    assert.deepEqual(fetched, [['CEDAR-2', 'DRIVE-ONLY-3', 'ORCHID-1']]);
     assert.deepEqual(snapshot.rows, [{ itemcode_normalized: 'ORCHID-1', effective_qty: 18, override_revision: 3 },
         { itemcode_normalized: 'DRIVE-ONLY-3', manual_override_qty: 5, effective_qty: 5, override_revision: 8 }]);
     assert.equal(adapter.commit(snapshot), undefined);
@@ -181,6 +197,85 @@ test('low-stock target adapter fetches assigned item codes and commits a fresh E
     assert.equal(h.ctx.managerItemLowStockTargetsState.key, 'fixture-target-key');
     assert.equal(h.ctx.managerItemLowStockTargetsState.revision, 1);
     assert.equal(invalidated, 1);
+});
+
+test('low-stock target coordinator scope stays stable across commits but changes with inventory and account', async () => {
+    async function run(sourceFactory = factorySource) {
+        const h = harness(sourceFactory);
+        h.ctx.fullInventory = [{ ITEMCODE: ' AB-100 ' }, { ITEMCODE: '0012' }];
+        h.ctx.warehouseAssignedItemsInventory = [{ itemcode: 'ab-100' }, { ITEMCODE: 'CEDAR.2' }];
+        h.ctx.datasetLoadSignatures = { master: 'master-1', warehouseAssignedItems: 'assigned-1' };
+        h.ctx.masterLastLoadedAt = 1;
+        let account = 'dylan_collyge', reads = 0;
+        h.ctx.getManagerAssignedItemTargetKey = h.ctx.getManagerAssignedItemTargetKeyActual;
+        const getAdapter = () => descriptor(h, 'side:itemLowStockTargets', { username: account, scope: `native:${account}` });
+        const getContext = () => ({ scope: `native:${account}`, viewKey: 'managers', visible: true, online: true, adapters: [getAdapter()] });
+        const coordinator = createCoordinator({
+            getContext,
+            setTimeout: () => 1,
+            clearTimeout: () => {},
+            readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'policy-1', sources: keys.map(key => ({ key, revision: '1', state: 'ready' })) }),
+            commitSnapshots(staged) {
+                staged.forEach(({ adapter, value }) => adapter.commit(value));
+                // A successful core refresh changes these volatile values during the same cycle.
+                h.ctx.resolvedViewStateEpoch++;
+                h.ctx.masterLastLoadedAt++;
+                h.ctx.datasetLoadSignatures.master = `master-${h.ctx.masterLastLoadedAt}`;
+                h.ctx.datasetLoadSignatures.warehouseAssignedItems = `assigned-${h.ctx.resolvedViewStateEpoch + 1}`;
+            },
+        });
+        const initial = getAdapter();
+        const initialCacheKey = initial.cacheKey;
+        const initialVolatileKey = h.ctx.getManagerAssignedItemTargetKeyActual();
+        const firstCheck = await coordinator.check();
+        if (sourceFactory !== factorySource) {
+            assert.equal(firstCheck, false, 'the legacy volatile scope discards the snapshot after commit');
+            assert.ok(coordinator.getStatistics().discardedLoads > 0);
+            coordinator.suspend();
+            return { h, coordinator };
+        }
+        assert.equal(firstCheck, true);
+        assert.equal(coordinator.getStatus().state, 'Up to date');
+        assert.equal(coordinator.getStatistics().discardedLoads, 0);
+        assert.notEqual(h.ctx.getManagerAssignedItemTargetKeyActual(), initialVolatileKey,
+            'the internal freshness key still tracks refreshed timestamps/epochs');
+        assert.equal(getAdapter().cacheKey, initialCacheKey,
+            'the side adapter identity is based on codes, not timestamps or the commit epoch');
+        assert.ok(h.ctx.masterLastLoadedAt > 1);
+        reads++;
+
+        h.ctx.fullInventory.reverse();
+        h.ctx.fullInventory.push({ ITEMCODE: 'ab-100' });
+        assert.equal(getAdapter().cacheKey, initialCacheKey, 'row order and duplicate item codes do not invalidate scope');
+
+        h.ctx.fullInventory.push({ ITEMCODE: 'NEW-ITEM' });
+        assert.notEqual(getAdapter().cacheKey, initialCacheKey, 'a real inventory code addition invalidates the lookup');
+        assert.equal(await coordinator.check('metadata'), true);
+        reads++;
+
+        const beforeAccountSwitch = getAdapter().cacheKey;
+        account = 'megan_kelly';
+        assert.notEqual(getAdapter().cacheKey, beforeAccountSwitch, 'the caller account scope remains part of adapter identity');
+        assert.equal(await coordinator.check('metadata'), true);
+        reads++;
+        assert.equal(coordinator.getStatistics().adapterReads, reads);
+        coordinator.suspend();
+        return { h, coordinator };
+    }
+
+    const fixed = await run();
+    assert.equal(fixed.coordinator.getStatistics().discardedLoads, 0);
+
+    // Recreate the prior volatile-scope contract only inside this VM harness.
+    const legacyFactory = factorySource.replace(
+        'scope: () => JSON.stringify(getManagerItemLowStockTargetCodes()),',
+        'scope: () => getManagerAssignedItemTargetKey(),'
+    );
+    assert.notEqual(legacyFactory, factorySource, 'the legacy scope contract is represented in the regression harness');
+    const legacy = await run(legacyFactory);
+    assert.ok(legacy.coordinator.getStatistics().discardedLoads > 0,
+        'the old timestamp/epoch scope causes the coordinator to discard post-commit snapshots');
+    legacy.coordinator.suspend();
 });
 
 test('Docks stages in isolation and replaces authoritative maps, including deletions', async () => {

@@ -23,7 +23,11 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
     getSupabaseReadIdentityScope = () => 'isolated-eval-cold';
     scheduleManagersRender = () => {};
     ensureDatasetLoaded = async () => true;
-    loadManagerEvalReportSettings = async () => {};
+    getConfiguredCurrentSeasonCode = () => 'F1';
+    getConfiguredCurrentSalesYearCode = () => 27;
+    getConfiguredNextSaleSeasonTarget = () => ({ season: 'S1', salesYear: 27 });
+    managerEvalReportSettings = { lowStockMaxSLts: 150, holdAgeDays: 5, locationNoteAgeDays: 10 };
+    loadManagerEvalReportSettings = async () => managerEvalReportSettings;
     const seasons = ['F1', 'U1', 'U2', 'U3', 'X', 'S1'];
     fullInventory = Array.from({ length: 9364 }, (_, i) => ({
       UNIQUE_ID: 'fixture-' + i, ITEMCODE: 'ITEM-' + String(i % 2341).padStart(4, '0'),
@@ -49,6 +53,34 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
     activeHomeTab = 'eval-reports-2';
     const events = [];
     reportSemanticHealthEvent = (...args) => events.push(args[2]);
+    const syntheticTargets = new Map();
+    for (let i = 0; i < 2341; i += 1) {
+      const code = 'ITEM-' + String(i).padStart(4, '0');
+      let manualOverride = null, suggestion = null, effective = 150;
+      if (i === 5) { manualOverride = 0; suggestion = 100; effective = 0; }
+      else if (i === 4) { suggestion = 86; effective = 86; }
+      else if (i !== 6 && i % 3 === 0) { manualOverride = 55; suggestion = 70; effective = 55; }
+      else if (i !== 6 && i % 3 === 1) { suggestion = 95; effective = 95; }
+      syntheticTargets.set(code, {
+        itemcode_normalized: code, qualifying_line_count: suggestion == null ? 0 : 8,
+        qualifying_day_count: suggestion == null ? 0 : 4, source_file_count: suggestion == null ? 0 : 4,
+        mean_quantity: suggestion == null ? null : suggestion / 2, p75_quantity: suggestion == null ? null : suggestion / 2,
+        suggested_qty: suggestion, manual_override_qty: manualOverride, effective_qty: effective,
+        override_revision: manualOverride == null ? 0 : 2, history_ready: true,
+        history_pending_files: 0, history_total_files: 471,
+        history_from_date: suggestion == null ? null : '2025-09-01',
+        history_through_date: suggestion == null ? null : '2026-09-27',
+        calculated_at: suggestion == null ? null : '2026-09-28T12:00:00Z', updated_at: null
+      });
+    }
+    window.__lowStockTargetRpcCalls = [];
+    let failFirstTargetRead = true;
+    supabaseRpc = async (name, args) => {
+      if (name !== 'get_eval_item_low_stock_targets_v1') throw new Error('Unexpected RPC in async-index fixture: ' + name);
+      window.__lowStockTargetRpcCalls.push(args.p_itemcodes.slice());
+      if (failFirstTargetRead) { failFirstTargetRead = false; return []; }
+      return args.p_itemcodes.map(code => syntheticTargets.get(code)).filter(Boolean);
+    };
     const started = performance.now();
     const initial = getManagerEvalReport2Index();
     const renderPathMs = performance.now() - started;
@@ -58,14 +90,25 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
     const duplicate = getManagerEvalReport2Index();
     const samePromise = promise === managerEvalReport2LoadState.promise;
     await promise;
+    const firstLoadError = managerEvalReport2LoadState.error;
+    const firstTargetError = getManagerItemLowStockTargetsState().error;
+    const failedTargetReadCalls = window.__lowStockTargetRpcCalls.length;
+    const firstFailureEvent = events.includes('EVAL_REPORT_2_LOAD_FAILED');
+    events.length = 0;
+    await loadManagerEvalReports2(true);
     const index = getManagerEvalReport2Index();
-    if (!index) throw new Error('async report index missing');
+    if (!index) {
+      const reportError = managerEvalReport2LoadState.error || '(none)';
+      const targetError = getManagerItemLowStockTargetsState().error || '(none)';
+      throw new Error('async report index missing; eval2="' + reportError + '"; item-targets="' + targetError + '"');
+    }
     const api = getManagerEvalReports2Api();
     const model = api.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
     const next = getConfiguredNextSaleSeasonTarget();
     const expected = api.classifyScriptCompatibleRows(model.rows, {
       currentSeason: getConfiguredCurrentSeasonCode(), currentSalesYear: getConfiguredCurrentSalesYearCode(),
-      nextSeason: next.season, nextSalesYear: next.salesYear, settings: managerEvalReportSettings, now: new Date()
+      nextSeason: next.season, nextSalesYear: next.salesYear, settings: managerEvalReportSettings,
+      itemLowStockTargets: new Map(getManagerItemLowStockTargetsState().rowsByCode), now: new Date()
     });
     model.rows.forEach((row, i) => Object.defineProperty(row, '__evalReport2SourceIndex', { value: i }));
     const rowKeys = model.rows.map((row, i) => getManagerEvalReport2RowKey(row, i));
@@ -81,13 +124,27 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
         === JSON.stringify(expected.reports[id].map((row, i) => getManagerEvalReport2RowKey(row, i)));
     });
     const serialize = map => JSON.stringify(Array.from(map, ([key, value]) => [key, Array.from(value)]));
+    const targetIndex = getManagerItemLowStockTargetsState().rowsByCode;
+    const lowStockCodes = new Set(index.reports['low-stock'].map(row => String(row.ITEMCODE || row.itemcode || '').toUpperCase()));
+    const targetCases = {
+      overrideWinsAndExcludes: targetIndex.get('ITEM-0005')?.manual_override_qty === 0 && !lowStockCodes.has('ITEM-0005'),
+      suggestionBoundaryIsStrict: targetIndex.get('ITEM-0004')?.suggested_qty === 86 && !lowStockCodes.has('ITEM-0004'),
+      noHistoryUsesFallback: targetIndex.get('ITEM-0006')?.suggested_qty == null && targetIndex.get('ITEM-0006')?.effective_qty === 150 && lowStockCodes.has('ITEM-0006'),
+      completeRequestedSummaries: targetIndex.size === 2341
+    };
     return { renderPathMs, initialEmpty: initial === null && duplicate === null, loading, samePromise,
       editableWhileLoading, ready: !managerEvalReport2LoadState.loading && !managerEvalReport2LoadState.error,
       rowCount: index.rowByKey.size, exactRowKeys: JSON.stringify(rowKeys) === JSON.stringify(actualKeys),
-      reportParity, membershipParity: serialize(membership) === serialize(index.reportMembershipByKey), events };
+      reportParity, membershipParity: serialize(membership) === serialize(index.reportMembershipByKey), events,
+      firstLoadFailed: !!firstLoadError && !!firstTargetError, firstFailureEvent,
+      failedTargetReadCalls, retryTargetReadCalls: window.__lowStockTargetRpcCalls.length - failedTargetReadCalls,
+      targetCases };
   })()`));
   await testInfo.attach('eval-report2-cold-render-path', { body: JSON.stringify(result), contentType: 'application/json' });
   expect(result.renderPathMs).toBeLessThan(500);
   expect(result).toMatchObject({ initialEmpty: true, loading: true, samePromise: true, editableWhileLoading: false,
-    ready: true, rowCount: 9364, exactRowKeys: true, reportParity: true, membershipParity: true, events: [] });
+    ready: true, rowCount: 9364, exactRowKeys: true, reportParity: true, membershipParity: true, events: [],
+    firstLoadFailed: true, firstFailureEvent: true, failedTargetReadCalls: 5, retryTargetReadCalls: 5,
+    targetCases: { overrideWinsAndExcludes: true, suggestionBoundaryIsStrict: true,
+      noHistoryUsesFallback: true, completeRequestedSummaries: true } });
 });

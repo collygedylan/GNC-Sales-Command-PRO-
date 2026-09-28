@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { noHistoryLowStockTargets } from './fixtures/hl-order-state.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
@@ -38,6 +39,33 @@ function context(data = rows, normalize = false) {
   return ctx;
 }
 const ids = values => Array.from(values, row => row.UNIQUE_ID);
+
+test('low-stock no-history fixture returns one complete fallback summary per normalized itemcode', () => {
+  assert.deepEqual(noHistoryLowStockTargets([' ab-100 ', 'AB-100', '', null, 'cedar.2', ' 0012 ', '0012']), [
+    {
+      itemcode_normalized: 'AB-100', qualifying_line_count: 0, qualifying_day_count: 0, source_file_count: 0,
+      mean_quantity: null, p75_quantity: null, suggested_qty: null, manual_override_qty: null,
+      effective_qty: 150, override_revision: 0, updated_at: null, calculated_at: null,
+      history_ready: true, history_pending_files: 0, history_total_files: 0,
+      history_from_date: null, history_through_date: null,
+    },
+    {
+      itemcode_normalized: 'CEDAR.2', qualifying_line_count: 0, qualifying_day_count: 0, source_file_count: 0,
+      mean_quantity: null, p75_quantity: null, suggested_qty: null, manual_override_qty: null,
+      effective_qty: 150, override_revision: 0, updated_at: null, calculated_at: null,
+      history_ready: true, history_pending_files: 0, history_total_files: 0,
+      history_from_date: null, history_through_date: null,
+    },
+    {
+      itemcode_normalized: '0012', qualifying_line_count: 0, qualifying_day_count: 0, source_file_count: 0,
+      mean_quantity: null, p75_quantity: null, suggested_qty: null, manual_override_qty: null,
+      effective_qty: 150, override_revision: 0, updated_at: null, calculated_at: null,
+      history_ready: true, history_pending_files: 0, history_total_files: 0,
+      history_from_date: null, history_through_date: null,
+    },
+  ]);
+  assert.deepEqual(noHistoryLowStockTargets(null), []);
+});
 
 test('each data column filters normalized values without modifying source records', () => {
   const ctx = context();
