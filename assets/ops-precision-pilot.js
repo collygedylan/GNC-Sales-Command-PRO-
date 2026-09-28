@@ -866,7 +866,9 @@
       captureHealth('toolbar_row', singleRow, { control_count: children.length, scroll_width: rail.scrollWidth, client_width: rail.clientWidth });
     });
     if (state.activeView === 'drive' && window.innerWidth >= 840) {
-      const mains = Array.from(document.querySelectorAll('#drive-content[data-drive-detailed-records="true"] .app-drive-card-main')).filter((element) => element instanceof HTMLElement && element.offsetParent !== null);
+      const mains = Array.from(document.querySelectorAll('#drive-content[data-drive-detailed-records="true"] .app-drive-card-main'))
+        .map((element) => element.querySelector('.app-drive-card-details') || element)
+        .filter((element) => element instanceof HTMLElement && element.offsetParent !== null);
       if (mains.length) {
         const minimum = Math.min(...mains.slice(0, 12).map((element) => element.getBoundingClientRect().width));
         captureHealth('drive_card_width', minimum >= 180, { minimum_width: minimum, sampled_cards: Math.min(12, mains.length) });

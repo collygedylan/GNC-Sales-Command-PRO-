@@ -1,11 +1,152 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { installSalesMobileFixture } from './fixtures/sales-mobile-fixture';
+import { installDriveCardLayoutFixture, renderDriveLayoutCard, restoreDriveLayoutRenderer, settleDriveLayoutShell } from './fixtures/drive-card-layout';
 
 // Opening/layout evidence only. The real compiled renderers and click handlers run,
 // but API reads are synthetic. No business action, email or inventory write is
 // accepted here. This cannot establish save/reload correctness or real RLS.
 const themes = ['light', 'dark', 'outdoor'] as const;
 type Evidence = { screen: string; theme: string; view: string; text: string; controls: number; issues: string[] };
+
+test('Drive compact cards fit phone widths in every theme and keep row actions usable', async ({ page, baseURL }, testInfo) => {
+  const fixtureControl = await installDriveCardLayoutFixture(page, baseURL!);
+  await settleDriveLayoutShell(page, testInfo.project.name);
+  for (const theme of themes) {
+    for (const width of [320, 360, 390]) {
+      await test.step(`${theme} at ${width}px`, async () => {
+        await page.setViewportSize({ width, height: 844 });
+        await renderDriveLayoutCard(page, { theme, photo: true, longContent: true });
+        const card = page.locator('#drive-content .app-drive-compact-card').first();
+        await expect(card).toBeVisible();
+        await expect.poll(() => card.locator('.app-drive-card-photo img').evaluate((image: HTMLImageElement) => image.naturalWidth))
+          .toBeGreaterThan(0);
+        const metrics = await card.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          const rect = (selector: string) => {
+            const node = element.querySelector(selector);
+            if (!node) return null;
+            const r = node.getBoundingClientRect();
+            return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+          };
+          const title = element.querySelector('.app-drive-card-title')!;
+          const photo = element.querySelector('.app-drive-card-photo :is(.app-smart-thumb,.app-inline-thumb-box)')!;
+          return {
+            card: { x: box.x, right: box.right, width: box.width, height: box.height },
+            padding: getComputedStyle(element).paddingTop,
+            titleSize: getComputedStyle(title).fontSize,
+            photo: { width: photo.getBoundingClientRect().width, height: photo.getBoundingClientRect().height },
+            header: rect('.app-drive-card-header'), details: rect('.app-drive-card-details'),
+            grid: rect('.app-drive-card-grid'),
+            action: rect('.app-drive-card-reclass .app-card-bottom-btn'),
+            docOverflow: document.documentElement.scrollWidth - innerWidth,
+            cardOverflow: element.scrollWidth - element.clientWidth,
+            text: (element as HTMLElement).innerText,
+            quantity: [...element.querySelectorAll('.app-card-qty-chip')].map((chip) => ({
+              label: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
+              value: chip.querySelector('.app-card-qty-value')?.textContent?.trim() || '',
+            })),
+          };
+        });
+        expect(metrics.card.x).toBeGreaterThanOrEqual(-1);
+        expect(metrics.card.right).toBeLessThanOrEqual(width + 1);
+        expect(metrics.padding).toBe('10px');
+        expect(metrics.titleSize).toBe('18px');
+        expect(metrics.photo).toEqual({ width: 64, height: 62 });
+        expect(metrics.header && metrics.details && metrics.header.bottom).toBeLessThanOrEqual(metrics.details?.y ?? -1);
+        await expect(card.locator('.app-drive-card-reclass .app-card-bottom-btn')).toHaveCount(1);
+        expect(metrics.action?.width).toBeGreaterThanOrEqual(44);
+        expect(metrics.action?.height).toBeGreaterThanOrEqual(44);
+        expect(metrics.header && metrics.action && metrics.header.right).toBeLessThanOrEqual(metrics.action?.x ?? -1);
+        expect(Math.abs((metrics.action?.right ?? 0) - (metrics.grid?.right ?? 0))).toBeLessThanOrEqual(1);
+        expect(metrics.quantity).toEqual([
+          { label: 'On hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
+          { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
+        ]);
+        expect(metrics.docOverflow).toBeLessThanOrEqual(1);
+        expect(metrics.cardOverflow).toBeLessThanOrEqual(1);
+        expect(metrics.text).toContain('Synthetic hold reason');
+        expect(metrics.text).toContain('Synthetic long sales note');
+
+        if (theme === 'light' && width === 390) {
+          const longHeight = metrics.card.height;
+          await renderDriveLayoutCard(page, { theme, photo: true, longContent: false });
+          const shortHeight = await card.evaluate((element) => element.getBoundingClientRect().height);
+          expect(longHeight).toBeGreaterThan(shortHeight);
+          await renderDriveLayoutCard(page, { theme, photo: true, longContent: true });
+          await card.screenshot({ path: '.gnc-local/drive-compact-390-light.png' });
+          await card.locator('.app-drive-card-photo .app-inline-thumb-column').click();
+          const photoModal = page.locator('#photo-modal');
+          await expect(photoModal).toBeVisible();
+          await expect(photoModal.locator('#photo-modal-caption')).toContainText('Synthetic Long Drive Card Name');
+          await photoModal.getByRole('button', { name: 'Close photo viewer' }).click();
+          await renderDriveLayoutCard(page, { theme, photo: true, knownQuantities: true });
+          const values = await card.locator('.app-card-qty-chip').evaluateAll((chips) => chips.map((chip) => ({
+            label: chip.querySelector('.app-card-qty-label')?.textContent?.trim(),
+            value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
+          })));
+          expect(values).toEqual([
+            { label: 'On hand', value: '15' }, { label: 'Review', value: '2' },
+            { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
+          ]);
+        }
+
+        // A second real render without photo keeps the designed empty-media
+        // placeholder and does not invent an image.
+        await renderDriveLayoutCard(page, { theme, photo: false, longContent: true });
+        const noPhoto = page.locator('#drive-content .app-drive-compact-card').first();
+        await expect(noPhoto.locator('.app-drive-card-photo .app-inline-thumb-box--empty')).toBeVisible();
+        await expect(noPhoto.locator('.app-drive-card-photo img')).toHaveCount(0);
+        await expect(noPhoto.locator('.app-drive-card-header')).toContainText('LAYOUT.001');
+        await expect(noPhoto.locator('.app-drive-card-details')).toContainText('Unknown');
+        const emptyPhotoBounds = await noPhoto.evaluate((element) => ({
+          overflow: element.scrollWidth - element.clientWidth,
+          photo: element.querySelector('.app-drive-card-photo')!.getBoundingClientRect().toJSON(),
+          action: element.querySelector('.app-drive-card-reclass .app-card-bottom-btn')!.getBoundingClientRect().toJSON(),
+          grid: element.querySelector('.app-drive-card-grid')!.getBoundingClientRect().toJSON(),
+        }));
+        expect(emptyPhotoBounds.overflow).toBeLessThanOrEqual(1);
+        expect(emptyPhotoBounds.photo.width).toBe(64);
+        expect(emptyPhotoBounds.action.width).toBeGreaterThanOrEqual(44);
+        expect(Math.abs(emptyPhotoBounds.action.right - emptyPhotoBounds.grid.right)).toBeLessThanOrEqual(1);
+      });
+    }
+  }
+
+  // Verify the actual selection and row-opening handlers still work after the
+  // compact markup is mounted. Neither interaction submits a business write.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await renderDriveLayoutCard(page, { theme: 'light', photo: true, longContent: true });
+  const card = page.locator('#drive-content .app-drive-compact-card').first();
+  const cart = card.locator('.app-card-bottom-rail [data-cart-dom-id]');
+  await expect(cart).toBeVisible();
+  await cart.click();
+  await expect(cart).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => window.eval(`selectedItems.has('drive-layout-synthetic-1-photo')`))).toBe(true);
+  const reclass = card.locator('.app-drive-card-reclass .app-card-bottom-btn');
+  await expect(reclass).toHaveCount(1);
+  await reclass.click();
+  const transaction = page.locator('#argos-inventory-transaction-modal');
+  await expect(transaction).toBeVisible();
+  await expect(transaction.locator('#argos-inventory-transaction-title')).toContainText('Reclass Item Inquiry');
+  await transaction.getByRole('button', { name: 'Close inventory transaction' }).click();
+  await card.locator('.app-drive-card-title').click();
+  await expect.poll(() => page.evaluate(() => window.eval(`({ view: document.body.dataset.currentView, uid: activeItem && activeItem.UNIQUE_ID })`)))
+    .toEqual({ view: 'detail', uid: 'drive-layout-synthetic-1-photo' });
+  // REP quick-request access is available for known available quantity rows.
+  await renderDriveLayoutCard(page, { theme: 'light', photo: true, knownQuantities: true, rep: true });
+  const repCard = page.locator('#drive-content .app-drive-compact-card').first();
+  await expect(repCard).toBeVisible();
+  await expect(repCard.locator('.app-drive-card-reclass')).toHaveCount(0);
+  const repCart = repCard.locator('.app-card-bottom-rail [data-cart-dom-id]');
+  await expect(repCart).toBeVisible();
+  await repCart.click();
+  await expect(repCart).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => window.eval(`selectedItems.has('drive-layout-synthetic-1-photo')`))).toBe(true);
+  await expect(repCard.locator('input.card-checkbox')).toHaveCount(0);
+  await restoreDriveLayoutRenderer(page);
+  expect(fixtureControl.blockedMutations).toEqual([]);
+  expect(fixtureControl.errors).toEqual([]);
+});
 
 async function fixture(page: Page, baseURL: string) {
   const source = await installSalesMobileFixture(page, baseURL);

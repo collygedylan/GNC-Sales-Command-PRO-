@@ -1,6 +1,105 @@
 import { expect, test } from '@playwright/test';
+import { installDriveCardLayoutFixture, renderDriveLayoutCard, renderSharedHlDriveLayoutCard } from './fixtures/drive-card-layout';
 
 const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
+
+test('Drive inventory cards use AV-density layout at desktop and tablet widths without restyling shared HL cards', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  const fixture = await installDriveCardLayoutFixture(page, baseURL!);
+  for (const theme of ['light', 'dark', 'outdoor'] as const) {
+    for (const width of [1280, 768]) {
+      await test.step(`${theme} at ${width}px`, async () => {
+        await page.setViewportSize({ width, height: 900 });
+        await renderDriveLayoutCard(page, { theme, photo: true, longContent: true });
+        const card = page.locator('#drive-content .app-drive-compact-card').first();
+        await expect(card).toBeVisible();
+        await expect.poll(() => card.locator('.app-drive-card-photo img').evaluate((image: HTMLImageElement) => image.naturalWidth))
+          .toBeGreaterThan(0);
+        await expect(card.locator('.app-drive-card-header')).toContainText('LAYOUT.001');
+        await expect(card.locator('.app-drive-card-details')).toContainText('Synthetic hold reason');
+        const layout = await card.evaluate((element) => {
+          const rect = (selector: string) => {
+            const node = element.querySelector(selector);
+            if (!node) return null;
+            const box = node.getBoundingClientRect();
+            return { x: box.x, y: box.y, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+          };
+          const quantity = [...element.querySelectorAll('.app-card-qty-chip')].map((chip) => ({
+            label: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
+            value: chip.querySelector('.app-card-qty-value')?.textContent?.trim() || '',
+          }));
+          const style = getComputedStyle(element);
+          const title = element.querySelector('.app-drive-card-title')!;
+          const photo = element.querySelector('.app-drive-card-photo :is(.app-smart-thumb,.app-inline-thumb-box)');
+          return {
+            padding: style.paddingTop,
+            titleSize: getComputedStyle(title).fontSize,
+            card: rect('.app-drive-card-grid'),
+            header: rect('.app-drive-card-header'), details: rect('.app-drive-card-details'),
+            photo: photo ? { width: photo.getBoundingClientRect().width, height: photo.getBoundingClientRect().height } : null,
+            reclass: rect('.app-drive-card-reclass .app-card-bottom-btn'), quantity,
+            matchColor: getComputedStyle(element.querySelector('[data-loc-photo-match-value]')!).color,
+            quantityColor: getComputedStyle(element.querySelector('.app-card-qty-value')!).color,
+            pageOverflow: document.documentElement.scrollWidth - innerWidth,
+            cardOverflow: element.scrollWidth - element.clientWidth,
+            text: (element as HTMLElement).innerText,
+          };
+        });
+        expect(layout.padding).toBe(width > 900 ? '12px' : '10px');
+        expect(layout.titleSize).toBe(width > 900 ? '20px' : '18px');
+        expect(layout.photo?.width).toBe(width > 900 ? 88 : 64);
+        expect(layout.photo?.height).toBe(width > 900 ? 86 : 62);
+        expect(layout.header && layout.details && layout.header.bottom).toBeLessThanOrEqual(layout.details?.y ?? -1);
+        await expect(card.locator('.app-drive-card-reclass .app-card-bottom-btn')).toHaveCount(1);
+        expect(layout.reclass?.height).toBeGreaterThanOrEqual(44);
+        expect(layout.reclass?.width).toBeGreaterThanOrEqual(44);
+        expect(layout.header && layout.reclass && layout.header.right).toBeLessThanOrEqual(layout.reclass?.x ?? -1);
+        expect(Math.abs((layout.reclass?.right ?? 0) - (layout.card?.right ?? 0))).toBeLessThanOrEqual(1);
+        expect(layout.quantity).toEqual([
+          { label: 'On hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
+          { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
+        ]);
+        expect(layout.text).toContain('Synthetic long sales note');
+        expect(layout.pageOverflow).toBeLessThanOrEqual(1);
+        expect(layout.cardOverflow).toBeLessThanOrEqual(1);
+        expect(layout.matchColor).toBe(layout.quantityColor);
+
+        if (theme === 'light' && width === 1280) {
+          await renderDriveLayoutCard(page, { theme, photo: true, knownQuantities: true });
+          const values = await card.locator('.app-card-qty-chip').evaluateAll((chips) => chips.map((chip) => ({
+            label: chip.querySelector('.app-card-qty-label')?.textContent?.trim(),
+            value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
+          })));
+          expect(values).toEqual([
+            { label: 'On hand', value: '15' }, { label: 'Review', value: '2' },
+            { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
+          ]);
+        }
+
+        await renderDriveLayoutCard(page, { theme, photo: false, knownQuantities: true, rep: true });
+        await expect(card.locator('.app-drive-card-reclass')).toHaveCount(0);
+        await expect(card.locator('.card-checkbox')).toHaveCount(0);
+        const restrictedLayout = await card.evaluate((element) => ({
+          overflow: element.scrollWidth - element.clientWidth,
+          notes: element.querySelectorAll('.app-drive-card-notes').length,
+          evidenceDisplay: getComputedStyle(element.querySelector('.app-drive-card-evidence')!).display,
+          gridAreas: getComputedStyle(element.querySelector('.app-drive-card-grid')!).gridTemplateAreas,
+        }));
+        expect(restrictedLayout.overflow).toBeLessThanOrEqual(1);
+        expect(restrictedLayout.notes).toBe(0);
+        expect(restrictedLayout.evidenceDisplay).toBe('none');
+        expect(restrictedLayout.gridAreas).not.toContain('reclass');
+
+        await renderSharedHlDriveLayoutCard(page);
+        const shared = page.locator('#hl-order-detail .app-drive-compact-card');
+        await expect(shared).toContainText('Synthetic Shared HL Card');
+        await expect(shared.locator('.app-drive-card-main')).toHaveCSS('display', 'block');
+      });
+    }
+  }
+  expect(fixture.blockedMutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
 
 test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
