@@ -43,11 +43,37 @@ export function validateDatabaseTarget(connectionString, supabaseUrl) {
   for (const key of database.searchParams.keys()) {
     if (!allowed.has(key)) throw new Error('LOW_STOCK_DATABASE_TARGET_INVALID');
   }
-  if (!database.searchParams.has('sslmode')) database.searchParams.set('sslmode', 'require');
+  if (!database.searchParams.has('sslmode')) database.searchParams.set('sslmode', 'verify-full');
   if (!['require', 'verify-ca', 'verify-full'].includes(database.searchParams.get('sslmode'))) {
     throw new Error('LOW_STOCK_DATABASE_TLS_REQUIRED');
   }
+  // This operation always verifies both the trusted CA and database hostname.
+  database.searchParams.set('sslmode', 'verify-full');
   return database.toString();
+}
+
+const POSTGRES_TLS_QUERY_PARAMETERS = ['sslmode', 'sslrootcert', 'sslcert', 'sslkey', 'uselibpqcompat'];
+
+export function createDatabaseClientOptions(connectionString) {
+  // `pg-connection-string` lets SSL query parameters replace `Client`'s
+  // `ssl` object. The URL has already passed validateDatabaseTarget; remove
+  // those options here so only this client uses the pinned, verified CA.
+  const database = new URL(connectionString);
+  for (const parameter of POSTGRES_TLS_QUERY_PARAMETERS) database.searchParams.delete(parameter);
+  const hostname = database.hostname;
+  const ca = fs.readFileSync(new URL('./certs/supabase-prod-ca-2021.crt', import.meta.url), 'utf8');
+  return {
+    connectionString: database.toString(),
+    connectionTimeoutMillis: 15000,
+    statement_timeout: 120000,
+    ssl: {
+      ca,
+      rejectUnauthorized: true,
+      // Make the expected DNS identity explicit. TLS verification remains
+      // enabled and is bound to the already-validated database host.
+      servername: hostname
+    }
+  };
 }
 
 export function summarizeDatabaseTarget(connectionString) {
@@ -195,11 +221,7 @@ async function main(args = process.argv.slice(2)) {
     }
     phase = 'target_validation';
     connectionString = validateDatabaseTarget(process.env.SUPABASE_DB_URL, process.env.SUPABASE_URL);
-    client = new pg.Client({
-      connectionString,
-      connectionTimeoutMillis: 15000,
-      statement_timeout: 120000
-    });
+    client = new pg.Client(createDatabaseClientOptions(connectionString));
     phase = 'database_connect';
     await client.connect();
     if (diagnose) {
