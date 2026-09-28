@@ -164,19 +164,13 @@ test('AV cards keep readable priority, stock and actions across themes and width
         await expect(card).toContainText('Keep near shade');
         await expect(card).toContainText('Well branched');
         await expect(card).toContainText('Quality review');
-        const reserveSummary = card.locator('.app-av-catalog-note--reserve');
-        await expect(reserveSummary).toHaveCount(entry === cases[0] ? 1 : 0);
-        if (entry === cases[0]) {
-          await expect(reserveSummary).toContainText('Reserved For');
-          await expect(reserveSummary).toContainText('Northside Nursery');
-          await expect(reserveSummary).toContainText('Riley Sales | Main Store');
-          await expect(reserveSummary).toContainText('2 customers');
-        }
-        await expect(card.locator('.app-av-catalog-photo-status')).toContainText(/No photo yet|Loading photos…/);
+        // AV cards no longer reserve room for a summary or an empty AV Note.
+        await expect(card.locator('.app-av-catalog-note--reserve')).toHaveCount(0);
+        await expect(card.locator('.app-av-catalog-photo-status')).toContainText(/No photo yet|Loading…/);
         const geometry = await card.evaluate((el, theme) => {
           const rect = el.getBoundingClientRect();
           const frame = el.querySelector('.app-av-catalog-frame')!;
-          const areas = ['header', 'media', 'details'];
+          const areas = ['header', 'media', 'details', 'actions'];
           const controls = [...el.querySelectorAll<HTMLElement>('.app-av-primary-action, .app-av-secondary-action')]
             .filter(control => !control.hasAttribute('disabled'));
           const color = (value: string) => (value.match(/[\d.]+/g) || []).map(Number);
@@ -203,13 +197,13 @@ test('AV cards keep readable priority, stock and actions across themes and width
             frameFits: frame.scrollWidth <= frame.clientWidth + 1,
             themeSurface: theme === 'dark' ? luminance(background(el)) < .2 : luminance(background(el)) > .7,
             namedAreas: areas.every(area => getComputedStyle(frame).gridTemplateAreas.includes(area)),
-            readable: font('.app-av-catalog-title') >= 24
-              && font('.app-av-priority-badge') >= 16
-              && font('.app-av-catalog-stock-label') >= 16
-              && font('.app-av-catalog-price-label') >= 16
-              && font('.app-av-catalog-code') >= 14
-              && font('.app-av-catalog-note-text') >= 14
-              && font('.app-av-primary-action') >= 16,
+            readable: font('.app-av-catalog-title') >= (innerWidth <= 900 ? 18 : 20)
+              && font('.app-av-priority-badge') >= 13
+              && font('.app-av-catalog-stock-label') >= 13
+              && font('.app-av-catalog-price-label') >= 13
+              && font('.app-av-catalog-code') >= 13
+              && font('.app-av-catalog-note-text') >= 13
+              && font('.app-av-primary-action') >= 14,
             contrast: ['.app-av-catalog-title', '.app-av-priority-badge', '.app-av-catalog-stock-label',
               '.app-av-catalog-code', '.app-av-catalog-note-text'].every(selector => contrast(text(selector)) >= 4.5),
             targets: controls.every(control => {
@@ -235,7 +229,106 @@ test('AV cards keep readable priority, stock and actions across themes and width
   expect(fixture.blockedMutations).toEqual([]);
 });
 
+test('ordinary compact AV cards stay within the row budget', async ({ page, baseURL }, testInfo) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_compact_fixture', role: 'ADMIN' });
+  await settleIosShellVersion(page, testInfo.project.name);
+  await page.route('**/storage/v1/object/public/request_photos/**', route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"></svg>'
+  }));
+  await page.route('**/storage/v1/render/image/public/request_photos/**', route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"></svg>'
+  }));
+  await page.evaluate(() => {
+    const root = document.createElement('section');
+    root.id = 'av-compact-fixture';
+    root.style.cssText = 'position:fixed;inset:0;z-index:1000;overflow-y:auto;padding:8px;width:100%;height:100vh;box-sizing:border-box;background:var(--ops-surface,#fff)';
+    document.body.prepend(root);
+  });
+  const widths = testInfo.project.name.includes('iphone') ? [360, 390] : [1280];
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(compact => document.body.classList.toggle('viewport-compact', compact), width <= 900);
+    for (const hasPhoto of [false, true]) {
+      for (const source of ['', 'HL']) {
+        await page.evaluate(({ hasPhoto, source }) => {
+          window.eval("activeAVTab = 'open'");
+          const photoDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          const photoUrl = `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/compact.webp`;
+          const row = {
+            UNIQUE_ID: `av-compact-${hasPhoto}-${source || 'regular'}`,
+            DOM_ID: `av-compact-${hasPhoto}-${source || 'regular'}`,
+            ITEMCODE: 'SYNTH.003', COMMONNAME: 'Compact Fixture Plant', CONTSIZE: '#1',
+            LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', SEASON: 'F1', PRIORITY: '1',
+            PTRONHAND: 12, S_LTS: 8, LISTPRICE: '4.50', SOURCE: source,
+            AV_RESERVE_ROW_COUNT: 2,
+            ...(hasPhoto ? { PHOTO_NAME: `${photoDate}-compact.webp`, PHOTO_LINK: photoUrl, DATE_COMPLETED: `${photoDate}T12:00:00Z` } : {})
+          };
+          document.getElementById('av-compact-fixture')!.innerHTML = (window as any).generateCard(row, 'av-photo');
+        }, { hasPhoto, source });
+        const card = page.locator('#av-compact-fixture .app-av-catalog-card');
+        await expect(card.locator('.app-av-catalog-note--reserve')).toHaveCount(0);
+        await expect(card.getByText('AV Note', { exact: true })).toHaveCount(0);
+        await expect(card.locator('.app-av-photo-slide img')).toHaveCount(hasPhoto ? 1 : 0);
+        await expect(card.getByText('Season OH', { exact: true })).toHaveCount(source === 'HL' ? 1 : 0);
+        const compact = await card.evaluate((el, width) => {
+          const thumbnail = el.querySelector<HTMLElement>('.app-av-catalog-photo-wrap')!;
+          const bounds = thumbnail.getBoundingClientRect();
+          const cardBounds = el.getBoundingClientRect();
+          const frame = el.querySelector<HTMLElement>('.app-av-catalog-frame')!;
+          const header = el.querySelector<HTMLElement>('.app-av-catalog-heading')!;
+          const details = el.querySelector<HTMLElement>('.app-av-catalog-info')!;
+          return {
+            height: cardBounds.height,
+            thumbnail: { width: bounds.width, height: bounds.height },
+            besideHeader: Math.abs(bounds.top - header.getBoundingClientRect().top) <= 2,
+            phoneDetailsFullWidth: width > 900 || Math.abs(details.getBoundingClientRect().width - frame.getBoundingClientRect().width) <= 2
+          };
+        }, width);
+        expect(compact.height, `${width}px ${hasPhoto ? 'photo' : 'empty'} ${source || 'standard'} card height`).toBeLessThanOrEqual(width <= 900 ? 300 : 220);
+        expect(compact.thumbnail.width).toBeCloseTo(width <= 900 ? 64 : 88, 0);
+        expect(compact.thumbnail.height).toBeCloseTo(width <= 900 ? 64 : 88, 0);
+        expect(compact.besideHeader).toBe(true);
+        expect(compact.phoneDetailsFullWidth).toBe(true);
+        await testInfo.attach(`card-${width}-${hasPhoto ? 'photo' : 'empty'}-${source || 'standard'}`, { body: JSON.stringify(compact), contentType: 'application/json' });
+        if (!source && (width === 1280 || width === 390)) await card.screenshot({ path: testInfo.outputPath(`compact-${width}-${hasPhoto ? 'photo' : 'empty'}.png`) });
+      }
+    }
+  }
+  await page.evaluate(() => {
+    window.eval("activeAVTab = 'reserves'");
+    const photoDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const row = {
+      UNIQUE_ID: 'av-reserve-route-1', DOM_ID: 'av-reserve-route-1', ITEMCODE: 'SYNTH.004',
+      COMMONNAME: 'Reserve Route Fixture', CONTSIZE: '#1', LOCATIONCODE: 'A.01.001',
+      LOTCODE: '27.F1', PTRONHAND: 6, S_LTS: 5, LISTPRICE: '4.50',
+      PHOTO_NAME: `${photoDate}-reserve.webp`, DATE_COMPLETED: `${photoDate}T12:00:00Z`,
+      PHOTO_LINK: `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/reserve.webp`
+    };
+    document.getElementById('av-compact-fixture')!.innerHTML = (window as any).generateCard(row, 'av');
+  });
+  const reserveCard = page.locator('#av-compact-fixture .app-av-catalog-card');
+  expect(await reserveCard.locator('.app-av-photo-slide').evaluate(el => el.tagName === 'DIV')).toBe(true);
+  expect(await reserveCard.evaluate(el => {
+    const w = window as any;
+    const encodedArgs = el.getAttribute('onclick')?.match(/handleFastPressClick\(event, 'card', 'av', '([^']+)'\)/)?.[1];
+    return w.decodeFastPressArgs(encodedArgs || '');
+  })).toEqual(['av-reserve-route-1', 'av-reserve-route-1', 'av']);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
 test('AV cached card refreshes priority and preserves photo and picker hooks offline', async ({ page, context, baseURL }, testInfo) => {
+  const activate = async (control: import('@playwright/test').Locator) => {
+    if (!testInfo.project.name.includes('iphone')) return control.click();
+    await expect(control).toBeInViewport();
+    const bounds = await control.boundingBox();
+    if (!bounds) throw new Error('Expected a visible touch target');
+    // Locator auto-scroll can advance WebKit's snap gallery before the tap.
+    // Touch the visible control directly, as a phone user does.
+    await page.touchscreen.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  };
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_photo_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -257,6 +350,8 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
       COMMONNAME: 'Photo Fixture Plant', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001',
       LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: 120, S_LTS: 80, LISTPRICE: '24.50',
       PRIORITY: '1', DATE_COMPLETED: `${photoDate}T12:00:00Z`,
+      AV_NOTE: 'Photo AV note retained in full', SPEC: 'Photo specification retained in full',
+      PICK: 'Photo pick instruction retained in full', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Photo hold reason retained in full',
       PHOTO_NAME: `${photoDate}-one.webp,${photoDate}-two.webp`,
       PHOTO_LINK: `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/one.webp,https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/two.webp` };
     const root = document.createElement('section');
@@ -270,23 +365,32 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
     return { first };
   }, photoDate);
   const card = page.locator('#av-photo-fixture .app-av-catalog-card');
-  await expect(card.locator('.app-av-photo-track .app-av-photo-slide')).toHaveCount(2);
+  // The compact card displays its first image only. The modal remains the full gallery.
+  await expect(card.locator('.app-av-photo-track .app-av-photo-slide')).toHaveCount(1);
+  await expect(card.locator('.app-av-photo-count')).toHaveText('1 / 2');
+  await expect(card.locator('.app-av-photo-nav, .app-av-photo-position')).toHaveCount(0);
   await expect(card.locator('.app-av-catalog-photo-loading').first()).toBeVisible();
   await page.evaluate(() => window.eval('scheduleDeferredCardPhotoHydration(document.getElementById("av-photo-fixture"))'));
   releasePhotos();
   await expect(card.locator('.app-av-photo-track img').first()).toHaveAttribute('src', /request_photos/);
   await expect(card.locator('.app-av-photo-track img').first()).toHaveAttribute('data-av-photo-loaded', '1');
   await expect(card.locator('.app-av-catalog-photo-loading').first()).toBeHidden();
+  for (const text of ['Photo AV note retained in full', 'Photo specification retained in full',
+    'Photo pick instruction retained in full', 'Photo hold reason retained in full']) {
+    await expect(card).toContainText(text);
+  }
   const photoText = await card.evaluate(el => {
-    const date = el.querySelector('.app-inline-thumb-date')!;
-    const fullScreen = el.querySelector('.app-av-hero-action')!;
+    const date = el.querySelector('.app-av-catalog-photo-evidence .app-inline-thumb-date')!;
+    const viewPhotos = el.querySelector('.app-av-secondary-action')!;
+    const locationMatch = el.querySelector('.app-av-catalog-photo-match')!;
     return {
-      dateReadable: parseFloat(getComputedStyle(date).fontSize) >= 14,
-      fullScreenReadable: parseFloat(getComputedStyle(fullScreen).fontSize) >= 14,
+      dateReadable: parseFloat(getComputedStyle(date).fontSize) >= 13,
+      viewPhotosReadable: parseFloat(getComputedStyle(viewPhotos).fontSize) >= 14,
+      dateFollowsLocationMatch: Boolean(locationMatch.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING),
       dateSurfaceMatchesCard: getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
     };
   });
-  expect(photoText).toEqual({ dateReadable: true, fullScreenReadable: true, dateSurfaceMatchesCard: true });
+  expect(photoText).toEqual({ dateReadable: true, viewPhotosReadable: true, dateFollowsLocationMatch: true, dateSurfaceMatchesCard: true });
   await card.screenshot({ path: testInfo.outputPath('av-photo-loaded-390.png') });
   if (!testInfo.project.name.includes('iphone')) {
     await page.setViewportSize({ width: 1280, height: 844 });
@@ -301,23 +405,24 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
   });
   await expect(page.locator('body')).toHaveAttribute('data-ops-theme', 'dark');
   await expect.poll(() => card.evaluate(el => {
-    const date = el.querySelector('.app-inline-thumb-date')!;
+    const date = el.querySelector('.app-av-catalog-photo-evidence .app-inline-thumb-date')!;
     return getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
-      && parseFloat(getComputedStyle(date).fontSize) >= 14;
+      && parseFloat(getComputedStyle(date).fontSize) >= 13;
   })).toBe(true);
   await card.screenshot({ path: testInfo.outputPath('av-photo-loaded-390-dark.png') });
   await expect(card.locator('.app-av-primary-action')).toHaveAttribute('aria-pressed', 'false');
-  expect(await card.locator('.app-av-photo-nav--next').evaluate(el => {
-    const bounds = el.getBoundingClientRect();
-    return bounds.width >= 44 && bounds.height >= 44;
-  })).toBe(true);
-  await card.locator('.app-av-photo-nav--next').click();
-  await expect.poll(() => card.locator('.app-av-photo-track').evaluate(track =>
-    Math.round(track.scrollLeft / Math.max(1, track.clientWidth)))).toBe(1);
-  await card.locator('.app-av-secondary-action').click();
+  await expect(card.locator('.app-av-secondary-action')).toContainText('View Photos');
+  await activate(card.locator('.app-av-photo-slide'));
   await expect(page.locator('#photo-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#photo-modal-counter')).toContainText('1 / 2');
+  await activate(page.locator('#photo-modal-next'));
   await expect(page.locator('#photo-modal-counter')).toContainText('2 / 2');
-  await page.locator('#photo-modal-close').click();
+  await activate(page.locator('#photo-modal-close'));
+  await expect(page.locator('#photo-modal')).toHaveClass(/hidden/);
+  await activate(card.locator('.app-av-secondary-action'));
+  await expect(page.locator('#photo-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#photo-modal-counter')).toContainText('1 / 2');
+  await activate(page.locator('#photo-modal-close'));
   await expect(page.locator('#photo-modal')).toHaveClass(/hidden/);
   await context.setOffline(true);
   const changed = await page.evaluate(() => {
@@ -329,7 +434,7 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
   });
   expect(changed).not.toBe(setup.first);
   await expect(card.locator('.app-av-priority-badge')).toHaveText('Priority 2');
-  await card.locator('.app-av-primary-action').click();
+  await activate(card.locator('.app-av-primary-action'));
   expect(await page.evaluate(() => window.eval('selectedItems.has("av-photo-1")'))).toBe(true);
   await page.evaluate(() => {
     document.getElementById('av-photo-fixture')!.innerHTML = (window as any).generateCard((window as any).__avPhotoFixtureRow, 'av-photo');
