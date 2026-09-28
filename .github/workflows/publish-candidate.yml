@@ -94,4 +94,4 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner, repo, workflow_id: 'pages-static.yml', ref: 'main',
             });
-            core.notice(`Dispatched Pages for PR #${pull_number}, merge ${pr.merge_commit_sha}. Pages revalidates main before publication.`);
+            core.notice(`Dispatched Pages for PR #${pull_number}, merge ${pr.merge_commit_sha}. Pages rechecks the passing candidate proof and merged tree before publication.`);

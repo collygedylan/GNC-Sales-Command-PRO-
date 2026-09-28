@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should-probe: ${{ steps.published.outputs.should-probe }}
+      expected-commit: ${{ steps.descriptor.outputs.expected-commit || steps.published.outputs.expected-commit }}
+      descriptor-id: ${{ steps.published.outputs.descriptor-id }}
     steps:
       - name: Distinguish an actual publication from a failed or superseded candidate
         id: published
@@ -31,20 +33,87 @@ jobs:
           script: |
             if (context.eventName !== 'workflow_run') {
               core.setOutput('should-probe', 'true');
+              core.setOutput('expected-commit', context.sha);
               return;
             }
-            const run = context.payload.workflow_run;
-            if (run.head_branch !== 'main') {
+            const event = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner, repo, run_id: event.id,
+            });
+            const trusted = run.path === '.github/workflows/pages-static.yml' &&
+              ['push', 'workflow_dispatch'].includes(run.event) &&
+              run.status === 'completed' &&
+              run.run_attempt === event.run_attempt && run.head_sha === event.head_sha &&
+              run.head_branch === 'main' &&
+              run.head_repository?.full_name?.toLowerCase() === `${owner}/${repo}`.toLowerCase();
+            if (!trusted) {
               core.setOutput('should-probe', 'false');
+              core.notice('Ignoring an untrusted, mismatched, or incomplete workflow_run event.');
               return;
             }
-            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
+              ...context.repo, run_id: run.id, run_attempt: run.run_attempt, per_page: 100
+            });
+            const deployJobs = jobs.filter(job => job.name === 'deploy' && job.run_id === run.id &&
+              job.head_sha === run.head_sha && job.status === 'completed' && job.conclusion === 'success' &&
+              job.steps?.some(step => ['Deploy verified artifact to Pages', 'Deploy to Pages'].includes(step.name) &&
+                step.status === 'completed' && step.conclusion === 'success'));
+            const published = deployJobs.length === 1;
+            core.setOutput('should-probe', String(published));
+            core.setOutput('expected-commit', run.head_sha);
+            if (!published) core.notice('No unique successful deployment for this Pages run attempt; normal scheduled production checks remain active.');
+            if (!published) return;
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
               ...context.repo, run_id: run.id, per_page: 100
             });
-            const published = jobs.some(job => job.name === 'deploy' && job.steps?.some(step =>
-              ['Deploy verified artifact to Pages', 'Deploy to Pages'].includes(step.name) && step.conclusion === 'success'));
-            core.setOutput('should-probe', String(published));
-            if (!published) core.notice('No publication occurred; normal scheduled production checks remain active.');
+            const descriptors = artifacts.filter(item => item.name === `pages-publication-${run.run_attempt}`);
+            if (!descriptors.length) return; // Compatibility for Pages runs predating descriptors.
+            if (descriptors.length !== 1) throw new Error('PAGES_PUBLICATION_DESCRIPTOR_AMBIGUOUS');
+            const descriptor = descriptors[0];
+            if (!Number.isSafeInteger(descriptor.id) || descriptor.id < 1 || descriptor.expired !== false ||
+                !(Date.parse(descriptor.expires_at) > Date.now()) ||
+                descriptor.workflow_run?.id !== run.id || descriptor.workflow_run?.head_sha !== run.head_sha) {
+              throw new Error('PAGES_PUBLICATION_DESCRIPTOR_ARTIFACT_INVALID');
+            }
+            core.setOutput('descriptor-id', String(descriptor.id));
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_run' && steps.published.outputs.should-probe == 'true' && steps.published.outputs.descriptor-id != ''
+        with:
+          artifact-ids: ${{ steps.published.outputs.descriptor-id }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: artifacts/pages-publication
+          merge-multiple: true
+      - name: Validate publication descriptor or keep legacy commit fallback
+        id: descriptor
+        if: github.event_name == 'workflow_run' && steps.published.outputs.should-probe == 'true'
+        env:
+          DESCRIPTOR_ID: ${{ steps.published.outputs.descriptor-id }}
+          PAGES_RUN_ID: ${{ github.event.workflow_run.id }}
+          PAGES_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          PAGES_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const output = process.env.GITHUB_OUTPUT;
+          if (!process.env.DESCRIPTOR_ID) {
+            fs.appendFileSync(output, `expected-commit=${process.env.PAGES_RUN_SHA}\n`);
+            console.log('No publication descriptor found; using the Pages run commit for rollout compatibility.');
+            process.exit(0);
+          }
+          const value = JSON.parse(fs.readFileSync('artifacts/pages-publication/publication.json', 'utf8'));
+          if (value.schemaVersion !== 'gnc-pages-publication-v1' ||
+              value.repository !== process.env.GITHUB_REPOSITORY ||
+              value.commit !== process.env.PAGES_RUN_SHA ||
+              value.runId !== Number(process.env.PAGES_RUN_ID) ||
+              value.attempt !== Number(process.env.PAGES_RUN_ATTEMPT) ||
+              !/^[a-f0-9]{40}$/i.test(value.buildCommit || '')) {
+            throw new Error('PAGES_PUBLICATION_DESCRIPTOR_INVALID');
+          }
+          fs.appendFileSync(output, `expected-commit=${value.buildCommit}\n`);
+          NODE
   probe:
     needs: published-release
     if: needs.published-release.outputs.should-probe == 'true'
@@ -66,7 +135,7 @@ jobs:
         continue-on-error: true
         env:
           CANARY_BASE_URL: https://agmetricapp.com
-          EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          EXPECTED_COMMIT: ${{ needs.published-release.outputs.expected-commit }}
           CANARY_WAIT_TIMEOUT_MS: '180000'
           CANARY_WAIT_INTERVAL_MS: '5000'
         run: node scripts/wait-for-live-release.mjs
