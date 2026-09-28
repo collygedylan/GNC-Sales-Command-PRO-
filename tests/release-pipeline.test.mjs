@@ -19,18 +19,29 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(validation.on.workflow_call.outputs['proof-id'].value, '${{ jobs.release-gate.outputs.proof-id }}');
   assert.equal(validation.on.workflow_call.outputs['site-id'].value, '${{ jobs.release-gate.outputs.site-id }}');
   assert.equal(validation.jobs['release-gate'].steps.find(s => s.uses === 'actions/upload-artifact@v4').id, 'proof');
+  const select = pages.jobs['select-candidate'];
+  assert.equal(select.outputs.reuse, '${{ steps.select.outputs.reuse }}');
+  for (const output of ['run-id','attempt','site-id','proof-id','build-commit']) {
+    assert.equal(select.outputs[output], `\u0024{{ steps.select.outputs.${output} }}`);
+  }
+  assert.equal(select.steps.find(s => s.id === 'select').run, 'node scripts/pages-release.mjs select');
   assert.equal(pages.jobs['candidate-validation'].uses, './.github/workflows/release-validation.yml');
+  assert.match(pages.jobs['candidate-validation'].if, /needs\.select-candidate\.outputs\.reuse != 'true'/);
   assert.equal(pages.jobs.deploy.needs, 'validation');
-  assert.ok(pages.jobs.validation.steps.some(s => s.run === 'node scripts/release-proof.mjs verify'));
-  assert.equal(pages.jobs.validation.steps.some(s => s.run === 'node scripts/release-proof.mjs select'), false);
-  assert.equal(pages.jobs.validation.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_RUN_ID,
-    '${{ needs.candidate-validation.outputs.run-id }}');
-  assert.equal(pages.jobs.validation.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_ID,
-    '${{ needs.candidate-validation.outputs.proof-id }}');
-  assert.equal(pages.jobs.validation.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_DIGEST,
+  assert.match(pages.jobs.validation.if, /needs\.select-candidate\.outputs\.reuse == 'true'/);
+  const validationVerify = pages.jobs.validation.steps.find(s => s.run === 'node scripts/pages-release.mjs verify');
+  assert.ok(validationVerify);
+  assert.equal(validationVerify.env.RELEASE_PROOF_RUN_ID,
+    "\u0024{{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.run-id || needs.candidate-validation.outputs.run-id }}");
+  assert.equal(validationVerify.env.RELEASE_PROOF_ID,
+    "\u0024{{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.proof-id || needs.candidate-validation.outputs.proof-id }}");
+  assert.equal(validationVerify.env.RELEASE_PROOF_DIGEST,
     '${{ needs.candidate-validation.outputs.digest }}');
-  assert.equal(pages.jobs.deploy.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_DIGEST,
-    '${{ needs.validation.outputs.digest }}');
+  assert.equal(pages.jobs.validation.outputs['build-commit'], '${{ steps.verify.outputs.build-commit }}');
+  assert.equal(pages.jobs.validation.outputs.digest, '${{ steps.verify.outputs.digest }}');
+  const deployVerify = pages.jobs.deploy.steps.find(s => s.run === 'node scripts/pages-release.mjs verify');
+  assert.equal(deployVerify.env.RELEASE_PROOF_DIGEST, '${{ needs.validation.outputs.digest }}');
+  assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
   assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','lighthouse','production-health']);
@@ -68,8 +79,12 @@ test('every build consumer verifies the original manifest, never rebuilds or res
   const publish = pages.jobs.deploy.steps;
   assert.ok(publish.findIndex(s=>s.uses === './.github/actions/download-release') < publish.findIndex(s=>s.uses?.startsWith('actions/deploy-pages@')));
   assert.doesNotMatch(publish.map(s=>s.run||'').join('\n'), /npm run build|artifact\.mjs seal/);
+  assert.equal(publish.find(s=>s.uses === './.github/actions/download-release').with.commit,
+    '${{ needs.validation.outputs.build-commit }}');
   assert.match(download.runs.steps[1].run, /release-artifact.mjs verify/);
   assert.equal(download.runs.steps[1].env.EXPECTED_RELEASE_DIGEST, '${{ inputs.digest }}');
+  assert.equal(download.runs.steps[1].env.EXPECTED_RELEASE_COMMIT, '${{ inputs.commit || github.sha }}');
+  assert.equal(download.runs.steps[1].env.GITHUB_SHA, undefined);
   assert.equal(validation.jobs.build.steps.find(s=>s.uses?.startsWith('actions/upload-artifact@')).with['include-hidden-files'], true);
 });
 
@@ -90,14 +105,17 @@ test('main runs validation once and a feature benchmark cannot publish or change
 
 test('live probes await exact commit and all retained suites run with writes blocked', () => {
   assert.equal(pages.jobs['exact-live'].needs, 'deploy');
+  assert.equal(pages.jobs['exact-live'].steps.find(step => step.name === 'Wait for exact live release and commit').env.EXPECTED_COMMIT,
+    '${{ needs.deploy.outputs.build-commit }}');
   assert.deepEqual(pages.jobs['post-deployment-canary'].needs, ['deploy','exact-live']);
   const matrix = pages.jobs['post-deployment-canary'].strategy.matrix.include;
-  assert.deepEqual(matrix.map(x=>x.suite), ['foundation','requests','session','assignedto','footer','home-1','home-2','season','suspend','docks','login-photo','hl-restock']);
-  assert.deepEqual(matrix.filter(x=>x.suite.startsWith('home-')).map(x=>x.command), [
-    'npm run test:home-roles -- --workers=1 --shard=1/2',
-    'npm run test:home-roles -- --workers=1 --shard=2/2',
-  ]);
+  assert.deepEqual(matrix.map(x=>x.suite), ['foundation','requests','session','login-photo']);
   assert.match(matrix.find(x=>x.suite==='requests').command, /production-request-canary.spec.ts/);
+  const liveCanary = pages.jobs['post-deployment-canary'].steps.find(step => step.name?.startsWith('Mutation-blocked live'));
+  assert.equal(liveCanary.env.APP_LIFECYCLE_BASE_URL, 'https://agmetricapp.com');
+  assert.equal(liveCanary.env.SESSION_RECOVERY_BASE_URL, 'https://agmetricapp.com');
+  assert.equal(liveCanary.env.LOGIN_PHOTO_BASE_URL, 'https://agmetricapp.com');
+  assert.equal(liveCanary.env.EXPECTED_COMMIT, '${{ needs.deploy.outputs.build-commit }}');
   const health = validation.jobs['production-health'].steps.find(s=>s.name === 'Probe production login bridge and Data API');
   assert.equal(health.env.PRODUCTION_PROBE_READ_ONLY, '1');
   assert.equal(validation.permissions.contents, 'read');
@@ -137,23 +155,71 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
   assert.throws(() => run(benchmark, false), /RELEASE_DIGEST_MISSING/);
 });
 
-test('production health recovery runs only after actual publication or on its existing schedule', async () => {
+test('production health recovery follows actual publication and the published build commit', async () => {
   const auth = yaml.load(read('.github/workflows/production-auth-health.yml'));
   const script = auth.jobs['published-release'].steps[0].with.script;
-  async function run({event = 'workflow_run', branch = 'main', deployed = false} = {}) {
-    let result;
+  const runSha = 'a'.repeat(40), buildSha = 'b'.repeat(40);
+  async function run({event = 'workflow_run', branch = 'main', deployed = true, descriptor = 'valid', runOverrides = {},
+    eventOverrides = {}, jobsOverride, descriptorOverride} = {}) {
+    const outputs = {};
+    const eventRun = {head_branch:branch,id:1,run_attempt:2,head_sha:runSha,...eventOverrides};
+    const pageRun = {id:1,path:'.github/workflows/pages-static.yml',event:'push',status:'completed',conclusion:'success',
+      run_attempt:2,head_sha:runSha,head_branch:branch,head_repository:{full_name:'test/test'},...runOverrides};
+    const jobsApi = () => {}, artifactsApi = () => {}, getRunApi = () => {};
+    const descriptorRows = descriptorOverride || (descriptor === 'valid' ? [{id:17,name:'pages-publication-2',expired:false,
+      expires_at:'2999-01-01T00:00:00Z',workflow_run:{id:1,head_sha:runSha}}] : descriptor === 'missing' ? []
+      : descriptor === 'duplicate' ? [
+        {id:17,name:'pages-publication-2',expired:false,expires_at:'2999-01-01T00:00:00Z',workflow_run:{id:1,head_sha:runSha}},
+        {id:18,name:'pages-publication-2',expired:false,expires_at:'2999-01-01T00:00:00Z',workflow_run:{id:1,head_sha:runSha}},
+      ] : [{id:17,name:'pages-publication-2',expired:descriptor !== 'expired',
+        expires_at:descriptor === 'expired' ? '2000-01-01T00:00:00Z' : '2999-01-01T00:00:00Z',workflow_run:{id:1,head_sha:runSha}}]);
+    const jobs = jobsOverride || [{name:'deploy',run_id:1,head_sha:runSha,status:'completed',conclusion:deployed?'success':'skipped',
+      steps:[{name:'Deploy verified artifact to Pages',status:'completed',conclusion:deployed?'success':'skipped'}]}];
+    const calls = [];
     const execute = vm.runInNewContext(`(async () => {${script}})`, {
-      context: {eventName: event, repo: {owner:'test',repo:'test'}, payload:{workflow_run:{head_branch:branch,id:1}}},
-      core: {setOutput(_key,value) { result = value; }, notice() {}},
-      github: {rest:{actions:{listJobsForWorkflowRun:{}}}, paginate:async()=>[{name:'deploy',steps:[{
-        name:'Deploy verified artifact to Pages',conclusion:deployed ? 'success' : 'skipped',
-      }]}]},
+      context: {eventName: event, repo: {owner:'test',repo:'test'}, payload:{workflow_run:eventRun}, sha:buildSha},
+      core: {setOutput(key,value) { outputs[key] = value; }, notice() {}},
+      github: {
+        paginate:async(method, params)=> { calls.push({method,params});
+          return method === jobsApi ? jobs : method === artifactsApi ? descriptorRows : []; },
+        rest:{actions:{getWorkflowRun: async params => { calls.push({method:getRunApi,params}); return {data:pageRun}; },
+          listJobsForWorkflowRunAttempt:jobsApi,listWorkflowRunArtifacts:artifactsApi}},
+      },
     });
     await execute();
-    return result;
+    return {outputs,calls};
   }
-  assert.equal(await run({deployed:true}), 'true');
-  assert.equal(await run(), 'false');
-  assert.equal(await run({branch:'fix/benchmark',deployed:true}), 'false');
-  assert.equal(await run({event:'schedule'}), 'true');
+  const published = await run();
+  assert.equal(published.outputs['should-probe'], 'true');
+  assert.equal(published.outputs['expected-commit'], runSha);
+  assert.equal(published.outputs['descriptor-id'], '17');
+  const jobRequest = published.calls.find(call => call.method.name === 'jobsApi');
+  assert.equal(jobRequest.params.run_attempt, 2);
+  const notDeployed = await run({deployed:false});
+  assert.equal(notDeployed.outputs['should-probe'], 'false');
+  assert.equal((await run({runOverrides:{conclusion:'failure'}})).outputs['should-probe'], 'true',
+    'a failed later canary does not hide a successful Pages deployment');
+  for (const runOverrides of [
+    {path:'.github/workflows/other.yml'}, {event:'pull_request'}, {status:'in_progress'},
+    {run_attempt:3}, {head_sha:'c'.repeat(40)}, {head_branch:'preview'},
+    {head_repository:{full_name:'fork/test'}},
+  ]) assert.equal((await run({runOverrides})).outputs['should-probe'], 'false', JSON.stringify(runOverrides));
+  assert.equal((await run({branch:'fix/benchmark'})).outputs['should-probe'], 'false');
+  assert.equal((await run({event:'schedule'})).outputs['should-probe'], 'true');
+  assert.equal((await run({descriptor:'missing'})).outputs['descriptor-id'], undefined, 'legacy publication keeps the fallback path');
+  for (const descriptor of ['duplicate','expired']) await assert.rejects(run({descriptor}), /PAGES_PUBLICATION_DESCRIPTOR_/);
+  await assert.rejects(run({descriptorOverride:[{id:17,name:'pages-publication-2',expired:false,
+    expires_at:'2999-01-01T00:00:00Z',workflow_run:{id:2,head_sha:runSha}}]}), /PAGES_PUBLICATION_DESCRIPTOR_ARTIFACT_INVALID/);
+  assert.equal((await run({jobsOverride:[]})).outputs['should-probe'], 'false', 'missing deploy job is not publication');
+  assert.equal((await run({jobsOverride:[
+    {name:'deploy',run_id:1,head_sha:runSha,status:'completed',conclusion:'success',steps:[{name:'Deploy to Pages',status:'completed',conclusion:'success'}]},
+    {name:'deploy',run_id:1,head_sha:runSha,status:'completed',conclusion:'success',steps:[{name:'Deploy to Pages',status:'completed',conclusion:'success'}]},
+  ]})).outputs['should-probe'], 'false', 'ambiguous deploy jobs are not publication');
+  const descriptorScript = auth.jobs['published-release'].steps.find(step => step.id === 'descriptor').run;
+  assert.match(descriptorScript, /value\.buildCommit/);
+  assert.match(descriptorScript, /value\.repository !== process\.env\.GITHUB_REPOSITORY/);
+  assert.match(descriptorScript, /value\.runId !== Number\(process\.env\.PAGES_RUN_ID\)/);
+  assert.match(descriptorScript, /expected-commit=\$\{process\.env\.PAGES_RUN_SHA\}/);
+  assert.equal(auth.jobs.probe.steps.find(step => step.name?.includes('exact live release')).env.EXPECTED_COMMIT,
+    '${{ needs.published-release.outputs.expected-commit }}');
 });

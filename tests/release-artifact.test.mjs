@@ -11,7 +11,7 @@ const commit = 'a'.repeat(40);
 const release = 'V2026.09.09.08';
 const digestOf = bytes => createHash('sha256').update(bytes).digest('hex');
 
-async function fixture(t) {
+async function fixture(t, artifactCommit = commit) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'gnc-release-artifact-'));
   t.after(async () => {
     // The test owns only this freshly created temporary directory, never the repository.
@@ -23,16 +23,16 @@ async function fixture(t) {
   const site = path.join(directory, '_site');
   await mkdir(path.join(site, 'deployments'), { recursive: true });
   await mkdir(path.join(site, 'assets', '.hidden'), { recursive: true });
-  const fingerprint = JSON.stringify(buildDeploymentFingerprint({ release, commit, generatedAt: '2026-09-09T00:00:00.000Z' }));
+  const fingerprint = JSON.stringify(buildDeploymentFingerprint({ release, commit: artifactCommit, generatedAt: '2026-09-09T00:00:00.000Z' }));
   await Promise.all([
     writeFile(path.join(site, 'deployment.json'), fingerprint),
-    writeFile(path.join(site, 'deployments', `${commit}.json`), fingerprint),
+    writeFile(path.join(site, 'deployments', `${artifactCommit}.json`), fingerprint),
     writeFile(path.join(site, 'manifest.json'), JSON.stringify({ version: release })),
     writeFile(path.join(site, 'index.html'), '<html>immutable release</html>'),
     writeFile(path.join(site, '.nojekyll'), ''),
     writeFile(path.join(site, 'assets', '.hidden', 'cache.json'), '{"ready":true}'),
   ]);
-  return { directory, site, env: { DEPLOYMENT_COMMIT: commit } };
+  return { directory, site, env: { DEPLOYMENT_COMMIT: artifactCommit } };
 }
 
 async function sealed(t) {
@@ -101,6 +101,27 @@ test('requires expected commit and rejects another commit or mismatched fingerpr
   const other = await fixture(t);
   await writeFile(path.join(other.site, 'deployment.json'), JSON.stringify(buildDeploymentFingerprint({ release, commit: 'b'.repeat(40) })));
   await assert.rejects(sealReleaseArtifact(other.site, env), /FINGERPRINT_MISMATCH/);
+});
+
+test('reused builds verify against EXPECTED_RELEASE_COMMIT instead of the merged workflow SHA', async t => {
+  const buildCommit = 'b'.repeat(40);
+  const mainCommit = 'c'.repeat(40);
+  const { site } = await fixture(t, buildCommit);
+  const output = path.join(path.dirname(site), 'github-output');
+  const seal = await sealReleaseArtifact(site, {
+    GITHUB_SHA: mainCommit,
+    EXPECTED_RELEASE_COMMIT: buildCommit,
+    GITHUB_OUTPUT: output,
+  });
+  assert.equal(seal.commit, buildCommit);
+  const verifyEnv = {
+    CI: 'true', GITHUB_SHA: mainCommit, EXPECTED_RELEASE_COMMIT: buildCommit,
+    EXPECTED_RELEASE_DIGEST: seal.digest,
+  };
+  assert.deepEqual(await verifyReleaseArtifact(site, verifyEnv), seal);
+  await assert.rejects(verifyReleaseArtifact(site, {
+    CI: 'true', GITHUB_SHA: mainCommit, EXPECTED_RELEASE_DIGEST: seal.digest,
+  }), /MANIFEST_INVALID/);
 });
 
 test('checks immutable fingerprint parity and manifest release before sealing', async t => {

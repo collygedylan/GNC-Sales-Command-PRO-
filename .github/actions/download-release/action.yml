@@ -1,5 +1,5 @@
 name: Download and verify the release candidate
-description: Every consumer verifies the sealed build from this exact workflow run and commit.
+description: Every consumer verifies the sealed build from its validated run and original build commit.
 inputs:
   digest:
     description: SHA256 of the manifest sealed by the build job.
@@ -12,6 +12,9 @@ inputs:
     default: ''
   token:
     description: Read-only Actions token for cross-run downloads.
+    default: ''
+  commit:
+    description: Original commit sealed into a reused release artifact; defaults to the current workflow commit.
     default: ''
 runs:
   using: composite
@@ -28,4 +31,5 @@ runs:
       shell: bash
       env:
         EXPECTED_RELEASE_DIGEST: ${{ inputs.digest }}
+        EXPECTED_RELEASE_COMMIT: ${{ inputs.commit || github.sha }}
       run: node scripts/release-artifact.mjs verify

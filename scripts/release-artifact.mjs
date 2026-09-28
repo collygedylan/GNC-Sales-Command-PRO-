@@ -52,7 +52,7 @@ async function checkFingerprints(root, commit, release = '') {
 }
 
 function expectedCommit(env) {
-  const commit = normalizeCommit(env.GITHUB_SHA || env.DEPLOYMENT_COMMIT);
+  const commit = normalizeCommit(env.EXPECTED_RELEASE_COMMIT || env.GITHUB_SHA || env.DEPLOYMENT_COMMIT);
   if (!commit) fail('RELEASE_ARTIFACT_EXPECTED_COMMIT_REQUIRED');
   return commit;
 }

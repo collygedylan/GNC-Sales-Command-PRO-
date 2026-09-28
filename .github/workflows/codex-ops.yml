@@ -403,6 +403,8 @@ jobs:
       - name: Verify exact live release and production health
         env:
           EXPECTED_LIVE_COMMIT: ${{ github.sha }}
+          RESOLVE_PAGES_PUBLICATION: '1'
+          GH_TOKEN: ${{ github.token }}
           PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
@@ -496,6 +498,8 @@ jobs:
         run: node scripts/codex-ops-runner-client.mjs rollback-merge
       - name: Verify rollback recovery and notify Dylan
         env:
+          RESOLVE_PAGES_PUBLICATION: '1'
+          GH_TOKEN: ${{ github.token }}
           MERGE_FILE: ${{ runner.temp }}/rollback-merge.json
           CODEX_OPS_RESULT_FILE: ${{ runner.temp }}/reverted.json
           CODEX_OPS_STAGE: reverted

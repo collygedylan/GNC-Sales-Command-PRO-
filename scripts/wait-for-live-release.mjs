@@ -1,8 +1,34 @@
 import { readExpectedRelease, verifyDeploymentFingerprint } from './deployment-fingerprint-lib.mjs';
+import { resolvePagesPublication } from './pages-publication.mjs';
+import { spawnSync } from 'node:child_process';
+import { mkdtemp, readFile, rm, realpath } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 const root = process.cwd();
 const expectedRelease = await readExpectedRelease(root);
-const expectedCommit = String(process.env.EXPECTED_COMMIT || process.env.GITHUB_SHA || '').trim().toLowerCase();
+const expectedMainCommit = String(process.env.EXPECTED_COMMIT || process.env.EXPECTED_LIVE_COMMIT || process.env.GITHUB_SHA || '').trim().toLowerCase();
+let expectedCommit = expectedMainCommit;
+let publicationResolved = process.env.RESOLVE_PAGES_PUBLICATION !== '1';
+const repository = process.env.GITHUB_REPOSITORY;
+function gh(args) {
+  const result = spawnSync('gh', args, { encoding: 'utf8', shell: false, windowsHide: true, timeout: 15000 });
+  if (result.error || result.status !== 0) throw new Error('PAGES_PUBLICATION_API_FAILED');
+  return result.stdout;
+}
+async function readDescriptor({ runId, name }) {
+  const temp = await realpath(os.tmpdir());
+  const directory = await mkdtemp(path.join(temp, 'gnc-publication-'));
+  try {
+    gh(['run', 'download', String(runId), '--repo', repository, '--name', name, '--dir', directory]);
+    return JSON.parse(await readFile(path.join(directory, 'publication.json'), 'utf8'));
+  } finally {
+    // Remove only this invocation's own temporary download, never a checkout.
+    if (path.dirname(directory) !== temp || !path.basename(directory).startsWith('gnc-publication-')
+      || await realpath(directory) !== directory) throw new Error('PAGES_PUBLICATION_TEMP_INVALID');
+    await rm(directory, { recursive: true, force: false });
+  }
+}
 const baseUrl = String(process.env.CANARY_BASE_URL || 'https://agmetricapp.com').trim().replace(/\/+$/, '');
 const timeoutMs = Math.max(1_000, Math.min(10 * 60_000, Number(process.env.CANARY_WAIT_TIMEOUT_MS || 180_000)));
 const intervalMs = Math.max(250, Math.min(30_000, Number(process.env.CANARY_WAIT_INTERVAL_MS || 5_000)));
@@ -14,6 +40,23 @@ while (Date.now() <= deadline) {
   attempts += 1;
   const nonce = `${Date.now()}-${attempts}`;
   try {
+    if (!publicationResolved) {
+      expectedCommit = await resolvePagesPublication({ repository, commit: expectedMainCommit,
+        api: async endpoint => JSON.parse(gh(['api', '--hostname', 'github.com', '--method', 'GET', endpoint])), readDescriptor,
+        readLiveCommit: async () => {
+          const response = await fetch(`${baseUrl}/deployment.json?publication=${encodeURIComponent(nonce)}`, {
+            cache: 'no-store', headers: { 'cache-control': 'no-cache, no-store, must-revalidate' }, signal: AbortSignal.timeout(15000),
+          });
+          if (!response.ok) throw new Error('PAGES_PUBLICATION_FINGERPRINT_UNAVAILABLE');
+          const payload = await response.json();
+          if (!verifyDeploymentFingerprint(payload, { release: expectedRelease, commit: payload?.commit }).ok) {
+            throw new Error('PAGES_PUBLICATION_FINGERPRINT_MISMATCH');
+          }
+          return payload.commit;
+        },
+      });
+      publicationResolved = true;
+    }
     const manifestUrl = `${baseUrl}/deployments/${encodeURIComponent(expectedCommit)}.json?canary=${encodeURIComponent(nonce)}`;
     const response = await fetch(manifestUrl, {
       cache: 'no-store',

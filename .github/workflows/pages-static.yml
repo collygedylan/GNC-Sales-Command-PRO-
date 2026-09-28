@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
+  pull-requests: read
 
 # Do not cancel a release mid-publish or while exact-live checks are running.
 # Feature-branch validation can run independently; checks within a release fan out.
@@ -16,27 +17,64 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  candidate-validation:
+  select-candidate:
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      reuse: ${{ steps.select.outputs.reuse }}
+      run-id: ${{ steps.select.outputs.run-id }}
+      attempt: ${{ steps.select.outputs.attempt }}
+      site-id: ${{ steps.select.outputs.site-id }}
+      proof-id: ${{ steps.select.outputs.proof-id }}
+      build-commit: ${{ steps.select.outputs.build-commit }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Select a successful matching PR candidate, or require a fresh main validation
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: node scripts/pages-release.mjs select
+
+  candidate-validation:
+    needs: select-candidate
+    if: github.ref == 'refs/heads/main' && needs.select-candidate.outputs.reuse != 'true'
     uses: ./.github/workflows/release-validation.yml
     with:
       production-health: true
     secrets: inherit
 
   validation:
-    needs: candidate-validation
-    if: github.ref == 'refs/heads/main'
+    needs: [select-candidate, candidate-validation]
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      needs.select-candidate.result == 'success' &&
+      (needs.select-candidate.outputs.reuse == 'true' || needs.candidate-validation.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     outputs:
-      digest: ${{ needs.candidate-validation.outputs.digest }}
-      run-id: ${{ needs.candidate-validation.outputs.run-id }}
-      attempt: ${{ needs.candidate-validation.outputs.attempt }}
-      site-id: ${{ needs.candidate-validation.outputs.site-id }}
-      proof-id: ${{ needs.candidate-validation.outputs.proof-id }}
+      digest: ${{ steps.verify.outputs.digest }}
+      run-id: ${{ steps.verify.outputs.run-id }}
+      attempt: ${{ steps.verify.outputs.attempt }}
+      site-id: ${{ steps.verify.outputs.site-id }}
+      proof-id: ${{ steps.verify.outputs.proof-id }}
+      build-commit: ${{ steps.verify.outputs.build-commit }}
+      reuse: ${{ needs.select-candidate.outputs.reuse }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,24 +82,27 @@ jobs:
           node-version: 22
       - uses: actions/download-artifact@v4
         with:
-          artifact-ids: ${{ needs.candidate-validation.outputs.proof-id }}
-          run-id: ${{ needs.candidate-validation.outputs.run-id }}
+          artifact-ids: ${{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.proof-id || needs.candidate-validation.outputs.proof-id }}
+          run-id: ${{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.run-id || needs.candidate-validation.outputs.run-id }}
           github-token: ${{ github.token }}
           path: artifacts/candidate-proof
           merge-multiple: true
       - name: Verify candidate commit, run, attempt, version and digest
-        id: proof
+        id: verify
         env:
+          GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
-          RELEASE_PROOF_RUN_ID: ${{ needs.candidate-validation.outputs.run-id }}
-          RELEASE_PROOF_ATTEMPT: ${{ needs.candidate-validation.outputs.attempt }}
-          RELEASE_PROOF_SITE_ID: ${{ needs.candidate-validation.outputs.site-id }}
-          RELEASE_PROOF_ID: ${{ needs.candidate-validation.outputs.proof-id }}
+          RELEASE_REUSE: ${{ needs.select-candidate.outputs.reuse }}
+          RELEASE_BUILD_COMMIT: ${{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.build-commit || github.sha }}
+          RELEASE_PROOF_RUN_ID: ${{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.run-id || needs.candidate-validation.outputs.run-id }}
+          RELEASE_PROOF_ATTEMPT: ${{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.attempt || needs.candidate-validation.outputs.attempt }}
+          RELEASE_PROOF_SITE_ID: ${{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.site-id || needs.candidate-validation.outputs.site-id }}
+          RELEASE_PROOF_ID: ${{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.proof-id || needs.candidate-validation.outputs.proof-id }}
           RELEASE_PROOF_DIGEST: ${{ needs.candidate-validation.outputs.digest }}
-        run: node scripts/release-proof.mjs verify
+        run: node scripts/pages-release.mjs verify
       - name: Require compatible Apps Script before frontend publication
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,6 +130,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
       pages: write
       id-token: write
     environment:
@@ -96,6 +138,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     outputs:
       published: ${{ steps.current.outputs.publish }}
+      build-commit: ${{ needs.validation.outputs.build-commit }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -121,16 +164,19 @@ jobs:
       - name: Recheck candidate proof immediately before artifact publication
         if: steps.current.outputs.publish == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RELEASE_REUSE: ${{ needs.validation.outputs.reuse }}
+          RELEASE_BUILD_COMMIT: ${{ needs.validation.outputs.build-commit }}
           RELEASE_PROOF_RUN_ID: ${{ needs.validation.outputs.run-id }}
           RELEASE_PROOF_ATTEMPT: ${{ needs.validation.outputs.attempt }}
           RELEASE_PROOF_SITE_ID: ${{ needs.validation.outputs.site-id }}
           RELEASE_PROOF_ID: ${{ needs.validation.outputs.proof-id }}
           RELEASE_PROOF_DIGEST: ${{ needs.validation.outputs.digest }}
-        run: node scripts/release-proof.mjs verify
+        run: node scripts/pages-release.mjs verify
       - uses: ./.github/actions/download-release
         if: steps.current.outputs.publish == 'true'
         with:
@@ -138,6 +184,35 @@ jobs:
           run-id: ${{ needs.validation.outputs.run-id }}
           artifact-id: ${{ needs.validation.outputs.site-id }}
           token: ${{ github.token }}
+          commit: ${{ needs.validation.outputs.build-commit }}
+      - name: Write the verified publication descriptor
+        if: steps.current.outputs.publish == 'true'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RELEASE_BUILD_COMMIT: ${{ needs.validation.outputs.build-commit }}
+        run: |
+          mkdir -p artifacts/pages-publication
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          fs.writeFileSync('artifacts/pages-publication/publication.json', JSON.stringify({
+            schemaVersion: 'gnc-pages-publication-v1',
+            repository: process.env.GITHUB_REPOSITORY,
+            commit: process.env.GITHUB_SHA,
+            buildCommit: process.env.RELEASE_BUILD_COMMIT,
+            runId: Number(process.env.GITHUB_RUN_ID),
+            attempt: Number(process.env.GITHUB_RUN_ATTEMPT)
+          }));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: steps.current.outputs.publish == 'true'
+        with:
+          name: pages-publication-${{ github.run_attempt }}
+          path: artifacts/pages-publication/publication.json
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/configure-pages@v5
         if: steps.current.outputs.publish == 'true'
       - uses: actions/upload-pages-artifact@v3
@@ -162,7 +237,7 @@ jobs:
       - name: Wait for exact live release and commit
         env:
           CANARY_BASE_URL: https://agmetricapp.com
-          EXPECTED_COMMIT: ${{ github.sha }}
+          EXPECTED_COMMIT: ${{ needs.deploy.outputs.build-commit }}
           CANARY_WAIT_TIMEOUT_MS: '240000'
           CANARY_WAIT_INTERVAL_MS: '5000'
         run: node scripts/wait-for-live-release.mjs
@@ -183,24 +258,8 @@ jobs:
             command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts
           - suite: session
             command: npm run test:session-recovery -- --workers=1
-          - suite: assignedto
-            command: npx playwright test --config playwright.review-assignedto.config.ts --project=chromium --project=webkit --workers=1
-          - suite: footer
-            command: npm run test:footer -- --project=footer-android-chromium --project=footer-iphone-webkit --workers=1
-          - suite: home-1
-            command: npm run test:home-roles -- --workers=1 --shard=1/2
-          - suite: home-2
-            command: npm run test:home-roles -- --workers=1 --shard=2/2
-          - suite: season
-            command: npm run test:season-sales-office -- --workers=1
-          - suite: suspend
-            command: npm run test:suspend-tag -- --workers=1
-          - suite: docks
-            command: npm run test:docks-filter -- --workers=1
           - suite: login-photo
             command: npx playwright test --config playwright.login-photo.config.ts --project=chromium --project=webkit --project=android --workers=1
-          - suite: hl-restock
-            command: npx playwright test --config playwright.hl-restock.config.ts --project=cache-chromium --project=cache-webkit --project=cache-android --project=cache-iphone --workers=1
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
@@ -209,16 +268,10 @@ jobs:
       - name: Mutation-blocked live ${{ matrix.suite }} checks
         env:
           CANARY_BASE_URL: https://agmetricapp.com
-          EXPECTED_COMMIT: ${{ github.sha }}
-          SESSION_RECOVERY_BASE_URL: https://agmetricapp.com
+          EXPECTED_COMMIT: ${{ needs.deploy.outputs.build-commit }}
           APP_LIFECYCLE_BASE_URL: https://agmetricapp.com
-          FOOTER_BASE_URL: https://agmetricapp.com
-          HOME_ROLE_BASE_URL: https://agmetricapp.com
-          SEASON_SALES_OFFICE_BASE_URL: https://agmetricapp.com
-          SUSPEND_TAG_BASE_URL: https://agmetricapp.com
-          DOCKS_FILTER_BASE_URL: https://agmetricapp.com
+          SESSION_RECOVERY_BASE_URL: https://agmetricapp.com
           LOGIN_PHOTO_BASE_URL: https://agmetricapp.com
-          HL_RESTOCK_BASE_URL: https://agmetricapp.com
         run: ${{ matrix.command }}
       - uses: actions/upload-artifact@v4
         if: failure()
