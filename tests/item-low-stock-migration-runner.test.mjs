@@ -58,6 +58,10 @@ test('sanitizer classifies only allowlisted transport/TLS codes and does not ser
   assert.equal(crafted,'LOW_STOCK_SCHEMA_APPLY_FAILED phase=schema_probe error_class=other route=unknown port=5432 sslmode=other');
 });
 test('read-only diagnostic uses only a read-only transaction and preserves the probe error if rollback fails',async()=>{
+  // Session-wide settings can persist on pooled backend connections. The
+  // diagnostic must scope read-only behavior to its own transaction.
+  const runner=fs.readFileSync('scripts/apply-item-low-stock-migration.mjs','utf8');
+  assert.doesNotMatch(runner,/default_transaction_read_only|set session characteristics/i);
   const statements=[];
   const client={query:async(sql)=>{statements.push(sql);if(sql==='begin read only')return{rows:[]};if(sql.startsWith('select to_regprocedure'))return{rows:[{installed:true}]};if(sql==='rollback')return{rows:[]};throw new Error('unexpected write');}};
   const phases=[];
@@ -70,14 +74,14 @@ test('read-only diagnostic uses only a read-only transaction and preserves the p
   await assert.rejects(runReadOnlySchemaDiagnostic({client:failing,onPhase:phase=>failedPhases.push(phase)}),error=>error===original);
   assert.equal(failedPhases.at(-1),'schema_probe');
 });
-test('diagnostic guard accepts only cloud workflow_dispatch on main and binds workflow identity',()=>{
-  const env={GITHUB_ACTIONS:'true',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REPOSITORY:'owner/repo',GITHUB_SHA:'a'.repeat(40),GITHUB_REF:'refs/heads/main',GITHUB_WORKFLOW_REF:'owner/repo/.github/workflows/apps-script-sync.yml@refs/heads/main'};
+test('diagnostic guard accepts only cloud workflow_dispatch on main and binds diagnostic workflow identity',()=>{
+  const env={GITHUB_ACTIONS:'true',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REPOSITORY:'owner/repo',GITHUB_SHA:'a'.repeat(40),GITHUB_REF:'refs/heads/main',GITHUB_WORKFLOW_REF:'owner/repo/.github/workflows/apps-script-database-diagnostic.yml@refs/heads/main'};
   assert.equal(validateDiagnosticContext(env).sha,'a'.repeat(40));
   assert.throws(()=>validateDiagnosticContext({...env,GITHUB_EVENT_NAME:'push'}),/DIAGNOSTIC_CONTEXT_INVALID/);
   assert.throws(()=>validateDiagnosticContext({...env,GITHUB_REF:'refs/heads/feature/diagnose'}),/DIAGNOSTIC_CONTEXT_INVALID/);
   assert.throws(()=>validateDiagnosticContext({...env,GITHUB_REF:'refs/heads/codex/diagnose'}),/DIAGNOSTIC_CONTEXT_INVALID/);
   assert.throws(()=>validateDiagnosticContext({...env,GITHUB_SHA:'short'}),/DIAGNOSTIC_CONTEXT_INVALID/);
-  assert.throws(()=>validateDiagnosticContext({...env,GITHUB_WORKFLOW_REF:'owner/repo/.github/workflows/untrusted.yml@refs/heads/main'}),/DIAGNOSTIC_WORKFLOW_INVALID/);
+  assert.throws(()=>validateDiagnosticContext({...env,GITHUB_WORKFLOW_REF:'owner/repo/.github/workflows/apps-script-sync.yml@refs/heads/main'}),/DIAGNOSTIC_WORKFLOW_INVALID/);
 });
 
 test('failed migration rollback preserves the original SQL error', async()=>{
