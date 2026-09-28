@@ -6,7 +6,7 @@ on:
     types: [completed]
 
 # GITHUB_TOKEN merges do not trigger the Pages push workflow. This trusted
-# default-branch handler explicitly dispatches Pages after PR validation.
+# default-branch handler deploys compatible backend code before Pages.
 concurrency:
   group: publish-validated-candidate
   cancel-in-progress: false
@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 5
     steps:
       # Never check out or execute PR files in this privileged workflow.
-      - name: Complete the approved merge and dispatch Pages
+      - name: Complete the approved merge and dispatch the backend handoff
         uses: actions/github-script@v7
         with:
           script: |
@@ -83,15 +83,15 @@ jobs:
               return;
             }
             const existing = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner, repo, workflow_id: 'pages-static.yml', head_sha: pr.merge_commit_sha, per_page: 100,
+              owner, repo, workflow_id: 'apps-script-sync.yml', head_sha: pr.merge_commit_sha, per_page: 100,
             });
             if (existing.some(candidate => candidate.head_branch === 'main' &&
                 candidate.head_sha === pr.merge_commit_sha &&
                 (candidate.status !== 'completed' || candidate.conclusion === 'success'))) {
-              core.notice('Pages is already queued, running, or successful for this merge.');
+              core.notice('The backend-to-Pages handoff is already queued, running, or successful for this merge.');
               return;
             }
             await github.rest.actions.createWorkflowDispatch({
-              owner, repo, workflow_id: 'pages-static.yml', ref: 'main',
+              owner, repo, workflow_id: 'apps-script-sync.yml', ref: 'main',
             });
-            core.notice(`Dispatched Pages for PR #${pull_number}, merge ${pr.merge_commit_sha}. Pages rechecks the passing candidate proof and merged tree before publication.`);
+            core.notice(`Dispatched backend deployment for PR #${pull_number}, merge ${pr.merge_commit_sha}. After guarded schema and Apps Script deployment, the backend workflow dispatches Pages with the same validated candidate proof.`);

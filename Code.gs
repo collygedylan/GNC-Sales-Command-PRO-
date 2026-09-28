@@ -171,6 +171,108 @@ function summarizeSocHistoryFiles_(files) {
 const SOC_ORDER_HISTORY_PARSER_VERSION = 'soc-history-v1';
 const SOC_ORDER_HISTORY_TRIGGER = 'runSocOrderHistoryBackfillChunk_';
 const SOC_ORDER_HISTORY_STATE = 'SOC_ORDER_HISTORY_STATE_V1';
+const SOC_ORDER_HISTORY_RELEASE_APPROVED_COMMIT = 'SOC_ORDER_HISTORY_RELEASE_APPROVED_COMMIT_V1';
+const SOC_ORDER_HISTORY_GITHUB_REPOSITORY = 'collygedylan/GNC-Sales-Command-PRO-';
+const SOC_ORDER_HISTORY_RELEASE_RETRY_MS = 5 * 60 * 1000;
+function socHistoryPagesReleaseIsGreen_(properties) {
+  const commit = String(APPS_SCRIPT_DEPLOYMENT_COMMIT_ || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{40}$/.test(commit)) return false;
+  if (String(properties.getProperty(SOC_ORDER_HISTORY_RELEASE_APPROVED_COMMIT) || '').trim().toLowerCase() === commit) return true;
+  try {
+    const root = 'https://api.github.com/repos/' + SOC_ORDER_HISTORY_GITHUB_REPOSITORY;
+    const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'GNC-SOC-History-Release-Gate' };
+    const mainStartResponse = UrlFetchApp.fetch(root + '/git/ref/heads/main',
+      { method: 'get', headers: headers, muteHttpExceptions: true });
+    if (mainStartResponse.getResponseCode() !== 200) return false;
+    const mainRef = JSON.parse(mainStartResponse.getContentText() || '{}');
+    const mainCommit = String(mainRef.object && mainRef.object.sha || '').trim().toLowerCase();
+    if (!/^[a-f0-9]{40}$/.test(mainCommit)) return false;
+    if (mainCommit !== commit) {
+      const deployedSourceResponse = UrlFetchApp.fetch(root + '/contents/Code.gs?ref=' + encodeURIComponent(commit),
+        { method: 'get', headers: headers, muteHttpExceptions: true });
+      const currentSourceResponse = UrlFetchApp.fetch(root + '/contents/Code.gs?ref=' + encodeURIComponent(mainCommit),
+        { method: 'get', headers: headers, muteHttpExceptions: true });
+      if (deployedSourceResponse.getResponseCode() !== 200 || currentSourceResponse.getResponseCode() !== 200) return false;
+      const deployedSource = JSON.parse(deployedSourceResponse.getContentText() || '{}');
+      const currentSource = JSON.parse(currentSourceResponse.getContentText() || '{}');
+      if (deployedSource.type !== 'file' || currentSource.type !== 'file' ||
+          !/^[a-f0-9]{40}$/.test(String(deployedSource.sha || '')) ||
+          !/^[a-f0-9]{40}$/.test(String(currentSource.sha || '')) || deployedSource.sha !== currentSource.sha) return false;
+    }
+    const runsResponse = UrlFetchApp.fetch(root + '/actions/workflows/pages-static.yml/runs?head_sha=' + encodeURIComponent(mainCommit) + '&per_page=100',
+      { method: 'get', headers: headers, muteHttpExceptions: true });
+    if (runsResponse.getResponseCode() !== 200) return false;
+    const page = JSON.parse(runsResponse.getContentText() || '{}');
+    if (!Number.isSafeInteger(page.total_count) || !Array.isArray(page.workflow_runs) ||
+        page.total_count !== page.workflow_runs.length || page.total_count > 100) return false;
+    const candidates = page.workflow_runs.filter(function(run) {
+      return run && run.path === '.github/workflows/pages-static.yml' &&
+        run.head_sha === mainCommit && run.head_branch === 'main' &&
+        ['push', 'workflow_dispatch'].indexOf(run.event) >= 0 &&
+        String(run.head_repository && run.head_repository.full_name || '').toLowerCase() === SOC_ORDER_HISTORY_GITHUB_REPOSITORY.toLowerCase();
+    });
+    if (!candidates.length) return false;
+    const ids = candidates.map(function(run) { return run.id; });
+    const numbers = candidates.map(function(run) { return run.run_number; });
+    if (ids.some(function(id) { return !Number.isSafeInteger(id) || id < 1; }) ||
+        numbers.some(function(number) { return !Number.isSafeInteger(number) || number < 1; }) ||
+        new Set(ids).size !== ids.length || new Set(numbers).size !== numbers.length) return false;
+    candidates.sort(function(a, b) { return b.run_number - a.run_number; });
+    const run = candidates[0];
+    if (run.status !== 'completed' || run.conclusion !== 'success' || !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1) return false;
+    const jobsResponse = UrlFetchApp.fetch(root + '/actions/runs/' + run.id + '/attempts/' + run.run_attempt + '/jobs?per_page=100',
+      { method: 'get', headers: headers, muteHttpExceptions: true });
+    if (jobsResponse.getResponseCode() !== 200) return false;
+    const jobsPage = JSON.parse(jobsResponse.getContentText() || '{}');
+    if (!Number.isSafeInteger(jobsPage.total_count) || !Array.isArray(jobsPage.jobs) ||
+        jobsPage.total_count !== jobsPage.jobs.length || jobsPage.total_count > 100) return false;
+    const required = [
+      { name: 'validation', matches: function(job) { return job.name === 'validation'; } },
+      { name: 'deploy', matches: function(job) { return job.name === 'deploy'; } },
+      { name: 'exact-live', matches: function(job) { return job.name === 'exact-live'; } },
+      // Actions appends each matrix command to its display name, e.g.
+      // "post-deployment-canary (foundation, npm run test:foundation ...)".
+      { name: 'foundation canary', matches: function(job) { return /^post-deployment-canary \(foundation,/.test(job.name); } },
+      { name: 'requests canary', matches: function(job) { return /^post-deployment-canary \(requests,/.test(job.name); } },
+      { name: 'session canary', matches: function(job) { return /^post-deployment-canary \(session,/.test(job.name); } },
+      { name: 'login-photo canary', matches: function(job) { return /^post-deployment-canary \(login-photo,/.test(job.name); } }
+    ];
+    for (let i = 0; i < required.length; i++) {
+      const matches = jobsPage.jobs.filter(function(job) { return job && typeof job.name === 'string' && required[i].matches(job); });
+      if (matches.length !== 1) return false;
+      const job = matches[0];
+      if (job.run_id !== run.id || job.head_sha !== mainCommit ||
+          (job.run_attempt !== undefined && job.run_attempt !== run.run_attempt) ||
+          job.status !== 'completed' || job.conclusion !== 'success') return false;
+    }
+    const deploy = jobsPage.jobs.find(function(job) { return job && job.name === 'deploy' && job.run_id === run.id; });
+    const deploySteps = deploy && Array.isArray(deploy.steps) ? deploy.steps : [];
+    if (!deploySteps.some(function(step) { return step && step.name === 'Deploy verified artifact to Pages' &&
+      step.status === 'completed' && step.conclusion === 'success'; })) return false;
+    // A matching old release is not sufficient once main has advanced.
+    const mainEndResponse = UrlFetchApp.fetch(root + '/git/ref/heads/main',
+      { method: 'get', headers: headers, muteHttpExceptions: true });
+    if (mainEndResponse.getResponseCode() !== 200) return false;
+    const main = JSON.parse(mainEndResponse.getContentText() || '{}');
+    if (!main.object || String(main.object.sha || '').toLowerCase() !== mainCommit) return false;
+    // Recheck the selected run last so an attempt rerun during job inspection
+    // cannot reuse the earlier attempt's green job results.
+    const currentResponse = UrlFetchApp.fetch(root + '/actions/runs/' + run.id,
+      { method: 'get', headers: headers, muteHttpExceptions: true });
+    if (currentResponse.getResponseCode() !== 200) return false;
+    const current = JSON.parse(currentResponse.getContentText() || '{}');
+    if (current.id !== run.id || current.path !== '.github/workflows/pages-static.yml' ||
+        current.head_sha !== mainCommit || current.head_branch !== 'main' || current.run_attempt !== run.run_attempt ||
+        current.status !== 'completed' || current.conclusion !== 'success' ||
+        ['push', 'workflow_dispatch'].indexOf(current.event) < 0 ||
+        String(current.head_repository && current.head_repository.full_name || '').toLowerCase() !== SOC_ORDER_HISTORY_GITHUB_REPOSITORY.toLowerCase()) return false;
+    properties.setProperty(SOC_ORDER_HISTORY_RELEASE_APPROVED_COMMIT, commit);
+    return true;
+  } catch (ignored) {
+    // Public API/network/rate-limit errors all defer the archive scan safely.
+    return false;
+  }
+}
 function scheduleSocOrderHistoryTrigger_(delayMs) {
   if (ScriptApp.getProjectTriggers().some(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })) return;
   ScriptApp.newTrigger(SOC_ORDER_HISTORY_TRIGGER).timeBased().after(Math.max(60000, Number(delayMs) || 60000)).create();
@@ -271,10 +373,14 @@ function runSocOrderHistoryBackfillChunk_() {
   try {
     ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })
       .forEach(function(t) { ScriptApp.deleteTrigger(t); });
+    const properties = PropertiesService.getScriptProperties();
+    if (!socHistoryPagesReleaseIsGreen_(properties)) {
+      nextDelay = SOC_ORDER_HISTORY_RELEASE_RETRY_MS;
+      return { status: 'release_pending', files_processed: 0, failures: 0, pending: 0 };
+    }
     // Apps Script can terminate without finally on a hard runtime limit.
     // Queue recovery before conversion/parsing; normal completion replaces it.
     scheduleSocOrderHistoryTrigger_(7 * 60 * 1000);
-    const properties = PropertiesService.getScriptProperties();
     const files = listSocOrderHistoryFiles_();
     if (!files.length) throw new Error('SOC_HISTORY_ARCHIVE_EMPTY');
     const manifest = files.map(function(f) { return { drive_file_id: f.id, source_revision: f.source_revision }; });

@@ -9,6 +9,65 @@ const headers = ['WAREHOUSEID','TRANSACTIONNUMBER','CONSIGNEEIDENTITYID','ITEMCO
 const row = (qty = 12, dock = '34', item = '001611.031.1') => ['10','order-1','customer-1',item,qty,dock,'2026-09-25'];
 const clone = x => JSON.parse(JSON.stringify(x));
 const file = (id, day, hour, rows) => ({ id, report_date: day, snapshot_at: `${day}T${hour}:00:00.000Z`, rows });
+const deploymentCommit = 'a'.repeat(40);
+const releaseJobNames = ['validation','deploy','exact-live','post-deployment-canary (foundation, test command)',
+  'post-deployment-canary (requests, test command)','post-deployment-canary (session, test command)',
+  'post-deployment-canary (login-photo, test command)'];
+function greenPagesResponses({ mainSha = deploymentCommit, deployedBlob = 'c'.repeat(40), mainBlob = deployedBlob,
+  deployedCommit = deploymentCommit } = {}) {
+  const run = { id: 71, run_number: 9, run_attempt: 2,
+    path: '.github/workflows/pages-static.yml', head_sha: mainSha, head_branch: 'main',
+    head_repository: { full_name: 'collygedylan/GNC-Sales-Command-PRO-' }, event: 'workflow_dispatch',
+    status: 'completed', conclusion: 'success' };
+  return {
+    deployedCommit, currentMainSha: mainSha, runs: { total_count: 1, workflow_runs: [run] }, current: { ...run },
+    main: { object: { sha: mainSha } }, mainResponses: [], mainCalls: 0,
+    contents: {
+      [deployedCommit]: { type: 'file', sha: deployedBlob },
+      [mainSha]: { type: 'file', sha: mainBlob }
+    },
+    jobs: { total_count: releaseJobNames.length, jobs: releaseJobNames.map(name => ({ name, run_id: 71,
+      head_sha: mainSha, run_attempt: 2, status: 'completed', conclusion: 'success',
+      ...(name === 'deploy' ? { steps: [{ name: 'Deploy verified artifact to Pages', status: 'completed', conclusion: 'success' }] } : {}) })) }
+  };
+}
+
+function runGateWorker(pages, deployedCommit = pages.deployedCommit || deploymentCommit) {
+  const properties = new Map(), triggers = [];
+  let driveReads = 0, rpcCalls = 0, githubCalls = 0, scheduledDelay = 0;
+  const context = vm.createContext({ console:{log(){},warn(){},error(){}}, Intl, Date,
+    PropertiesService:{getScriptProperties:()=>({getProperty:key=>properties.get(key)||'',setProperty:(key,value)=>properties.set(key,value)})},
+    LockService:{getUserLock:()=>({tryLock:()=>true,releaseLock(){}})},
+    Utilities:{newBlob:s=>({getBytes:()=>Array.from(Buffer.from(s))}),DigestAlgorithm:{SHA_256:'sha256'},computeDigest:()=>[]},
+    DriveApp:{getFolderById:()=>{driveReads++;throw Error('Drive access must wait for release');}},
+    ScriptApp:{getProjectTriggers:()=>triggers,deleteTrigger:t=>{const i=triggers.indexOf(t);if(i>=0)triggers.splice(i,1);},
+      newTrigger:name=>({timeBased(){return this;},after(ms){scheduledDelay=ms;return this;},create(){triggers.push({getHandlerFunction:()=>name});}})},
+    UrlFetchApp:{fetch:url=>{
+      githubCalls++;
+      const jobs=url.includes('/jobs?'), contents=url.includes('/contents/Code.gs?ref='), main=url.endsWith('/git/ref/heads/main');
+      if (contents) {
+        const ref=decodeURIComponent(url.split('?ref=')[1] || '');
+        const value=pages.contents[ref];
+        return {getResponseCode:()=>value ? 200 : 404,getContentText:()=>JSON.stringify(value || {})};
+      }
+      if (main) {
+        const value=pages.mainResponses[pages.mainCalls++] || pages.main;
+        return {getResponseCode:()=>pages.mainHttpStatus||200,getContentText:()=>JSON.stringify(value)};
+      }
+      const current=url.endsWith('/actions/runs/71');
+      const value=jobs?pages.jobs:current?pages.current:pages.runs;
+      const status=jobs?(pages.jobsHttpStatus||200):current?(pages.currentHttpStatus||200):(pages.httpStatus||200);
+      return {getResponseCode:()=>status,getContentText:()=>JSON.stringify(value)};
+    }}
+  });
+  const source=fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8').replace(
+    "const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';",
+    `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '${deployedCommit}';`);
+  vm.runInContext(source,context);
+  context.callSupabaseRpc_=()=>{rpcCalls++;throw Error('DB access must wait for release');};
+  return { result:vm.runInContext('runSocOrderHistoryBackfillChunk_()',context), properties,
+    driveReads,rpcCalls,githubCalls,scheduledDelay };
+}
 
 test('Dock eligibility retains invoiced lines and rejects blank/null/zero/invalid quantities', () => {
   const parsed = parseRows([headers,row(),row(5,''),row(5,'NULL'),row(5,'0'),row(0),row(-4),row('no'),row('1,000'),row(3,'A')], 'SOC.xlsx', 'Sheet1');
@@ -71,6 +130,7 @@ test('bounded worker resumes, reconciles coverage, and activates only a complete
   let triggers=[], active=false, reads=0;
   const files=data.map(f=>({getId:()=>f.id,getName:()=>f.title,getDateCreated:()=>new Date('2026-09-25T20:00:00Z'),
     getLastUpdated:()=>new Date('2026-09-25T21:00:00Z'),getSize:()=>10,getMimeType:()=> 'application/vnd.google-apps.spreadsheet'}));
+  const pages=greenPagesResponses();let githubCalls=0;
   const context=vm.createContext({console:{log(){},warn(){},error(){}},Intl,Date,
     PropertiesService:{getScriptProperties:()=>({getProperty:k=>properties.get(k)||'',setProperty:(k,v)=>properties.set(k,v)})},
     LockService:{getUserLock:()=>({tryLock:()=>true,releaseLock(){}})},
@@ -78,9 +138,13 @@ test('bounded worker resumes, reconciles coverage, and activates only a complete
     DriveApp:{getFolderById:()=>({getFiles:()=>{let i=0;return {hasNext:()=>i<files.length,next:()=>files[i++]};}})},
     SpreadsheetApp:{openById:id=>{const f=data.find(x=>x.id===id);reads++;return{getSheets:()=>[{getName:()=> 'Orders',getLastRow:()=>f.values.length,getLastColumn:()=>headers.length,
       getRange:(r,c,n,w)=>({getDisplayValues:()=>f.values.slice(r-1,r-1+n).map(row=>row.slice(c-1,c-1+w))})}]};}},
-    ScriptApp:{getProjectTriggers:()=>triggers,deleteTrigger:t=>{triggers=triggers.filter(x=>x!==t);},newTrigger:name=>({timeBased(){return this;},after(){return this;},create(){triggers.push({getHandlerFunction:()=>name});}})}
+    ScriptApp:{getProjectTriggers:()=>triggers,deleteTrigger:t=>{triggers=triggers.filter(x=>x!==t);},newTrigger:name=>({timeBased(){return this;},after(){return this;},create(){triggers.push({getHandlerFunction:()=>name});}})},
+    UrlFetchApp:{fetch:url=>{githubCalls++;const value=url.includes('/jobs?')?pages.jobs:url.endsWith('/git/ref/heads/main')?pages.main:url.endsWith('/actions/runs/71')?pages.current:pages.runs;return{getResponseCode:()=>200,getContentText:()=>JSON.stringify(value)};}}
   });
-  vm.runInContext(fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8'),context);
+  const source=fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8').replace(
+    "const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';",
+    `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '${deploymentCommit}';`);
+  vm.runInContext(source,context);
   context.callSupabaseRpc_=(name,p)=>{
     if(name==='begin_eval_item_low_stock_import_v1')return{run_id:'run-1',active,complete:completed.size===files.length,pending_files:p.p_manifest.filter(f=>!completed.has(f.drive_file_id))};
     if(name==='prepare_eval_item_low_stock_file_v1'){assert.equal(p.p_source_sheet_name,'Orders');assert.match(p.p_content_sha256,/^[a-f0-9]{64}$/);return{file_version_id:p.p_drive_file_id,status:'staging',last_staged_row_number:staged.get(p.p_drive_file_id)?.at(-1)?.source_row_number || 0};}
@@ -92,8 +156,10 @@ test('bounded worker resumes, reconciles coverage, and activates only a complete
   context.emitTableSyncLiveEvent_=(name)=>events.push(name);
   const first=vm.runInContext('runSocOrderHistoryBackfillChunk_()',context);
   assert.equal(first.files_processed,3);assert.equal(first.pending,1);assert.equal(active,false);
+  assert.equal(githubCalls,5,'main, a green Pages run, attempt jobs, current main and current attempt are checked once');
   const second=vm.runInContext('runSocOrderHistoryBackfillChunk_()',context);
   assert.equal(second.files_processed,1);assert.equal(active,true);assert.equal(reads,4);
+  assert.equal(githubCalls,5,'verified deployment fingerprint is cached for continuation chunks');
   assert.deepEqual(events,['ph_eval_item_low_stock_targets']);
   vm.runInContext('runSocOrderHistoryBackfillChunk_()',context);
   assert.equal(reads,4,'a repeated complete scan does not reread finalized sheets');
@@ -118,4 +184,68 @@ test('bounded worker resumes, reconciles coverage, and activates only a complete
   assert.equal(resumed.pending,0);assert.equal(active,true);
   assert.equal(staged.get('source-0').length,501);
   assert.equal(new Set(staged.get('source-0').map(r=>r.source_row_number)).size,501);
+});
+
+test('history worker waits for exact successful Pages validation, deploy, live check, and canaries before touching archive or DB', () => {
+  const failedVariants = [
+    ['missing release run', f => { f.runs.workflow_runs = []; f.runs.total_count = 0; }],
+    ['wrong commit', f => { f.runs.workflow_runs[0].head_sha = 'b'.repeat(40); }],
+    ['wrong workflow path', f => { f.runs.workflow_runs[0].path = '.github/workflows/other.yml'; }],
+    ['wrong branch', f => { f.runs.workflow_runs[0].head_branch = 'feature'; }],
+    ['wrong event', f => { f.runs.workflow_runs[0].event = 'pull_request'; }],
+    ['wrong repository', f => { f.runs.workflow_runs[0].head_repository.full_name = 'attacker/fork'; }],
+    ['failed Pages run', f => { f.runs.workflow_runs[0].conclusion = 'failure'; }],
+    ['main advanced during verification', f => { f.mainResponses = [f.main, { object: { sha: 'b'.repeat(40) } }]; }],
+    ['attempt rerun began during verification', f => { f.current.run_attempt = 3; }],
+    ['newer failed Pages run supersedes an older success', f => {
+      f.runs.workflow_runs.push({ ...f.runs.workflow_runs[0], id: 72, run_number: 10, conclusion: 'failure' });
+      f.runs.total_count++;
+    }],
+    ['missing exact-live', f => { f.jobs.jobs = f.jobs.jobs.filter(job => job.name !== 'exact-live'); f.jobs.total_count--; }],
+    ['wrong job attempt', f => { f.jobs.jobs.find(job => job.name === 'validation').run_attempt = 1; }],
+    ['wrong canary commit', f => { f.jobs.jobs.find(job => job.name.startsWith('post-deployment-canary (requests,')).head_sha = 'b'.repeat(40); }],
+    ['deployment step failed', f => { f.jobs.jobs.find(job => job.name === 'deploy').steps[0].conclusion = 'failure'; }],
+    ['runs API rate limit', f => { f.httpStatus = 403; }],
+    ['jobs API error', f => { f.jobsHttpStatus = 502; }],
+    ['main API error', f => { f.mainHttpStatus = 503; }],
+    ['malformed run data', f => { f.runs.workflow_runs = null; }],
+    ['malformed jobs data', f => { f.jobs.jobs = null; }]
+  ];
+  for (const name of releaseJobNames) {
+    failedVariants.push([`failed required job ${name}`, f => { f.jobs.jobs.find(job => job.name === name).conclusion = 'failure'; }]);
+  }
+  for (const [label, mutate] of failedVariants) {
+    const pages = greenPagesResponses(); mutate(pages);
+    const {result,properties,driveReads,rpcCalls,githubCalls,scheduledDelay}=runGateWorker(pages);
+    assert.equal(result.status,'release_pending',label);
+    assert.equal(driveReads,0,`${label}: archive was not accessed`);
+    assert.equal(rpcCalls,0,`${label}: database was not accessed`);
+    assert.equal(properties.has('SOC_ORDER_HISTORY_RELEASE_APPROVED_COMMIT_V1'),false,`${label}: approval was not cached`);
+    assert.equal(scheduledDelay,5*60*1000,`${label}: bounded retry was scheduled`);
+    assert.ok(githubCalls>=1,`${label}: public GitHub status was checked`);
+  }
+
+  const oldDeployment='a'.repeat(40), frontendOnlyMain='b'.repeat(40), sameCodeBlob='c'.repeat(40);
+  const compatible=greenPagesResponses({mainSha:frontendOnlyMain,deployedCommit:oldDeployment,
+    deployedBlob:sameCodeBlob,mainBlob:sameCodeBlob});
+  const compatibleRun=runGateWorker(compatible,oldDeployment);
+  assert.notEqual(compatibleRun.result.status,'release_pending','frontend-only main change can use identical deployed Code.gs');
+  assert.equal(compatibleRun.driveReads,1,'green compatible main allows the worker to proceed');
+  assert.equal(compatibleRun.properties.get('SOC_ORDER_HISTORY_RELEASE_APPROVED_COMMIT_V1'),oldDeployment,
+    'approval cache remains keyed by the deployed Apps Script fingerprint');
+
+  const changed=greenPagesResponses({mainSha:frontendOnlyMain,deployedCommit:oldDeployment,
+    deployedBlob:'c'.repeat(40),mainBlob:'d'.repeat(40)});
+  const changedRun=runGateWorker(changed,oldDeployment);
+  assert.equal(changedRun.result.status,'release_pending','different Code.gs content blocks an older deployment');
+  assert.equal(changedRun.driveReads,0);
+  assert.equal(changedRun.rpcCalls,0);
+
+  const changedDuringGate=greenPagesResponses({mainSha:frontendOnlyMain,deployedCommit:oldDeployment,
+    deployedBlob:sameCodeBlob,mainBlob:sameCodeBlob});
+  changedDuringGate.mainResponses=[changedDuringGate.main,{object:{sha:'e'.repeat(40)}}];
+  const staleMain=runGateWorker(changedDuringGate,oldDeployment);
+  assert.equal(staleMain.result.status,'release_pending','main advancing during release verification prevents a stale approval');
+  assert.equal(staleMain.driveReads,0);
+  assert.equal(staleMain.rpcCalls,0);
 });

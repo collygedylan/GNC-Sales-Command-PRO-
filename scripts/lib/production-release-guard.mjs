@@ -2,6 +2,7 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { selectReleaseProof } from '../release-proof.mjs';
+import { selectPagesRelease } from '../pages-release.mjs';
 
 const COMPLETE_SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
@@ -79,7 +80,21 @@ export async function authorizeProductionRelease({
   const mainRef = await api(`repos/${repository}/git/ref/heads/main`);
   const mainCommit = String(mainRef?.object?.sha || '').trim();
   assertProductionReleaseContext({ eventName, ref, commit, mainCommit });
-  const proof = await selectReleaseProof({ repository, commit, api });
+  // A post-merge Pages run can reuse the sealed, fully validated PR build.
+  // Reuse only after the Pages selector independently proves the current main
+  // tree is identical to the trusted merged PR tree. Selector API failures
+  // propagate; only a clean "no reusable proof" result permits the legacy
+  // exact-main manual-dispatch proof lookup below.
+  const pagesProof = await selectPagesRelease({ repository, commit, api });
+  const proof = pagesProof.reuse === true
+    ? pagesProof
+    : await selectReleaseProof({ repository, commit, api });
+  // Proof selection makes several asynchronous GitHub API requests. Bind the
+  // authorization to main again at the end so a newer push cannot race the
+  // initial context check.
+  const latestMainRef = await api(`repos/${repository}/git/ref/heads/main`);
+  const latestMainCommit = String(latestMainRef?.object?.sha || '').trim();
+  assertProductionReleaseContext({ eventName, ref, commit, mainCommit: latestMainCommit });
   return { commit, proof };
 }
 
