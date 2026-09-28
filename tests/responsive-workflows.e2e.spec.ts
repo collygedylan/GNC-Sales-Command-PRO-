@@ -2710,13 +2710,19 @@ test('dark phone Request creation keeps headings, labels, and fields readable', 
 });
 
 test('Request quantity and spec fields stay high-contrast and responsive on phones', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Exercise responsive styles on one fully initialized app instead of
+  // repeatedly tearing down Firefox's app runtime between measurements.
+  await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).renderRequestQtyStepCurrentItem === 'function');
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
-      await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
       await page.evaluate((activeTheme) => {
         document.body.classList.add('ops-precision-pilot');
         document.body.setAttribute('data-ops-theme', activeTheme);
+        document.body.setAttribute('data-ops-theme-mode', activeTheme);
+        document.body.style.colorScheme = activeTheme;
         const modal = document.getElementById('request-rep-modal')!;
         modal.classList.remove('hidden');
         modal.classList.add('request-qty-active');

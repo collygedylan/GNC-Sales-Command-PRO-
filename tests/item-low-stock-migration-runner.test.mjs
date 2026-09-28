@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { X509Certificate } from 'node:crypto';
+import pg from 'pg';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration,
-  classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext
+  classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
+  createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
 
 test('migration target is the configured Supabase project and never a browser key', () => {
@@ -13,9 +16,37 @@ test('migration target is the configured Supabase project and never a browser ke
   assert.throws(()=>validateDatabaseTarget('',api),/DB_URL_MISSING/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.other.supabase.co/postgres',api),/TARGET_MISMATCH/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres.other:example@aws-0-us-east-1.pooler.supabase.com/postgres',api),/TARGET_MISMATCH/);
-  assert.match(validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres',api),/sslmode=require/);
+  assert.match(validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres',api),/sslmode=verify-full/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres?host=other.example',api),/TARGET_INVALID/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres?sslmode=disable',api),/TLS_REQUIRED/);
+});
+test('Postgres client pins the Supabase CA and ignores URI TLS overrides while preserving connection identity', () => {
+  const api='https://testproject.supabase.co';
+  const raw='postgresql://postgres.testproject:p%40ss%2Fword@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require&sslrootcert=system&sslcert=%2Ftmp%2Fattacker.crt&sslkey=%2Ftmp%2Fattacker.key&uselibpqcompat=true&application_name=low-stock-test';
+  const validated=validateDatabaseTarget(raw,api);
+  assert.equal(new URL(validated).searchParams.get('sslmode'),'verify-full');
+  const options=createDatabaseClientOptions(validated);
+  const client=new pg.Client(options);
+  const params=client.connectionParameters;
+  assert.equal(params.host,'aws-0-us-east-1.pooler.supabase.com');
+  assert.equal(params.port,5432);
+  assert.equal(params.user,'postgres.testproject');
+  assert.equal(params.password,'p@ss/word');
+  assert.equal(params.database,'postgres');
+  assert.equal(params.ssl.servername,'aws-0-us-east-1.pooler.supabase.com');
+  assert.equal(params.ssl.rejectUnauthorized,true);
+  assert.equal(params.ssl.checkServerIdentity,undefined,'retain the TLS library hostname verifier');
+  assert.match(params.ssl.ca,/BEGIN CERTIFICATE/);
+  assert.equal(params.application_name,'low-stock-test');
+  assert.doesNotMatch(options.connectionString,/sslmode|sslrootcert|sslcert|sslkey|uselibpqcompat/i);
+
+  const cert = new X509Certificate(params.ssl.ca);
+  assert.equal(cert.fingerprint256,'80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA');
+  assert.equal(cert.subject,cert.issuer);
+  assert.match(cert.subject,/Supabase Root 2021 CA/);
+  assert.equal(cert.ca,true);
+  assert.equal(cert.verify(cert.publicKey),true);
+  assert.ok(Date.parse(cert.validTo)>Date.now());
 });
 test('migration and history entry are atomic and a retry verifies the same contents', async () => {
   const source='begin;\nselect 42;\ncommit;';

@@ -14,6 +14,7 @@ on:
       - scripts/pages-release.mjs
       - scripts/sync-codegs-to-apps-script.js
       - scripts/apply-item-low-stock-migration.mjs
+      - scripts/certs/supabase-prod-ca-2021.crt
       - supabase/migrations/20260928145055_item_low_stock_targets.sql
       - .github/workflows/apps-script-sync.yml
   workflow_dispatch:
