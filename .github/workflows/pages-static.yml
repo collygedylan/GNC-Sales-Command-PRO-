@@ -15,7 +15,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  candidate-validation:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/release-validation.yml
+    with:
+      production-health: true
+    secrets: inherit
+
   validation:
+    needs: candidate-validation
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 8
