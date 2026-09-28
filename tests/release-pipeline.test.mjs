@@ -14,8 +14,23 @@ const performance = yaml.load(read('.github/workflows/performance-monitor.yml'))
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
 test('all safety lanes must succeed before the sealed release can deploy', () => {
+  assert.equal(pages.permissions.actions, 'read');
+  assert.equal(validation.jobs['release-gate'].outputs['proof-id'], '${{ steps.proof.outputs.artifact-id }}');
+  assert.equal(validation.on.workflow_call.outputs['proof-id'].value, '${{ jobs.release-gate.outputs.proof-id }}');
+  assert.equal(validation.on.workflow_call.outputs['site-id'].value, '${{ jobs.release-gate.outputs.site-id }}');
+  assert.equal(validation.jobs['release-gate'].steps.find(s => s.uses === 'actions/upload-artifact@v4').id, 'proof');
+  assert.equal(pages.jobs['candidate-validation'].uses, './.github/workflows/release-validation.yml');
   assert.equal(pages.jobs.deploy.needs, 'validation');
   assert.ok(pages.jobs.validation.steps.some(s => s.run === 'node scripts/release-proof.mjs verify'));
+  assert.equal(pages.jobs.validation.steps.some(s => s.run === 'node scripts/release-proof.mjs select'), false);
+  assert.equal(pages.jobs.validation.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_RUN_ID,
+    '${{ needs.candidate-validation.outputs.run-id }}');
+  assert.equal(pages.jobs.validation.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_ID,
+    '${{ needs.candidate-validation.outputs.proof-id }}');
+  assert.equal(pages.jobs.validation.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_DIGEST,
+    '${{ needs.candidate-validation.outputs.digest }}');
+  assert.equal(pages.jobs.deploy.steps.find(s => s.run === 'node scripts/release-proof.mjs verify').env.RELEASE_PROOF_DIGEST,
+    '${{ needs.validation.outputs.digest }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
   assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','lighthouse','production-health']);

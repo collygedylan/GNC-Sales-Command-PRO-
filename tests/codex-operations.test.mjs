@@ -152,9 +152,10 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   assert.match(modelRouting, /GPT-6 Luna \/ low/);
   assert.match(modelRouting, /bounded diff or contract under review/);
   assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
-  assert.match(agentRules, /request to implement[\s\S]*automatic release/i);
-  assert.match(agentRules, /Do not fork the full conversation or repository history/);
-  assert.match(agentRules, /Do not poll or narrate unchanged jobs/);
+  const finalReleaseOverride = agentRules.split('OVERRIDE: STAY AWAKE AND MONITOR PROTOCOL')[1] || '';
+  assert.match(finalReleaseOverride, /ALWAYS automatically create a pull request using the GitHub CLI \(gh pr create --fill\)/);
+  assert.match(finalReleaseOverride, /MUST monitor the GitHub Actions pipeline using gh pr checks --watch/);
+  assert.match(finalReleaseOverride, /read the failure logs and ask the user for permission to fix the errors/);
   assert.match(releasePipeline, /single source of progress/);
   assert.match(releasePipeline, /Planning, explanation, diagnosis, status, and review-only requests do not authorize/);
 });

@@ -246,7 +246,7 @@ for (const [name, spec, projects] of compiledSuites) {
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
-    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'sales-mobile', 'module-mobile'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
+    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'sales-mobile', 'module-mobile', 'task-av-blanks'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
     else assert.match(config.webServer.command, /startReleaseTestServer/);
   });

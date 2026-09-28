@@ -287,6 +287,13 @@ test('history Request Credit resolves the exact archive and a denied source show
     call.payload.sourceKind === 'request_history' && call.payload.sourceUniqueId === 'history-62')).toBe(true);
   await page.locator('#global-header-inline-back')[test.info().project.use.isMobile ? 'tap' : 'click']();
   await expect(credit.getByRole('button', { name: 'Completed Requests', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(async () => {
+    const update = await (window as any).SalesWorkspace.stageRefresh();
+    (window as any).SalesWorkspace.applyRefresh(update);
+  });
+  await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toBeChecked();
+  await credit.getByRole('button', { name: 'Load more', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toHaveCount(1);
   await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toBeChecked();
   f.denySource = true;
   await page.evaluate(() => (window as any).SalesWorkspace.openSource('docks', 'dock-2'));

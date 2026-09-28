@@ -56,6 +56,18 @@ export function verifyReleaseProof(proof, selected, release) {
   return proof.digest;
 }
 
+export function verifySameRunReleaseProof(proof, { repository, commit, runId, attempt, siteArtifactId, proofArtifactId, digest: expectedDigest }, release) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository || '') || !sha(commit)
+    || !Number.isSafeInteger(runId) || runId < 1 || !Number.isSafeInteger(attempt) || attempt < 1
+    || !Number.isSafeInteger(siteArtifactId) || siteArtifactId < 1
+    || !Number.isSafeInteger(proofArtifactId) || proofArtifactId < 1
+    || !/^[a-f0-9]{64}$/.test(expectedDigest || '')) fail('IDENTITY_INVALID');
+  const expected = { schemaVersion:'gnc-release-proof-v1', repository, commit, runId, attempt, siteArtifactId };
+  const digest = verifyReleaseProof(proof, expected, release);
+  if (digest !== expectedDigest) fail('DIGEST_MISMATCH');
+  return digest;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     const api = async endpoint => {
@@ -63,14 +75,37 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       if (r.error || r.status !== 0) fail('API_FAILED');
       return JSON.parse(r.stdout);
     };
-    const selected = await selectReleaseProof({repository:process.env.GITHUB_REPOSITORY,commit:process.env.GITHUB_SHA,api});
+    let selected;
     if (process.argv[2] === 'select') {
+      selected = await selectReleaseProof({repository:process.env.GITHUB_REPOSITORY,commit:process.env.GITHUB_SHA,api});
       if (!process.env.GITHUB_OUTPUT) fail('OUTPUT_MISSING');
       appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${selected.runId}\nproof-id=${selected.proofArtifactId}\nsite-id=${selected.siteArtifactId}\n`);
     } else if (process.argv[2] === 'verify') {
       const proof = JSON.parse(readFileSync('artifacts/candidate-proof/release-proof.json','utf8'));
       const release = `V${JSON.parse(readFileSync('package.json','utf8')).version}`;
-      const digest = verifyReleaseProof(proof,selected,release);
+      let digest;
+      if (process.env.RELEASE_PROOF_ID) {
+        const number = name => {
+          const value = Number(process.env[name]);
+          if (!Number.isSafeInteger(value) || value < 1) fail('IDENTITY_INVALID');
+          return value;
+        };
+        const expectedRunId = number('RELEASE_PROOF_RUN_ID');
+        const expectedAttempt = number('RELEASE_PROOF_ATTEMPT');
+        const runId = number('GITHUB_RUN_ID');
+        const attempt = number('GITHUB_RUN_ATTEMPT');
+        if (expectedRunId !== runId || expectedAttempt !== attempt) fail('RUN_IDENTITY_INVALID');
+        selected = {
+          repository:process.env.GITHUB_REPOSITORY, commit:process.env.GITHUB_SHA,
+          runId:expectedRunId, attempt:expectedAttempt,
+          siteArtifactId:number('RELEASE_PROOF_SITE_ID'), proofArtifactId:number('RELEASE_PROOF_ID'),
+          digest:process.env.RELEASE_PROOF_DIGEST,
+        };
+        digest = verifySameRunReleaseProof(proof, selected, release);
+      } else {
+        selected = await selectReleaseProof({repository:process.env.GITHUB_REPOSITORY,commit:process.env.GITHUB_SHA,api});
+        digest = verifyReleaseProof(proof,selected,release);
+      }
       if (!process.env.GITHUB_OUTPUT) fail('OUTPUT_MISSING');
       appendFileSync(process.env.GITHUB_OUTPUT,`digest=${digest}\nrun-id=${selected.runId}\nsite-id=${selected.siteArtifactId}\n`);
     } else fail('USAGE');

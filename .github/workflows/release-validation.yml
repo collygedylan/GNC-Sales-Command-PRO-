@@ -10,6 +10,18 @@ on:
       digest:
         description: Verified release manifest SHA256
         value: ${{ jobs.build.outputs.digest }}
+      run-id:
+        description: Workflow run containing the validated release artifacts
+        value: ${{ jobs.release-gate.outputs.run-id }}
+      attempt:
+        description: Validated workflow run attempt
+        value: ${{ jobs.release-gate.outputs.attempt }}
+      site-id:
+        description: Validated site artifact ID
+        value: ${{ jobs.release-gate.outputs.site-id }}
+      proof-id:
+        description: Validated proof artifact ID
+        value: ${{ jobs.release-gate.outputs.proof-id }}
 
 permissions:
   contents: read
@@ -267,6 +279,12 @@ jobs:
     if: always()
     needs: [unit, database, build, foundation, functional, compiled, timing, lighthouse, production-health]
     runs-on: ubuntu-latest
+    outputs:
+      run-id: ${{ github.run_id }}
+      attempt: ${{ github.run_attempt }}
+      site-id: ${{ needs.build.outputs.artifact-id }}
+      proof-id: ${{ steps.proof.outputs.artifact-id }}
+      digest: ${{ needs.build.outputs.digest }}
     steps:
       - name: Require every safety lane for this commit
         env:
@@ -311,7 +329,8 @@ jobs:
           proof.release='V'+JSON.parse(fs.readFileSync('candidate-source/package.json')).version;
           fs.writeFileSync(file,JSON.stringify(proof));
           NODE
-      - uses: actions/upload-artifact@v4
+      - id: proof
+        uses: actions/upload-artifact@v4
         with:
           name: release-proof-${{ github.sha }}-${{ github.run_attempt }}
           path: proof/release-proof.json

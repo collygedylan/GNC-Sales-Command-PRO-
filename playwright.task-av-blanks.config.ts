@@ -15,7 +15,7 @@ export default defineConfig({
     { name: 'task-av-iphone', use: { ...devices['iPhone 13'] } },
   ],
   webServer: remote ? undefined : {
-    command: 'python -m http.server 43125 --bind 127.0.0.1 --directory _site',
-    url: baseURL, reuseExistingServer: !process.env.CI, timeout: 20_000,
+    command: 'node --input-type=module -e "import { startReleaseTestServer } from \'./scripts/serve-release-tests.mjs\'; await startReleaseTestServer({ port: 43125 });"',
+    url: baseURL, reuseExistingServer: false, timeout: 20_000,
   },
 });
