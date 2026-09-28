@@ -229,6 +229,50 @@ test('AV cards keep readable priority, stock and actions across themes and width
   expect(fixture.blockedMutations).toEqual([]);
 });
 
+test('photo modal reserves its layout before delayed photos load and keeps the selected slide', async ({ page, baseURL }, testInfo) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_photo_fixture', role: 'ADMIN' });
+  await settleIosShellVersion(page, testInfo.project.name);
+  await page.setViewportSize({ width: 390, height: 844 });
+  let releaseImages!: () => void;
+  const imagesReady = new Promise<void>(resolve => { releaseImages = resolve; });
+  await page.route('https://photos.example.test/modal-late-*.jpg', async route => {
+    await imagesReady;
+    const portrait = route.request().url().includes('portrait');
+    await route.fulfill({ contentType: 'image/svg+xml', body: `<svg xmlns="http://www.w3.org/2000/svg" width="${portrait ? 480 : 640}" height="${portrait ? 640 : 480}"><rect width="100%" height="100%" fill="#387a59"/></svg>` });
+  });
+  const photos = 'https://photos.example.test/modal-late-portrait.jpg,https://photos.example.test/modal-late-landscape.jpg';
+  await page.evaluate(urls => (window as any).openPhotoModal(urls, 'Delayed photos', 0), photos);
+  const gallery = page.locator('#photo-modal-gallery');
+  const reservedHeight = await gallery.evaluate(el => el.getBoundingClientRect().height);
+  try {
+    expect(reservedHeight, 'reserve the gallery before either image has dimensions').toBeCloseTo(844 * .8, 0);
+    await expect(page.locator('#photo-modal-counter')).toHaveText('1 / 2');
+  } finally {
+    releaseImages();
+  }
+  await gallery.locator('img').evaluateAll(images => Promise.all(images.map(image => (image as HTMLImageElement).decode())));
+  const settled = await gallery.evaluate(async el => {
+    const positions: number[] = [];
+    const started = performance.now();
+    // WebKit's spontaneous snap was delayed about 360ms after opening.
+    do {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      positions.push(el.scrollLeft);
+    } while (performance.now() - started < 500);
+    return { height: el.getBoundingClientRect().height, positions };
+  });
+  expect(settled.height).toBeCloseTo(reservedHeight, 0);
+  expect(settled.positions).toEqual(Array(settled.positions.length).fill(0));
+  await expect(page.locator('#photo-modal-counter')).toHaveText('1 / 2');
+  await page.evaluate(() => (window as any).closePhotoModal());
+  await page.evaluate(urls => (window as any).openPhotoModal(urls, 'Delayed photos', 1), photos);
+  await expect(page.locator('#photo-modal-counter')).toHaveText('2 / 2');
+  await expect.poll(() => gallery.evaluate(el => Math.abs(el.scrollLeft - el.clientWidth))).toBeLessThanOrEqual(1);
+  await page.evaluate(() => (window as any).closePhotoModal());
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
 test('ordinary compact AV cards stay within the row budget', async ({ page, baseURL }, testInfo) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_compact_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
