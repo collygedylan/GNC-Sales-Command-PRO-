@@ -51,7 +51,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.27.006">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.27.007">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -59,7 +59,7 @@
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script src="./assets/app-lifecycle.js" data-app-lifecycle></script>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.27.006';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.27.007';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -623,74 +623,68 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-smart-card--av .app-card-bottom-rail{margin-top:.34rem;padding:.34rem 0 0;gap:.4rem}
 .app-smart-card--av .app-card-bottom-btn{min-height:1.95rem;padding:.42rem .7rem;font-size:.55rem;letter-spacing:.09em}
 /* AV catalog: readable inventory and photo cards in both app themes. */
-body .app-smart-card.app-smart-card--av.app-av-catalog-card{--av-surface:var(--field-surface,var(--ops-surface,#fff));--av-muted:var(--ops-surface-muted,#f4f7f5);--av-text:var(--field-text,var(--ops-text,#17251d));--av-secondary:var(--ops-text-muted,#526259);--av-border:var(--ops-border,#d8e1db);--av-priority-bg:#fff0b5;--av-priority-text:#624400;--av-hold-bg:#fff7e6;--av-hold-text:#7b3e00;--av-reserve-bg:#eaf7ef;--av-reserve-border:#b9dfc8;display:flex;width:100%;max-width:100%;box-sizing:border-box;border:1px solid var(--av-border)!important;background:var(--av-surface)!important;border-radius:14px!important;box-shadow:none!important;padding:20px!important;color:var(--av-text)!important;font-size:16px;line-height:1.45;text-transform:none;letter-spacing:normal}
-body:is(.dark-mode,[data-ops-theme="dark"]) .app-smart-card--av.app-av-catalog-card{--av-surface:var(--field-surface,var(--ops-surface,#111c18));--av-muted:var(--ops-surface-muted,#1c2b24);--av-text:var(--field-text,var(--ops-text,#f2fbf6));--av-secondary:var(--ops-text-muted,#bdd0c5);--av-border:var(--ops-border,#435f50);--av-priority-bg:#493b12;--av-priority-text:#ffe58a;--av-hold-bg:#422a12;--av-hold-text:#ffda9e;--av-reserve-bg:#183324;--av-reserve-border:#3f7654}
+body .app-smart-card.app-smart-card--av.app-av-catalog-card{--av-surface:var(--field-surface,var(--ops-surface,#fff));--av-muted:var(--ops-surface-muted,#f4f7f5);--av-text:var(--field-text,var(--ops-text,#17251d));--av-secondary:var(--ops-text-muted,#526259);--av-border:var(--ops-border,#d8e1db);--av-priority-bg:#fff0b5;--av-priority-text:#624400;--av-hold-bg:#fff7e6;--av-hold-text:#7b3e00;display:flex;width:100%;max-width:100%;box-sizing:border-box;border:1px solid var(--av-border)!important;background:var(--av-surface)!important;border-radius:14px!important;box-shadow:none!important;padding:12px!important;color:var(--av-text)!important;font-size:14px;line-height:1.4;text-transform:none;letter-spacing:normal}
+body:is(.dark-mode,[data-ops-theme="dark"]) .app-smart-card--av.app-av-catalog-card{--av-surface:var(--field-surface,var(--ops-surface,#111c18));--av-muted:var(--ops-surface-muted,#1c2b24);--av-text:var(--field-text,var(--ops-text,#f2fbf6));--av-secondary:var(--ops-text-muted,#bdd0c5);--av-border:var(--ops-border,#435f50);--av-priority-bg:#493b12;--av-priority-text:#ffe58a;--av-hold-bg:#422a12;--av-hold-text:#ffda9e}
 body .app-av-catalog-card .card-checkbox-container{align-self:flex-start;margin:0 8px 0 0}
-body .app-av-catalog-card .app-av-catalog-frame{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,1.4fr);grid-template-areas:"media header" "media details";gap:16px 24px;width:100%;min-width:0;align-items:start}
-body .app-av-catalog-card .app-av-catalog-heading{grid-area:header;display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
-body .app-av-catalog-card .app-av-catalog-identity{flex:1 1 240px;min-width:0}
+body .app-av-catalog-card .app-av-catalog-frame{display:grid;grid-template-columns:88px minmax(0,1fr) auto;grid-template-areas:"media header actions" "media details actions";gap:8px 12px;width:100%;min-width:0;align-items:start}
+body .app-av-catalog-card .app-av-catalog-heading{grid-area:header;display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0}
+body .app-av-catalog-card .app-av-catalog-identity{flex:1 1 0;min-width:0}
 body .app-av-catalog-card .app-av-catalog-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0}
 body .app-av-catalog-card .app-av-catalog-title-row .app-av-catalog-title{flex:1 1 auto;min-width:0}
 body .app-av-catalog-card .app-av-catalog-title-row .app-av-priority-badge{flex:0 0 auto}
-body .app-av-catalog-card .app-av-catalog-title{margin:0 0 6px;color:var(--av-text)!important;font-size:24px;font-weight:750;line-height:1.25;letter-spacing:normal;text-transform:none;overflow-wrap:anywhere}
-body .app-av-catalog-card .app-av-catalog-size{color:var(--av-text);font-size:16px;font-weight:600;line-height:1.5}
-body .app-av-catalog-card .app-av-catalog-code{color:var(--av-secondary);font-size:14px;font-weight:400;line-height:1.5;overflow-wrap:anywhere}
-body .app-av-catalog-card .app-av-catalog-meta{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:10px;color:var(--av-text);font-size:14px;font-weight:500;line-height:1.5;letter-spacing:normal;text-transform:none}
-body .app-av-catalog-card .app-av-priority-badge{display:inline-flex;align-items:center;gap:6px;flex:0 1 auto;max-width:100%;border-radius:7px;padding:8px 12px;background:var(--av-priority-bg)!important;color:var(--av-priority-text)!important;font-size:16px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+body .app-av-catalog-card .app-av-catalog-title{margin:0 0 4px;color:var(--av-text)!important;font-size:20px;font-weight:750;line-height:1.25;letter-spacing:normal;text-transform:none;overflow-wrap:anywhere}
+body .app-av-catalog-card .app-av-catalog-size{display:inline;color:var(--av-text);font-size:14px;font-weight:600;line-height:1.4;margin-right:8px}
+body .app-av-catalog-card .app-av-catalog-code{display:inline;color:var(--av-secondary);font-size:13px;font-weight:400;line-height:1.4;overflow-wrap:anywhere}
+body .app-av-catalog-card .app-av-catalog-meta{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px;color:var(--av-text);font-size:13px;font-weight:500;line-height:1.4;letter-spacing:normal;text-transform:none}
+body .app-av-catalog-card .app-av-priority-badge{display:inline-flex;align-items:center;gap:6px;flex:0 1 auto;max-width:100%;border-radius:7px;padding:4px 6px;background:var(--av-priority-bg)!important;color:var(--av-priority-text)!important;font-size:13px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
 body .app-av-catalog-card .app-av-catalog-media{grid-area:media;min-width:0}
 body .app-av-catalog-card .app-av-catalog-photo-wrap{border:1px solid var(--av-border);border-radius:10px;background:var(--av-muted);overflow:hidden}
 body .app-av-catalog-card .app-av-hero{border:0;border-radius:0;box-shadow:none;background:var(--av-muted)}
-body .app-av-catalog-card .app-av-photo-carousel{height:auto;aspect-ratio:4 / 3;background:var(--av-muted)}
+body .app-av-catalog-card .app-av-photo-carousel{width:100%;height:86px;aspect-ratio:auto;background:var(--av-muted)}
 body .app-av-catalog-card .app-av-photo-slide{background:var(--av-muted)}
 body .app-av-catalog-card .app-av-photo-slide img{object-fit:contain}
-body .app-av-catalog-card .app-av-catalog-photo-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;font-size:16px;font-weight:500;line-height:1.5;color:var(--av-secondary);background:var(--av-muted);pointer-events:none}
+body .app-av-catalog-card .app-av-catalog-photo-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:4px;padding:4px;text-align:center;font-size:13px;font-weight:500;line-height:1.25;color:var(--av-secondary);background:var(--av-muted);pointer-events:none}
 body .app-av-catalog-card .app-av-catalog-photo-error{display:none}
 body .app-av-catalog-card img[data-av-photo-loaded="1"]~.app-av-catalog-photo-loading,body .app-av-catalog-card img[data-photo-load-failed="1"]~.app-av-catalog-photo-loading{display:none}
 body .app-av-catalog-card img[data-photo-load-failed="1"]~.app-av-catalog-photo-error{display:flex}
-body .app-av-catalog-card .app-av-hero-empty{position:relative;height:112px;min-height:0;background:var(--av-muted);color:var(--av-secondary);font-size:16px;text-transform:none;letter-spacing:normal}
-body .app-av-catalog-card--no-photo .app-av-catalog-frame{grid-template-columns:112px minmax(0,1fr)}
-body .app-av-catalog-card .app-av-photo-count{font-size:14px;letter-spacing:normal;font-weight:600;line-height:1.4;padding:5px 9px;background:var(--av-surface);color:var(--av-text);border-color:var(--av-border);box-shadow:none}
-body .app-av-catalog-card .app-av-photo-nav{width:44px;height:44px;min-width:44px;min-height:44px;background:var(--av-surface);color:var(--av-text);border-color:var(--av-border);box-shadow:none}
-body .app-av-catalog-card .app-av-hero-action{min-height:44px;min-width:44px;padding:8px 12px;font-size:14px;line-height:1.4;font-weight:600;letter-spacing:normal;text-transform:none;background:#173d2c;color:#fff;box-shadow:none}
-body .app-av-catalog-card .app-av-photo-position{bottom:12px;left:12px;transform:none}
-body .app-smart-card--av.app-av-catalog-card .app-inline-thumb-date{padding:8px;border:0;border-top:1px solid var(--av-border);border-radius:0;background:var(--av-surface);color:var(--av-secondary);font-size:14px;font-weight:400;line-height:1.4;letter-spacing:normal;text-transform:none}
-body .app-av-catalog-card .app-av-catalog-info{grid-area:details;display:flex;flex-direction:column;gap:16px;min-width:0}
-body .app-av-catalog-card .app-av-catalog-highlight{display:flex;flex-wrap:wrap;gap:16px 24px;padding:16px 0;border-top:1px solid var(--av-border);border-bottom:1px solid var(--av-border)}
-body .app-av-catalog-card .app-av-catalog-stock-block{flex:2 1 230px;min-width:0}
-body .app-av-catalog-card .app-av-catalog-stock-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-body .app-av-catalog-card .app-av-catalog-stock-stat{display:flex;flex-direction:column;align-items:flex-start;min-width:0;background:none;border:0;padding:0;text-align:left;gap:4px}
-body .app-av-catalog-card .app-av-catalog-stock-label,body .app-av-catalog-card .app-av-catalog-price-label{display:block;color:var(--av-secondary);font-size:16px;line-height:1.4;font-weight:400;letter-spacing:normal;text-transform:none}
-body .app-av-catalog-card .app-av-catalog-stock-value,body .app-av-catalog-card .app-av-catalog-price-value{display:block;color:var(--av-text)!important;font-size:30px;line-height:1.15;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-body .app-av-catalog-card .app-av-catalog-price{flex:1 1 100px;display:flex;flex-direction:column;gap:4px;min-width:0;color:var(--av-text);text-align:left}
-body .app-av-catalog-card .app-av-catalog-photo-match{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--av-secondary);font-size:14px;line-height:1.5}
+body .app-av-catalog-card .app-av-hero-empty{position:relative;height:86px;min-height:0;background:var(--av-muted);color:var(--av-secondary);font-size:13px;text-transform:none;letter-spacing:normal}
+body .app-av-catalog-card .app-av-photo-count{top:auto;right:2px;bottom:2px;pointer-events:none;font-size:11px;letter-spacing:normal;font-weight:600;line-height:1.2;padding:2px 4px;background:var(--av-surface);color:var(--av-text);border-color:var(--av-border);box-shadow:none}
+body .app-smart-card--av.app-av-catalog-card .app-inline-thumb-date{display:inline;width:auto;text-align:left;padding:0;border:0;border-radius:0;background:var(--av-surface);color:var(--av-secondary);font-size:13px;font-weight:400;line-height:1.4;letter-spacing:normal;text-transform:none}
+body .app-av-catalog-card .app-av-catalog-info{grid-area:details;display:flex;flex-direction:column;gap:6px;min-width:0}
+body .app-av-catalog-card .app-av-catalog-highlight{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:6px 0;border-top:1px solid var(--av-border);border-bottom:1px solid var(--av-border)}
+body .app-av-catalog-card .app-av-catalog-stock-block{display:contents}
+body .app-av-catalog-card .app-av-catalog-stock-grid{display:contents}
+body .app-av-catalog-card .app-av-catalog-highlight--with-season{grid-template-columns:repeat(4,minmax(0,1fr))}
+body .app-av-catalog-card .app-av-catalog-stock-stat{display:flex;flex-direction:column;align-items:flex-start;min-width:0;background:none;border:0;padding:0;text-align:left;gap:2px}
+body .app-av-catalog-card .app-av-catalog-stock-label,body .app-av-catalog-card .app-av-catalog-price-label{display:block;color:var(--av-secondary);font-size:13px;line-height:1.3;font-weight:400;letter-spacing:normal;text-transform:none}
+body .app-av-catalog-card .app-av-catalog-stock-value,body .app-av-catalog-card .app-av-catalog-price-value{display:block;color:var(--av-text)!important;font-size:24px;line-height:1.15;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+body .app-av-catalog-card .app-av-catalog-price{display:flex;flex-direction:column;gap:2px;min-width:0;color:var(--av-text);text-align:left}
+body .app-av-catalog-card .app-av-catalog-photo-match{display:flex;flex-wrap:wrap;gap:2px 8px;color:var(--av-secondary);font-size:13px;line-height:1.4}
 body .app-av-catalog-card .app-av-catalog-photo-match strong{color:var(--av-text);font-weight:600}
-body .app-av-catalog-card .app-av-catalog-note-grid{display:grid;gap:10px;min-width:0}
+body .app-av-catalog-card .app-av-catalog-note-grid{display:grid;gap:6px;min-width:0}
 body .app-av-catalog-card .app-av-catalog-note{min-width:0;background:none;border:0;padding:0;color:var(--av-text)}
-body .app-av-catalog-card .app-av-catalog-note-label{display:block;margin-bottom:3px;color:var(--av-secondary);font-size:14px;line-height:1.5;font-weight:600;text-transform:none;letter-spacing:normal}
-body .app-av-catalog-card .app-av-catalog-note-text{font-size:16px;line-height:1.5;font-weight:400;white-space:pre-wrap;overflow-wrap:anywhere}
-body .app-av-catalog-card .app-av-catalog-note--hold{padding:12px;border-radius:8px;background:var(--av-hold-bg)!important;color:var(--av-hold-text)!important}
+body .app-av-catalog-card .app-av-catalog-note-label{display:inline;margin-right:6px;color:var(--av-secondary);font-size:13px;line-height:1.4;font-weight:600;text-transform:none;letter-spacing:normal}
+body .app-av-catalog-card .app-av-catalog-note-text{display:inline;font-size:14px;line-height:1.4;font-weight:400;white-space:pre-wrap;overflow-wrap:anywhere}
+body .app-av-catalog-card .app-av-catalog-note--hold{padding:6px 8px;border-radius:8px;background:var(--av-hold-bg)!important;color:var(--av-hold-text)!important}
 body .app-av-catalog-card .app-av-catalog-note--hold .app-av-catalog-note-label{color:inherit;font-weight:700}
-body .app-av-catalog-card .app-av-catalog-note--reserve{padding:12px;border:1px solid var(--av-reserve-border);border-radius:8px;background:var(--av-reserve-bg)}
-body .app-av-catalog-card .app-av-catalog-reserve-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
-body .app-av-catalog-card .app-av-catalog-reserve-heading .app-av-catalog-note-label{margin:0;font-size:16px;font-weight:700}
-body .app-av-catalog-card .app-av-catalog-reserve-count{flex:0 0 auto;color:var(--av-secondary);font-size:14px;font-weight:600}
-body .app-av-catalog-card .app-av-catalog-reserve-main{margin-top:4px;font-size:16px;font-weight:650;line-height:1.4;overflow-wrap:anywhere}
-body .app-av-catalog-card .app-av-catalog-reserve-sub{margin-top:2px;color:var(--av-secondary);font-size:14px;line-height:1.4;overflow-wrap:anywhere}
-body .app-av-catalog-card .app-av-catalog-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:12px;margin-top:4px}
-body .app-av-catalog-card .app-av-primary-action,body .app-av-catalog-card .app-av-secondary-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;min-width:44px;padding:10px 16px;border:1px solid var(--av-border);border-radius:8px;background:var(--av-surface);color:var(--av-text);font-size:16px;line-height:1.4;font-weight:600;text-transform:none;letter-spacing:normal;box-shadow:none}
+body .app-av-catalog-card .app-av-catalog-actions{grid-area:actions;display:flex;flex-direction:column;align-self:center;justify-content:flex-end;gap:6px;max-width:200px}
+body .app-av-catalog-card .app-av-primary-action,body .app-av-catalog-card .app-av-secondary-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:44px;padding:6px 10px;border:1px solid var(--av-border);border-radius:8px;background:var(--av-surface);color:var(--av-text);font-size:14px;line-height:1.3;font-weight:600;text-transform:none;letter-spacing:normal;box-shadow:none}
 body .app-av-catalog-card .app-av-primary-action{background:#08784a!important;color:#fff!important;border-color:#08784a!important}
 body .app-av-catalog-card .app-av-primary-action.is-selected{background:#145c3f!important}
 body .app-av-catalog-card .app-av-secondary-action.is-disabled{opacity:1;color:var(--av-secondary);background:var(--av-muted)}
 body .app-av-catalog-card button:focus-visible{outline:3px solid var(--ops-focus,#2468c8);outline-offset:3px}
+body .app-av-catalog-card .app-av-catalog-note-grid:empty{display:none}
+body .app-av-catalog-card .app-av-catalog-photo-evidence{display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline}
+body .app-av-catalog-card .app-av-photo-slide{min-width:100%;height:100%}
 @media(max-width:900px){
- body .app-smart-card.app-smart-card--av.app-av-catalog-card{padding:16px!important}
- body .app-av-catalog-card .app-av-catalog-frame{grid-template-columns:minmax(0,1fr);grid-template-areas:"header" "media" "details";gap:16px}
- body .app-av-catalog-card .app-av-catalog-heading{gap:10px}
- body .app-av-catalog-card .app-av-catalog-identity{flex-basis:100%}
- body .app-av-catalog-card .app-av-catalog-title{font-size:24px}
- body .app-av-catalog-card .app-av-photo-carousel{max-height:360px}
- body .app-av-catalog-card--no-photo .app-av-hero-empty{height:64px}
- body .app-av-catalog-card .app-av-catalog-actions>*{flex:1 1 150px}
+ body .app-smart-card.app-smart-card--av.app-av-catalog-card{padding:10px!important}
+ body .app-av-catalog-card .app-av-catalog-frame{grid-template-columns:64px minmax(0,1fr);grid-template-areas:"media header" "details details" "actions actions";gap:8px}
+ body .app-av-catalog-card .app-av-catalog-title{font-size:18px}
+ body .app-av-catalog-card .app-av-catalog-title-row{gap:6px}
+ body .app-av-catalog-card .app-av-photo-carousel,body .app-av-catalog-card .app-av-hero-empty{height:62px}
+ body .app-av-catalog-card .app-av-catalog-stock-value,body .app-av-catalog-card .app-av-catalog-price-value{font-size:22px}
+ body .app-av-catalog-card .app-av-catalog-actions{flex-direction:row;max-width:none;flex-wrap:wrap}
+ body .app-av-catalog-card .app-av-catalog-actions>*{flex:1 1 auto}
  body .app-av-catalog-card .card-checkbox-container{margin-right:4px}
 }
 @media(prefers-reduced-motion:reduce){body .app-av-catalog-card .app-av-photo-track{scroll-behavior:auto}}
@@ -6792,7 +6786,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.27.006">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.27.007">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -6990,13 +6984,13 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.27.006"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.27.006"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.27.006"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.27.006"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.27.006"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.27.006"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.27.006"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.27.007"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.27.007"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.27.007"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.27.007"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.27.007"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.27.007"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.27.007"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7764,7 +7758,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.27.006').trim() || 'V2026.09.27.006';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.27.007').trim() || 'V2026.09.27.007';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9280,7 +9274,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.27.006';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.27.007';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -32525,7 +32519,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.27.006').trim() || 'V2026.09.27.006';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.27.007').trim() || 'V2026.09.27.007';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -139441,29 +139435,19 @@ C.14.043 C.15.000
                         || (typeof getIsAvPhotoSubview === 'function' && getIsAvPhotoSubview());
                     const eagerHeroRowLimit = isTouchConstrainedDevice() ? 24 : 72;
                     const hydrateAheadRowLimit = isTouchConstrainedDevice() ? 120 : 240;
-                    const photoSlidesHtml = validAvPhotoUrls.map((url, index) => {
-                        const thumbUrl = getDirectImageUrl(url, 'card-feature');
-                        const isPrimaryHeroPhoto = index === 0;
-                        const eagerHero = isAvPhotoFeed && isPrimaryHeroPhoto && (!hasKnownRowIndex || rowIndex < eagerHeroRowLimit);
-                        const hydrateAhead = isAvPhotoFeed && isPrimaryHeroPhoto && (!hasKnownRowIndex || rowIndex < hydrateAheadRowLimit);
-                        const imgHtml = buildDeferredCardPhotoImg(thumbUrl, {
-                            fetchPriority: eagerHero ? 'high' : 'low',
-                            loading: eagerHero ? 'eager' : 'lazy',
-                            hydrateNow: hydrateAhead,
-                            avLoadStatus: true,
-                            alt: `${item.COMMONNAME || 'AV Item'} photo ${index + 1} of ${photoCount}`
-                        });
-                        const label = escapeHtml(`${item.COMMONNAME || 'AV Item'} photo ${index + 1} of ${photoCount}`);
-                        const photoStatusHtml = '<span class="app-av-catalog-photo-status app-av-catalog-photo-loading" role="status">Loading photos…</span><span class="app-av-catalog-photo-status app-av-catalog-photo-error">Photo unavailable. Open to retry.</span>';
-                        if (isReserveAvCard) return `<div class="app-av-photo-slide" data-av-photo-index="${index}" aria-label="${label}">${imgHtml}${photoStatusHtml}</div>`;
-                        return `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="${index}" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', ${index}); return false;">${imgHtml}${photoStatusHtml}</button>`;
-                    }).join('');
-                    const photoPositionHtml = photoCount > 1 ? `<div class="app-av-photo-position" aria-hidden="true">${validAvPhotoUrls.slice(0, 8).map((url, index) => `<span class="${index === 0 ? 'is-active' : ''}"></span>`).join('')}</div>` : '';
-                    const photoNavHtml = photoCount > 1
-                        ? `<button type="button" class="app-av-photo-nav app-av-photo-nav--prev" data-fast-press-ignore aria-label="Previous photo" onclick="event.stopPropagation(); return stepAvCardPhotoCarousel(this, -1);"><i class="ph-bold ph-caret-left"></i></button><button type="button" class="app-av-photo-nav app-av-photo-nav--next" data-fast-press-ignore aria-label="Next photo" onclick="event.stopPropagation(); return stepAvCardPhotoCarousel(this, 1);"><i class="ph-bold ph-caret-right"></i></button>`
-                        : '';
-                    const carouselFastPressAttr = isReserveAvCard ? '' : ' data-fast-press-ignore';
-                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${carouselFastPressAttr}><div class="app-av-photo-track" onscroll="syncAvCardPhotoCarouselDots(this)">${photoSlidesHtml}</div>${photoCount > 1 ? `<span class="app-av-photo-count">${photoCount} Photos</span>` : ''}${photoNavHtml}${photoPositionHtml}<button type="button" class="app-av-hero-action" data-fast-press-ignore onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', getCurrentAvCardPhotoCarouselIndex(this)); return false;"><i class="ph-bold ph-arrows-out-simple"></i> Full Screen</button></div>${photoDateHtml}</div>`;
+                    const imgHtml = buildDeferredCardPhotoImg(getDirectImageUrl(validAvPhotoUrls[0], 'card-feature'), {
+                        fetchPriority: isAvPhotoFeed && (!hasKnownRowIndex || rowIndex < eagerHeroRowLimit) ? 'high' : 'low',
+                        loading: isAvPhotoFeed && (!hasKnownRowIndex || rowIndex < eagerHeroRowLimit) ? 'eager' : 'lazy',
+                        hydrateNow: isAvPhotoFeed && (!hasKnownRowIndex || rowIndex < hydrateAheadRowLimit),
+                        avLoadStatus: true,
+                        alt: `${item.COMMONNAME || 'AV Item'} photo 1 of ${photoCount}`
+                    });
+                    const photoStatusHtml = '<span class="app-av-catalog-photo-status app-av-catalog-photo-loading" role="status">Loading…</span><span class="app-av-catalog-photo-status app-av-catalog-photo-error">Photo unavailable</span>';
+                    const label = escapeHtml(`View ${photoCount} photo${photoCount === 1 ? '' : 's'} of ${item.COMMONNAME || 'AV Item'}`);
+                    const previewHtml = isReserveAvCard
+                        ? `<div class="app-av-photo-slide" data-av-photo-index="0" aria-label="${label}">${imgHtml}${photoStatusHtml}</div>`
+                        : `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoStatusHtml}</button>`;
+                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${isReserveAvCard ? '' : ' data-fast-press-ignore'}><div class="app-av-photo-track">${previewHtml}</div>${photoCount > 1 ? `<span class="app-av-photo-count" aria-hidden="true">1 / ${photoCount}</span>` : ''}</div></div>`;
                 }
                 const domIdText = String(firstNonEmptyValue(item.DOM_ID, '') || '').trim();
                 const itemCodeText = String(firstNonEmptyValue(item.ITEMCODE, '-') || '-').trim() || '-';
@@ -139471,7 +139455,6 @@ C.14.043 C.15.000
                 const contSizeText = String(firstNonEmptyValue(item.CONTSIZE, '-') || '-').trim() || '-';
                 const commonNameText = String(firstNonEmptyValue(item.COMMONNAME, 'Unknown') || 'Unknown').trim() || 'Unknown';
                 const avNoteDisplay = avNoteText || String(firstNonEmptyValue(item.AVNOTE, item.AV_NOTES, '') || '').trim();
-                const visibleAvNoteText = avNoteDisplay || 'No AV Note';
                 const specText = String(firstNonEmptyValue(item.SPEC, item.SPECIFICATION, item.AV_SPEC, item.SPECS, '') || '').trim();
                 const openStockText = getCardOpenStockValue(item);
                 const locOnHandText = getCardPtrOnHandValue(item);
@@ -139484,8 +139467,8 @@ C.14.043 C.15.000
                     ? `<button type="button" class="app-av-primary-action ${inBloomPicker ? 'is-selected' : ''}" data-cart-dom-id="${escapeHtml(domIdText)}" aria-pressed="${inBloomPicker ? 'true' : 'false'}" onclick="return handleInventoryCardBottomCartAction(event, '${safeDomId}', '${safeCardSourceViewKey}')"><i class="ph-bold ${inBloomPicker ? 'ph-check-circle' : 'ph-handbag'}"></i><span>${inBloomPicker ? 'In Bloom Picker' : 'Add To Bloom Picker'}</span></button>`
                     : '';
                 const viewPhotosButtonHtml = hasValidAvPhotos
-                    ? `<button type="button" class="app-av-secondary-action" data-fast-press-ignore onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoLink)}', '${photoCaption}', getCurrentAvCardPhotoCarouselIndex(this)); return false;"><i class="ph-bold ph-images"></i><span>View Photos</span></button>`
-                    : `<button type="button" class="app-av-secondary-action is-disabled" disabled><i class="ph-bold ph-image"></i><span>No Photos</span></button>`;
+                    ? `<button type="button" class="app-av-secondary-action" data-fast-press-ignore onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoLink)}', '${photoCaption}', 0); return false;"><i class="ph-bold ph-images"></i><span>View Photos</span></button>`
+                    : '';
                 const priceHtml = activePriceText && activePriceText !== '-'
                     ? `<div class="app-av-catalog-price"><span class="app-av-catalog-price-label">${escapeHtml(priceLabel)}</span><span class="app-av-catalog-price-value">${escapeHtml(activePriceText)}</span></div>`
                     : '';
@@ -139497,28 +139480,20 @@ C.14.043 C.15.000
                 const priorityHtml = `<span class="app-av-priority-badge">Priority ${escapeHtml(firstNonEmptyValue(item.PRIORITY, item.priority, '—'))}</span>`;
                 const avStockMetricRowHtml = `<div class="app-av-catalog-stock-grid ${showSeasonOh ? 'app-av-catalog-stock-grid--with-season' : ''}">${openStockStatHtml}${locOnHandHtml}${seasonOhHtml}</div>`;
                 const avSpecHtml = specText
-                    ? `<div class="mt-2"><span class="app-av-catalog-note-label">Spec</span><div class="app-av-catalog-note-text">${escapeHtml(specText)}</div></div>`
+                    ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Spec</span><div class="app-av-catalog-note-text">${escapeHtml(specText)}</div></section>`
                     : '';
-                const avNoteCatalogHtml = `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">AV Note</span><div class="app-av-catalog-note-text">${escapeHtml(visibleAvNoteText)}</div>${avSpecHtml}</section>`;
+                const avNoteCatalogHtml = avNoteDisplay
+                    ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">AV Note</span><div class="app-av-catalog-note-text">${escapeHtml(avNoteDisplay)}</div></section>`
+                    : '';
                 const holdReasonCatalogHtml = cleanHoldCode || holdReasonValue
                     ? `<section class="app-av-catalog-note app-av-catalog-note--hold"><span class="app-av-catalog-note-label">Hold / Stop</span><div class="app-av-catalog-note-text">${cleanHoldCode ? `${escapeHtml(cleanHoldCode)} - ` : ''}${escapeHtml(holdReasonValue)}</div></section>`
-                    : '';
-                const reserveRowCount = Number(firstNonEmptyValue(item.AV_RESERVE_ROW_COUNT, 0)) || 0;
-                const reserveCustomerCount = Number(firstNonEmptyValue(item.AV_RESERVE_CUSTOMER_COUNT, 1)) || 1;
-                const reserveCustomer = String(firstNonEmptyValue(item.AV_RESERVE_CUSTOMER_PREVIEW, 'Reserve Customer') || '').trim();
-                const reserveDetails = [
-                    firstNonEmptyValue(item.AV_RESERVE_SALESREP_PREVIEW, ''),
-                    firstNonEmptyValue(item.AV_RESERVE_CONSIGNEE_PREVIEW, '')
-                ].filter(Boolean).join(' | ') || 'ph_reserves';
-                const reserveSummaryHtml = reserveRowCount > 0
-                    ? `<section class="app-av-catalog-note app-av-catalog-note--reserve"><div class="app-av-catalog-reserve-heading"><span class="app-av-catalog-note-label">Reserved For</span><span class="app-av-catalog-reserve-count">${escapeHtml(String(reserveCustomerCount))} customer${reserveCustomerCount === 1 ? '' : 's'}</span></div><div class="app-av-catalog-reserve-main">${escapeHtml(reserveCustomer)}</div><div class="app-av-catalog-reserve-sub">${escapeHtml(reserveDetails)}</div></section>`
                     : '';
                 return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}>
                     <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
                     <div class="app-av-catalog-frame">
                         <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}</h3>${priorityHtml}</div><div class="app-av-catalog-size">${escapeHtml(contSizeText)} container</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div><div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)}</span><span>Season ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))}</span></div></div></div>
                         <div class="app-av-catalog-media"><div class="app-av-catalog-photo-wrap">${heroHtml}</div></div>
-                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight"><div class="app-av-catalog-stock-block">${avStockMetricRowHtml}</div>${priceHtml}</div>${locPhotoMatchHtml}<div class="app-av-catalog-note-grid">${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${reserveSummaryHtml}${holdReasonCatalogHtml}</div><div class="app-av-catalog-actions">${viewPhotosButtonHtml}${bloomButtonHtml}</div></div>
+                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight ${showSeasonOh ? 'app-av-catalog-highlight--with-season' : ''}"><div class="app-av-catalog-stock-block">${avStockMetricRowHtml}</div>${priceHtml}</div><div class="app-av-catalog-photo-evidence">${locPhotoMatchHtml}${hasValidAvPhotos ? photoDateHtml : ''}</div><div class="app-av-catalog-note-grid">${avNoteCatalogHtml}${avSpecHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${holdReasonCatalogHtml}</div></div><div class="app-av-catalog-actions">${viewPhotosButtonHtml}${bloomButtonHtml}</div>
                     </div>
                 </div>`;
             };
