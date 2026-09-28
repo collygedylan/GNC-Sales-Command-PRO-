@@ -103,7 +103,7 @@ export function validateDiagnosticContext(env) {
       || !validRepository || !validSha || !allowedRef || ref.includes('..') || ref.endsWith('/')) {
     throw new Error('LOW_STOCK_DIAGNOSTIC_CONTEXT_INVALID');
   }
-  const expectedWorkflowRef = `${env.GITHUB_REPOSITORY}/.github/workflows/apps-script-sync.yml@${ref}`;
+  const expectedWorkflowRef = `${env.GITHUB_REPOSITORY}/.github/workflows/apps-script-database-diagnostic.yml@${ref}`;
   if (!env.GITHUB_WORKFLOW_REF || env.GITHUB_WORKFLOW_REF !== expectedWorkflowRef) {
     throw new Error('LOW_STOCK_DIAGNOSTIC_WORKFLOW_INVALID');
   }
@@ -198,8 +198,7 @@ async function main(args = process.argv.slice(2)) {
     client = new pg.Client({
       connectionString,
       connectionTimeoutMillis: 15000,
-      statement_timeout: 120000,
-      ...(diagnose ? { options: '-c default_transaction_read_only=on' } : {})
+      statement_timeout: 120000
     });
     phase = 'database_connect';
     await client.connect();

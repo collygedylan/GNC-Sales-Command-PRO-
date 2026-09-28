@@ -17,12 +17,6 @@ on:
       - supabase/migrations/20260928145055_item_low_stock_targets.sql
       - .github/workflows/apps-script-sync.yml
   workflow_dispatch:
-    inputs:
-      diagnose_database:
-        description: "Read-only database connection diagnosis; never deploys"
-        type: boolean
-        default: false
-
 
 permissions:
   contents: read
@@ -30,37 +24,13 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: apps-script-codegs-sync${{ inputs.diagnose_database && '-diagnose' || '' }}
+  group: apps-script-codegs-sync
   cancel-in-progress: false
 
 jobs:
-  diagnose-database:
-    name: Diagnose database connection without deploying
-    if: >-
-      github.event_name == 'workflow_dispatch' && inputs.diagnose_database &&
-      github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - name: Install locked dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts
-      - name: Probe the configured database without applying migrations
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: node scripts/apply-item-low-stock-migration.mjs --diagnose
-
   authorize-production:
     name: Authorize exact current-main release
-    if: github.ref == 'refs/heads/main' && !inputs.diagnose_database
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

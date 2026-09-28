@@ -9,6 +9,7 @@ const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'ut
 const workflow = yaml.load(read('.github/workflows/publish-candidate.yml'));
 const pages = yaml.load(read('.github/workflows/pages-static.yml'));
 const backend = yaml.load(read('.github/workflows/apps-script-sync.yml'));
+const diagnostic = yaml.load(read('.github/workflows/apps-script-database-diagnostic.yml'));
 const script = workflow.jobs.publish.steps.find(step => step.uses === 'actions/github-script@v7').with.script;
 const repository = 'example/gnc';
 const headSha = 'validated-head-sha';
@@ -139,6 +140,11 @@ test('the dispatcher is trusted, least-scoped, and cannot recursively dispatch i
   assert.match(script, /workflow_id: 'apps-script-sync\.yml'[\s\S]*ref: 'main'/);
   assert.doesNotMatch(script, /workflow_id: 'pages-static\.yml'/);
   assert.ok(Object.hasOwn(backend.on, 'workflow_dispatch'));
+  assert.equal(diagnostic.name, 'Diagnose low-stock database connection');
+  assert.ok(Object.hasOwn(diagnostic.on, 'workflow_dispatch'));
+  assert.equal(diagnostic.jobs['diagnose-database'].if, "github.ref == 'refs/heads/main'");
+  assert.match(script, /workflow_id: 'apps-script-sync\.yml'/);
+  assert.doesNotMatch(script, /apps-script-database-diagnostic\.yml/);
   assert.ok(Object.hasOwn(pages.on, 'workflow_dispatch'));
   assert.doesNotMatch(workflow.on.workflow_run.workflows.join(' '), /Publish validated candidate|Deploy static app to Pages/);
 });
