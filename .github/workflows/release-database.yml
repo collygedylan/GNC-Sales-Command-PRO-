@@ -168,6 +168,7 @@ jobs:
           cp supabase/migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260924172552_request_drive_evidence_reset_guard.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260924181019_optimize_request_history_read_projection.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260928145055_item_low_stock_targets.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -217,6 +218,7 @@ jobs:
           cp supabase/tests/hl_order_restock_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/hl_po_seasons_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/manager_season_priority_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/eval_item_low_stock_targets_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         id: stack

@@ -3,6 +3,369 @@
 // =========================================================================
 
 // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ 1. RUN THIS ONCE TO CLEAR GOOGLE'S SECURITY WALL
+// SOC ORDER HISTORY PURE CORE START
+// The legacy positional adapter is the SOC 81-column export, checked against
+// modern headered reports. No unrelated/headerless worksheet is guessed.
+const SOC_HISTORY_LEGACY_COLUMNS = Object.freeze(["WAREHOUSEID","WAREHOUSENAME","ISRESERVE","SALESREPID","SALESREPNAME","NATIONALACCOUNT","IDGROUP","CUSTOMERIDENTITYID","CUSTOMERNAME","CONSIGNEEIDENTITYID","CONSIGNEENAME","CONSIGNEECITY","CONSIGNEESTATE","CONSIGNEEZIP","TRIPNUMBER","STOPNUMBER","ZONECODE","TAGCODE","TRANSACTIONNUMBER","PURCHASEORDERNUMBER","EXTUNITPRICE","ORDERTOTAL","REQUESTDATE","STAGENAME","STEP","CUSTOMERSKU","FORMATTEDUPC","PRINTEDCONTAINERCODE","LOTCODE","LOCATIONCODE","DESCRIPTORCODE","ITEMCODE","PLANTGROUPCODE","SORTNAMEVARIETY","CONTAINERSORT","QUALITYCODE","COMMONNAME","QUANTITYORDERED","QUANTITYSHIPPED","LISTPRICE","UNITPRICE","HANDLINGCHARGEPERITEM","TAGGINGCHARGEPERITEM","COMBINEDPRICE","FREIGHTRATEPERITEM","LANDED","RETAILPRICE","HOLDSTOPCODE","HOLDSTOPREASON","SALESNOTE","FNSALESNOTE","PICKNOTE","PLANSTART","GENERALLOADINSTR","INVOICEDATE","CONSIGNEEADDRESS_1","CONSIGNEEADDRESS_2","ALTSHIPCOMMENT","SHIPTOTELEPHONE_1","OKLOADINSTRUCTIONS","TXLOADINSTRUCTIONS","NCLOADINSTRUCTIONS","HLLOADINSTRUCTIONS","DOCK","EQUIV_UNIT","EQUIV_UOM","WINGDINGUNITS","DROPWEIGHT","INTERNALINVNOTE","HARDINESSZONE","BRAND","TAGDEPTNOTE","Ext Unit Merch Shipped","Ext Eunit Shipped","Avg Price/Eunit Shipped","REQUESTDATEWEEK","Carrier","Suspend","Suspend-To","QA Code","GROWER"]);
+function socHistoryText_(value) {
+  const text = String(value == null ? '' : value).replace(/\u00a0/g, ' ').trim();
+  return /^(?:null|nan|undefined)$/i.test(text) ? '' : text;
+}
+function socHistoryNumber_(value) {
+  const text = socHistoryText_(value).replace(/,/g, '');
+  return text && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text) ? Number(text) : null;
+}
+function socHistoryLocalParts_(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) throw new Error('SOC_HISTORY_DATE_INVALID');
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
+    minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(date);
+  return Object.fromEntries(parts.map(function(p) { return [p.type, p.value]; }));
+}
+function socHistoryChicagoInstant_(day, clock) {
+  const desired = Date.parse(day + 'T' + clock + 'Z');
+  let candidate = desired;
+  for (let i = 0; i < 3; i++) {
+    const p = socHistoryLocalParts_(candidate);
+    const local = Date.parse(p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute + ':' + p.second + 'Z');
+    const difference = desired - local;
+    candidate += difference;
+    if (!difference) break;
+  }
+  return new Date(candidate).toISOString();
+}
+function parseSocHistoryReportTime_(file) {
+  const name = String(file.title || file.name || '');
+  const created = socHistoryLocalParts_(file.created_at || file.createdTime);
+  let day = '', clock = '', method = '', match;
+  // Modern exports encode the 24-hour clock BEFORE YYYYMMDD; the clock
+  // after it is a redundant 12-hour representation.
+  match = name.match(/-(\d{2})(\d{2})(\d{2})(20\d{2})(\d{2})(\d{2})\d{6}/);
+  if (match) {
+    day = match[4] + '-' + match[5] + '-' + match[6];
+    clock = match[1] + ':' + match[2] + ':' + match[3];
+    method = 'filename_timestamp';
+  } else {
+    match = name.match(/\b(20\d{2})[-_](\d{1,2})[-_](\d{1,2})(?:\s+(\d{1,2}))?/);
+    if (match) {
+      day = match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0');
+      clock = '00:00:' + String(match[4] || '0').padStart(2, '0');
+      method = match[4] ? 'filename_date_sequence' : 'filename_date';
+    } else {
+      match = name.match(/(?:SOC[ _]*)(\d{1,2})-(\d{1,2})(?:-(20\d{2}))?/i);
+      if (match) {
+        day = (match[3] || created.year) + '-' + match[1].padStart(2, '0') + '-' + match[2].padStart(2, '0');
+        clock = '00:00:00';
+        method = match[3] ? 'filename_date' : 'filename_date_inferred_year';
+      } else {
+        day = created.year + '-' + created.month + '-' + created.day;
+        clock = created.hour + ':' + created.minute + ':' + created.second;
+        method = 'creation_time_fallback';
+      }
+    }
+  }
+  const check = new Date(day + 'T' + clock + 'Z');
+  if (!Number.isFinite(check.getTime()) || check.toISOString().slice(0, 10) !== day) throw new Error('SOC_HISTORY_DATE_INVALID');
+  // Date-only legacy reports use sequence zero; explicit sequence 2 must rank
+  // after the unnumbered first report regardless of when a copy was uploaded.
+  // Actual creation time breaks equal snapshot/sequence ties separately.
+  return { report_date: day, snapshot_at: socHistoryChicagoInstant_(day, clock), source_date_method: method,
+    source_created_at: new Date(file.created_at || file.createdTime).toISOString() };
+}
+function inspectSocHistorySheet_(values, fileName) {
+  const normalize = function(x) { return socHistoryText_(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  const required = ['WAREHOUSEID', 'TRANSACTIONNUMBER', 'ITEMCODE', 'QUANTITYORDERED', 'DOCK'];
+  for (let i = 0; i < Math.min(20, values.length); i++) {
+    const cells = (values[i] || []).map(normalize);
+    if (!cells.includes('ITEMCODE') || !cells.includes('DOCK')) continue;
+    if (required.some(function(h) { return cells.indexOf(h) < 0 || cells.indexOf(h) !== cells.lastIndexOf(h); })) {
+      throw new Error('SOC_HISTORY_HEADER_INVALID');
+    }
+    return { header_row: i + 1, start_row: i + 1, index: Object.fromEntries(cells.map(function(h, j) { return [h, j]; })), schema: 'headered' };
+  }
+  const preamble = socHistoryText_((values[0] || [])[0]);
+  if (!/soc/i.test(String(fileName || '')) || !/WAREHOUSE|ISRESERVE|REQUESTDATE/i.test(preamble)) {
+    throw new Error('SOC_HISTORY_HEADER_MISSING');
+  }
+  const nonempty = values.slice(1).filter(function(r) { return r.some(function(c) { return socHistoryText_(c); }); });
+  if (!nonempty.length) throw new Error('SOC_HISTORY_LEGACY_SCHEMA_INVALID');
+  // Validate multiple independent positions, including the trailing GROWER
+  // column bound. Sparse trailing cells are allowed, shifted columns are not.
+  const valid = nonempty.slice(0, 25).every(function(r) {
+    return r.length <= 81 && /^\d+$/.test(socHistoryText_(r[0]))
+      && /^(?:true|false|0|1)?$/i.test(socHistoryText_(r[2]))
+      && /^\d{6}\.\d{3}\.\d+$/.test(socHistoryText_(r[31]))
+      && socHistoryNumber_(r[37]) !== null && socHistoryNumber_(r[38]) !== null
+      && !!socHistoryText_(r[18]);
+  });
+  if (!valid) throw new Error('SOC_HISTORY_LEGACY_SCHEMA_INVALID');
+  return { header_row: null, start_row: 1,
+    index: Object.fromEntries(SOC_HISTORY_LEGACY_COLUMNS.map(function(h, i) { return [normalize(h), i]; })), schema: 'soc_legacy_81_v1' };
+}
+function parseSocHistoryRows_(values, fileName, sheetName, suppliedLayout) {
+  const layout = suppliedLayout || inspectSocHistorySheet_(values, fileName);
+  const result = { rows: [], source_row_count: 0, exclusion_counts: {}, exclusion_ranges: [], schema: layout.schema, header_row: layout.header_row, source_sheet_name: String(sheetName || 'Sheet1') };
+  let sourceRowNumber = 0;
+  const exclude = function(reason) {
+    result.exclusion_counts[reason] = (result.exclusion_counts[reason] || 0) + 1;
+    const prior = result.exclusion_ranges[result.exclusion_ranges.length - 1];
+    if (prior && prior.reason === reason && prior.through_row === sourceRowNumber - 1) prior.through_row = sourceRowNumber;
+    else result.exclusion_ranges.push({ reason: reason, from_row: sourceRowNumber, through_row: sourceRowNumber });
+  };
+  for (let i = layout.start_row; i < values.length; i++) {
+    const row = values[i] || [];
+    if (!row.some(function(v) { return socHistoryText_(v); })) continue;
+    sourceRowNumber = i + 1 + Number(layout.source_row_offset || 0);
+    result.source_row_count++;
+    const cell = function(key) { return socHistoryText_(row[layout.index[key]]); };
+    const itemcode = cell('ITEMCODE').toUpperCase();
+    if (!itemcode) { exclude('missing_itemcode'); continue; }
+    const dock = cell('DOCK');
+    if (!dock || socHistoryNumber_(dock) === 0) { exclude('missing_dock'); continue; }
+    const quantity = socHistoryNumber_(cell('QUANTITYORDERED'));
+    if (quantity === null || !Number.isFinite(quantity) || quantity <= 0) { exclude('invalid_quantity'); continue; }
+    const warehouse = cell('WAREHOUSEID').toUpperCase();
+    const transaction = cell('TRANSACTIONNUMBER').toUpperCase();
+    const consignee = cell('CONSIGNEEIDENTITYID') || cell('CUSTOMERIDENTITYID') || cell('CONSIGNEENAME') || cell('CUSTOMERNAME');
+    if (!warehouse || !transaction || !consignee) { exclude('missing_identity'); continue; }
+    result.rows.push({ group_key: JSON.stringify([warehouse, transaction, consignee.toUpperCase(), itemcode]),
+      itemcode: itemcode, quantity_ordered: quantity, dock: dock,
+      source_row_number: i + 1 + Number(layout.source_row_offset || 0), source_sheet_name: String(sheetName || 'Sheet1') });
+  }
+  return result;
+}
+function summarizeSocHistoryFiles_(files) {
+  const groups = new Map();
+  files.filter(function(f) { return f.status === 'complete' || f.rows; })
+    .sort(function(a, b) { return a.snapshot_at.localeCompare(b.snapshot_at)
+      || String(a.source_created_at || '').localeCompare(String(b.source_created_at || ''))
+      || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); })
+    .forEach(function(file) {
+      const bags = new Map();
+      (file.rows || []).forEach(function(row) {
+        if (!bags.has(row.group_key)) bags.set(row.group_key, []);
+        bags.get(row.group_key).push(row);
+      });
+      bags.forEach(function(rows, key) { groups.set(file.report_date + '|' + key, { day: file.report_date, rows: rows }); });
+    });
+  const items = new Map();
+  groups.forEach(function(group) {
+    group.rows.forEach(function(row) {
+      if (!items.has(row.itemcode)) items.set(row.itemcode, { quantities: [], days: new Set() });
+      const item = items.get(row.itemcode);
+      item.quantities.push(row.quantity_ordered); item.days.add(group.day);
+    });
+  });
+  return Array.from(items.entries()).sort(function(a, b) { return a[0].localeCompare(b[0]); }).map(function(entry) {
+    const item = entry[1], q = item.quantities.sort(function(a, b) { return a - b; });
+    const days = Array.from(item.days).sort(), average = q.reduce(function(a, b) { return a + b; }, 0) / q.length;
+    const p75 = q[Math.ceil(q.length * 0.75) - 1];
+    return { itemcode: entry[0], average_order_qty: average, observation_count: q.length, distinct_days: days.length,
+      first_report_date: days[0], last_report_date: days[days.length - 1], p75_order_qty: p75,
+      suggested_low_stock_qty: Math.ceil(average + Math.max(average, p75)) };
+  });
+}
+// SOC ORDER HISTORY PURE CORE END
+
+const SOC_ORDER_HISTORY_PARSER_VERSION = 'soc-history-v1';
+const SOC_ORDER_HISTORY_TRIGGER = 'runSocOrderHistoryBackfillChunk_';
+const SOC_ORDER_HISTORY_STATE = 'SOC_ORDER_HISTORY_STATE_V1';
+function scheduleSocOrderHistoryTrigger_(delayMs) {
+  if (ScriptApp.getProjectTriggers().some(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })) return;
+  ScriptApp.newTrigger(SOC_ORDER_HISTORY_TRIGGER).timeBased().after(Math.max(60000, Number(delayMs) || 60000)).create();
+}
+function socHistoryHash_(value) {
+  return bytesToSha256Hex_(Utilities.newBlob(String(value)).getBytes());
+}
+function socHistoryDisposition_(name) {
+  if (/^DriveAroundMC-/i.test(name)) return { disposition: 'excluded', exclusion_reason: 'non_soc_drivearound_mc' };
+  return { disposition: 'eligible', exclusion_reason: null };
+}
+function listSocOrderHistoryFiles_() {
+  const iterator = DriveApp.getFolderById(FOLDERS.SOC_PROCESSED).getFiles();
+  const files = [];
+  while (iterator.hasNext()) {
+    const file = iterator.next();
+    const title = String(file.getName());
+    // These are temporary files made ONLY by this worker, never legacy TEMP_SOC
+    // archive copies. Ignore a stranded conversion without deleting source data.
+    if (title.indexOf('TEMP_SOC_HISTORY_CONVERT_') === 0) continue;
+    const disposition = socHistoryDisposition_(title);
+    files.push({ file: file, id: file.getId(), title: title, created_at: file.getDateCreated().toISOString(),
+      source_revision: file.getLastUpdated().toISOString() + '|' + SOC_ORDER_HISTORY_PARSER_VERSION,
+      content_bytes: Number(file.getSize() || 0), disposition: disposition.disposition,
+      exclusion_reason: disposition.exclusion_reason });
+  }
+  return files.sort(function(a, b) { return a.id.localeCompare(b.id); });
+}
+function extractSocOrderHistoryFile_(entry) {
+  const file = entry.file, mime = String(file.getMimeType()).toLowerCase();
+  let temporaryId = '';
+  try {
+    let sheetId = entry.id;
+    if (isExcelLikeFile_(mime, entry.title.toLowerCase())) {
+      // Keep conversion scratch files out of the source archive manifest.
+      const converted = withDriveRetry_('Convert SOC history workbook', function() {
+        return Drive.Files.create({ name: 'TEMP_SOC_HISTORY_CONVERT_' + entry.id,
+          mimeType: GOOGLE_SHEETS_MIME_TYPE }, file.getBlob(), { fields: 'id' });
+      });
+      temporaryId = String(converted.id || '');
+      if (!temporaryId) throw new Error('SOC_HISTORY_CONVERSION_FAILED');
+      sheetId = temporaryId;
+    } else if (mime !== GOOGLE_SHEETS_MIME_TYPE) {
+      throw new Error('SOC_HISTORY_UNSUPPORTED_FILE');
+    }
+    const book = temporaryId ? openSpreadsheetWithRetry_(sheetId, 'SOC history') : SpreadsheetApp.openById(sheetId);
+    const matches = [];
+    book.getSheets().forEach(function(sheet) {
+      if (!sheet.getLastRow()) return;
+      // Display strings protect leading-zero itemcodes in both source formats.
+      try {
+        const width = sheet.getLastColumn(), height = sheet.getLastRow();
+        if (width > 256) throw new Error('SOC_HISTORY_SCHEMA_TOO_WIDE');
+        const preview = sheet.getRange(1, 1, Math.min(25, height), width).getDisplayValues();
+        if (entry.disposition === 'excluded') {
+          const inventoryHeader = preview.find(function(row) {
+            const keys = row.map(function(v) { return String(v).trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+            return ['ITEMCODE', 'LOCATIONCODE', 'PTRONHAND', 'SLTS'].every(function(k) { return keys.indexOf(k) >= 0; })
+              && keys.indexOf('DOCK') < 0 && keys.indexOf('QUANTITYORDERED') < 0;
+          });
+          if (!inventoryHeader) throw new Error('SOC_HISTORY_EXCLUSION_SCHEMA_INVALID');
+          matches.push({ rows: [], source_row_count: Math.max(0, height - preview.indexOf(inventoryHeader) - 1),
+            exclusion_counts: { non_order_report: Math.max(0, height - preview.indexOf(inventoryHeader) - 1) },
+            exclusion_ranges: height > preview.indexOf(inventoryHeader) + 1 ? [{ reason: 'non_order_report', from_row: preview.indexOf(inventoryHeader) + 2, through_row: height }] : [],
+            schema: 'drivearound_inventory', source_sheet_name: sheet.getName() });
+          return;
+        }
+        const layout = inspectSocHistorySheet_(preview, entry.title);
+        const result = { rows: [], source_row_count: 0, exclusion_counts: {}, exclusion_ranges: [], schema: layout.schema, header_row: layout.header_row, source_sheet_name: sheet.getName() };
+        for (let first = layout.start_row + 1; first <= height; first += 2000) {
+          const values = sheet.getRange(first, 1, Math.min(2000, height - first + 1), width).getDisplayValues();
+          const parsed = parseSocHistoryRows_(values, entry.title, sheet.getName(), Object.assign({}, layout, {
+            start_row: 0, source_row_offset: first - 1
+          }));
+          result.rows = result.rows.concat(parsed.rows);
+          result.exclusion_ranges = result.exclusion_ranges.concat(parsed.exclusion_ranges);
+          result.source_row_count += parsed.source_row_count;
+          Object.keys(parsed.exclusion_counts).forEach(function(reason) {
+            result.exclusion_counts[reason] = (result.exclusion_counts[reason] || 0) + parsed.exclusion_counts[reason];
+          });
+        }
+        matches.push(result);
+      } catch (error) {
+        if (String(error.message) !== 'SOC_HISTORY_HEADER_MISSING') throw error;
+      }
+    });
+    if (matches.length !== 1) throw new Error(matches.length ? 'SOC_HISTORY_MULTIPLE_SHEETS' : 'SOC_HISTORY_HEADER_MISSING');
+    return matches[0];
+  } finally {
+    cleanupTempGoogleSheet_(temporaryId, 'SOC history conversion');
+  }
+}
+function runSocOrderHistoryBackfillChunk_() {
+  const lock = LockService.getUserLock();
+  if (!lock.tryLock(1000)) return { status: 'locked' };
+  let nextDelay = 15 * 60 * 1000;
+  const started = Date.now();
+  try {
+    ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })
+      .forEach(function(t) { ScriptApp.deleteTrigger(t); });
+    // Apps Script can terminate without finally on a hard runtime limit.
+    // Queue recovery before conversion/parsing; normal completion replaces it.
+    scheduleSocOrderHistoryTrigger_(7 * 60 * 1000);
+    const properties = PropertiesService.getScriptProperties();
+    const files = listSocOrderHistoryFiles_();
+    if (!files.length) throw new Error('SOC_HISTORY_ARCHIVE_EMPTY');
+    const manifest = files.map(function(f) { return { drive_file_id: f.id, source_revision: f.source_revision }; });
+    const run = callSupabaseRpc_('begin_eval_item_low_stock_import_v1', { p_manifest: manifest });
+    if (!run || !run.run_id) throw new Error('SOC_HISTORY_RUN_INVALID');
+    const pending = new Set((run.pending_files || []).map(function(f) { return f.drive_file_id + '|' + f.source_revision; }));
+    const remaining = files.filter(function(f) { return pending.has(f.id + '|' + f.source_revision); });
+    let state = {};
+    try { state = JSON.parse(properties.getProperty(SOC_ORDER_HISTORY_STATE) || '{}'); } catch (ignored) {}
+    let offset = state.run_id === run.run_id ? Number(state.cursor || 0) % Math.max(1, remaining.length) : 0;
+    const resumeOffset = state.run_id === run.run_id ? remaining.findIndex(function(f) { return f.id === state.resume_file_id; }) : -1;
+    if (resumeOffset >= 0) offset = resumeOffset;
+    let processed = 0, failures = 0, attempted = 0;
+    let resumeFileId = '';
+    for (let attempt = 0; attempt < Math.min(3, remaining.length); attempt++) {
+      if (Date.now() - started > 3 * 60 * 1000) break;
+      const entry = remaining[(offset + attempt) % remaining.length];
+      attempted++;
+      try {
+        const timing = parseSocHistoryReportTime_(entry);
+        const parsed = extractSocOrderHistoryFile_(entry);
+        if (entry.file.getLastUpdated().toISOString() + '|' + SOC_ORDER_HISTORY_PARSER_VERSION !== entry.source_revision) {
+          throw new Error('SOC_HISTORY_SOURCE_CHANGED');
+        }
+        // Semantic digest: retained observations + parser/schema/exclusion proof.
+        // Original files are never moved, renamed, or modified by this worker.
+        const hash = socHistoryHash_(JSON.stringify({ parser: SOC_ORDER_HISTORY_PARSER_VERSION, parsed: parsed, timing: timing }));
+        const prepared = callSupabaseRpc_('prepare_eval_item_low_stock_file_v1', {
+          p_run_id: run.run_id, p_drive_file_id: entry.id, p_source_revision: entry.source_revision,
+          p_file_name: entry.title, p_source_report_date: timing.report_date, p_snapshot_at: timing.snapshot_at,
+          p_source_date_method: timing.source_date_method, p_source_created_at: timing.source_created_at,
+          p_content_sha256: hash, p_content_bytes: entry.content_bytes,
+          p_source_sheet_name: parsed.source_sheet_name || null,
+          p_source_row_count: parsed.source_row_count, p_expected_row_count: parsed.rows.length,
+          p_exclusion_counts: Object.assign({ schema: parsed.schema, row_ranges: parsed.exclusion_ranges }, parsed.exclusion_counts),
+          p_disposition: entry.disposition, p_exclusion_reason: entry.exclusion_reason
+        });
+        if (!prepared || !prepared.file_version_id) throw new Error('SOC_HISTORY_FILE_STATE_INVALID');
+        if (prepared.status !== 'complete') {
+          // Staging is sequential and idempotent. Resume beyond the persisted
+          // source ordinal so a large native sheet can span bounded executions.
+          const lastStaged = Number(prepared.last_staged_row_number || 0);
+          const unstaged = parsed.rows.filter(function(row) { return row.source_row_number > lastStaged; });
+          let yielded = false;
+          for (let i = 0; i < unstaged.length; i += 250) {
+            if (Date.now() - started > 280000) { yielded = true; break; }
+            callSupabaseRpc_('stage_eval_item_low_stock_rows_v1', {
+              p_file_version_id: prepared.file_version_id, p_rows: unstaged.slice(i, i + 250)
+            });
+          }
+          if (yielded) { nextDelay = 60000; resumeFileId = entry.id; break; }
+          callSupabaseRpc_('finalize_eval_item_low_stock_file_v1', {
+            p_file_version_id: prepared.file_version_id, p_content_sha256: hash, p_expected_row_count: parsed.rows.length
+          });
+        }
+        processed++;
+      } catch (error) {
+        failures++;
+        const errorCode = /^SOC_HISTORY_[A-Z_]+$/.test(String(error.message)) ? error.message : 'SOC_HISTORY_FILE_RETRY';
+        // Avoid logging raw customer rows, RPC payloads, or provider responses.
+        console.warn('[SOC HISTORY] ' + errorCode + ' file=' + entry.id);
+      }
+    }
+    const after = callSupabaseRpc_('begin_eval_item_low_stock_import_v1', { p_manifest: manifest });
+    if (after.complete && !after.active) {
+      // Re-list before publication: changed/new files must join coverage first.
+      const fresh = listSocOrderHistoryFiles_().map(function(f) { return { drive_file_id: f.id, source_revision: f.source_revision }; });
+      if (JSON.stringify(fresh) !== JSON.stringify(manifest)) {
+        nextDelay = 60000;
+      } else {
+        callSupabaseRpc_('activate_eval_item_low_stock_import_v1', { p_run_id: after.run_id });
+        emitTableSyncLiveEvent_('ph_eval_item_low_stock_targets', { runId: after.run_id, filesProcessed: processed });
+      }
+    } else if (!after.complete && !failures) nextDelay = 60000;
+    properties.setProperty(SOC_ORDER_HISTORY_STATE, JSON.stringify({ run_id: run.run_id,
+      cursor: offset + attempted, resume_file_id: resumeFileId, pending: (after.pending_files || []).length,
+      failures: failures, updated_at: new Date().toISOString() }));
+    return { status: after.complete ? 'complete' : 'pending', files_processed: processed, failures: failures,
+      pending: (after.pending_files || []).length };
+  } catch (error) {
+    console.warn('[SOC HISTORY] BACKFILL_RETRY');
+    return { status: 'retry' };
+  } finally {
+    lock.releaseLock();
+    ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })
+      .forEach(function(t) { ScriptApp.deleteTrigger(t); });
+    scheduleSocOrderHistoryTrigger_(nextDelay);
+  }
+}
+
+
 function triggerPermissions() { 
   DriveApp.getRootFolder(); 
   GmailApp.getAliases(); 
@@ -57,6 +420,10 @@ function removeDropFolderAutoSyncTrigger() {
 }
 
 function runAutoDropFolderSync_() {
+  // Queue bounded historical analysis independently of the operational import.
+  // A failed/unfinished backfill must never block current SOC synchronization.
+  try { scheduleSocOrderHistoryTrigger_(60 * 1000); }
+  catch (historyError) { console.warn('[SOC HISTORY] SCHEDULE_DEFERRED'); }
   try {
     const workerResult = runRequestIntegrityScheduledWorker_();
     if (workerResult && workerResult.status === 'deferred') {
@@ -3032,6 +3399,19 @@ function callSupabaseRpc_(rpcName, payload) {
   return text ? JSON.parse(text) : null;
 }
 
+function getAssignedItemLowStockExportTargets_(rows) {
+  const codes = Array.from(new Set(rows.map(function(row) {
+    return String(row.itemcode_normalized || row.itemcode || '').trim().toUpperCase();
+  }).filter(Boolean)));
+  const targets = {};
+  for (let i = 0; i < codes.length; i += 500) {
+    const result = callSupabaseRpc_('get_eval_item_low_stock_targets_v1', { p_itemcodes: codes.slice(i, i + 500), p_limit: 500 });
+    if (!Array.isArray(result)) throw new Error('LOW_STOCK_EXPORT_LOOKUP_FAILED');
+    result.forEach(function(target) { targets[String(target.itemcode_normalized || '').trim().toUpperCase()] = target; });
+  }
+  return targets;
+}
+
 function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const safeSheetId = String(sheetId || WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID).trim();
   const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
@@ -3048,14 +3428,17 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
     return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true });
   });
 
+  const lowStockTargets = getAssignedItemLowStockExportTargets_(rows);
   const spreadsheet = SpreadsheetApp.openById(safeSheetId);
   const sheet = spreadsheet.getSheets()[0];
   const headers = [
     'ITEMCODE', 'ASSIGNEDTO', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
     'PRESENT_IN_DRIVE', 'ASSIGNED_BY', 'ASSIGNED_AT', 'FIRST_SEEN_AT',
-    'LAST_SEEN_AT', 'UPDATED_AT'
+    'LAST_SEEN_AT', 'UPDATED_AT', 'AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY',
+    'SUGGESTED_LOW_STOCK_QTY', 'ORDER_LINE_OBSERVATIONS', 'HISTORY_DAYS', 'HISTORY_CALCULATED_AT'
   ];
   const values = [headers].concat(rows.map(function(row) {
+    const target = lowStockTargets[String(row.itemcode_normalized || row.itemcode || '').trim().toUpperCase()] || {};
     return [
       row.itemcode_normalized || row.itemcode || '',
       row.assignedto || '',
@@ -3067,7 +3450,13 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
       row.assigned_at || '',
       row.first_seen_at || '',
       row.last_seen_at || '',
-      row.updated_at || ''
+      row.updated_at || '',
+      target.history_ready === false ? 'History processing' : (target.mean_quantity == null ? 'No history' : target.mean_quantity),
+      target.effective_qty == null ? '' : target.effective_qty,
+      target.suggested_qty == null ? '' : target.suggested_qty,
+      target.qualifying_line_count || 0,
+      target.qualifying_day_count || 0,
+      target.calculated_at || ''
     ];
   }));
 

@@ -252,6 +252,37 @@ test('low stock qualifies from the configured current season and returns only ta
   }
 });
 
+test('item low-stock targets resolve override before suggestion then the configured fallback in both classifiers', () => {
+  const rows = [
+    row('OVERRIDE', 'F1', 27, { TEST_ID: 'override-below', S_LTS: 119 }),
+    row('OVERRIDE', 'U1', 27, { TEST_ID: 'override-support' }),
+    row('SUGGESTED', 'F1', 27, { TEST_ID: 'suggestion-below', S_LTS: 89 }),
+    row('SUGGESTED', 'U2', 27, { TEST_ID: 'suggestion-support' }),
+    row('GLOBAL', 'F1', 27, { TEST_ID: 'global-below', S_LTS: 74 }),
+    row('GLOBAL', 'U3', 27, { TEST_ID: 'global-support' }),
+      row('PENDING', 'F1', 27, { TEST_ID: 'pending-prior-anchor', S_LTS: 50 }),
+      row('PENDING', 'U1', 27, { TEST_ID: 'pending-prior-support' }),
+      row('INITIAL', 'F1', 27, { TEST_ID: 'initial-fallback-anchor', S_LTS: 74 }),
+      row('INITIAL', 'U2', 27, { TEST_ID: 'initial-fallback-support' }),
+    row('BOUNDARY', 'F1', 27, { TEST_ID: 'strict-boundary', S_LTS: 100 }),
+    row('BOUNDARY', 'X', 27, { TEST_ID: 'boundary-support' })
+  ];
+  const itemLowStockTargets = new Map([
+    ['OVERRIDE', { itemcode_normalized: 'OVERRIDE', manual_override_qty: 120, suggested_qty: 10 }],
+    ['SUGGESTED', { itemcode_normalized: 'SUGGESTED', manual_override_qty: null, suggested_qty: 90 }],
+    ['BOUNDARY', { itemcode_normalized: 'BOUNDARY', manual_override_qty: null, suggested_qty: 100 }],
+      ['PENDING', { itemcode_normalized: 'PENDING', history_ready: false, manual_override_qty: null, suggested_qty: 40 }],
+      ['INITIAL', { itemcode_normalized: 'INITIAL', history_ready: false, manual_override_qty: null, suggested_qty: null }]
+  ]);
+  for (const classify of [engine.classifyRows, engine.classifyScriptCompatibleRows]) {
+    const result = classify(rows, {
+      currentSeason: 'F1', currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27,
+      settings: { lowStockMaxSLts: 75 }, itemLowStockTargets, now
+    });
+      assert.deepEqual(ids(result.reports['low-stock']), ['global-support', 'initial-fallback-support', 'override-support', 'suggestion-support']);
+  }
+});
+
 test('sorts by AssignedTo, ItemCode, season order, sales year, and location', () => {
   const rows = [
     row('B', 'X', 27, { TEST_ID: '4', ASSIGNEDTO: 'zoe_green', LOCATIONCODE: 'B.02.001' }),
@@ -612,7 +643,7 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
     managerEvalReport2Cache: null, managerEvalReport2CacheKey: '', fullInventory: Array(9364), warehouseAssignedItemsInventory: [],
     getConfiguredCurrentSeasonCode: () => 'F1', getConfiguredCurrentSalesYearCode: () => 27,
     getConfiguredNextSaleSeasonTarget: () => ({ season: 'S1', salesYear: 27 }),
-    getManagerEvalReport2CacheKeyValue: () => 'current', managerEvalReportSettings: {},
+    getManagerEvalReport2CacheKeyValue: () => 'current', getManagerItemLowStockTargetsState: () => ({ rowsByCode: new Map(), revision: 0 }), managerEvalReportSettings: {},
     reconcileManagerEvalReport2Navigation: () => {}, performance: { now: () => (clock++ % 2) * 600 },
     reportSemanticHealthEvent: (...args) => events.push(args),
     loadManagerEvalReports2: () => { loads++; state.loading = true; return Promise.resolve(); }
@@ -660,6 +691,7 @@ test('async report results reject changed identity, snapshot, and access', async
       getConfiguredCurrentSeasonCode: () => 'F1', getConfiguredCurrentSalesYearCode: () => 27,
       getManagerEvalReport2WorkerSource: () => 'fixture', window: { location: { href: 'https://fixture.invalid/' } },
       fullInventory: [], warehouseAssignedItemsInventory: [], managerEvalReportSettings: {},
+      getManagerItemLowStockTargetsState: () => ({ rowsByCode: new Map(), revision: 0 }),
       setTimeout: () => 1, clearTimeout: () => {}, reconcileManagerEvalReport2Navigation: () => {},
       reportSemanticHealthEvent: () => assert.fail('unexpected worker fallback'),
       getManagerEvalReport2Index: () => assert.fail('unexpected synchronous build')

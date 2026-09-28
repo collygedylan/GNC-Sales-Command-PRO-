@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 test('Assigned Items header and phone filters share complete rows, export, sorting and safe editing', async ({ page, baseURL }, testInfo) => {
   const origin = new URL(baseURL!).origin;
@@ -161,10 +161,25 @@ test('Assigned Items preserves the real navigation state and a focused editor du
     activeHomeTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
     managerAssignedColumnState = { owner: currentUser, filters: {}, sort: null, editor: null };
     managersSearchTerm = ''; managerAssignedItemsAssignedToFilter = 'all';
+    fullInventory = []; rebuildMasterInventoryIndexes();
     warehouseAssignedItemsInventory = Array.from({ length: 240 }, (_, i) => ({
       UNIQUE_ID: 'nav-' + i, ITEMCODE: String(i).padStart(6, '0'), COMMONNAME: 'Rose ' + i,
       ASSIGNEDTO: '', CONTSIZE: '#3', LOCATIONCODE: 'D.08.002', WAREHOUSEI: 0, SOURCE: 'Import', GENUSNAME: 'Rosa'
     }));
+    window.__targetReadReleased = false;
+    window.__heldTargetReadResolvers = [];
+    window.__releaseTargetReads = () => {
+      window.__targetReadReleased = true;
+      const pending = window.__heldTargetReadResolvers.splice(0);
+      pending.forEach(release => release());
+    };
+    const originalTargetRpc = supabaseRpc;
+    supabaseRpc = async (name, args, options) => {
+      if (name !== 'get_eval_item_low_stock_targets_v1' || !Array.isArray(args?.p_itemcodes)) return originalTargetRpc(name, args, options);
+      const rows = args.p_itemcodes.map(itemcode => ({ itemcode_normalized: itemcode, history_ready: true, history_pending_files: 0, history_total_files: 4, qualifying_line_count: 12, qualifying_day_count: 4, source_file_count: 4, mean_quantity: 8, p75_quantity: 12, suggested_qty: 12, manual_override_qty: null, effective_qty: 12, override_revision: 0, history_from_date: '2026-09-01', history_through_date: '2026-09-26', calculated_at: '2026-09-27T12:00:00Z' }));
+      if (window.__targetReadReleased) return rows;
+      return new Promise(resolve => window.__heldTargetReadResolvers.push(() => resolve(rows)));
+    };
     managerEvalAssignmentSelection = new Set([buildManagerEvalAssignmentKey('000239', 'Rosa')]);
     Object.keys(DATASET_DEFINITIONS).forEach(key => {
       const state = getDatasetState(key); state.initialLoaded = state.fullLoaded = true; state.lastLoadedAt = new Date().toISOString();
@@ -185,6 +200,7 @@ test('Assigned Items preserves the real navigation state and a focused editor du
       window.__assignedExport = { ids: rows.map(row => row.UNIQUE_ID), values: rows.map(row => columns.map(col => col.value(row))), metadata };
     };
   })()`));
+  await page.waitForFunction(() => (window as any).eval('managerItemLowStockTargetsState.loading') && (window as any).__heldTargetReadResolvers.length > 0);
   const phone = (page.viewportSize()?.width || 1000) < 768;
   const panel = page.locator('#manager-assigned-filter-panel');
   const rows = page.locator(phone ? '[data-manager-assigned-item-card]' : '[data-manager-assigned-item-row]');
@@ -250,7 +266,12 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   await page.evaluate(() => (window as any).switchView('reports', { force: true }));
   await expect(page.locator('body')).toHaveAttribute('data-current-view', 'reports');
   expect(await page.evaluate(() => window.eval('viewHistoryStack.at(-1).scrollTop'))).toBe(savedScroll);
-  await page.evaluate(() => (window as any).goBackUniversal());
+  // Resolve a genuinely delayed history read in the same turn as the return
+  // navigation. Its completion render must not stomp the navigation scroll restore.
+  await page.evaluate(() => {
+    (window as any).goBackUniversal();
+    (window as any).__releaseTargetReads?.();
+  });
   await expect(page.locator('body')).toHaveAttribute('data-current-view', 'managers');
   await expect.poll(() => page.evaluate(() => (window as any).getMainAreaScrollTop())).toBe(savedScroll);
   expect(await page.evaluate(() => window.eval(`({ search: managersSearchTerm, assignee: managerAssignedItemsAssignedToFilter, sort: getManagerAssignedColumnState().sort, selected: [...managerEvalAssignmentSelection] })`)))
@@ -293,4 +314,196 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   await page.evaluate(() => window.eval(`currentUser = 'unauthorized_rep'; currentUserDisplay = 'Unauthorized Rep'; currentRole = 'REP'; renderManagers();`));
   await expect(panel).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Export Excel/ })).toHaveCount(0);
+});
+
+test('Assigned Items low-stock targets preserve focused drafts, enforce editor identities and export report-matched averages', async ({ page, baseURL }, testInfo) => {
+  const origin = new URL(baseURL!).origin;
+  await page.route('**/*', async route => {
+    if (new URL(route.request().url()).origin === origin) return route.continue();
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' });
+  });
+  await page.goto('/?e2e=assigned-item-low-stock', { waitUntil: 'load' });
+  await page.waitForFunction(() => (window as any).__gncAppRuntimeExecuted === true);
+  await page.evaluate(() => window.eval(`(() => {
+    resetProductionLiveSync();
+    currentUser = 'jd_jones'; currentUserDisplay = 'JD Jones'; currentRole = 'Manager';
+    activeHomeTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW; managersSearchTerm = ''; managerAssignedItemsAssignedToFilter = 'all';
+    warehouseAssignedItemsInventory = [
+      { UNIQUE_ID: 'target-a', ITEMCODE: 'ab-100', COMMONNAME: 'Alpha', ASSIGNEDTO: 'jd_jones', CONTSIZE: '#3', LOCATIONCODE: 'D.01.001', WAREHOUSEI: '10', SOURCE: 'Import', GENUSNAME: 'Rosa' },
+      { UNIQUE_ID: 'target-b', ITEMCODE: 'cd-200', COMMONNAME: 'Beta', ASSIGNEDTO: '', CONTSIZE: '#5', LOCATIONCODE: 'D.01.002', WAREHOUSEI: '10', SOURCE: 'Import', GENUSNAME: 'Acer' }
+    ];
+    const ds = getDatasetState('warehouseAssignedItems'); ds.initialLoaded = ds.fullLoaded = true;
+    evalAssignableUsersDirectoryResolved = true; canAccessView = () => true;
+    getManagerToolTabs = () => [{ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' }];
+    getCurrentVisibleViewId = () => 'managers'; GncMobileWorkspace.syncHub = () => {}; syncManagersHeaderChrome = () => {};
+    const targetA = { itemcode_normalized: 'AB-100', history_ready: true, history_pending_files: 0, history_total_files: 4, history_from_date: '2026-09-10', history_through_date: '2026-09-26', calculated_at: '2026-09-27T12:00:00Z', qualifying_line_count: 8, qualifying_day_count: 4, source_file_count: 4, mean_quantity: 11.75, p75_quantity: 18, suggested_qty: 20, manual_override_qty: null, effective_qty: 20, override_revision: 3, updated_at: '2026-09-27T12:00:00Z' };
+    const targetB = { itemcode_normalized: 'CD-200', history_ready: true, history_pending_files: 0, history_total_files: 2, history_from_date: '2026-09-10', history_through_date: '2026-09-26', calculated_at: '2026-09-27T12:00:00Z', qualifying_line_count: 2, qualifying_day_count: 2, source_file_count: 2, mean_quantity: 3, p75_quantity: 5, suggested_qty: 6, manual_override_qty: 4, effective_qty: 4, override_revision: 7, updated_at: '2026-09-27T12:00:00Z' };
+    managerItemLowStockTargetsState = { owner: currentUser, key: '', loadingKey: '', errorKey: '', rowsByCode: new Map([['AB-100', targetA], ['CD-200', targetB]]), loading: false, error: '', promise: null, requestId: 0, revision: 1, drafts: new Map(), saving: new Set() };
+    managerItemLowStockTargetsState.key = getManagerAssignedItemTargetKey();
+    window.__lowStockRpcCalls = [];
+    window.__simulateLowStockConflict = false;
+    supabaseRpc = async (name, args) => {
+      window.__lowStockRpcCalls.push({ name, args });
+      if (name === 'get_eval_item_low_stock_targets_v1') return args.p_itemcodes == null
+        ? Array.from(managerItemLowStockTargetsState.rowsByCode.values())
+        : args.p_itemcodes.map(code => managerItemLowStockTargetsState.rowsByCode.get(code)).filter(Boolean);
+      const prior = managerItemLowStockTargetsState.rowsByCode.get(args.p_itemcode);
+      if (window.__simulateLowStockConflict) {
+        window.__simulateLowStockConflict = false;
+        managerItemLowStockTargetsState.rowsByCode.set(args.p_itemcode, { ...prior, manual_override_qty: 9, effective_qty: 9, override_revision: Number(prior.override_revision) + 1 });
+        throw Object.assign(new Error('LOW_STOCK_OVERRIDE_CONFLICT'), { status: 40001 });
+      }
+      const target = { ...prior, manual_override_qty: args.p_override_qty, effective_qty: args.p_override_qty == null ? prior.suggested_qty : args.p_override_qty, override_revision: Number(prior.override_revision) + 1 };
+      managerItemLowStockTargetsState.rowsByCode.set(args.p_itemcode, target);
+      return [target];
+    };
+    window.__assignedExports = [];
+    downloadExcelWorkbook = (columns, rows, title, search, kind, metadata) => window.__assignedExports.push({ columns: columns.map(column => column.label), rows, kind, metadata });
+    scheduleManagersRender = () => setTimeout(renderManagers, 10);
+    const fixture = document.createElement('div'); fixture.id = 'low-stock-assigned-fixture';
+    fixture.style.cssText = 'position:fixed;inset:8px 8px 80px;overflow:auto;z-index:12000;background:var(--ui-surface,#fff)';
+    const wrapper = document.getElementById('view-wrapper');
+    Array.from(wrapper.children).forEach(view => { if (view.id.startsWith('view-')) view.classList.add('hidden'); });
+    document.getElementById('view-managers').classList.remove('hidden'); fixture.appendChild(wrapper); document.body.appendChild(fixture);
+    document.getElementById('managers-content').classList.remove('hidden'); renderManagers();
+  })()`));
+
+  const fixture = page.locator('#low-stock-assigned-fixture');
+  const row = fixture.locator('[data-manager-assigned-item-card], [data-manager-assigned-item-row]').filter({ has: page.locator('[data-low-stock-override="AB-100"]') });
+  const targetInput = fixture.locator('[data-low-stock-override="AB-100"]');
+  await expect(targetInput).toHaveValue('20');
+  await expect(targetInput).toHaveAttribute('inputmode', 'numeric');
+  await expect(fixture.locator('[data-manager-item-average="AB-100"]').first()).toHaveText('11.8');
+  await expect(row.getByText('8 lines · 4 days · 4 files · Limited history')).toBeVisible();
+  await row.getByText('8 lines · 4 days · 4 files · Limited history').click();
+  await expect(row.getByText('History 2026-09-10 to 2026-09-26')).toBeVisible();
+  const activateTargetControl = async (locator: Locator) => {
+    if (testInfo.project.use.isMobile) await locator.tap();
+    else await locator.click();
+  };
+
+  const rights = await page.evaluate(() => window.eval(`(() => {
+    const originalUser = currentUser, originalDisplay = currentUserDisplay;
+    const results = {};
+    for (const [user, display] of [['dylan_collyge',''],['megan_kelly',''],['jd_jones',''],['other_user','Other User']]) {
+      currentUser = user; currentUserDisplay = display; results[user] = canManageItemLowStockTargets();
+    }
+    currentUser = originalUser; currentUserDisplay = originalDisplay; return results;
+  })()`));
+  expect(rights).toEqual({ dylan_collyge: true, megan_kelly: true, jd_jones: true, other_user: false });
+
+  await page.evaluate(() => window.eval(`managerItemLowStockTargetsState.rowsByCode.get('CD-200').history_ready = false; renderManagers()`));
+  await expect(fixture.getByRole('button', { name: /History Processing/ })).toBeDisabled();
+  await expect(fixture.getByText(/Refreshing history; active targets remain in effect/).first()).toBeVisible();
+  await page.evaluate(() => window.eval(`managerItemLowStockTargetsState.rowsByCode.get('CD-200').history_ready = true; renderManagers()`));
+
+  await targetInput.fill('27');
+  await page.evaluate(() => window.eval('renderManagers()'));
+  await expect(targetInput).toHaveValue('27');
+  await expect(targetInput).toBeFocused();
+  await targetInput.fill('25');
+  await activateTargetControl(row.getByRole('button', { name: 'Save', exact: true }));
+  await expect(targetInput).toHaveValue('25');
+  await expect.poll(() => page.evaluate(() => (window as any).__lowStockRpcCalls.filter((call: any) => call.name === 'set_eval_item_low_stock_override_v1').length)).toBe(1);
+  let calls = await page.evaluate(() => (window as any).__lowStockRpcCalls);
+  expect(calls[0]).toEqual({ name: 'set_eval_item_low_stock_override_v1', args: { p_itemcode: 'AB-100', p_override_qty: 25, p_expected_revision: 3 } });
+  await activateTargetControl(row.getByRole('button', { name: 'Use suggestion', exact: true }));
+  await expect(targetInput).toHaveValue('20');
+  await expect.poll(() => page.evaluate(() => (window as any).__lowStockRpcCalls.filter((call: any) => call.name === 'set_eval_item_low_stock_override_v1').length)).toBe(2);
+  calls = await page.evaluate(() => (window as any).__lowStockRpcCalls);
+  expect(calls[1]).toEqual({ name: 'set_eval_item_low_stock_override_v1', args: { p_itemcode: 'AB-100', p_override_qty: null, p_expected_revision: 4 } });
+
+  await page.evaluate(() => window.eval('window.__simulateLowStockConflict = true'));
+  await targetInput.fill('31');
+  await activateTargetControl(row.getByRole('button', { name: 'Save', exact: true }));
+  await expect(targetInput).toHaveValue('9');
+  await expect.poll(() => page.evaluate(() => (window as any).__lowStockRpcCalls.filter((call: any) => call.name === 'set_eval_item_low_stock_override_v1').length)).toBe(3);
+  calls = await page.evaluate(() => (window as any).__lowStockRpcCalls);
+  expect(calls[2]).toEqual({ name: 'set_eval_item_low_stock_override_v1', args: { p_itemcode: 'AB-100', p_override_qty: 31, p_expected_revision: 5 } });
+  expect(calls[3]).toEqual({ name: 'get_eval_item_low_stock_targets_v1', args: { p_itemcodes: ['AB-100'] } });
+  await targetInput.fill('9.5');
+  await activateTargetControl(row.getByRole('button', { name: 'Save', exact: true }));
+  await expect.poll(() => page.evaluate(() => (window as any).__lowStockRpcCalls.filter((call: any) => call.name === 'set_eval_item_low_stock_override_v1').length)).toBe(3);
+  await targetInput.fill('');
+  await activateTargetControl(row.getByRole('button', { name: 'Save', exact: true }));
+  await expect.poll(() => page.evaluate(() => (window as any).__lowStockRpcCalls.filter((call: any) => call.name === 'set_eval_item_low_stock_override_v1').length)).toBe(3);
+  await page.evaluate(() => window.eval(`managerItemLowStockTargetsState.drafts.delete('AB-100'); renderManagers()`));
+  await expect(targetInput).toHaveValue('9');
+  await activateTargetControl(row.getByRole('button', { name: 'Save', exact: true }));
+  await expect.poll(() => page.evaluate(() => (window as any).__lowStockRpcCalls.filter((call: any) => call.name === 'set_eval_item_low_stock_override_v1').length)).toBe(4);
+  calls = await page.evaluate(() => (window as any).__lowStockRpcCalls);
+  expect(calls[4]).toEqual({ name: 'set_eval_item_low_stock_override_v1', args: { p_itemcode: 'AB-100', p_override_qty: 9, p_expected_revision: 6 } });
+
+  for (const theme of ['light', 'dark', 'outdoor']) {
+    await page.evaluate(theme => {
+      (window as any).__gncOpsPilot.primeCachedAppearance({ userKey: 'jd_jones', theme });
+      document.body.setAttribute('data-ops-theme', theme);
+    }, theme);
+    await expect(targetInput).toBeVisible();
+    expect(await targetInput.evaluate(input => parseFloat(getComputedStyle(input).fontSize))).toBeGreaterThanOrEqual(14);
+    for (const width of [320, 360, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.evaluate(() => window.eval('renderManagers()'));
+      await expect(targetInput).toBeVisible();
+      const bounds = await row.evaluate(card => {
+        const cardRect = card.getBoundingClientRect();
+        const controls = Array.from(card.querySelectorAll('.manager-item-low-stock-editor input, .manager-item-low-stock-editor button'))
+          .filter((control: any) => control.getBoundingClientRect().width > 0)
+          .map((control: any) => {
+            const rect = control.getBoundingClientRect();
+            return { left: rect.left, right: rect.right, height: rect.height, clientWidth: control.clientWidth, scrollWidth: control.scrollWidth };
+          });
+        return {
+          card: { left: cardRect.left, right: cardRect.right, clientWidth: card.clientWidth, scrollWidth: card.scrollWidth },
+          controls
+        };
+      });
+      expect(bounds.controls.length).toBeGreaterThanOrEqual(3);
+      expect(bounds.card.scrollWidth).toBeLessThanOrEqual(bounds.card.clientWidth + 1);
+      for (const control of bounds.controls) {
+        expect(control.left).toBeGreaterThanOrEqual(bounds.card.left - 1);
+        expect(control.right).toBeLessThanOrEqual(bounds.card.right + 1);
+        expect(control.height).toBeGreaterThanOrEqual(44);
+        expect(control.scrollWidth).toBeLessThanOrEqual(control.clientWidth + 1);
+      }
+      if (width === 320) {
+        await row.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath(`low-stock-${theme}-${width}.png`) });
+      }
+    }
+  }
+  await fixture.getByRole('button', { name: /Export Excel/ }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__assignedExports.length)).toBe(1);
+  let exported = await page.evaluate(() => (window as any).__assignedExports[0]);
+  expect(exported.columns).toContain('Average Order Qty');
+  expect(exported.columns).toContain('Low Stock Qty');
+  await fixture.getByRole('button', { name: /Average Summary/ }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__assignedExports.length)).toBe(2);
+  exported = await page.evaluate(() => (window as any).__assignedExports[1]);
+  expect(exported.kind).toBe('assigned-items-average-summary');
+  expect(exported.rows).toHaveLength(2);
+  expect(exported.columns).toContain('P75 Order Qty');
+  expect(exported.columns).toContain('History From');
+  expect(exported.columns).toContain('Calculated At');
+  expect(exported.metadata).toContainEqual(['Summary', 'All archived history; for each warehouse/order/consignee/ItemCode group, use its latest qualifying daily snapshot and weight individual order lines equally.']);
+  calls = await page.evaluate(() => (window as any).__lowStockRpcCalls);
+  expect(calls[5]).toEqual({ name: 'get_eval_item_low_stock_targets_v1', args: { p_itemcodes: null, p_after_itemcode: null, p_limit: 500 } });
+  expect(exported.rows.find((summary: any) => summary.ITEMCODE === 'AB-100').AVG_ORDER_QTY).toBe(11.75);
+
+  await page.evaluate(() => window.eval(`(() => {
+    const target = managerItemLowStockTargetsState.rowsByCode.get('CD-200');
+    Object.assign(target, { qualifying_line_count: 0, qualifying_day_count: 0, source_file_count: 0, mean_quantity: null, suggested_qty: null, effective_qty: 150 });
+    renderManagers();
+  })()`));
+  await expect(fixture.locator('[data-manager-item-average="CD-200"]')).toHaveText('—');
+  await expect(fixture.getByText('No qualifying history · using target 150')).toBeVisible();
+
+  const emptyHistoryExported = await page.evaluate(() => window.eval(`(async () => {
+    const originalRpc = supabaseRpc;
+    supabaseRpc = async (name, args) => name === 'get_eval_item_low_stock_targets_v1' && args.p_itemcodes == null ? [] : originalRpc(name, args);
+    try { return await exportManagerAssignedAverageSummaryToExcel(); }
+    finally { supabaseRpc = originalRpc; }
+  })()`));
+  expect(emptyHistoryExported).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__assignedExports.length)).toBe(2);
 });
