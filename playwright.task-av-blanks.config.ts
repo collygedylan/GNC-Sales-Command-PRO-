@@ -11,6 +11,7 @@ export default defineConfig({
   use: { baseURL, serviceWorkers: 'block', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
     { name: 'task-av-chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'task-av-webkit', use: { ...devices['Desktop Safari'] } },
     { name: 'task-av-iphone', use: { ...devices['iPhone 13'] } },
   ],
   webServer: remote ? undefined : {
