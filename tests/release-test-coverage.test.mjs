@@ -170,10 +170,10 @@ test('functional, timing and database lanes cover the original browser files wit
   const functional = load('playwright.release-functional.config.ts');
   const timing = load('playwright.release-timing.config.ts');
   const database = load('playwright.database.config.ts');
-  assert.deepEqual(selected(base), originalBrowserFiles);
+  assert.deepEqual(selected(base), [...originalBrowserFiles, 'tests/module-loading-perennial.e2e.spec.ts'].sort());
   const functionalFiles = selected(functional);
   const timingFiles = selected(timing);
-  assert.deepEqual(timingFiles, ['tests/eval-report2-async-index.e2e.spec.ts', 'tests/login-photo-repair.e2e.spec.ts', 'tests/scroll-performance.e2e.spec.ts']);
+  assert.deepEqual(timingFiles, ['tests/eval-report2-async-index.e2e.spec.ts', 'tests/login-photo-repair.e2e.spec.ts', 'tests/module-loading-perennial.e2e.spec.ts', 'tests/scroll-performance.e2e.spec.ts']);
   assert.deepEqual(selected(database), ['tests/native-auth-provisioning-local.spec.js', 'tests/request-integrity-local.spec.js']);
   const databaseOriginalFiles = selected(database).filter(file => originalBrowserFiles.includes(file));
   const union = [...functionalFiles, ...timingFiles, ...databaseOriginalFiles];
@@ -325,7 +325,7 @@ const september9BrowserBodies = [
   [
     "tests/eval-report2-header-filters.e2e.spec.ts",
     "tests/responsive-workflows.e2e.spec.ts",
-    "Eval Reports #2 verifies a named user against current assignments before showing cards"
+    "Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision"
   ],
   [
     "tests/eval-report2-header-filters.e2e.spec.ts",

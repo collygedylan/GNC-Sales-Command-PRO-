@@ -308,9 +308,23 @@
     function snapshot() {
         expireIfNeeded();
         safeCall(() => flushPendingResourceTimings(active));
+        const boot = safeCall(() => root.__gncRuntimeBootTiming) || {};
+        const bootStates = new Set(['waiting', 'loading', 'ready', 'failed']);
+        const runtimeBoot = {
+            state: bootStates.has(String(boot.state || '')) ? String(boot.state) : 'unavailable',
+            scriptLoadStartMs: round(boot.scriptLoadStartMs),
+            scriptOnloadMs: round(boot.scriptOnloadMs),
+            runtimeReadyMs: round(boot.runtimeReadyMs),
+            responseEndMs: round(boot.responseEndMs),
+            afterResponseToReadyMs: round(boot.afterResponseToReadyMs),
+            transferSize: nonnegative(boot.transferSize),
+            encodedBodySize: nonnegative(boot.encodedBodySize),
+            decodedBodySize: nonnegative(boot.decodedBodySize)
+        };
         return {
             schemaVersion: 'gnc-login-network-trace-v1',
             localOnly: true,
+            runtimeBoot,
             attempts: attempts.map((attempt) => ({
                 id: attempt.id,
                 kind: attempt.kind,

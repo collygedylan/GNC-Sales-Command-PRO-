@@ -187,8 +187,10 @@ test('schema and verified Apps Script health must succeed before the Pages hando
   const compatibility = steps.findIndex(step => step.run === 'node scripts/apps-script-sync-preflight.mjs');
   const deploy = steps.findIndex(step => step.run === 'node scripts/sync-codegs-to-apps-script.js');
   assert.ok(schema >= 0 && compatibility > schema && deploy > compatibility);
+  assert.equal(steps[schema].if, undefined, 'database schema handoff must run on every authorized main release');
   assert.equal(steps[deploy].if, "steps.compatibility.outputs.sync-required == 'true'");
-  assert.equal(steps.find(step => step.uses === 'actions/upload-artifact@v4').if, steps[deploy].if);
+  const recoveryEvidence = steps.find(step => step.with?.path === '.gnc-local/apps-script-recovery-evidence.json');
+  assert.equal(recoveryEvidence.if, steps[deploy].if);
   assert.equal(steps[compatibility].env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID, '${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}');
   assert.equal(steps.some(step => step['continue-on-error']), false);
   assert.match(read('scripts/sync-codegs-to-apps-script.js'), /await createAppsScriptRecoveryEvidence/);

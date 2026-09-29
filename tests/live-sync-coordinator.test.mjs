@@ -97,7 +97,7 @@ test('verification timestamps and metadata failures belong to the current screen
     const status = f.coordinator.getStatus();
     assert.equal(status.state, 'Needs attention');
     assert.equal(status.lastVerifiedAt, null, 'a new screen must not inherit another screen verification');
-    assert.equal(status.contextKey, JSON.stringify([f.context.scope, f.context.viewKey, [[f.adapter.id, f.adapter.cacheKey]]]));
+    assert.equal(status.contextKey, JSON.stringify([f.context.scope, '', f.context.viewKey, [[f.adapter.id, f.adapter.cacheKey]]]));
     f.context.viewKey = 'docks';
     await f.coordinator.check();
     assert.equal(f.coordinator.getStatus().lastVerifiedAt, verifiedAt, 'retained data keeps its own previous verification');
@@ -145,7 +145,7 @@ test('the first required-read failure publishes promptly, aborts siblings and le
     assert.equal(await coordinator.check(), false);
     assert.equal(statusAtAbort, 'Needs attention', 'failure status must publish before sibling cancellation settles');
     assert.equal(statuses.at(-1).message, 'Primary request timed out', 'a sibling abort must not replace the original error');
-    assert.equal(statuses.at(-1).contextKey, JSON.stringify([context.scope, context.viewKey,
+    assert.equal(statuses.at(-1).contextKey, JSON.stringify([context.scope, '', context.viewKey,
         adapters.map(adapter => [adapter.id, adapter.cacheKey])]));
     assert.equal(queuedReads, 0, 'no queued sibling may start after the first failure');
     assert.equal(commits.length, 0, 'an incomplete cohort must never commit');
@@ -184,7 +184,7 @@ test('a background failure finishing after navigation cannot replace the new for
 
     context.viewKey = 'second'; context.adapters = [second]; context.backgroundAdapters = [];
     assert.equal(await coordinator.check('view-entry'), true);
-    const nextContextKey = JSON.stringify([context.scope, context.viewKey, [[second.id, second.cacheKey]]]);
+    const nextContextKey = JSON.stringify([context.scope, '', context.viewKey, [[second.id, second.cacheKey]]]);
     assert.equal(coordinator.getStatus().contextKey, nextContextKey);
     backgroundGate.resolve(); await settle();
     assert.equal(coordinator.getStatus().state, 'Up to date');
@@ -210,6 +210,22 @@ test('account switch during a delayed response cannot apply old account rows', a
 test('permission revision changes invalidate cached adapters even without a stock change', async () => {
     const f = fixture(); await f.coordinator.check(); f.permission = 'role-v2'; f.rows = [{ id: 'allowed-now' }];
     await f.coordinator.check(); assert.equal(f.reads, 2); assert.deepEqual(f.commits.at(-1), [{ id: 'allowed-now' }]);
+});
+test('first revision permission mismatch refreshes access and rechecks before cohort proof', async () => {
+    const context = { scope: 'same-user', dataPermissionVersion: 'access-v1', viewKey: 'drive', visible: true, online: true,
+        adapters: [{ id: 'core:master', cacheKey: 'all', sourceKeys: ['inventory'], stage: async () => ['fresh'], commit() {} }] };
+    let revisionPermission = 'access-v2', permissionRefreshes = 0, commits = 0, commitsAtRefresh = -1;
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: revisionPermission,
+            sources: keys.map(key => ({ key, revision: '1', state: 'ready' })) }),
+        onPermissionChange: async () => { permissionRefreshes++; commitsAtRefresh = commits; context.dataPermissionVersion = revisionPermission; },
+        commitSnapshots: () => { commits++; } });
+    assert.equal(await coordinator.check(), true);
+    assert.equal(permissionRefreshes, 1);
+    assert.equal(commitsAtRefresh, 0, 'the stale access cohort cannot commit before access is refreshed');
+    assert.equal(commits, 1);
+    assert.match(coordinator.getStatus().contextKey, /access-v2/);
+    coordinator.reset();
 });
 test('hidden sessions stop polling and unsubscribe; returning catches up without login', async () => {
     const f = fixture(); await f.coordinator.check(); f.context.visible = false; f.coordinator.suspend();
@@ -363,6 +379,64 @@ test('progressive display does not wait for an extra requested startup dependenc
     const pending = coordinator.ensure(extra); await settle();
     assert.equal(shown.length, 1); assert.equal(shown[0].join(','), 'inventory');
     gate.resolve(); assert.equal(await pending, true); coordinator.reset();
+});
+
+test('same-permission display cache previews before revisions without creating current proof', async () => {
+    const shown = [], order = [];
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => ({ rows: ['fresh'] }), commit() {} };
+    const context = { scope: 'account-a', dataPermissionVersion: 'access-v1', viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [adapter] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readDisplaySnapshot: async (item, meta) => { order.push(['cache', meta.dataPermissionVersion]); return { rows: ['saved'] }; },
+        previewSnapshots: entries => { order.push(['preview', entries[0].value.rows[0]]); shown.push(entries); },
+        readRevisions: async keys => { order.push(['revision']); return { contractVersion: 1, permissionVersion: 'access-v1', sources: keys.map(key => ({ key, state: 'importing', revision: '2' })) }; },
+        commitSnapshots: () => { throw new Error('importing cache must not commit'); }
+    });
+    assert.equal(await coordinator.check(), false);
+    assert.deepEqual(order.slice(0, 3), [['cache', 'access-v1'], ['preview', 'saved'], ['revision']]);
+    assert.equal(shown.length, 1);
+    assert.equal(coordinator.getStatus().state, 'Importing');
+    coordinator.reset();
+});
+
+test('unchanged revisits keep the already-applied display and do not reapply disk previews', async () => {
+    let displayReads = 0, previews = 0, retained = 0, stages = 0;
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => { stages++; return ['fresh']; }, commit() {} };
+    const context = { scope: 'account-a', dataPermissionVersion: 'permission-a', viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [adapter] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readDisplaySnapshot: async () => { displayReads++; return null; },
+        previewSnapshots: () => { previews++; },
+        retainAppliedDisplay: (_context, entries) => { retained++; assert.equal(entries[0].value[0], 'fresh'); },
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'permission-a', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }) });
+    await coordinator.check();
+    const initialDisplayReads = displayReads;
+    assert.ok(initialDisplayReads > 0);
+    assert.equal(previews, 1);
+    assert.equal(stages, 1);
+    await coordinator.check();
+    assert.equal(displayReads, initialDisplayReads, 'a complete applied cohort bypasses disk preview on a repeat visit');
+    assert.equal(previews, 1, 'a repeat visit cannot reapply stale data or invalidate the cached report index');
+    assert.equal(retained, 1, 'a same-permission revisit republishes the current in-memory display without committing it again');
+    assert.equal(stages, 1);
+    coordinator.reset();
+});
+
+test('cached display permission mismatch and logout never preview stale rows', async () => {
+    const shown = [];
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => [], commit() {} };
+    const context = { scope: 'account-a', dataPermissionVersion: 'access-v2', viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [adapter] };
+    let cachePermission = 'access-v1';
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readDisplaySnapshot: async (_adapter, meta) => cachePermission === meta.dataPermissionVersion ? { rows: ['saved'] } : null,
+        previewSnapshots: entries => shown.push(entries),
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'access-v2', sources: keys.map(key => ({ key, state: 'importing', revision: '1' })) })
+    });
+    await coordinator.check();
+    assert.equal(shown.length, 0);
+    context.visible = false;
+    context.scope = '';
+    await coordinator.check();
+    assert.equal(shown.length, 0);
+    coordinator.reset();
 });
 
 const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');

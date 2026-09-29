@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'V2026.09.28.003';
+const RELEASE = 'V2026.09.28.004';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -61,6 +61,12 @@ const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" m
 const runtimeTag = `<script>
 (() => {
   window.__gncAppRuntimeExecuted = false;
+  const bootStartedAt = performance.now();
+  const bootTiming = window.__gncRuntimeBootTiming = {
+    state: 'waiting', scriptLoadStartMs: null, scriptOnloadMs: null, runtimeReadyMs: null,
+    responseEndMs: null, afterResponseToReadyMs: null, transferSize: null,
+    encodedBodySize: null, decodedBodySize: null
+  };
   const login = document.getElementById('login-button');
   const passwordToggle = document.getElementById('login-password-toggle');
   const feedback = document.getElementById('login-runtime-feedback');
@@ -90,22 +96,41 @@ const runtimeTag = `<script>
   };
   const slowTimer = setTimeout(() => offerReload('App is taking longer to load'), 15000);
   const failed = () => {
+    bootTiming.state = 'failed';
+    bootTiming.runtimeReadyMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     clearTimeout(slowTimer);
     offerReload('App could not load');
   };
   const boot = () => {
     if (started) return;
     started = true;
+    bootTiming.state = 'loading';
+    bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
     runtime.src = './assets/${runtimeName}?v=${RELEASE}';
     runtime.defer = true;
     runtime.onerror = failed;
     runtime.onload = () => {
+      const loadedAt = performance.now();
+      bootTiming.scriptOnloadMs = Math.round((loadedAt - bootStartedAt) * 10) / 10;
+      try {
+        const entry = performance.getEntriesByType('resource').filter(item => item.name.includes('${runtimeName}')).slice(-1)[0];
+        if (entry) {
+          bootTiming.responseEndMs = entry.responseEnd > 0 ? Math.round((entry.responseEnd - bootStartedAt) * 10) / 10 : null;
+          bootTiming.transferSize = Number.isFinite(entry.transferSize) ? entry.transferSize : null;
+          bootTiming.encodedBodySize = Number.isFinite(entry.encodedBodySize) ? entry.encodedBodySize : null;
+          bootTiming.decodedBodySize = Number.isFinite(entry.decodedBodySize) ? entry.decodedBodySize : null;
+        }
+      } catch (_) { /* Timing diagnostics are optional and never gate login. */ }
       if (window.__gncAppRuntimeExecuted !== true || typeof window.triggerLoginFromUI !== 'function') {
         failed();
         return;
       }
       ready = true;
+      bootTiming.state = 'ready';
+      bootTiming.runtimeReadyMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
+      bootTiming.afterResponseToReadyMs = bootTiming.responseEndMs === null ? null
+        : Math.max(0, Math.round((bootTiming.runtimeReadyMs - bootTiming.responseEndMs) * 10) / 10);
       clearTimeout(slowTimer);
       login.disabled = false;
       login.removeAttribute('aria-disabled');
@@ -177,6 +202,12 @@ let optimizedHead = headHtml.replace(stylePattern, (match, css, offset) => {
   }
   return '';
 });
+
+// Fetch the large classic runtime while the browser parses the lightweight
+// shell. Execution stays deferred until the existing after-paint bootstrap,
+// so this overlaps network transfer without blocking first paint.
+const runtimePreloadTag = `<link rel="preload" as="script" href="./assets/${runtimeName}?v=${RELEASE}" fetchpriority="high">`;
+optimizedHead = optimizedHead.replace('</head>', `${runtimePreloadTag}\n</head>`);
 
 if (!baseStyles.length || !authorityStyles.length) {
   throw new Error('Unable to extract the non-critical live application styles.');

@@ -14,8 +14,10 @@ on:
       - scripts/pages-release.mjs
       - scripts/sync-codegs-to-apps-script.js
       - scripts/apply-item-low-stock-migration.mjs
+      - scripts/preview-perennial-assignment.mjs
       - scripts/certs/supabase-prod-ca-2021.crt
       - supabase/migrations/20260928145055_item_low_stock_targets.sql
+      - supabase/migrations/20260929013125_perennial_zone_assignment_override.sql
       - .github/workflows/apps-script-sync.yml
   workflow_dispatch:
 
@@ -75,7 +77,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/lib/production-release-guard.mjs
 
-      - name: Apply the item low-stock schema before the compatible importer
+      - name: Preview perennial policy impact (read only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/preview-perennial-assignment.mjs
+
+      - name: Retain sanitized perennial impact preview
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perennial-assignment-preview-${{ github.sha }}
+          path: .gnc-local/perennial-assignment-preview.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Apply low-stock and perennial schemas before the compatible importer
         env:
           GH_TOKEN: ${{ github.token }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

@@ -118,6 +118,19 @@ test('resource timing marks unavailable cross-origin requestStart without invent
   assert.equal(JSON.stringify(event).includes('secret'), false);
 });
 
+test('runtime boot diagnostics expose only bounded timing and size fields', () => {
+  const h = harness();
+  h.root.__gncRuntimeBootTiming = {
+    state: 'ready', scriptLoadStartMs: 1.2, scriptOnloadMs: 250, runtimeReadyMs: 734,
+    responseEndMs: 260, afterResponseToReadyMs: 474, transferSize: 1000,
+    encodedBodySize: 900, decodedBodySize: 1200, url: 'https://secret.example/private?token=bad'
+  };
+  const output = JSON.stringify(h.trace.snapshot());
+  assert.match(output, /"afterResponseToReadyMs":474/);
+  assert.equal(output.includes('secret.example'), false);
+  assert.equal(output.includes('token=bad'), false);
+});
+
 test('unsupported performance observers and instrumentation failures do not change login results', async () => {
   const h = harness({ observer: 'missing', performance: { now: () => { throw new Error('clock unavailable'); }, getEntriesByType: () => { throw new Error('timings unavailable'); } } });
   h.trace.begin('passkey');

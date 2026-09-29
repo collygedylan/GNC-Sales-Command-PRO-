@@ -124,33 +124,38 @@
         return `${itemCode}|${contSize}|${locationCode}`;
     }
 
-    function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows) {
+    function* buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows) {
         const sourceInventory = Array.isArray(inventoryRows) ? inventoryRows.filter(Boolean) : [];
         const sourceAssignments = Array.isArray(assignmentRows) ? assignmentRows.filter(Boolean) : [];
         const assignmentByKey = new Map();
         const assignedNames = new Map();
         let hasUnassigned = false;
 
-        sourceAssignments.forEach((row) => {
+        for (let index = 0; index < sourceAssignments.length; index += 1) {
+            if (index % 256 === 0) yield;
+            const row = sourceAssignments[index];
             // The database assignment contract is ITEMCODE + GENUSNAME. Do not
             // reinterpret the row's sample CONTSIZE/LOCATIONCODE as ownership.
             const key = buildAuthoritativeAssignmentKey(row);
-            if (!key) return;
+            if (!key) continue;
             const assignedTo = getAssignedTo(row);
             if (!assignmentByKey.has(key)) assignmentByKey.set(key, new Map());
             const normalizedAssignment = assignedTo ? assignedTo.toLowerCase() : '__unassigned__';
             if (!assignmentByKey.get(key).has(normalizedAssignment)) assignmentByKey.get(key).set(normalizedAssignment, assignedTo);
             if (!assignedTo) {
                 hasUnassigned = true;
-                return;
+                continue;
             }
             const normalizedName = assignedTo.toLowerCase();
             if (!assignedNames.has(normalizedName)) assignedNames.set(normalizedName, assignedTo);
-        });
+        }
 
         let matchedCount = 0;
         let unassignedCount = 0;
-        const rows = sourceInventory.map((row) => {
+        const rows = [];
+        for (let index = 0; index < sourceInventory.length; index += 1) {
+            if (index % 256 === 0) yield;
+            const row = sourceInventory[index];
             const key = buildAuthoritativeAssignmentKey(row);
             const matched = !!key && assignmentByKey.has(key);
             if (matched) matchedCount += 1;
@@ -162,13 +167,13 @@
                 hasUnassigned = true;
                 unassignedCount += 1;
             }
-            return Object.assign({}, row, {
+            rows.push(Object.assign({}, row, {
                 ASSIGNEDTO: assignedTo,
                 assignedto: assignedTo,
                 ASSIGNEDTO_USERS: assignedToUsers,
                 assignedto_users: assignedToUsers
-            });
-        });
+            }));
+        }
 
         const assignedToOptions = Array.from(assignedNames.values()).sort(compareInquiryOptions);
         if (hasUnassigned) assignedToOptions.unshift(UNASSIGNED_INQUIRY_LABEL);
@@ -179,6 +184,23 @@
             matchedCount,
             unassignedCount
         };
+    }
+
+    function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows) {
+        const steps = buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows);
+        let next = steps.next();
+        while (!next.done) next = steps.next();
+        return next.value;
+    }
+
+    async function buildAuthoritativeAssignmentModelAsync(inventoryRows, assignmentRows, yieldTask = () => new Promise(resolve => setTimeout(resolve, 0))) {
+        const steps = buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows);
+        let next = steps.next();
+        while (!next.done) {
+            await yieldTask();
+            next = steps.next();
+        }
+        return next.value;
     }
 
     function normalizeSeason(row) {
@@ -501,7 +523,7 @@
         };
     }
 
-    function classifyScriptCompatibleRows(rows, options) {
+    function* classifyScriptCompatibleSteps(rows, options) {
         const sourceRows = Array.isArray(rows) ? rows.filter((row) => row && !isExcludedShiftSeasonRow(row)) : [];
         const config = options && typeof options === 'object' ? options : {};
         const settings = normalizeSettings(config.settings);
@@ -518,9 +540,11 @@
         const rowMetadata = new Map();
         const diagnostics = { invalidHoldStartDateCount: 0, invalidLocationNoteDateCount: 0 };
 
-        sourceRows.forEach((row, sourceIndex) => {
+        for (let sourceIndex = 0; sourceIndex < sourceRows.length; sourceIndex += 1) {
+            if (sourceIndex % 256 === 0) yield;
+            const row = sourceRows[sourceIndex];
             const itemCode = normalizeItemCode(row);
-            if (!itemCode) return;
+            if (!itemCode) continue;
             const season = normalizeSeason(row);
             const seasonIndex = SEASON_ORDER.indexOf(season);
             const salesYear = getRowSalesYear(row);
@@ -566,7 +590,7 @@
                 aggregate.qualifiesLowStock = true;
             }
             if (metadata.oldHold) aggregate.hasOldHold = true;
-        });
+        }
 
         const reports = REPORT_IDS.reduce((acc, reportId) => {
             acc[reportId] = [];
@@ -597,9 +621,11 @@
             .filter((row) => rowMetadata.has(row))
             .map((row) => ({ row, metadata: rowMetadata.get(row) }))
             .sort(compareScriptRows);
-        orderedRows.forEach(({ row, metadata }) => {
+        for (let index = 0; index < orderedRows.length; index += 1) {
+            if (index % 256 === 0) yield;
+            const { row, metadata } = orderedRows[index];
             const aggregate = aggregates.get(metadata.itemCode);
-            if (!aggregate) return;
+            if (!aggregate) continue;
             const isNextTarget = metadata.season === nextSeason && metadata.salesYear === nextSalesYear;
 
             if (metadata.priority && metadata.season !== 'F1') reports['s1-with-pri'].push(row);
@@ -616,7 +642,7 @@
             if (!aggregate.hasPriority) reports['no-pri'].push(row);
             if (metadata.season === 'X') reports.culls.push(row);
             if (!aggregate.hasValidF1) reports['not-in-f1'].push(row);
-        });
+        }
         const counts = REPORT_IDS.reduce((acc, reportId) => {
             acc[reportId] = reports[reportId].length;
             return acc;
@@ -633,6 +659,25 @@
             diagnostics,
             centralDateKey: `${todayParts.year}-${String(todayParts.month).padStart(2, '0')}-${String(todayParts.day).padStart(2, '0')}`
         };
+    }
+
+    function classifyScriptCompatibleRows(rows, options) {
+        const steps = classifyScriptCompatibleSteps(rows, options);
+        let next = steps.next();
+        while (!next.done) next = steps.next();
+        return next.value;
+    }
+
+    // The same classifier powers workers and the cooperative no-worker path.
+    // Yielding between bounded batches keeps input and navigation responsive.
+    async function classifyScriptCompatibleRowsAsync(rows, options, yieldTask = () => new Promise(resolve => setTimeout(resolve, 0))) {
+        const steps = classifyScriptCompatibleSteps(rows, options);
+        let next = steps.next();
+        while (!next.done) {
+            await yieldTask();
+            next = steps.next();
+        }
+        return next.value;
     }
 
     function getInquiryFieldValue(row, key) {
@@ -750,9 +795,11 @@
         compareRows,
         classifyRows,
         classifyScriptCompatibleRows,
+        classifyScriptCompatibleRowsAsync,
         buildAuthoritativeAssignmentKey,
         buildAuthoritativeAssignmentExactKey,
         buildAuthoritativeAssignmentModel,
+        buildAuthoritativeAssignmentModelAsync,
         buildItemInquiryModel
     });
 })(typeof window !== 'undefined' ? window : globalThis);

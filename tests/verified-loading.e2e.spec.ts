@@ -540,10 +540,12 @@ test('Tasks verifies both AV Blank inputs without waiting for unopened task cate
 });
 
 
-test('returning to Drive shows same-account cached rows while this visit checks revisions', async ({ page, baseURL }) => {
+test('Drive previews same-permission cache before revisions and keeps it display-only through import and failure', async ({ page, baseURL }, testInfo) => {
   const fixture = await installColdFixture(page, baseURL!);
   await page.locator('#home-tile-drive').click(); await waitForVerifiedDrive(page);
+  expect(await page.evaluate(() => window.eval('getProductionLiveSyncContext().dataPermissionVersion'))).toBe('hl-policy-1');
   const reads = fixture.backgroundMasterReads;
+  fixture.setDatasetSourceState('ph_master_inventory', 'importing');
   await returnHome(page, true);
   let release!: () => void, started!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
@@ -554,15 +556,116 @@ test('returning to Drive shows same-account cached rows while this visit checks 
     await route.fallback();
   });
   try {
+    await page.evaluate(() => {
+      const tile = document.querySelector('#home-tile-drive');
+      if (!tile) throw new Error('Drive tile is unavailable');
+      (window as any).__cachedDriveFirstCardTiming = { startedAt: 0, firstVisibleAt: 0, observer: null };
+      tile.addEventListener('click', () => {
+        const timing = (window as any).__cachedDriveFirstCardTiming;
+        timing.startedAt = performance.now();
+        const capture = () => {
+          if (timing.firstVisibleAt) return true;
+          const container = document.querySelector('#drive-content');
+          const card = container?.querySelector('[role="button"][aria-label^="Open "]');
+          if (!container || !card || card.getClientRects().length === 0) return false;
+          const style = getComputedStyle(card);
+          if (style.display === 'none' || style.visibility === 'hidden') return false;
+          const rect = card.getBoundingClientRect();
+          if (rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth) return false;
+          timing.firstVisibleAt = performance.now();
+          timing.observer?.disconnect();
+          return true;
+        };
+        const poll = () => { if (!capture()) requestAnimationFrame(poll); };
+        timing.observer = new MutationObserver(capture);
+        timing.observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+        requestAnimationFrame(poll);
+      }, { once: true, capture: true });
+    });
     await page.locator('#home-tile-drive').click(); await seen;
     await expect(page.locator('#drive-content .skeleton')).toHaveCount(0);
     await expect.poll(() => page.locator('#drive-content').getByRole('button', { name: /^Open / }).count()).toBeGreaterThan(0);
-    await expect(page.locator('#live-data-freshness')).not.toContainText('Up to date');
+    const cachedTiming = await page.evaluate(() => ({
+      elapsedMs: Number((window as any).__cachedDriveFirstCardTiming.firstVisibleAt) - Number((window as any).__cachedDriveFirstCardTiming.startedAt)
+    }));
+    await testInfo.attach('cached-drive-first-card-timing.json', { body: JSON.stringify(cachedTiming, null, 2), contentType: 'application/json' });
+    console.log('CACHED_DRIVE_FIRST_CARD_TIMING', JSON.stringify(cachedTiming));
+    expect(cachedTiming.elapsedMs, JSON.stringify(cachedTiming)).toBeGreaterThanOrEqual(0);
+    expect(cachedTiming.elapsedMs, JSON.stringify(cachedTiming)).toBeLessThanOrEqual(1000);
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
     expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
-    release(); await waitForVerifiedDrive(page);
+    const blockedExports = await page.evaluate(() => window.eval(`(() => {
+      let downloads = 0;
+      const previousDownload = downloadExcelWorkbook;
+      downloadExcelWorkbook = () => { downloads++; };
+      try {
+        return {
+          results: [exportCurrentDriveModeToExcel(), exportCurrentDriveReportToExcel(), exportCurrentAVToExcel(), exportSalesOfficeOrderFolder('saved-folder')],
+          downloads
+        };
+      } finally { downloadExcelWorkbook = previousDownload; }
+    })()`));
+    expect(blockedExports.results).toEqual([false, false, false, false]);
+    expect(blockedExports.downloads).toBe(0);
+    release();
+    await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Importing');
+    expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
     expect(fixture.backgroundMasterReads).toBe(reads);
+    fixture.setDatasetSourceState('ph_master_inventory', 'ready');
+    await page.route(/\/rest\/v1\/ph_master_inventory(?:\?|$)/, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Synthetic refresh failure' }) }));
+    await page.evaluate(() => window.eval("signalProductionLiveSync('retry-after-import', 0)"));
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
+    await expect(page.locator('#drive-content').getByRole('button', { name: /^Open / }).first()).toBeVisible();
+    expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
+    await page.locator('#footer-menu-btn').click();
+    await page.locator('#drawer-logout-btn').click();
+    await expect(page.locator('#view-login')).toBeVisible();
   } finally { release(); }
   expect(fixture.errors).toEqual([]); expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('Managers module picker opens without waiting for unrelated live datasets', async ({ page, baseURL }, testInfo) => {
+  const fixture = await installColdFixture(page, baseURL!);
+  await page.evaluate(() => {
+    const tile = document.querySelector('#home-tile-managers');
+    if (!tile) throw new Error('Managers tile is unavailable');
+    (window as any).__managerPickerTiming = { startedAt: 0, firstVisibleAt: 0, observer: null };
+    tile.addEventListener('click', () => {
+      const timing = (window as any).__managerPickerTiming;
+      timing.startedAt = performance.now();
+      const capture = () => {
+        if (timing.firstVisibleAt) return true;
+        const manager = document.querySelector('#view-managers');
+        const item = manager?.querySelector('button[aria-label*="Crop Roll:"]');
+        if (!manager || !item || manager.classList.contains('hidden')) return false;
+        const style = getComputedStyle(item);
+        if (style.display === 'none' || style.visibility === 'hidden' || item.getClientRects().length === 0) return false;
+        timing.firstVisibleAt = performance.now();
+        timing.observer?.disconnect();
+        return true;
+      };
+      const poll = () => { if (!capture()) requestAnimationFrame(poll); };
+      timing.observer = new MutationObserver(() => { if (!capture()) requestAnimationFrame(capture); });
+      timing.observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+      requestAnimationFrame(poll);
+    }, { once: true, capture: true });
+  });
+  await page.locator('#home-tile-managers').click();
+  await expect(page.locator('#view-managers')).toBeVisible();
+  await expect(page.locator('#view-managers').getByRole('button', { name: /Crop Roll:/ }).first()).toBeVisible();
+  const evidence = await page.evaluate(() => ({
+    elapsedMs: Number((window as any).__managerPickerTiming.firstVisibleAt) - Number((window as any).__managerPickerTiming.startedAt),
+    timing: (window as any).__managerPickerTiming,
+    adapters: window.eval('getProductionLiveSyncContext().adapters.map(adapter => adapter.id)'),
+    revisionReads: Number(window.eval('getProductionLiveSyncCoordinator().getStatistics().revisionReads')) || 0
+  }));
+  await testInfo.attach('manager-picker-timing.json', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
+  console.log('MANAGER_PICKER_TIMING', JSON.stringify(evidence.timing));
+  expect(evidence.elapsedMs, JSON.stringify(evidence.timing)).toBeGreaterThanOrEqual(0);
+  expect(evidence.elapsedMs).toBeLessThanOrEqual(250);
+  expect(evidence.adapters).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
 });
 
 
@@ -603,6 +706,56 @@ test('failed native session recovery shows recovery guidance without a legacy da
   expect(fixture.blockedMutations).toEqual([]);
 });
 
+test('HL and PO show permission-matched saved listings before refresh, with current actions gated', async ({ page, baseURL }) => {
+  const fixture = await installColdFixture(page, baseURL!, {
+    username: 'dylan_collyge',
+    poRows: [{ row_index: 1, itemcode: 'CACHE.PO', commonname: 'Saved PO listing', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' }]
+  });
+  await page.locator('#home-tile-hl-order').click();
+  await expect(page.locator('[data-hl-group]')).toBeVisible();
+  await page.waitForFunction(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'));
+  await page.locator('#global-header-inline-back').click();
+  await page.getByRole('button', { name: 'Open Inventory', exact: true }).click();
+  await page.locator('#inventory-open-po-management').click();
+  await page.locator('#po-management-hub-grid').getByRole('button', { name: /HL PO/ }).click();
+  await page.locator('#po-management-season-grid').getByRole('button', { name: /27F1/ }).click();
+  await expect(page.locator('#po-management-content tbody')).toContainText('Saved PO listing');
+  await page.waitForFunction(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'));
+  await page.locator('#bottom-nav [data-footer-view="home"]').evaluate(element => (element as HTMLElement).click());
+  await expect(page.locator('#view-home')).toBeVisible();
+
+  let releaseMetadata!: () => void;
+  const metadataGate = new Promise<void>(resolve => { releaseMetadata = resolve; });
+  await page.route(/\/rest\/v1\/rpc\/get_my_dataset_revisions_v1(?:\?|$)/, async route => {
+    await metadataGate;
+    try { await route.fallback(); } catch { /* Navigation may cancel the held request. */ }
+  });
+  try {
+    await page.reload({ waitUntil: 'load' });
+    await expect(page.locator('#view-home')).toBeVisible();
+    await page.locator('#home-tile-hl-order').click();
+    await expect(page.locator('[data-hl-group]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-hl-group] button').first()).toBeDisabled();
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
+    await expect(page.locator('#live-data-status-time')).toContainText('Saved verification:');
+    expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView'))).toBe('');
+
+    await page.locator('#global-header-inline-back').click();
+    await page.getByRole('button', { name: 'Open Inventory', exact: true }).click();
+    await page.locator('#inventory-open-po-management').click();
+    await page.locator('#po-management-hub-grid').getByRole('button', { name: /HL PO/ }).click();
+    await page.locator('#po-management-season-grid').getByRole('button', { name: /27F1/ }).click();
+    await expect(page.locator('#po-management-content tbody')).toContainText('Saved PO listing', { timeout: 10000 });
+    await expect(page.locator('#po-management-content')).not.toContainText('View inventory');
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
+    expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView'))).toBe('');
+  } finally {
+    releaseMetadata();
+  }
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
 
 test('progressive loader reference timing uses three cold sessions and repeat visits', async ({ browser, baseURL }, info) => {
   test.skip(process.env.PROGRESSIVE_LOADING_BENCHMARK !== '1', 'Timing runs are isolated from functional browser work');
@@ -626,6 +779,11 @@ test('progressive loader reference timing uses three cold sessions and repeat vi
         historicalReferenceVersion: process.env.PROGRESSIVE_LOADING_HISTORICAL === '1' ? 'V2026.08.24.01' : null });
       sample.loginMs = Date.now() - started;
       sample.release = await page.evaluate(() => window.eval('APP_SHELL_VERSION'));
+      sample.paintTimings = await page.evaluate(() => Object.fromEntries(
+        performance.getEntriesByType('paint').map(entry => [entry.name, Math.round(entry.startTime * 10) / 10])
+      ));
+      sample.firstPaintMs = sample.paintTimings['first-paint'] ?? null;
+      sample.firstContentfulPaintMs = sample.paintTimings['first-contentful-paint'] ?? null;
       const navigate = async () => {
         const begin = Date.now(), reads = fixture.backgroundMasterReads, requestsBefore = requests, bytesBefore = bytes;
         await page.locator('#home-tile-drive').click();
@@ -651,4 +809,5 @@ test('progressive loader reference timing uses three cold sessions and repeat vi
     } finally { samples.push(sample); await context.close(); }
   }
   await info.attach('progressive-reference-timing.json', { body: JSON.stringify({ profile: info.project.name, samples }, null, 2), contentType: 'application/json' });
+  console.log('PROGRESSIVE_REFERENCE_TIMING', JSON.stringify({ profile: info.project.name, samples }));
 });

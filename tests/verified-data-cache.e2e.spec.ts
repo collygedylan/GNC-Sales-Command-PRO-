@@ -254,7 +254,7 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
         status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser,
         snapshot: normalizeAppAccessSnapshot({
           contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
-          username: currentUser, role: currentRole,
+          username: currentUser, role: currentRole, dataPermissionVersion: 'fixture-access-1',
           permissions: [{ permissionKey: 'module.docks.view', kind: 'module', moduleKey: 'docks', allowed: true }]
         }, currentUser)
       };
@@ -372,7 +372,9 @@ test('native shared coordinator preserves filtered sessions, stages import races
         const fixture = (window as any).__nativeSyncFixture;
         fixture.rows = data; fixture.revision = '2'; fixture.state = 'importing'; fixture.changed();
       }, imported);
-      await expect(p.locator('#live-data-freshness')).toContainText('Importing');
+      await expect(p.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Importing');
+      await expect(p.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
+      expect(await p.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
     }
     await expectDockCounts(page, 117, 117);
     await expectDockCounts(other, 55, 117);
@@ -390,7 +392,8 @@ test('native shared coordinator preserves filtered sessions, stages import races
       fixture.gate = new Promise<void>(resolve => { fixture.release = resolve; });
       fixture.changed();
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Showing available rows · Refreshing');
+    await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Syncing');
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
     expect(await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().getStatus().state'))).toBe('Syncing');
     await expectDockCounts(page, 149, 149);
     await page.evaluate(data => {
@@ -403,7 +406,8 @@ test('native shared coordinator preserves filtered sessions, stages import races
       (window as any).__nativeSyncFixture.readFailure = true;
       window.dispatchEvent(new Event('focus'));
     });
-    await expect(page.locator('#live-data-freshness')).toContainText('Needs attention');
+    await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Needs attention');
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
     await expectDockCounts(page, 150, 150);
     await page.evaluate(() => {
       (window as any).__nativeSyncFixture.readFailure = false;

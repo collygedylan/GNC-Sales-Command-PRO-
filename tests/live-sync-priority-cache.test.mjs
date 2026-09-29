@@ -63,7 +63,7 @@ test('navigation and rendering share one proof but a real revision event still r
     gate.resolve(); await Promise.all([first, joined]);
     await f.backgroundTick();
     assert.equal(f.metadata.length, 2); assert.deepEqual(f.reads, ['inventory']);
-    assert.equal(f.coordinator.getStatus().contextKey, JSON.stringify(['user-a', 'inventory', [['inventory', 'inventory/all']]]));
+    assert.equal(f.coordinator.getStatus().contextKey, JSON.stringify(['user-a', '', 'inventory', [['inventory', 'inventory/all']]]));
     f.revision = '2'; f.coordinator.signal('metadata', 0); await f.backgroundTick();
     assert.deepEqual(f.reads, ['inventory', 'inventory']);
 });
@@ -357,8 +357,13 @@ function installRefreshRenderFixture(ctx) {
 }
 
 test('initial verified content skips the background render debounce and retains draft guards', () => {
-    for (const [state, immediate, expectedDelay] of [['loading', false, 0], ['ready', false, 150], ['ready', true, 0]]) {
-        let callback, delay, renders = 0;
+    for (const [state, immediate, cachedPreview, expectedDelay, allowDuringRecentInteraction] of [
+        ['loading', false, false, 0, false],
+        ['loading', true, true, 0, true],
+        ['ready', false, false, 150, false],
+        ['ready', true, true, 0, false]
+    ]) {
+        let callback, delay, renderOptions, renders = 0;
         const context = { productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
             productionLiveSyncRendering: false, VIEW_LOAD_UI: { drive: { container: 'drive-content' } },
             productionVerifiedViewKey: () => 'visit', getCurrentVisibleViewId: () => 'drive', getContainerUiState: () => state,
@@ -368,10 +373,50 @@ test('initial verified content skips the background render debounce and retains 
             setTimeout: (fn, ms) => { callback = fn; delay = ms; return 1; }, clearTimeout() {},
             markViewDirty() {}, renderViewContent: () => { renders++; } };
         installRefreshRenderFixture(context);
+        context.scheduleTypingAwareUiRender = (_key, fn, ms, _typingDelay, options) => {
+            callback = fn; delay = ms; renderOptions = options;
+        };
         vm.createContext(context);
         vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), context);
-        context.scheduleProductionLiveSyncRender(immediate); assert.equal(delay, expectedDelay);
+        context.scheduleProductionLiveSyncRender(immediate, { cachedPreview }); assert.equal(delay, expectedDelay);
+        assert.equal(renderOptions.allowDuringRecentInteraction, allowDuringRecentInteraction);
+        assert.equal(renderOptions.deferUntilIdle, true);
+        assert.equal(renderOptions.ignoreChunkDuringInteraction, true);
+        assert.equal(renderOptions.allowWhileTyping, undefined);
+        assert.equal(renderOptions.allowWhileTouching, undefined);
+        assert.equal(renderOptions.allowWhileScrolling, undefined);
         callback(); assert.equal(renders, 1);
+    }
+});
+
+test('retained applied cohorts rerender only when the target viewport has no content', () => {
+    const start = html.indexOf('        function retainAppliedProductionDisplay(');
+    const end = html.indexOf('\n        function getProductionLiveSyncCoordinator()', start);
+    assert.ok(start > 0 && end > start);
+    for (const [state, renderExpected] of [['loading', true], ['empty', true], ['content', false]]) {
+        const scheduled = [], groups = new Set(), verifiedAt = new Map();
+        const container = { state };
+        const context = {
+            hasProductionLiveSyncDraft: () => false,
+            productionDisplayGroupKey: () => 'scope:drive', productionDisplayGroups: groups,
+            productionLiveSyncCoordinator: { getStatus: () => ({ lastVerifiedAt: '2026-09-28T12:00:00Z' }) },
+            productionDisplayVerifiedAt: verifiedAt, renderProductionDataFreshness() {},
+            getCurrentVisibleViewId: () => 'drive', VIEW_LOAD_UI: { drive: { container: 'drive-content' } },
+            document: { getElementById: () => container },
+            getContainerUiState: element => element.state,
+            containerHasRenderableContent: element => element.state === 'content',
+            scheduleProductionLiveSyncRender: (...args) => scheduled.push(args)
+        };
+        vm.createContext(context);
+        vm.runInContext(`${html.slice(start, end)}; globalThis.retain = retainAppliedProductionDisplay;`, context);
+        context.retain({ progressive: true, visible: true });
+        assert.equal(groups.has('scope:drive'), true);
+        assert.equal(verifiedAt.get('scope:drive'), '2026-09-28T12:00:00Z');
+        assert.equal(scheduled.length, renderExpected ? 1 : 0, `${state} container render decision`);
+        if (renderExpected) {
+            assert.equal(scheduled[0][0], true);
+            assert.equal(scheduled[0][1].cachedPreview, true);
+        }
     }
 });
 
@@ -477,7 +522,7 @@ test('Eval2 does not build from global fallbacks when the ItemCode target read f
         canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => 'user-a:permission-a',
         getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: async (...args) => { loadOptions.push(args); },
         loadManagerEvalReportSettings: async () => {}, isDatasetLoaded: () => true,
-        canReadItemLowStockTargets: () => true,
+        canReadItemLowStockTargets: () => true, managerEvalReport2NeedsLowStockTargets: () => true,
         loadManagerItemLowStockTargets: async force => { targetReadForces.push(force); throw new Error('ItemCode target RPC unavailable'); },
         scheduleManagersRender() {}, fullInventory: [], warehouseAssignedItemsInventory: [], activeHomeTab: 'eval2',
         MANAGER_EVAL_REPORTS_2_VIEW: 'eval2', getCurrentVisibleViewId: () => 'managers',

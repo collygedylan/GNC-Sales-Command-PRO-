@@ -557,7 +557,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (op === 'get_my_app_permissions_v1') {
         control.appAccessReads++;
         if (Number(options.appAccessDelayMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.appAccessDelayMs)));
-        return json(route, { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username, role, permissions: options.appPermissions || [{ permissionKey: 'module.po-management.view', kind: 'module', moduleKey: 'po-management', allowed: true }] });
+        return json(route, { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username, role, dataPermissionVersion: 'hl-policy-1', permissions: options.appPermissions || [{ permissionKey: 'module.po-management.view', kind: 'module', moduleKey: 'po-management', allowed: true }] });
       }
       if (op === 'get_request_capabilities') return json(route, { contract_version: 2, username, scope: 'global', can_view_queue: true, can_edit: true, can_complete: true });
       if (op === 'get_request_schema_compatibility') return json(route, { compatible: true, contract_version: 2 });

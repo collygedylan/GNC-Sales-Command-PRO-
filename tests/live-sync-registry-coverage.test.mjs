@@ -35,6 +35,7 @@ function harness() {
     bloomscapesPendingState: { orders: [] }, inventoryTransactionHistoryState: {},
     managerTransactionsKeyedState: { allDates: [], files: [] },
     managerHistoricalReportState: { rows: [], selectedColumns: [] }, accessControlAdminState: {}, codexOpsState: {},
+    selectedEvalReports: [], getManagerEvalReport2SelectedReportIds: () => context.selectedEvalReports,
     document: { getElementById: () => null },
     getCurrentVisibleViewId: () => context.view,
     getCurrentLoginCacheScopeKey: () => 'fixture-user', getCurrentChatUsername: () => 'fixture',
@@ -78,10 +79,10 @@ test('manager low-stock summaries load only for Assigned Items and Eval Reports 
   const sourceKeys = (surface) => registry.getSourceKeys(registry.getViewAdapters('managers', surface ? { surfaces: [surface] } : {}));
   assert.ok(!sourceKeys().some(table => sources.includes(table)), 'Opening the Managers hub must not wait for low-stock summaries');
   assert.ok(!sourceKeys('managers:eval-reports').some(table => sources.includes(table)), 'Classic Eval Reports do not consume per-item targets');
-  for (const surface of ['managers:assigned-items-export', 'managers:eval-reports-2']) {
+  for (const surface of ['managers:assigned-items-export', 'managers:eval-reports-2-low-stock']) {
     assert.ok(sources.every(table => sourceKeys(surface).includes(table)), `${surface} must retain target revision tracking`);
   }
-  assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports-2'] })).filter(id => id === 'side:itemLowStockTargets'), ['side:itemLowStockTargets']);
+  assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports-2-low-stock'] })).filter(id => id === 'side:itemLowStockTargets'), ['side:itemLowStockTargets']);
 
   context.document = { activeElement: {}, body: { classList: { contains: () => false } }, getElementById: () => null };
   context.view = 'managers';
@@ -97,9 +98,31 @@ test('manager low-stock summaries load only for Assigned Items and Eval Reports 
   assert.ok(assignedSurfaces.includes('managers:assigned-items-export'));
   assert.ok(registry.getViewAdapters('managers', { surfaces: assignedSurfaces }).includes('side:itemLowStockTargets'));
   context.activeHomeTab = context.MANAGER_EVAL_REPORTS_2_VIEW;
+  context.selectedEvalReports = ['low-stock'];
   const eval2Surfaces = context.getProductionLiveSyncSideContext().surfaces;
   assert.ok(eval2Surfaces.includes('managers:eval-reports-2'));
   assert.ok(registry.getViewAdapters('managers', { surfaces: eval2Surfaces }).includes('side:itemLowStockTargets'));
+  context.selectedEvalReports = ['holds'];
+  assert.ok(!context.getProductionLiveSyncSideContext().surfaces.includes('managers:eval-reports-2-low-stock'),
+    'Eval Reports 2 only joins the low-stock target adapter when that report is selected');
+});
+
+test('Managers navigation has no data gate and each data tab declares its own cohort', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  assert.equal(registry.views.managers.kind, 'navigation');
+  assert.deepEqual(Array.from(registry.getViewAdapters('managers')), []);
+  const expected = {
+    'managers:assigned-items-export': ['core:master', 'core:warehouseAssignedItems', 'side:itemLowStockTargets', 'side:settings'],
+    'managers:eval-reports': ['core:master', 'side:managerEvalSettings', 'side:settings'],
+    'managers:eval-reports-2': ['core:master', 'core:warehouseAssignedItems', 'side:managerEvalSettings', 'side:settings'],
+    'managers:orders': ['side:managerOrders'],
+    'managers:access-control': ['side:access'],
+    'managers:historical-report': ['side:historical']
+  };
+  for (const [surface, adapters] of Object.entries(expected)) {
+    assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: [surface] })).sort(), adapters.sort(), surface);
+  }
+  assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports-2-low-stock'] })).sort(), ['side:itemLowStockTargets']);
 });
 
 test('actual loader dependencies remain covered for every route, request tab, task state and Eval role', () => {

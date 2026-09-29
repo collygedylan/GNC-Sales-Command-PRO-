@@ -102,7 +102,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
-test('Eval Reports #2 verifies a named user against current assignments before showing cards', async ({ page }) => {
+test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', async ({ page }) => {
   await page.goto('/?e2e=eval2-authoritative-user-filter', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyManagerEvalReport2UserFilter === 'function');
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
@@ -112,6 +112,11 @@ test('Eval Reports #2 verifies a named user against current assignments before s
       currentUser = 'dylan_collyge';
       currentRole = 'Manager';
       canViewManagerEvalReports2 = () => true;
+      getConfiguredCurrentSeasonCode = () => 'F1';
+      getConfiguredCurrentSalesYearCode = () => 27;
+      getConfiguredNextSaleSeasonTarget = () => ({ season:'S1', salesYear:27 });
+      managerEvalReport2SelectedReportIds = ['not-in-f1'];
+      activeManagerEvalReport2 = 'not-in-f1';
       fullInventory = [
         { UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', COMMONNAME:'Stale Alpha', CONTSIZE:'#3', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'A.01.001' },
         { UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', COMMONNAME:'Current Beta', CONTSIZE:'#5', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'B.01.001' }
@@ -131,28 +136,29 @@ test('Eval Reports #2 verifies a named user against current assignments before s
       managerEvalReport2BrowseMode = 'plant';
       resetManagerEvalReport2Drill();
       const beforeCommonNames = getManagerEvalReport2DrillGroups(initialAssignmentModel.rows).map((group) => group.label);
+      getManagerEvalReport2Index();
       ensureDatasetLoaded = async (key, mode, options = {}) => {
-        forceSeen = key === 'warehouseAssignedItems' && mode === 'full' && options.force === true;
-        warehouseAssignedItemsInventory = [
-          { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
-          { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
-        ];
-        assignmentState.initialLoaded = assignmentState.fullLoaded = true;
-        assignmentState.lastLoadedAt = new Date().toISOString();
-        invalidateManagerEvalReport2Cache();
+        forceSeen = key === 'warehouseAssignedItems' && options.force === true;
         return true;
       };
       const applyPromise = applyManagerEvalReport2UserFilter(new Set(['dylan_collyge']));
-      const refreshingHtml = renderManagerEvalReports2Panel();
-      const blockedWhileRefreshing = getManagerEvalReport2RowsBeforeCommonName(initialAssignmentModel.rows).length === 0
-        && refreshingHtml.includes('Verifying current AssignedTo ownership before showing results...');
+      const blockedWhileRefreshing = managerEvalReport2AssignmentFilterRefreshing;
       await applyPromise;
+      const localRows = getManagerEvalReport2RowsBeforeCommonName().map(row => getManagerEvalReport2ItemCode(row));
+      // A later verified background snapshot, not a filter click, changes ownership.
+      warehouseAssignedItemsInventory = [
+          { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
+          { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
+        ];
+      assignmentState.initialLoaded = assignmentState.fullLoaded = true;
+      assignmentState.lastLoadedAt = new Date().toISOString();
+      invalidateManagerEvalReport2Cache();
       const currentAssignmentModel = GncEvalReports.buildAuthoritativeAssignmentModel(fullInventory, warehouseAssignedItemsInventory);
       const after = getManagerEvalReport2RowsBeforeCommonName(currentAssignmentModel.rows).map((row) => getManagerEvalReport2ItemCode(row));
       resetManagerEvalReport2Drill();
       const afterCommonNames = getManagerEvalReport2DrillGroups(currentAssignmentModel.rows).map((group) => group.label);
       const settledHtml = renderManagerEvalReports2Panel();
-      return { before, after, beforeCommonNames, afterCommonNames, forceSeen, blockedWhileRefreshing, pendingAfter:settledHtml.includes('Verifying current AssignedTo ownership before showing results...') };
+      return { before, localRows, after, beforeCommonNames, afterCommonNames, forceSeen, blockedWhileRefreshing, pendingAfter:settledHtml.includes('Verifying current AssignedTo ownership before showing results...') };
     } finally {
       ensureDatasetLoaded = originalEnsureDatasetLoaded;
     }
@@ -160,11 +166,12 @@ test('Eval Reports #2 verifies a named user against current assignments before s
 
   expect(result).toEqual({
     before: ['STALE.A'],
+    localRows: ['STALE.A'],
     after: ['CURRENT.B'],
     beforeCommonNames: ['Stale Alpha'],
     afterCommonNames: ['Current Beta'],
-    forceSeen: true,
-    blockedWhileRefreshing: true,
+    forceSeen: false,
+    blockedWhileRefreshing: false,
     pendingAfter: false,
   });
 });
