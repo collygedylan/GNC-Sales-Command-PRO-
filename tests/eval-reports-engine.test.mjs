@@ -668,6 +668,101 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
   assert.equal(loads, 1, 'an error must not create an automatic retry loop');
 });
 
+test('Eval2 stale low-stock thresholds fetch once for the current source key and fail closed', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('function renderManagerEvalReport2Records()');
+  const end = html.indexOf('function exportManagerEvalReport2ToExcel()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+
+  function renderScenario({ lowStock = true, ready = false, error = '', existingCard = false, canRead = true } = {}) {
+    const currentKey = 'master-r2|assigned-r4|A,B';
+    const targetState = { key:'stale-key', loading:false, loadingKey:'', error, errorKey:error ? currentKey : '', rowsByCode:new Map() };
+    const messageNode = { textContent:'' };
+    const banner = {
+      dataset:{}, attributes:new Set(),
+      setAttribute(name) { this.attributes.add(name); },
+      querySelector(selector) { return selector === '[data-role="manager-eval2-low-stock-message"]' ? messageNode : null; },
+      remove() { container.banner = null; }
+    };
+    const container = {
+      html: existingCard ? '<article class="manager-eval2-item-card">saved card</article>' : '', attributes:new Set(), banner:null,
+      querySelector(selector) {
+        if (selector === '.manager-eval2-item-card') return existingCard ? {} : null;
+        if (selector === '[data-role="manager-eval2-low-stock-status"]') return this.banner;
+        return null;
+      },
+      append(node) { this.banner = node; },
+      setAttribute(name) { this.attributes.add(name); },
+      removeAttribute(name) { this.attributes.delete(name); }
+    };
+    const calls = [];
+    const scope = vm.createContext({
+      document: {
+        getElementById: id => id === 'manager-eval-report-2-records' ? container : null,
+        createElement: tag => tag === 'div' ? banner : null
+      },
+      managerEvalReport2LoadState: { loading:false },
+      managerEvalReport2NeedsLowStockTargets: () => lowStock,
+      managerEvalReport2LowStockTargetsReady: () => ready,
+      getManagerItemLowStockTargetsState: () => targetState,
+      getManagerAssignedItemTargetKey: () => currentKey,
+      canReadItemLowStockTargets: () => canRead,
+      managerEvalReport2DisplaySourcesReady: () => true,
+      loadManagerItemLowStockTargets: force => {
+        calls.push({ force, key:currentKey });
+        targetState.loading = true;
+        targetState.loadingKey = currentKey;
+        return Promise.resolve();
+      },
+      setContainerHtml: (node, content) => { node.html = content; node.banner = null; },
+      isManagerEvalReport2ItemcodeBrowseLevel: () => true,
+      getManagerEvalReport2VisibleItemGroups: () => [],
+      escapeHtml: value => String(value)
+    });
+    vm.runInContext(`${source};globalThis.render = renderManagerEvalReport2Records;`, scope);
+    return { render:scope.render, container, calls, targetState };
+  }
+
+  const stale = renderScenario();
+  stale.render();
+  stale.render();
+  assert.deepEqual(stale.calls, [{ force:false, key:'master-r2|assigned-r4|A,B' }], 'one render cycle schedules one load for the new core key');
+  assert.match(stale.container.html, /Checking current low-stock quantities/);
+
+  const retained = renderScenario({ existingCard:true });
+  retained.render();
+  assert.match(retained.container.html, /saved card/, 'saved cards remain attached during a current-key refresh');
+  assert.ok(retained.container.attributes.has('aria-busy'));
+
+  const failed = renderScenario({ error:'temporary RPC error' });
+  failed.render();
+  failed.render();
+  assert.deepEqual(failed.calls, [], 'a current-key error does not create an automatic retry loop');
+  assert.match(failed.container.banner?.innerHTML || '', /Retry/);
+
+  const failedWithCards = renderScenario({ error:'temporary RPC error', existingCard:true });
+  failedWithCards.render();
+  assert.match(failedWithCards.container.html, /saved card/, 'current-key failure keeps the last eligible cards visible');
+  assert.match(failedWithCards.container.banner?.innerHTML || '', /Retry/);
+  assert.match(failedWithCards.container.banner?.attributes.has('aria-live') ? 'polite' : '', /polite/);
+  assert.match(failedWithCards.container.banner?.attributes.has('role') ? 'status' : '', /status/);
+
+  const unrelated = renderScenario({ lowStock:false });
+  unrelated.render();
+  assert.deepEqual(unrelated.calls, [], 'other reports do not fetch low-stock thresholds');
+
+  const current = renderScenario({ ready:true });
+  current.render();
+  assert.deepEqual(current.calls, [], 'a target cache already ready for the current key does not refetch');
+
+  const forbidden = renderScenario({ canRead:false, existingCard:true });
+  forbidden.render();
+  assert.deepEqual(forbidden.calls, [], 'permission denial does not issue a target request');
+  assert.match(forbidden.container.html, /unavailable for this account/);
+  assert.doesNotMatch(forbidden.container.html, /saved card/, 'permission denial clears cards the account may no longer view');
+});
+
 test('async report results reject changed identity, snapshot, and access', async () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const start = html.indexOf('let managerEvalReport2IndexJob = null');

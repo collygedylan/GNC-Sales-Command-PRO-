@@ -162,7 +162,12 @@ select is(
 set local role service_role;
 select is((public.get_pikes_order_assignment_health_v1()->>'falseUnassignedCount')::integer, 0, 'hosted Pikes health runs through the service-only private-helper wrapper');
 reset role;
-select is((public.reconcile_eval_itemcodes()->>'status')::text, 'completed', 'incremental assignment reconciliation completes');
+with scheduled_reconcile as materialized (select public.reconcile_eval_itemcodes() as result)
+select is(
+  (result->>'status') || ':' || (result->>'errorCode'),
+  'deferred:PERENNIAL_POLICY_AWAITING_MASTER_IMPORT',
+  'scheduled assignment reconciliation waits for the complete canonical master import'
+) from scheduled_reconcile;
 
 select lives_ok(
   $q$select public.prepare_manager_order_import_v2(
