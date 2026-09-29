@@ -581,7 +581,7 @@ test('cached row keys preserve synchronous index and membership semantics', () =
 
 test('worker report identities and memberships match the synchronous contract', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const source = html.slice(html.indexOf('function getManagerEvalReport2WorkerSource('), html.indexOf('async function buildManagerEvalReport2IndexAsync('));
+  const source = html.slice(html.indexOf('function getManagerEvalReport2WorkerSource('), html.indexOf('let managerEvalReport2IndexJob = null'));
   const helper = vm.createContext({});
   vm.runInContext(`${source};globalThis.workerSource = getManagerEvalReport2WorkerSource();`, helper);
   let result;
@@ -638,8 +638,8 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
     return { rows: [], assignedToOptions: [], assignmentCount: 0, matchedCount: 0, unassignedCount: 0 };
   }, classifyScriptCompatibleRows: () => ({ reports: {}, counts: {} }) };
   const scope = vm.createContext({ Worker: class {}, Map, Set, Date, Object, Array,
-    getManagerEvalReports2Api: () => api, canUseProductionLiveSync: () => false,
-    isDatasetLoaded: () => true, managerEvalReport2LoadState: state,
+    getManagerEvalReports2Api: () => api, canUseProductionLiveSync: () => false, hasProgressiveViewData: () => false,
+    isDatasetLoaded: () => true, managerEvalReport2DisplaySourcesReady: () => true, prepareManagerEvalReport2GroupLookups: value => value, managerEvalReport2LoadState: state,
     managerEvalReport2Cache: null, managerEvalReport2CacheKey: '', fullInventory: Array(9364), warehouseAssignedItemsInventory: [],
     getConfiguredCurrentSeasonCode: () => 'F1', getConfiguredCurrentSalesYearCode: () => 27,
     getConfiguredNextSaleSeasonTarget: () => ({ season: 'S1', salesYear: 27 }),
@@ -670,7 +670,7 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
 
 test('async report results reject changed identity, snapshot, and access', async () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const start = html.indexOf('async function buildManagerEvalReport2IndexAsync(');
+  const start = html.indexOf('let managerEvalReport2IndexJob = null');
   const end = html.indexOf('function getManagerEvalReport2Index(', start);
   for (const changed of ['identity', 'snapshot', 'access', 'none']) {
     let identity = 'owner-a', snapshot = 'snapshot-a', allowed = true, pending;
@@ -683,7 +683,7 @@ test('async report results reject changed identity, snapshot, and access', async
       static createObjectURL() { return 'blob:fixture'; }
       static revokeObjectURL() {}
     }
-    const scope = vm.createContext({ Worker: FixtureWorker, URL: FixtureURL, Blob, Map, Object,
+    const scope = vm.createContext({ Worker: FixtureWorker, URL: FixtureURL, Blob, Map, Object, performance, recordGncPerfStat: () => {},
       managerEvalReport2Cache: null, managerEvalReport2CacheKey: '',
       getManagerEvalReport2CacheKeyValue: () => snapshot, getSupabaseReadIdentityScope: () => identity,
       canViewManagerEvalReports2: () => allowed, getManagerEvalReports2Api: () => engine,
@@ -692,6 +692,7 @@ test('async report results reject changed identity, snapshot, and access', async
       getManagerEvalReport2WorkerSource: () => 'fixture', window: { location: { href: 'https://fixture.invalid/' } },
       fullInventory: [], warehouseAssignedItemsInventory: [], managerEvalReportSettings: {},
       getManagerItemLowStockTargetsState: () => ({ rowsByCode: new Map(), revision: 0 }),
+      managerEvalReport2LowStockTargetsReady: () => false,
       setTimeout: () => 1, clearTimeout: () => {}, reconcileManagerEvalReport2Navigation: () => {},
       reportSemanticHealthEvent: () => assert.fail('unexpected worker fallback'),
       getManagerEvalReport2Index: () => assert.fail('unexpected synchronous build')
@@ -813,7 +814,9 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /model\.options\.assignedTo = getManagerEvalReport2AssignedToOptions\(\)/);
   assert.match(html, /getDatasetLoadSignature\('warehouseAssignedItems'\)/);
   assert.match(html, /invalidateManagerEvalReport2Cache\(\)/);
-  assert.match(html, /await ensureDatasetLoaded\('warehouseAssignedItems', 'full', \{ force:true, preserveRequestedMode:true \}\)/);
+  const filter = html.slice(html.indexOf('async function applyManagerEvalReport2UserFilter('), html.indexOf('function applyManagerEvalUserPicker('));
+  assert.doesNotMatch(filter, /force:true|invalidateManagerEvalReport2Cache/);
+  assert.match(filter, /managerEvalReport2VisibleGroupsCacheKey = ''/);
   assert.match(html, /if \(managerEvalReport2AssignmentFilterRefreshing\) return \[\]/);
   assert.match(html, /Verifying current AssignedTo ownership before showing results/);
   assert.match(html, /function getManagerEvalReport2LocationOptions\(rows = null\)/);
@@ -892,7 +895,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function openManagerEvalReport2BatchSetup\(\)/);
   assert.match(html, /function createManagerEvalReport2Batch\(button = null\)/);
   assert.match(html, /id="manager-eval-report-2-done-button"/);
-  assert.match(html, /if \(managerEvalReport2LoadState\.loading && !allowSynchronousBuild\) return managerEvalReport2Cache/);
+  assert.match(html, /if \(managerEvalReport2LoadState\.loading && !allowSynchronousBuild && !hasSavedDisplayCohort\) return managerEvalReport2Cache/);
   assert.match(html, /if \(managerEvalReport2LoadState\.error && managerEvalReport2Cache\) return managerEvalReport2Cache/);
   assert.match(html, /evalWorkApi\('create_batch'/);
   assert.match(html, /PDF assignment/);

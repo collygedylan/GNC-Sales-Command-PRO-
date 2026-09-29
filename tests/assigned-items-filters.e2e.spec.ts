@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 
-test('Managers module picker excludes low-stock reads while both consuming tabs retain verified targets', async ({ page, baseURL }) => {
+test('Managers module picker defers low-stock reads until a consuming tab is selected', async ({ page, baseURL }) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', async route => {
     if (new URL(route.request().url()).origin === origin) return route.continue();
@@ -33,7 +33,8 @@ test('Managers module picker excludes low-stock reads while both consuming tabs 
   expect(surfaces.dashboard.surfaces).not.toContain('managers:eval-reports-2');
   expect(surfaces.classicEval.adapters).not.toContain('side:itemLowStockTargets');
   expect(surfaces.assigned.adapters).toContain('side:itemLowStockTargets');
-  expect(surfaces.eval2.adapters).toContain('side:itemLowStockTargets');
+  expect(surfaces.eval2.adapters).not.toContain('side:itemLowStockTargets');
+  expect(surfaces.eval2.adapters).toContain('side:managerEvalSettings');
 });
 
 test('Assigned Items header and phone filters share complete rows, export, sorting and safe editing', async ({ page, baseURL }, testInfo) => {
@@ -245,6 +246,7 @@ test('Assigned Items preserves the real navigation state and a focused editor du
     await expect(panel).toBeVisible();
   };
   await expect(rows).toHaveCount(240);
+  if (phone) await expect(rows.first()).toHaveCSS('content-visibility', 'auto');
   await open('COMMONNAME');
   await panel.getByRole('button', { name: 'Clear Selection', exact: true }).click();
   const search = page.locator('#manager-assigned-value-search');

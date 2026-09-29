@@ -10,7 +10,11 @@ const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnS
   'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
   'firstNonEmptyValue', 'normalizeWarehouseAssignedItemRow', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
   'getManagerAssignedItemsAssigneeOptions', 'getManagerAssignedItemsActiveAssigneeLabel', 'getManagerAssignedItemsExportColumns',
-  'getManagerAssignedItemsExportMetaRows', 'getManagerAssignedItemsActiveAssigneeKey', 'getFilteredManagerAssignedItemsExportRows', 'buildManagerEvalAssignmentKey'];
+  'getManagerAssignedItemsExportMetaRows', 'getManagerAssignedItemsActiveAssigneeKey', 'getFilteredManagerAssignedItemsExportRows', 'buildManagerEvalAssignmentKey', 'isManagerEvalZoneAssignment',
+  'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart', 'getWarehouseAssignedIdentityParts',
+  'buildWarehouseAssignedLookupKeys', 'clearWarehouseAssignedItemCaches', 'rebuildWarehouseAssignedItemIndexes',
+  'chooseWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowForItem',
+  'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue'];
 function helper(name) {
   const start = html.indexOf(`        function ${name}(`);
   assert.ok(start >= 0, name);
@@ -28,6 +32,10 @@ function context(data = rows, normalize = false) {
     managerAssignedColumnState: { owner: 'dylan_collyge', filters: {}, sort: null, editor: null },
     managerEvalReportSettings: { lowStockMaxSLts: 150 },
     normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
+    getDatasetLoadSignature: () => 'warehouse-assignment-test',
+    warehouseAssignedItemIndexCacheKey: '',
+    warehouseAssignedItemsByLookupKey: new Map(),
+    warehouseAssignedItemMatchCache: new WeakMap(),
     getManagerItemLowStockTarget: () => null,
     normalizeManagerItemLowStockTargetCode: value => String(value || '').trim().toUpperCase(),
     warehouseAssignedItemsInventory: data,
@@ -100,6 +108,21 @@ test('All, empty selection, and blanks remain distinct', () => {
   ctx.managerAssignedColumnState.filters.GENUSNAME = null;
   assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length, 3);
   assert.equal(ctx.getManagerAssignedColumnOptions('ASSIGNEDTO').find(x => x.value === '').label, 'Unassigned');
+});
+
+test('exact warehouse-pair Unassigned is authoritative while unmatched and ambiguous pairs never borrow another genus owner', () => {
+  const ctx = context([], true);
+  ctx.warehouseAssignedItemsInventory = [
+    { ITEMCODE: '0001', GENUSNAME: 'Acer', ASSIGNEDTO: null },
+    { ITEMCODE: '0002', GENUSNAME: 'Acer', ASSIGNEDTO: 'acer_owner' },
+    { ITEMCODE: '0002', GENUSNAME: 'Rosa', ASSIGNEDTO: 'rosa_owner' },
+  ].map((row, index) => ctx.normalizeWarehouseAssignedItemRow(row, index));
+  ctx.clearWarehouseAssignedItemCaches();
+
+  assert.equal(ctx.getMasterAssignedToValue({ ITEMCODE: '0001', GENUSNAME: 'Acer', ASSIGNEDTO: 'stale_owner', EVAL_TASK_ASSIGNED_TO: 'old_task' }), '');
+  assert.equal(ctx.getMasterAssignedToValue({ ITEMCODE: '0001', GENUSNAME: 'Pinus', ASSIGNEDTO: 'task_owner' }), 'task_owner');
+  assert.deepEqual(Array.from(ctx.getWarehouseAssignedRowsForItem({ ITEMCODE: '0002' })), []);
+  assert.equal(ctx.getMasterAssignedToValue({ ITEMCODE: '0002', ASSIGNEDTO: 'task_owner' }), 'task_owner');
 });
 
 test('facets ignore their own filter and retain selected values after refresh', () => {
@@ -193,7 +216,7 @@ test('real normalization preserves zeros, codes and location codes in exported v
   const result = ctx.getFilteredManagerAssignedItemsExportRows();
   assert.equal(result.length, 1);
   assert.deepEqual(Array.from(ctx.getManagerAssignedItemsExportColumns(), col => col.value(result[0])),
-      ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '']);
+      ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Saved assignment']);
   assert.equal(ctx.getManagerAssignedColumnOptions('WAREHOUSEI')[0].label, '0');
   assert.equal(data[0].warehousei, 0, 'source dataset remains unchanged');
 });

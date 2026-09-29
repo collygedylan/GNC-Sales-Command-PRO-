@@ -832,6 +832,8 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(liveShellBuild, /login-critical-styles/);
   assert.match(liveShellBuild, /loginStylesMarker/);
   assert.match(liveShellBuild, /window\.addEventListener\('load', afterPaint/);
+  assert.match(liveShellBuild, /rel="preload" as="script" href="\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE\}" fetchpriority="high"/);
+  assert.match(liveShellBuild, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE\}'/);
   assert.match(liveVendorBuild, /@phosphor-icons/);
 });
 

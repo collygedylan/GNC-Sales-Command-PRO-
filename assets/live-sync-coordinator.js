@@ -105,14 +105,15 @@
             return Array.from(result.values());
         }
         function identity(ctx) {
-            return JSON.stringify([ctx.scope, ctx.viewKey, (ctx.adapters || []).map((item) => [item.id, item.cacheKey])]);
+            return JSON.stringify([ctx.scope, ctx.dataPermissionVersion || '', ctx.viewKey, (ctx.adapters || []).map((item) => [item.id, item.cacheKey])]);
         }
         function stillCurrent(ctx, startedEpoch) {
             const next = options.getContext();
             return epoch === startedEpoch && next?.visible !== false && next?.online !== false && identity(next || {}) === identity(ctx);
         }
         function cacheMeta(adapter, ctx, metadata) {
-            return { contractVersion: 1, scope: ctx.scope, adapterId: adapter.id, cacheKey: adapter.cacheKey, signature: signature(metadata, adapter.sourceKeys) };
+            return { contractVersion: 1, scope: ctx.scope, adapterId: adapter.id, cacheKey: adapter.cacheKey,
+                dataPermissionVersion: String(ctx.dataPermissionVersion || ''), signature: signature(metadata, adapter.sourceKeys) };
         }
         function cacheMatches(entry, expected) {
             return entry && entry.value !== undefined && entry.meta && Object.keys(expected).every(key => entry.meta[key] === expected[key]);
@@ -153,6 +154,39 @@
             const adapters = descriptors(ctx, background);
             run.adapters = adapters;
             if (!background) requested.clear();
+            // A current, canonical access snapshot can authorize showing this
+            // user's previously verified display cache while the revision RPC
+            // is pending. It does not establish freshness or action permission.
+            // Require the complete adapter cohort so joined views never mix
+            // cached and missing data, and never preview on a background pass.
+            const needsCachedDisplay = (ctx.adapters || []).some(adapter => {
+                const previous = applied.get(adapter.id);
+                return !previous || previous.cacheKey !== adapter.cacheKey;
+            });
+            const appliedDisplayEntries = (ctx.adapters || []).map(adapter => {
+                const previous = applied.get(adapter.id);
+                return previous && previous.cacheKey === adapter.cacheKey ? { adapter, value: previous.value } : null;
+            });
+            const canRetainAppliedDisplay = !background && ctx.progressive && ctx.visible && ctx.dataPermissionVersion
+                && String(permission || '') === String(ctx.dataPermissionVersion)
+                && appliedDisplayEntries.length > 0 && appliedDisplayEntries.every(Boolean);
+            if (canRetainAppliedDisplay && options.retainAppliedDisplay) {
+                options.retainAppliedDisplay(ctx, appliedDisplayEntries);
+            }
+            if (!background && needsCachedDisplay && ctx.progressive && options.readDisplaySnapshot && options.previewSnapshots
+                && ctx.dataPermissionVersion && current()) {
+                const displayEntries = await Promise.all((ctx.adapters || []).map(async (adapter) => {
+                    const meta = { contractVersion: 1, scope: ctx.scope, adapterId: adapter.id, cacheKey: adapter.cacheKey,
+                        dataPermissionVersion: String(ctx.dataPermissionVersion) };
+                    try {
+                        const value = await options.readDisplaySnapshot(adapter, meta);
+                        return value === undefined || value === null ? null : { adapter, value };
+                    } catch (_) { return null; }
+                }));
+                if (current() && displayEntries.length && displayEntries.every(Boolean)) {
+                    options.previewSnapshots(displayEntries, ctx, null);
+                }
+            }
             // A deferred cohort also verifies the foreground dependencies so it
             // cannot introduce a new shared revision beside older visible joins.
             const keys = unique([...adapters, ...(background ? ctx.adapters || [] : [])].flatMap(item => item.sourceKeys));
@@ -167,10 +201,22 @@
                 signal('background-source-changed', 0);
                 return false;
             }
-            if (permission && permission !== before.permissionVersion) {
+            const accessSnapshotPermissionVersion = String(ctx.dataPermissionVersion || '');
+            if ((permission && permission !== before.permissionVersion)
+                || (accessSnapshotPermissionVersion && accessSnapshotPermissionVersion !== before.permissionVersion)) {
                 applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
                 await options.onPermissionChange?.(before.permissionVersion);
                 if (!current()) return discard();
+                // The revision contract and the fresh access snapshot are
+                // independent reads. Never prove or render a joined snapshot
+                // when their canonical permission hashes disagree, including
+                // the first cycle before the coordinator has seen a hash.
+                const refreshedContext = options.getContext();
+                if (accessSnapshotPermissionVersion
+                    && String(refreshedContext?.dataPermissionVersion || '') !== before.permissionVersion) {
+                    emit('Needs attention', 'Access permissions changed while this screen was loading. Refresh access, then retry.');
+                    return false;
+                }
             }
             permission = before.permissionVersion;
             const blocked = adapters.filter((adapter) => adapter.sourceKeys.some((key) => before.sources.get(key).state !== 'ready'));
@@ -215,7 +261,7 @@
                             const cached = options.readCachedSnapshot ? await Promise.resolve().then(() => options.readCachedSnapshot(adapter, meta)).catch(() => null) : null;
                             if (!current()) return;
                             let value;
-                            if (ctx.progressive && !background && !cacheMatches(cached, meta) && options.readDisplaySnapshot) {
+                            if (ctx.progressive && !background && !display.has(adapter.id) && !cacheMatches(cached, meta) && options.readDisplaySnapshot) {
                                 const displayValue = await options.readDisplaySnapshot(adapter, meta).catch(() => null);
                                 if (displayValue) preview(adapter, displayValue);
                             }

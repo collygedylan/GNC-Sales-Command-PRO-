@@ -78,6 +78,7 @@ function harness(sourceFactory = factorySource) {
         currentUser: 'dylan_collyge', currentRole: 'ADMIN', currentUserDisplay: 'Dylan', managersSearchTerm: '',
         resolvedViewStateEpoch: 0, datasetLoadSignatures: { master: '1', warehouseAssignedItems: '1' },
         getDatasetLoadSignature: key => ctx.datasetLoadSignatures[key] || '',
+        managerItemLowStockCodeKeyCache: null,
         fullInventory: [], warehouseAssignedItemsInventory: [], managerItemLowStockTargetsState: { owner: 'dylan_collyge', key: '', rowsByCode: new Map(), revision: 0 },
         normalizeManagerItemLowStockTargetCode: value => String(value || '').trim().toUpperCase(),
         fetchManagerItemLowStockTargets: async codes => { calls.push(['RPC', 'get_eval_item_low_stock_targets_v1', { p_itemcodes: codes }]); return []; },

@@ -3,11 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { X509Certificate } from 'node:crypto';
 import pg from 'pg';
+import yaml from 'js-yaml';
 import {
-  validateDatabaseTarget, migrationBody, applyItemLowStockMigration,
+  validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
+  perennialAssignmentMigrationName, releaseDatabaseMigrations, migrationContractQuery,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
+import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
 
 test('migration target is the configured Supabase project and never a browser key', () => {
   const api='https://testproject.supabase.co';
@@ -58,6 +61,72 @@ test('migration and history entry are atomic and a retry verifies the same conte
   const retry={query:async(sql)=>({rows:sql.startsWith('select name')?[{name:'item_low_stock_targets',statements:[migrationBody(source)]}]:sql.startsWith('select to_regprocedure')?[{installed:true}]:[]})};
   assert.equal((await applyItemLowStockMigration({client:retry,source})).status,'already_applied');
   assert.throws(()=>migrationBody('select 1'),/TRANSACTION_REQUIRED/);
+});
+test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName]);
+  assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
+  const queries=[];const client={query:async(sql,params)=>{
+    queries.push({sql,params});
+    if(sql.startsWith('select name'))return{rows:[]};
+    if(sql.includes('zone_override_active'))return{rows:[{installed:true}]};
+    return{rows:[]};
+  }};
+  assert.equal((await applyItemLowStockMigration({client,source:'begin; select 9; commit;',targetMigrationName:perennialAssignmentMigrationName})).status,'applied');
+  const history=queries.find(entry=>entry.sql.startsWith('insert into supabase_migrations'));
+  assert.equal(history.params[0],perennialAssignmentMigrationName.split('_')[0]);
+  assert.equal(history.params[1],'perennial_zone_assignment_override');
+  assert.ok(queries.some(entry=>entry.sql===migrationContractQuery(perennialAssignmentMigrationName)));
+  assert.throws(()=>migrationContractQuery('unlisted.sql'),/MIGRATION_HISTORY_MISMATCH/);
+});
+test('perennial production preview is aggregate only and rolls back its read-only transaction',async()=>{
+  const calls=[];
+  const client={query:async sql=>{
+    calls.push(sql);
+    if(sql==='begin read only'||sql==='rollback')return{rows:[]};
+    assert.equal(sql,perennialPreviewSql);
+    return{rows:[{inventory_revision:'22',inventory_state:'ready',preview_ready:true,itemcode_genus_groups:12,rose_exempt_groups:2,in_zone_policy_groups:3,
+      unresolved_groups:1,outside_groups:6,zoe_active_roster_rows:1,current_owner_changes_estimate:3,
+      affected_assignments:[{itemcode:'A1',genus:'perennial',previousOwner:'owner1',proposedOwner:'zoe_green',ownerChange:true,
+        automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]}]};
+  }};
+  const preview=await runPerennialAssignmentPreview({client,repositorySha:'a'.repeat(40),generatedAt:'2026-09-28T12:00:00.000Z'});
+  assert.deepEqual(calls,['begin read only',perennialPreviewSql,'rollback']);
+  assert.equal(preview.counts.in_zone_policy_groups,3);
+  assert.equal(preview.previewMode,'read_only_aggregate');
+  assert.equal(preview.policyActivation,'waits_for_successful_master_import');
+  assert.equal(preview.previewReady,true);
+  assert.equal(getPerennialPreviewFailure(preview),'');
+  assert.deepEqual(preview.affectedAssignments,[{itemcode:'A1',genus:'perennial',previousOwner:'owner1',proposedOwner:'zoe_green',ownerChange:true,
+    automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]);
+  assert.doesNotMatch(JSON.stringify(preview),/Customer Name/i);
+  assert.match(perennialPreviewSql,/135_ROSES/);
+  assert.match(perennialPreviewSql,/D\\.10/);
+  assert.match(perennialPreviewSql,/preview_ready/);
+});
+test('perennial preview withholds proposed owner details while a master import is partial',async()=>{
+  const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'23',inventory_state:'importing',preview_ready:false,
+    itemcode_genus_groups:7,rose_exempt_groups:0,in_zone_policy_groups:1,unresolved_groups:2,outside_groups:4,
+    zoe_active_roster_rows:1,current_owner_changes_estimate:1,affected_assignments:[{itemcode:'SHOULD_NOT_ESCAPE'}]}]})};
+  const preview=await runPerennialAssignmentPreview({client,repositorySha:'b'.repeat(40)});
+  assert.equal(preview.previewReady,false);
+  assert.deepEqual(preview.affectedAssignments,[]);
+  assert.equal(getPerennialPreviewFailure(preview),'PERENNIAL_PREVIEW_MASTER_NOT_READY');
+});
+test('perennial preview blocks activation when Zoe is inactive for qualifying keys',async()=>{
+  const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'24',inventory_state:'ready',preview_ready:true,
+    itemcode_genus_groups:7,rose_exempt_groups:1,in_zone_policy_groups:2,unresolved_groups:1,outside_groups:3,
+    zoe_active_roster_rows:0,current_owner_changes_estimate:2,
+    affected_assignments:[{itemcode:'SECRET-FREE-SYNTHETIC',genus:'perennial',previousOwner:'fixture',proposedOwner:'zoe_green',ownerChange:true,
+      automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]}]})};
+  const preview=await runPerennialAssignmentPreview({client,repositorySha:'c'.repeat(40)});
+  assert.equal(preview.previewReady,true);
+  assert.equal(getPerennialPreviewFailure(preview),'PERENNIAL_PREVIEW_ZOE_INACTIVE');
+  assert.equal(preview.affectedAssignments.length,1,'the failure artifact retains the preview impact for diagnosis');
+});
+test('pre-activation gate requires a valid ready preview and an active Zoe only when policy keys exist',()=>{
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:0,zoe_active_roster_rows:0}}),'');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:1,zoe_active_roster_rows:1}}),'');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:'bad',zoe_active_roster_rows:1}}),'PERENNIAL_PREVIEW_RESULT_INVALID');
 });
 test('SQL errors roll back without committing the migration history', async()=>{
   const calls=[]; const client={query:async(sql)=>{calls.push(sql);if(sql==='select broken;')throw Error('failure');return{rows:[]};}};
@@ -126,7 +195,17 @@ test('failed migration rollback preserves the original SQL error', async()=>{
 });
 test('cloud rollout verifies the existing release proof before schema and importer publication',()=>{
   const workflow=fs.readFileSync('.github/workflows/apps-script-sync.yml','utf8');
-  assert.ok(workflow.indexOf('Recheck current main and release proof')<workflow.indexOf('Apply the item low-stock schema'));
+  assert.ok(workflow.indexOf('Recheck current main and release proof')<workflow.indexOf('Preview perennial policy impact (read only)'));
   assert.ok(workflow.indexOf('apply-item-low-stock-migration.mjs\n')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  assert.ok(workflow.indexOf('Preview perennial policy impact (read only)')<workflow.indexOf('Apply low-stock and perennial schemas'));
+  assert.ok(workflow.indexOf('Apply low-stock and perennial schemas')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  const steps = yaml.load(workflow).jobs['sync-codegs'].steps;
+  const previewStep = steps.find(step => step.name === 'Preview perennial policy impact (read only)');
+  const artifactStep = steps.find(step => step.name === 'Retain sanitized perennial impact preview');
+  const migrationStep = steps.find(step => step.name === 'Apply low-stock and perennial schemas before the compatible importer');
+  assert.equal(previewStep.run,'node scripts/preview-perennial-assignment.mjs');
+  assert.equal(artifactStep.if,'always()','retain the written preview artifact after a fail-closed preflight');
+  assert.equal(migrationStep.if,undefined,'failed preview must prevent schema and importer deployment');
+  assert.ok(workflow.includes('20260929013125_perennial_zone_assignment_override.sql'));
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
 });

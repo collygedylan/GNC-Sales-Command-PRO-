@@ -1,0 +1,60 @@
+# Faster module loading and perennial ownership
+
+Release: V2026.09.28.004.
+
+## Display and action readiness
+
+The Managers landing menu has no inventory dependency. Each selected tab declares its own complete dataset cohort. Eval Reports #2 loads the threshold summary only when Low Stock is selected.
+
+An authenticated, freshly authorized user may see a previously verified, complete cached cohort while revision checks run. Cache identity includes the user scope, canonical `dataPermissionVersion`, adapter contract and schema/cache key. A mismatch is a cache miss. The policy version is not a substitute for the permission fingerprint. The display says “Showing saved data · Checking for updates” and reports the saved verification time. Imports and temporary failures retain that labeled display.
+
+Displaying cached records does not set dataset completeness flags, current revision proof, or mutation readiness. Assignment changes, low-stock edits, report submissions/exports and inventory-dependent HL/PO controls require verified current data. Identity/permission changes invalidate protected display state. Cached optional datasets are explicitly allowlisted and size bounded; credentials, tokens and pending operation queues are not persisted by this change.
+
+## Report work
+
+The inventory/assignment/settings/threshold/date revision tuple owns one report index. Navigation epochs and local user filters do not rebuild it. Itemcode membership and physical-row lookups are prepared once, removing repeated full-inventory scans per card. Worker responses are checked against their originating identity and revisions; the fallback yields between bounded batches.
+
+Apply acknowledges immediately and schedules a report-region update. Existing cards remain until replacement records are ready. The first small batch is rendered before subsequent batches; the full matching result remains available for selection and verified export. Background refresh preserves active drafts and display anchors.
+
+The runtime starts downloading earlier, but execution remains after initial paint. Timing diagnostics cover authentication/access, revision/download work, report indexing and rendering without recording customer rows or credentials. The supplied recording began after login, so it does not establish the cause of the earlier login gap.
+
+## Ownership policy
+
+Ownership is authoritative for normalized ItemCode + Genus, with itemcode leading zeros preserved. C.06/C.07 and D.04–D.09 qualify; D.10 requires a numeric three-digit bay from 000 through 021. Malformed locations are unresolved.
+
+Any `135_roses` row exempts the whole pair. Otherwise any qualifying physical row assigns the pair to `zoe_green`, including pairs spanning other locations. A confirmed complete exit clears a previously automatic owner; an ordinary outside pair keeps its saved owner. Absent or unresolved evidence does not prove an exit. A later rose exemption restores the recorded prior owner if active, otherwise Unassigned with an audit reason.
+
+The database stores override provenance and a private audit history. Active overrides reject conflicting manual writes in the existing assignment RPC. Current views use exact ItemCode + Genus; itemcode-only fallback is permitted only when unambiguous. Explicit Unassigned values remain authoritative over older owner fields on inventory or task rows. Existing frozen work snapshots and the separate historical Pikes repair workflow remain unchanged.
+
+## Deployment and activation
+
+The backend workflow produces a read-only impact preview before applying the additive migration. A non-ready snapshot or qualifying items without an active Zoe account stops deployment; the private preview is retained for diagnosis. The migration installs support without reallocating owners. The first successful canonical master import activates the policy inside fenced finalization, before ready revisions are published. Interrupted imports and scheduled runs before activation cannot infer departures. Manual assignment writes and reconciliation share a serialization lock. Repeated identical ownership does not create duplicate audit entries or notifications.
+
+The archive backfill and low-stock activation safeguards are unchanged. Cloud PR checks, merging and production promotion remain mandatory. No release gate is bypassed.
+
+## Validation evidence
+
+The controlled compiled-app fixture contains 10,000 physical rows and 3,200 item groups. All 15 report/assignment regressions passed across Chromium, Firefox and WebKit. Apply acknowledged in 1 / 1 / 17 ms and published its first records in 121 / 194 / 377 ms respectively. Index construction took 321 / 420 / 720 ms. Unchanged local filters caused no inventory downloads or low-stock requests. All-item membership lookup fell from 2.3–3.3 seconds to 6–15 ms. These are local synthetic measurements, not production network latency claims.
+
+A separate same-process comparison against the mainline engine measured median ownership-overlay-plus-classification time of 196 ms before and 209 ms after (6.5% higher). This checks the extra cooperative-processing overhead; it is not a measurement of complete cold login or network loading.
+
+A final isolated Chromium comparison used three fresh sessions per build. HTTP-served release, source commit and runtime bytes were checked against the local candidate and exact-mainline artifacts before measurement. Median results:
+
+| Measurement | Mainline | Candidate |
+| --- | ---: | ---: |
+| First contentful paint | 160 ms | 148 ms |
+| Login fixture completion | 2,218 ms | 2,262 ms |
+| Cold first card | 3,738 ms | 3,498 ms |
+| Cold complete list plus proof | 10,691 ms | 10,968 ms |
+| Revisit first card | 2,149 ms | 816 ms |
+| Revisit complete list plus proof | 2,651 ms | 4,585 ms |
+
+The fixture renders 1,581 Common Name cards. “Complete list plus proof” waits for every card and current-data proof; it does not isolate revision latency. Revisit first content improves 62%, while complete-list rendering is slower and remains a measured tradeoff. Cold complete-list loading increases 2.6%, within the 10% regression limit. Both builds make zero repeat inventory reads; the candidate uses three repeat requests versus four on mainline. Candidate revisit samples ranged from 785 to 3,173 ms using the browser-test navigation timer. Separate click-event-to-visible checks measured 786 ms for saved Drive data and 120 ms for the Managers menu. These measurements are local synthetic evidence, not a production latency guarantee.
+
+The read-only production preview at inventory revision 4581 found 3,190 item/genus groups: 262 qualifying, 185 rose-exempt, 5 unresolved, and 2,738 outside. All 262 qualifying groups need automatic lock metadata; 20 need an assignee change. One active Zoe roster entry was confirmed. This preview did not modify production; the deployment workflow repeats it against the then-current snapshot before activation.
+
+Browser regressions cover the supported engines, permission-isolated saved display, imports/failures, read-only actions, report index reuse, cooperative cancellation, and assignment controls at mobile/tablet/desktop widths in light, dark and outdoor themes. Database fixtures exercise boundary parsing, split locations, exceptions/restoration, exits/re-entry, missing/incomplete evidence, active-user checks, audit idempotence, import fencing and authenticated RPC enforcement.
+
+The local release unit run passed 1,418 checks and the V2 suite passed 10 tests. The 18 mobile module smoke cases passed across 320px and iPhone, alongside five cache regressions and 27 Eval2 functional checks. All four iPhone Assigned Items cases passed locally with trace recording disabled and the existing 90-second limit unchanged. The long navigation case took 56 seconds; trace-enabled runs timed out on both the candidate and the unchanged mainline near the end of the same scenario. CI tracing and release checks remain unchanged. Assigned Items exports append the new reason column, preserving existing column positions. Final browser and SQL results are reported in the PR. Production deployment is not implied by a local test result.
+
+For an isolated local migration check, install the optional PGlite 0.5.8 runtime under `.gnc-local/pglite` and run `node scripts/validate-perennial-zone-migration.mjs`. The harness executes the new migration with minimal prerequisite fixtures and tests ownership transitions, fencing and permission hashes. It never connects to production. The 60 SQL assertions also passed locally with lightweight pgTAP-compatible assertion functions. Docker is unavailable locally; the complete Supabase migration chain and real pgTAP run in the database release check. The isolated checks do not replace that check.

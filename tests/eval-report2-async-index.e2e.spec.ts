@@ -51,6 +51,8 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
     managerEvalReport2CacheKey = '';
     managerEvalReport2NeedsReconcile = false;
     activeHomeTab = 'eval-reports-2';
+    managerEvalReport2SelectedReportIds = ['low-stock'];
+    activeManagerEvalReport2 = 'low-stock';
     const events = [];
     reportSemanticHealthEvent = (...args) => events.push(args[2]);
     const syntheticTargets = new Map();

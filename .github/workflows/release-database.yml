@@ -173,6 +173,7 @@ jobs:
           cp supabase/migrations/20260924181019_optimize_request_history_read_projection.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260928145055_item_low_stock_targets.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260929013125_perennial_zone_assignment_override.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -224,6 +225,7 @@ jobs:
           cp supabase/tests/hl_po_seasons_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/manager_season_priority_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/eval_item_low_stock_targets_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/perennial_zone_assignment_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         id: stack

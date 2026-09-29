@@ -80,6 +80,52 @@ test('dashboard metadata cancellation between reads prevents the next request an
     assert.equal(calls.length, 5, 'same-owner metadata reuses its valid TTL cache');
 });
 
+test('current-proof export guard blocks stale native inventory while preserving non-native behavior', () => {
+    const helperStart = html.indexOf('function hasCurrentProductionLiveSyncProof(');
+    const helperEnd = html.indexOf('const productionLiveSyncReadSignalIds', helperStart);
+    assert.ok(helperStart > 0 && helperEnd > helperStart);
+    const calls = { toasts: [], signals: [] };
+    const ctx = { runtime: true, profileUsername: 'alice', currentUser: 'alice', proof: '', key: 'fresh-key', permissionVersion: 'access-v1' };
+    const sandbox = {
+        canUseProductionLiveSync: () => ctx.runtime && ctx.profileUsername.toLowerCase() === ctx.currentUser.toLowerCase(),
+        nativeAuthSessionActive: true,
+        nativeAuthProfile: { id: 'native-account' },
+        productionLiveSyncVerifiedView: ctx.proof,
+        getProductionLiveSyncContext: () => ({ viewKey: 'drive', dataPermissionVersion: ctx.permissionVersion }),
+        productionVerifiedViewKey: () => ctx.key,
+        showToast: (...args) => calls.toasts.push(args),
+        signalProductionLiveSync: (...args) => calls.signals.push(args)
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(html.slice(helperStart, helperEnd), sandbox);
+    assert.equal(sandbox.hasCurrentProductionLiveSyncProof(), false);
+    assert.equal(sandbox.requireCurrentProductionLiveSyncProof('exporting inventory'), false);
+    assert.equal(calls.toasts.length, 1);
+    assert.equal(calls.signals[0][0], 'action-proof-required');
+    sandbox.productionLiveSyncVerifiedView = 'fresh-key';
+    assert.equal(sandbox.requireCurrentProductionLiveSyncProof('exporting inventory'), true);
+    ctx.permissionVersion = '';
+    assert.equal(sandbox.hasCurrentProductionLiveSyncProof(), false, 'native proof requires the canonical access permission version');
+    ctx.permissionVersion = 'access-v1';
+    ctx.currentUser = 'different-user';
+    assert.equal(sandbox.hasCurrentProductionLiveSyncProof(), false, 'a native identity mismatch must fail closed');
+    ctx.currentUser = 'alice';
+    ctx.runtime = false;
+    assert.equal(sandbox.hasCurrentProductionLiveSyncProof(), false, 'native session without the live-sync runtime must fail closed');
+    sandbox.nativeAuthSessionActive = false;
+    sandbox.nativeAuthProfile = null;
+    ctx.runtime = false;
+    sandbox.productionLiveSyncVerifiedView = '';
+    assert.equal(sandbox.requireCurrentProductionLiveSyncProof('exporting inventory'), true);
+
+    for (const name of ['exportCurrentAVToExcel', 'exportSalesOfficeRowsToExcel', 'exportCurrentDriveModeToExcel', 'exportCurrentDriveReportToExcel']) {
+        const start = html.indexOf(`function ${name}(`);
+        const end = html.indexOf('\n        function ', start + 12);
+        assert.ok(start > 0 && end > start, name);
+        assert.match(html.slice(start, end), /requireCurrentProductionLiveSyncProof\(/, `${name} must recheck current proof before exporting`);
+    }
+});
+
 test('dashboard metadata never starts transport after navigation is already aborted', async () => {
     const { ctx, calls } = dashboardMetadataFixture();
     ctx.productionLiveSyncNavigation.abort();
@@ -528,18 +574,32 @@ test('permission-change coordinator callback returns the permission refresh prom
     assert.equal(ctx.callback(), promise);
 });
 
-test('footer refresh does not render or reset static Hours and navigation screens', () => {
+test('footer refresh skips static and navigation-only screens but renders data-backed Managers tabs', () => {
     const from = html.indexOf('function scheduleProductionLiveSyncRender(');
     const to = html.indexOf('function getProductionLiveSyncCoordinator()', from);
-    for (const kind of ['static', 'navigation']) {
-        const ctx = { productionVerifiedViewKey: () => 'visit', VIEW_LOAD_UI: {}, productionLiveSyncRenderTimer: null, document: { hidden: false },
-            setTimeout: (callback) => { callback(); return 1; }, canUseProductionLiveSync: () => true,
-            getCurrentVisibleViewId: () => 'hours', window: { AgMetricLiveSyncRegistry: { views: { hours: { kind } } } },
-            hasProductionLiveSyncDraft: () => { throw new Error('Static form should not enter redraw handling.'); }
+    const run = ({ view, kind, adapters }) => {
+        let renders = 0;
+        const ctx = { productionVerifiedViewKey: () => 'visit', VIEW_LOAD_UI: { managers: { container: 'managers-content' } },
+            productionLiveSyncRenderTimer: null, productionLiveSyncRenderGeneration: 0, productionLiveSyncRenderPending: false,
+            productionLiveSyncActiveRender: null, productionLiveSyncRendering: false,
+            document: { hidden: false, getElementById: () => ({}), activeElement: null },
+            setTimeout: (callback) => { callback(); return 1; }, clearTimeout() {},
+            scheduleTypingAwareUiRender: (_key, callback) => { callback(); }, canUseProductionLiveSync: () => true,
+            getCurrentVisibleViewId: () => view, getProductionLiveSyncContext: () => ({ adapters }),
+            getContainerUiState: () => 'content', hasProductionLiveSyncDraft: () => false,
+            captureProductionRefreshAnchor: () => null, restoreProductionRefreshAnchor() {}, isProductionRefreshCurrent: () => true,
+            finishProductionRefresh() {}, bumpLatestViewRenderToken: () => 1, latestViewRenderTokensByView: { managers: 1 },
+            markViewDirty() {}, renderViewContent: () => { renders++; },
+            window: { AgMetricLiveSyncRegistry: { views: { [view]: { kind } } } }
         };
         vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
         assert.doesNotThrow(() => ctx.scheduleProductionLiveSyncRender());
-    }
+        return renders;
+    };
+    assert.equal(run({ view: 'hours', kind: 'static', adapters: [] }), 0);
+    assert.equal(run({ view: 'home', kind: 'navigation', adapters: [] }), 0);
+    assert.equal(run({ view: 'managers', kind: 'navigation', adapters: [] }), 0);
+    assert.equal(run({ view: 'managers', kind: 'navigation', adapters: [{ id: 'core:master' }] }), 1);
 });
 
 test('focused live search defers one redraw without scheduling a busy retry timer', () => {
@@ -732,9 +792,11 @@ test('native database helpers never fall through to the prohibited legacy proxy'
 
 
 test('progressive disk display accepts an older revision only with the same account, query and permissions', async () => {
-    const meta = { scope: 'account-a', adapterId: 'core:master', cacheKey: 'master/all', signature: JSON.stringify(['permission-a', ['master', '2', 'ready']]) };
+    const meta = { contractVersion: 1, scope: 'account-a', adapterId: 'core:master', cacheKey: 'master/all', dataPermissionVersion: 'permission-a', signature: JSON.stringify(['permission-a', ['master', '2', 'ready']]) };
     let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) }, rawRows: [{ id: 'old-row' }], rowCount: 1 };
-    const ctx = { JSON, Array, loadCacheValue: async () => saved, verifiedSnapshotCacheKey: () => 'scope-key', buildDatasetPayload: (_, rows) => ({ data: rows }) };
+    const ctx = { JSON, Array, Map, getSupabaseReadIdentityScope: () => 'account-a', productionDisplaySnapshotTimes: new Map(),
+        productionDisplayGroupKey: () => 'cohort', loadCacheValue: async () => saved,
+        verifiedSnapshotCacheKey: () => 'scope-key', buildDatasetPayload: (_, rows) => ({ data: rows }) };
     vm.createContext(ctx);
     const from = html.indexOf('async function readProductionDisplaySnapshot(');
     vm.runInContext(html.slice(from, html.indexOf('function previewProductionSnapshots(', from)), ctx);
@@ -744,9 +806,31 @@ test('progressive disk display accepts an older revision only with the same acco
     for (const change of [
         { meta: { ...saved.meta, scope: 'account-b' } },
         { meta: { ...saved.meta, cacheKey: 'other/query' } },
-        { meta: { ...saved.meta, signature: JSON.stringify(['permission-b']) } },
+        { meta: { ...saved.meta, dataPermissionVersion: 'permission-b' } },
+        { meta: { ...saved.meta, contractVersion: 2 } },
+        { meta: { ...saved.meta, dataPermissionVersion: undefined } },
         { format: 'legacy-unscoped' }, { rowCount: 2 }
     ]) { saved = { ...original, ...change }; assert.equal(await read(), null); }
+});
+
+test('progressive previews wait while Assigned Items has a low-stock draft or focused target input', () => {
+    const start = html.indexOf('function hasProductionLiveSyncDraft(');
+    const end = html.indexOf('\n        function captureProductionRefreshAnchor(', start);
+    assert.ok(start >= 0 && end > start);
+    const context = {
+        document: { activeElement: null, querySelectorAll: () => [] },
+        getCurrentVisibleViewId: () => 'managers', activeHomeTab: 'assigned',
+        MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned', MANAGER_EVAL_REPORTS_2_VIEW: 'eval2',
+        managerEvalReport2EditsByRowKey: new Map(), getManagerItemLowStockTargetsState: () => ({ drafts: new Map(), saving: new Set() })
+    };
+    vm.createContext(context);
+    vm.runInContext(`${html.slice(start, end)};globalThis.hasDraft = hasProductionLiveSyncDraft;`, context);
+    assert.equal(context.hasDraft(), false);
+    context.getManagerItemLowStockTargetsState = () => ({ drafts: new Map([['ITEM.1', '12']]), saving: new Set() });
+    assert.equal(context.hasDraft(), true);
+    context.getManagerItemLowStockTargetsState = () => ({ drafts: new Map(), saving: new Set() });
+    context.document.activeElement = { matches: selector => selector === 'input[data-low-stock-override]' };
+    assert.equal(context.hasDraft(), true);
 });
 
 test('SIGNED_OUT watcher invalidates pending native recovery before clearing the session', () => {

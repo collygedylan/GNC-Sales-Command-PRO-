@@ -30,13 +30,14 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 126);
+  assert.equal(migrations.length, 127);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
   }
   for (const filename of [
     '20260928145055_item_low_stock_targets.sql',
+    '20260929013125_perennial_zone_assignment_override.sql',
     '20260901024608_drive_eval_shear_location_inquiries_v1.sql',
     '20260901043510_harden_shear_location_rls.sql',
     '20260901135456_drive_shear_location_access_audit_baseline_v1.sql',
@@ -92,6 +93,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     ...[...workflow.matchAll(/"([a-z_]+_test\.sql)": "[a-z_]+_checks"/g)].map(match => match[1]),
   ];
   assert.deepEqual([...sqlTests].sort(), [
+    'perennial_zone_assignment_test.sql',
     'eval_item_low_stock_targets_test.sql',
     'manager_season_priority_test.sql',
     'bunch_note_workflow_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',

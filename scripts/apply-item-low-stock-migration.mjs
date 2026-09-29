@@ -4,6 +4,8 @@ import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
 export const migrationName = '20260928145055_item_low_stock_targets.sql';
+export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_assignment_override.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName]);
 
 const NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET',
@@ -162,15 +164,23 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
   return { installed: result?.rows?.[0]?.installed === true };
 }
 
+export function migrationContractQuery(name) {
+  if (name === migrationName) return "select to_regprocedure('public.get_eval_item_low_stock_targets_v1(text[],text,integer)') is not null as installed";
+  if (name === perennialAssignmentMigrationName) return "select to_regprocedure('public.reconcile_eval_itemcodes(uuid)') is not null and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_warehouse_assigned_items' and column_name='zone_override_active') as installed";
+  throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+}
+
 export function migrationBody(source) {
   if (!/^begin;\s/i.test(source) || !/\scommit;\s*$/i.test(source)) throw new Error('LOW_STOCK_MIGRATION_TRANSACTION_REQUIRED');
   return source.replace(/^begin;\s*/i, '').replace(/\scommit;\s*$/i, '');
 }
 
-export async function applyItemLowStockMigration({ client, source, onPhase = () => {} }) {
-  const version = migrationName.split('_')[0];
-  const name = migrationName.slice(version.length + 1, -4);
+export async function applyItemLowStockMigration({ client, source, onPhase = () => {}, targetMigrationName = migrationName }) {
+  if (!releaseDatabaseMigrations.includes(targetMigrationName)) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+  const version = targetMigrationName.split('_')[0];
+  const name = targetMigrationName.slice(version.length + 1, -4);
   const body = migrationBody(source);
+  const contractQuery = migrationContractQuery(targetMigrationName);
   onPhase('transaction_begin');
   await client.query('begin');
   try {
@@ -187,7 +197,7 @@ export async function applyItemLowStockMigration({ client, source, onPhase = () 
       await client.query('insert into supabase_migrations.schema_migrations(version,name,statements) values ($1,$2,$3)', [version,name,[body]]);
     }
     onPhase('contract_check');
-    const result = await client.query("select to_regprocedure('public.get_eval_item_low_stock_targets_v1(text[],text,integer)') is not null as installed");
+    const result = await client.query(contractQuery);
     if (result.rows[0]?.installed !== true) throw new Error('LOW_STOCK_DATABASE_CONTRACT_MISSING');
     onPhase('transaction_commit');
     await client.query('commit');
@@ -228,9 +238,11 @@ async function main(args = process.argv.slice(2)) {
       const probe = await runReadOnlySchemaDiagnostic({ client, onPhase: next => { phase = next; } });
       console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
     } else {
-      const source = fs.readFileSync(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), 'utf8');
-      const applied = await applyItemLowStockMigration({ client, source, onPhase: next => { phase = next; } });
-      console.log(`Item low-stock schema: ${applied.status}.`);
+      for (const targetMigrationName of releaseDatabaseMigrations) {
+        const source = fs.readFileSync(new URL(`../supabase/migrations/${targetMigrationName}`, import.meta.url), 'utf8');
+        const applied = await applyItemLowStockMigration({ client, source, targetMigrationName, onPhase: next => { phase = next; } });
+        console.log(`${targetMigrationName}: ${applied.status}.`);
+      }
     }
   } catch (error) {
     primaryError = error;
