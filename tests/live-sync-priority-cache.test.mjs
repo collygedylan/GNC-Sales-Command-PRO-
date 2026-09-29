@@ -356,6 +356,47 @@ function installRefreshRenderFixture(ctx) {
     return ctx;
 }
 
+test('an ordinary list render retires a superseded staged refresh before its canceled completion frame', () => {
+    const container = { dataset: {}, classList: { add() {} }, isConnected: true, replaceChildren() { throw new Error('stale commit'); } };
+    const staged = {};
+    let completion, commit, cancellations = 0;
+    const refresh = { pending: 0 };
+    const context = {
+        Set, String, Number, productionLiveSyncActiveRender: refresh, productionLiveSyncRenderPending: true,
+        productionLiveSyncRendering: true, productionLiveSyncRenderGeneration: 1, productionLiveSyncCoordinator: null,
+        document: { createElement: () => staged },
+        renderMarkupChunkedByKey: (_key, target, _crumb, _rows, _text, _render, options) => {
+            assert.equal(target, staged); completion = options.onComplete;
+        },
+        scheduleTypingAwareUiRender: (_key, callback) => { commit = callback; },
+        cancelScheduledUiRenderByPrefix: () => { cancellations++; },
+        getContainerChunkRenderKey: () => 'manager-eval-report-2',
+        bumpChunkRenderTokenByKey() {}, clearContainerChunkRenderState() {},
+        isProductionRefreshCurrent: value => context.productionLiveSyncActiveRender === value
+    };
+    vm.createContext(context);
+    vm.runInContext(html.slice(html.indexOf('        function stageProductionRefreshList('), html.indexOf('        function scheduleProductionLiveSyncRender(')), context);
+    vm.runInContext(html.slice(html.indexOf('        function cancelChunkRenderWorkForContainer('), html.indexOf('        function trimChunkRenderTimerState(')), context);
+    context.stageProductionRefreshList('manager-eval-report-2', container, null, [{}], '', () => '', {});
+    assert.equal(refresh.pending, 1);
+    context.cancelChunkRenderWorkForContainer(container, 'manager-eval-report-2');
+    assert.equal(context.productionLiveSyncActiveRender, refresh, 'the staging render must not cancel itself');
+    context.productionLiveSyncRendering = false;
+    context.cancelChunkRenderWorkForContainer({}, 'manager-eval-report-2');
+    assert.equal(context.productionLiveSyncActiveRender, refresh, 'unrelated lists must not cancel this refresh');
+    // Same-key ordinary render invalidates the chunk completion token even
+    // though the container has no active chunk state (the iOS sync path).
+    context.cancelChunkRenderWorkForContainer(container, 'manager-eval-report-2');
+    assert.equal(context.productionLiveSyncActiveRender, null);
+    assert.equal(context.productionLiveSyncRenderPending, false);
+    assert.equal(cancellations, 1);
+    completion();
+    const newer = { pending: 1 };
+    context.productionLiveSyncActiveRender = newer;
+    commit();
+    assert.equal(context.productionLiveSyncActiveRender, newer, 'late completion must not change the newer render');
+});
+
 test('initial verified content skips the background render debounce and retains draft guards', () => {
     for (const [state, immediate, cachedPreview, expectedDelay, allowDuringRecentInteraction] of [
         ['loading', false, false, 0, false],
@@ -380,6 +421,7 @@ test('initial verified content skips the background render debounce and retains 
         vm.runInContext(html.slice(html.indexOf('        function scheduleProductionLiveSyncRender('), html.indexOf('        function getProductionLiveSyncCoordinator()')), context);
         context.scheduleProductionLiveSyncRender(immediate, { cachedPreview }); assert.equal(delay, expectedDelay);
         assert.equal(renderOptions.allowDuringRecentInteraction, allowDuringRecentInteraction);
+        assert.equal(renderOptions.allowDuringRecentViewSwitch, cachedPreview && state === 'loading');
         assert.equal(renderOptions.deferUntilIdle, true);
         assert.equal(renderOptions.ignoreChunkDuringInteraction, true);
         assert.equal(renderOptions.allowWhileTyping, undefined);
@@ -387,6 +429,30 @@ test('initial verified content skips the background render debounce and retains 
         assert.equal(renderOptions.allowWhileScrolling, undefined);
         callback(); assert.equal(renders, 1);
     }
+});
+
+test('saved-data first paint bypasses only the navigation grace blocker', () => {
+    const flags = { view: true, save: false, chunk: false, camera: false, photo: false };
+    const context = {
+        window: { pendingPhotoUploads: new Set() },
+        hasActiveTextEntryFocus: () => false, isUserActivelyTyping: () => false,
+        isUserActivelyTouching: () => false, isUserActivelyScrolling: () => false,
+        isUserInRecentInteractionWindow: () => false,
+        isRecentViewSwitchActivity: () => flags.view, hasPendingFieldSaveActivity: () => flags.save,
+        isChunkRenderActive: () => flags.chunk, isRecentCameraActivity: () => flags.camera,
+        isRecentPhotoPersistActivity: () => flags.photo
+    };
+    vm.createContext(context);
+    vm.runInContext(html.slice(html.indexOf('        function hasExtendedInteractionBlockers('), html.indexOf('        function isUserInRecentInteractionWindow(')), context);
+    assert.equal(context.hasExtendedInteractionBlockers(), true);
+    assert.equal(context.hasExtendedInteractionBlockers({ allowDuringRecentViewSwitch: true }), false);
+    for (const key of ['save', 'chunk', 'camera', 'photo']) {
+        flags[key] = true;
+        assert.equal(context.hasExtendedInteractionBlockers({ allowDuringRecentViewSwitch: true }), true, key);
+        flags[key] = false;
+    }
+    context.window.pendingPhotoUploads.add('pending');
+    assert.equal(context.hasExtendedInteractionBlockers({ allowDuringRecentViewSwitch: true }), true);
 });
 
 test('retained applied cohorts rerender only when the target viewport has no content', () => {

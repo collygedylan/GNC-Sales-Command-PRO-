@@ -394,7 +394,8 @@ test('verified background refresh keeps Eval Reports #2 LowStock location cards 
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('touch-held Eval Reports #2 refresh keeps location cards in place until the gesture ends', async ({ page, baseURL }, testInfo) => {
+for (const overlapRecordsRender of [false, true]) {
+test(`touch-held Eval Reports #2 refresh keeps location cards in place until the gesture ends${overlapRecordsRender ? ' with a queued records render' : ''}`, async ({ page, baseURL }, testInfo) => {
   test.skip(!/(android|iphone)/.test(testInfo.project.name), 'exercise the touch-specific scheduler on mobile profiles');
   const fixture = await setupEval2Location(page, baseURL!);
   const scroller = page.locator('#main-scroll-area');
@@ -432,11 +433,36 @@ test('touch-held Eval Reports #2 refresh keeps location cards in place until the
   expect(held.onHand).toBe(held.beforeOnHand);
 
   await scroller.dispatchEvent('pointerup', { pointerId: 47, pointerType: 'touch', isPrimary: true, button: 0 });
-  await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.eval(`({
+    pending: productionLiveSyncRenderPending,
+    active: Boolean(productionLiveSyncActiveRender)
+  })`))).toEqual({ pending: false, active: false });
   await expect.poll(() => page.evaluate(() => window.eval(`(() => {
     const card = document.querySelector('[data-manager-eval2-selection-key="' + CSS.escape(window.__eval2GestureProbe.key) + '"]');
     return card?.querySelector('.manager-eval2-inventory-row > span:nth-child(4)')?.textContent?.trim() || '';
   })()`)), { timeout: 20_000 }).toBe('9');
+  if (overlapRecordsRender) {
+    // Once the aggregate thresholds are ready, deterministically overlap a
+    // queued records callback with the staged refresh completion frame. Use
+    // the real renderer, including WebKit's small-list synchronous path.
+    await page.evaluate(() => window.eval(`(() => {
+      const stage = stageProductionRefreshList;
+      window.__overlappingRecordsRenders = 0;
+      stageProductionRefreshList = function(...args) {
+        if (args[0] === 'manager-eval-report-2' && !window.__overlappingRecordsRenders) {
+          window.__overlappingRecordsRenders++;
+          queueMicrotask(() => renderManagerEvalReport2Records());
+        }
+        return stage.apply(this, args);
+      };
+      scheduleProductionLiveSyncRender(true);
+    })()`));
+    await expect.poll(() => page.evaluate(() => (window as any).__overlappingRecordsRenders)).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.eval(`({
+      pending: productionLiveSyncRenderPending,
+      active: Boolean(productionLiveSyncActiveRender)
+    })`))).toEqual({ pending: false, active: false });
+  }
   const released = await page.evaluate(() => window.eval(`(() => {
     const scroller = document.getElementById('main-scroll-area'), bounds = scroller.getBoundingClientRect();
     const first = document.querySelector('[data-manager-eval2-selection-key="' + CSS.escape(window.__eval2GestureProbe.key) + '"]');
@@ -450,6 +476,7 @@ test('touch-held Eval Reports #2 refresh keeps location cards in place until the
   expect(released.anchorDelta).toBeLessThanOrEqual(2);
   expect(fixture.blockedMutations).toEqual([]);
 });
+}
 
 test('only a complete verified refresh may leave a removed Eval Reports #2 location', async ({ page, baseURL }) => {
   const fixture = await setupEval2Location(page, baseURL!);

@@ -19,7 +19,8 @@ create table private.app_access_runtime_state(singleton boolean primary key,enfo
 create table private.app_access_policy_versions(id bigint primary key,version_number int,revision int);
 create table private.app_limited_live_overrides(profile_id uuid,permission_key text,allowed boolean,decision_source text,primary key(profile_id,permission_key));
 create table public.ph_eval_assignment_users(username text primary key,display_name text,active boolean);
-create table public.app_dataset_revisions(key text primary key,state text,revision bigint);
+create table public.app_dataset_revisions(key text primary key,state text,revision bigint,changed_at timestamptz default clock_timestamp());
+create table app_sync_private.sources(key text primary key,modules text[] not null,client_enabled boolean not null default true,dylan_only boolean not null default false);
 create table public.ph_master_inventory(unique_id text primary key,itemcode text,genusname text,commonname text,contsize text,locationcode text,plantgroupcode text);
 create table public.ph_warehouse_assigned_items(
  id bigint generated always as identity primary key,unique_id text,itemcode text,itemcode_normalized text,genusname text,genusname_normalized text,
@@ -84,17 +85,27 @@ end $$;
 const db=new PGlite();
 const check=async(sql,params=[])=>db.query(sql,params);
 let runNumber=0;
+let stage='startup';
 async function beginMasterRun({source=['ph_master_inventory'],canonical=['ph_master_inventory'],lease=true}={}) {
   const id=`a0300000-0000-4000-8000-${String(++runNumber).padStart(12,'0')}`;
   await check("update public.app_dataset_revisions set state='importing',revision=revision+1 where key='ph_master_inventory'");
   await check('insert into app_sync_private.import_runs values($1,$2,$3,$4,now()+interval \'10 minutes\',null)',[id,source,canonical,'active']);
   if(lease) await check('insert into app_sync_private.import_leases values($1,$2)',['ph_master_inventory',id]);
+  await check("select set_config('request.headers',$1,false)",[
+    JSON.stringify({'x-gnc-import-run-id':id})
+  ]);
+  await check("select set_config('app_sync.touched','{}',false)");
   return id;
 }
 async function finishMasterRun(id) {
   return (await check('select app_sync_private.advance_import($1,\'finish\') result',[id])).rows[0].result;
 }
+async function resetRequestBoundary() {
+  await check("select set_config('request.headers','{}',false)");
+  await check("select set_config('app_sync.touched','{}',false)");
+}
 try {
+  stage='fixture';
   await db.exec(fixture);
   const migration=fs.readFileSync(path.resolve('supabase/migrations/20260929013125_perennial_zone_assignment_override.sql'),'utf8');
   await db.exec(migration);
@@ -104,7 +115,8 @@ try {
     insert into private.app_access_runtime_state values(true,'enforced');
     insert into private.app_access_policy_versions values(1,1,1);
     insert into private.app_limited_live_overrides values('00000000-0000-4000-8000-000000000001','live.permission',true,'fixture');
-    insert into public.app_dataset_revisions values('ph_master_inventory','ready',10);
+    insert into public.app_dataset_revisions(key,state,revision) values
+      ('ph_master_inventory','ready',10),('ph_warehouse_assigned_items','ready',1);
     insert into public.ph_warehouse_assigned_items(unique_id,itemcode,itemcode_normalized,genusname,genusname_normalized,concat,assignment_key,
       assignedto,assigned_by,assigned_at,present_in_drive,source,raw_row)
       values
@@ -122,6 +134,24 @@ try {
       ('inactive-zone','00345','Perennial','inactive fixture','1 gal','C.06.001','151_PEREN'),
       ('exit-zone','00678','Perennial','exit fixture','1 gal','C.07','151_PEREN'),
       ('malformed-row','00456','Perennial','malformed fixture','1 gal','UNKNOWN','151_PEREN');`);
+  // Install the repository's production empty-statement fence migration. The
+  // seed rows above are intentionally loaded first so the regression covers
+  // only import/request boundaries, not initial fixture setup.
+  await db.exec(`insert into app_sync_private.sources(key,modules) values
+      ('ph_master_inventory',array['drive']),('ph_warehouse_assigned_items',array['drive']);
+    create function app_sync_private.touch_source() returns trigger language plpgsql as $$ begin return null; end $$;
+    create trigger app_dataset_revision_changed after insert or update or delete or truncate on public.ph_master_inventory
+      for each statement execute function app_sync_private.touch_source();
+    create trigger app_dataset_revision_changed after insert or update or delete or truncate on public.ph_warehouse_assigned_items
+      for each statement execute function app_sync_private.touch_source();`);
+  const emptyStatementMigration=fs.readFileSync(path.resolve('supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql'),'utf8');
+  await db.exec(emptyStatementMigration);
+  stage='real source triggers installed';
+  // PGlite currently does not expose statement transition tables inside PL/pgSQL
+  // trigger functions. Empty temp relations let its executor reach the real
+  // migrated fence logic; request-token validation occurs before the row-count
+  // branch and remains the behavior under regression here.
+  await db.exec('create temp table app_dataset_new_rows(id text); create temp table app_dataset_old_rows(id text);');
   const parserRows=(await check(`select private.eval_location_zone(location) zone from unnest(array[
     'C.06.001','C.07','D.04.999','D.09.001','D.10.021','D.10.022','D.03.001','D.10','UNKNOWN'
   ]) location`)).rows.map(row=>row.zone);
@@ -142,11 +172,20 @@ try {
   if(partialFinish.perennialAssignment!==undefined||partialActivation) throw new Error('A non-canonical import activated perennial assignment policy.');
   const firstRun=await beginMasterRun();
   const finalized=await finishMasterRun(firstRun);
+  stage='stale token regression';
   if(finalized.perennialAssignment?.status!=='completed'||finalized.perennialAssignment?.assignment_changes<1)
     throw new Error(`Import finalizer did not return the expected policy transition count: ${JSON.stringify(finalized)}`);
+  let staleImportFence=false;
+  try { await check('select public.reconcile_eval_itemcodes()'); }
+  catch(error) { staleImportFence=String(error.message).includes('DATASET_IMPORT_FENCE_LOST'); }
+  if(!staleImportFence) throw new Error('A scheduled write reused the completed import header instead of hitting the real source fence.');
+  await resetRequestBoundary();
+  await check("update public.app_dataset_revisions set revision=revision+1 where key='ph_master_inventory'");
+  const postResetReconcile=(await check('select public.reconcile_eval_itemcodes() result')).rows[0].result;
+  if(postResetReconcile.status!=='completed') throw new Error('A fresh scheduled request failed after clearing the completed import token.');
   const locked=(await check("select assignedto,zone_override_active,zone_override_prior_assignedto,zone_override_evaluated_revision,assignment_reason from public.ph_warehouse_assigned_items where assignment_key='00123|perennial'")).rows[0];
   if(locked.assignedto!=='zoe_green'||locked.zone_override_active!==true||locked.zone_override_prior_assignedto!=='dylan_collyge'
-    ||Number(locked.zone_override_evaluated_revision)!==14||locked.assignment_reason!=='perennial_zone_area') throw new Error(`First import did not create the expected locked owner state: ${JSON.stringify(locked)}`);
+    ||Number(locked.zone_override_evaluated_revision)!==15||locked.assignment_reason!=='perennial_zone_area') throw new Error(`First import did not create the expected locked owner state: ${JSON.stringify(locked)}`);
   const preserved=(await check("select assignedto from public.ph_warehouse_assigned_items where assignment_key='00456|perennial'")).rows[0].assignedto;
   if(preserved!=='megan_kelly') throw new Error('An all-malformed location group changed its saved owner.');
   const preview=(await check(perennialPreviewSql)).rows[0];
@@ -154,8 +193,6 @@ try {
     throw new Error('Read-only preview failed against the installed local schema.');
   const absent=(await check("select assignedto from public.ph_warehouse_assigned_items where assignment_key='00567|perennial'")).rows[0].assignedto;
   if(absent!=='megan_kelly') throw new Error('An absent group changed its saved owner.');
-  await check("update public.app_dataset_revisions set revision=revision+1 where key='ph_master_inventory'");
-  await check('select public.reconcile_eval_itemcodes()');
   const revision=(await check("select zone_override_evaluated_revision from public.ph_warehouse_assigned_items where assignment_key='00123|perennial'")).rows[0].zone_override_evaluated_revision;
   if(revision!==15) throw new Error('A same-owner refresh did not store its evaluated revision.');
   const auditCount=(await check("select count(*)::int count from private.ph_warehouse_assignment_audit where assignment_key='00123|perennial' and event_type='zone_enforced'")).rows[0].count;
@@ -175,6 +212,21 @@ try {
   await check("update public.ph_master_inventory set plantgroupcode='135_ROSES' where unique_id in ('fixture-zone','rose-zone','inactive-zone')");
   await check("update public.ph_eval_assignment_users set active=false where username='inactive_owner'");
   await finishMasterRun(run);
+  await resetRequestBoundary();
+  // The main stale-token regression, its subsequent fresh scheduled request,
+  // and one later canonical import all ran against the actual migrated trigger.
+  // Disable it only for the older extended scenarios: PGlite does not expose
+  // PostgreSQL transition tables inside PL/pgSQL and fails after repeated valid
+  // import transactions, so those scenarios continue with the legacy stub.
+  await db.exec(`drop trigger app_dataset_revision_inserted on public.ph_master_inventory;
+    drop trigger app_dataset_revision_updated on public.ph_master_inventory;
+    drop trigger app_dataset_revision_deleted on public.ph_master_inventory;
+    drop trigger app_dataset_revision_truncated on public.ph_master_inventory;
+    drop trigger app_dataset_revision_inserted on public.ph_warehouse_assigned_items;
+    drop trigger app_dataset_revision_updated on public.ph_warehouse_assigned_items;
+    drop trigger app_dataset_revision_deleted on public.ph_warehouse_assigned_items;
+    drop trigger app_dataset_revision_truncated on public.ph_warehouse_assigned_items;
+    create or replace function app_sync_private.touch_source() returns trigger language plpgsql as $$ begin return null; end $$;`);
   const rose=(await check("select assignedto,zone_override_active,assignment_reason from public.ph_warehouse_assigned_items where assignment_key='00123|perennial'")).rows[0];
   if(rose.assignedto!=='dylan_collyge'||rose.zone_override_active||rose.assignment_reason!=='rose_exemption_restore') throw new Error(`Rose exemption did not restore its prior owner: ${JSON.stringify(rose)}`);
   const inactive=(await check("select assignedto,assignment_reason from public.ph_warehouse_assigned_items where assignment_key='00345|perennial'")).rows[0];
@@ -183,11 +235,13 @@ try {
   run=await beginMasterRun();
   await check("update public.ph_master_inventory set locationcode='A.01.001' where unique_id='exit-zone'");
   await finishMasterRun(run);
+  await resetRequestBoundary();
   let owner=(await check("select assignedto from public.ph_warehouse_assigned_items where assignment_key='00678|perennial'")).rows[0].assignedto;
   if(owner!==null) throw new Error('Completed outside snapshot did not clear the locked owner.');
   run=await beginMasterRun();
   await check("update public.ph_master_inventory set locationcode='D.05.001' where unique_id='exit-zone'");
   await finishMasterRun(run);
+  await resetRequestBoundary();
   owner=(await check("select assignedto from public.ph_warehouse_assigned_items where assignment_key='00678|perennial'")).rows[0].assignedto;
   if(owner!=='zoe_green') throw new Error('Reentry after a proven exit did not enforce Zoe.');
   // A lost lease aborts finish before any assignment action commits.
@@ -198,8 +252,8 @@ try {
   if(!fenceRejected) throw new Error('A missing import lease did not reject finalization.');
   const failedRow=(await check("select count(*)::int n from public.ph_warehouse_assigned_items where assignment_key='00999|perennial'")).rows[0].n;
   if(failedRow!==0) throw new Error('A failed import fence committed assignment changes.');
-  console.log('PGlite migration execution passed: parser boundaries, canonical atomic import, split/rose/malformed/absent handling, restore/exit/reentry, revision metadata, audit stability, permission hashing, and setter guards.');
+  console.log('PGlite migration execution passed: real source-touch fence, stale completed-token rejection and request reset, parser boundaries, canonical atomic import, split/rose/malformed/absent handling, restore/exit/reentry, revision metadata, audit stability, permission hashing, and setter guards.');
 } catch(error) {
-  console.error(`PGlite migration validation failed: ${error.message}`);
+  console.error(`PGlite migration validation failed during ${stage}: ${error.stack||error.message}`);
   process.exitCode=1;
 } finally { await db.close(); }

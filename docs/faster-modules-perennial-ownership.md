@@ -1,6 +1,6 @@
 # Faster module loading and perennial ownership
 
-Initial candidate: V2026.09.28.004. CI follow-up: V2026.09.28.005.
+Initial candidate: V2026.09.28.004. CI follow-ups: V2026.09.28.005 and V2026.09.28.006.
 
 ## Display and action readiness
 
@@ -66,3 +66,21 @@ The follow-up corrects the pgTAP API usage and expects scheduled reconciliation 
 Local verification passed 1,420 release unit checks, 10 V2 checks, inline-script parsing and isolated PGlite migration validation. Compiled-browser checks passed all eight canaries, six Low Stock season cases, twelve large-inventory/cache/ownership cases, three asynchronous-index cases, ten focused home-status/menu cases, and both traced Android/iPhone held-refresh cases. The latter force a real background render while the report picker is open and verify the same checked picker remains attached.
 
 On the final compiled build, report Apply acknowledgement was 0.8 / 0 / 2 ms and first records appeared in 81 / 159 / 341 ms (Chromium / Firefox / WebKit). Cold indexing was 349 / 381 / 474 ms. Unchanged filters made no assignment downloads or unrelated low-stock reads. Managers menu checks measured 143 ms on Android and 115 ms on iPhone, retaining the 250 ms limit. CI tracing, suite timeouts, permissions, import activation and release gates are unchanged. Full real-pgTAP validation and production promotion remain cloud responsibilities.
+
+## V2026.09.28.006 CI follow-up
+
+PR #215 exposed four remaining causes. The single-transaction database fixture reused a completed import header for a later scheduled request. Its 61-assertion replacement explicitly checks rejection of that stale token and resets request headers and transaction touch state at the simulated boundaries. The local PGlite harness now loads the repository's source-touch trigger migration for the fence regression. It uses empty temporary transition relations because of its executor limitation; the full transition-table behavior and pgTAP suite remain cloud checks.
+
+The Docks and verified-cache browser assertions now expect the saved-data Retry warning after a failed read. The saved-data loading regression also waits for the actual failure state instead of accepting the transient checking label. Syncing and importing keep their checking labels.
+
+Managers renders its authorized, dataset-free dashboard in the navigation turn and defers responsive menu chrome. Data-dependent subviews keep the existing loading path. Three preliminary tablet WebKit runs measured 123, 106 and 111 ms. The .006 compiled matrix measured 105 ms on Android, 108 ms on iPhone, 108 ms on tablet WebKit and 95 ms on desktop, retaining the 250 ms limit.
+
+The iPhone CI failure already displayed all 18 updated cards while refresh bookkeeping remained pending. A staged list shares its chunk token with ordinary records rendering: if the latter supersedes the staged completion callback, the pending counter can be stranded. Staged refreshes now track their destination containers and are canceled when an ordinary render takes ownership. A unit regression covers this cancellation and prevents late completion from modifying a newer refresh; compiled browser coverage exercises overlapping records rendering alongside the held-touch/scroll-anchor checks. CI tracing, timing limits and release gates remain unchanged.
+
+The first .006 verification passed 1,422 release unit checks and all six traced Android/iPhone Eval2 refresh cases (verified refresh, held touch, overlapping records render). An additional tablet saved-Drive-data timing check measured 1,191 ms in the matrix and 1,150 ms alone against the existing 1,000 ms target. Instrumentation identified 866 ms waiting for navigation grace and only 4 ms rendering. The final build bypasses just that navigation grace for the first eligible saved preview in an empty loading screen. Active touch, scrolling, typing, drafts, saves and photo work retain their existing protections.
+
+The final compiled home matrix passed all eight cases. Saved Drive first cards measured 203 / 242 / 441 / 92 ms and Managers menu first content measured 102 / 118 / 130 / 84 ms (Android / iPhone / tablet WebKit / desktop). The cases include saved-data visibility during imports and failures, Retry status, blocked unverified exports and logout. Local V2 tests passed 10/10 and the isolated database harness passed its real-fence request-boundary checks plus assignment scenarios. The complete PostgreSQL/pgTAP chain remains a required cloud check.
+
+The final release unit run passed 1,423 checks. All four final traced held-touch cases passed on Android and iPhone, including an ordinary records render queued before staged completion. Docks recovery passed on Android and desktop; the local iPhone two-context run reached its unchanged 60-second timeout during import handling and produced a damaged trace archive. That local limitation is reported without changing the test timeout or cloud gate.
+
+The duplicate verified-cache recovery scenario passed in Chromium, Firefox and Android. Its local WebKit two-context run also timed out; the full cloud browser matrix remains required rather than treating local coverage as complete.
