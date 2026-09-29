@@ -1,6 +1,68 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test, type Page } from '@playwright/test';
 
+test('login tracing separates SDK wait from network wait without retaining credentials', async ({ page }) => {
+  await page.route('https://kzrnyjsosryejjejliii.supabase.co/auth/v1/token**', async route => {
+    const headers = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'POST, OPTIONS',
+      'access-control-allow-headers': 'authorization, content-type',
+    };
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 80));
+    await route.fulfill({ status: 400, headers, contentType: 'application/json', body: JSON.stringify({ error: 'invalid_grant' }) });
+  });
+  await page.goto('/?e2e=login-network-trace', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).tryNativeAuthPasswordLogin === 'function');
+  const snapshot = await page.evaluate(async () => {
+    const originalSupabase = (window as any).supabase;
+    // The bundled SDK exposes createClient through a getter; replace the test
+    // namespace rather than silently assigning to that read-only export.
+    (window as any).supabase = { createClient: (url: string, key: string, options: any) => ({
+      storage: {},
+      auth: {
+        signInWithPassword: async (credentials: any) => {
+          await new Promise(resolve => setTimeout(resolve, 80));
+          const response = await options.global.fetch(`${url}/auth/v1/token?grant_type=password&diagnostic_secret=fixture-query-secret`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', authorization: 'Bearer fixture-header-secret' },
+            body: JSON.stringify(credentials),
+          });
+          await response.json();
+          return { data: null, error: { message: 'fixture-password-secret' } };
+        },
+      },
+    }) };
+    try {
+      window.eval('supabaseClient = null; beginInitialAppLoad();');
+      const result = await window.eval("tryNativeAuthPasswordLogin('fixture-user-secret', 'fixture-password-secret')");
+      if (result !== null) throw new Error('Synthetic authentication must fail.');
+      window.eval('resetLoginUiState();');
+      return (window as any).GncLoginTrace.snapshot();
+    } finally {
+      (window as any).supabase = originalSupabase;
+      window.eval('supabaseClient = null;');
+    }
+  });
+  const attempt = snapshot.attempts.at(-1);
+  expect(attempt.outcome).toBe('failed');
+  const phase = attempt.events.find((event: any) => event.type === 'phase' && event.name === 'native-sign-in');
+  const request = attempt.events.find((event: any) => event.type === 'fetch' && event.method === 'POST');
+  expect(request.status).toBe(400);
+  expect(request.startOffsetMs - phase.startOffsetMs).toBeGreaterThanOrEqual(60);
+  expect(request.durationMs).toBeGreaterThanOrEqual(60);
+  expect(phase.durationMs).toBeGreaterThanOrEqual(request.durationMs);
+  expect(JSON.stringify(snapshot)).not.toMatch(/fixture-(?:user|password|query|header)-secret|authorization|grant_type|supabase\.co/i);
+  await expect(page.locator('#login-diagnostics-download')).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#login-diagnostics-download').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/login.*\.json$/);
+});
+
 test('phone login keeps both fields and the submit action visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'load' });

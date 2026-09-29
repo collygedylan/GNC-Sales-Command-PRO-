@@ -6,6 +6,7 @@ import ts from 'typescript';
 
 const read = path => fs.readFileSync(new URL('../'+path, import.meta.url),'utf8');
 const sql = read('supabase/migrations/20260904142737_dylan_photo_history_gallery_v1.sql');
+const refreshRepair = read('supabase/migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql');
 const copiesSql = read('supabase/migrations/20260904151119_photo_history_required_copies_v2.sql');
 const accessSql = read('supabase/migrations/20260904162451_marketing_photo_history_access_v1.sql');
 const edge = read('supabase/functions/app-api/index.ts');
@@ -14,6 +15,10 @@ const gs = read('Code.gs');
 const helperModule = { exports: {} };
 vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/photo-history.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:helperModule.exports,URL,Set});
 const {historyPhotoUrl,publicHistoryPhoto,isPhotoHistoryUsernameAllowed}=helperModule.exports;
+
+test('catalog refresh updates only the singleton state row after a successful index pass',()=>{
+  assert.match(refreshRepair,/update public\.ph_photo_history_index_state set refreshed_at=now\(\),asset_count=\(select count\(\*\) from public\.ph_photo_history_assets\) where singleton = true;/);
+});
 
 test('gallery never gives a legacy card an original or a V2 card a transformation',()=>{
   const asset={bucket:'request_photos',path:'2026-06-04/Lemon Grass.jpg',storage_available:true};

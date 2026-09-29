@@ -72,11 +72,34 @@ test('every rendered route and root DOM view has an explicit registry classifica
   assert.equal(registry.views.hours.kind, 'static');
 });
 
-test('manager live-sync watches per-item low-stock targets for Eval2 cache invalidation', () => {
-  const registry = harness().AgMetricLiveSyncRegistry;
-    const sources = ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
-    assert.ok(sources.every(table => registry.getSourceKeys(registry.getViewAdapters('managers')).includes(table)));
-    assert.ok(sources.every(table => registry.getSourceKeys(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports'] })).includes(table)));
+test('manager low-stock summaries load only for Assigned Items and Eval Reports 2 consumers', () => {
+  const context = harness(), registry = context.AgMetricLiveSyncRegistry;
+  const sources = ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
+  const sourceKeys = (surface) => registry.getSourceKeys(registry.getViewAdapters('managers', surface ? { surfaces: [surface] } : {}));
+  assert.ok(!sourceKeys().some(table => sources.includes(table)), 'Opening the Managers hub must not wait for low-stock summaries');
+  assert.ok(!sourceKeys('managers:eval-reports').some(table => sources.includes(table)), 'Classic Eval Reports do not consume per-item targets');
+  for (const surface of ['managers:assigned-items-export', 'managers:eval-reports-2']) {
+    assert.ok(sources.every(table => sourceKeys(surface).includes(table)), `${surface} must retain target revision tracking`);
+  }
+  assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports-2'] })).filter(id => id === 'side:itemLowStockTargets'), ['side:itemLowStockTargets']);
+
+  context.document = { activeElement: {}, body: { classList: { contains: () => false } }, getElementById: () => null };
+  context.view = 'managers';
+  context.activeHomeTab = 'dashboard';
+  const hubSurfaces = context.getProductionLiveSyncSideContext().surfaces;
+  assert.ok(!hubSurfaces.includes('managers:assigned-items-export'));
+  assert.ok(!hubSurfaces.includes('managers:eval-reports-2'));
+  assert.ok(!registry.getViewAdapters('managers', { surfaces: hubSurfaces }).includes('side:itemLowStockTargets'),
+    'A pending or failed target RPC cannot hold the module picker because it is outside the hub adapter set');
+
+  context.activeHomeTab = context.MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
+  const assignedSurfaces = context.getProductionLiveSyncSideContext().surfaces;
+  assert.ok(assignedSurfaces.includes('managers:assigned-items-export'));
+  assert.ok(registry.getViewAdapters('managers', { surfaces: assignedSurfaces }).includes('side:itemLowStockTargets'));
+  context.activeHomeTab = context.MANAGER_EVAL_REPORTS_2_VIEW;
+  const eval2Surfaces = context.getProductionLiveSyncSideContext().surfaces;
+  assert.ok(eval2Surfaces.includes('managers:eval-reports-2'));
+  assert.ok(registry.getViewAdapters('managers', { surfaces: eval2Surfaces }).includes('side:itemLowStockTargets'));
 });
 
 test('actual loader dependencies remain covered for every route, request tab, task state and Eval role', () => {

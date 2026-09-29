@@ -51,7 +51,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.28.002">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.28.003">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -59,7 +59,7 @@
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script src="./assets/app-lifecycle.js" data-app-lifecycle></script>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.28.002';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.28.003';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6793,7 +6793,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.28.002">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.28.003">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -6979,6 +6979,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="login-progress-label" class="login-progress-label">Starting…</div>
                 </div>
             </div>
+            <button id="login-diagnostics-download" type="button" class="login-secondary-button hidden" onclick="window.GncLoginTrace?.download(); return false;">Download login diagnostics</button>
         </div>
     </div>
     <div id="view-change-password">
@@ -6991,13 +6992,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.28.002"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.28.002"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.28.002"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.28.002"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.28.002"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.28.002"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.28.002"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.28.003"></script>
+    <script src="./assets/login-network-trace.js?v=V2026.09.28.003"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.28.003"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.28.003"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.28.003"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.28.003"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.28.003"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.28.003"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7765,7 +7767,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.28.002').trim() || 'V2026.09.28.002';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.28.003').trim() || 'V2026.09.28.003';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9281,7 +9283,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.28.002';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.28.003';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9315,6 +9317,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (!SUPABASE_KEY || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
             try {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+                    global: { fetch: (input, init) => window.GncLoginTrace?.fetch(input, init) ?? window.fetch(input, init) },
                     auth: {
                         persistSession: true,
                         autoRefreshToken: true,
@@ -9370,7 +9373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             const task = (async () => {
                 const client = getSupabaseBrowserClient();
                 if (!client || !client.auth) return null;
-                const { data, error } = await client.auth.getSession();
+                const { data, error } = await (window.GncLoginTrace?.measure('session-read', () => client.auth.getSession()) ?? client.auth.getSession());
                 if (epoch !== nativeAuthRecoveryEpoch) return null;
                 if (error || !data?.session) return null;
                 if (nativeAuthProfile?.id && data.session.user?.id !== nativeAuthProfile.id) return null;
@@ -9475,10 +9478,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 }
                 return cachedProfile;
             }
-            const { data, error } = await client.from('profiles')
+            const readProfile = () => client.from('profiles')
                 .select('id,legacy_user_id,username,display_name,role,division,language,disabled_at,locked_until,must_change_password,passkey_pilot')
                 .eq('id', session.user.id)
                 .maybeSingle();
+            const { data, error } = await (window.GncLoginTrace?.measure('profile', readProfile) ?? readProfile());
             if (error || !data || data.disabled_at) { closeBloomscapesPendingOrders(); return null; }
             if (data.locked_until && new Date(data.locked_until).getTime() > Date.now()) { closeBloomscapesPendingOrders(); return null; }
             if (data.id !== nativeAuthProfile?.id || !canViewBloomscapesPendingOrders(data)) closeBloomscapesPendingOrders();
@@ -9722,7 +9726,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             const client = getSupabaseBrowserClient();
             const email = normalizeNativeAuthAlias(username);
             if (!client || !email || !password) return null;
-            const { data, error } = await client.auth.signInWithPassword({ email, password: String(password) });
+            const signIn = () => client.auth.signInWithPassword({ email, password: String(password) });
+            const { data, error } = await (window.GncLoginTrace?.measure('native-sign-in', signIn) ?? signIn());
             if (error || !data || !data.session) return null;
             invalidateNativeAuthRecovery();
             nativeAuthSessionActive = true;
@@ -9800,8 +9805,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             const client = getSupabaseBrowserClient();
             if (!client || !client.auth || !client.auth.signInWithPasskey) return false;
+            startLoginNetworkTrace('passkey');
             try {
-                const { data, error } = await client.auth.signInWithPasskey();
+                const signIn = () => client.auth.signInWithPasskey();
+                const { data, error } = await (window.GncLoginTrace?.measure('native-sign-in', signIn) ?? signIn());
                 if (error || !data || !data.session) throw error || new Error('Passkey sign-in failed.');
                 invalidateNativeAuthRecovery();
                 nativeAuthReadRequired = true;
@@ -9815,17 +9822,18 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             if (window.LocationCode) LocationCode.reset();
                 const profile = await loadNativeAuthProfile(true);
                 if (!profile) throw new Error('This account is not enabled for passkeys.');
-                await ensureNativeAppSessionBridge(true).catch(() => null);
+                await (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(true)) ?? ensureNativeAppSessionBridge(true)).catch(() => null);
                 currentUser = String(profile.username || '').trim().toLowerCase();
                 currentUserDisplay = String(profile.display_name || profile.username || '').trim();
                 currentRole = String(profile.role || 'User');
                 currentUserDivision = String(profile.division || '10');
                 currentUserLanguage = normalizeAppUserLanguage(profile.language || 'English');
                 safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
-                beginInitialAppLoad('Signing in...');
+                beginInitialAppLoad('Signing in...', true);
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, sessionSource: 'native-passkey' });
                 return false;
             } catch (error) {
+                try { window.GncLoginTrace?.finish('failed'); } catch (_) { /* Timing only. */ }
                 showToast('Passkey', String(error && error.message || 'Passkey sign-in was cancelled.'), true);
                 return false;
             }
@@ -17619,6 +17627,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function resetLoginUiState() {
+            try { window.GncLoginTrace?.finish('failed'); } catch (_) { /* Diagnostics never prevent login recovery. */ }
             const loginView = document.getElementById('view-login');
             const changePasswordView = document.getElementById('view-change-password');
             const loginInputs = document.getElementById('login-inputs');
@@ -25332,7 +25341,16 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             labelEl.innerText = label;
         }
 
-        function beginInitialAppLoad(label='Signing in...') {
+        function startLoginNetworkTrace(kind = 'password') {
+            try {
+                window.GncLoginTrace?.configure({ supabaseUrl: SUPABASE_URL, appApiUrl: APP_API_FUNCTION_URL, release: window.__APP_SHELL_VERSION__ });
+                window.GncLoginTrace?.begin(kind);
+                if (window.GncLoginTrace) document.getElementById('login-diagnostics-download')?.classList.remove('hidden');
+            } catch (_) { /* Login remains available if diagnostics are unsupported. */ }
+        }
+
+        function beginInitialAppLoad(label='Signing in...', traceAlreadyStarted = false) {
+            if (!traceAlreadyStarted) startLoginNetworkTrace(label.startsWith('Restoring') ? 'restore' : label.startsWith('Saving') ? 'password-change' : 'password');
             setBootingSession(true);
             initialAppLoadActive = true;
             initialAppLoadComplete = false;
@@ -25456,7 +25474,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             else if (externallyAborted) handleExternalAbort();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             try {
-                return await fetch(url, { ...options, signal: controller.signal });
+                return await (window.GncLoginTrace?.fetch(url, { ...options, signal: controller.signal }) ?? fetch(url, { ...options, signal: controller.signal }));
             } catch (error) {
                 if (error && error.name === 'AbortError') {
                     if (externallyAborted) {
@@ -29493,6 +29511,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function showForcedPasswordChangeGate(username = '', password = '', role = '', displayName = '') {
+            try { window.GncLoginTrace?.finish('password-change-required'); } catch (_) { /* Timing only. */ }
             const normalizedUsername = normalizeSessionIdentity(username);
             const normalizedPassword = String(password || '').trim();
             const safeRoleValue = String(role || currentRole || 'User').trim() || 'User';
@@ -29884,7 +29903,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
             const nativeResult = await tryNativeAuthPasswordLogin(normalizedUsername, normalizedPassword).catch(() => null);
             if (nativeResult) {
-                const bridge = await ensureNativeAppSessionBridge(true).catch(() => null);
+                const bridge = await (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(true)) ?? ensureNativeAppSessionBridge(true)).catch(() => null);
                 if (bridge) {
                     return {
                         ok: true,
@@ -29959,7 +29978,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const normalizedPassword = String(password || '').trim();
                 if (navigator.onLine !== false) {
                     try {
-                        const remote = await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
+                        const remote = await (window.GncLoginTrace?.measure('remote-login', () => fetchRemoteLoginUser(normalizedUsername, normalizedPassword)) ?? fetchRemoteLoginUser(normalizedUsername, normalizedPassword));
                         if (remote && remote.ok) return remote;
                         if (remote && remote.reason === 'mismatch') return remote;
                     } catch (error) {
@@ -31534,6 +31553,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (view === 'managers') {
                 add(`managers:${activeHomeTab}`);
                 if ([MANAGER_EVAL_REPORTS_VIEW, MANAGER_EVAL_REPORTS_2_VIEW].includes(activeHomeTab)) add('managers:eval-reports');
+                if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) add('managers:assigned-items-export');
+                if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) add('managers:eval-reports-2');
                 if (isCropRollManagerReviewActive()) add('managers:crop-roll');
                 if (selectedProductivityUser) add('managers:productivity');
                 if (activeHomeTab === MANAGER_DELIVERY_RECOVERY_VIEW && canManageRequestDeliveryRecovery()) add('request:delivery-recovery');
@@ -32551,7 +32572,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.28.002').trim() || 'V2026.09.28.002';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.28.003').trim() || 'V2026.09.28.003';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -56278,13 +56299,17 @@ function toggleDriveQuickRequestItem(domId) {
         }
         async function restoreNativeAuthSessionOnStartup() {
             if (hasExplicitLogoutMarker() || !NATIVE_AUTH_ENABLED) return false;
+            startLoginNetworkTrace('restore');
             const profile = await loadNativeAuthProfile(true).catch(() => null);
-            if (!profile) return false;
+            if (!profile) {
+                try { window.GncLoginTrace?.finish('failed'); } catch (_) { /* Timing only. */ }
+                return false;
+            }
             const loginInputs = document.getElementById('login-inputs');
             const spinner = document.getElementById('loading-spinner');
             if (loginInputs) loginInputs.classList.add('hidden');
             if (spinner) spinner.classList.remove('hidden');
-            beginInitialAppLoad('Restoring your workspace...');
+            beginInitialAppLoad('Restoring your workspace...', true);
             scheduleLoginStartupWatchdog('native-session-restore');
             currentUser = String(profile.username || '').trim().toLowerCase();
             currentUserDisplay = String(profile.display_name || profile.username || '').trim();
@@ -56301,7 +56326,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             try {
-                await ensureNativeAppSessionBridge(false).catch(() => null);
+                await (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(false)) ?? ensureNativeAppSessionBridge(false)).catch(() => null);
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: 'native-auth' });
                 return true;
             } catch (error) {
@@ -56514,6 +56539,7 @@ function toggleDriveQuickRequestItem(domId) {
             ensureHomeDashboardReadyAfterLogin('login-shell-open');
             if (loginInputs) loginInputs.classList.remove('hidden');
             if (spinner) spinner.classList.add('hidden');
+            try { window.GncLoginTrace?.finish('shell-ready'); } catch (_) { /* Timing only. */ }
             if (touchShell) {
                 runAfterShellInteractive(() => {
                     runAfterTouchInteraction(() => refreshRealtimeSubscriptionsForCurrentView(true), 2800, 'current-view-realtime-subscriptions');
@@ -56840,11 +56866,13 @@ function toggleDriveQuickRequestItem(domId) {
             applyCurrentUserLanguagePreference();
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             setLoginProgress(Math.max(currentProgress, 22), 'Checking Request access...');
-            await initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
+            const readCapabilities = () => initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
+            await (window.GncLoginTrace?.measure('request-capabilities', readCapabilities) ?? readCapabilities());
             if (canUseProductionLiveSync()) {
                 const loginOwner = nativeAuthProfile.id;
                 const loginAuthEpoch = productionLiveSyncReadAuthEpoch;
-                await initializeAppAccessSnapshot({ reason: isRestoredSession ? 'restored-login' : 'login' });
+                const readAccess = () => initializeAppAccessSnapshot({ reason: isRestoredSession ? 'restored-login' : 'login' });
+                await (window.GncLoginTrace?.measure('access-permissions', readAccess) ?? readAccess());
                 if (loginOwner !== nativeAuthProfile?.id || loginAuthEpoch !== productionLiveSyncReadAuthEpoch || currentUser !== user) return;
                 if (appAccessSnapshotState.status !== 'ready' || appAccessSnapshotState.stale
                     || appAccessSnapshotState.username !== getRequestCapabilityUsernameKey(user)) {
