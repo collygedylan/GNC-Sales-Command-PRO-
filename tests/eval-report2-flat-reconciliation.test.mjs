@@ -16,6 +16,15 @@ const appApi = read('../supabase/functions/app-api/index.ts');
 const codeGs = read('../Code.gs');
 const html = read('../index.html');
 
+test('Eval2 status reserves both wrapping labels and updates only its visible text', () => {
+  assert.match(html, /data-loading-label="\$\{escapeHtml\(loadingLabel\)\}" data-loaded-label="\$\{escapeHtml\(loadedLabel\)\}"/);
+  assert.match(html, /\[data-role="manager-eval2-auto-load-status"\]\{display:grid\}/);
+  assert.match(html, /::before\{content:attr\(data-loading-label\);visibility:hidden;pointer-events:none\}/);
+  assert.match(html, /::after\{content:attr\(data-loaded-label\);visibility:hidden;pointer-events:none\}/);
+  assert.match(html, /\[data-role="manager-eval2-auto-load-label"\]\{grid-area:1 \/ 1;min-width:0\}/);
+  assert.match(html, /if \(label\) label\.textContent = loadedLabel/);
+});
+
 test('flat Eval Reports #2 cards show every current row and separate selection from card activation', () => {
   assert.match(html, /function getManagerEvalReport2AllCurrentAssignedRows/);
   assert.match(html, /safeGroup\.rows[\s\S]*LOCATIONCODE[\s\S]*LOTCODE[\s\S]*PTRONHAND[\s\S]*PTRAVAILABLE/);

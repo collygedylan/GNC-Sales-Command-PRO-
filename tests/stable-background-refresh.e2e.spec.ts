@@ -394,6 +394,35 @@ test('verified background refresh keeps Eval Reports #2 LowStock location cards 
   expect(fixture.blockedMutations).toEqual([]);
 });
 
+test('Eval Reports #2 loading status preserves card geometry when its message wraps', async ({ page, baseURL }, testInfo) => {
+  test.skip(!/(android|iphone)/.test(testInfo.project.name), 'exercise narrow status wrapping on mobile');
+  await setupEval2Location(page, baseURL!);
+  const measurements = [];
+  for (const width of [320, 360, 390]) {
+    await page.setViewportSize({ width, height: 664 });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const geometry = await page.evaluate(() => {
+      const status = document.querySelector('[data-role="manager-eval2-auto-load-status"]')!;
+      const card = document.querySelector('.manager-eval2-item-card')!;
+      const label = status.querySelector('[data-role="manager-eval2-auto-load-label"]') || status;
+      const read = () => ({ statusHeight: status.getBoundingClientRect().height, cardTop: card.getBoundingClientRect().top });
+      label.textContent = 'All 18 matching ITEMCODEs loaded';
+      const loaded = read();
+      label.textContent = 'Loading all 18 matching ITEMCODEs automatically...';
+      const loading = read();
+      label.textContent = 'All 18 matching ITEMCODEs loaded';
+      return { loaded, loading, completed: read() };
+    });
+    measurements.push({ width, ...geometry });
+  }
+  await testInfo.attach('eval2-status-geometry.json', { body: JSON.stringify(measurements, null, 2), contentType: 'application/json' });
+  for (const geometry of measurements) {
+    expect(Math.abs(geometry.loading.statusHeight - geometry.loaded.statusHeight), `status height at ${geometry.width}px`).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(geometry.loading.cardTop - geometry.loaded.cardTop), `loading card position at ${geometry.width}px`).toBeLessThanOrEqual(2);
+    expect(Math.abs(geometry.completed.cardTop - geometry.loaded.cardTop), `completed card position at ${geometry.width}px`).toBeLessThanOrEqual(2);
+  }
+});
+
 for (const overlapRecordsRender of [false, true]) {
 test(`touch-held Eval Reports #2 refresh keeps location cards in place until the gesture ends${overlapRecordsRender ? ' with a queued records render' : ''}`, async ({ page, baseURL }, testInfo) => {
   test.skip(!/(android|iphone)/.test(testInfo.project.name), 'exercise the touch-specific scheduler on mobile profiles');

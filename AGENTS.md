@@ -10,8 +10,12 @@ Agents must ALWAYS automatically create a pull request using the GitHub CLI (gh 
 Agents must ALWAYS automatically create a pull request using the GitHub CLI (gh pr create --fill) immediately after pushing a candidate branch. 
 DO NOT terminate immediately. Instead, you MUST monitor the GitHub Actions pipeline using gh pr checks --watch.
 If the checks pass, you may terminate.
-If the checks fail, you must read the failure logs and ask the user for permission to fix the errors.
+If the checks fail, read the failure logs and follow the Autonomous CI Remediation rule below.
 This rule completely overrides any previous "fire-and-forget" or "terminate immediately" instructions.
 
 # STRICT ENVIRONMENT SYNCHRONIZATION AND FILE HYGIENE
 Maintain strict environment synchronization and file hygiene. Keep all codebase and external integrations highly organized. Automatically clean up temporary, legacy, or obsolete files, and ensure no excess or orphaned files are left behind in GitHub, Google Drive, or local directories after a task is completed or refactored.
+
+# Autonomous CI Remediation
+You are authorized to autonomously attempt up to 3 consecutive fixes for any CI/CD, browser matrix, or unit test failures (such as minor UI pixel shifts, timeouts, or test regressions) without asking for user approval. You must only pause and request explicit approval if a CI check fails 3 times in a row, or if the failure involves a database migration, security credential, or production data risk.
+This rule overrides the earlier requirement to request approval after every CI failure. Continue creating pull requests immediately after pushing candidate branches and monitoring their checks as required above.

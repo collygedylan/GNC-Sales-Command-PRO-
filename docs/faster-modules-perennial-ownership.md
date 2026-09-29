@@ -84,3 +84,13 @@ The final compiled home matrix passed all eight cases. Saved Drive first cards m
 The final release unit run passed 1,423 checks. All four final traced held-touch cases passed on Android and iPhone, including an ordinary records render queued before staged completion. Docks recovery passed on Android and desktop; the local iPhone two-context run reached its unchanged 60-second timeout during import handling and produced a damaged trace archive. That local limitation is reported without changing the test timeout or cloud gate.
 
 The duplicate verified-cache recovery scenario passed in Chromium, Firefox and Android. Its local WebKit two-context run also timed out; the full cloud browser matrix remains required rather than treating local coverage as complete.
+
+## V2026.09.28.007 iPhone status geometry follow-up
+
+PR #216 passed 33 checks, including database validation and the previously failing Docks, cache and timing checks. Two iPhone held-refresh cases still moved the visible card by 14px. The Linux trace shows scrollTop remaining at 420 while the replacement list displays its wrapping loading message, then changing to 406 when that message becomes the shorter completion label. The locally compiled .006 regression reproduces a 13.5px status-height change at 320px.
+
+The Eval2 status now reserves the larger of its loading and completed labels in a shared CSS grid cell. Hidden generated labels reserve layout space; the live region contains only the current visible message. Completion updates that message without replacing the status container. This prevents status wrapping from moving the records or triggering a second scroll adjustment. The card-anchor tolerance remains 2px, and release checks remain enabled.
+
+Browser coverage directly compares loading/completed status and first-card geometry at 320px, 360px and 390px, alongside the existing verified-refresh, held-touch and overlapping-render cases. The requested Autonomous CI Remediation rule is recorded in AGENTS.md with its three-consecutive-failure limit and database, credential and production-data approval exceptions; its policy regression preserves automatic PR creation and check monitoring.
+
+Local verification passed all eight compiled Android/iPhone cases, 1,423 required release unit checks, 23 focused policy/Eval2 unit checks and 10 V2 checks. Inline-script parsing and release-version synchronization also passed. The old .006 build fails the new wrapping regression, and the .007 build passes it without changing the 2px held-refresh tolerance.
