@@ -30,13 +30,17 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
-  assert.equal(migrations.length, 122);
+  assert.equal(migrations.length, 126);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
     assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
   }
   for (const filename of [
     '20260928145055_item_low_stock_targets.sql',
+    '20260901024608_drive_eval_shear_location_inquiries_v1.sql',
+    '20260901043510_harden_shear_location_rls.sql',
+    '20260901135456_drive_shear_location_access_audit_baseline_v1.sql',
+    '20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql',
     '20260922233000_manager_season_priority_inquiry_v1.sql',
     '20260923174000_optimize_manager_season_priority_scope.sql',
     '20260923222348_materialize_manager_season_priority_scope_hashes.sql',
@@ -75,6 +79,14 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     '20260921034506_navigation_preferences_and_live_view_grants.sql',
     '20260921123226_hl_draft_review_removal.sql',
   ]) assert.ok(migrations.includes(filename), `Required migration: ${filename}`);
+  const shearMigrationOrder = [
+    '20260901024608_drive_eval_shear_location_inquiries_v1.sql',
+    '20260901043510_harden_shear_location_rls.sql',
+    '20260901135456_drive_shear_location_access_audit_baseline_v1.sql',
+    '20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql',
+  ].map(filename => migrations.indexOf(filename));
+  assert.ok(shearMigrationOrder.every((index, offset) => index >= 0 && (!offset || shearMigrationOrder[offset - 1] < index)),
+    'Shear schema, deny policies, audit baseline, and RPC replacement apply in dependency order');
   const sqlTests = [
     ...[...workflow.matchAll(/cp supabase\/tests\/(\S+)/g)].map(match => match[1]),
     ...[...workflow.matchAll(/"([a-z_]+_test\.sql)": "[a-z_]+_checks"/g)].map(match => match[1]),
@@ -86,6 +98,7 @@ test('all original migrations and pgTAP tests remain alongside grouped health, H
     'pikes_orders_rls_test.sql', 'request_eval_drive_reliability_test.sql',
     'reclass_review_assignedto_test.sql', 'request_option_append_test.sql',
     'drive_reclass_protected_test.sql', 'drive_evidence_retry_storm_test.sql',
+    'shear_location_inquiry_v1_test.sql',
     'photo_delivery_health_rls_test.sql', 'photo_history_rls_test.sql',
     'function_search_path_pinning_test.sql', 'season_sales_done_lifecycle_test.sql',
     'season_sales_av_note_retention_test.sql', 'season_sales_av_note_reset_test.sql',

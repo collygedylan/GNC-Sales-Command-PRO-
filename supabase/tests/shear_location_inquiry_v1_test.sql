@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(47);
 
 select has_table('public', 'ph_shear_location_submissions', 'Shear submission ledger exists');
 select has_table('public', 'ph_shear_location_inquiries', 'Location inquiry headers exist');
@@ -30,6 +30,10 @@ select has_function('public', 'create_shear_location_inquiries_v1', array['jsonb
 select has_function('public', 'complete_shear_location_inquiry_v1', array['uuid', 'text', 'integer'], 'completion RPC exists');
 select has_function('public', 'cancel_shear_location_inquiry_v1', array['uuid', 'text', 'integer'], 'cancellation RPC exists');
 select has_function('public', 'retry_shear_location_delivery_v1', array['uuid', 'text', 'integer'], 'delivery retry RPC exists');
+select ok(position('errcode = ''PT409''' in pg_get_functiondef('public.create_shear_location_inquiries_v1(jsonb)'::regprocedure)) > 0,
+  'Shear creation domain conflicts use a non-retryable HTTP conflict code');
+select ok(position('errcode = ''40001''' in pg_get_functiondef('public.create_shear_location_inquiries_v1(jsonb)'::regprocedure)) = 0,
+  'Shear creation does not raise serialization failure for domain conflicts');
 
 select ok(not has_function_privilege('authenticated', 'public.create_shear_location_inquiries_v1(jsonb)', 'execute'), 'authenticated cannot execute creation directly');
 select ok(not has_function_privilege('authenticated', 'public.complete_shear_location_inquiry_v1(uuid,text,integer)', 'execute'), 'authenticated cannot execute completion directly');
@@ -96,8 +100,14 @@ select is((select public.create_shear_location_inquiries_v1(payload)->>'idempote
 
 select throws_ok(
   format('select public.create_shear_location_inquiries_v1((%L::jsonb) || jsonb_build_object(''idempotencyKey'', ''shear-location-pgtap-create-0002''))', payload::text),
-  '40001', 'shear_location_already_active',
+  'PT409', 'shear_location_already_active',
   'a second active inquiry for the same location is rejected'
+) from shear_test_payload;
+
+select throws_ok(
+  format('select public.create_shear_location_inquiries_v1(jsonb_set((%L::jsonb) || jsonb_build_object(''idempotencyKey'', ''shear-location-pgtap-stale-0001''), ''{selections,0,sourceUniqueId}'', ''"SHEAR-TEST-MISSING"''::jsonb))', payload::text),
+  'PT409', 'shear_selection_refresh_required',
+  'a stale inventory selection returns a bounded conflict response'
 ) from shear_test_payload;
 
 select is((

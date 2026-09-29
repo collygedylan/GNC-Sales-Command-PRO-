@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'V2026.09.28.002';
+const RELEASE = 'V2026.09.28.003';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -49,6 +49,7 @@ await writeFile(runtimeTarget, `${minified.code}\n;window.__gncAppRuntimeExecute
 await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'location-code.js', 'bunch-note.js', 'bunch-note.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'inventory-list-contract.js', 'master-detail-snapshots.js'].map((name) =>
   copyFile(path.join(root, 'assets', name), path.join(siteRoot, 'assets', name))));
 await mkdir(path.join(siteRoot, 'assets', 'vendor'), { recursive: true });
+await copyFile(path.join(root, 'assets', 'login-network-trace.js'), path.join(siteRoot, 'assets', 'login-network-trace.js'));
 await copyFile(path.join(root, 'assets', 'vendor', 'fabric-6.7.1.min.mjs'), path.join(siteRoot, 'assets', 'vendor', 'fabric-6.7.1.min.mjs'));
 
 const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">

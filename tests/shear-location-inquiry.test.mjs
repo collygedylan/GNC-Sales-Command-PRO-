@@ -10,6 +10,7 @@ const api = read('supabase/functions/app-api/index.ts');
 const worker = read('supabase/functions/request-delivery-worker/index.ts');
 const appsScript = read('Code.gs');
 const migration = read('supabase/migrations/20260901024608_drive_eval_shear_location_inquiries_v1.sql');
+const managerDatabaseFix = read('supabase/migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql');
 
 test('Drive Mode Eval Work uses ITEMCODE-wide V2 creation for Dylan, Megan, and JD', () => {
   assert.match(api, /const EVAL_WORK_MANAGER_USERS = new Set\(\["dylan_collyge", "megan_kelly", "jd_jones"\]\)/);
@@ -43,6 +44,20 @@ test('Shear V2 tables are append-only, private, and service-role-only', () => {
   assert.match(migration, /revoke all on function public\.create_shear_location_inquiries_v1\(jsonb\) from public, anon, authenticated/);
   assert.match(migration, /grant execute on function public\.create_shear_location_inquiries_v1\(jsonb\) to service_role/);
   assert.doesNotMatch(migration, /delete from public\.(?:ph_master_inventory|ph_shear_list)/i);
+});
+
+test('Shear domain conflicts return bounded HTTP conflict codes instead of Postgres serialization failures', () => {
+  const definition = managerDatabaseFix.match(/create or replace function public\.create_shear_location_inquiries_v1\(p_payload jsonb\)([\s\S]*?)\$function\$;/i)?.[0] || '';
+  assert.ok(definition, 'follow-up migration replaces the deployed create RPC');
+  assert.equal((definition.match(/errcode = 'PT409'/g) || []).length, 4);
+  assert.doesNotMatch(definition, /errcode\s*=\s*'40001'/);
+  for (const message of ['shear_selection_refresh_required', 'shear_location_already_active', 'shear_location_membership_invalid']) {
+    assert.match(definition, new RegExp(`message = '${message}'`));
+  }
+  assert.match(definition, /security definer[\s\S]*set search_path = ''/i);
+  assert.match(migration, /revoke all on function public\.create_shear_location_inquiries_v1\(jsonb\) from public, anon, authenticated/i);
+  assert.match(migration, /grant execute on function public\.create_shear_location_inquiries_v1\(jsonb\) to service_role/i);
+  assert.doesNotMatch(managerDatabaseFix, /drop function public\.create_shear_location_inquiries_v1/i);
 });
 
 test('server derives, locks, deduplicates, and freezes all current ITEMCODE/location rows', () => {

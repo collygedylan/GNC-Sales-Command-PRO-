@@ -1,5 +1,41 @@
 import { expect, test, type Locator } from '@playwright/test';
 
+test('Managers module picker excludes low-stock reads while both consuming tabs retain verified targets', async ({ page, baseURL }) => {
+  const origin = new URL(baseURL!).origin;
+  await page.route('**/*', async route => {
+    if (new URL(route.request().url()).origin === origin) return route.continue();
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' });
+  });
+  await page.goto('/?e2e=manager-low-stock-surface-contract', { waitUntil: 'load' });
+  await page.waitForFunction(() => (window as any).__gncAppRuntimeExecuted === true);
+  const surfaces = await page.evaluate(() => window.eval(`(() => {
+    resetProductionLiveSync();
+    currentUser = ''; currentRole = 'Manager';
+    getCurrentVisibleViewId = () => 'managers';
+    canAccessView = () => false;
+    const snapshot = tab => {
+      activeHomeTab = tab;
+      const context = getProductionLiveSyncSideContext();
+      return {
+        surfaces: context.surfaces,
+        adapters: window.AgMetricLiveSyncRegistry.getViewAdapters('managers', { surfaces: context.surfaces })
+      };
+    };
+    return {
+      dashboard: snapshot('dashboard'),
+      assigned: snapshot(MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW),
+      eval2: snapshot(MANAGER_EVAL_REPORTS_2_VIEW),
+      classicEval: snapshot(MANAGER_EVAL_REPORTS_VIEW)
+    };
+  })()`));
+  expect(surfaces.dashboard.adapters).not.toContain('side:itemLowStockTargets');
+  expect(surfaces.dashboard.surfaces).not.toContain('managers:assigned-items-export');
+  expect(surfaces.dashboard.surfaces).not.toContain('managers:eval-reports-2');
+  expect(surfaces.classicEval.adapters).not.toContain('side:itemLowStockTargets');
+  expect(surfaces.assigned.adapters).toContain('side:itemLowStockTargets');
+  expect(surfaces.eval2.adapters).toContain('side:itemLowStockTargets');
+});
+
 test('Assigned Items header and phone filters share complete rows, export, sorting and safe editing', async ({ page, baseURL }, testInfo) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', async route => {

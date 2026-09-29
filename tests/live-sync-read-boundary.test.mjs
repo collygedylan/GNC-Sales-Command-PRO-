@@ -677,7 +677,7 @@ test('Reclass delivery status reconciles immediately when visibility returns', (
 function nativeRecoveryFixture() {
     const gate = deferred(); let sessions = 0, refreshes = 0;
     const session = { access_token: 'native-token', user: { id: 'account-a' } };
-    const ctx = { Error, Object, String, Promise, NATIVE_AUTH_ENABLED: true, SUPABASE_KEY: 'public-key',
+    const ctx = { Error, Object, String, Promise, window: {}, NATIVE_AUTH_ENABLED: true, SUPABASE_KEY: 'public-key',
         nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: '',
         getSupabaseBrowserClient: () => ({ auth: {
             getSession: async () => { sessions++; return { data: { session: null } }; },
