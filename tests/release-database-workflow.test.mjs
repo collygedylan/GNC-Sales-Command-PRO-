@@ -14,6 +14,21 @@ const legacyBaseline = fs.readFileSync(new URL('../supabase/ci/native_auth_legac
 const requestWorkflowBaseline = fs.readFileSync(new URL('../supabase/ci/request_workflow_baseline.sql', import.meta.url), 'utf8');
 const evalReport2Migration = fs.readFileSync(new URL('../supabase/migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql', import.meta.url), 'utf8');
 
+test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', () => {
+  // Assertion names are checked against pgTAP's public API documentation:
+  // https://pgtap.org/documentation.html (plan, ok, is, isnt, throws_ok,
+  // lives_ok, matches, has_table, has_column, has_function, has_index).
+  const documented = new Set(['plan', 'ok', 'is', 'isnt', 'throws_ok', 'lives_ok', 'matches', 'has_table', 'has_column', 'has_function', 'has_index']);
+  for (const filename of ['perennial_zone_assignment_test.sql', 'pikes_orders_rls_test.sql']) {
+    const source = fs.readFileSync(new URL(`../supabase/tests/${filename}`, import.meta.url), 'utf8');
+    const calls = [...source.matchAll(/^\s*select\s+([a-z_]+)\s*\(/gim)].map(match => match[1].toLowerCase());
+    const assertions = calls.filter(name => !['set_config', 'count'].includes(name));
+    assert.ok(assertions.length > 0, `${filename} contains pgTAP assertions`);
+    assert.deepEqual([...new Set(assertions.filter(name => !documented.has(name)))], [], `${filename} uses only documented pgTAP APIs`);
+    assert.doesNotMatch(source, /\bis_null\s*\(/i, `${filename} does not use the nonexistent is_null assertion`);
+  }
+});
+
 test('request workflow baseline provides the text hold start date consumed by Eval Report #2', () => {
   const inventory = requestWorkflowBaseline.match(/create table if not exists public\.ph_master_inventory\s*\(([\s\S]*?)\n\);/i);
   assert.ok(inventory, 'CI baseline defines the legacy master inventory table');

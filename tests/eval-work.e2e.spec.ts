@@ -124,7 +124,7 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/?e2e=eval2-low-stock-multi-season&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof (window as any).buildManagerEvalReport2SeasonPicker === 'function');
-    await page.evaluate(() => window.eval(`(() => {
+    await page.evaluate(() => window.eval(`(async () => {
       installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Dylan Collyge', 'ADMIN');
       canViewManagerEvalReports2 = () => true;
       isEvalWorkManagerUser = () => true;
@@ -152,6 +152,16 @@ for (const width of [390, 1280]) {
       managerEvalReport2AssignedToFilter = 'all';
       managerEvalReport2SeasonFilters = new Set();
       invalidateManagerEvalReport2Cache();
+      // Low Stock requires the aggregate thresholds before its report is ready.
+      const originalTargetRpc = supabaseRpc;
+      supabaseRpc = async (name, args, options) => name === 'get_eval_item_low_stock_targets_v1'
+        ? args.p_itemcodes.map(itemcode_normalized => ({ itemcode_normalized, effective_qty:150,
+            mean_quantity:null, suggested_qty:null, manual_override_qty:null, qualifying_line_count:0,
+            history_ready:true, override_revision:0 }))
+        : originalTargetRpc(name, args, options);
+      try { await loadManagerItemLowStockTargets(false); }
+      finally { supabaseRpc = originalTargetRpc; }
+      await buildManagerEvalReport2IndexAsync();
       Array.from(document.querySelectorAll('#manager-eval-report-2-browse-region')).forEach((node, index) => { node.id = 'eval2-season-existing-browse-' + index; });
       Array.from(document.querySelectorAll('#manager-eval-report-2-records')).forEach((node, index) => { node.id = 'eval2-season-existing-records-' + index; });
       const host = document.createElement('div');

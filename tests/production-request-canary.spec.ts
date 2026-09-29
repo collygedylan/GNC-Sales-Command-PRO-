@@ -164,7 +164,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function'
     && typeof (window as any).toggleManagerEvalReport2ItemSelection === 'function');
 
-  const setup = await page.evaluate(() => (window as any).eval(`(() => {
+  const setup = await page.evaluate(() => (window as any).eval(`(async () => {
     currentUser = 'dylan_collyge';
     currentUserDisplay = 'Dylan Collyge';
     currentRole = 'Manager';
@@ -180,7 +180,6 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     activeHomeTab = 'eval-reports-2';
     const canaryAssignmentRows = [
       { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A2', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'megan_kelly' },
       { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly' }
     ];
     processAndLoadData({ data: [
@@ -195,13 +194,13 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
     const originalEnsureDatasetLoaded = ensureDatasetLoaded;
-    window.__eval2CanaryAssignmentVerified = false;
+    window.__eval2CanaryAssignmentReads = 0;
     ensureDatasetLoaded = async (key, mode, options = {}) => {
       if (key !== 'warehouseAssignedItems') return originalEnsureDatasetLoaded(key, mode, options);
+      window.__eval2CanaryAssignmentReads++;
       warehouseAssignedItemsInventory = canaryAssignmentRows.map((row) => ({ ...row }));
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       assignmentState.lastLoadedAt = new Date().toISOString();
-      window.__eval2CanaryAssignmentVerified = options.force === true;
       invalidateManagerEvalReport2Cache();
       return true;
     };
@@ -209,6 +208,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     setManagerEvalReport2Mode('reports');
     setManagerEvalReport2('no-pri');
     setManagerEvalReport2Filter('assignedto', 'all');
+    await buildManagerEvalReport2IndexAsync();
     const host = document.createElement('main');
     host.id = 'hosted-eval2-canary';
     host.style.cssText = 'position:fixed;inset:0;z-index:9000;width:390px;overflow:auto;background:#fff;';
@@ -229,7 +229,9 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await initialUserSheet.getByRole('checkbox', { name: /dylan_collyge/i }).click();
   await initialUserSheet.getByRole('checkbox', { name: /megan_kelly/i }).click();
   await initialUserSheet.getByRole('button', { name: /Apply 2 Users/i }).click();
-  await page.waitForFunction(() => (window as any).__eval2CanaryAssignmentVerified === true);
+  await expect.poll(() => page.evaluate(() => (window as any).getManagerEvalAssignedUsers('eval2')))
+    .toEqual(['dylan_collyge', 'megan_kelly']);
+  expect(await page.evaluate(() => (window as any).__eval2CanaryAssignmentReads)).toBe(0);
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();
@@ -272,9 +274,10 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   const userSheet = page.locator('#manager-eval-user-picker');
   await expect(userSheet).toBeVisible();
   await userSheet.getByRole('checkbox', { name: /megan_kelly/i }).click();
-  await page.evaluate(() => { (window as any).__eval2CanaryAssignmentVerified = false; });
   await userSheet.getByRole('button', { name: /Apply 1 User/i }).click();
-  await page.waitForFunction(() => (window as any).__eval2CanaryAssignmentVerified === true);
+  await expect.poll(() => page.evaluate(() => (window as any).getManagerEvalAssignedUsers('eval2')))
+    .toEqual(['dylan_collyge']);
+  expect(await page.evaluate(() => (window as any).__eval2CanaryAssignmentReads)).toBe(0);
   await page.evaluate(() => {
     const target = document.getElementById('hosted-eval2-canary')!;
     target.innerHTML = (window as any).renderManagerEvalReports2Panel();

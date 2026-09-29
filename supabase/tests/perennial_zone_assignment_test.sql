@@ -16,8 +16,8 @@ select is(private.eval_location_zone('D.09.001'),'inside','D.09 bays are in the 
 select is(private.eval_location_zone('D.10.021'),'inside','D.10 bay 021 is the upper boundary');
 select is(private.eval_location_zone('D.10.022'),'outside','D.10 bay 022 is outside');
 select is(private.eval_location_zone('D.03.001'),'outside','D.03 is outside');
-select is_null(private.eval_location_zone('D.10'),'D.10 without a bay is unresolved');
-select is_null(private.eval_location_zone('UNKNOWN'),'unrecognized location remains unresolved');
+select ok(private.eval_location_zone('D.10') is null,'D.10 without a bay is unresolved');
+select ok(private.eval_location_zone('UNKNOWN') is null,'unrecognized location remains unresolved');
 select has_function('public','set_eval_itemcode_assignment',array['text','text','text'],'existing assignment RPC contract stays stable');
 select ok(position('for share' in lower(pg_get_functiondef('public.set_eval_itemcode_assignment(text,text,text)'::regprocedure)))
   < position('pg_advisory_xact_lock' in lower(pg_get_functiondef('public.set_eval_itemcode_assignment(text,text,text)'::regprocedure)))
@@ -169,11 +169,11 @@ select public.finish_dataset_import_v1('60300000-0000-4000-8000-000000000002');
 select is((select assignedto from public.ph_warehouse_assigned_items where assignment_key='LOCK-1|perennial'),'dylan_collyge','rose classification restores the saved owner');
 select ok((select not zone_override_active and zone_override_prior_assignedto is null from public.ph_warehouse_assigned_items where assignment_key='LOCK-1|perennial'),'restoration clears policy metadata');
 select ok((select exists(select 1 from private.ph_warehouse_assignment_audit where assignment_key='LOCK-1|perennial' and event_type='rose_exemption_restore')),'owner restoration is audited');
-select is_null((select assignedto from public.ph_warehouse_assigned_items where assignment_key='EXIT-1|perennial'),'a completed out-of-zone snapshot resets the assignee');
+select ok((select assignedto from public.ph_warehouse_assigned_items where assignment_key='EXIT-1|perennial') is null,'a completed out-of-zone snapshot resets the assignee');
 select ok((select not zone_override_active from public.ph_warehouse_assigned_items where assignment_key='EXIT-1|perennial')
   and exists(select 1 from private.ph_warehouse_assignment_audit where assignment_key='EXIT-1|perennial' and event_type='zone_exit_unassigned'),
   'zone exit clears lock state and is audited');
-select is_null((select assignedto from public.ph_warehouse_assigned_items where assignment_key='INACTIVE-1|perennial'),'restoration does not revive an inactive prior owner');
+select ok((select assignedto from public.ph_warehouse_assigned_items where assignment_key='INACTIVE-1|perennial') is null,'restoration does not revive an inactive prior owner');
 select is((select reason from private.ph_warehouse_assignment_audit where assignment_key='INACTIVE-1|perennial' and event_type='rose_exemption_restore' order by id desc limit 1),
   'saved_owner_inactive_reset','inactive prior-owner reset is audited with its reason');
 select is((select assignedto from public.ph_warehouse_assigned_items where assignment_key='ROSE-1|perennial'),'megan_kelly','rose owner remains untouched on subsequent refresh');

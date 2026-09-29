@@ -221,6 +221,16 @@ async function openLowStockLocationCards(page: any) {
       if (attempt === 2) throw error;
     }
   }
+  const pickerState = await page.evaluate(() => window.eval(`(() => {
+    const before = document.querySelector('details[data-manager-eval2-report-picker][open]');
+    const checkedBefore = before?.querySelector('input[data-eval2-report-id][value="low-stock"]')?.checked === true;
+    renderManagers();
+    const after = document.querySelector('details[data-manager-eval2-report-picker]');
+    const checkedAfter = after?.querySelector('input[data-eval2-report-id][value="low-stock"]')?.checked === true;
+    return { sameNode: before === after, connected: Boolean(after?.isConnected), open: after?.open === true,
+      checkedBefore, checkedAfter };
+  })()`));
+  expect(pickerState).toEqual({ sameNode: true, connected: true, open: true, checkedBefore: true, checkedAfter: true });
   await picker.getByRole('button', { name: 'Apply Reports', exact: true }).click();
   await expect(page.locator('#manager-eval-report-2-view-location')).toBeVisible();
   await page.locator('#manager-eval-report-2-view-location').click();
@@ -423,6 +433,10 @@ test('touch-held Eval Reports #2 refresh keeps location cards in place until the
 
   await scroller.dispatchEvent('pointerup', { pointerId: 47, pointerType: 'touch', isPrimary: true, button: 0 });
   await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.eval(`(() => {
+    const card = document.querySelector('[data-manager-eval2-selection-key="' + CSS.escape(window.__eval2GestureProbe.key) + '"]');
+    return card?.querySelector('.manager-eval2-inventory-row > span:nth-child(4)')?.textContent?.trim() || '';
+  })()`)), { timeout: 20_000 }).toBe('9');
   const released = await page.evaluate(() => window.eval(`(() => {
     const scroller = document.getElementById('main-scroll-area'), bounds = scroller.getBoundingClientRect();
     const first = document.querySelector('[data-manager-eval2-selection-key="' + CSS.escape(window.__eval2GestureProbe.key) + '"]');
