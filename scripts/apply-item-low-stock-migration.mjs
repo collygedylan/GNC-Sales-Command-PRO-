@@ -5,7 +5,8 @@ import pg from 'pg';
 
 export const migrationName = '20260928145055_item_low_stock_targets.sql';
 export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_assignment_override.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName]);
+export const passwordReconciliationMigrationName = '20260929160000_password_change_profile_reconciliation.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 
 const NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET',
@@ -167,6 +168,7 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 export function migrationContractQuery(name) {
   if (name === migrationName) return "select to_regprocedure('public.get_eval_item_low_stock_targets_v1(text[],text,integer)') is not null as installed";
   if (name === perennialAssignmentMigrationName) return "select to_regprocedure('public.reconcile_eval_itemcodes(uuid)') is not null and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_warehouse_assigned_items' and column_name='zone_override_active') as installed";
+  if (name === passwordReconciliationMigrationName) return "select to_regprocedure('public.prepare_password_change_profile(text,uuid,text)') is not null and to_regprocedure('public.complete_password_change_profile(uuid,uuid,text,text)') is not null as installed";
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }
 

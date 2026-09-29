@@ -26,19 +26,35 @@ async function serviceRpc(name, body) {
   });
 }
 
-test.describe('Native Auth profile-link provisioning', () => {
+test.describe('Native Auth password profile reconciliation', () => {
   test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
 
-  test('repairs an orphan profile and keeps password changes synchronized', async () => {
+  test('repairs an orphan profile and atomically synchronizes a forced password change', async () => {
     const suffix = `${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;
     const username = `auth_link_${suffix}`;
     const email = `${username}@example.com`;
     const starterPassword = 'Starter-Auth-2026!';
     const nextPassword = 'Linked-Auth-2026!';
+    const fingerprint = 'a'.repeat(64);
     let authUserId = '';
     let legacyUserId = 0;
 
     try {
+      const legacy = await jsonFetch(`${localUrl}/rest/v1/ph_app_users`, {
+        method: 'POST',
+        headers: { ...serviceHeaders(), Prefer: 'return=representation' },
+        body: JSON.stringify({
+          username,
+          password: starterPassword,
+          role: 'Manager',
+          division: '10',
+          language: 'English',
+          must_change_password: true
+        })
+      });
+      expect(legacy.response.ok, JSON.stringify(legacy.body)).toBeTruthy();
+      legacyUserId = Number(legacy.body[0].id);
+
       const created = await jsonFetch(`${localUrl}/auth/v1/admin/users`, {
         method: 'POST',
         headers: serviceHeaders(),
@@ -54,7 +70,7 @@ test.describe('Native Auth profile-link provisioning', () => {
           id: authUserId,
           username,
           display_name: username,
-          role: 'User',
+          role: 'Manager',
           division: '10',
           language: 'English',
           must_change_password: true
@@ -63,23 +79,16 @@ test.describe('Native Auth profile-link provisioning', () => {
       expect(orphanProfile.response.ok, JSON.stringify(orphanProfile.body)).toBeTruthy();
       expect(orphanProfile.body[0].legacy_user_id).toBeNull();
 
-      const repaired = await serviceRpc('provision_native_auth_app_user', {
-        p_auth_user_id: authUserId,
+      const prepared = await serviceRpc('prepare_password_change_profile', {
         p_username: username,
-        p_password: starterPassword,
-        p_display_name: username,
-        p_role: 'User',
-        p_division: '10',
-        p_language: 'English',
-        p_must_change_password: true
+        p_auth_user_id: authUserId,
+        p_password_fingerprint: fingerprint
       });
-      expect(repaired.response.ok, JSON.stringify(repaired.body)).toBeTruthy();
-      legacyUserId = Number(repaired.body[0].legacy_user_id);
-      expect(legacyUserId).toBeGreaterThan(0);
+      expect(prepared.response.ok, JSON.stringify(prepared.body)).toBeTruthy();
+      expect(prepared.body[0].status).toBe('ready');
+      expect(Number(prepared.body[0].legacy_user_id)).toBe(legacyUserId);
+      expect(prepared.body[0].role).toBe('Manager');
 
-      // The protected app API updates Native Auth before synchronizing the
-      // legacy/profile record. The SQL provisioning RPC does not change Auth's
-      // password itself; exercise both halves of that existing contract.
       const nativePasswordChange = await jsonFetch(`${localUrl}/auth/v1/admin/users/${encodeURIComponent(authUserId)}`, {
         method: 'PUT',
         headers: serviceHeaders(),
@@ -87,18 +96,16 @@ test.describe('Native Auth profile-link provisioning', () => {
       });
       expect(nativePasswordChange.response.ok, JSON.stringify(nativePasswordChange.body)).toBeTruthy();
 
-      const passwordChange = await serviceRpc('provision_native_auth_app_user', {
+      const passwordChange = await serviceRpc('complete_password_change_profile', {
+        p_attempt_id: prepared.body[0].attempt_id,
         p_auth_user_id: authUserId,
-        p_username: username,
         p_password: nextPassword,
-        p_display_name: username,
-        p_role: 'User',
-        p_division: '10',
-        p_language: 'English',
-        p_must_change_password: false
+        p_password_fingerprint: fingerprint
       });
       expect(passwordChange.response.ok, JSON.stringify(passwordChange.body)).toBeTruthy();
+      expect(passwordChange.body[0].status).toBe('completed');
       expect(Number(passwordChange.body[0].legacy_user_id)).toBe(legacyUserId);
+      expect(passwordChange.body[0].must_change_password).toBe(false);
 
       const linkedProfile = await jsonFetch(`${localUrl}/rest/v1/profiles?select=legacy_user_id,must_change_password&id=eq.${encodeURIComponent(authUserId)}`, {
         headers: serviceHeaders()
@@ -147,6 +154,88 @@ test.describe('Native Auth profile-link provisioning', () => {
           method: 'DELETE',
           headers: serviceHeaders()
         });
+      }
+    }
+  });
+
+  test('reserves a forced starter-password attempt before native identity exists', async () => {
+    const suffix = `${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;
+    const username = `deferred_reset_${suffix}`;
+    const email = `${username}@greenleafnursery.com`;
+    const nextPassword = 'Deferred-Auth-2026!';
+    const fingerprint = 'b'.repeat(64);
+    let authUserId = '';
+    let legacyUserId = 0;
+
+    try {
+      const legacy = await jsonFetch(`${localUrl}/rest/v1/ph_app_users`, {
+        method: 'POST',
+        headers: { ...serviceHeaders(), Prefer: 'return=representation' },
+        body: JSON.stringify({ username, password: '1234', role: 'Manager', must_change_password: false })
+      });
+      expect(legacy.response.ok, JSON.stringify(legacy.body)).toBeTruthy();
+      legacyUserId = Number(legacy.body[0].id);
+
+      const first = await serviceRpc('prepare_password_change_profile', {
+        p_username: username,
+        p_auth_user_id: null,
+        p_password_fingerprint: fingerprint
+      });
+      expect(first.response.ok, JSON.stringify(first.body)).toBeTruthy();
+      expect(first.body[0].status).toBe('needs_native_identity');
+      expect(first.body[0].attempt_id).toBeTruthy();
+
+      const created = await jsonFetch(`${localUrl}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: serviceHeaders(),
+        body: JSON.stringify({
+          email,
+          password: '1234',
+          email_confirm: true,
+          app_metadata: { legacy_user_id: String(legacyUserId) }
+        })
+      });
+      expect(created.response.ok, JSON.stringify(created.body)).toBeTruthy();
+      authUserId = created.body.id;
+
+      const ready = await serviceRpc('prepare_password_change_profile', {
+        p_username: '',
+        p_auth_user_id: authUserId,
+        p_password_fingerprint: fingerprint
+      });
+      expect(ready.response.ok, JSON.stringify(ready.body)).toBeTruthy();
+      expect(ready.body[0].status).toBe('ready');
+      expect(ready.body[0].attempt_id).toBe(first.body[0].attempt_id);
+      expect(Number(ready.body[0].legacy_user_id)).toBe(legacyUserId);
+
+      const authUpdate = await jsonFetch(`${localUrl}/auth/v1/admin/users/${encodeURIComponent(authUserId)}`, {
+        method: 'PUT',
+        headers: serviceHeaders(),
+        body: JSON.stringify({ password: nextPassword })
+      });
+      expect(authUpdate.response.ok, JSON.stringify(authUpdate.body)).toBeTruthy();
+      const completed = await serviceRpc('complete_password_change_profile', {
+        p_attempt_id: ready.body[0].attempt_id,
+        p_auth_user_id: authUserId,
+        p_password: nextPassword,
+        p_password_fingerprint: fingerprint
+      });
+      expect(completed.response.ok, JSON.stringify(completed.body)).toBeTruthy();
+      expect(completed.body[0].status).toBe('completed');
+      expect(completed.body[0].role).toBe('Manager');
+
+      const signedIn = await jsonFetch(`${localUrl}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: nextPassword })
+      });
+      expect(signedIn.response.ok, JSON.stringify(signedIn.body)).toBeTruthy();
+    } finally {
+      if (legacyUserId > 0) {
+        await jsonFetch(`${localUrl}/rest/v1/ph_app_users?id=eq.${legacyUserId}`, { method: 'DELETE', headers: serviceHeaders() });
+      }
+      if (authUserId) {
+        await jsonFetch(`${localUrl}/auth/v1/admin/users/${encodeURIComponent(authUserId)}`, { method: 'DELETE', headers: serviceHeaders() });
       }
     }
   });

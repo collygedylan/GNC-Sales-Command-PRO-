@@ -7,6 +7,7 @@ export const releaseUnitScriptNames = Object.freeze(['test:photo', 'test:pilot',
 export const explicitReleaseUnitTests = Object.freeze([
   'tests/soc-order-history.test.mjs',
   'tests/item-low-stock-migration-runner.test.mjs',
+  'tests/password-change-handler.test.mjs',
   'tests/season-priority-report.test.mjs',
   'tests/manager-season-priority-protected.test.mjs',
   'tests/assigned-items-filters.test.mjs',

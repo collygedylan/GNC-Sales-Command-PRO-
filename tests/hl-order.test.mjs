@@ -72,35 +72,179 @@ function bloomOpenRuntime() {
   } };
 }
 
-test('Bloom waits for saved HL selections and repeated taps open once without an empty warning', async () => {
+test('ordinary Bloom opens immediately and never reads or displays server-backed HL drafts', async () => {
   const {ctx,finish}=bloomOpenRuntime();
   ctx.toggleCartPanel(); ctx.toggleCartPanel();
-  assert.equal(ctx.reads,1);
+  assert.equal(ctx.reads,0);
   assert.equal(ctx.cartPanelOpen,false);
-  assert.deepEqual(ctx.notices,[]);
-  await finish();
-  assert.equal(ctx.cartPanelOpen,true);
-  assert.deepEqual(ctx.notices,[]);
-});
-
-for (const change of ['close','account','view']) test(`pending Bloom opening cannot override ${change}`, async () => {
-  const {ctx,finish}=bloomOpenRuntime();
-  ctx.toggleCartPanel();
-  if(change==='close') ctx.toggleCartPanel(false);
-  if(change==='account') ctx.owner='second';
-  if(change==='view') ctx.view='home';
+  assert.match(ctx.notices[0][0],/Bloom Picker Empty/);
   await finish();
   assert.equal(ctx.cartPanelOpen,false);
 });
 
-test('a new Bloom tap after navigation replaces the old pending open request', async () => {
-  const {ctx,finish}=bloomOpenRuntime();
-  ctx.toggleCartPanel();
-  ctx.view='home';
-  ctx.toggleCartPanel();
-  await finish();
-  assert.equal(ctx.cartPanelOpen,true);
-  assert.deepEqual(ctx.notices,[]);
+test('legacy saved Bloom drafts discard HL rows while preserving ordinary rows and form values', () => {
+  const ctx=runtime();
+  ctx.firstNonEmptyValue=(...values)=>values.find(value=>value!=null && value!=='');
+  ctx.buildRequestCustomerValue=()=>'';
+  vm.runInContext(source('normalizeBloomPickerOrderDraft'),ctx);
+  ctx.saved={draftId:'saved',label:'My order',customerName:'Synthetic customer',
+    selectedDomIds:['ordinary-a','hl-order:soc-a'],
+    selectedRows:[{domId:'ordinary-a',uniqueId:'a'},{domId:'hl-order:soc-a',uniqueId:'soc-a'}],
+    lineDrafts:{'ordinary-a':{quantity:'7'},'hl-order:soc-a':{quantity:'9'}}};
+  const draft=ctx.normalizeBloomPickerOrderDraft(ctx.saved);
+  assert.deepEqual(Array.from(draft.selectedDomIds),['ordinary-a']);
+  assert.equal(draft.selectedRows.length,1);
+  assert.deepEqual(Object.keys(draft.lineDrafts),['ordinary-a']);
+  assert.equal(draft.lineDrafts['ordinary-a'].quantity,'7');
+  assert.equal(draft.customerName,'Synthetic customer');
+
+  // Defend every restoration boundary even if an older caller supplies an unnormalized draft.
+  const ordinary={DOM_ID:'ordinary-a',UNIQUE_ID:'a'};
+  const hl={DOM_ID:'hl-order:soc-a',UNIQUE_ID:'soc-a',HL_ORDER:true};
+  ctx.readBloomPickerOrderDraft=()=>ctx.saved;
+  ctx.readBloomPickerOrderDrafts=()=>[ctx.saved];
+  ctx.findItemByDomId=id=>id===ordinary.DOM_ID?ordinary:hl;
+  ctx.findItemByUniqueId=id=>id===ordinary.UNIQUE_ID?ordinary:hl;
+  ctx.isAvOpenLikeItem=()=>true;
+  for(const name of ['updateGlobalActionBar','refreshCartButtons','showToast','renderBloomPickerOrderList',
+    'loadBloomPickerReservePartyOptions','applyBloomPickerOrderDraftState','syncBloomPickerFolderName','renderBloomPickerSavedDrafts'])ctx[name]=()=>{};
+  ctx.bloomPickerRequestRowIds=new Set();
+  vm.runInContext('let bloomPickerActiveDraftId="";\n'+[
+    source('restoreBloomPickerOrderDraftSelection'),source('resumeBloomPickerOrderDraft'),source('getCartSelectedItems')
+  ].join('\n'),ctx);
+  assert.equal(ctx.restoreBloomPickerOrderDraftSelection(),1);
+  assert.deepEqual([...ctx.selectedItems],['ordinary-a']);
+  ctx.resumeBloomPickerOrderDraft('saved');
+  assert.deepEqual([...ctx.selectedItems],['ordinary-a']);
+  ctx.selectedItems.add('hl-order:soc-a');
+  assert.deepEqual(Array.from(ctx.getCartSelectedItems(),item=>item.DOM_ID),['ordinary-a']);
+});
+
+test('HL cart refresh removes only committed rows and empty date groups while retaining dirty controls', async () => {
+  const {JSDOM}=await import('jsdom');
+  const dom=new JSDOM(`<div id="hl-order-content"><button data-hl-tab="cart">Cart (3)</button><section id="hl-order-cart">
+    <header><p>Saved on the server · 3 rows</p></header>
+    <section data-hl-ship-date="2026-09-15"><article data-hl-draft-source-id="keep" data-hl-ship-date="2026-09-15"><input value="5"></article>
+      <article data-hl-draft-source-id="committed" data-hl-ship-date="2026-09-15"></article></section>
+    <section data-hl-ship-date="2026-09-16"><article data-hl-draft-source-id="removed" data-hl-ship-date="2026-09-16"></article></section>
+  </section></div>`);
+  try {
+    const ctx=runtime();ctx.document=dom.window.document;
+    ctx.refreshHlBloomStatus=()=>{};
+    ctx.getHlOrderCommittedDraftSourceIds=()=>new Set(['committed']);
+    vm.runInContext("hlOrderStateData={draft:[{source_id:'keep'},{source_id:'committed'}]}",ctx);
+    const input=ctx.document.querySelector('input');input.value='9';
+    ctx.syncHlOrderCartCommittedRows();
+    assert.equal(ctx.document.querySelector('input'),input);
+    assert.equal(input.value,'9');assert.equal(input.defaultValue,'5');
+    assert.equal(ctx.document.querySelectorAll('[data-hl-draft-source-id]').length,1);
+    assert.equal(ctx.document.querySelectorAll('section[data-hl-ship-date]').length,1);
+    assert.equal(ctx.document.querySelector('[data-hl-tab="cart"]').textContent,'Cart (1)');
+  } finally { dom.window.close(); }
+});
+
+test('HL drafts never enter the ordinary Bloom selection set', () => {
+  const ctx=runtime();
+  ctx.selectedItems.add('ordinary-a'); ctx.selectedItemSources.set('ordinary-a','drive');
+  ctx.selectedItems.add('hl-order:stale'); ctx.selectedItemSources.set('hl-order:stale','hl-order');
+  ctx.fixtureRow=row('soc-a');
+  vm.runInContext("hlOrderStateData={revision:1,draft:[{source_id:'soc-a',quantity:5,status:'ready',can_remove:true,removal_block_reason:'',source:fixtureRow}],orders:[]};",ctx);
+  ctx.syncHlOrderDraftSelections();
+  assert.deepEqual([...ctx.selectedItems],['ordinary-a']);
+  assert.equal(ctx.selectedItemSources.has('ordinary-a'),true);
+  assert.equal(ctx.selectedItemSources.has('hl-order:stale'),false);
+  assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('[...hlOrderSelections.keys()]',ctx))),['hl-order:soc-a']);
+  const projected=JSON.parse(JSON.stringify(vm.runInContext("hlOrderSelections.get('hl-order:soc-a')",ctx)));
+  assert.deepEqual([projected.source_id,projected.quantity,projected.status,projected.can_remove],['soc-a',5,'ready',true]);
+});
+
+test('a submitting HL row leaves Needed and the Cart only after its exact durable batch is recorded', () => {
+  const ctx=runtime();
+  const sourceRow=row('soc-committed');
+  ctx.fixtureRows={committed:sourceRow,other:row('soc-not-matched')};
+  vm.runInContext(`hlOrderStateData={revision:2,actionable_rows:[fixtureRows.committed],dispositions:[],draft:[
+    {source_id:'soc-committed',status:'submitting',target_order_id:'order-a',source:fixtureRows.committed,quantity:4},
+    {source_id:'soc-not-matched',status:'submitting',target_order_id:'order-a',source:fixtureRows.other,quantity:2}
+  ],orders:[{id:'order-a',batches:[{id:'batch-a',status:'queued'}],lines:[{source_id:'soc-committed',batch_id:'batch-a'}]}]};`,ctx);
+  ctx.syncHlOrderDraftSelections();
+  assert.equal(vm.runInContext("hlOrderSelections.has('hl-order:soc-committed')",ctx),false);
+  assert.equal(vm.runInContext("hlOrderSelections.has('hl-order:soc-not-matched')",ctx),true);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.getHlOrderRows().map(entry=>entry.unique_id))),[]);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.getHlOrderNeededGroups().flatMap(group=>group.rows.map(entry=>entry.unique_id)))),['soc-not-matched']);
+});
+
+test('a matching failed durable batch remains in Orders but does not return to the HL Cart', () => {
+  const ctx=runtime();
+  const sourceRow=row('soc-failed');
+  ctx.fixtureRow=sourceRow;
+  vm.runInContext(`hlOrderStateData={revision:2,actionable_rows:[fixtureRow],dispositions:[],draft:[
+    {source_id:'soc-failed',status:'submitting',target_order_id:'order-a',source:fixtureRow,quantity:4}
+  ],orders:[{id:'order-a',batches:[{id:'batch-a',status:'failed'}],lines:[{source_id:'soc-failed',batch_id:'batch-a'}]}]};`,ctx);
+  ctx.syncHlOrderDraftSelections();
+  assert.equal(vm.runInContext("hlOrderSelections.has('hl-order:soc-failed')",ctx),false);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.getHlOrderNeededGroups())),[]);
+});
+
+test('HL command retries retain ambiguous HTTP failures and release only structured rejections', () => {
+  const ctx=runtime();
+  const check=(error)=>vm.runInContext(`isHlOrderCommandDefinitelyRejected(error)`,Object.assign(ctx,{error}));
+  assert.equal(check({status:408}),false,'an HTTP timeout response does not prove the command was rejected');
+  assert.equal(check({status:500,code:'08006'}),false,'a connection SQLSTATE is ambiguous');
+  assert.equal(check({status:409,code:'40001'}),true,'a transaction conflict proves rejection');
+  assert.equal(check({status:403,code:'42501'}),true,'a permission SQLSTATE proves rejection');
+  assert.equal(check({status:409,code:'55000'}),true,'a known workflow-state rejection proves the command did not commit');
+  assert.equal(check({status:401,code:'PGRST301'}),true,'a structured PostgREST auth rejection proves rejection');
+  assert.equal(check({hlOrderCommandDispatch:'not_sent'}),true,'a failure before dispatch proves rejection');
+});
+
+test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects and ambiguous transport outcomes', async () => {
+  let calls=0;
+  const ctx=vm.createContext({
+    getNativeAuthRequestHeaders:async()=>null,
+    nativeSessionRecoveryError:()=>new Error('Sign in again.'),
+    fetchWithTimeout:async()=>{calls++;throw new TypeError('network down');},
+    SUPABASE_URL:'https://synthetic.invalid', SUPABASE_WRITE_TIMEOUT_MS:5000,
+    getResponseError:async(_response,fallback)=>fallback
+  });
+  const rpcStart=html.indexOf('        async function supabaseRpc(');
+  const rpcSource=html.slice(rpcStart,html.indexOf('\n        }',rpcStart)+10);
+  assert.ok(rpcStart>=0);
+  vm.runInContext(`${rpcSource}\n${source('isHlOrderCommandDefinitelyRejected')}`,ctx);
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+    assert.equal(error.hlOrderCommandDispatch,'not_sent');
+    assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),true);
+    return true;
+  });
+  assert.equal(calls,0,'missing auth must stop before fetch');
+
+  ctx.getNativeAuthRequestHeaders=async()=>({Authorization:'Bearer synthetic'});
+  const cyclic={}; cyclic.self=cyclic;
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',cyclic),error=>{
+    assert.equal(error.hlOrderCommandDispatch,'not_sent');
+    return true;
+  });
+  assert.equal(calls,0,'body serialization must stop before fetch');
+
+  let responseCode='42501';
+  ctx.fetchWithTimeout=async()=>{
+    calls++;
+    return {ok:false,status:403,clone:()=>({json:async()=>({code:responseCode})}),text:async()=>'{"code":"42501"}'};
+  };
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+    assert.equal(error.code,'42501');
+    assert.equal(error.hlOrderCommandDispatch,'response_received');
+    assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),true);
+    return true;
+  });
+
+  responseCode='';
+  ctx.fetchWithTimeout=async()=>{calls++;throw new TypeError('connection reset after dispatch');};
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+    assert.equal(error.hlOrderCommandDispatch,undefined);
+    assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),false);
+    return true;
+  });
+  assert.equal(calls,2);
 });
 
 function bloomRemovalRuntime() {
@@ -124,11 +268,11 @@ function bloomRemovalRuntime() {
   return {ctx,elements};
 }
 
-test('explicit Bloom clear is one revision-checked command, keeps locked rows and awaits acknowledgment before removing local selections', async () => {
+test('HL Cart clear is one revision-checked command, keeps locked rows and never clears ordinary Bloom selections', async () => {
   const {ctx,elements}=bloomRemovalRuntime(); let finish; const calls=[];
   ctx.supabaseRpc=async (_method,command)=>{calls.push(command);return new Promise(resolve=>{finish=resolve;});};
-  const first=ctx.clearBloomPickerSelection();
-  await ctx.clearBloomPickerSelection();
+  const first=ctx.clearHlOrderCart();
+  await ctx.clearHlOrderCart();
   assert.equal(calls.length,1);
   assert.equal(calls[0].p_action,'draft_clear');
   assert.equal(JSON.stringify(calls[0].p_payload),JSON.stringify({source_ids:['soc-a']}));
@@ -140,16 +284,17 @@ test('explicit Bloom clear is one revision-checked command, keeps locked rows an
   await first;
   assert.equal(elements[0].removed,true);
   assert.equal(elements[1].removed,false);
-  assert.equal(ctx.selectedItems.has('ordinary-a'),false);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),true);
   assert.equal(ctx.selectedItems.has('ordinary-added-during-request'),true);
-  assert.equal(ctx.selectedItems.has('hl-order:soc-b'),true);
+  assert.equal(ctx.selectedItems.has('hl-order:soc-b'),false);
+  assert.equal(vm.runInContext("hlOrderSelections.has('hl-order:soc-b')",ctx),true);
 });
 
 test('failed or stale Bloom clears retain every selection and the original displayed revision', async () => {
   const {ctx,elements}=bloomRemovalRuntime(); const calls=[];
   vm.runInContext('hlOrderStateData.revision=6;',ctx);
-  ctx.supabaseRpc=async (_method,command)=>{calls.push(command);throw Object.assign(new Error('HL_ORDER_REVISION_CONFLICT'),{status:409});};
-  await ctx.clearBloomPickerSelection();
+  ctx.supabaseRpc=async (_method,command)=>{calls.push(command);throw Object.assign(new Error('HL_ORDER_REVISION_CONFLICT'),{status:409,code:'40001'});};
+  await ctx.clearHlOrderCart();
   assert.equal(calls[0].p_expected_revision,4);
   assert.equal(elements.some(row=>row.removed),false);
   assert.equal(ctx.selectedItems.has('ordinary-a'),true);
@@ -165,21 +310,21 @@ test('uncertain Bloom clear keeps its identity and completes local cleanup only 
     return {revision:5,draft:[ctx.entries[1]],orders:[]};
   };
   ctx.loadHlOrderState=async()=>vm.runInContext('hlOrderStateData',ctx);
-  await ctx.clearBloomPickerSelection();
+  await ctx.clearHlOrderCart();
   assert.equal(elements[0].removed,false);
   assert.equal(ctx.selectedItems.has('ordinary-a'),true);
   await ctx.retryHlOrderCommand();
   assert.equal(calls.length,2);
   assert.equal(calls[1].p_command_id,calls[0].p_command_id);
   assert.equal(elements[0].removed,true);
-  assert.equal(ctx.selectedItems.has('ordinary-a'),false);
+  assert.equal(ctx.selectedItems.has('ordinary-a'),true);
   assert.equal(vm.runInContext('hlBloomClearIntent',ctx),null);
 });
 
 test('an old-account Bloom acknowledgment cannot clear the current account selections', async () => {
   const {ctx,elements}=bloomRemovalRuntime(); let finish;
   ctx.supabaseRpc=async()=>new Promise(resolve=>{finish=resolve;});
-  const pending=ctx.clearBloomPickerSelection();
+  const pending=ctx.clearHlOrderCart();
   ctx.owner='second';
   vm.runInContext('hlBloomClearIntent=null;hlOrderPendingCommand=null;',ctx);
   ctx.selectedItems.clear(); ctx.selectedItems.add('second-account-selection');
@@ -194,9 +339,9 @@ test('a definite rejection during Bloom reconciliation releases the pending UI w
   ctx.showToast=()=>{};
   ctx.supabaseRpc=async()=>{
     if(++calls===1) throw Object.assign(new Error('statement timeout'),{status:500,code:'57014'});
-    throw Object.assign(new Error('HL_ORDER_REVISION_CONFLICT'),{status:409});
+    throw Object.assign(new Error('HL_ORDER_REVISION_CONFLICT'),{status:409,code:'40001'});
   };
-  await ctx.clearBloomPickerSelection();
+  await ctx.clearHlOrderCart();
   await ctx.retryHlOrderCommand();
   assert.equal(calls,2);
   assert.equal(vm.runInContext('hlBloomClearIntent',ctx),null);
@@ -214,7 +359,7 @@ test('unsent review drafts can leave Bloom without enabling quantity edits or re
   assert.equal(ctx.isHlBloomDraftRemovable({status:'ready'}),false);
   const calls=[];
   ctx.supabaseRpc=async(_method,command)=>{calls.push(command);return {revision:5,draft:[],orders:[],dispositions:[{source_id:'soc-b',status:'needs_review'}]};};
-  await ctx.clearBloomPickerSelection();
+  await ctx.clearHlOrderCart();
   assert.equal(calls.length,1);
   assert.equal(calls[0].p_action,'draft_clear');
   assert.deepEqual(Array.from(calls[0].p_payload.source_ids),['soc-a','soc-b']);

@@ -281,3 +281,41 @@ test('HL Order Home tile requires the active Dylan native profile and disappears
   await expect(page.locator('#home-tile-hl-order')).toBeHidden();
   app.assertClean();
 });
+
+test('forced password retry retains the gate and entered password until synchronization is confirmed', async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!);
+  await app.seed('nelly_aguilar', 'User');
+  await page.evaluate(() => window.eval(`
+    window.__passwordRetryCalls = [];
+    window.__passwordRetryToasts = [];
+    window.__passwordRetryFinalized = false;
+    getCurrentAppSessionToken = () => 'synthetic-verified-session';
+    beginInitialAppLoad = () => {};
+    finishInitialAppLoad = () => {};
+    scheduleLoginStartupWatchdog = () => {};
+    persistAppSessionRecord = record => { window.__passwordRetrySaved = record; };
+    finalizeLogin = async () => { window.__passwordRetryFinalized = true; };
+    showToast = (title,message) => window.__passwordRetryToasts.push({title,message});
+    postAppFunctionJson = async (url,payload) => {
+      window.__passwordRetryCalls.push(payload);
+      if(window.__passwordRetryCalls.length === 1) throw Object.assign(new Error('Synchronization unconfirmed'), {payload:{code:'PASSWORD_CHANGE_RETRY_REQUIRED'}});
+      return {ok:true,session:{token:'synthetic-completed-session',username:'nelly_aguilar',displayName:'Nelly Aguilar',role:'User',expiresAt:Date.now()+60000,mustChangePassword:false}};
+    };
+    document.getElementById('new-password').value = 'Synthetic-next-2026!';
+    document.getElementById('confirm-password').value = 'Synthetic-next-2026!';
+    document.getElementById('view-change-password').style.display = 'flex';
+  `));
+  await page.evaluate(() => window.eval('submitNewPassword()'));
+  await expect(page.locator('#view-change-password')).toBeVisible();
+  await expect(page.locator('#new-password')).toHaveValue('Synthetic-next-2026!');
+  await expect(page.locator('#confirm-password')).toHaveValue('Synthetic-next-2026!');
+  expect(await page.evaluate(() => window.eval('window.__passwordRetryFinalized'))).toBe(false);
+  expect(await page.evaluate(() => window.eval('window.__passwordRetryToasts.at(-1).message'))).toContain('same new password');
+  await page.evaluate(() => window.eval('submitNewPassword()'));
+  expect(await page.evaluate(() => window.eval('window.__passwordRetryFinalized'))).toBe(true);
+  expect(await page.evaluate(() => window.eval('window.__passwordRetrySaved.mustChangePassword'))).toBe(false);
+  expect(await page.evaluate(() => window.eval('window.__passwordRetryCalls.map(call => call.action)'))).toEqual(['password_change', 'password_change']);
+  await expect(page.locator('#new-password')).toHaveValue('');
+  await expect(page.locator('#confirm-password')).toHaveValue('');
+  app.assertClean();
+});

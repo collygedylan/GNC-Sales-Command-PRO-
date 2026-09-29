@@ -1501,12 +1501,13 @@ test('plant request submitted and completed emails always include the required t
 
 test('V12 synchronizes password changes and exposes user-initiated passkeys to every eligible account', () => {
   assert.match(edge, /newPassword\.length < 6/);
-  assert.match(edge, /supabase\.auth\.admin\.updateUserById\(String\(profile\.id\)/);
-  assert.match(edge, /if \(!Number\.isInteger\(legacyUserId\) \|\| legacyUserId <= 0\)[\s\S]*supabase\.rpc\("provision_native_auth_app_user"/);
+  assert.match(edge, /supabase\.auth\.admin\.updateUserById\(String\(profile\.profile_id\)/);
+  const passwordHandler = edge.slice(edge.indexOf('async function handlePasswordChange('), edge.indexOf('async function handleDb('));
+  assert.match(passwordHandler, /prepare_password_change_profile[\s\S]*updateUserById[\s\S]*complete_password_change_profile/);
   assert.match(edge, /AUTH_PROFILE_LINK_REPAIR_REQUIRED/);
-  assert.doesNotMatch(edge, /profileLookupError \|\| !profile\?\.id \|\| !profile\.legacy_user_id/);
-  assert.match(edge, /\.from\("ph_app_users"\)[\s\S]*must_change_password: false/);
-  assert.match(edge, /\.from\("profiles"\)[\s\S]*must_change_password: false/);
+  assert.doesNotMatch(passwordHandler, /provision_native_auth_app_user|\.from\("(?:ph_app_users|profiles)"\)/);
+  assert.match(passwordHandler, /completed\.must_change_password !== false/);
+  assert.match(passwordHandler, /PASSWORD_CHANGE_RETRY_REQUIRED/);
   assert.match(html, /includeSession: !nativeAuthSessionActive/);
   assert.doesNotMatch(html, /nativeClient\.auth\.updateUser\(\{ password: newPass \}\)/);
   const passkeyUi = html.slice(html.indexOf('function syncPasskeyPilotUi'), html.indexOf('async function signInWithAppPasskey'));

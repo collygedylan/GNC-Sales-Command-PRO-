@@ -127,13 +127,13 @@ test('a partial restocking draft persists after reload and sends the selected sn
   // account/permission scope changed. Wait for the real initialized scope.
   await page.waitForFunction(() => document.body.classList.contains('role-access-ready')
     && window.eval('hasAppliedInitialHomeView === true && productionLiveSyncReadPermissionVersion === "hl-policy-1"'));
-  if (!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
+  await openHl(page);
+  await activate(page, '[data-hl-tab="cart"]');
   const saved = page.locator('[data-hl-draft-source-id]').first();
   await saved.locator('[data-hl-draft-quantity]').fill('6');
   await saved.getByRole('button', { name: 'Save quantity', exact: true }).click();
   await expect.poll(() => fixture.state.draft[0]?.quantity).toBe(6);
-  if (await page.locator('#global-action-bar').isVisible()) await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
-  await openRestock(page);
+  await activate(page, '[data-hl-tab="restocking"]');
   await expect(item(page)).toContainText(/6/);
   expect(fixture.state.draft[0].quantity).toBe(6);
   expect(fixture.state.draft[0].source.source_kind).toBe('restock'); isolated(fixture);
@@ -145,9 +145,8 @@ test('same-date restocking previews additions under the existing HL number', asy
   const orderNumber = fixture.state.orders[0].order_number;
   await openRestock(page); await saveRestock(page, '5');
   await expect.poll(() => fixture.state.draft.length).toBe(1);
-  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
-  await page.locator('#bloom-picker-actions-toggle').click();
-  await page.locator('#batch-btn-hl-tags').click();
+  await activate(page, '[data-hl-tab="cart"]');
+  await page.locator('#hl-order-cart').getByRole('button', { name: 'Preview HL TAGS', exact: true }).click();
   await expect(page.locator('#hl-tags-preview')).toBeVisible();
   const report: any = [...fixture.previews.values()].at(-1)?.report;
   expect(report).toMatchObject({ contract_version: 'hl-order-report-v3', kind: 'addition', order_number: orderNumber, total_quantity: 5 });

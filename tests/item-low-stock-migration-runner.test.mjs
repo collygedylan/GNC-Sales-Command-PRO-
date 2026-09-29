@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, releaseDatabaseMigrations, migrationContractQuery,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, releaseDatabaseMigrations, migrationContractQuery,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -63,7 +63,7 @@ test('migration and history entry are atomic and a retry verifies the same conte
   assert.throws(()=>migrationBody('select 1'),/TRANSACTION_REQUIRED/);
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   const queries=[];const client={query:async(sql,params)=>{
     queries.push({sql,params});
@@ -102,6 +102,23 @@ test('perennial production preview is aggregate only and rolls back its read-onl
   assert.match(perennialPreviewSql,/135_ROSES/);
   assert.match(perennialPreviewSql,/D\\.10/);
   assert.match(perennialPreviewSql,/preview_ready/);
+});
+
+test('password reconciliation is additive and verified before the existing backend publication', async () => {
+  const query = migrationContractQuery(passwordReconciliationMigrationName);
+  assert.match(query, /prepare_password_change_profile\(text,uuid,text\)/);
+  assert.match(query, /complete_password_change_profile\(uuid,uuid,text,text\)/);
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    return { rows: sql === query ? [{ installed: true }] : [] };
+  } };
+  await applyItemLowStockMigration({ client, source: 'begin; select 11; commit;', targetMigrationName: passwordReconciliationMigrationName });
+  assert.equal(calls.at(-1).sql, 'commit');
+  assert.equal(calls.find(call => call.sql.startsWith('insert into supabase_migrations')).params[1], 'password_change_profile_reconciliation');
+  const workflow = fs.readFileSync('.github/workflows/release-database.yml', 'utf8');
+  assert.ok(workflow.includes(passwordReconciliationMigrationName));
+  assert.ok(workflow.includes('password_change_profile_reconciliation_test.sql'));
 });
 test('perennial preview withholds proposed owner details while a master import is partial',async()=>{
   const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'23',inventory_state:'importing',preview_ready:false,
