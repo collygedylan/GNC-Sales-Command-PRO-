@@ -22,10 +22,15 @@ async function selectOne(page: Page, sourceId = 'hl-a', quantity = '6') {
   await expect(page.locator(`[data-hl-draft-source-id="${sourceId}"]`)).toBeVisible();
 }
 async function preview(page: Page) {
-  await page.locator('#batch-btn-hl-tags').click();
+  await openTagsDialog(page);
   await expect(page.locator('#hl-tags-preview')).toBeVisible();
   await expect(page.locator('#hl-tags-preview-content')).toContainText(hlRecipient);
   await expect(page.getByRole('link', { name: 'Open or download PDF' })).toHaveAttribute('href', /^blob:/);
+}
+async function openTagsDialog(page: Page) {
+  const cartTab = page.locator('[data-hl-tab="cart"]');
+  if (!(await cartTab.getAttribute('aria-current')) || (await cartTab.getAttribute('aria-current')) === 'false') await navigateHl(page, cartTab);
+  await page.locator('#hl-order-cart').getByRole('button', { name: 'Preview HL TAGS', exact: true }).click();
 }
 async function reloadHl(page: Page, fixture: any) {
   // A network-idle gap can fall between revision and adapter reads. Finish the
@@ -391,7 +396,7 @@ test('HL Drive detail return preserves tracking inputs but keeps their original 
   assertIsolated(fixture);
 });
 
-test('selected editable quantities persist through reload and HL removal preserves unrelated Bloom items', async ({ page, baseURL }) => {
+test('HL Cart quantities persist through reload and removing HL rows preserves unrelated Bloom items', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page);
   await expect.poll(() => page.evaluate(() => window.eval(`(() => {
@@ -401,53 +406,34 @@ test('selected editable quantities persist through reload and HL removal preserv
     toggleGlobalItem(unrelated.DOM_ID, true, 'drive');
     return selectedItems.has(unrelated.DOM_ID);
   })()`))).toBe(true);
+  const unrelatedId = await page.evaluate(() => window.__hlUnrelatedId as string);
   await selectOne(page, 'hl-a', '6');
   expect(actions(fixture, 'draft_save').at(-1).p_payload.rows).toEqual([{ source_id: 'hl-a', quantity: 6 }]);
   expect(fixture.state.draft.map((row: any) => row.source_id)).toEqual(['hl-a']);
-  expect(await page.evaluate(() => window.eval('selectedItems.has(window.__hlUnrelatedId)'))).toBe(true);
+  expect(await page.evaluate((id) => window.eval(`selectedItems.has(${JSON.stringify(id)})`), unrelatedId)).toBe(true);
   const draft = page.locator('[data-hl-draft-source-id="hl-a"]');
   await draft.locator('[data-hl-draft-quantity]').fill('7');
   await draft.getByRole('button', { name: 'Save quantity', exact: true }).click();
   await expect.poll(() => fixture.state.draft[0].quantity).toBe(7);
   await expect(draft).toHaveAttribute('data-hl-edit-revision', String(fixture.state.revision));
-  await draft.getByRole('button', { name: 'Remove from Bloom Picker', exact: true }).click();
+  await draft.getByRole('button', { name: 'Remove from HL Cart', exact: true }).click();
   await expect.poll(() => fixture.state.draft.length).toBe(0);
-  expect(await page.evaluate(() => window.eval('selectedItems.has(window.__hlUnrelatedId)'))).toBe(true);
+  expect(await page.evaluate((id) => window.eval(`selectedItems.has(${JSON.stringify(id)})`), unrelatedId)).toBe(true);
   await backHl(page);
   await selectOne(page, 'hl-a', '7');
   await reloadHl(page, fixture);
+  await navigateHl(page, page.locator('[data-hl-tab="needed"]'));
+  await expect(page.locator('[data-hl-group]')).toContainText('In HL Cart');
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
   await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toHaveValue('7');
-  await expect(page.locator('[data-hl-group]')).toContainText('In Bloom Picker');
-  if (!await page.locator('#global-action-bar').isVisible()) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
-  const swipeRow = page.locator('[data-hl-draft-source-id="hl-a"]');
-  await expect(swipeRow).toBeVisible();
-  await swipeRow.evaluate(row => {
-    const surface = row.querySelector('.bloom-picker-tray-surface')!;
-    const fire = (type: string, x: number, y: number) => {
-      const event = new Event(type,{bubbles:true,cancelable:true});
-      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:y}]});
-      surface.dispatchEvent(event);
-    };
-    fire('touchstart',300,200); fire('touchmove',295,260); fire('touchend',295,260);
-  });
-  await expect(swipeRow).not.toHaveClass(/swipe-open/);
-  await swipeRow.evaluate(row => {
-    const surface = row.querySelector('.bloom-picker-tray-surface')!;
-    for(const [type,x,y] of [['touchstart',300,200],['touchmove',220,202],['touchend',220,202]] as const) {
-      const event=new Event(type,{bubbles:true,cancelable:true});
-      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:y}]});
-      surface.dispatchEvent(event);
-    }
-  });
-  await expect(swipeRow).toHaveClass(/swipe-open/);
-  const swipeRemove=swipeRow.getByRole('button',{name:'Remove HL row via swipe',exact:true});
-  if(test.info().project.use.hasTouch) await swipeRemove.tap(); else await swipeRemove.click();
+  await page.getByRole('button', { name: 'Clear HL Cart', exact: true }).click();
   await expect.poll(()=>fixture.state.draft.length).toBe(0);
   expect(actions(fixture,'draft_clear')).toHaveLength(2);
+  expect(await page.evaluate(() => window.eval('[...selectedItems].every(id => !String(id).startsWith("hl-order:"))'))).toBe(true);
   assertIsolated(fixture);
 });
 
-test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves locked rows', async ({page,baseURL}) => {
+test('Clear HL Cart acknowledges mixed editable drafts once and preserves locked rows', async ({page,baseURL}) => {
   const fixture=await installHlOrderFixture(page,baseURL!,{restockItems:[{itemcode:'SYNTH.003',size:'#3',commonname:'Synthetic HL Holly',
     po_ordered:100,target:30,available:12,status:'ready',po_balance:{status:'ready',remaining:100}}]});
   let sequence=0;
@@ -467,29 +453,22 @@ test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves l
     if(!row?.DOM_ID || !canUseHlOrderVerifiedData() || !canCurrentUserSelectDriveWorkflowRow(findItemByDomId(row.DOM_ID),'drive')) return false;
     window.__clearLocalId=row.DOM_ID; toggleGlobalItem(row.DOM_ID,true,'drive'); return selectedItems.has(row.DOM_ID);
   })()`))).toBe(true);
-  if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(3);
   const locked=page.locator('[data-hl-draft-source-id="hl-b"]');
   await expect(locked).toContainText('Waiting for delivery reconciliation');
-  await expect(locked.getByRole('button',{name:'Remove from Bloom Picker',exact:true})).toBeDisabled();
-  await locked.evaluate(row => {
-    const surface=row.querySelector('.bloom-picker-tray-surface')!;
-    for(const [type,x,y] of [['touchstart',300,200],['touchmove',220,202],['touchend',220,202]] as const) {
-      const event=new Event(type,{bubbles:true,cancelable:true});
-      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:y}]});
-      surface.dispatchEvent(event);
-    }
-  });
-  await expect(locked).not.toHaveClass(/swipe-open/);
+  await expect(locked.getByRole('button',{name:'Remove from HL Cart',exact:true})).toBeDisabled();
+  await expect(locked.locator('.bloom-picker-tray-surface')).toHaveCount(0);
+  await expect(locked.locator('[data-hl-draft-quantity]')).toBeDisabled();
   let release!:()=>void; let waiting=false;
   const held=new Promise<void>(resolve=>{release=resolve;});
   await page.route('**/rest/v1/rpc/hl_order_command',async route=>{
     if(route.request().postDataJSON()?.p_action==='draft_clear'){waiting=true;await held;}
     await route.fallback();
   });
-  await page.locator('#bloom-picker-clear').click();
+  await page.locator('#hl-order-cart-clear').click();
   await expect.poll(()=>waiting).toBe(true);
-  await expect(page.locator('#hl-bloom-status')).toContainText('Removing saved HL rows');
+  await expect(page.locator('#hl-order-cart-status')).toContainText('Removing saved HL rows');
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(3);
   expect(await page.evaluate(()=>window.eval('selectedItems.has(window.__clearLocalId)'))).toBe(true);
   release();
@@ -497,11 +476,11 @@ test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves l
   await expect(locked).toBeVisible();
   expect(actions(fixture,'draft_clear')).toHaveLength(1);
   expect(actions(fixture,'draft_clear')[0].p_payload.source_ids).not.toContain('hl-b');
-  expect(await page.evaluate(()=>window.eval('selectedItems.has(window.__clearLocalId)'))).toBe(false);
+  expect(await page.evaluate(()=>window.eval('selectedItems.has(window.__clearLocalId)'))).toBe(true);
   await expect.poll(()=>page.evaluate(()=>window.eval('hlRestockState?.items[0]?.saved_quantity'))).toBe(0);
   expect(actions(fixture,'submit')).toHaveLength(1); expect(actions(fixture,'receive')).toHaveLength(0);
   await reloadHl(page,fixture);
-  if(!(await page.locator('#global-action-bar').isVisible())) await page.getByRole('button',{name:'Bloom Picker',exact:true}).click();
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(1);
   await expect(locked).toContainText('Waiting for delivery reconciliation');
   await page.getByRole('button',{name:'Open HL Orders',exact:true}).click();
@@ -510,7 +489,7 @@ test('Clear Bloom Picker acknowledges mixed editable drafts once and preserves l
   assertIsolated(fixture);
 });
 
-test('unsent Needs Review rows leave Bloom through swipe and Clear while review survives reload', async ({page,baseURL}) => {
+test('ordinary Bloom stays isolated during a pending HL read and HL Cart clear preserves review', async ({page,baseURL}) => {
   const fixture=await installHlOrderFixture(page,baseURL!);
   fixture.command({p_command_id:'20000000-0000-4000-8000-000000009001',p_action:'draft_save',
     p_payload:{rows:[{source_id:'hl-a',quantity:6},{source_id:'hl-b',quantity:5}]},p_expected_revision:fixture.state.revision});
@@ -529,28 +508,20 @@ test('unsent Needs Review rows leave Bloom through swipe and Clear while review 
     syncHlOrderDraftSelections(); updateGlobalActionBar(); void loadHlOrderState(true);`));
   await expect.poll(()=>waiting).toBe(true);
   const bloom=page.getByRole('button',{name:'Bloom Picker',exact:true});
-  await bloom.click(); await bloom.click();
+  await bloom.click();
   await expect(page.locator('#global-action-bar')).toBeHidden();
-  await expect(page.locator('#toast-notification')).not.toContainText('Bloom Picker Empty');
+  await expect(page.locator('#toast-notification')).toContainText('Bloom Picker Empty');
+  await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(0);
   release();
-  await expect(page.locator('#global-action-bar')).toBeVisible();
+  await page.locator('[data-hl-tab="cart"]').click();
   const row=page.locator('[data-hl-draft-source-id="hl-a"]');
   await expect(row).toBeVisible();
   await expect(row.locator('[data-hl-draft-quantity]')).toBeDisabled();
-  await expect(row.getByRole('button',{name:'Remove from Bloom Picker',exact:true})).toBeEnabled();
-  await row.evaluate(element=>{
-    const surface=element.querySelector('.bloom-picker-tray-surface')!;
-    for(const [type,x] of [['touchstart',300],['touchmove',210],['touchend',210]] as const){
-      const event=new Event(type,{bubbles:true,cancelable:true});
-      Object.defineProperty(event,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:200}]});
-      surface.dispatchEvent(event);
-    }
-  });
-  await expect(row).toHaveClass(/swipe-open/);
-  await row.getByRole('button',{name:'Remove HL row via swipe',exact:true}).click();
+  await expect(row.getByRole('button',{name:'Remove from HL Cart',exact:true})).toBeEnabled();
+  await row.getByRole('button',{name:'Remove from HL Cart',exact:true}).click();
   await expect(row).toHaveCount(0);
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(1);
-  await page.locator('#bloom-picker-clear').click();
+  await page.locator('#hl-order-cart-clear').click();
   await expect(page.locator('[data-hl-draft-source-id]')).toHaveCount(0);
   expect(JSON.stringify(fixture.state.dispositions)).toBe(reviewBefore);
   expect(actions(fixture,'draft_clear')).toHaveLength(2);
@@ -678,8 +649,6 @@ test('a same-date addition keeps its sent order number and leaves only the new b
   await expect(page.locator('[data-hl-pending-additions]')).toContainText('Quantity 5');
   await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
   await expect(page.locator('#hl-order-tracking')).toContainText('Pending additions');
-  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
-  await page.locator('#global-action-bar').getByRole('button', { name: /Actions/ }).click();
   await preview(page);
   const report = [...fixture.previews.values()].at(-1).report;
   expect(report.kind).toBe('addition');
@@ -719,7 +688,7 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   await page.getByRole('button', { name: 'Order selected rows', exact: true }).click();
   await expect(page.locator('section[data-hl-ship-date="2026-09-15"]')).toContainText('Sep 15, 2026');
   await expect(page.locator('section[data-hl-ship-date="2026-09-16"]')).toContainText('Sep 16, 2026');
-  await page.locator('#batch-btn-hl-tags').click();
+  await openTagsDialog(page);
   const chooser = page.locator('#hl-tags-date-selector');
   await expect(chooser).toBeVisible();
   expect(await chooser.evaluate(el => el.matches(':modal'))).toBe(true);
@@ -729,14 +698,14 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   const beforeCancel = fixture.state.draft.map((row: any) => [row.source_id,row.quantity]);
   await page.keyboard.press('Escape');
   await expect(chooser).not.toBeVisible();
-  await expect(page.locator('#global-action-bar')).toBeVisible();
+  await expect(page.locator('#global-action-bar')).toBeHidden();
   expect(fixture.state.draft.map((row: any) => [row.source_id,row.quantity])).toEqual(beforeCancel);
-  await page.locator('#batch-btn-hl-tags').click();
+  await openTagsDialog(page);
   await expect(chooser).toBeVisible();
   await page.evaluate(() => window.eval('goBackUniversal()'));
   await expect(chooser).not.toBeVisible();
-  await expect(page.locator('#global-action-bar')).toBeVisible();
-  await page.locator('#batch-btn-hl-tags').click();
+  await expect(page.locator('#global-action-bar')).toBeHidden();
+  await openTagsDialog(page);
   await expect(chooser).toBeVisible();
   await chooser.getByRole('button', { name: 'Choose Sep 16, 2026', exact: true }).click();
   await expect(page.locator('#hl-tags-preview')).toBeVisible();
@@ -745,9 +714,9 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   expect(report.ship_date).toBe('2026-09-16');
   expect(report.lines.map((line: any) => line.source_id)).toEqual(['hl-b']);
   await page.locator('#hl-tags-preview').getByRole('button',{name:'Close',exact:true}).click();
-  await page.locator('#batch-btn-hl-tags').click();
+  await openTagsDialog(page);
   await chooser.getByRole('button',{name:'Cancel',exact:true}).click();
-  await page.locator('[data-hl-draft-source-id="hl-a"]').getByRole('button',{name:'Remove from Bloom Picker',exact:true}).click();
+  await page.locator('[data-hl-draft-source-id="hl-a"]').getByRole('button',{name:'Remove from HL Cart',exact:true}).click();
   await expect.poll(()=>fixture.state.draft.map((row:any)=>row.source_id)).toEqual(['hl-b']);
   expect(actions(fixture,'submit')).toHaveLength(0);
   assertIsolated(fixture);
@@ -757,10 +726,9 @@ test('undated HL demand persists as a draft but cannot preview or send', async (
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { planstartdate: '' })] });
   await openHl(page); await selectOne(page);
   await reloadHl(page, fixture);
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
   await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toContainText('Ship date needed');
-  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
-  await page.locator('#global-action-bar').getByRole('button', { name: /Actions/ }).click();
-  await page.locator('#batch-btn-hl-tags').click();
+  await openTagsDialog(page);
   await expect(page.locator('#toast-notification')).toContainText('HL TAGS needs a ship date');
   await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
   expect(actions(fixture, 'preview')).toHaveLength(0);
@@ -768,7 +736,7 @@ test('undated HL demand persists as a draft but cannot preview or send', async (
   assertIsolated(fixture);
 });
 
-test('PDF review freezes edited quantities and Needed survives queued delivery until confirmation', async ({ page, baseURL }, info) => {
+test('PDF review freezes quantities and a durable submission leaves Needed and the Cart while Orders tracks delivery', async ({ page, baseURL }, info) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page, 'hl-a', '6');
   await preview(page);
@@ -782,13 +750,17 @@ test('PDF review freezes edited quantities and Needed survives queued delivery u
   await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
   expect(actions(fixture, 'submit')).toHaveLength(1);
   expect(fixture.state.orders).toHaveLength(1);
-  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toContainText(/pending|submitting/i);
+  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toHaveCount(0);
   await navigateHl(page, page.locator('[data-hl-tab="needed"]'));
-  await expect(page.locator('[data-hl-group]')).toContainText('In Bloom Picker');
+  await expect(page.locator('[data-hl-group]')).not.toContainText('In HL Cart');
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await expect(page.locator('[data-hl-order-id]')).toContainText(/queued|pending/i);
   fixture.deliver('sent');
   await reloadHl(page, fixture);
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
   await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toHaveCount(0);
-  await expect(page.locator('[data-hl-group]')).not.toContainText('In Bloom Picker');
+  await navigateHl(page, page.locator('[data-hl-tab="needed"]'));
+  await expect(page.locator('[data-hl-group]')).not.toContainText('In HL Cart');
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await expect(page.locator('[data-hl-order-id]')).toContainText('sent');
   assertIsolated(fixture);
@@ -798,7 +770,7 @@ test('failed PDF and changed source never submit, and source review preserves th
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page, 'hl-a', '6');
   fixture.failPreview = true;
-  await page.locator('#batch-btn-hl-tags').click();
+  await openTagsDialog(page);
   await expect.poll(() => fixture.pdfRequests.length).toBe(1);
   await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
   expect(actions(fixture, 'submit')).toHaveLength(0);
@@ -822,7 +794,8 @@ test('uncertain delivery remains protected across reload without another submiss
   await expect(page.locator('#hl-tags-preview')).not.toBeVisible();
   fixture.deliver('delivery_unknown'); await reloadHl(page, fixture);
   await expect(page.locator('#hl-order-content')).toContainText('Delivery could not be confirmed');
-  await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toBeDisabled();
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
+  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toHaveCount(0);
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await expect(page.locator('[data-hl-order-id]')).toContainText('delivery_unknown');
   expect(actions(fixture, 'submit')).toHaveLength(1);
@@ -833,11 +806,8 @@ test('uncertain delivery remains protected across reload without another submiss
 test('an older uncertain order stays protected while a different-date ready source can be reviewed and ordered', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1', planstartdate: '2026-09-16' })], seedOrder: true, seedDelivery: 'delivery_unknown' });
   const oldOrderId = fixture.state.orders[0].id;
-  await openHl(page); await openDetails(page);
-  const oldRow = page.locator('[data-hl-source-id="hl-a"]');
-  await expect(oldRow.locator('[data-hl-select]')).toBeDisabled();
-  await expect(oldRow.locator('[data-hl-quantity]')).toBeDisabled();
-  await backHl(page);
+  await openHl(page);
+  await expect(page.locator('[data-hl-group]').filter({ hasText: 'Sep 15, 2026' })).toHaveCount(0);
   await navigateHl(page, page.locator('[data-hl-group]').filter({ hasText: 'Sep 16, 2026' }).getByRole('button', { name: 'View HL order details', exact: true }));
   const newRow = page.locator('[data-hl-source-id="hl-b"]');
   await newRow.locator('[data-hl-select]').check();
@@ -856,8 +826,11 @@ test('an older uncertain order stays protected while a different-date ready sour
   fixture.deliver('sent'); await reloadHl(page, fixture);
   expect(fixture.state.orders.find((order: any) => order.id === oldOrderId).status).toBe('delivery_unknown');
   expect(fixture.state.delivery_issues.map((issue: any) => issue.order_id)).toEqual([oldOrderId]);
-  await expect(page.locator('[data-hl-draft-source-id="hl-a"] [data-hl-draft-quantity]')).toBeDisabled();
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
+  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toHaveCount(0);
   await expect(page.locator('[data-hl-draft-source-id="hl-b"]')).toHaveCount(0);
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await expect(page.locator(`[data-hl-order-id="${oldOrderId}"]`)).toContainText('delivery_unknown');
   expect(actions(fixture, 'submit')).toHaveLength(1);
   assertIsolated(fixture);
 });
@@ -878,8 +851,10 @@ test('a lost submit response recovers the same command instead of creating anoth
   await expect.poll(() => actions(fixture, 'submit').length).toBeGreaterThan(1);
   expect(new Set(actions(fixture, 'submit').map((command: any) => command.p_command_id)).size).toBe(1);
   expect(fixture.state.orders).toHaveLength(1);
-  await page.getByRole('button', { name: 'Bloom Picker', exact: true }).click();
-  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toContainText(/pending|submitting/i);
+  await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
+  await expect(page.locator('[data-hl-draft-source-id="hl-a"]')).toHaveCount(0);
+  await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
+  await expect(page.locator('[data-hl-order-id]')).toContainText(/queued|pending/i);
   assertIsolated(fixture);
 });
 
@@ -1000,7 +975,7 @@ test('a focused draft edit cannot overwrite another device after a newer state p
   assertIsolated(fixture);
 });
 
-test('removing one dirty Bloom draft preserves another edit and account reset restores saved drafts', async ({ page, baseURL }) => {
+test('removing one dirty HL Cart draft preserves another edit and account reset restores saved drafts', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await openDetails(page);
   for (const [sourceId, quantity] of [['hl-a', '3'], ['hl-b', '4']]) {
@@ -1015,7 +990,7 @@ test('removing one dirty Bloom draft preserves another edit and account reset re
   const baseline = await second.getAttribute('data-hl-edit-revision');
   await first.locator('[data-hl-draft-quantity]').fill('4');
   await second.locator('[data-hl-draft-quantity]').fill('5');
-  await first.getByRole('button', { name: 'Remove from Bloom Picker', exact: true }).click();
+  await first.getByRole('button', { name: 'Remove from HL Cart', exact: true }).click();
   await expect(first).toHaveCount(0);
   await expect(second.locator('[data-hl-draft-quantity]')).toHaveValue('5');
   await expect(second).toHaveAttribute('data-hl-edit-revision', baseline!);
@@ -1030,6 +1005,7 @@ test('removing one dirty Bloom draft preserves another edit and account reset re
       window.eval('resetHlOrderState()');
       await window.eval('loadHlOrderState(true)');
     });
+    await navigateHl(page, page.locator('[data-hl-tab="cart"]'));
     await expect(second).toBeVisible();
     await expect(second.locator('[data-hl-draft-quantity]')).toHaveValue('4');
   }

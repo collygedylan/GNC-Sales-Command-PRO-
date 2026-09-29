@@ -239,7 +239,7 @@ export function createHlOrderState(options = {}) {
         batch.order_id = order.id; state.batches.unshift(batch);
         order.lines.push(...selected.map((entry, index) => ({ id: `line-${control.sequence}-${index}`, source_id: entry.source_id, source: clone(entry.source), ship_date: entry.ship_date, batch_id: batch.id, delivery_status: 'queued', quantity: entry.quantity, received_quantity: 0, cancelled_quantity: 0, outstanding_quantity: entry.quantity })));
         order.lines.forEach((line) => { disposition(line.source_id).status = 'submitting'; });
-        selected.forEach((entry) => { entry.status = 'submitting'; });
+        selected.forEach((entry) => { entry.status = 'submitting'; entry.target_order_id = order.id; entry.target_order_number = order.order_number; });
       } else {
         const order = state.orders.find((entry) => entry.id === saved.report.order_id);
         order.cancellations.push({ id: uuid(++control.sequence), preview_id: saved.id, created_at: saved.report.created_at, status: 'queued', reason: saved.report.reason, lines: saved.report.lines });

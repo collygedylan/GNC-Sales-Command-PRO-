@@ -90,6 +90,7 @@ test('release unit union preserves every existing script and explicit gate exact
   assert.deepEqual(explicitReleaseUnitTests, [
     'tests/soc-order-history.test.mjs',
     'tests/item-low-stock-migration-runner.test.mjs',
+    'tests/password-change-handler.test.mjs',
     'tests/season-priority-report.test.mjs',
     'tests/manager-season-priority-protected.test.mjs',
     'tests/assigned-items-filters.test.mjs',

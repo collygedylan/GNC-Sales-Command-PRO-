@@ -26,7 +26,7 @@ test('Chicago receipt cutoffs handle summer, winter, nonexistent times and repea
 test('HL has no unrestricted SOC fallback while protected eligibility is loading', () => {
   const context = vm.createContext({ canUseHlOrder: () => true, hlOrderStateData: null,
     socInventory: [{ unique_id: 'not-authorized' }], makeHlOrderRow: (row) => row, isHlOrderSourceEligible: () => true });
-  vm.runInContext(extract('getHlOrderRows'), context);
+  vm.runInContext([extract('getHlOrderCommittedDraftSourceIds'), extract('getHlOrderRows')].join('\n'), context);
   assert.equal(context.getHlOrderRows().length, 0);
 });
 

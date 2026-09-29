@@ -2291,6 +2291,43 @@ async function handleNativeSessionBridge(
   });
 }
 
+// An HMAC lets the database recognize the same retry without storing the new
+// password before Auth accepts it. Never include this value in a response/log.
+async function passwordChangeFingerprint(password: string) {
+  const secret = String(Deno.env.get("APP_SESSION_SECRET") || "").trim();
+  if (!secret) throw new Error("PASSWORD_CHANGE_UNAVAILABLE");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const bytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(`gnc-password-change-v1\u0000${password}`)));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+// Missing profiles must not prevent the password endpoint from reconciling a
+// verified native identity. This identity-only fallback is never used by other
+// actions; the service-only prepare RPC still checks all account restrictions.
+async function readPasswordChangeSession(req: Request, session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>) {
+  if (session) return session;
+  const token = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user?.id) return null;
+    const now = Math.floor(Date.now() / 1000);
+    return { ver: 2, authUserId: String(data.user.id), username: "", displayName: "", role: "", mustChangePassword: true, iat: now, exp: now + 300 };
+  } catch { return null; }
+}
+
+function passwordReconciliationError(error: { code?: string; message?: string } | null) {
+  if (String(error?.message || "").toLowerCase().includes("password_change_attempt_conflict")) {
+    return errorResponse("A password change is awaiting confirmation. Retry with the same new password. If you no longer have it, contact an administrator.", 409, { code: "PASSWORD_CHANGE_IN_PROGRESS" });
+  }
+  if (String(error?.message || "").toLowerCase().includes("password_change_not_required")) {
+    return errorResponse("Your password change is already complete. Sign in with your new password.", 409, { code: "PASSWORD_CHANGE_NOT_REQUIRED" });
+  }
+  if (error?.code === "42501") return errorResponse("This account is not available for password changes. Contact an administrator.", 403, { code: "PASSWORD_CHANGE_FORBIDDEN" });
+  return errorResponse("The account identity could not be reconciled safely. Contact an administrator to check the account links.", 409, { code: "AUTH_PROFILE_LINK_REPAIR_REQUIRED" });
+}
+
 async function handlePasswordChange(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -2302,90 +2339,66 @@ async function handlePasswordChange(
   if (newPassword !== confirmPassword) return errorResponse("Passwords do not match.", 400);
   if (isForcedPasswordValue(newPassword)) return errorResponse("Choose a password other than the shared starter password.", 400);
 
-  const username = normalizeUsername(session.username || session.displayName || "");
-  const { data: profile, error: profileLookupError } = await supabase
-    .from("profiles")
-    .select("id,legacy_user_id,username,display_name,role,division,language")
-    .eq("username", username)
-    .maybeSingle();
-  if (profileLookupError || !profile?.id) {
-    return errorResponse("The linked account profile could not be verified.", 409, { code: "AUTH_PROFILE_NOT_LINKED" });
-  }
-  if (session.authUserId && String(session.authUserId) !== String(profile.id)) {
-    return errorResponse("The authenticated account does not match this profile.", 403, { code: "AUTH_PROFILE_MISMATCH" });
-  }
-
-  const { error: nativePasswordError } = await supabase.auth.admin.updateUserById(String(profile.id), {
-    password: newPassword,
-  });
-  if (nativePasswordError) {
-    return errorResponse("Native password update failed.", 502, { code: "NATIVE_PASSWORD_UPDATE_FAILED" });
-  }
-
-  const nowIso = new Date().toISOString();
-  let legacyUserId = Number(profile.legacy_user_id || 0);
-  if (!Number.isInteger(legacyUserId) || legacyUserId <= 0) {
-    const { data: provisionedRows, error: provisionError } = await supabase.rpc("provision_native_auth_app_user", {
-      p_auth_user_id: String(profile.id),
-      p_username: String(profile.username || username),
-      p_password: newPassword,
-      p_display_name: String(profile.display_name || session.displayName || profile.username || username),
-      p_role: String(profile.role || session.role || "User"),
-      p_division: String(profile.division || "10"),
-      p_language: String(profile.language || "English"),
-      p_must_change_password: false,
-    });
-    const provisioned = Array.isArray(provisionedRows)
-      ? provisionedRows[0] as Record<string, unknown> | undefined
-      : undefined;
-    legacyUserId = Number(provisioned?.legacy_user_id || 0);
-    if (provisionError || !Number.isInteger(legacyUserId) || legacyUserId <= 0) {
-      return errorResponse("Account linking requires reconciliation.", 502, {
-        code: "AUTH_PROFILE_LINK_REPAIR_REQUIRED",
+  const username = normalizeUsername(session.username || "");
+  const retryResponse = () => errorResponse("Your password change has not been fully confirmed. Keep this screen open and retry with the same new password.", 503, { code: "PASSWORD_CHANGE_RETRY_REQUIRED", retryable: true });
+  let nextSession;
+  try {
+    const fingerprint = await passwordChangeFingerprint(newPassword);
+    const prepare = async (authUserId: string | null) => {
+      const { data, error } = await supabase.rpc("prepare_password_change_profile", {
+        p_username: username, p_auth_user_id: authUserId, p_password_fingerprint: fingerprint,
       });
+      const row = Array.isArray(data) ? data[0] : data;
+      return { row: row as Record<string, unknown> | null, error };
+    };
+    let prepared = await prepare(session.authUserId || null);
+    if (prepared.error) return passwordReconciliationError(prepared.error);
+    if (prepared.row?.status === "password_change_not_required") return passwordReconciliationError({ message: "password_change_not_required" });
+    if (!prepared.row?.attempt_id) return retryResponse();
+
+    if (prepared.row.status === "needs_native_identity") {
+      // Only the database-verified account supplies identity/role attributes.
+      // A create timeout or existing email is resolved by re-reading the same
+      // identity; never delete or overwrite a possibly existing Auth user.
+      if (session.authUserId) return passwordReconciliationError(null);
+      const canonicalUsername = String(prepared.row.username || "");
+      const legacyId = Number(prepared.row.legacy_user_id || 0);
+      if (!/^[a-z0-9_]+$/.test(canonicalUsername) || !Number.isInteger(legacyId) || legacyId <= 0) return passwordReconciliationError(null);
+      try {
+        await supabase.auth.admin.createUser({
+          email: `${canonicalUsername}@greenleafnursery.com`, password: newPassword, email_confirm: true,
+          app_metadata: { role: String(prepared.row.role || "User"), legacy_user_id: legacyId },
+          user_metadata: { username: canonicalUsername },
+        });
+      } catch { /* The next prepare resolves an ambiguous create outcome. */ }
+      prepared = await prepare(null);
+      if (prepared.error) return passwordReconciliationError(prepared.error);
     }
-  } else {
-    const { data: legacyUser, error: legacyPasswordError } = await supabase
-      .from("ph_app_users")
-      .update({
-        password: newPassword,
-        password_hash: null,
-        password_salt: null,
-        password_changed_at: nowIso,
-        must_change_password: false,
-        failed_login_count: 0,
-        locked_until: null,
-      })
-      .eq("id", legacyUserId)
-      .select("id")
-      .maybeSingle();
-    if (legacyPasswordError || !legacyUser?.id) {
-      return errorResponse("Password synchronization requires reconciliation.", 502, {
-        code: "LEGACY_PASSWORD_SYNC_REQUIRED",
+    const profile = prepared.row;
+    if (!profile?.profile_id || !profile.attempt_id || !profile.username || !profile.role) return retryResponse();
+    if (session.authUserId && session.authUserId !== String(profile.profile_id)) return passwordReconciliationError(null);
+    let completed = profile;
+    if (profile.status !== "completed") {
+      if (profile.status !== "ready" || profile.must_change_password !== true) return retryResponse();
+      const { error: nativePasswordError } = await supabase.auth.admin.updateUserById(String(profile.profile_id), { password: newPassword });
+      if (nativePasswordError) return retryResponse();
+      const { data: completedData, error: completeError } = await supabase.rpc("complete_password_change_profile", {
+        p_attempt_id: String(profile.attempt_id), p_auth_user_id: String(profile.profile_id),
+        p_password: newPassword, p_password_fingerprint: fingerprint,
       });
+      completed = (Array.isArray(completedData) ? completedData[0] : completedData) as Record<string, unknown>;
+      if (completeError) return retryResponse();
     }
-  }
+    if (completed?.status !== "completed" || completed.profile_id !== profile.profile_id
+      || Number(completed.legacy_user_id) !== Number(profile.legacy_user_id) || completed.must_change_password !== false
+      || completed.username !== profile.username || !completed.role) return retryResponse();
 
-  const { error: profileUpdateError } = await supabase
-    .from("profiles")
-    .update({
-      must_change_password: false,
-      locked_until: null,
-      updated_at: nowIso,
-    })
-    .eq("id", profile.id);
-  if (profileUpdateError) {
-    return errorResponse("Password synchronization requires reconciliation.", 502, {
-      code: "PROFILE_PASSWORD_SYNC_REQUIRED",
+    nextSession = await createAppSession({
+      username: String(completed.username),
+      displayName: String(completed.display_name || completed.username),
+      role: String(completed.role || "User"), mustChangePassword: false,
     });
-  }
-
-  const nextSession = await createAppSession({
-    username: session.displayName || session.username,
-    displayName: session.displayName || session.username,
-    role: session.role,
-    mustChangePassword: false,
-  });
+  } catch { return retryResponse(); }
 
   return jsonResponse({
     ok: true,
@@ -2653,7 +2666,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   }
   if (action === "login") return await handleLogin(payload);
   if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
-  if (action === "password_change") return await handlePasswordChange(session, payload);
+  if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
   if (action === "get_user_preferences" || action === "live_pilot_bootstrap") {
     return await handleGetUserPreferences(session);
   }

@@ -174,6 +174,7 @@ jobs:
           cp supabase/migrations/20260928145055_item_low_stock_targets.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20260929013125_perennial_zone_assignment_override.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20260929160000_password_change_profile_reconciliation.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -199,6 +200,7 @@ jobs:
           cp supabase/tests/hl_po_health_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/bunch_note_workflow_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/password_change_profile_reconciliation_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/codex_ops_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/pikes_orders_rls_test.sql "$ci_root/supabase/tests/"
