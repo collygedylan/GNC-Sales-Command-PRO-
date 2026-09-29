@@ -155,7 +155,10 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   const finalReleaseOverride = agentRules.split('OVERRIDE: STAY AWAKE AND MONITOR PROTOCOL')[1] || '';
   assert.match(finalReleaseOverride, /ALWAYS automatically create a pull request using the GitHub CLI \(gh pr create --fill\)/);
   assert.match(finalReleaseOverride, /MUST monitor the GitHub Actions pipeline using gh pr checks --watch/);
-  assert.match(finalReleaseOverride, /read the failure logs and ask the user for permission to fix the errors/);
+  assert.match(agentRules, /Autonomous CI Remediation[\s\S]*authorized to autonomously attempt up to 3 consecutive fixes/i);
+  assert.match(agentRules, /only pause and request explicit approval if a CI check fails 3 times in a row/i);
+  assert.match(agentRules, /database migration, security credential, or production data risk/i);
+  assert.match(finalReleaseOverride, /read the failure logs and follow the Autonomous CI Remediation rule below/);
   assert.match(releasePipeline, /single source of progress/);
   assert.match(releasePipeline, /Planning, explanation, diagnosis, status, and review-only requests do not authorize/);
 });
