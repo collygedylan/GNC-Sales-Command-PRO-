@@ -614,7 +614,8 @@ test('Drive previews same-permission cache before revisions and keeps it display
     fixture.setDatasetSourceState('ph_master_inventory', 'ready');
     await page.route(/\/rest\/v1\/ph_master_inventory(?:\?|$)/, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Synthetic refresh failure' }) }));
     await page.evaluate(() => window.eval("signalProductionLiveSync('retry-after-import', 0)"));
-    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
+    await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Needs attention');
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Needs attention · Retry');
     await expect(page.locator('#drive-content').getByRole('button', { name: /^Open / }).first()).toBeVisible();
     expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
     await page.locator('#footer-menu-btn').click();

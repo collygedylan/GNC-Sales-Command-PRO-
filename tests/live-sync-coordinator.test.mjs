@@ -448,6 +448,25 @@ function appFunction(name) {
     return appSource.slice(found.index, end);
 }
 
+test('touch devices render only the data-free Managers dashboard synchronously', () => {
+    const evaluate = ({ view = 'managers', tab = 'dashboard', touch = true, required = [] } = {}) => {
+        const context = {
+            activeHomeTab: tab,
+            isTouchConstrainedDevice: () => touch,
+            isIOSDevice: () => false,
+            ensureViewRenderState: () => ({ initialized: false, dirty: true }),
+            getViewLoadingConfig: () => ({ required }),
+        };
+        vm.runInNewContext(appFunction('shouldRenderViewSynchronouslyOnSwitch'), context);
+        return vm.runInNewContext(`shouldRenderViewSynchronouslyOnSwitch('${view}')`, context);
+    };
+    assert.equal(evaluate(), true, 'the initial Managers navigation hub has no required data');
+    assert.equal(evaluate({ required: [{ key: 'master', mode: 'full' }] }), false, 'a data-dependent cohort stays scheduled');
+    assert.equal(evaluate({ tab: 'assigned-items-export' }), false, 'other Managers tabs retain touch scheduling');
+    assert.equal(evaluate({ view: 'home' }), false, 'other touch-device views retain their existing scheduling');
+    assert.equal(evaluate({ view: 'home', touch: false }), true, 'existing desktop light-view behavior remains');
+});
+
 for (const [name, renderName] of [
     ['ensureSpreadCountInventoryData', 'renderProductionInventoryCountingContent'],
     ['ensureProductionWorkflowData', 'renderProductionWorkflowPanel'],

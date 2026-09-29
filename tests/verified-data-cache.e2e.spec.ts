@@ -407,7 +407,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
       window.dispatchEvent(new Event('focus'));
     });
     await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Needs attention');
-    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
+    await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Needs attention · Retry');
     await expectDockCounts(page, 150, 150);
     await page.evaluate(() => {
       (window as any).__nativeSyncFixture.readFailure = false;

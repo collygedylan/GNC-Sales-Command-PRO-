@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(60);
+select plan(61);
 
 select has_column('public','ph_warehouse_assigned_items','zone_override_active','perennial override state is stored per exact assignment key');
 select has_column('public','ph_warehouse_assigned_items','zone_override_prior_assignedto','pre-policy owner is retained for restoration');
@@ -122,6 +122,13 @@ select ok((select zone_override_rule_version='perennial-zone-2026-09-v1' and zon
 select is((select assignment_reason from public.ph_warehouse_assigned_items where assignment_key='LOCK-1|perennial'),
   'perennial_zone_area','active automatic assignment reason is persisted');
 
+-- The database test runs inside one outer transaction, so its transaction-local
+-- request header survives the import finalizer. End that simulated request
+-- before exercising the scheduled reconciliation request below.
+select throws_ok($q$select public.reconcile_eval_itemcodes()$q$,'55000','DATASET_IMPORT_FENCE_LOST',
+  'a completed import token cannot authorize a later scheduled request');
+select set_config('request.headers','{}',true);
+select set_config('app_sync.touched','{}',true);
 update public.app_dataset_revisions set revision=revision+1 where key='ph_master_inventory';
 select is(public.reconcile_eval_itemcodes()->>'status','completed','same-owner scheduled evaluation succeeds');
 select is((select zone_override_evaluated_revision from public.ph_warehouse_assigned_items where assignment_key='LOCK-1|perennial'),
@@ -166,6 +173,8 @@ select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select public.begin_dataset_import_v1(array['ph_master_inventory'],'60300000-0000-4000-8000-000000000002',array['ph_master_inventory']);
 select set_config('request.headers','{"x-gnc-import-run-id":"60300000-0000-4000-8000-000000000002"}',true);
 select public.finish_dataset_import_v1('60300000-0000-4000-8000-000000000002');
+select set_config('request.headers','{}',true);
+select set_config('app_sync.touched','{}',true);
 select is((select assignedto from public.ph_warehouse_assigned_items where assignment_key='LOCK-1|perennial'),'dylan_collyge','rose classification restores the saved owner');
 select ok((select not zone_override_active and zone_override_prior_assignedto is null from public.ph_warehouse_assigned_items where assignment_key='LOCK-1|perennial'),'restoration clears policy metadata');
 select ok((select exists(select 1 from private.ph_warehouse_assignment_audit where assignment_key='LOCK-1|perennial' and event_type='rose_exemption_restore')),'owner restoration is audited');
