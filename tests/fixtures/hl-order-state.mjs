@@ -669,7 +669,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           const total = rows.length;
           if (offset > 0) {
             control.masterLaterPageReads++;
-            if (failNextMasterLaterPage) { failNextMasterLaterPage = false; return json(route, { ok: false, error: 'Synthetic later inventory page failure' }, 503); }
+            if (failNextMasterLaterPage) return json(route, { ok: false, error: 'Synthetic later inventory page failure' }, 503);
             if (emptyMasterLaterPage) return json(route, { ok: true, data: { rows: [], total, offset, limit, hasMore: false } });
             if (holdNextMasterLaterPage) {
               holdNextMasterLaterPage = false;
