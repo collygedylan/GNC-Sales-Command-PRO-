@@ -23,3 +23,7 @@ artifacts/
 .lighthouseci/
 legacy_fallback/
 
+
+supabase/production_schema_20260929.sql
+
+supabase/archive_migrations/
