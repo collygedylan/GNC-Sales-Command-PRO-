@@ -42,14 +42,14 @@ try {
   `);
   await db.exec(between(read('supabase/ci/request_workflow_baseline.sql'), 'create table if not exists public.ph_master_inventory', 'create table if not exists public.ph_active_request'));
   await db.exec(read('supabase/ci/hl_order_baseline.sql'));
-  await db.exec(read('supabase/migrations/20260809011735_ph_27f1_hl_po.sql'));
-  await db.exec(between(read('supabase/migrations/20260820114722_request_integrity_and_eval_assignments.sql'), 'create table if not exists public.ph_request_delivery_outbox', 'create table if not exists public.ph_app_health_events'));
+  await db.exec(read('supabase/archive_migrations/20260809011735_ph_27f1_hl_po.sql'));
+  await db.exec(between(read('supabase/archive_migrations/20260820114722_request_integrity_and_eval_assignments.sql'), 'create table if not exists public.ph_request_delivery_outbox', 'create table if not exists public.ph_app_health_events'));
   await db.exec('alter table public.ph_request_delivery_outbox enable row level security; grant all on public.ph_request_delivery_outbox to service_role;');
-  const worker = read('supabase/migrations/20260820230245_reliable_request_delivery_worker.sql');
+  const worker = read('supabase/archive_migrations/20260820230245_reliable_request_delivery_worker.sql');
   await db.exec(worker.slice(0, worker.indexOf('-- Authenticated users may read only delivery metadata.')));
   await db.exec(between(worker, '-- Authenticated users may read only delivery metadata.', 'create or replace view public.ph_request_delivery_status'));
   await db.exec(between(worker, 'drop function if exists public.get_request_delivery_recovery_queue();', '-- Server authority stamps the authenticated completing profile.'));
-  await db.exec(read('supabase/migrations/20260911115037_hl_ordering_system.sql'));
+  await db.exec(read('supabase/archive_migrations/20260911115037_hl_ordering_system.sql'));
   let historical;
   if (args.includes('--backfill')) {
     const fixture = read('supabase/tests/hl_order_lifecycle_test.sql');
@@ -72,8 +72,8 @@ try {
       (select jsonb_agg(to_jsonb(p) order by id) from public.ph_hl_order_previews p) previews,
       (select jsonb_agg(to_jsonb(r) order by id) from hl_order_private.receipts r) receipts`)).rows[0];
   }
-  await db.exec(read('supabase/migrations/20260911203510_hl_ship_date_submission_batches.sql'));
-  await db.exec(read('supabase/migrations/20260912002734_hl_po_receipt_balances.sql'));
+  await db.exec(read('supabase/archive_migrations/20260911203510_hl_ship_date_submission_batches.sql'));
+  await db.exec(read('supabase/archive_migrations/20260912002734_hl_po_receipt_balances.sql'));
   if (historical) {
     const after = (await db.query(`select
       (select jsonb_agg(to_jsonb(o)-'ship_date' order by id) from hl_order_private.orders o) orders,
@@ -90,11 +90,11 @@ try {
     console.log('PASS legacy backfill: two sent lines, saved PDFs, quantities, receipt, number, delivery proof unchanged; batch and Sep 15 ship date added.');
   }
   await db.exec(read('supabase/ci/hl_restock_revision_baseline.sql'));
-  await db.exec(read('supabase/migrations/20260908185903_live_dataset_revisions.sql'));
-  await db.exec(read('supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
-  await db.exec(read('supabase/migrations/20260912170906_hl_restocking.sql'));
+  await db.exec(read('supabase/archive_migrations/20260908185903_live_dataset_revisions.sql'));
+  await db.exec(read('supabase/archive_migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
+  await db.exec(read('supabase/archive_migrations/20260912170906_hl_restocking.sql'));
   if (args.includes('--seasons')) {
-    await db.exec(read('supabase/migrations/20260914164706_hl_state_balances_once.sql'));
+    await db.exec(read('supabase/archive_migrations/20260914164706_hl_state_balances_once.sql'));
     let legacySeason;
     if(args.includes('--season-backfill')) {
       const fixture=read('supabase/tests/hl_order_lifecycle_test.sql');
@@ -105,8 +105,8 @@ try {
         select pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-B","quantity":4}]}');commit;`);
       legacySeason=(await db.query(`select (select jsonb_agg(to_jsonb(l)) from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
     }
-    await db.exec(read('supabase/migrations/20260915021525_hl_po_seasons_pdf.sql'));
-    await db.exec(read('supabase/migrations/20260915115800_hl_po_negative_pdf_balances.sql'));
+    await db.exec(read('supabase/archive_migrations/20260915021525_hl_po_seasons_pdf.sql'));
+    await db.exec(read('supabase/archive_migrations/20260915115800_hl_po_negative_pdf_balances.sql'));
     if(legacySeason) {
       const after=(await db.query(`select (select jsonb_agg(to_jsonb(l)-'po_lot') from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
       if(JSON.stringify(after)!==JSON.stringify(legacySeason)) throw new Error('Season migration changed historical lines or PDFs');

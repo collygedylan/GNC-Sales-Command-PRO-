@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
-const sql=fs.readFileSync(new URL('../supabase/migrations/20260924181019_optimize_request_history_read_projection.sql',import.meta.url),'utf8');
+const sql=fs.readFileSync(new URL('../supabase/archive_migrations/20260924181019_optimize_request_history_read_projection.sql',import.meta.url),'utf8');
 test('History caches actor scope and projects credit only after full filtered paging',()=>{
   assert.equal((sql.match(/credit_allowed:=public.navigation_module_allowed_v1/g)||[]).length,1);
   assert.doesNotMatch(sql,/sales_private\.can_read_source\(/);

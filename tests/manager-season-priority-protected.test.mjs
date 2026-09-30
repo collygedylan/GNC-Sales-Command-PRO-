@@ -5,9 +5,9 @@ import { assertSingleScopeProducer, seasonPriorityListQuery } from '../scripts/t
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
-const migration = read('supabase/migrations/20260922233000_manager_season_priority_inquiry_v1.sql');
-const optimization = read('supabase/migrations/20260923174000_optimize_manager_season_priority_scope.sql');
-const materialization = read('supabase/migrations/20260923222348_materialize_manager_season_priority_scope_hashes.sql');
+const migration = read('supabase/archive_migrations/20260922233000_manager_season_priority_inquiry_v1.sql');
+const optimization = read('supabase/archive_migrations/20260923174000_optimize_manager_season_priority_scope.sql');
+const materialization = read('supabase/archive_migrations/20260923222348_materialize_manager_season_priority_scope_hashes.sql');
 const api = read('supabase/functions/app-api/index.ts');
 
 test('list scale correction changes only the grouped fingerprint materialization fence', () => {

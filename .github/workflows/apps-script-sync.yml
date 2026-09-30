@@ -16,8 +16,9 @@ on:
       - scripts/apply-item-low-stock-migration.mjs
       - scripts/preview-perennial-assignment.mjs
       - scripts/certs/supabase-prod-ca-2021.crt
-      - supabase/migrations/20260928145055_item_low_stock_targets.sql
-      - supabase/migrations/20260929013125_perennial_zone_assignment_override.sql
+      - supabase/archive_migrations/20260928145055_item_low_stock_targets.sql
+      - supabase/archive_migrations/20260929013125_perennial_zone_assignment_override.sql
+      - supabase/archive_migrations/20260929160000_password_change_profile_reconciliation.sql
       - .github/workflows/apps-script-sync.yml
   workflow_dispatch:
 

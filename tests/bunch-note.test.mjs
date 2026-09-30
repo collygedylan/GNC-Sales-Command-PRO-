@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const read = p => readFileSync(new URL('../'+p,import.meta.url),'utf8');
-const js=read(process.env.BUNCH_NOTE_COMPILED_SHELL ? '_site/assets/bunch-note.js' : 'assets/bunch-note.js'), gas=read('Code.gs'), migration=read('supabase/migrations/20260920060133_bunch_note_location_work_v1.sql');
+const js=read(process.env.BUNCH_NOTE_COMPILED_SHELL ? '_site/assets/bunch-note.js' : 'assets/bunch-note.js'), gas=read('Code.gs'), migration=read('supabase/archive_migrations/20260920060133_bunch_note_location_work_v1.sql');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function runtime(extra={}) {
  const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,

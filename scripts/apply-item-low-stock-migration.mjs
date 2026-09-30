@@ -241,7 +241,7 @@ async function main(args = process.argv.slice(2)) {
       console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
     } else {
       for (const targetMigrationName of releaseDatabaseMigrations) {
-        const source = fs.readFileSync(new URL(`../supabase/migrations/${targetMigrationName}`, import.meta.url), 'utf8');
+        const source = fs.readFileSync(new URL(`../supabase/archive_migrations/${targetMigrationName}`, import.meta.url), 'utf8');
         const applied = await applyItemLowStockMigration({ client, source, targetMigrationName, onPhase: next => { phase = next; } });
         console.log(`${targetMigrationName}: ${applied.status}.`);
       }

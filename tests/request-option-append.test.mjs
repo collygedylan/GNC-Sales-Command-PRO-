@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const migration = read('../supabase/migrations/20260901192727_repair_request_option_append.sql');
+const migration = read('../supabase/archive_migrations/20260901192727_repair_request_option_append.sql');
 const html = read('../index.html');
 const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const sqlTest = read('../supabase/tests/request_option_append_test.sql');

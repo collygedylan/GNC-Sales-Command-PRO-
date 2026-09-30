@@ -4,15 +4,15 @@ import test from 'node:test';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const migration = read('../supabase/migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql');
-const accessMigration = read('../supabase/migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql');
-const arrivalMigration = read('../supabase/migrations/20260904192758_add_season_sales_office_arrived_at.sql');
+const migration = read('../supabase/archive_migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql');
+const accessMigration = read('../supabase/archive_migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql');
+const arrivalMigration = read('../supabase/archive_migrations/20260904192758_add_season_sales_office_arrived_at.sql');
 const api = read('../supabase/functions/app-api/index.ts');
 const html = read('../index.html');
 const appsScript = read('../Code.gs');
 const workflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const ciSalesOfficeBaseline = read('../supabase/ci/sales_office_baseline.sql');
-const evalHealthV2 = read('../supabase/migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql');
+const evalHealthV2 = read('../supabase/archive_migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql');
 const productionProbe = read('../scripts/probe-production-auth-health.mjs');
 
 const sliceBetween = (source, startText, endText) => {

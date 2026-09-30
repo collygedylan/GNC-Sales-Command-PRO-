@@ -38,29 +38,29 @@ try {
     'supabase/ci/request_workflow_baseline.sql',
     'supabase/ci/hl_order_baseline.sql',
     'supabase/ci/sales_credit_baseline.sql',
-    'supabase/migrations/20260815043342_dylan_live_pilot_preferences.sql',
-    'supabase/migrations/20260820114722_request_integrity_and_eval_assignments.sql',
-    'supabase/migrations/20260820143000_suppress_initial_eval_event_fanout.sql',
-    'supabase/migrations/20260820150000_legacy_completion_atomic_guard.sql',
-    'supabase/migrations/20260820230245_reliable_request_delivery_worker.sql',
-    'supabase/migrations/20260821012500_restore_request_email_threads_schema.sql',
-    'supabase/migrations/20260901192727_repair_request_option_append.sql',
-    'supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql',
-    'supabase/migrations/20260828070741_access_control_manager_read_v2.sql',
-    'supabase/migrations/20260904003007_sales_marketing_and_kayla_limited_access.sql',
-    'supabase/migrations/20260908185903_live_dataset_revisions.sql',
-    'supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql',
-    'supabase/migrations/20260921034331_sales_history_permanent_credit_workflow.sql',
-    'supabase/migrations/20260921034349_production_workflow_and_atomic_inventory_audit.sql',
-    'supabase/migrations/20260921034506_navigation_preferences_and_live_view_grants.sql',
+    'supabase/archive_migrations/20260815043342_dylan_live_pilot_preferences.sql',
+    'supabase/archive_migrations/20260820114722_request_integrity_and_eval_assignments.sql',
+    'supabase/archive_migrations/20260820143000_suppress_initial_eval_event_fanout.sql',
+    'supabase/archive_migrations/20260820150000_legacy_completion_atomic_guard.sql',
+    'supabase/archive_migrations/20260820230245_reliable_request_delivery_worker.sql',
+    'supabase/archive_migrations/20260821012500_restore_request_email_threads_schema.sql',
+    'supabase/archive_migrations/20260901192727_repair_request_option_append.sql',
+    'supabase/archive_migrations/20260828024750_centralized_access_control_audit_v1.sql',
+    'supabase/archive_migrations/20260828070741_access_control_manager_read_v2.sql',
+    'supabase/archive_migrations/20260904003007_sales_marketing_and_kayla_limited_access.sql',
+    'supabase/archive_migrations/20260908185903_live_dataset_revisions.sql',
+    'supabase/archive_migrations/20260908201318_live_dataset_revision_empty_statements.sql',
+    'supabase/archive_migrations/20260921034331_sales_history_permanent_credit_workflow.sql',
+    'supabase/archive_migrations/20260921034349_production_workflow_and_atomic_inventory_audit.sql',
+    'supabase/archive_migrations/20260921034506_navigation_preferences_and_live_view_grants.sql',
     'supabase/ci/request_notification_history_baseline.sql',
-    'supabase/migrations/20260924115226_sales_history_customer_docks_ownership.sql',
-    'supabase/migrations/20260924145431_incident_pause_request_delivery_wakes.sql',
-    'supabase/migrations/20260924145930_incident_pause_request_delivery_claims.sql',
-    'supabase/migrations/20260924155225_request_metadata_notification_guard.sql',
-    'supabase/migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql',
-    'supabase/migrations/20260924172552_request_drive_evidence_reset_guard.sql',
-    'supabase/migrations/20260924181019_optimize_request_history_read_projection.sql',
+    'supabase/archive_migrations/20260924115226_sales_history_customer_docks_ownership.sql',
+    'supabase/archive_migrations/20260924145431_incident_pause_request_delivery_wakes.sql',
+    'supabase/archive_migrations/20260924145930_incident_pause_request_delivery_claims.sql',
+    'supabase/archive_migrations/20260924155225_request_metadata_notification_guard.sql',
+    'supabase/archive_migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql',
+    'supabase/archive_migrations/20260924172552_request_drive_evidence_reset_guard.sql',
+    'supabase/archive_migrations/20260924181019_optimize_request_history_read_projection.sql',
     'supabase/tests/request_drive_reset_test.sql',
     'supabase/tests/request_metadata_notifications_test.sql',
     'supabase/tests/sales_credit_workflow_test.sql',
@@ -71,7 +71,7 @@ try {
   for (const file of files) {
     currentStep = file;
     if (args.includes('--before-reset-guard') && file.endsWith('20260924172552_request_drive_evidence_reset_guard.sql')) {
-      const original = read('supabase/migrations/20260905233900_safe_request_drive_evidence_repair_and_rpc_hardening.sql');
+      const original = read('supabase/archive_migrations/20260905233900_safe_request_drive_evidence_repair_and_rpc_hardening.sql');
       await db.exec(original.slice(0, original.indexOf('-- Trigger and maintenance functions')) + '\ncommit;');
       continue;
     }
@@ -79,7 +79,7 @@ try {
       // Load the real folder state AND all completion triggers. Omitting the
       // active-row trigger would hide metadata-backfill notification fanout.
       // Unrelated Eval writers remain covered by the full native CI chain.
-      const folderMigration = read('supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
+      const folderMigration = read('supabase/archive_migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
       const start = folderMigration.indexOf('create table if not exists private.ph_request_folder_delivery_state');
       const end = folderMigration.indexOf('revoke all on function private.eval_normalize_user_v2', start);
       if (start < 0 || end < start) throw new Error('FOLDER_STATE_BASELINE_NOT_FOUND');

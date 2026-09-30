@@ -7,8 +7,8 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const html = read('../index.html');
 const worker = read('../assets/image-optimize-worker-v2026090401.js');
 const edge = read('../supabase/functions/app-api/index.ts');
-const healthMigration = read('../supabase/migrations/20260904070154_photo_delivery_health_v1.sql');
-const bucketMigration = read('../supabase/migrations/20260904070155_photo_bucket_guard_v1.sql');
+const healthMigration = read('../supabase/archive_migrations/20260904070154_photo_delivery_health_v1.sql');
+const bucketMigration = read('../supabase/archive_migrations/20260904070155_photo_bucket_guard_v1.sql');
 const probe = read('../scripts/probe-production-auth-health.mjs');
 const serviceWorker = read('../sw.js');
 

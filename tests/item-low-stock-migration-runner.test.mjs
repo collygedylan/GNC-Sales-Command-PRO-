@@ -223,6 +223,8 @@ test('cloud rollout verifies the existing release proof before schema and import
   assert.equal(previewStep.run,'node scripts/preview-perennial-assignment.mjs');
   assert.equal(artifactStep.if,'always()','retain the written preview artifact after a fail-closed preflight');
   assert.equal(migrationStep.if,undefined,'failed preview must prevent schema and importer deployment');
-  assert.ok(workflow.includes('20260929013125_perennial_zone_assignment_override.sql'));
+  for (const name of releaseDatabaseMigrations) {
+    assert.ok(workflow.includes(`supabase/archive_migrations/${name}`), `${name} is tracked in the archived source path`);
+  }
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
 });

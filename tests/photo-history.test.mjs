@@ -5,10 +5,10 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 const read = path => fs.readFileSync(new URL('../'+path, import.meta.url),'utf8');
-const sql = read('supabase/migrations/20260904142737_dylan_photo_history_gallery_v1.sql');
-const refreshRepair = read('supabase/migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql');
-const copiesSql = read('supabase/migrations/20260904151119_photo_history_required_copies_v2.sql');
-const accessSql = read('supabase/migrations/20260904162451_marketing_photo_history_access_v1.sql');
+const sql = read('supabase/archive_migrations/20260904142737_dylan_photo_history_gallery_v1.sql');
+const refreshRepair = read('supabase/archive_migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql');
+const copiesSql = read('supabase/archive_migrations/20260904151119_photo_history_required_copies_v2.sql');
+const accessSql = read('supabase/archive_migrations/20260904162451_marketing_photo_history_access_v1.sql');
 const edge = read('supabase/functions/app-api/index.ts');
 const ui = read('assets/photo-history-v2026090401.js');
 const gs = read('Code.gs');

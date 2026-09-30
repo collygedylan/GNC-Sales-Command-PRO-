@@ -12,7 +12,7 @@ const browserConfig = fs.readFileSync(new URL('../playwright.database.config.ts'
 const provisioning = fs.readFileSync(new URL('./native-auth-provisioning-local.spec.js', import.meta.url), 'utf8');
 const legacyBaseline = fs.readFileSync(new URL('../supabase/ci/native_auth_legacy_user_baseline.sql', import.meta.url), 'utf8');
 const requestWorkflowBaseline = fs.readFileSync(new URL('../supabase/ci/request_workflow_baseline.sql', import.meta.url), 'utf8');
-const evalReport2Migration = fs.readFileSync(new URL('../supabase/migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql', import.meta.url), 'utf8');
+const evalReport2Migration = fs.readFileSync(new URL('../supabase/archive_migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql', import.meta.url), 'utf8');
 
 test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', () => {
   // Assertion names are checked against pgTAP's public API documentation:
@@ -43,13 +43,16 @@ test('database reusable workflow is secret-free and has read-only repository per
   assert.match(workflow, /node-version: 22\s+cache: npm/);
 });
 
-test('all original migrations and pgTAP tests remain alongside grouped health, HL ordering and rollback compatibility regressions', () => {
-  const migrations = [...workflow.matchAll(/cp supabase\/migrations\/(\S+)/g)].map(match => match[1]);
+test('archived regression migrations and pgTAP tests remain staged in the isolated database fixture', () => {
+  const migrations = [...workflow.matchAll(/cp supabase\/archive_migrations\/(\S+)/g)].map(match => match[1]);
   assert.equal(migrations.length, 128);
   assert.equal(new Set(migrations).size, migrations.length);
   for (const filename of migrations) {
-    assert.ok(fs.existsSync(new URL(`../supabase/migrations/${filename}`, import.meta.url)), filename);
+    assert.ok(fs.existsSync(new URL(`../supabase/archive_migrations/${filename}`, import.meta.url)), filename);
   }
+  const activeMigrations = fs.readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter(filename => filename.endsWith('.sql'));
+  assert.deepEqual(activeMigrations, ['20260929200000_production_baseline.sql']);
+  assert.ok(workflow.includes('archive_migrations in this disposable project only'));
   for (const filename of [
     '20260928145055_item_low_stock_targets.sql',
     '20260929013125_perennial_zone_assignment_override.sql',

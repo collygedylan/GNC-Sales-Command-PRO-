@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const migration = readFileSync(resolve(
   here,
-  '../supabase/migrations/20260904184630_repair_request_season_sales_office_refresh.sql'
+  '../supabase/archive_migrations/20260904184630_repair_request_season_sales_office_refresh.sql'
 ), 'utf8');
 
 test('scoped Season Sales Notes refresh derives a previously blank assignment', () => {

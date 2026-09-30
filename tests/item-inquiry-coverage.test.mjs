@@ -4,7 +4,7 @@ import { test } from 'node:test';
 
 const root = new URL('../', import.meta.url);
 const read = path => readFileSync(new URL(path, root), 'utf8');
-const migration = read('supabase/migrations/20260904180407_item_inquiry_absence_coverage_v1.sql');
+const migration = read('supabase/archive_migrations/20260904180407_item_inquiry_absence_coverage_v1.sql');
 const app = read('index.html');
 const worker = read('Code.gs');
 
