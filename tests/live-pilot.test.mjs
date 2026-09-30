@@ -181,17 +181,17 @@ test('every verified session restores its user-scoped theme before the app shell
   assert.match(html, /const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' \+ verifiedUsername/);
   assert.match(html, /verifiedUsername === 'dylan_collyge' \? \(localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
   assert.match(html, /document\.documentElement\.dataset\.opsPrepaintTheme = prepaintTheme/);
-  assert.match(html, /id="ops-theme-prepaint"[\s\S]*data-ops-prepaint-theme="dark"[\s\S]*background:#07120e !important/);
-  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#111c18 !important/);
-  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*background:#0b1c16 !important[\s\S]*color:#bfd3c9 !important/);
-  assert.match(html, /data-ops-prepaint-theme="light"[\s\S]*background:#f3f7f5 !important/);
+  assert.match(html, /id="ops-theme-prepaint"[\s\S]*data-ops-prepaint-theme="dark"[\s\S]*background:#050806 !important/);
+  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#0a120e !important/);
+  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*background:#0a120e !important[\s\S]*color:#adc9b5 !important/);
+  assert.match(html, /data-ops-prepaint-theme="light"[\s\S]*background:#f4fbf7 !important/);
   assert.match(client, /function clearPrepaintTheme\(\)/);
   assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
   assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081709\.png"/);
-  assert.equal(manifest.background_color, '#07120e');
+  assert.equal(manifest.background_color, '#f4fbf7');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
   assert.match(client, /function writeRememberedDeviceTheme\(theme\)/);
@@ -323,8 +323,8 @@ test('all users receive Light/Dark and Cards/Grid with a preserved Dylan dark de
   assert.match(edge, /theme_mode: userKey === LEGACY_DARK_DEFAULT_USERNAME \? "dark" : "light"/);
   assert.match(darkDefaultMigration, /theme_mode = 'dark'/);
   assert.match(darkDefaultMigration, /where user_key = 'dylan_collyge'/);
-  assert.match(css, /--ops-canvas: #07120e/);
-  assert.match(css, /--ops-surface: #111c18/);
+  assert.match(css, /--ops-canvas: #050806/);
+  assert.match(css, /--ops-surface: #0a120e/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(css, /V2026\.08\.15\.12 final responsive and theme cascade[\s\S]*grid-template-rows: none !important/);
@@ -724,14 +724,14 @@ test('final responsive shell measures every Home row against the fixed quick bar
 });
 
 test('top banners and sticky module controls use semantic surfaces in both themes', () => {
-  const finalCascade = css.slice(css.lastIndexOf('V2026.08.15.14 — global Ag Data Solutions premium presentation system'));
-  assert.match(finalCascade, /--ui-header: linear-gradient\(118deg, #05623c 0%, #07874f 56%, #056f42 100%\)/);
-  assert.match(finalCascade, /data-ops-theme="dark"[\s\S]*--ui-header: linear-gradient\(118deg, rgba\(6, 27, 19, 0\.98\)/);
+  const finalCascade = css.slice(css.lastIndexOf('Semantic aliases and presentation primitives consume the theme tokens above.'));
+  assert.match(finalCascade, /--ui-header: linear-gradient\(118deg, rgba\(255, 255, 255, 0\.94\)/);
+  assert.match(finalCascade, /data-ops-theme="dark"[\s\S]*--ui-header: linear-gradient\(118deg, rgba\(5, 15, 8, 0\.98\)/);
   assert.match(finalCascade, /#app-top-chrome[\s\S]*background: var\(--ui-header\) !important/);
   assert.match(finalCascade, /#app-top-chrome :is\(\.nav-header, #global-header-search-row\)[\s\S]*background: transparent !important/);
   assert.match(finalCascade, /\.ui-panel,[\s\S]*background: var\(--ui-surface\) !important;[\s\S]*background-image: none !important/);
-  assert.match(html, /themeColorMeta\.setAttribute\('content', prepaintTheme === 'dark' \? '#07120e' : '#07874f'\)/);
-  assert.match(client, /themeColorMeta\.setAttribute\('content', effectiveTheme === 'dark' \? '#07120e' : '#07874f'\)/);
+  assert.match(html, /themeColorMeta\.setAttribute\('content', prepaintTheme === 'dark' \? '#050806' : '#f4fbf7'\)/);
+  assert.match(client, /themeColorMeta\.setAttribute\('content', effectiveTheme === 'dark' \? '#050806' : '#f4fbf7'\)/);
 });
 
 test('active Chat is a full-height iPhone-style conversation with keyboard-safe composing', () => {
@@ -763,13 +763,13 @@ test('Chat message groups and Communication calendar use the modern semantic sys
 });
 
 test('V14 exposes one global semantic component layer without changing workflow nodes', () => {
-  const premiumCascade = css.slice(css.lastIndexOf('V2026.08.15.14 — global Ag Data Solutions premium presentation system'));
-  assert.match(premiumCascade, /--ops-brand: #07874f/);
-  assert.match(premiumCascade, /--ops-canvas: #f3f7f5/);
-  assert.match(premiumCascade, /--ops-surface: #ffffff/);
-  assert.match(premiumCascade, /--ops-text: #13221b/);
-  assert.match(premiumCascade, /data-ops-theme="dark"[\s\S]*--ops-brand: #19b979/);
-  assert.match(premiumCascade, /data-ops-theme="dark"[\s\S]*--ops-surface: #111c18/);
+  const premiumCascade = css.slice(css.lastIndexOf('Semantic aliases and presentation primitives consume the theme tokens above.'));
+  assert.match(css, /--ops-brand: #15803d/);
+  assert.match(css, /--ops-canvas: #f4fbf7/);
+  assert.match(css, /--ops-surface: #ffffff/);
+  assert.match(css, /--ops-text: #052e16/);
+  assert.match(css, /data-ops-theme="dark"[\s\S]*--ops-brand: #22c55e/);
+  assert.match(css, /data-ops-theme="dark"[\s\S]*--ops-surface: #0a120e/);
   assert.match(premiumCascade, /\.ui-surface,[\s\S]*\.ui-panel,[\s\S]*\.ui-card/);
   assert.match(premiumCascade, /\.ui-field,[\s\S]*input:not\(\[type="checkbox"\]\)/);
   assert.match(premiumCascade, /\.ui-tab:is\(\.active, \[aria-selected="true"\]\)/);
@@ -793,7 +793,7 @@ test('V14 uses self-contained single-weight line icons for primary navigation an
 });
 
 test('V14 locks premium responsive grids, safe navigation clearance, motion, and loading states', () => {
-  const premiumCascade = css.slice(css.lastIndexOf('V2026.08.15.14 — global Ag Data Solutions premium presentation system'));
+  const premiumCascade = css.slice(css.lastIndexOf('Semantic aliases and presentation primitives consume the theme tokens above.'));
   assert.match(premiumCascade, /#view-home #home-dashboard-grid > div,[\s\S]*aspect-ratio: 1 \/ 1 !important;[\s\S]*border: 2px solid/);
   assert.match(premiumCascade, /@media \(min-width: 640px\) and \(max-width: 839px\)[\s\S]*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(premiumCascade, /@media \(min-width: 840px\) and \(max-width: 1099px\)[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
@@ -1024,7 +1024,8 @@ test('V15 Chat and navigation are measured against the visible viewport', () => 
   assert.match(client, /new ResizeObserver\(scheduleLayoutHealthCheck\)/);
   assert.match(css, /current-view-chat[\s\S]*grid-template-rows: auto minmax\(0, 1fr\) auto !important/);
   assert.match(css, /current-view-chat \.chat-thread-composer[\s\S]*visibility: visible !important/);
-  assert.match(css, /data-ops-theme="dark"\] #bottom-nav[\s\S]*rgba\(10, 28, 21, \.96\)/);
+  assert.match(css, /--ops-quick-nav-bg: var\(--ops-glass\)/);
+  assert.match(css, /V2026\.09\.30\.008 — shared materials[\s\S]*#bottom-nav[\s\S]*backdrop-filter: blur\(12px\) !important/);
 });
 
 test('Item Inquiry keeps the full Reclass model while adding a phone-specific read-only view', () => {
