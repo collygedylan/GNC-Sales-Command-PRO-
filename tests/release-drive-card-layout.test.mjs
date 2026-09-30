@@ -39,7 +39,9 @@ test('Drive compact layout rules are scoped to Drive Mode and keep Reclass touch
   const marker = '/* Drive Mode uses AV density. Embedded HL and Crop Roll cards keep their layout. */';
   const start = css.indexOf(marker);
   assert.ok(start >= 0, 'Drive-only compact card rules must be present');
-  const driveRules = css.slice(start).replace(/\/\*[\s\S]*?\*\//g, '');
+  const end = css.indexOf('/* Grower inventory uses the Drive Mode card rhythm', start);
+  assert.ok(end > start, 'Grower rules must follow the Drive-only card rules');
+  const driveRules = css.slice(start, end).replace(/\/\*[\s\S]*?\*\//g, '');
   let boundary = -1;
   for (let index = 0; index < driveRules.length; index++) {
     if (driveRules[index] === '}') boundary = index;

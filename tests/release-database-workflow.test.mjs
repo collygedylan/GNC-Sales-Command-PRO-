@@ -51,7 +51,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     assert.ok(fs.existsSync(new URL(`../supabase/archive_migrations/${filename}`, import.meta.url)), filename);
   }
   const activeMigrations = fs.readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter(filename => filename.endsWith('.sql'));
-  assert.deepEqual(activeMigrations, ['20260929200000_production_baseline.sql']);
+  assert.deepEqual(activeMigrations, ['20260929200000_production_baseline.sql', '20260930183036_grower_row_scout_fields.sql']);
   assert.ok(workflow.includes('archive_migrations in this disposable project only'));
   for (const filename of [
     '20260928145055_item_low_stock_targets.sql',
