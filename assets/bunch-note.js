@@ -100,10 +100,21 @@
    showToast('Bunch Notes', state.error, true);
   } finally { state.busy = false; render(); }
  }
- async function load() {
+ async function load(attempt = 0) {
   ensureAccount(); if (state.loading) return;
   state.loading = true;
-  try { const result = await api('list'); state.jobs = result.jobs; state.loaded = true; state.epoch++; }
+  try { const result = await api('list'); state.jobs = Array.isArray(result.jobs) ? result.jobs : []; state.loaded = true; state.epoch++; }
+  catch (error) {
+   state.error = String(error && error.message || error || 'Bunch Notes could not be loaded.');
+   if (attempt < 3) {
+    const delay = Math.min(4000, 500 * (2 ** attempt));
+    await new Promise(resolve => setTimeout(resolve, delay));
+    state.loading = false;
+    try { return await load(attempt + 1); }
+    catch (retryError) { state.error = String(retryError && retryError.message || retryError || 'Bunch Notes could not be loaded.'); throw retryError; }
+   }
+   throw error;
+  }
   finally { state.loading = false; }
  }
  async function open({refresh = true} = {}) {

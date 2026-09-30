@@ -39894,8 +39894,62 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!container) return;
             if (!force && containerHasRenderableContent(container)) return;
             if (container.dataset) delete container.dataset.driveRenderKey;
-            setContainerHtml(container, `<div class="p-8 text-center"><div class="font-black text-red-600 mb-2">Load Failed</div><div class="text-sm text-gray-500 mb-4">${escapeHtml(message)}</div><button class="bg-[#007a4d] text-white px-4 py-2 rounded-lg font-bold" onclick="retryVerifiedViewData('${viewId}')">Retry</button></div>`);
+            const retryState = getViewRetryState(viewId);
+            const retryMarkup = retryState.count < VIEW_LOAD_RETRY_MAX_ATTEMPTS
+                ? `<button class="bg-[#007a4d] text-white px-4 py-2 rounded-lg font-bold" onclick="retryVerifiedViewData('${viewId}')">Retry</button>`
+                : '<div class="text-sm font-bold text-gray-600">Automatic retries paused. Use Retry to try again.</div><button class="mt-3 bg-[#007a4d] text-white px-4 py-2 rounded-lg font-bold" onclick="retryVerifiedViewData(\'' + viewId + '\', true)">Retry</button>';
+            setContainerHtml(container, `<div class="p-8 text-center"><div class="font-black text-red-600 mb-2">Load Failed</div><div class="text-sm text-gray-500 mb-4">${escapeHtml(message)}</div>${retryMarkup}</div>`);
             setContainerUiState(container, 'error');
+        }
+
+        const VIEW_LOAD_RETRY_MAX_ATTEMPTS = 3;
+        const viewLoadRetryStates = new Map();
+        const viewLoadRetryTimers = new Map();
+        function hasProgressiveViewData(context = null) {
+            if (typeof hasProgressiveViewDataForContext === 'function') return hasProgressiveViewDataForContext(context);
+            const viewId = getCurrentVisibleViewId();
+            const config = getViewLoadingConfig(viewId);
+            return !!(config && (config.required || []).some((item) => getDatasetRenderRowCount(item.key) > 0));
+        }
+        function getViewRetryState(viewId = '') {
+            const key = String(viewId || '').trim();
+            if (!viewLoadRetryStates.has(key)) viewLoadRetryStates.set(key, { count: 0 });
+            return viewLoadRetryStates.get(key);
+        }
+        function clearViewLoadRetry(viewId = '') {
+            const key = String(viewId || '').trim();
+            const timer = viewLoadRetryTimers.get(key);
+            if (timer) clearTimeout(timer);
+            viewLoadRetryTimers.delete(key);
+        }
+        function resetViewLoadRetry(viewId = '') {
+            const key = String(viewId || '').trim();
+            clearViewLoadRetry(key);
+            viewLoadRetryStates.delete(key);
+        }
+        function scheduleViewLoadRetry(viewId = '') {
+            const key = String(viewId || '').trim();
+            const state = getViewRetryState(key);
+            if (state.count >= VIEW_LOAD_RETRY_MAX_ATTEMPTS || viewLoadRetryTimers.has(key)) return false;
+            state.count += 1;
+            const delay = Math.min(8000, 500 * (2 ** (state.count - 1)));
+            const timer = setTimeout(() => {
+                viewLoadRetryTimers.delete(key);
+                if (isViewVisible(key)) retryVerifiedViewData(key);
+            }, delay);
+            viewLoadRetryTimers.set(key, timer);
+            return true;
+        }
+
+        function retryVerifiedViewData(viewId, resetLimit = false) {
+            const key = String(viewId || '').trim();
+            if (resetLimit) resetViewLoadRetry(key);
+            const retryTimer = viewLoadRetryTimers.get(key);
+            if (retryTimer) clearTimeout(retryTimer);
+            viewLoadRetryTimers.delete(key);
+            productionLiveSyncViewLoad = null;
+            markViewDirty(key);
+            renderViewContent(key, false, true);
         }
 
         function getViewBackgroundLoadDelayMs() {
@@ -39964,6 +40018,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             showViewLoadingState(viewId, config.label);
             const viewDataStartedAt = beginInternalPerfMeasure();
             loadDatasetTargetsWithLimit(blockingPending).then(() => {
+                resetViewLoadRetry(viewId);
                 reportPerformanceHealthEvent('view_data_ready', 'rendering', getAdaptivePerfElapsedMs(viewDataStartedAt), {
                     reason: viewId,
                     affected_count: blockingPending.length
@@ -39978,15 +40033,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     renderViewContent(viewId, false, true);
                 }
             }).catch((error) => {
-                if (isViewVisible(viewId)) showViewErrorState(viewId, error && error.message ? error.message : 'Could not load data.');
+                if (isViewVisible(viewId)) {
+                    showViewErrorState(viewId, error && error.message ? error.message : 'Could not load data.');
+                    scheduleViewLoadRetry(viewId);
+                }
             });
             return true;
-        }
-
-        function retryVerifiedViewData(viewId) {
-            productionLiveSyncViewLoad = null;
-            markViewDirty(viewId);
-            renderViewContent(viewId, false, true);
         }
 
         async function refreshLoadedDatasets(force = true, options = {}) {
@@ -40091,7 +40143,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         force: true,
                         once: true,
                         minIntervalMs: 0
-                    }).catch(() => {});
+                    }).catch(() => {}).then((didSync) => {
+                        if (didSync === false) queueRequestForceRefreshRetry('request-view-enter-retry', { force: true, allowWhileInteractive: true }, 0);
+                    });
                 }).catch(() => {
                     forceRefreshRequestsForView('request-view-enter', {
                         allowWhileInteractive: true,
@@ -86140,6 +86194,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderFailureFallback = typeof options.renderFailureFallback === 'function' ? options.renderFailureFallback : null;
             const renderFailureEventName = String(options.renderFailureEventName || 'chunk_row_render_failed').trim() || 'chunk_row_render_failed';
             const renderFailureArea = String(options.renderFailureArea || 'rendering').trim() || 'rendering';
+            let renderFailureCount = 0;
             const iosConstrained = isIOSDevice();
             const reserveSpace = options.reserveSpace === true && !iosConstrained;
             const reserveOffset = Number(options.reserveOffset) || 0;
@@ -86179,6 +86234,7 @@ function toggleDriveQuickRequestItem(domId) {
                 try {
                     return renderRow(row, rowIndex);
                 } catch (error) {
+                    renderFailureCount += 1;
                     if (!reportedRowRenderFailure) {
                         reportedRowRenderFailure = true;
                         reportSemanticHealthEvent(renderFailureEventName, renderFailureArea, getSanitizedClientRuntimeCode(error, 'ROW_RENDER_FAILED'), {
@@ -86198,10 +86254,11 @@ function toggleDriveQuickRequestItem(domId) {
             const reportRenderParity = () => {
                 if (!verifyRowSelector || !container || typeof container.querySelectorAll !== 'function') return;
                 const renderedCount = container.querySelectorAll(verifyRowSelector).length;
-                if (renderedCount === total) return;
+                if (renderedCount === total && renderFailureCount === 0) return;
                 reportSemanticHealthEvent('request_queue_parity_mismatch', renderFailureArea, 'RENDERED_ROW_COUNT_MISMATCH', {
                     expected_count: total,
-                    rendered_count: renderedCount
+                    rendered_count: renderedCount,
+                    row_render_failures: renderFailureCount
                 });
             };
 
@@ -86293,6 +86350,9 @@ function toggleDriveQuickRequestItem(domId) {
                 if (reserveSpace) container.style.minHeight = '';
                 setContainerRenderSignature(container, renderSignature);
                 reportRenderParity();
+                if (renderFailureCount) {
+                    console.warn(`${renderFailureCount} request queue row(s) used the render fallback.`);
+                }
                 const elapsed = getAdaptivePerfElapsedMs(renderStartedAt);
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, key);
                 recordGncPerfStat('chunks', { key, total, duration: elapsed, initialTarget, chunkSize }, 80);
@@ -107255,7 +107315,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!itemCode) return false;
             // Existing staging owns its note. Explicit user edits must update that
             // snapshot before reconciliation; a first staging captures the master.
-            await saveSeasonSalesOfficeAvNoteSnapshot(normalizedMasterId, nextAvNote);
+            try {
+                await saveSeasonSalesOfficeAvNoteSnapshot(normalizedMasterId, nextAvNote);
+            } catch (error) {
+                const failure = String(error && error.message ? error.message : error || '');
+                if (/SEASON_SALES_(?:NOT_OPEN|STALE_REVISION|WINNER_CHANGED)/.test(failure) || String(error && error.code || '') === '40001') {
+                    console.warn('Season Sales Office AV Note save stopped after a stale workflow revision; waiting for an explicit refresh or edit.', error);
+                    return false;
+                }
+                throw error;
+            }
             const idempotencyKey = `season-sales-note-refresh-${crypto.randomUUID()}`;
             await seasonSalesOfficeApi('refresh', {
                 itemcode: itemCode,
@@ -112409,6 +112478,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         let requestViewLiveSyncPausedUntil = 0;
         let requestViewForceRefreshInFlight = false;
         let requestViewForceRefreshRetryTimer = null;
+        let requestViewRetryAttempts = 0;
         let lastRequestViewForceRefreshAt = 0;
         let lastRequestViewSignatureSyncAt = 0;
         let requestViewRenderCatchupTimer = null;
@@ -112684,7 +112754,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function queueRequestForceRefreshRetry(reason = 'request-refresh-retry', options = {}, delayMs = 260) {
-            if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);
+            if (requestViewRetryAttempts >= 3 || requestViewForceRefreshRetryTimer) return false;
+            requestViewRetryAttempts += 1;
+            const retryDelay = Math.max(120, Number(delayMs) || 0, Math.min(8000, 500 * (2 ** (requestViewRetryAttempts - 1))));
             requestViewForceRefreshRetryTimer = setTimeout(() => {
                 requestViewForceRefreshRetryTimer = null;
                 forceRefreshRequestsForView(reason, {
@@ -112692,7 +112764,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     force: true,
                     minIntervalMs: 0
                 }).catch(() => {});
-            }, Math.max(120, Number(delayMs) || 260));
+            }, retryDelay);
+            return true;
         }
 
         function isPrimaryRequestLiveSyncContextVisible() {
@@ -112772,6 +112845,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) {
+                    requestViewRetryAttempts = 0;
                     const sideDataChanged = await refreshActiveRequestQueueSideData('request-live-sync-unchanged', {
                         allowWhileInteractive: true,
                         minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
@@ -112798,6 +112872,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     return false;
                 }
                 const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
+                requestViewRetryAttempts = 0;
+                if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);
+                requestViewForceRefreshRetryTimer = null;
                 processAndLoadData({ requestsData: formattedRows });
                 await refreshActiveRequestQueueSideData('request-live-sync', {
                     allowWhileInteractive: true,
@@ -112850,6 +112927,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const rows = await fetchActiveRequestLiveRows('*');
                 if (retryIfInteractive()) return false;
                 const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
+                requestViewRetryAttempts = 0;
+                if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);
+                requestViewForceRefreshRetryTimer = null;
                 processAndLoadData({ requestsData: formattedRows });
                 await refreshActiveRequestQueueSideData(reason || 'request-force-refresh', {
                     force: safeOptions.force === true,
@@ -112870,6 +112950,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 persistCurrentCache(false, reason);
                 return true;
             } catch (error) {
+                queueRequestForceRefreshRetry(reason || 'request-refresh-failed', safeOptions, 0);
                 return false;
             } finally {
                 requestViewForceRefreshInFlight = false;
