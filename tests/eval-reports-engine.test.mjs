@@ -12,7 +12,7 @@ const engine = context.GncEvalReports;
 test('multi-report selection preserves union, exact row deduplication and server-owned Queue membership', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-  const migration = readFileSync(new URL('../supabase/migrations/20260904171529_eval_report2_multi_report_selection.sql', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../supabase/archive_migrations/20260904171529_eval_report2_multi_report_selection.sql', import.meta.url), 'utf8');
   const union = html.slice(html.indexOf('function getManagerEvalReport2Rows('), html.indexOf('function getManagerEvalReport2ItemCode('));
   assert.match(union, /getManagerEvalReport2SelectedReportIds\(\)/);
   assert.match(union, /getManagerEvalReport2RowKey\(row, i\)/);

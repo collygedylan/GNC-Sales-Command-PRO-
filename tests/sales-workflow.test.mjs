@@ -12,7 +12,7 @@ const base64 = Buffer.from(bytes).toString('base64');
 const photoPayload = { sourceId, mime: 'image/jpeg', base64 };
 
 test('profile-triggered identity refresh scopes deletion to its generated alias kinds', () => {
-  const migration = readFileSync(new URL('../supabase/migrations/20260924115226_sales_history_customer_docks_ownership.sql', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../supabase/archive_migrations/20260924115226_sales_history_customer_docks_ownership.sql', import.meta.url), 'utf8');
   const refresh = migration.match(/create function sales_private\.refresh_rep_identities\(\)[\s\S]*?end \$\$;/)?.[0];
   assert.ok(refresh, 'Identity refresh function must be present');
   assert.match(refresh, /delete from sales_private\.rep_identities\s+where kind in \('username','name','external_id'\);/i,

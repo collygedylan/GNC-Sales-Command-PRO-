@@ -9,8 +9,8 @@ const html = read('index.html');
 const api = read('supabase/functions/app-api/index.ts');
 const worker = read('supabase/functions/request-delivery-worker/index.ts');
 const appsScript = read('Code.gs');
-const migration = read('supabase/migrations/20260901024608_drive_eval_shear_location_inquiries_v1.sql');
-const managerDatabaseFix = read('supabase/migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql');
+const migration = read('supabase/archive_migrations/20260901024608_drive_eval_shear_location_inquiries_v1.sql');
+const managerDatabaseFix = read('supabase/archive_migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql');
 
 test('Drive Mode Eval Work uses ITEMCODE-wide V2 creation for Dylan, Megan, and JD', () => {
   assert.match(api, /const EVAL_WORK_MANAGER_USERS = new Set\(\["dylan_collyge", "megan_kelly", "jd_jones"\]\)/);

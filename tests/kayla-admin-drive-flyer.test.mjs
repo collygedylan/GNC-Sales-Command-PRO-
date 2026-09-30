@@ -7,9 +7,9 @@ const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const html = read('index.html');
 const edge = read('supabase/functions/app-api/index.ts');
-const migration = read('supabase/migrations/20260828153252_promote_kayla_admin_drive_flyer_access.sql');
-const flyerAccessMigration = read('supabase/migrations/20260903013541_repair_reclass_task_flyer_access_v1.sql');
-const accessMigration = read('supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql');
+const migration = read('supabase/archive_migrations/20260828153252_promote_kayla_admin_drive_flyer_access.sql');
+const flyerAccessMigration = read('supabase/archive_migrations/20260903013541_repair_reclass_task_flyer_access_v1.sql');
+const accessMigration = read('supabase/archive_migrations/20260828024750_centralized_access_control_audit_v1.sql');
 
 test('Kayla promotion is transactional, identity-linked, active-only, and audited', () => {
   assert.match(migration, /^begin;/);

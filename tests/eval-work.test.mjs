@@ -3,9 +3,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const migration = readFileSync(new URL('../supabase/migrations/20260827005258_eval_work_v1.sql', import.meta.url), 'utf8');
-const batchMigration = readFileSync(new URL('../supabase/migrations/20260827161513_eval_work_create_batch_v1.sql', import.meta.url), 'utf8');
-const multiAssigneeMigration = readFileSync(new URL('../supabase/migrations/20260831030457_eval_work_multi_assignee_v1.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/archive_migrations/20260827005258_eval_work_v1.sql', import.meta.url), 'utf8');
+const batchMigration = readFileSync(new URL('../supabase/archive_migrations/20260827161513_eval_work_create_batch_v1.sql', import.meta.url), 'utf8');
+const multiAssigneeMigration = readFileSync(new URL('../supabase/archive_migrations/20260831030457_eval_work_multi_assignee_v1.sql', import.meta.url), 'utf8');
 const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../supabase/functions/request-delivery-worker/index.ts', import.meta.url), 'utf8');
 const appsScript = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');

@@ -107,7 +107,7 @@ async function resetRequestBoundary() {
 try {
   stage='fixture';
   await db.exec(fixture);
-  const migration=fs.readFileSync(path.resolve('supabase/migrations/20260929013125_perennial_zone_assignment_override.sql'),'utf8');
+  const migration=fs.readFileSync(path.resolve('supabase/archive_migrations/20260929013125_perennial_zone_assignment_override.sql'),'utf8');
   await db.exec(migration);
   await db.exec(`insert into public.ph_eval_assignment_users values
       ('zoe_green','Zoe',true),('inactive_owner','Inactive owner',true),('dylan_collyge','Dylan',true),('megan_kelly','Megan',true);
@@ -144,7 +144,7 @@ try {
       for each statement execute function app_sync_private.touch_source();
     create trigger app_dataset_revision_changed after insert or update or delete or truncate on public.ph_warehouse_assigned_items
       for each statement execute function app_sync_private.touch_source();`);
-  const emptyStatementMigration=fs.readFileSync(path.resolve('supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql'),'utf8');
+  const emptyStatementMigration=fs.readFileSync(path.resolve('supabase/archive_migrations/20260908201318_live_dataset_revision_empty_statements.sql'),'utf8');
   await db.exec(emptyStatementMigration);
   stage='real source triggers installed';
   // PGlite currently does not expose statement transition tables inside PL/pgSQL

@@ -37,7 +37,7 @@ async function runSqlContractTests() {
   const tapDb = new PGlite({ extensions: { pgcrypto } });
   try {
     await tapDb.exec(fixture);
-    const migration = fs.readFileSync(path.resolve('supabase/migrations/20260929160000_password_change_profile_reconciliation.sql'), 'utf8');
+    const migration = fs.readFileSync(path.resolve('supabase/archive_migrations/20260929160000_password_change_profile_reconciliation.sql'), 'utf8');
     await tapDb.exec(migration);
     await tapDb.exec(`
       create temp table tap_state(expected integer, actual integer default 0);
@@ -74,7 +74,7 @@ try {
   stage = 'fixture';
   await db.exec(fixture);
   stage = 'migration';
-  const migration = fs.readFileSync(path.resolve('supabase/migrations/20260929160000_password_change_profile_reconciliation.sql'), 'utf8');
+  const migration = fs.readFileSync(path.resolve('supabase/archive_migrations/20260929160000_password_change_profile_reconciliation.sql'), 'utf8');
   await db.exec(migration);
 
   stage = 'deferred identity and synchronization';

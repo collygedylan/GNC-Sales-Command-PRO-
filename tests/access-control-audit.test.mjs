@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const migration = fs.readFileSync(new URL('../supabase/migrations/20260828024750_centralized_access_control_audit_v1.sql', import.meta.url), 'utf8');
-const managerReadMigration = fs.readFileSync(new URL('../supabase/migrations/20260828070741_access_control_manager_read_v2.sql', import.meta.url), 'utf8');
-const workBaselineMigration = fs.readFileSync(new URL('../supabase/migrations/20260901135456_drive_shear_location_access_audit_baseline_v1.sql', import.meta.url), 'utf8');
+const migration = fs.readFileSync(new URL('../supabase/archive_migrations/20260828024750_centralized_access_control_audit_v1.sql', import.meta.url), 'utf8');
+const managerReadMigration = fs.readFileSync(new URL('../supabase/archive_migrations/20260828070741_access_control_manager_read_v2.sql', import.meta.url), 'utf8');
+const workBaselineMigration = fs.readFileSync(new URL('../supabase/archive_migrations/20260901135456_drive_shear_location_access_audit_baseline_v1.sql', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const health = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
 const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');

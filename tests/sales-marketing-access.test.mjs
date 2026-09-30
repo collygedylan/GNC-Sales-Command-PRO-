@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const appAuth = fs.readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
 const appApi = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-const migration = fs.readFileSync(new URL('../supabase/migrations/20260904003007_sales_marketing_and_kayla_limited_access.sql', import.meta.url), 'utf8');
+const migration = fs.readFileSync(new URL('../supabase/archive_migrations/20260904003007_sales_marketing_and_kayla_limited_access.sql', import.meta.url), 'utf8');
 
 test('sales/marketing is a known limited role in the client and server', () => {
   assert.match(html, /isSalesMarketingRoleValue[\s\S]*SALESMARKETING/);

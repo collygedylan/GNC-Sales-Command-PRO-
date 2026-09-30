@@ -100,8 +100,8 @@ try {
     await sql.query('create publication supabase_realtime');
   }
   await sql.query(repoFile('supabase/ci/live_dataset_revision_baseline.sql'));
-  await sql.query(repoFile('supabase/migrations/20260908185903_live_dataset_revisions.sql'));
-  await sql.query(repoFile('supabase/migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
+  await sql.query(repoFile('supabase/archive_migrations/20260908185903_live_dataset_revisions.sql'));
+  await sql.query(repoFile('supabase/archive_migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
   await sql.query(repoFile('supabase/tests/live_dataset_revisions_test.sql'));
   await sql.query(repoFile('supabase/tests/live_dataset_revisions_empty_statements_test.sql'));
   assert.equal((await sql.query("select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='app_dataset_revisions'")).rowCount, 1, 'Metadata publication must be active');

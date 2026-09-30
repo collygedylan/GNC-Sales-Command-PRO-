@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const migration = fs.readFileSync(new URL('../supabase/migrations/20260924172552_request_drive_evidence_reset_guard.sql',import.meta.url),'utf8');
+const migration = fs.readFileSync(new URL('../supabase/archive_migrations/20260924172552_request_drive_evidence_reset_guard.sql',import.meta.url),'utf8');
 test('reset correction is definition-only, preserves service-only permissions and reset CAS',()=>{
   assert.equal((migration.match(/create or replace function /g)||[]).length,2);
   const outsideBodies=migration.replace(/as \$function\$[\s\S]*?\$function\$;/g,'');

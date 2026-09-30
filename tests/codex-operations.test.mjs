@@ -5,9 +5,9 @@ import vm from 'node:vm';
 import { validateChangedFiles } from '../scripts/validate-codex-mobile-patch.mjs';
 
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
-const migration = read('../supabase/migrations/20260830021512_mobile_codex_operations_v1.sql');
-const escalationMigration = read('../supabase/migrations/20260830022003_codex_ops_terra_escalation_v2.sql');
-const baselineMigration = read('../supabase/migrations/20260830023800_codex_ops_access_audit_baseline_v1.sql');
+const migration = read('../supabase/archive_migrations/20260830021512_mobile_codex_operations_v1.sql');
+const escalationMigration = read('../supabase/archive_migrations/20260830022003_codex_ops_terra_escalation_v2.sql');
+const baselineMigration = read('../supabase/archive_migrations/20260830023800_codex_ops_access_audit_baseline_v1.sql');
 const api = read('../supabase/functions/codex-ops-api/index.ts');
 const runner = read('../supabase/functions/codex-ops-runner/index.ts');
 const githubApp = read('../supabase/functions/_shared/github-app.ts');

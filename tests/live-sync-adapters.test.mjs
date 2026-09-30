@@ -419,8 +419,14 @@ test('every registered physical source has a database revision contract', () => 
     const h = harness();
     const directory = new URL('../supabase/migrations/', import.meta.url);
     const migrations = readdirSync(directory).filter((name) => name.endsWith('.sql'));
-    assert.ok(migrations.length, 'live revision migration is missing');
-    const sql = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
+    assert.deepEqual(migrations, ['20260929200000_production_baseline.sql'], 'active migrations contain only the consolidated production baseline');
+    const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
+    // The schema-only baseline omits seed rows. Historical migrations remain
+    // the source for validating the registered source-key contracts.
+    const archiveDirectory = new URL('../supabase/archive_migrations/', import.meta.url);
+    const archivedSql = readdirSync(archiveDirectory).filter((name) => name.endsWith('.sql'))
+      .map((name) => readFileSync(new URL(name, archiveDirectory), 'utf8')).join('\n');
+    const sql = `${baseline}\n${archivedSql}`;
     const keys = h.ctx.AgMetricLiveSyncRegistry.sourceKeys;
     for (const key of keys) assert.ok(sql.includes(`('${key}',`), `Unregistered backend source ${key}`);
     for (const view of Object.keys(h.ctx.AgMetricLiveSyncRegistry.views)) {

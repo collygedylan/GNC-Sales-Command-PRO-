@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-const migration = readFileSync(new URL('../supabase/migrations/20260901131941_dock_trip_status_global_v1.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/archive_migrations/20260901131941_dock_trip_status_global_v1.sql', import.meta.url), 'utf8');
 
 test('shared Dock teams are stored by TRIPNUMBER with protected tables and an append-only audit', () => {
   assert.match(migration, /create table if not exists public\.ph_dock_trip_status\s*\([\s\S]*tripnumber text primary key/i);

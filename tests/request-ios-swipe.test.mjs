@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
-const capabilityMigration = readFileSync(new URL('../supabase/migrations/20260825222325_stabilize_request_capabilities.sql', import.meta.url), 'utf8');
-const capabilityPolicyGrantMigration = readFileSync(new URL('../supabase/migrations/20260825223040_grant_request_policy_helper.sql', import.meta.url), 'utf8');
-const chanceCapabilityMigration = readFileSync(new URL('../supabase/migrations/20260826133016_allow_chance_alldredge_request_create_own.sql', import.meta.url), 'utf8');
-const kaylaCapabilityV2Migration = readFileSync(new URL('../supabase/migrations/20260826170020_request_capabilities_v2_restore_kayla.sql', import.meta.url), 'utf8');
+const capabilityMigration = readFileSync(new URL('../supabase/archive_migrations/20260825222325_stabilize_request_capabilities.sql', import.meta.url), 'utf8');
+const capabilityPolicyGrantMigration = readFileSync(new URL('../supabase/archive_migrations/20260825223040_grant_request_policy_helper.sql', import.meta.url), 'utf8');
+const chanceCapabilityMigration = readFileSync(new URL('../supabase/archive_migrations/20260826133016_allow_chance_alldredge_request_create_own.sql', import.meta.url), 'utf8');
+const kaylaCapabilityV2Migration = readFileSync(new URL('../supabase/archive_migrations/20260826170020_request_capabilities_v2_restore_kayla.sql', import.meta.url), 'utf8');
 
 test('Request permissions come from one authenticated capability contract', () => {
   assert.match(capabilityMigration, /create or replace function public\.get_request_capabilities\(\)/);

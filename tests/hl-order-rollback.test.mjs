@@ -93,11 +93,8 @@ test('HL uses genuinely verified full rows and retains zero versus unknown after
   assert.equal(snapshot.every(Object.isFrozen), true);
   f.state.rows[0].ptravailable = '999';
   f.ctx.fullInventory[1].ptravailable = '888';
-  for (const [id, expected] of [['zero', '0'], ['unknown', '']]) {
-    const source = snapshot.find(row => row.unique_id === id);
-    const matches = new Map([[f.ctx.getHlOrderInventoryKey(source), new Set([id])]]);
-    assert.equal(f.ctx.getHlOrderAvailability(source, matches), expected);
-  }
+  const retained = f.ctx.getHlOrderVerifiedInventoryRows(['zero', 'unknown']);
+  assert.deepEqual(Array.from(retained, row => row.ptravailable), ['0', null]);
   f.ctx.driveSearch = 'unrelated'; f.ctx.selectedDriveSeason = 'different'; f.ctx.filteredInventory = [];
   f.ctx.fullInventory.push(f.ctx.fullInventory[0]);
   assert.deepEqual(Array.from(f.ctx.getHlOrderDriveMatches([snapshot[0]]), row => row.unique_id), ['zero', 'unknown']);

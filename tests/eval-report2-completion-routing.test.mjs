@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const migration = read('../supabase/migrations/20260901201209_eval_report2_completion_routing.sql');
+const migration = read('../supabase/archive_migrations/20260901201209_eval_report2_completion_routing.sql');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const html = read('../index.html');
 

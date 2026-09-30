@@ -2,7 +2,7 @@ name: Private pending-order transaction tests
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/*bloomscapes_pending*'
+      - 'supabase/archive_migrations/*bloomscapes_pending*'
       - 'supabase/tests/bloomscapes_pending*'
       - 'supabase/ci/bloomscapes_pending*'
       - '.github/workflows/bloomscapes-pending-tests.yml'
@@ -33,6 +33,6 @@ jobs:
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f supabase/ci/bloomscapes_pending_baseline.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260908014335_bloomscapes_pending_orders.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/archive_migrations/20260908014335_bloomscapes_pending_orders.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bloomscapes_pending_orders_test.sql
           node supabase/ci/bloomscapes_pending_concurrency.mjs

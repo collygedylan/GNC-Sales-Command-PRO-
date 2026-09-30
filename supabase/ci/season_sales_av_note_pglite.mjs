@@ -7,21 +7,21 @@ const modulePath = process.argv[2];
 if (!modulePath) throw new Error('Pass the installed @electric-sql/pglite dist/index.js path.');
 const { PGlite } = await import(pathToFileURL(modulePath));
 const db = await PGlite.create();
-const migration = 'supabase/migrations/20260908231650_retain_season_sales_office_av_notes.sql';
-const resetMigration = 'supabase/migrations/20260909004018_align_season_sales_av_note_shared_resets.sql';
+const migration = 'supabase/archive_migrations/20260908231650_retain_season_sales_office_av_notes.sql';
+const resetMigration = 'supabase/archive_migrations/20260909004018_align_season_sales_av_note_shared_resets.sql';
 const files = [
   'supabase/ci/season_sales_av_note_baseline.sql',
   'supabase/ci/sales_office_baseline.sql',
   'supabase/ci/season_sales_av_note_reset_baseline.sql',
-  'supabase/migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql',
-  'supabase/migrations/20260903180500_repair_season_sales_pgcrypto_search_path.sql',
-  'supabase/migrations/20260903181500_repair_season_sales_winner_alias.sql',
-  'supabase/migrations/20260903183000_reconcile_legacy_season_sales_mirrors.sql',
-  'supabase/migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql',
-  'supabase/migrations/20260904184630_repair_request_season_sales_office_refresh.sql',
-  'supabase/migrations/20260904192758_add_season_sales_office_arrived_at.sql',
-  'supabase/migrations/20260906154833_repair_season_sales_done_lifecycle.sql',
-  'supabase/migrations/20260907212041_enforce_photo_evidence_projection.sql',
+  'supabase/archive_migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql',
+  'supabase/archive_migrations/20260903180500_repair_season_sales_pgcrypto_search_path.sql',
+  'supabase/archive_migrations/20260903181500_repair_season_sales_winner_alias.sql',
+  'supabase/archive_migrations/20260903183000_reconcile_legacy_season_sales_mirrors.sql',
+  'supabase/archive_migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql',
+  'supabase/archive_migrations/20260904184630_repair_request_season_sales_office_refresh.sql',
+  'supabase/archive_migrations/20260904192758_add_season_sales_office_arrived_at.sql',
+  'supabase/archive_migrations/20260906154833_repair_season_sales_done_lifecycle.sql',
+  'supabase/archive_migrations/20260907212041_enforce_photo_evidence_projection.sql',
 ];
 const read = file => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 try {
@@ -30,7 +30,7 @@ try {
     console.log(`PASS ${file}`);
   }
   // Run the exact deployed shared expiry body, without unrelated request setup.
-  const expiry = read('supabase/migrations/20260820114722_request_integrity_and_eval_assignments.sql')
+  const expiry = read('supabase/archive_migrations/20260820114722_request_integrity_and_eval_assignments.sql')
     .match(/create or replace function private\.expire_shared_av_results\(\)[\s\S]*?\r?\n\$\$;/)?.[0];
   if (!expiry) throw new Error('Shared AV expiry function was not found in its source migration.');
   await db.exec(expiry);

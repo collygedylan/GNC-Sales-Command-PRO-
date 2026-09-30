@@ -4,8 +4,8 @@ import { test } from 'node:test';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
-const migration = read('supabase/migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql');
-const auditBaseline = read('supabase/migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql');
+const migration = read('supabase/archive_migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql');
+const auditBaseline = read('supabase/archive_migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql');
 const api = read('supabase/functions/app-api/index.ts');
 const app = read('index.html');
 const worker = read('Code.gs');

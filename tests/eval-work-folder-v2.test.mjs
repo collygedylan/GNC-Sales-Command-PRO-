@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const migration = read('../supabase/migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
-const itemcodeMigration = read('../supabase/migrations/20260829042809_itemcode_wide_eval_work.sql');
-const resolutionMigration = read('../supabase/migrations/20260830213039_eval_work_item_inquiry_row_resolution_v3.sql');
-const parityMigration = read('../supabase/migrations/20260831004047_eval_work_request_drive_parity.sql');
+const migration = read('../supabase/archive_migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql');
+const itemcodeMigration = read('../supabase/archive_migrations/20260829042809_itemcode_wide_eval_work.sql');
+const resolutionMigration = read('../supabase/archive_migrations/20260830213039_eval_work_item_inquiry_row_resolution_v3.sql');
+const parityMigration = read('../supabase/archive_migrations/20260831004047_eval_work_request_drive_parity.sql');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const worker = read('../supabase/functions/request-delivery-worker/index.ts');
 const html = read('../index.html');

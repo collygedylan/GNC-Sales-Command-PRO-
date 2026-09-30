@@ -96,7 +96,7 @@ try {
   `);
 
   await db.exec(inventoryBaseline + '\n' + inventoryExtensions);
-  await db.exec(read('supabase/migrations/20260928145055_item_low_stock_targets.sql'));
+  await db.exec(read('supabase/archive_migrations/20260928145055_item_low_stock_targets.sql'));
   // Reproduce the observed CI error and roll back the deliberate fixture
   // damage before running the complete positive contract checks below.
   await db.exec('begin; alter table public.ph_master_inventory drop column holdstopbegindate;');
