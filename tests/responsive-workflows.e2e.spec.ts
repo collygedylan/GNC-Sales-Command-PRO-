@@ -2144,7 +2144,7 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
   }
 });
 
-test('Desktop Reclass action views preserve combined requests and show missing-settings review', async ({ page }) => {
+test('Desktop Reclass row actions preserve combined requests and disclose inquiry-wide Hold / Stop scope', async ({ page }) => {
   test.setTimeout(90_000);
   page.on('dialog', dialog => dialog.accept());
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -2163,13 +2163,12 @@ test('Desktop Reclass action views preserve combined requests and show missing-s
     (window as any).openArgosInventoryTransactionModal('old', 'reclass', '');
   });
   const modal = page.locator('#argos-inventory-transaction-modal');
-  const view = modal.locator('#argos-reclass-action-view');
   const old = modal.locator('[data-reclass-row-card="old"]');
   const current = modal.locator('[data-reclass-row-card="current"]');
-  const itemHold = modal.locator('#argos-reclass-item-hold-actions');
-  await expect(itemHold.locator('[data-reclass-item-hold-action]')).toHaveCount(4);
-  await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(2);
-  await expect(modal.locator('#argos-reclass-view-status')).toContainText('1 row(s) need season / sales year review');
+  await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
+  await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
+  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Choosing it from one row does not limit it to that row');
+  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('On Hold: 3');
   await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(8);
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toBeDisabled();
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toContainText('Requires positive original OH');
@@ -2177,43 +2176,25 @@ test('Desktop Reclass action views preserve combined requests and show missing-s
   await old.locator('[data-reclass-v3-proposal-field="priority"]').fill('');
   await old.locator('[data-reclass-v3-action="recount"]').click();
   for (const action of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
-    await view.selectOption('move_up');
-    await itemHold.locator(`[data-reclass-item-hold-action="${action}"]`).click();
+    await old.locator(`[data-reclass-v3-action="${action}"]`).click();
     if (action === 'hold' || action === 'stop_ship') {
-      const reason = modal.locator('#argos-reclass-hidden-hold [data-reclass-v3-proposal-field="reason"]');
-      const rowReason = modal.locator('[data-reclass-row-card] [data-reclass-v3-proposal-field="reason"]');
+      const reason = old.locator('[data-reclass-v3-proposal-field="reason"]');
       await reason.fill('reviewed');
-      await expect(rowReason).toHaveValue('reviewed');
-      await rowReason.fill('updated reason');
-      await expect(reason).toHaveValue('updated reason');
+      await reason.fill('updated reason');
     }
-    for (const actionView of ['priority_change', 'recount', 'move_down', action]) {
-      await view.selectOption(actionView);
-      await expect(itemHold.locator(`[data-reclass-item-hold-action="${action}"]`)).toHaveAttribute('aria-pressed','true');
-      await expect(itemHold.locator('[data-reclass-item-hold-action]:enabled')).toHaveCount(4);
-    }
+    await expect(old.locator(`[data-reclass-v3-action="${action}"]`)).toHaveAttribute('aria-pressed','true');
+    await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.holdStopProposals).toHaveLength(1);
     expect(draft.holdStopProposals[0].action).toBe(action);
     expect(draft.requestActions).toEqual(expect.arrayContaining(['priority_change', 'recount', action]));
     expect(draft.rowOverlays.find((row: any) => row.unique_id === 'old')?.proposals).toEqual(expect.arrayContaining([{ action: 'priority_change', priority: '' }]));
     // Deselect explicitly so the following choice needs no replacement confirmation.
-    await itemHold.locator(`[data-reclass-item-hold-action="${action}"]`).click();
+    await old.locator(`[data-reclass-v3-action="${action}"]`).click();
   }
   await page.evaluate(() => localStorage.removeItem('gnc_current_season_settings_v1'));
-  await view.selectOption('priority_change');
-  await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(0);
-  await expect(modal.locator('#argos-reclass-view-status')).toContainText('Season settings need review');
-  await expect(modal.locator('#argos-reclass-pending-summary')).toContainText('Priority Change: 1 row(s) (1 outside this view)');
-  await view.selectOption('move_down');
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
   await expect(old.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveValue('');
-  const evalMarkup = await page.evaluate(() => (window as any).eval(`(() => {
-    argosInventoryTransactionState.sourceView = 'eval-work';
-    return renderArgosReclassInquiryEditor(argosInventoryTransactionState.inquiryModel, 'old');
-  })()`));
-  expect(evalMarkup).not.toContain('id="argos-reclass-action-view"');
-  expect(evalMarkup).toContain('Mark Done');
 });
 
 test('Phone Reclass V3 supports all eight direct actions without row checkboxes or horizontal overflow', async ({ page }) => {
@@ -2325,29 +2306,13 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
     await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(0);
 
-    const actionView = modal.locator('#argos-reclass-action-view');
-    const itemHoldActions = modal.locator('#argos-reclass-item-hold-actions [data-reclass-item-hold-action]');
-    await expect(itemHoldActions).toHaveCount(4);
-    await expect(actionView).toHaveValue('priority_change');
-    await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(39);
-    await expect(second).toBeHidden();
-    await expect(modal.locator('[data-reclass-row-card="row-40"]')).toBeHidden();
-    await expect(modal.locator('#argos-reclass-view-status')).toContainText('F1 · Sales year 2027 and older');
-    await expect(modal.locator('#argos-reclass-pending-summary')).toHaveText('No pending actions.');
-    for (const view of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']) {
-      await actionView.selectOption(view);
-      await expect(modal.locator('#argos-reclass-item-hold-actions [data-reclass-item-hold-action]:enabled')).toHaveCount(4);
-      await expect(second).toBeHidden();
-      await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(39);
-      await expect(modal.locator('#argos-reclass-pending-summary')).toHaveText('No pending actions.');
-    }
-    await actionView.selectOption('move_up');
+    await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
     await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
+    await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('F1');
+    await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Hold: 39');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
-    await expect(second).toContainText('Current HOLDSTOPCODE');
-    await expect(second).toContainText('Current HOLDSTOPREASON');
     await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(8);
     await expect(second.locator('[data-reclass-action-included]')).toHaveCount(0);
     await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
@@ -2355,42 +2320,34 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.locator('[data-reclass-v3-action="take_off_hold"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
 
-    for (const action of ['hold', 'priority_change', 'move_up']) {
-      await second.locator(`[data-reclass-v3-action="${action}"]`).click();
-    }
+    await second.locator('[data-reclass-v3-action="hold"]').click();
     const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]');
     const secondPriority = second.locator('[data-reclass-v3-proposal-action="priority_change"][data-reclass-v3-proposal-field="priority"]');
+    await expect(second.locator('[data-reclass-v3-proposal-field="reason"]')).toHaveCount(1);
+    await expect(second.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveCount(0);
     await holdReason.fill('sheared');
+    await expect(second.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveCount(0);
+    await second.locator('[data-reclass-v3-action="priority_change"]').click();
     await secondPriority.fill('1');
+    await second.locator('[data-reclass-v3-action="move_up"]').click();
     await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="moveQuantity"]').fill('150');
     await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
     await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(3);
     await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
     await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Actions');
     await expect(origin).toHaveAttribute('data-reclass-scope-actions', 'hold');
-    await expect(origin).toContainText('Automatically included: On Hold');
+    await expect(origin).toContainText('Inquiry-wide request: On Hold will be applied to all eligible rows');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(secondPriority).toHaveValue('1');
     await expect(holdReason).toHaveValue('sheared');
 
-    await actionView.selectOption('priority_change');
-    await expect(second).toBeHidden();
-    await expect(modal.locator('#argos-reclass-pending-summary')).toContainText('On Hold: 39 eligible rows');
-    await expect(modal.locator('#argos-reclass-pending-summary')).toContainText('Priority Change: 1 row(s) (1 outside this view)');
-    const mirroredReason = modal.locator('#argos-reclass-hidden-hold textarea');
-    await expect(mirroredReason).toHaveValue('sheared');
-    await mirroredReason.fill('sheared and reviewed');
-    await actionView.selectOption('move_down');
-    await expect(holdReason).toHaveValue('sheared and reviewed');
-    await holdReason.fill('sheared');
+    await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
+    await expect(holdReason).toHaveValue('sheared');
     await expect(secondPriority).toHaveValue('1');
     await expect(second.locator('[data-reclass-v3-proposal-field="moveQuantity"]')).toHaveValue('150');
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
-    await actionView.selectOption('recount');
-    await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
-
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up']);
     expect(draft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared' }]);
