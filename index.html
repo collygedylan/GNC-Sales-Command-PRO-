@@ -51,7 +51,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.30.004">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.30.005">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -61,7 +61,7 @@
     <script>
       // Public release label; increment independently of the shell cache/build ID.
       window.__APP_RELEASE_VERSION__ = 'GNC.001';
-      window.__APP_SHELL_VERSION__ = 'V2026.09.30.004';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.30.005';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -864,6 +864,14 @@ body .app-av-catalog-card .app-av-photo-slide{min-width:100%;height:100%}
 .argos-reclass-action-panel{grid-column:1/-1;display:grid;gap:.65rem;border:1px solid #e2e8f0;border-radius:.8rem;background:#fff;padding:.72rem}
 .argos-reclass-action-panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;color:#334155;font-size:.76rem;font-weight:800}
 .argos-reclass-action-panel-title small{color:#64748b;font-size:.68rem;font-weight:600;letter-spacing:0;text-align:right;text-transform:none}
+.argos-reclass-location-panel{display:block}
+.argos-reclass-location-panel>summary{cursor:pointer;list-style:none}
+.argos-reclass-location-panel>summary::-webkit-details-marker{display:none}
+.argos-reclass-location-panel>summary .argos-reclass-location-caret{display:none}
+.argos-reclass-location-panel[open]>.argos-reclass-location-content{margin-top:.65rem}
+.argos-reclass-location-content>p{margin:0 0 .55rem;color:#64748b;font-size:.68rem;font-weight:600;line-height:1.35}
+.argos-reclass-location-changed{color:#047857;font-size:.62rem;font-weight:900}
+.argos-reclass-location-changed[hidden]{display:none!important}
 .eval-work-row-resolution{grid-column:1/-1;display:grid;gap:.55rem;border:2px solid #cbd5e1;border-radius:.8rem;background:#f8fafc;padding:.62rem}
 .eval-work-row-resolution>div:first-child{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem}
 .eval-work-row-resolution strong{color:#0f172a;font-size:.72rem;font-weight:950;letter-spacing:.05em;text-transform:uppercase}
@@ -922,52 +930,66 @@ textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
 @media(max-width:640px){
     #argos-inventory-transaction-modal{padding:0!important;align-items:stretch!important;justify-content:stretch!important}
     .argos-tx-panel{width:100vw!important;max-width:none!important;height:100dvh;max-height:100dvh!important;border-radius:0}
-    .argos-tx-header{padding:max(.7rem,env(safe-area-inset-top)) .78rem .7rem}
+    .argos-tx-header{padding:max(.55rem,env(safe-area-inset-top)) .68rem .55rem}
     .argos-tx-title{font-size:1.08rem}
     .argos-tx-subtitle{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
     .argos-tx-close{min-width:2.75rem;min-height:2.75rem}
-    .argos-tx-body{padding:.62rem .68rem;overscroll-behavior-y:contain}
+    .argos-tx-body{padding:.45rem .58rem;overscroll-behavior-y:contain}
     .argos-tx-tabs{display:none}
     .argos-tx-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
     .argos-tx-source-chip{min-height:2.65rem;padding:.38rem .46rem}
     .argos-tx-source-chip span{font-size:.5rem}
     .argos-tx-source-chip strong{font-size:.74rem}
-    .argos-tx-form{grid-template-columns:minmax(0,1fr);gap:.62rem}
+    .argos-tx-form{grid-template-columns:minmax(0,1fr);gap:.4rem;margin-top:.4rem}
     .argos-tx-field,.argos-tx-field-wide,.argos-tx-hold-note,.argos-tx-advanced,.argos-reclass-inquiry{grid-column:1/-1}
     .argos-tx-field>span{margin-bottom:.3rem;overflow:visible;text-overflow:clip;white-space:normal;font-size:.66rem;line-height:1.2;letter-spacing:.05em;text-transform:uppercase}
     .argos-tx-input{min-height:2.85rem;padding:.58rem .66rem}
     .argos-tx-select-copy strong{font-size:.92rem}
     .argos-tx-select-copy small{font-size:.62rem;white-space:normal}
     .argos-reclass-inquiry{margin-top:.1rem;border-radius:.82rem}
-    .argos-reclass-inquiry-heading{align-items:flex-start;padding:.68rem .72rem;font-size:.64rem;line-height:1.3}
+    .argos-reclass-inquiry-heading{align-items:flex-start;padding:.45rem .55rem;font-size:.62rem;line-height:1.25}
     .argos-reclass-inquiry-heading span:first-child{max-width:70%}
     .argos-reclass-identity{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .argos-reclass-identity>div{min-height:3.25rem;padding:.5rem .56rem}
+    .argos-reclass-identity>div{min-height:2.65rem;padding:.32rem .46rem}
     .argos-reclass-identity span,.argos-reclass-season-row span,.argos-reclass-row-field>span{font-size:.58rem;line-height:1.2;white-space:normal}
     .argos-reclass-identity strong,.argos-reclass-season-row strong{margin-top:.18rem;overflow:visible;text-overflow:clip;white-space:normal;font-size:.78rem;line-height:1.2;overflow-wrap:anywhere}
     .argos-reclass-season{padding:.55rem;gap:.48rem}
     .argos-reclass-season-row{grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #d1fae5;border-radius:.72rem;overflow:hidden}
     .argos-reclass-season-row>div{min-height:3.05rem;padding:.45rem .52rem}
-    .argos-reclass-row-list{gap:.52rem;padding:.55rem}
+    .argos-reclass-row-list{gap:.38rem;padding:.4rem}
     .argos-reclass-row-card{border-radius:.78rem}
     .argos-reclass-row-title{padding:0;font-size:.74rem}
-    .argos-reclass-row-toggle{min-height:3.7rem;padding:.58rem .62rem;touch-action:manipulation}
+    .argos-reclass-row-toggle{min-height:3.15rem;padding:.4rem .55rem;touch-action:manipulation}
     .argos-reclass-row-toggle-copy>span{overflow:visible;text-overflow:clip;white-space:normal;line-height:1.22;overflow-wrap:anywhere}
     .argos-reclass-row-toggle-meta{font-size:.56rem;line-height:1.15}
     .argos-reclass-row-caret{display:block}
     .argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-caret{transform:rotate(180deg)}
     .argos-reclass-row-card[data-reclass-row-expanded="false"] .argos-reclass-row-grid{display:none}
-    .argos-reclass-row-grid{grid-template-columns:minmax(0,1fr);gap:.62rem;padding:.66rem}
-    .argos-reclass-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.48rem}
+    .argos-reclass-row-grid{grid-template-columns:minmax(0,1fr);gap:.45rem;padding:.48rem}
+    .argos-reclass-action-panel{gap:.45rem;padding:.52rem}
+    .argos-reclass-action-panel-title{display:grid;gap:.2rem}
+    .argos-reclass-action-panel-title small{text-align:left;line-height:1.25}
+    .argos-reclass-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.36rem}
     .argos-reclass-action-proposal-grid{grid-template-columns:minmax(0,1fr)}
-    .argos-reclass-action-btn{min-height:3rem;font-size:.72rem}
+    .argos-reclass-action-btn{min-height:2.75rem;padding:.38rem .5rem;font-size:.7rem}
+    .argos-reclass-action-btn small{display:block;margin-top:.12rem;font-size:.58rem;line-height:1.15}
+    .argos-reclass-action-proposal{padding:.42rem}
+    .argos-reclass-action-scope-notice{margin:.38rem .45rem 0;padding:.45rem .55rem;line-height:1.3}
+    .argos-reclass-location-panel>summary{display:flex;align-items:center;justify-content:space-between;gap:.5rem;min-height:2.75rem}
+    .argos-reclass-location-panel>summary .argos-reclass-location-caret{display:block;flex:none;color:#047857;transition:transform .18s ease}
+    .argos-reclass-location-panel[open]>summary .argos-reclass-location-caret{transform:rotate(180deg)}
+    .argos-reclass-location-panel[open]>.argos-reclass-location-content{margin-top:.45rem}
     .argos-reclass-row-field--wide{grid-column:1/-1}
     .argos-reclass-row-field>span{margin:0 0 .28rem .05rem;color:#475569;font-size:.64rem}
     .argos-reclass-row-input{min-height:2.85rem;padding:.6rem .66rem;border-radius:.68rem;font-size:16px}
-    textarea.argos-reclass-row-input{min-height:5.5rem;resize:vertical;line-height:1.35}
+    textarea.argos-reclass-row-input{min-height:3.3rem;resize:vertical;line-height:1.35}
     .argos-reclass-stamp-note{margin-top:.28rem;font-size:.58rem;line-height:1.3}
-    .argos-tx-footer{grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr);padding:.58rem .68rem calc(.58rem + env(safe-area-inset-bottom))}
-    .argos-tx-footer button{min-height:3rem;font-size:.63rem;line-height:1.15}
+    .argos-tx-footer{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'cancel review' 'email email';gap:.35rem;padding:.45rem .58rem calc(.45rem + env(safe-area-inset-bottom))}
+    .argos-tx-footer:has(#argos-inventory-transaction-review.hidden){grid-template-areas:'cancel email'}
+    .argos-tx-footer button{min-width:0;min-height:2.75rem;padding:.35rem .45rem;font-size:.62rem;line-height:1.15;white-space:normal}
+    .argos-tx-footer button:first-child{grid-area:cancel}
+    #argos-inventory-transaction-review{grid-area:review}
+    #argos-inventory-transaction-apply{grid-area:email}
 }
 @media(max-width:430px){
     .app-card-bottom-rail{gap:.5rem}
@@ -975,28 +997,30 @@ textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
     .app-card-bottom-rail-row--split[data-button-count="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
     .app-card-bottom-rail-row--split .app-card-bottom-btn{min-height:2.35rem;padding:.56rem .32rem;font-size:.48rem;letter-spacing:.07em;gap:.28rem}
     .app-card-bottom-rail-row--split .app-card-bottom-btn i{font-size:.82rem}
-    .argos-tx-panel{width:calc(100vw - 1rem);max-height:calc(100dvh - .75rem);border-radius:1rem}
-    .argos-tx-header{padding:.62rem .72rem}
+    .argos-tx-panel{width:100vw;max-height:100dvh;border-radius:0}
+    .argos-tx-header{padding:.48rem .58rem}
     .argos-tx-title{font-size:clamp(1rem,4.4vw,1.22rem)}
     .argos-tx-subtitle{font-size:.58rem;letter-spacing:.08em}
-    .argos-tx-body{padding:.56rem .7rem}
+    .argos-tx-body{padding:.42rem .52rem}
     .argos-tx-notice{font-size:.58rem;padding:.34rem .46rem;line-height:1.18}
     .argos-tx-tabs{margin-top:.42rem}
     .argos-transaction-tab{padding:.42rem .2rem;font-size:.48rem}
-    .argos-tx-source{margin-top:.42rem;padding:.42rem}
+    .argos-tx-source{margin-top:.34rem;padding:.3rem}
+    .argos-tx-source-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:.26rem}
+    .argos-tx-source-chip{min-height:2.4rem;padding:.25rem .34rem}
     .argos-tx-source-chip{flex-basis:calc(33.333% - .28rem);padding:.26rem .34rem}
     .argos-tx-source-chip span{font-size:.42rem}
     .argos-tx-source-chip strong{font-size:.62rem}
     .argos-tx-send-as{grid-template-columns:1fr 1fr;gap:.32rem;padding:.38rem}
     .argos-tx-send-as-label{grid-column:1/-1;font-size:.5rem}
     .argos-tx-send-as-btn{min-height:2.18rem;font-size:.52rem;padding:.34rem .38rem}
-    .argos-tx-form{gap:.36rem}
+    .argos-tx-form{gap:.28rem;margin-top:.3rem}
     .argos-reclass-identity,.argos-reclass-season-row{grid-template-columns:repeat(2,minmax(0,1fr))}
     .argos-reclass-row-field--wide{grid-column:1/-1}
     .argos-tx-field>span{font-size:.52rem}
     .argos-tx-input{min-height:2.25rem;padding:.34rem .48rem}
-    .argos-tx-footer{padding:.5rem .7rem calc(.5rem + env(safe-area-inset-bottom))}
-    .argos-tx-footer button{min-height:2.25rem;font-size:.58rem}
+    .argos-tx-footer{padding:.4rem .52rem calc(.4rem + env(safe-area-inset-bottom))}
+    .argos-tx-footer button{min-height:2.75rem;font-size:.58rem}
 }
 .app-card-bottom-status{width:100%;min-height:2.65rem;border-radius:999px;padding:.72rem 1rem;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
 .app-inline-thumb-column{margin-left:.72rem;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:.36rem;width:4.2rem;min-width:4.2rem;align-self:flex-start}
@@ -6804,7 +6828,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.30.004">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.30.005">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -7003,14 +7027,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.30.004"></script>
-    <script src="./assets/login-network-trace.js?v=V2026.09.30.004"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.30.004"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.30.004"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.30.004"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.30.004"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.30.004"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.30.004"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.30.005"></script>
+    <script src="./assets/login-network-trace.js?v=V2026.09.30.005"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.30.005"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.30.005"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.30.005"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.30.005"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.30.005"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.30.005"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7778,7 +7802,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.30.004').trim() || 'V2026.09.30.004';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.30.005').trim() || 'V2026.09.30.005';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9292,7 +9316,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.30.004';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.30.005';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -32593,7 +32617,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.30.004').trim() || 'V2026.09.30.004';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.30.005').trim() || 'V2026.09.30.005';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -46117,6 +46141,8 @@ let avTopControlsRenderToken = 0;
             if (card) {
                 card.setAttribute('data-reclass-row-edit-count', String(count));
                 card.setAttribute('data-eval-row-resolution', '');
+                const locationChanged = card.querySelector('[data-reclass-location-changed]');
+                if (locationChanged) locationChanged.hidden = !overlay.temporaryChangedFields.length;
                 const counter = card.querySelector('[data-reclass-row-edit-count]');
                 if (counter) {
                     counter.hidden = count === 0;
@@ -46413,6 +46439,21 @@ let avTopControlsRenderToken = 0;
             return `<div class="argos-reclass-action-proposal"><span>Re-Count Request</span><strong>Read-only Item Inquiry</strong><small>No proposed value boxes are added.</small></div>`;
         }
 
+        function isArgosReclassLocationDetailsOpen(entry = null) {
+            if (!isArgosReclassMobileEditorViewport()) return true;
+            const uid = String(entry && entry.unique_id || '').trim();
+            const overlay = getArgosReclassTemporaryOverlay(uid, false);
+            if (overlay && overlay.temporaryChangedFields && overlay.temporaryChangedFields.length) return true;
+            const cards = document.querySelectorAll('#argos-reclass-item-inquiry [data-reclass-row-card]');
+            for (const card of cards) {
+                if (card.getAttribute('data-reclass-row-card') === uid) {
+                    const details = card.querySelector('[data-reclass-location-details]');
+                    return !!(details && details.open);
+                }
+            }
+            return false;
+        }
+
         function buildArgosReclassActionFieldsHtml(entry = null) {
             const safeEntry = entry && typeof entry === 'object' ? entry : { unique_id: '', values: {} };
             const uid = String(safeEntry.unique_id || '').trim();
@@ -46448,7 +46489,9 @@ let avTopControlsRenderToken = 0;
             const scopeCopy = settings.season && settings.salesYear != null ? `${settings.season} / sales year <= ${String(settings.salesYear).slice(-2)}` : 'settings unavailable';
             const proposedLocationPtn1 = getArgosReclassTemporaryValue(safeEntry, 'locationptn1');
             const proposedLocationNote = getArgosReclassTemporaryValue(safeEntry, 'locationnote');
-            const locationDetailsHtml = `<section class="argos-reclass-action-panel" data-reclass-location-details><div class="argos-reclass-action-panel-title"><span>Location details (optional)</span><small>Request a LOCATIONPTN1 or Location Note change with any action, or send either field by itself. The PDF records the requested value; inventory is not changed directly.</small></div><div class="argos-reclass-action-proposal-grid"><label class="argos-reclass-action-proposal"><span>Current location detail</span><textarea class="argos-reclass-row-input" readonly>${escapeHtml(String(values.locationptn1 == null ? '' : values.locationptn1))}</textarea></label><label class="argos-reclass-action-proposal"><span>Requested location detail</span><textarea class="argos-reclass-row-input" maxlength="2000" data-reclass-temporary-field="locationptn1" oninput="return handleArgosReclassTemporaryFieldInput(this)" onchange="return handleArgosReclassTemporaryFieldInput(this)">${escapeHtml(proposedLocationPtn1)}</textarea><small>Leave unchanged when no location detail update is needed.</small></label><label class="argos-reclass-action-proposal"><span>Current location note</span><textarea class="argos-reclass-row-input" readonly>${escapeHtml(String(values.locationnote == null ? '' : values.locationnote))}</textarea></label><label class="argos-reclass-action-proposal"><span>Requested location note</span><textarea class="argos-reclass-row-input" maxlength="4000" data-reclass-temporary-field="locationnote" oninput="return handleArgosReclassTemporaryFieldInput(this)" onchange="return handleArgosReclassTemporaryFieldInput(this)">${escapeHtml(proposedLocationNote)}</textarea><small>The server stamps the note date when its value changes. Current date: ${escapeHtml(String(values.locationnotedate || '—'))}.</small></label></div></section>`;
+            const locationOverlay = getArgosReclassTemporaryOverlay(uid, false);
+            const hasLocationChanges = !!(locationOverlay && locationOverlay.temporaryChangedFields && locationOverlay.temporaryChangedFields.length);
+            const locationDetailsHtml = `<details class="argos-reclass-action-panel argos-reclass-location-panel" data-reclass-location-details ${isArgosReclassLocationDetailsOpen(safeEntry) ? 'open' : ''}><summary class="argos-reclass-action-panel-title"><span>Location details (optional) <span class="argos-reclass-location-changed" data-reclass-location-changed ${hasLocationChanges ? '' : 'hidden'}>· Changes entered</span></span><i class="ph-bold ph-caret-down argos-reclass-location-caret" aria-hidden="true"></i></summary><div class="argos-reclass-location-content"><p>Request a LOCATIONPTN1 or Location Note change with any action, or send either field by itself. The PDF records the requested value; inventory is not changed directly.</p><div class="argos-reclass-action-proposal-grid"><label class="argos-reclass-action-proposal"><span>Current location detail</span><textarea class="argos-reclass-row-input" readonly>${escapeHtml(String(values.locationptn1 == null ? '' : values.locationptn1))}</textarea></label><label class="argos-reclass-action-proposal"><span>Requested location detail</span><textarea class="argos-reclass-row-input" maxlength="2000" data-reclass-temporary-field="locationptn1" oninput="return handleArgosReclassTemporaryFieldInput(this)" onchange="return handleArgosReclassTemporaryFieldInput(this)">${escapeHtml(proposedLocationPtn1)}</textarea><small>Leave unchanged when no location detail update is needed.</small></label><label class="argos-reclass-action-proposal"><span>Current location note</span><textarea class="argos-reclass-row-input" readonly>${escapeHtml(String(values.locationnote == null ? '' : values.locationnote))}</textarea></label><label class="argos-reclass-action-proposal"><span>Requested location note</span><textarea class="argos-reclass-row-input" maxlength="4000" data-reclass-temporary-field="locationnote" oninput="return handleArgosReclassTemporaryFieldInput(this)" onchange="return handleArgosReclassTemporaryFieldInput(this)">${escapeHtml(proposedLocationNote)}</textarea><small>The server stamps the note date when its value changes. Current date: ${escapeHtml(String(values.locationnotedate || '—'))}.</small></label></div></div></details>`;
             const resolution = getEvalWorkInquiryRowResolution(uid);
             const resolutionHtml = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
                 ? `<section class="eval-work-row-resolution"><div><strong>Finish this row</strong><small>Use Mark Done after choosing an action or changing a location detail, or No Action when nothing needs to change. The final row automatically sends the PDF.</small></div><div class="eval-work-row-resolution-actions"><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="done" aria-pressed="${resolution === 'done' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'done')"><i class="ph-bold ph-check-circle"></i> Mark Done</button><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="no_action" aria-pressed="${resolution === 'no_action' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'no_action')"><i class="ph-bold ph-minus-circle"></i> No Action</button></div></section>`
