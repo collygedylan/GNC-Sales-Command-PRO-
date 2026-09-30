@@ -759,7 +759,7 @@ textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
     .argos-tx-close{min-width:2.75rem;min-height:2.75rem}
     .argos-tx-body{padding:.45rem .58rem;overscroll-behavior-y:contain}
     .argos-tx-tabs{display:none}
-    .argos-tx-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .argos-tx-source-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
     .argos-tx-source-chip{min-height:2.65rem;padding:.38rem .46rem}
     .argos-tx-source-chip span{font-size:.5rem}
     .argos-tx-source-chip strong{font-size:.74rem}
@@ -779,10 +779,10 @@ textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
     .argos-reclass-season{padding:.55rem;gap:.48rem}
     .argos-reclass-season-row{grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #d1fae5;border-radius:.72rem;overflow:hidden}
     .argos-reclass-season-row>div{min-height:3.05rem;padding:.45rem .52rem}
-    .argos-reclass-row-list{gap:.38rem;padding:.4rem}
+    .argos-reclass-row-list{gap:.22rem;padding:.3rem}
     .argos-reclass-row-card{border-radius:.78rem}
     .argos-reclass-row-title{padding:0;font-size:.74rem}
-    .argos-reclass-row-toggle{min-height:3.15rem;padding:.4rem .55rem;touch-action:manipulation}
+    .argos-reclass-row-toggle{min-height:2.75rem;padding:.32rem .5rem;touch-action:manipulation}
     .argos-reclass-row-toggle-copy>span{overflow:visible;text-overflow:clip;white-space:normal;line-height:1.22;overflow-wrap:anywhere}
     .argos-reclass-row-toggle-meta{font-size:.56rem;line-height:1.15}
     .argos-reclass-row-caret{display:block}

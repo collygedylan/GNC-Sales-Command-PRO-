@@ -3186,17 +3186,7 @@ body.ops-precision-pilot[data-ops-theme="dark"] #request-rep-modal .request-crea
 
 @media (max-width: 640px) {
   body.ops-precision-pilot #argos-inventory-transaction-modal .argos-tx-source-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  body.ops-precision-pilot #argos-inventory-transaction-modal .argos-reclass-inquiry-heading {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 4px !important;
-  }
-
-  body.ops-precision-pilot #argos-inventory-transaction-modal .argos-reclass-inquiry-heading span:first-child {
-    max-width: none !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 
   body.ops-precision-pilot #request-rep-modal {

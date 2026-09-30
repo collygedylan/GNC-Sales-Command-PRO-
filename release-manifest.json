@@ -1,7 +1,7 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "57abde36323ad49f27b9f694daaff5dd11e08952",
-  "release": "V2026.09.30.005",
+  "commit": "6c449edb95a05afef62e004ddc8a6923ca439651",
+  "release": "V2026.09.30.006",
   "files": [
     {
       "path": ".nojekyll",
@@ -230,8 +230,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 7699450,
-      "sha256": "fe9f6b7556d0d863c4add30fd5d7e98b2e6d8a58d351e47c8a1e908d6ff45fec"
+      "bytes": 7699746,
+      "sha256": "3fcb9bc7a4e62bf4846e576493722e128c26bcb8b68412f5e5fc12d28ac0d62b"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -241,7 +241,7 @@
     {
       "path": "assets/live-app-styles-base-v2026090503.css",
       "bytes": 531503,
-      "sha256": "eef01b2f36678ce0ddfd3297eaac0972d59528b73bd56f6b26d1e9485f30530a"
+      "sha256": "fc80bccde1fc30fd4a32158bf05bafa7f24cac46776658cc674a5a351257a8f3"
     },
     {
       "path": "assets/live-sync-adapters.js",
@@ -475,8 +475,8 @@
     },
     {
       "path": "assets/ops-precision-pilot.css",
-      "bytes": 331355,
-      "sha256": "b391ebc078e339dd9cb2ad0fde86d7297b3398de011d49d6a012402a36b7176c"
+      "bytes": 330987,
+      "sha256": "7924fcbd0ff6a3b39b9a00f4a7689487d9cff4a2bba4bd042605ed2f81ae86cd"
     },
     {
       "path": "assets/ops-precision-pilot.js",
@@ -571,22 +571,22 @@
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "de4ae6a514bdc83092fdc2f5bdb2a878e7fc0ddf0d04afcf799a569db9be00fc"
+      "sha256": "9a5e7ddcdbb51ed37bd3f280ad1a8c2e3b129149db2deec0b26712aa08e39f01"
     },
     {
-      "path": "deployments/57abde36323ad49f27b9f694daaff5dd11e08952.json",
+      "path": "deployments/6c449edb95a05afef62e004ddc8a6923ca439651.json",
       "bytes": 188,
-      "sha256": "de4ae6a514bdc83092fdc2f5bdb2a878e7fc0ddf0d04afcf799a569db9be00fc"
+      "sha256": "9a5e7ddcdbb51ed37bd3f280ad1a8c2e3b129149db2deec0b26712aa08e39f01"
     },
     {
       "path": "index.html",
       "bytes": 334657,
-      "sha256": "b05e6e998d5aea13b86ce8a8f8ed8c24a5d8c3c5c695deff292da8d86b80f87d"
+      "sha256": "bd5693ce4f7c01555526772a80527309e5668941227b4d5d4feb367396b93b4a"
     },
     {
       "path": "manifest.json",
       "bytes": 741,
-      "sha256": "81d30cfa9b90dfb11b7aa0e579611ccbfbdb6a60cfbcf5eba41bfbd4c66c0b37"
+      "sha256": "e15cb82add9a3a88e94a25bb6c9cbb787abafb9b0e9f760810dafc64ed2bc479"
     },
     {
       "path": "reports/index.html",
@@ -606,7 +606,7 @@
     {
       "path": "sw.js",
       "bytes": 26707,
-      "sha256": "0ce9a4192462baf769ea9eb221214b76b725a80221fd38dc2b89a2b99fda5ae1"
+      "sha256": "34960a13d3ada269602cac2a17fc066e0fc001c6436102e50cab08cfc5117844"
     },
     {
       "path": "v2/assets/index-RyID3PT8.css",
@@ -801,7 +801,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4626,
-      "sha256": "76bff51d68500019d87bf866a1d6f4b00cf9c520d3fcf9da63b0b600732d6fba"
+      "sha256": "62d1546a54b97568c3f3f6349b06b43e767738d8f30117c6b22924132fc5d98d"
     },
     {
       "path": "v2/v2-cache-migration.js",
