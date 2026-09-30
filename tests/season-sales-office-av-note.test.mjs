@@ -361,10 +361,10 @@ test('initial staging captures the existing master note without a redundant prot
   assert.equal(otherSource.calls.length, 0);
 });
 
-test('a rejected revision never falls through to reconciliation or advances the local snapshot', async () => {
+test('a rejected revision stops without reconciliation or advancing the local snapshot', async () => {
   const conflict = Object.assign(new Error('SEASON_SALES_STALE_REVISION'), { status: 409 });
   const { ctx, calls } = harness({ api: () => { throw conflict; } });
-  await assert.rejects(ctx.syncSeasonSalesOfficeAvNoteRemote('master-1', 'REJECTED'), /SEASON_SALES_STALE_REVISION/);
+  assert.equal(await ctx.syncSeasonSalesOfficeAvNoteRemote('master-1', 'REJECTED'), false);
   assert.deepEqual(calls.map((call) => call.operation), ['save_av_note']);
   assert.equal(ctx.salesOfficeInventory[0].STATE_REVISION, 7);
   assert.equal(ctx.salesOfficeInventory[0].AV_NOTE, 'USER NOTE');
