@@ -7,6 +7,7 @@ export const migrationName = '20260928145055_item_low_stock_targets.sql';
 export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_assignment_override.sql';
 export const passwordReconciliationMigrationName = '20260929160000_password_change_profile_reconciliation.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
+export const productionBaselineVersion = '20260929200000';
 
 const NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET',
@@ -193,6 +194,18 @@ export async function applyItemLowStockMigration({ client, source, onPhase = () 
     if (prior.rows.length) {
       if (prior.rows[0].name !== name || prior.rows[0].statements?.join('\n') !== body) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
     } else {
+      // The production baseline contains these archived migrations. Its ledger
+      // intentionally has no entries for their former individual versions.
+      const baseline = await client.query('select name from supabase_migrations.schema_migrations where version = $1', [productionBaselineVersion]);
+      if (baseline.rows.length) {
+        if (baseline.rows.length !== 1 || baseline.rows[0].name !== 'production_baseline') throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+        onPhase('contract_check');
+        const result = await client.query(contractQuery);
+        if (result.rows[0]?.installed !== true) throw new Error('LOW_STOCK_DATABASE_CONTRACT_MISSING');
+        onPhase('transaction_commit');
+        await client.query('commit');
+        return { status: 'included_in_baseline' };
+      }
       onPhase('migration_sql');
       await client.query(body);
       onPhase('migration_history_write');
