@@ -51,7 +51,15 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     assert.ok(fs.existsSync(new URL(`../supabase/archive_migrations/${filename}`, import.meta.url)), filename);
   }
   const activeMigrations = fs.readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter(filename => filename.endsWith('.sql'));
-  assert.deepEqual(activeMigrations, ['20260929200000_production_baseline.sql', '20260930183036_grower_row_scout_fields.sql']);
+  assert.deepEqual(activeMigrations, [
+    '20260929200000_production_baseline.sql',
+    '20260930183036_grower_row_scout_fields.sql',
+    '20260930205254_season_sales_business_conflicts_use_pt409.sql',
+  ]);
+  const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
+  assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
+  assert.ok(workflow.indexOf(pt409Fixture) > workflow.lastIndexOf('cp supabase/archive_migrations/'),
+    'the PT409 migration applies after historical fixtures install the legacy Season Sales RPC definitions');
   assert.ok(workflow.includes('archive_migrations in this disposable project only'));
   for (const filename of [
     '20260928145055_item_low_stock_targets.sql',

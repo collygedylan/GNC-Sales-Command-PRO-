@@ -268,9 +268,10 @@ function transportFixture(overrides = {}) {
         productionLiveSyncNavigation: navigation, SUPABASE_READ_TIMEOUT_MS: 1000, SUPABASE_URL: 'https://fixture.invalid',
         normalizeAppTableName: value => value, getNativeAuthRequestHeaders: async () => ({ Authorization: 'synthetic' }),
         fetchWithTimeout: async (url, options) => { calls.push({ url, options }); return { ok: true, text: async () => '[{"id":1},{"id":2}]' }; },
-        parseSupabaseContentRangeTotal: () => 6, runDedupeSupabaseRead: (key, task) => task(),
+        parseSupabaseContentRangeTotal: () => 6,
         startGlobalProgress() {}, stopGlobalProgress() {}, beginInternalPerfMeasure: () => 0,
         getFullDatasetPageLimit: () => 2, getFullDatasetPageConcurrency: () => 1, yieldToUiFrame: async () => {},
+        runDedupeSupabaseRead: (key, task, options = {}) => task({ signal: options.signal }),
         incrementInternalPerfCounter() {}, recordInternalPerfDuration() {}, ...overrides
     };
     vm.createContext(ctx);
@@ -303,12 +304,18 @@ test('paginated cancellation stops later pages and the first request carries its
     const controller = new AbortController();
     const f = transportFixture({ yieldToUiFrame: async () => controller.abort() });
     await assert.rejects(f.ctx.fetchAllSupabaseRows('inventory', 'select=*', { signal: controller.signal }), error => error.code === 'REQUEST_ABORTED');
-    assert.equal(f.calls.length, 1); assert.equal(f.calls[0].options.signal, controller.signal);
+    assert.equal(f.calls.length, 1);
+    assert.ok(f.calls[0].options.signal, 'the first request carries a cancellable signal');
+    assert.equal(f.calls[0].options.signal.aborted, true, 'cancellation reaches the request already in flight');
 });
 
 test('a canceled read waiting for a concurrency slot cannot start its first page', async () => {
     const gate = deferred(), controller = new AbortController();
-    const f = transportFixture({ runDedupeSupabaseRead: async (key, task) => { await gate.promise; return task(); } });
+    const f = transportFixture({ runDedupeSupabaseRead: async (key, task, options = {}) => {
+        await gate.promise;
+        if (options.signal?.aborted) throw Object.assign(new Error('Data read cancelled.'), { code: 'REQUEST_ABORTED' });
+        return task({ signal: options.signal });
+    } });
     const pending = f.ctx.fetchAllSupabaseRows('inventory', 'select=*', { signal: controller.signal });
     controller.abort(); gate.resolve();
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED'); assert.equal(f.calls.length, 0);

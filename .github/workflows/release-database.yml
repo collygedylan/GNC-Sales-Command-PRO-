@@ -178,6 +178,9 @@ jobs:
           cp supabase/archive_migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql "$ci_root/supabase/migrations/"
           cp supabase/archive_migrations/20260929013125_perennial_zone_assignment_override.sql "$ci_root/supabase/migrations/"
           cp supabase/archive_migrations/20260929160000_password_change_profile_reconciliation.sql "$ci_root/supabase/migrations/"
+          # Replay the current non-retryable Season Sales conflict migration
+          # after historical fixtures have installed their legacy RPC bodies.
+          cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
