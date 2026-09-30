@@ -34,6 +34,8 @@ values
 do $test$
 declare
   response jsonb;
+  conflict_state text;
+  conflict_message text;
   first_arrival timestamptz;
   first_note_at timestamptz;
   expected_revision integer;
@@ -69,6 +71,15 @@ begin
 
   response := public.save_season_sales_office_av_note_v1('av_note_test','AV-KEEP-A',1,'  Revised user note  ','av-note-edit-token');
   perform pg_temp.av_note_check(response->>'avNote'='Revised user note' and response->>'revision'='2', 'protected edit returns the saved note and new revision');
+  perform pg_temp.av_note_check((public.save_season_sales_office_av_note_v1('av_note_test','AV-KEEP-A',1,'  Revised user note  ','av-note-edit-token') = response), 'successful save idempotency still reuses the original response');
+  conflict_state := null;
+  conflict_message := null;
+  begin
+    perform public.save_season_sales_office_av_note_v1('av_note_test','AV-KEEP-A',1,'Stale edit','av-note-stale-token');
+  exception when others then
+    get stacked diagnostics conflict_state = returned_sqlstate, conflict_message = message_text;
+  end;
+  perform pg_temp.av_note_check(conflict_state='PT409' and conflict_message='SEASON_SALES_STALE_REVISION', 'stale save revision returns a non-retryable conflict');
   perform pg_temp.av_note_check((select retained_av_note='Revised user note' from public.ph_season_sales_office_state where itemcode_normalized='AV-KEEP-ITEM'), 'protected edit updates durable note');
   update public.ph_master_inventory set av_note='Another import' where unique_id='AV-KEEP-A';
   perform public.reconcile_season_sales_office_v1(array['AV-KEEP-ITEM'],false,'after-edit',null);
@@ -84,6 +95,14 @@ begin
   update public.ph_master_inventory set av_note=null where unique_id='AV-KEEP-A';
   response := public.complete_season_sales_office_v1('av_note_test','AV-KEEP-A',4,'av-note-done-token');
   perform pg_temp.av_note_check(response->>'status'='done', 'Done completes with a retained note');
+  conflict_state := null;
+  conflict_message := null;
+  begin
+    perform public.save_season_sales_office_av_note_v1('av_note_test','AV-KEEP-A',5,'Late edit','av-note-after-done-token');
+  exception when others then
+    get stacked diagnostics conflict_state = returned_sqlstate, conflict_message = message_text;
+  end;
+  perform pg_temp.av_note_check(conflict_state='PT409' and conflict_message='SEASON_SALES_NOT_OPEN', 'save on completed work returns a non-retryable conflict');
   perform pg_temp.av_note_check((select retained_av_note='Final retained note' and not (completed_evidence_snapshot->'reasons' ? 'av_note_missing') from public.ph_season_sales_office_state where itemcode_normalized='AV-KEEP-ITEM'), 'Done keeps note and evaluates completion from it');
   perform pg_temp.av_note_check((select evidence_ready_at_completion from public.ph_season_sales_office_state where itemcode_normalized='AV-KEEP-ITEM'), 'retained note permits complete evidence despite a cleared master note');
   perform pg_temp.av_note_check(not exists(select 1 from public.ph_sales_office where unique_id='AV-KEEP-A'), 'Done removes the open mirror');

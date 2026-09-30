@@ -419,7 +419,11 @@ test('every registered physical source has a database revision contract', () => 
     const h = harness();
     const directory = new URL('../supabase/migrations/', import.meta.url);
     const migrations = readdirSync(directory).filter((name) => name.endsWith('.sql'));
-    assert.deepEqual(migrations, ['20260929200000_production_baseline.sql', '20260930183036_grower_row_scout_fields.sql'], 'active migrations contain the baseline and additive Grower scouting fields');
+    assert.deepEqual(migrations, [
+      '20260929200000_production_baseline.sql',
+      '20260930183036_grower_row_scout_fields.sql',
+      '20260930205254_season_sales_business_conflicts_use_pt409.sql'
+    ], 'active migrations contain the baseline, Grower fields, and Season Sales conflict fix');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
     // the source for validating the registered source-key contracts.

@@ -1288,7 +1288,7 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.match(authMigration, /alter table public\.profiles enable row level security/);
   assert.match(authMigration, /function public\.get_app_user_directory\(requested_roles text\[\] default null\)/);
   assert.match(authMigration, /revoke all on function public\.get_app_user_directory\(text\[\]\) from public, anon/);
-  assert.match(html, /table === 'ph_app_users'[\s\S]*fetchNativeAppUserDirectory\(nativeHeaders, query, readTimeoutMs\)/);
+  assert.match(html, /table === 'ph_app_users'[\s\S]*fetchNativeAppUserDirectory\(nativeHeaders, query, readTimeoutMs(?:,\s*signal\s*\|\|\s*null)?\)/);
   assert.doesNotMatch(authMigration, /create policy profiles_update_safe_self/);
   assert.match(authMigrationTool, /const execute = process\.argv\.includes\('--execute'\)/);
   assert.match(authMigrationTool, /email_confirm: true/);
