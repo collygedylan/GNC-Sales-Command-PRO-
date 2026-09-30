@@ -94,19 +94,23 @@ test('real view and account resets fence a deferred verified read without treati
   })()`));
   expect(viewChange).toEqual({ oldViewAborted: true, sessionAborted: false, freshView: true });
 
-  fixture.master.unshift(hlMaster('lifecycle-stale-master', {
+  const staleRow = hlMaster('lifecycle-stale-master', {
     itemcode: 'LIFECYCLE.001',
     commonname: 'Lifecycle stale response',
     locationcode: 'C.99.999',
-  }));
+    last_updated: '2099-01-01T00:00:00Z',
+  });
   fixture.datasetRevision++;
-  fixture.holdNextBackgroundMasterRead();
+  // Only the held response contains this row. Any unrelated refresh sees the
+  // unchanged source, so it cannot race this cancellation assertion.
+  fixture.holdNextBackgroundMasterRead([staleRow, ...fixture.master]);
   await page.evaluate(() => {
     (window as any).__lifecycleHeldCheck = (window as any).eval(
       'getProductionLiveSyncCoordinator().check("lifecycle-held-read")',
     );
   });
   await fixture.waitForHeldBackgroundMasterRead();
+  expect(fixture.heldMasterReadRows.some(row => row.unique_id === 'lifecycle-stale-master')).toBe(true);
   expect(await page.evaluate(() => (window as any).eval(
     `fullInventory.some(row => row.UNIQUE_ID === 'lifecycle-stale-master')`,
   ))).toBe(false);
