@@ -9,6 +9,8 @@ test('one version preparation repairs mixed markers without rewriting historical
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'gnc-version-test-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   fs.mkdirSync(path.join(root,'scripts'));
+  fs.mkdirSync(path.join(root,'v2','src','services'),{recursive:true});
+  fs.mkdirSync(path.join(root,'v2','public'),{recursive:true});
   const write=(file,value)=>fs.writeFileSync(path.join(root,file),typeof value==='string'?value:JSON.stringify(value));
   const read=file=>fs.readFileSync(path.join(root,file),'utf8');
   write('package.json',{version:'2026.09.14.02'});
@@ -17,6 +19,8 @@ test('one version preparation repairs mixed markers without rewriting historical
   write('index.html',"window.__APP_SHELL_VERSION__ = 'V2026.09.14.01'; legacy='V2026.08.13.18';");
   write('sw.js',"const APP_SHELL_BUILD = 'V2026.09.13.04';");
   write('scripts/build-live-shell.mjs',"const RELEASE = 'V2026.09.14.01';");
+  write('v2/src/services/api.ts',"export const APP_VERSION = 'V2026.09.07.v2.17';");
+  write('v2/public/manifest.webmanifest',{version:'V2026.09.07.v2.17',start_url:'./?shellv=V2026.09.07.v2.17'});
   const before=read('index.html');
   assert.throws(()=>prepareReleaseVersion(root,true),/MISMATCH/);
   assert.equal(read('index.html'),before);
@@ -24,6 +28,12 @@ test('one version preparation repairs mixed markers without rewriting historical
   assert.equal(prepareReleaseVersion(root,true),'V2026.09.14.02');
   assert.match(read('index.html'),/legacy='V2026.08.13.18'/);
   assert.equal(JSON.parse(read('package-lock.json')).packages[''].version,'2026.09.14.02');
+  assert.match(read('v2/src/services/api.ts'),/APP_VERSION = 'V2026.09.14.02'/);
+  assert.deepEqual(JSON.parse(read('v2/public/manifest.webmanifest')),{version:'V2026.09.14.02',start_url:'./?shellv=V2026.09.14.02'});
+  write('v2/src/services/api.ts',"export const APP_VERSION = 'V2026.09.07.v2.17';");
+  assert.throws(()=>prepareReleaseVersion(root,true),/RELEASE_VERSION_MISMATCH:v2\/src\/services\/api\.ts/);
+  assert.equal(prepareReleaseVersion(root),'V2026.09.14.02');
+  assert.equal(prepareReleaseVersion(root,true),'V2026.09.14.02');
   write('package.json',{version:'invalid'});
   assert.throws(()=>prepareReleaseVersion(root),/VERSION_INVALID/);
 });

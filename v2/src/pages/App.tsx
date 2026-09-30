@@ -54,6 +54,7 @@ import {
 } from '../services/api';
 import type { AvOptionRow } from '../types';
 import { PartnerWorkspace } from '../components/PartnerWorkspace';
+import { DriveInventory } from '../components/DriveInventory';
 
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'partner-av' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
@@ -169,6 +170,12 @@ function storeThemeMode(session: Session | null, mode: ThemeMode) {
   }
 }
 
+function applyPrepaintTheme(mode: ThemeMode) {
+  document.documentElement.dataset.opsPrepaintTheme = mode;
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (themeColor) themeColor.content = mode === 'dark' ? '#050806' : '#f4fbf7';
+}
+
 function requestColumnsKey(session: Session | null) {
   return `${REQUEST_COLUMNS_KEY_PREFIX}${session?.username || 'demo'}`;
 }
@@ -245,6 +252,7 @@ export function App() {
   const [toast, setToast] = useState('');
   const [undoRemove, setUndoRemove] = useState<RequestRow | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>(() => readDisplayMode(readStoredSession()));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode(readStoredSession()));
   const [requestColumnKeys, setRequestColumnKeys] = useState<RequestColumnKey[]>(() => readRequestColumnKeys(readStoredSession()));
@@ -265,6 +273,22 @@ export function App() {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  useEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+    let settleTimer = 0;
+    const onScroll = () => {
+      setIsScrolling(true);
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => setIsScrolling(false), 180);
+    };
+    node.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      node.removeEventListener('scroll', onScroll);
+      window.clearTimeout(settleTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -311,7 +335,9 @@ export function App() {
 
   useEffect(() => {
     setDisplayMode(readDisplayMode(session));
-    setThemeMode(readThemeMode(session));
+    const nextTheme = readThemeMode(session);
+    setThemeMode(nextTheme);
+    applyPrepaintTheme(nextTheme);
     setRequestColumnKeys(readRequestColumnKeys(session));
   }, [session?.username]);
 
@@ -323,6 +349,7 @@ export function App() {
   const updateThemeMode = (mode: ThemeMode) => {
     setThemeMode(mode);
     storeThemeMode(session, mode);
+    applyPrepaintTheme(mode);
   };
 
   const updateRequestColumnKeys = (next: RequestColumnKey[]) => {
@@ -368,7 +395,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''}`}>
+    <div className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''} ${isScrolling ? 'is-scrolling' : ''}`}>
       <div className="top-chrome" ref={topRef}>
         <div className="brand-strip">
           <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : moduleDetail ? setModuleDetail(null) : openView('home')}>
@@ -378,7 +405,7 @@ export function App() {
             <div className="brand-user">{view === 'bloom' || view === 'partner-av' ? 'AgMetric Test' : session?.displayName || session?.username || 'demo_user'}</div>
             <div className="brand-subtitle">AG DATA SOLUTIONS</div>
           </div>
-          {showTopSearch ? (
+          {showTopSearch && view !== 'drive' ? (
             <div className="app-search-box">
               {view === 'request' && !detailRow && !moduleDetail ? <Search size={20} /> : null}
               <input
@@ -464,6 +491,8 @@ export function App() {
             onRemove={(row) => removeRow(row, session, SANDBOX_ONLY || demoMode, setRows, setToast, setUndoRemove)}
             onRefresh={reloadRows}
           />
+        ) : view === 'drive' ? (
+          <DriveInventory />
         ) : view === 'tasks' ? (
           <TasksWorkspace onOpen={row => { setModuleDetail({ view: 'tasks', row }); scrollerRef.current?.scrollTo({ top: 0 }); }} />
         ) : view === 'comm' ? (
@@ -1812,13 +1841,7 @@ function modulePreviewRows(view: ViewId): ModulePreviewRow[] {
     home: [],
     request: [],
     'partner-av': [],
-    drive: [
-      { title: 'Acoma Crapemyrtle', meta: '003746.030.1 | H.03.000 | Lot 27.F1 | #3', owner: 'Kayla Knepp', status: 'Available', quantity: '94', tone: 'green' },
-      { title: 'Dawn Redwood', meta: 'B.13.012 | Lot 27.S1 | #3 Lavender', owner: 'Abbey Burka', status: 'Request', quantity: '44', tone: 'blue' },
-      { title: 'Compact Andorra Juniper', meta: '001360.050.1 | K.03.000 | Lot 27.U2 | #5', owner: 'JD Jones', status: 'Hold Check', quantity: '235', tone: 'warning' },
-      { title: 'Big Blue Liriope', meta: '004350.010.1 | E.07.000 | Lot 26.U2 | #1', owner: 'Kayla Knepp', status: 'AV Check', quantity: '939', tone: 'purple' },
-      { title: 'Madame Rosy Trumpet Creeper', meta: '002134.011.1 | E.23.000 | Lot 27.F1 | #1D', owner: 'Mitch Kaiser', status: 'Shear', quantity: '323', tone: 'orange' }
-    ],
+    drive: [],
     tasks: [
       { title: 'AV Blanks - Block A', meta: 'Current Season | All Sizes | All Genus', owner: 'Dylan Collyge', status: 'Active', quantity: '45 items', tone: 'green' },
       { title: 'AV Blanks - Block B', meta: 'Current Season | All Sizes | All Genus', owner: 'Dylan Collyge', status: 'Active', quantity: '84 items', tone: 'green' },
